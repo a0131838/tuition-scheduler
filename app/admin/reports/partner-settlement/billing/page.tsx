@@ -13,6 +13,7 @@ import {
   deletePartnerReceipt,
   getPartnerBilledSettlementIdSet,
   getPartnerInvoiceById,
+  partnerInvoiceBelongsToPartner,
   listDeletedPartnerInvoices,
   listPartnerBillingByMode,
   replacePartnerPaymentRecord,
@@ -22,6 +23,15 @@ import {
   assertGlobalInvoiceNoAvailable,
   getNextGlobalInvoiceNo,
 } from "@/lib/global-invoice-sequence";
+import {
+  createPartnerCreditNoteDraft,
+  getPartnerCreditNoteById,
+  issuePartnerCreditNote,
+  listPartnerCreditNotes,
+  summarizePartnerCreditNotes,
+  updatePartnerCreditNoteDraft,
+  voidPartnerCreditNote,
+} from "@/lib/partner-credit-notes";
 import {
   deletePartnerReceiptApproval,
   getPartnerReceiptApprovalMap,
@@ -41,7 +51,7 @@ import {
 const SUPER_ADMIN_EMAIL = "zhaohongwei0880@gmail.com";
 
 type Mode = PartnerBillingMode;
-type BillingTab = "invoice" | "payments" | "receipt" | "invoices" | "receipts";
+type BillingTab = "invoice" | "payments" | "receipt" | "invoices" | "credits" | "receipts";
 
 function canFinanceOperate(email: string, role: string) {
   const e = String(email ?? "").trim().toLowerCase();
@@ -54,7 +64,7 @@ function parseMode(v: string | null | undefined): Mode {
 
 function parseBillingTab(v: string | null | undefined): BillingTab | null {
   const x = String(v ?? "").trim();
-  if (x === "invoice" || x === "payments" || x === "receipt" || x === "invoices" || x === "receipts") return x;
+  if (x === "invoice" || x === "payments" || x === "receipt" || x === "invoices" || x === "credits" || x === "receipts") return x;
   return null;
 }
 
@@ -425,10 +435,114 @@ async function deletePaymentRecordAction(formData: FormData) {
   redirect(withQuery("/admin/reports/partner-settlement/billing?msg=payment-record-deleted", mode, month, null, partner.id));
 }
 
+function creditNoteLinesFromForm(formData: FormData, invoice: NonNullable<Awaited<ReturnType<typeof getPartnerInvoiceById>>>) {
+  return invoice.lines.map((line) => ({
+    sourceInvoiceLineId: line.id,
+    totalAmount: parseNum(formData.get(`creditTotal_${line.id}`), 0),
+    gstAmount: parseNum(formData.get(`creditGst_${line.id}`), 0),
+  }));
+}
+
+async function saveCreditNoteDraftAction(formData: FormData) {
+  "use server";
+  const admin = await requireAdmin();
+  if (!canFinanceOperate(admin.email, admin.role)) redirect("/admin/reports/partner-settlement/billing?err=only-finance");
+  const mode = parseMode(String(formData.get("mode") ?? ""));
+  const month = String(formData.get("month") ?? "").trim() || monthKey(new Date());
+  const partnerIdInput = String(formData.get("partnerId") ?? "").trim();
+  const partner = await getPartnerByIdOrDefault(partnerIdInput);
+  if (!partner) redirect(withQuery("/admin/reports/partner-settlement/billing?err=partner-not-found", mode, month, "credits", partnerIdInput));
+  const invoiceId = String(formData.get("invoiceId") ?? "").trim();
+  const invoice = await getPartnerInvoiceById(invoiceId);
+  if (!invoice || !partnerInvoiceBelongsToPartner(invoice, partner.id)) {
+    redirect(withQuery("/admin/reports/partner-settlement/billing?err=invoice-not-found", mode, month, "credits", partner.id));
+  }
+  const creditNoteId = String(formData.get("creditNoteId") ?? "").trim();
+  try {
+    if (creditNoteId) {
+      const existing = await getPartnerCreditNoteById(creditNoteId);
+      if (!existing || existing.sourceInvoiceId !== invoice.id) throw new Error("Credit note does not match the selected invoice");
+      await updatePartnerCreditNoteDraft({
+        creditNoteId,
+        issueDate: String(formData.get("issueDate") ?? ""),
+        reason: String(formData.get("reason") ?? ""),
+        customerAddress: String(formData.get("customerAddress") ?? ""),
+        lines: creditNoteLinesFromForm(formData, invoice),
+        actorEmail: admin.email,
+        actorRole: admin.role,
+      });
+    } else {
+      await createPartnerCreditNoteDraft({
+        invoiceId: invoice.id,
+        issueDate: String(formData.get("issueDate") ?? ""),
+        reason: String(formData.get("reason") ?? ""),
+        customerAddress: String(formData.get("customerAddress") ?? ""),
+        lines: creditNoteLinesFromForm(formData, invoice),
+        actorEmail: admin.email,
+        actorRole: admin.role,
+      });
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Save credit note failed";
+    redirect(`${withQuery(`/admin/reports/partner-settlement/billing?err=${encodeURIComponent(message)}`, mode, month, "credits", partner.id)}&creditInvoiceId=${encodeURIComponent(invoice.id)}`);
+  }
+  redirect(`${withQuery("/admin/reports/partner-settlement/billing?msg=credit-note-draft-saved", mode, month, "credits", partner.id)}&creditInvoiceId=${encodeURIComponent(invoice.id)}`);
+}
+
+async function issueCreditNoteAction(formData: FormData) {
+  "use server";
+  const admin = await requireAdmin();
+  if (!canFinanceOperate(admin.email, admin.role)) redirect("/admin/reports/partner-settlement/billing?err=only-finance");
+  const mode = parseMode(String(formData.get("mode") ?? ""));
+  const month = String(formData.get("month") ?? "").trim() || monthKey(new Date());
+  const partnerId = String(formData.get("partnerId") ?? "").trim();
+  const creditNoteId = String(formData.get("creditNoteId") ?? "").trim();
+  if (String(formData.get("confirmIssue") ?? "") !== "yes") {
+    redirect(withQuery("/admin/reports/partner-settlement/billing?err=confirm-credit-note-issue", mode, month, "credits", partnerId));
+  }
+  try {
+    const note = await getPartnerCreditNoteById(creditNoteId);
+    if (!note) throw new Error("Credit note not found");
+    const invoice = await getPartnerInvoiceById(note.sourceInvoiceId);
+    if (!invoice || !partnerInvoiceBelongsToPartner(invoice, partnerId)) throw new Error("Credit note partner mismatch");
+    await issuePartnerCreditNote({ creditNoteId, actorEmail: admin.email, actorRole: admin.role });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Issue credit note failed";
+    redirect(withQuery(`/admin/reports/partner-settlement/billing?err=${encodeURIComponent(message)}`, mode, month, "credits", partnerId));
+  }
+  redirect(withQuery("/admin/reports/partner-settlement/billing?msg=credit-note-issued", mode, month, "credits", partnerId));
+}
+
+async function voidCreditNoteAction(formData: FormData) {
+  "use server";
+  const admin = await requireAdmin();
+  if (!canFinanceOperate(admin.email, admin.role)) redirect("/admin/reports/partner-settlement/billing?err=only-finance");
+  const mode = parseMode(String(formData.get("mode") ?? ""));
+  const month = String(formData.get("month") ?? "").trim() || monthKey(new Date());
+  const partnerId = String(formData.get("partnerId") ?? "").trim();
+  const creditNoteId = String(formData.get("creditNoteId") ?? "").trim();
+  try {
+    const note = await getPartnerCreditNoteById(creditNoteId);
+    if (!note) throw new Error("Credit note not found");
+    const invoice = await getPartnerInvoiceById(note.sourceInvoiceId);
+    if (!invoice || !partnerInvoiceBelongsToPartner(invoice, partnerId)) throw new Error("Credit note partner mismatch");
+    await voidPartnerCreditNote({
+      creditNoteId,
+      reason: String(formData.get("voidReason") ?? ""),
+      actorEmail: admin.email,
+      actorRole: admin.role,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Void credit note failed";
+    redirect(withQuery(`/admin/reports/partner-settlement/billing?err=${encodeURIComponent(message)}`, mode, month, "credits", partnerId));
+  }
+  redirect(withQuery("/admin/reports/partner-settlement/billing?msg=credit-note-voided", mode, month, "credits", partnerId));
+}
+
 export default async function PartnerBillingPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ partnerId?: string; mode?: string; month?: string; tab?: string; msg?: string; err?: string; settlementIds?: string }>;
+  searchParams?: Promise<{ partnerId?: string; mode?: string; month?: string; tab?: string; msg?: string; err?: string; settlementIds?: string; creditInvoiceId?: string; editCreditNoteId?: string }>;
 }) {
   const admin = await requireAdmin();
   const current = await getCurrentUser();
@@ -503,6 +617,24 @@ export default async function PartnerBillingPage({
   const invoiceMap = new Map(billing.invoices.map((x) => [x.id, x]));
   const paymentRecordMap = new Map(billing.paymentRecords.map((x) => [x.id, x]));
   const approvalMap = await getPartnerReceiptApprovalMap(billing.receipts.map((x) => x.id));
+  const creditNotes = await listPartnerCreditNotes(billing.invoices.map((invoice) => invoice.id));
+  const issuedCreditByInvoice = summarizePartnerCreditNotes(creditNotes);
+  const requestedEditCreditNote = creditNotes.find((note) => note.id === String(sp?.editCreditNoteId ?? "").trim() && note.status === "DRAFT") ?? null;
+  const selectedCreditInvoiceId = requestedEditCreditNote?.sourceInvoiceId || String(sp?.creditInvoiceId ?? "").trim() || billing.invoices[0]?.id || "";
+  const selectedCreditInvoice = invoiceMap.get(selectedCreditInvoiceId) ?? null;
+  const editingCreditNote = requestedEditCreditNote?.sourceInvoiceId === selectedCreditInvoiceId ? requestedEditCreditNote : null;
+  const editingLineMap = new Map((editingCreditNote?.lines ?? []).map((line) => [line.sourceInvoiceLineId ?? "", line] as const));
+  const reservedCreditByLine = new Map<string, number>();
+  for (const note of creditNotes) {
+    if (note.status === "VOID" || note.id === editingCreditNote?.id) continue;
+    for (const line of note.lines) {
+      if (!line.sourceInvoiceLineId) continue;
+      reservedCreditByLine.set(
+        line.sourceInvoiceLineId,
+        Number(((reservedCreditByLine.get(line.sourceInvoiceLineId) ?? 0) + Number(line.totalAmount)).toFixed(2)),
+      );
+    }
+  }
   const cardStyle = { border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, marginBottom: 14, background: "#fff" };
   const tabBtn = (tab: BillingTab, label: string) => (
     <a
@@ -579,6 +711,8 @@ export default async function PartnerBillingPage({
               ? t(lang, "You are in the payment proof stage now. Upload or replace evidence here before creating receipts.", "你当前在付款记录阶段，先补齐或替换付款凭证，再去创建收据。")
               : activeTab === "receipt"
               ? t(lang, "You are at the receipt step. Double-check invoice, amount received, and linked payment record.", "你当前在收据步骤，重点检查来源发票、实收金额和关联付款记录。")
+              : activeTab === "credits"
+              ? t(lang, "Create and track credit notes here without changing the original invoice or receipt records.", "在这里创建和追踪 Credit Note，原发票和收据记录不会被修改。")
               : t(lang, "Use this map to switch between settlement prep, evidence, and receipt history without rescanning the page.", "通过这张地图在待结算、付款凭证和收据历史之间跳转，不用反复扫整页。")}
           </div>
         </div>
@@ -599,6 +733,8 @@ export default async function PartnerBillingPage({
                 ? "#partner-billing-receipt-create"
                 : activeTab === "invoices"
                 ? "#partner-billing-invoices"
+                : activeTab === "credits"
+                ? "#partner-billing-credits"
                 : activeTab === "receipts"
                 ? "#partner-billing-receipts"
                 : "#partner-billing-invoice-create"
@@ -632,6 +768,7 @@ export default async function PartnerBillingPage({
           {tabBtn("payments", t(lang, "Payment records", "付款记录"))}
           {tabBtn("receipt", t(lang, "Create Receipt", "创建收据"))}
           {tabBtn("invoices", t(lang, "Invoices", "发票"))}
+          {tabBtn("credits", t(lang, "Credit Notes", "贷项通知单"))}
           {tabBtn("receipts", t(lang, "Receipts and approvals", "收据与审批"))}
           <a href="/admin/finance/documents?channel=PARTNER" style={primaryBtn}>{t(lang, "Full invoices & receipts", "完整发票与收据")}</a>
           <a href={`/admin/finance/deleted-invoices?channel=PARTNER&month=${encodeURIComponent(month)}`} style={primaryBtn}>{t(lang, "Deleted draft history", "已删除草稿历史")}</a>
@@ -855,27 +992,35 @@ export default async function PartnerBillingPage({
         </div>
       ) : null}
       <div style={{ overflowX: "auto" }}>
-      <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 16, minWidth: 980 }}>
+      <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 16, minWidth: 1260 }}>
         <thead>
           <tr style={{ background: "#f3f4f6" }}>
             <th align="left" style={thCell}>{t(lang, "Invoice No.", "发票号")}</th>
             <th align="left" style={thCell}>{t(lang, "Issue", "开票日")}</th>
             <th align="left" style={thCell}>{t(lang, "Mode", "模式")}</th>
             <th align="left" style={thCell}>{t(lang, "Month", "月份")}</th>
-            <th align="left" style={thCell}>{t(lang, "Total", "合计")}</th>
+            <th align="left" style={thCell}>{t(lang, "Original total", "原发票金额")}</th>
+            <th align="left" style={thCell}>{t(lang, "Issued credits", "已开 Credit")}</th>
+            <th align="left" style={thCell}>{t(lang, "Adjusted net", "调整后净额")}</th>
             <th align="left" style={thCell}>PDF</th>
             <th align="left" style={thCell}>{t(lang, "Settlement detail export", "结算明细导出")}</th>
+            <th align="left" style={thCell}>Credit Note</th>
             <th align="left" style={thCell}>{t(lang, "Delete", "删除")}</th>
           </tr>
         </thead>
         <tbody>
-          {billing.invoices.map((r) => (
+          {billing.invoices.map((r) => {
+            const issuedCredit = issuedCreditByInvoice.get(r.id) ?? 0;
+            const linkedNotes = creditNotes.filter((note) => note.sourceInvoiceId === r.id);
+            return (
             <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
               <td>{r.invoiceNo}</td>
               <td>{normalizeDateOnly(r.issueDate) ?? "-"}</td>
               <td>{r.mode}</td>
               <td>{r.monthKey ?? "-"}</td>
               <td>{money(r.totalAmount)}</td>
+              <td>{money(issuedCredit)}</td>
+              <td style={{ fontWeight: 800 }}>{money(Math.max(0, r.totalAmount - issuedCredit))}</td>
               <td>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   <a href={`/api/exports/partner-invoice/${encodeURIComponent(r.id)}`}>{t(lang, "Export PDF", "导出 PDF")}</a>
@@ -893,19 +1038,256 @@ export default async function PartnerBillingPage({
                 )}
               </td>
               <td>
-                <form action={deleteInvoiceAction}>
-                  <input type="hidden" name="partnerId" value={partnerId} />
+                <a href={`${tabHref("credits")}&creditInvoiceId=${encodeURIComponent(r.id)}`} style={{ fontWeight: 700 }}>
+                  {linkedNotes.length > 0
+                    ? t(lang, `Open (${linkedNotes.length})`, `查看（${linkedNotes.length}）`)
+                    : t(lang, "Create", "创建")}
+                </a>
+              </td>
+              <td>
+                {linkedNotes.length > 0 ? (
+                  <span style={{ color: "#64748b", fontSize: 12 }}>{t(lang, "Locked by credit history", "已有 Credit 记录，禁止删除")}</span>
+                ) : (
+                  <form action={deleteInvoiceAction}>
+                    <input type="hidden" name="partnerId" value={partnerId} />
                     <input type="hidden" name="mode" value={mode} />
-                  <input type="hidden" name="month" value={month} />
-                  <input type="hidden" name="invoiceId" value={r.id} />
-                  <button type="submit" style={dangerBtn}>{t(lang, "Delete", "删除")}</button>
-                </form>
+                    <input type="hidden" name="month" value={month} />
+                    <input type="hidden" name="invoiceId" value={r.id} />
+                    <button type="submit" style={dangerBtn}>{t(lang, "Delete", "删除")}</button>
+                  </form>
+                )}
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
       </div>
+      </div>
+      ) : null}
+
+      {activeTab === "credits" ? (
+      <div id="partner-billing-credits" style={cardStyle}>
+        <h3 style={{ marginTop: 0 }}>{t(lang, "Partner Credit Notes", "合作方 Credit Note / 贷项通知单")}</h3>
+        <div style={{ color: "#475569", lineHeight: 1.6, marginBottom: 12 }}>
+          {t(
+            lang,
+            "Credit notes reduce an issued invoice without changing or deleting the original invoice. Drafts reserve their entered amount; issued notes affect the adjusted net; voided notes remain in history but no longer reduce the invoice.",
+            "Credit Note 用于减少已开具发票金额，但不会修改或删除原发票。草稿会预留所填金额；正式开具后计入调整净额；作废记录继续保留，但不再减少发票金额。"
+          )}
+        </div>
+
+        <form method="get" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "end", marginBottom: 16 }}>
+          <input type="hidden" name="partnerId" value={partnerId} />
+          <input type="hidden" name="mode" value={mode} />
+          <input type="hidden" name="month" value={month} />
+          <input type="hidden" name="tab" value="credits" />
+          <label style={{ minWidth: 320 }}>
+            {t(lang, "Original invoice", "原发票")}
+            <select name="creditInvoiceId" defaultValue={selectedCreditInvoiceId} style={{ width: "100%" }}>
+              {billing.invoices.map((invoice) => (
+                <option key={invoice.id} value={invoice.id}>{invoice.invoiceNo} / SGD {money(invoice.totalAmount)}</option>
+              ))}
+            </select>
+          </label>
+          <button type="submit" data-apply-submit="1" style={primaryBtn}>{t(lang, "Open", "打开")}</button>
+        </form>
+
+        {selectedCreditInvoice ? (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8, marginBottom: 14 }}>
+              <div style={{ padding: 10, border: "1px solid #dbeafe", borderRadius: 8, background: "#eff6ff" }}>
+                <div style={{ fontSize: 12, color: "#1e40af" }}>{t(lang, "Original invoice", "原发票")}</div>
+                <div style={{ fontWeight: 800 }}>{selectedCreditInvoice.invoiceNo}</div>
+              </div>
+              <div style={{ padding: 10, border: "1px solid #e2e8f0", borderRadius: 8, background: "#f8fafc" }}>
+                <div style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Original total", "原发票金额")}</div>
+                <div style={{ fontWeight: 800 }}>SGD {money(selectedCreditInvoice.totalAmount)}</div>
+              </div>
+              <div style={{ padding: 10, border: "1px solid #fcd34d", borderRadius: 8, background: "#fffbeb" }}>
+                <div style={{ fontSize: 12, color: "#92400e" }}>{t(lang, "Issued credits", "已正式开具 Credit")}</div>
+                <div style={{ fontWeight: 800 }}>SGD {money(issuedCreditByInvoice.get(selectedCreditInvoice.id) ?? 0)}</div>
+              </div>
+              <div style={{ padding: 10, border: "1px solid #86efac", borderRadius: 8, background: "#f0fdf4" }}>
+                <div style={{ fontSize: 12, color: "#166534" }}>{t(lang, "Adjusted net", "调整后净额")}</div>
+                <div style={{ fontWeight: 800 }}>SGD {money(Math.max(0, selectedCreditInvoice.totalAmount - (issuedCreditByInvoice.get(selectedCreditInvoice.id) ?? 0)))}</div>
+              </div>
+            </div>
+
+            {billing.receipts.some((receipt) => receipt.invoiceId === selectedCreditInvoice.id) ? (
+              <div style={{ border: "1px solid #fcd34d", background: "#fffbeb", color: "#92400e", padding: 10, marginBottom: 12 }}>
+                {t(lang, "A receipt already exists. The credit note will not alter it; finance must separately record whether the credit is refunded or applied to a future invoice.", "该发票已有收据。Credit Note 不会修改收据；财务需要另行记录退款或抵扣后续发票的处理方式。")}
+              </div>
+            ) : null}
+
+            {financeOpsEnabled ? (
+              <form action={saveCreditNoteDraftAction} style={{ display: "grid", gap: 12, marginBottom: 18 }}>
+                <input type="hidden" name="partnerId" value={partnerId} />
+                <input type="hidden" name="mode" value={mode} />
+                <input type="hidden" name="month" value={month} />
+                <input type="hidden" name="invoiceId" value={selectedCreditInvoice.id} />
+                <input type="hidden" name="creditNoteId" value={editingCreditNote?.id ?? ""} />
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 8 }}>
+                  <label>
+                    {t(lang, "Credit note date", "Credit Note 日期")}
+                    <input name="issueDate" type="date" required defaultValue={editingCreditNote?.issueDate ?? today} style={{ width: "100%" }} />
+                  </label>
+                  <label>
+                    {t(lang, "Customer", "客户")}
+                    <input value={selectedCreditInvoice.billTo || selectedCreditInvoice.partnerName} readOnly style={{ width: "100%", background: "#f8fafc" }} />
+                  </label>
+                  <label style={{ gridColumn: "1 / -1" }}>
+                    {t(lang, "Customer address (required before issue)", "客户地址（正式开具前必填）")}
+                    <input name="customerAddress" required defaultValue={editingCreditNote?.customerAddress ?? ""} style={{ width: "100%" }} />
+                  </label>
+                  <label style={{ gridColumn: "1 / -1" }}>
+                    {t(lang, "Reason for credit", "调整原因")}
+                    <textarea
+                      name="reason"
+                      required
+                      minLength={5}
+                      rows={3}
+                      defaultValue={editingCreditNote?.reason ?? ""}
+                      placeholder="Correction of April 2026 service amount based on revised source document."
+                      style={{ width: "100%" }}
+                    />
+                  </label>
+                </div>
+
+                <div style={{ overflowX: "auto" }}>
+                  <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: 860 }}>
+                    <thead>
+                      <tr style={{ background: "#f8fafc" }}>
+                        <th align="left">{t(lang, "Original invoice line", "原发票项目")}</th>
+                        <th align="left">{t(lang, "Original total", "原金额")}</th>
+                        <th align="left">{t(lang, "Available to credit", "可调整余额")}</th>
+                        <th align="left">{t(lang, "Credit total", "本次 Credit 金额")}</th>
+                        <th align="left">{t(lang, "GST credited", "其中 GST")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedCreditInvoice.lines.map((line) => {
+                        const editingLine = editingLineMap.get(line.id);
+                        const available = Math.max(0, Number((line.totalAmount - (reservedCreditByLine.get(line.id) ?? 0)).toFixed(2)));
+                        return (
+                          <tr key={line.id} style={{ borderTop: "1px solid #e2e8f0" }}>
+                            <td>{line.description}</td>
+                            <td>SGD {money(line.totalAmount)}</td>
+                            <td>SGD {money(available)}</td>
+                            <td>
+                              <input
+                                name={`creditTotal_${line.id}`}
+                                type="number"
+                                min="0"
+                                max={available}
+                                step="0.01"
+                                defaultValue={editingLine ? Number(editingLine.totalAmount) : 0}
+                                disabled={available <= 0}
+                                style={{ width: 130 }}
+                              />
+                            </td>
+                            <td>
+                              <input
+                                name={`creditGst_${line.id}`}
+                                type="number"
+                                min="0"
+                                max={available}
+                                step="0.01"
+                                defaultValue={editingLine ? Number(editingLine.gstAmount) : 0}
+                                disabled={available <= 0}
+                                style={{ width: 120 }}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{ color: "#64748b", fontSize: 12 }}>
+                  {t(lang, "GST defaults to zero. Finance must verify the GST treatment against the original invoice and source document before issue.", "GST 默认是 0。正式开具前，财务必须根据原发票和来源文件确认 GST 处理。")}
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button type="submit" style={primaryBtn}>{editingCreditNote ? t(lang, "Update draft", "更新草稿") : t(lang, "Save draft", "保存草稿")}</button>
+                  {editingCreditNote ? <a href={`${tabHref("credits")}&creditInvoiceId=${encodeURIComponent(selectedCreditInvoice.id)}`}>{t(lang, "Cancel edit", "取消编辑")}</a> : null}
+                </div>
+              </form>
+            ) : (
+              <div style={{ color: "#92400e", marginBottom: 16 }}>{t(lang, "Only finance can create or issue credit notes.", "只有财务可以创建或正式开具 Credit Note。")}</div>
+            )}
+          </>
+        ) : (
+          <div style={{ color: "#64748b", marginBottom: 16 }}>{t(lang, "No partner invoice is available in this view.", "当前视图没有可用的合作方发票。")}</div>
+        )}
+
+        <div style={{ fontWeight: 800, marginBottom: 8 }}>{t(lang, "Credit note history", "Credit Note 历史")}</div>
+        {creditNotes.length === 0 ? (
+          <div style={{ color: "#64748b" }}>{t(lang, "No credit notes yet.", "暂无 Credit Note。")}</div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: 1180 }}>
+              <thead>
+                <tr style={{ background: "#f3f4f6" }}>
+                  <th align="left">Credit Note No.</th>
+                  <th align="left">{t(lang, "Date", "日期")}</th>
+                  <th align="left">{t(lang, "Original invoice", "原发票")}</th>
+                  <th align="left">{t(lang, "Reason", "原因")}</th>
+                  <th align="left">{t(lang, "Credit total", "Credit 金额")}</th>
+                  <th align="left">{t(lang, "Status", "状态")}</th>
+                  <th align="left">PDF</th>
+                  <th align="left">{t(lang, "Actions", "操作")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {creditNotes.map((note) => (
+                  <tr key={note.id} style={{ borderTop: "1px solid #e2e8f0", opacity: note.status === "VOID" ? 0.7 : 1 }}>
+                    <td style={{ fontWeight: 800 }}>{note.creditNoteNo}</td>
+                    <td>{note.issueDate}</td>
+                    <td>{note.sourceInvoiceNo}</td>
+                    <td style={{ maxWidth: 300 }}>{note.reason}{note.voidReason ? <div style={{ color: "#991b1b", fontSize: 12 }}>Void: {note.voidReason}</div> : null}</td>
+                    <td>SGD {money(Number(note.totalAmount))}</td>
+                    <td>
+                      <span style={note.status === "ISSUED" ? completedPill : note.status === "VOID" ? dangerBtn : pendingPill}>
+                        {note.status}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ display: "grid", gap: 4 }}>
+                        <a href={`/api/exports/partner-credit-note/${encodeURIComponent(note.id)}`}>{note.status === "DRAFT" ? t(lang, "Preview", "预览") : t(lang, "Export PDF", "导出 PDF")}</a>
+                        {note.status === "ISSUED" ? <a href={`/api/exports/partner-credit-note/${encodeURIComponent(note.id)}?seal=1`}>PDF + Seal</a> : null}
+                      </div>
+                    </td>
+                    <td>
+                      {financeOpsEnabled && note.status === "DRAFT" ? (
+                        <div style={{ display: "grid", gap: 8 }}>
+                          <a href={`${tabHref("credits")}&creditInvoiceId=${encodeURIComponent(note.sourceInvoiceId)}&editCreditNoteId=${encodeURIComponent(note.id)}`}>{t(lang, "Edit draft", "编辑草稿")}</a>
+                          <form action={issueCreditNoteAction} style={{ display: "grid", gap: 6 }}>
+                            <input type="hidden" name="partnerId" value={partnerId} />
+                            <input type="hidden" name="mode" value={mode} />
+                            <input type="hidden" name="month" value={month} />
+                            <input type="hidden" name="creditNoteId" value={note.id} />
+                            <label style={{ fontSize: 12 }}><input type="checkbox" name="confirmIssue" value="yes" required /> {t(lang, "Source, address, amount and GST verified", "已核对来源、地址、金额和 GST")}</label>
+                            <button type="submit" style={primaryBtn}>{t(lang, "Issue", "正式开具")}</button>
+                          </form>
+                        </div>
+                      ) : null}
+                      {financeOpsEnabled && note.status !== "VOID" ? (
+                        <form action={voidCreditNoteAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+                          <input type="hidden" name="partnerId" value={partnerId} />
+                          <input type="hidden" name="mode" value={mode} />
+                          <input type="hidden" name="month" value={month} />
+                          <input type="hidden" name="creditNoteId" value={note.id} />
+                          <input name="voidReason" required minLength={5} placeholder={t(lang, "Void reason", "作废原因")} style={{ width: 180 }} />
+                          <button type="submit" style={dangerBtn}>{t(lang, "Void", "作废")}</button>
+                        </form>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
       ) : null}
 

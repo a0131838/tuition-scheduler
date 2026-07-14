@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-14-r250
+
+- Release ID: `2026-07-14-r250`
+- Date/Time (Asia/Shanghai): `2026-07-14`
+- Deployment status: `READY` (local only; not deployed and migration not applied)
+- Scope: add an isolated Credit Note ledger for partner invoices, including partial line credits, independent tracking numbers, draft/issue/void controls, adjusted-net display and a printable PDF linked to the original invoice.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260714180000_add_partner_credit_notes/migration.sql`
+  - `lib/partner-credit-notes.ts`
+  - `lib/partner-billing.ts`
+  - `app/admin/reports/partner-settlement/billing/page.tsx`
+  - `app/api/exports/partner-credit-note/[id]/route.ts`
+  - `tests/partner-credit-notes.test.ts`
+  - `tests/partner-credit-note-migration-safety.test.ts`
+  - `docs/tasks/TASK-20260714-partner-credit-notes.md`
+- Risk impact (if any): Medium and isolated to partner billing. The migration creates only `CreditNote` and `CreditNoteLine`; it does not alter existing invoice JSON, receipts, settlements, students, packages, lessons, attendance or payroll. Drafts do not change adjusted totals. Only issued, non-void notes reduce the displayed net. Existing invoices with any Credit Note history cannot be deleted, and existing receipts remain unchanged for finance review.
+- Verification: Prisma validation and generation, TypeScript, all 66 backend tests, migration-safety assertions, the full 193-page production build and `git diff --check` pass. The New Oriental case is covered as an SGD 270 partial credit against `RGT-202606-0019`. No production migration or write was executed.
+- Rollback point: current production runtime `60d00d8` (`2026-07-14-r249`); `r250` remains local and uncommitted.
+
+---
+
 ## 2026-07-14-r249
 
 - Release ID: `2026-07-14-r249`

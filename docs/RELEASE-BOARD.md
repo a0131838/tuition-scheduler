@@ -15,12 +15,14 @@
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
 - Current production release: `2026-07-14-r249` at runtime commit `60d00d8`. University academic, postgraduate and career care now use separate service scopes, roles and follow-up categories; university academic-position and adult-student-consent records are live. Private full-care evidence attachments from `r248` remain live. The same server lineage includes the validated `r247` parent service-progress API and native source; native-miniapp changes remain invisible until a WeChat experience-version upload.
-- Next planned release: university semester, course and assessment milestones with GPA, credit, deadline and academic-risk tracking. Postgraduate and career pipelines remain subsequent isolated phases.
+- Prepared release: `2026-07-14-r250` adds an isolated partner Credit Note ledger and PDF. It is local only; no migration or production write has been executed.
+- Next planned care release: university semester, course and assessment milestones with GPA, credit, deadline and academic-risk tracking. Postgraduate and career pipelines remain subsequent isolated phases.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
+- Partner-credit-note pre-deploy risk: `2026-07-14-r250` is READY but not live. Deploy must apply only the additive two-table migration, then verify the first draft/issue/PDF flow with a controlled invoice. Drafts must remain excluded from adjusted totals; issued non-void notes are the only credits counted. Existing receipts are intentionally not rewritten and must be reviewed by Finance if the credited invoice already has a receipt.
 - University-care monitoring: `2026-07-14-r249` is live. Management reviewed the existing Li Chenghao NUS draft on 2026-07-14 and explicitly aligned it to the five current university-academic scopes, milestone/monthly cadence and Jasmine ownership; its earlier pre-university life-care scopes are no longer active. It remains a draft and must not be activated until degree/programme, current term and expected graduation are completed. Adult-student consent remains not recorded, so parent-report eligibility is still blocked. Louis remains an active pre-university full-care project and is now aligned to the complete eight-scope standard.
 - Full-care-evidence monitoring: `2026-07-14-r248` is live. Parent delivery is intentionally disabled; a file marked `PARENT` is only eligible for a later reviewed report. Monitor the first real school-email upload and confirm the intended care team can open it while unrelated staff cannot.
 - Parent-service-progress rollout risk: all 88 students currently have a null service type, so the parent app temporarily uses ordinary-course wording without changing the database. Management must classify students before academic-management/full-care-specific communication is relied upon. Full-care records remain invisible until explicitly published to parents. Complete a physical-phone pass after the next experience-version upload.
@@ -161,6 +163,29 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-07-14-r250 Ready
+
+- Scope: add formal Credit Notes for partner invoices without changing the existing invoice, receipt or settlement stores.
+- Business impact:
+  - Finance/Superadmin can create a partial line-level draft from an existing partner invoice, then issue or void it with retained history.
+  - Each note receives an independent `RGT-CN-YYYYMM-####` tracking number and stores an immutable source-invoice snapshot.
+  - Original total, issued credits and adjusted net are shown together; drafts and void notes do not reduce the adjusted net.
+  - The PDF identifies the original invoice, reason, credited lines, GST, credit total and adjusted balance; only issued notes show the company seal.
+  - Existing receipts are not changed automatically, and an invoice with Credit Note history cannot be deleted.
+- Safety:
+  - additive migration creates only `CreditNote` and `CreditNoteLine`
+  - no existing business table or `AppSetting` invoice JSON is altered
+  - line and invoice over-credit are rejected inside serializable transactions
+  - current invoice, receipt, package, attendance, payroll and settlement paths keep their existing behavior
+- Verification before deploy:
+  - `npx prisma validate` and `npx prisma generate`
+  - `npx tsc --noEmit`
+  - `npm run test:backend` (66/66)
+  - `npm run build` (193 pages)
+  - `git diff --check`
+  - New Oriental SGD 270 partial-credit and repeated-credit limits covered by tests
+- Deployment status: local READY only; no production migration, commit, push or server deployment has been performed.
 
 ## 2026-07-14-r249 Live
 

@@ -302,6 +302,13 @@ function partnerMatches(itemPartnerId: string | null | undefined, partnerId?: st
   return item === filter || (!item && filter === LEGACY_XDF_PARTNER_ID);
 }
 
+export function partnerInvoiceBelongsToPartner(
+  invoice: Pick<PartnerInvoiceItem, "partnerId">,
+  partnerId: string | null | undefined,
+) {
+  return partnerMatches(invoice.partnerId, partnerId);
+}
+
 function monthKeyFromDate(input: string | Date | null | undefined) {
   return monthKeyFromDateOnly(input).replace("-", "");
 }
@@ -695,6 +702,12 @@ export async function buildPartnerReceiptNoForInvoice(invoiceId: string) {
 }
 
 export async function deletePartnerInvoice(input: { invoiceId: string; actorEmail: string }) {
+  const linkedCreditNoteCount = await prisma.creditNote.count({
+    where: { sourceType: "PARTNER_INVOICE", sourceInvoiceId: input.invoiceId.trim() },
+  });
+  if (linkedCreditNoteCount > 0) {
+    throw new Error("Cannot delete invoice: linked credit note history exists");
+  }
   let deletedInvoiceId = "";
   let deletedInvoiceNo = "";
   let deletedPartnerName = "";

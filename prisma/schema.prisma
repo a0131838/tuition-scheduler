@@ -267,6 +267,16 @@ enum PartnerSettlementStatus {
   REVERTED
 }
 
+enum CreditNoteSourceType {
+  PARTNER_INVOICE
+}
+
+enum CreditNoteStatus {
+  DRAFT
+  ISSUED
+  VOID
+}
+
 enum MidtermReportStatus {
   ASSIGNED
   SUBMITTED
@@ -1003,6 +1013,61 @@ model Partner {
 
   @@unique([name])
   @@index([isActive, name])
+}
+
+model CreditNote {
+  id                        String               @id @default(uuid())
+  sourceType                CreditNoteSourceType @default(PARTNER_INVOICE)
+  sourceInvoiceId           String
+  sourceInvoiceNo           String
+  sourceInvoiceDate         String
+  sourceInvoiceSnapshot     Json
+  creditNoteNo              String               @unique
+  issueDate                 String
+  currency                  String               @default("SGD")
+  supplierName              String
+  supplierAddress           String
+  supplierRegistrationNo    String
+  supplierGstRegistrationNo String?
+  customerName              String
+  customerAddress           String?
+  reason                    String
+  originalInvoiceTotal      Decimal              @db.Decimal(12, 2)
+  amount                    Decimal              @db.Decimal(12, 2)
+  gstAmount                 Decimal              @db.Decimal(12, 2)
+  totalAmount               Decimal              @db.Decimal(12, 2)
+  status                    CreditNoteStatus     @default(DRAFT)
+  createdBy                 String
+  issuedAt                  DateTime?
+  issuedBy                  String?
+  voidedAt                  DateTime?
+  voidedBy                  String?
+  voidReason                String?
+  createdAt                 DateTime             @default(now())
+  updatedAt                 DateTime             @updatedAt
+
+  lines CreditNoteLine[]
+
+  @@index([sourceType, sourceInvoiceId, status])
+  @@index([sourceInvoiceNo, createdAt])
+  @@index([status, issueDate])
+}
+
+model CreditNoteLine {
+  id                  String   @id @default(uuid())
+  creditNoteId        String
+  sourceInvoiceLineId String?
+  description         String
+  quantity            Decimal  @default(1) @db.Decimal(10, 2)
+  amount              Decimal  @db.Decimal(12, 2)
+  gstAmount           Decimal  @db.Decimal(12, 2)
+  totalAmount         Decimal  @db.Decimal(12, 2)
+  createdAt           DateTime @default(now())
+
+  creditNote CreditNote @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+
+  @@index([creditNoteId])
+  @@index([sourceInvoiceLineId])
 }
 
 model StudentSourceChannel {
