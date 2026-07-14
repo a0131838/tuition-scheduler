@@ -14,14 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-13-r246` at runtime commit `a8a261f`. The visual scheduling API and performance patch are live; the matching native package also includes the earlier UI/search, login separation, parent-only experience, and parent logout changes, which are not visible to WeChat users until the next experience-version upload.
-- Next ready release: `2026-07-14-r248` adds private full-care evidence attachments and school-communication sources. It also carries the already validated `r247` parent service-progress source; native-miniapp changes remain invisible until a WeChat experience-version upload.
+- Current production release: `2026-07-14-r248` at runtime commit `7bf4b04`. Private full-care evidence attachments and school-communication sources are live. The same server lineage includes the validated `r247` parent service-progress API and native source; native-miniapp changes remain invisible until a WeChat experience-version upload.
+- Next ready release: none. The next planned full-care feature is the reviewed monthly-report workflow after the first real school-email evidence upload is checked.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
-- Full-care-evidence rollout risk: `2026-07-14-r248` adds a private attachment table and CARE-scoped upload/download routes. Parent delivery is intentionally disabled; a file marked `PARENT` is only eligible for a later reviewed report. Monitor the first real school-email upload and confirm the intended care team can open it while unrelated staff cannot.
+- Full-care-evidence monitoring: `2026-07-14-r248` is live. Parent delivery is intentionally disabled; a file marked `PARENT` is only eligible for a later reviewed report. Monitor the first real school-email upload and confirm the intended care team can open it while unrelated staff cannot.
 - Parent-service-progress rollout risk: all 88 students currently have a null service type, so the parent app temporarily uses ordinary-course wording without changing the database. Management must classify students before academic-management/full-care-specific communication is relied upon. Full-care records remain invisible until explicitly published to parents. Complete a physical-phone pass after the next experience-version upload.
 - Visual-scheduling-calendar rollout risk: `2026-07-13-r246` is live and adds a 42-day miniapp range query, operational overlap indicators, and teacher free-slot display. Single-query relation loading reduced the production 42-day request from 62.64 seconds to 9.98 seconds, but the Hong Kong application server to Singapore database path still leaves an 8-10 second baseline and should be addressed as a separate infrastructure project. It does not add a write path. Complete one physical-phone pass for month/week/day switching, filters, lesson opening, and date/time handoff before relying on it for daily scheduling.
 - Login-portal experience risk: `2026-07-13-r245` removes the employee entry from authenticated parent pages and adds parent logout. Remembered-portal auto-entry, logout confirmation/session cleanup, and the final parent-only phone experience still need one physical-phone pass after uploading the next experience version.
@@ -161,7 +161,7 @@
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
 
-## 2026-07-14-r248 Ready
+## 2026-07-14-r248 Live
 
 - Scope: add private evidence files and structured communication sources to each full-care project.
 - Business impact:
@@ -182,9 +182,11 @@
   - `npm run build` (193 pages)
   - production-mode browser upload/download/archive/restore and unauthorized-access checks
 - Post-deploy verification:
-  - migration status, PM2 and `/admin/login`
-  - authenticated upload/download on a temporary care project followed by complete cleanup
-  - protected teaching, package, partner-settlement and care-count baseline comparison
+  - 103 migrations current, PM2 online with zero restarts and `/admin/login` => `200`
+  - authenticated upload, project-page listing and private download on a temporary production care project
+  - unauthenticated file access => `401`; authorized file access => private signed `302` and original content
+  - temporary database records, session, audit rows and S3 object cleaned to zero
+  - protected baseline unchanged at 88 students, 78 packages, 1,895 sessions, 1,711 attendance rows, 34 partner settlements and 1/0/1/0/0 care engagements/plans/activities/tasks/attachments
 
 ## 2026-07-13-r239 Ready
 

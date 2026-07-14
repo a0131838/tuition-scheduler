@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-14-r248`
 - Date/Time (Asia/Shanghai): `2026-07-14`
-- Deployment status: `READY`
+- Deployment status: `LIVE` at runtime commit `7bf4b04`
 - Scope: add private evidence attachments and structured school-communication sources to the isolated full-care workspace, with project-scoped access, activity/task links, archive/restore and audit history.
 - Key files:
   - `prisma/schema.prisma`
@@ -34,7 +34,7 @@ This file is the single source of truth for what changed in production.
   - `tests/care-evidence.test.ts`
   - `docs/tasks/TASK-20260714-care-evidence-attachments.md`
 - Risk impact (if any): Medium and isolated to CARE. Files are stored under a private S3/local CARE path and every download rechecks care-project access. The migration only adds one enum and one table; it does not alter students, sessions, attendance, packages, partner settlement, payroll, invoices, receipts or finance settings. Parent delivery remains disabled; `PARENT` means eligible for a later reviewed report, not immediately visible.
-- Verification: Prisma validation, TypeScript, all 53 backend tests and the full 193-page production build pass. Production-mode Playwright used a temporary student/project to upload a school-email file, link it to a school update, open/download it, archive it and restore it. Unauthenticated file access returned `401`; authorized access returned a private signed `302`. The temporary student, session, project, attachment, audit rows and S3 test object were cleaned to zero.
+- Verification: Prisma validation, TypeScript, all 53 backend tests and the full 193-page production build pass. Production-mode Playwright used a temporary student/project to upload a school-email file, link it to a school update, open/download it, archive it and restore it. Production deployment found all 103 migrations current, PM2 online with zero restarts and `/admin/login` returning `200`. A second temporary project on `sgtmanage.com` uploaded and listed a school-email file; unauthenticated access returned `401`, authorized access returned a private signed `302`, and the signed object returned the original content. The temporary student, session, project, attachment, audit rows and S3 objects were cleaned to zero. Before/after counts remained 88 students, 78 packages, 1,895 sessions, 1,711 attendance rows, 34 partner settlements and 1/0/1/0/0 care engagements/plans/activities/tasks/attachments.
 - Rollback point: current production runtime `a8a261f` (`2026-07-13-r246`); immediate Git parent `1d1e395` is the prepared `2026-07-14-r247` parent service-progress source.
 
 ---
