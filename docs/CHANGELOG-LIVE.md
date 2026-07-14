@@ -19,12 +19,12 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-14-r251`
 - Date/Time (Asia/Shanghai): `2026-07-14`
-- Deployment status: `READY`
+- Deployment status: `LIVE` at runtime commit `a24d06d`
 - Scope: keep long Credit Note numbers on one fitted line in the PDF header so they cannot overlap the original-invoice row.
 - Key files:
   - `app/api/exports/partner-credit-note/[id]/route.ts`
 - Risk impact (if any): Low and isolated to the new Credit Note PDF header. No database, workflow, amount, permission, invoice, receipt or settlement behavior changes.
-- Verification: TypeScript, backend regression, production build and a rendered long-number PDF preview are required before marking live.
+- Verification: TypeScript, all 66 backend tests and the full 193-page production build pass. Production deployment is healthy with PM2 online, zero restarts and `/admin/login` returning `200`. A deliberately longer-than-production demo number remained on one line in the live PDF, with no overlap against the original invoice row; the demo Credit Note, line and temporary auth session were cleaned back to zero.
 - Rollback point: `ba72d02` (`2026-07-14-r250`).
 
 ---

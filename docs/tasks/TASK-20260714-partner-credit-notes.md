@@ -42,3 +42,5 @@ Medium but isolated to partner billing. The migration is additive. Draft and voi
 ## PDF Header Follow-up
 
 During Finance SOP capture, a deliberately long demo Credit Note number exposed that the PDF header value could wrap into the original-invoice row. Release `2026-07-14-r251` fits header values to a single line with a bounded minimum font size. This changes only the new Credit Note PDF header and does not change numbers, amounts, status, permissions, invoices, receipts or settlements.
+
+Production verification passed at runtime commit `a24d06d`: a longer-than-production demo number stayed on one line, the original-invoice row remained separate, and the temporary Credit Note, line and authentication session were deleted with zero residue.
