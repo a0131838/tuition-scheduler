@@ -1,4778 +1,20 @@
-# RELEASE BOARD
-
-## Current Production Snapshot
-
-- Current service: `sgtmanage.com`
-- Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-07-14`
-- Health check: `/admin/login` => `200`
-- Version alignment: `ALIGNED`
-- Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
-
-## Current Known State
-
-- Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
-- Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
-- `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-14-r250` at runtime commit `ba72d02`. The isolated partner Credit Note ledger, Finance workflow and PDF are live; production has 105 migrations and no real Credit Note records yet. University-care `r249` and earlier releases remain on the same runtime lineage.
-- Prepared release: `2026-07-14-r251` keeps long Credit Note numbers on one fitted PDF header line after the SOP draft preview exposed a potential overlap.
-- Next planned care release: university semester, course and assessment milestones with GPA, credit, deadline and academic-risk tracking. Postgraduate and career pipelines remain subsequent isolated phases.
-- `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
-- Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
-
-## Open Risks
-
-- Partner-credit-note monitoring: `2026-07-14-r250` is live. Drafts remain excluded from adjusted totals; issued non-void notes are the only credits counted. Existing receipts are intentionally not rewritten and must be reviewed by Finance if the credited invoice already has a receipt. The first real issue remains pending. `r251` is a low-risk PDF header fit fix identified during SOP capture.
-- University-care monitoring: `2026-07-14-r249` is live. Management reviewed the existing Li Chenghao NUS draft on 2026-07-14 and explicitly aligned it to the five current university-academic scopes, milestone/monthly cadence and Jasmine ownership; its earlier pre-university life-care scopes are no longer active. It remains a draft and must not be activated until degree/programme, current term and expected graduation are completed. Adult-student consent remains not recorded, so parent-report eligibility is still blocked. Louis remains an active pre-university full-care project and is now aligned to the complete eight-scope standard.
-- Full-care-evidence monitoring: `2026-07-14-r248` is live. Parent delivery is intentionally disabled; a file marked `PARENT` is only eligible for a later reviewed report. Monitor the first real school-email upload and confirm the intended care team can open it while unrelated staff cannot.
-- Parent-service-progress rollout risk: all 88 students currently have a null service type, so the parent app temporarily uses ordinary-course wording without changing the database. Management must classify students before academic-management/full-care-specific communication is relied upon. Full-care records remain invisible until explicitly published to parents. Complete a physical-phone pass after the next experience-version upload.
-- Visual-scheduling-calendar rollout risk: `2026-07-13-r246` is live and adds a 42-day miniapp range query, operational overlap indicators, and teacher free-slot display. Single-query relation loading reduced the production 42-day request from 62.64 seconds to 9.98 seconds, but the Hong Kong application server to Singapore database path still leaves an 8-10 second baseline and should be addressed as a separate infrastructure project. It does not add a write path. Complete one physical-phone pass for month/week/day switching, filters, lesson opening, and date/time handoff before relying on it for daily scheduling.
-- Login-portal experience risk: `2026-07-13-r245` removes the employee entry from authenticated parent pages and adds parent logout. Remembered-portal auto-entry, logout confirmation/session cleanup, and the final parent-only phone experience still need one physical-phone pass after uploading the next experience version.
-- Admin-workspace-context monitoring: `2026-07-13-r242` is live. The shared route-sensitive text now follows `usePathname`; authenticated production regression passes Full Care to Student Sources and back without a hard refresh.
-- Shared-package student-scope monitoring: `2026-07-13-r241` is live and its authenticated Daisy/Louis production API check passes. The explicit Session student is authoritative for capacity-one parent schedule, feedback, and reminder reads; package finance documents remain owner-scoped and were intentionally not broadened.
-- Full-care-action monitoring: `2026-07-13-r240` is live. The module-level Server Action helper passed real production-mode submissions before deploy; post-deploy health checks and protected-data baselines pass. No pilot engagement exists yet, and parent publishing remains disabled.
-- Full-care-core monitoring: `2026-07-13-r238` is live with five isolated care tables and `/admin/care`. The latest read-only snapshot shows 1 manually created engagement and 1 activity, with 0 plans and 0 tasks; teaching and finance baselines remain separate and preserved.
-- Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
-- Miniapp review-readiness risk: the code is hardened, but privacy contact/retention details and WeChat backend screenshots still require Zhao input before submitting 1.0.0. Do not submit with invented retention promises or a reviewer path that exposes real student data.
-- Feedback-notification rollout risk: `2026-07-12-r233` queues only the first teacher feedback publication. Invoice and feedback share the same official ID but keep separate authorization intent; verify the first real feedback and confirm edits do not enqueue duplicates.
-- Service-consent UI risk: WeChat returned only the first ID from each two-template service/document request even when the parent allowed the displayed option. `2026-07-12-r232` changes these to four one-template buttons; verify finance and receipt each record one `accept` after deployment.
-- Request/finance notification rollout risk: `2026-07-12-r231` adds four official one-time templates. Delivery is consent-gated and permission-scoped; verify both new parent authorization groups and one controlled display test for request, unpaid, invoice, and receipt messages before broad use.
-- Reminder-coverage rollout risk: `2026-07-12-r230` derives a parent's shared quota across every linked student and assigns it to the earliest future lessons for display. The staff attention list is read-only and permission-restricted; verify the first multi-student family and first no-consent reminder after release.
-- Reminder-cron monitoring: deploy cleanup previously removed `ops/logs`, causing shell redirection to fail before queue/sender startup. `2026-07-12-r229` now creates the directory per run and reinstalls the cron after each deploy; the first automatic production replay passed.
-- Three-template consent risk: `2026-07-12-r228` joint authorization returned three `accept` results on a real phone. All three payload mappings have passed direct WeChat sends; continue monitoring normal parent usage and consent replenishment.
-- Automatic course-reminder risk: `2026-07-12-r227` sends only due 24-hour reminders when accepted consent exceeds prior sends. Monitor the first real parent reminder; 6-hour automation remains disabled.
-- Course-reminder template monitoring: all three official course-template keyword mappings have passed direct sends, and the original template has also passed the automatic cron path. Continue checking consent balance and parent-facing wording during normal use.
-- Deploy branch-fetch risk: the first r226 deploy attempt remained on the previous remote-tracking commit because the server's narrow fetch refspec did not update the requested feature branch; r226 now fetches that branch into its exact remote-tracking ref before reset/build.
-- Miniapp-phase-two risk: `2026-07-11-r225` adds ADMIN-only location and series scheduling writes plus teacher-originated Ticket creation. Location changes move one Session to a cloned same-course Class, series writes are all-or-nothing for 2-12 weeks, and teacher requests do not modify schedules. Monitor the first real action in each path and confirm reports retain the expected course/student context.
-- Miniapp-mobile-academic-actions risk: `2026-07-11-r224` adds ADMIN-only writes for leave/cancellation, one-session teacher replacement, and first scheduling from a Ticket. Every write requires a fresh signed preview and transaction revalidation; monitor Eva/Jasmine's first real action in each workflow and confirm the matching Ticket completion result before wider daily use.
-- Miniapp-scheduling-owner risk: `2026-07-11-r223` allows permitted staff to change scheduling Ticket owner. Allowed values are restricted to unassigned, Jasmine, Eva, and Emily; every change is audited and older clients preserve the current owner when omitting the field.
-- Miniapp-scheduling-board-scope risk: `2026-07-11-r222` broadens the r221 board from exact `æŽ’è¯¾åè°ƒ` Tickets to all six scheduling-related web Ticket Center categories. Existing permission, transition, and audit controls remain; verify operators notice each Ticket's original type label before updating it.
-- Miniapp-coordination-board risk: `2026-07-11-r221` exposes all open scheduling-coordination Tickets to ADMIN, CS, and CS-workspace staff and allows communication/status/follow-up updates. It does not complete Tickets or write Sessions; monitor the first Eva/Jasmine updates for correct owner, next action, and due date usage.
-- Miniapp-scheduling-ticket-closure risk: `2026-07-11-r220` can complete open scheduling-coordination Tickets together with a mobile scheduling write. Selection defaults empty, is restricted to same-student/same-course preview results, and is revalidated in the same transaction; monitor the first real closure before broadening automatic workflow actions.
-- Miniapp-scheduling-write risk: `2026-07-11-r219` adds real Session creation/rescheduling from the miniapp. Each operation is ADMIN-only, single-session, preview-signed, revalidated immediately before apply, and audited; monitor Eva/management's first real operations before expanding to teacher/room changes or future-series updates.
-- Miniapp-scheduling-coordination risk: `2026-07-11-r218` lets ADMIN/CS staff create or update internal scheduling-coordination Tickets from lesson detail and append communication notes. It intentionally stops before changing lesson times; staff must still use the desktop scheduling workflow for the final timetable write.
-- Parent-request-formal-fields risk: `2026-07-11-r217` adds a Ticket migration and structured parent-request fields. Existing `å®¶é•¿å°ç¨‹åº` Tickets are marked parent-visible and receive best-effort backfill; confirm a historical Emily-assisted request still shows only its external summary to a parent and its internal note to staff.
-- Deploy-env-miniapp-credentials risk: `2026-07-10-r216` changes only deploy env rendering so future deploys preserve WeChat miniapp credentials in `.env`; verify miniapp login does not regress after deploy.
-- Parent-request-completion-result risk: `2026-07-10-r215` blocks staff/admin from marking parent requests completed unless a parent-visible completion result is provided; verify Eva/Jasmine understand the result will be visible to parents.
-- Staff-assisted-request-visibility risk: `2026-07-10-r214` changes parent-request DTO projection. Verify parents only see the public summary, while staff/admin still see internal original notes and communication source for assisted requests.
-- Student-schedule-PDF-teacher risk: `2026-07-10-r213` changes only the student monthly schedule PDF teacher label to use per-session replacement teachers when present; scheduling, replacement history, attendance, package balances, payroll, billing, partner settlement, miniapp, and OpenClaw behavior remain unchanged.
-- Staff-assisted-parent-request risk: `2026-07-10-r212` adds a staff-authenticated Ticket creation path for WeChat-group-style parent requests. Verify Emily/Eva can select the intended student and that parent-visible summaries are written carefully before completing requests.
-- Staff-miniapp-attendance risk: `2026-07-10-r211` adds a miniapp write path for teacher attendance marking; it preserves existing deduction/package fields and only lets a linked teacher write attendance for their own sessions.
-- Staff-miniapp-WXML-render risk: `2026-07-10-r210` removes complex WXML fallback expressions from staff pages and prevents optional staff-home count API timeouts from blanking the workbench after the WeChat Developer Tool showed a blank staff workbench; this should improve miniapp rendering compatibility without changing backend behavior.
-- Staff-miniapp-feedback risk: `2026-07-10-r209` adds a miniapp write path for teacher after-class feedback; it reuses the existing five-section parent-facing feedback requirements and checks that the staff user is linked to the lesson teacher before writing.
-- Staff-miniapp-schedule risk: `2026-07-10-r208` adds read-side daily schedule access for mobile staff; teacher-role accounts are constrained to their linked teacher schedule, while ops/management can see all lessons for same-day coordination.
-- Staff-request-filter risk: `2026-07-10-r208` adds miniapp request type filtering only; parent request creation, ownership, status transitions, and notifications remain unchanged.
-- Miniapp-domain risk: `2026-07-10-r207` switches the native miniapp default API base to `https://sgtmanage.com`; WeChat public platform must whitelist this domain for request, uploadFile, and downloadFile before formal-device testing.
-- Miniapp-auth risk: `2026-07-10-r207` adds parent/staff miniapp sessions and binding tables; production use still depends on configuring `WECHAT_MINIAPP_SECRET` and WeChat subscription template IDs.
-- Partner-rate-entry risk: `2026-07-08-r206` removes the rate save action from Partner Settlement so operators must edit master rates in Partner Setup; existing settlement records keep their saved amounts and are not automatically recalculated.
-- Multi-partner settlement risk: `2026-07-08-r205` adds `Partner` configuration and `partnerId` filtering to settlement, billing, receipts, payment proofs, and top-up snapshots; verify operators select the correct partner before creating invoices.
-- Teacher-feedback scan risk: `2026-07-02-r204` increases the read-side overdue scan from 600 to 2000 sessions, while keeping the visible work item cap at 500; monitor page load if historical session volume grows substantially.
-- Human memory risk: changes were spread across multiple sessions.
-- Finance menu perception risk: role-based sidebar can look like "missing features" for FINANCE users.
-- New process risk: deploy will fail if release docs are not included in the deploy commit.
-- Historical risk confirmed: server env previously pointed to localhost DB in older backups.
-- Migration order risk: the direct-billing package invoice gate runtime depends on new `CoursePackage.financeGate*` columns and the `PackageInvoiceApproval` table, so deploy order must keep DB schema and runtime aligned.
-- Ops-flow risk: `2026-04-21-r86` removes the remaining finance-gate bypass paths, so any direct-billing chargeable package still waiting for manager invoice approval will now fail scheduling consistently until package billing is fixed.
-- Export-layout risk: parent statement PDFs previously let the bilingual header title collide with the company/date block when the title wrapped; `2026-04-23-r87` removes that overlap without changing statement data.
-- Contract-flow risk: `2026-04-23-r88` adds new public token pages, contract PDF generation, and `/uploads/contracts/*` storage, so deploy order must keep the migration and runtime aligned.
-- Contract-layout risk: early `2026-04-23-r88` student contract downloads could let the bilingual title block and long summary values crowd each other; `2026-04-23-r89` tightens layout using measured text heights without changing contract logic.
-- Partner-contract-ui risk: partner-settlement packages are exempt from the student contract flow, but some page-level shortcuts still looked like normal contract actions until `2026-04-23-r90` removes those misleading entry points.
-- Contract-rework risk: `2026-04-23-r91` changes the direct-billing student contract journey from a simple draft/sign flow into a new-student intake path plus separate first-purchase and renewal modes, and it now auto-creates invoice drafts after signing, so deploy verification must cover student creation, both contract branches, and invoice dedupe.
-- Student-type alias risk: `2026-04-23-r92` changes which student type the new parent-intake flow assigns for direct-billing students, so deploy verification must confirm new intake-created students now reuse the existing `è‡ªå·±å­¦ç”Ÿ-*` taxonomy and that legacy `ç›´å®¢å­¦ç”Ÿ` exports still render as direct-billing.
-- Contract-history risk: `2026-04-23-r93` changes package billing to ignore void contracts when choosing the current active contract and adds physical deletion for unsigned/uninvoiced void drafts, so verification must confirm safe drafts can be removed while signed/invoiced void rows remain in collapsed history.
-- Signature-submit risk: `2026-04-24-r102` changes how the public handwritten-signature pad syncs its hidden payload while the parent is drawing, so verification should confirm a quick draw-and-submit no longer falsely triggers the â€œplease draw the handwritten signatureâ€ error.
-- Contract-workspace navigation risk: `2026-04-24-r103` moves the student-contract workflow off the package billing page into a dedicated package contract page, so verification should confirm staff can still reach every contract action from the new page and that billing now feels lighter.
-- Invoice-delete sequencing risk: `2026-04-24-r111` stops compacting later draft invoice numbers after deletion, so verification must confirm middle gaps remain visible, tail gaps get reused only naturally by the next new draft, and deleted draft numbers appear in history for audit.
-- Parent-intake cleanup risk: `2026-04-24-r112` adds deletion for unused parent-intake links, so verification must confirm only `zhaohongwei0880@gmail.com` sees the action and that any intake already submitted into a student/package/contract remains undeletable.
-- Student mobile sticky risk: before `2026-04-25-r119`, the student detail workbench could remain a full-height sticky panel on phones because the sticky guard used a desktop minimum width. Verification should confirm the large workbench is downgraded and only the compact shortcut row stays sticky.
-- Admin mobile layout risk: `2026-04-25-r120` adds shared mobile shrink guardrails for logged-in admin content, so verification should cover representative admin pages and confirm tables remain horizontally scrollable inside their own containers instead of forcing the whole page sideways.
-- Parent-feedback workflow risk: `2026-04-25-r121` makes five parent-facing sections required for teacher after-class feedback, so teachers revising old feedback must reshape it into the new structure before resubmitting.
-- Teacher-feedback language risk: `2026-04-25-r122` changes the teacher feedback template to English/Chinese headings and hints, so screenshots and training docs should stay aligned with the live form.
-- Teacher-feedback input risk: `2026-04-25-r123` changes the teacher feedback form from one textarea to five section textareas plus preview, so deploy verification should confirm old formatted feedback still parses and new submits assemble into the same saved fields.
-- Admin-feedback forwarding risk: `2026-04-25-r124` changes the primary copied text for feedback forwarding to a parent-readable WeChat format, while keeping a separate internal-record copy button for audit-style text.
-- Student-academic-management risk: `2026-04-25-r125` adds nullable student management fields and a Todo Center read path for active-package students without upcoming lessons; verification should confirm the page renders before operators start filling these fields.
-- Academic-management-followup risk: `2026-04-25-r126` adds quality/completeness signals and an academic management monthly report without touching OpenClaw; verification should confirm the new report and Todo Center render correctly with mostly empty profile fields.
-- Academic-management-lane risk: `2026-04-25-r128` corrects the split to use student type as the academic-management source of truth and shows package settlement differences as warnings only; verification should confirm the filters do not change billing, settlement, scheduling, or attendance data.
-- Todo-academic-alert UI risk: `2026-04-25-r129` moves the Todo Center academic lane filter to client-side switching and changes pill counts to visible alert counts; verification should confirm lane buttons no longer reload the full page and counts match the rows shown.
-- Quick-schedule wording risk: `2026-04-29-r130` clarifies student time conflicts so an existing session's room does not look like the currently selected room was ignored; verification should confirm room conflict logic and scheduling writes remain unchanged.
-- Expense-paid-history risk: `2026-05-07-r131` adds an include-archived paid-claims view and extends CSV export to match it; verification should confirm finance can see both active and archived paid claims without changing payment records.
-- Finance-document-export risk: `2026-05-08-r132` derives invoice payment status from finance-approved receipts and adds filtered Excel export; verification should confirm finance understands pending or rejected receipts are not counted as paid.
-- Company-name-change risk: `2026-05-08-r133` updates document headers and remittance account names to `GT Educational Institute Pte. Ltd.`; finance should confirm bank account naming is legally/banking correct before using PDFs externally.
-- Package-ledger-PDF-display risk: `2026-05-08-r134` changes only hour/minute formatting in package-ledger displays and exports; verification should confirm old deductions are not manually corrected because stored ledger data already contains the correct `-90` minute values.
-- Teacher-notice risk: `2026-05-08-r135` adds a teacher portal announcement and read tracking; verification should confirm teachers can still open the dashboard and marking a notice read does not affect teaching, payroll, or expense workflows.
-- Teacher-notice-admin risk: `2026-05-08-r136` lets admin/finance publish and archive teacher notices with read tracking; verification should confirm notice writes affect only `AppSetting` notice keys and do not touch teacher payroll, expenses, classes, or attendance.
-- Teacher-notice-nav risk: `2026-05-08-r137` moves the notice admin link higher in the sidebar only; verification should confirm the route remains reachable for admin and finance users.
-- Shared-mobile-CSS risk: `2026-05-08-r138` changes shared small-screen CSS for admin and teacher pages; verification should confirm phone layouts are easier to tap and tables scroll inside their containers without changing desktop behavior.
-- Tutor-cost-cutoff-export risk: `2026-05-09-r139` adds a read-only finance Excel export for completed and confirmed tutor cost from the 15th to month-end; verification should confirm finance understands it is not arranged-future-session cost and that zero-rate rows indicate missing teacher-rate setup.
-- Tutor-cost-sidebar risk: `2026-05-09-r140` changes navigation and FINANCE role access for the tutor cost export only; verification should confirm both admin and finance sidebars show the link.
-- Individual-student-utility risk: `2026-05-12-r141` adds a read-only finance/admin Excel export based on confirmed deducted attendance by lesson date; finance should confirm this is the Sales forecast utility definition they want before reminder automation is added.
-- Package-balance-audit risk: `2026-05-13-r142` makes package ledger edit endpoints re-sync current remaining balance from ledger totals and adds audit views for balance mismatches plus risky rollback/adjustment rows; academic users should still validate abnormal corrections with ClassIn or attendance evidence before relying on corrected balances.
-- Manager-quality-desk risk: `2026-05-13-r143` adds a manager-only daily reflection log stored in `AppSetting` plus read-only Lead Desk, feedback, report, and approval snapshots; it does not yet send reminders or OpenClaw messages, so managers still need to open the page themselves.
-- Manager-print risk: `2026-05-13-r144` changes only Manager Quality Desk print rendering to a compact one-page Lead Desk table; operators should use browser print preview for unusually busy days because very high session counts may still need scaling.
-- Ledger-confirmed-exception risk: `2026-05-15-r145` removes academically confirmed historical orphan rollback reversals from the active red ledger-integrity alert count; new unconfirmed mismatches and no-package deductions still need operator review.
-- Transport-billing risk: `2026-05-15-r146` adds a parent transport reimbursement billing workflow that reuses parent invoice creation after Finance marks sessions billable; Finance must avoid marking normal campus lessons or lessons without parent agreement.
-- Admin-sidebar-transport risk: `2026-05-15-r147` changes admin/manager navigation visibility only so managers can find transport billing and related finance document pages from the sidebar; it does not change billing permissions or transaction logic.
-- Renewal-contract-history risk: `2026-05-16-r148` changes renewal contract signing so legacy package invoices no longer block the renewal flow; first-purchase contracts keep the multi-invoice ambiguity guard, and finance should still verify the newly generated renewal invoice after signing.
-- Renewal-parent-info risk: `2026-05-17-r149` allows complete parent profiles on voided contracts to unlock renewal-contract creation; operators should still avoid reusing parent info if they voided the old contract specifically because the parent details were wrong.
-- XDF-online-partial-closeout risk: `2026-05-19-r150` lets expired New Oriental online partner packages settle by full purchased minutes when remaining minutes were forfeited; active incomplete packages still remain blocked from settlement candidates.
-- Tutor-payment-profile risk: `2026-05-27-r151` adds full PayNow details to finance payout exports, so finance users must treat generated CSV/XLSX files as sensitive payment data.
-- Tutor-bank-payment-profile risk: `2026-05-27-r152` adds full bank account details to finance payout exports, so CSV/XLSX files now carry both PayNow and bank-transfer sensitive payment data.
-- Manager-quality-history risk: `2026-05-27-r153` reads existing manager reflection entries into a dashboard and incomplete filter; because it does not change the saved reflection format, old entries should remain readable, but managers with no recent submissions will see empty dashboard states.
-- Manager-quality-layout risk: `2026-06-12-r188` changes only the two-column alignment on the Manager Quality Desk reflection section; verify the daily reflection form stays content-height while the right-side quality snapshot still stacks normally.
-- Student-package-utilization risk: `2026-06-17-r189` adds a read-only attendance-based extraction for shared packages; finance should use it for per-student usage splits and avoid using package ledger totals alone when siblings share the same package.
-- Pre-approved-scheduling-exception risk: `2026-06-18-r190` adds required metadata only when staff manually exempt a direct-billing package from the invoice gate; scheduling still sees the same `EXEMPT` gate status, so ops must use the recorded approver/reason/follow-up fields to manage business risk outside the scheduler.
-- Final-report-PDF-title-overlap risk: `2026-06-19-r191` changes only card-internal vertical spacing in final report PDFs; very dense reports still fit by shrinking body text, but bilingual titles should no longer sit on top of body content.
-- Student-package-utilization-filename risk: `2026-06-22-r192` changes only the download filename fallback for the student package utilization Excel export; finance should retry the same export link after deploy, while preview totals and attendance detail rows remain unchanged.
-- EduTrust-course-readiness risk: `2026-06-22-r193` adds nullable EduTrust course-profile metadata, a migration, and a new admin mapping page. Existing course names, class setup, packages, scheduling, attendance, contracts, invoices, receipts, payroll, partner settlement, transport billing, Business Accounts, school applications, and OpenClaw behavior are intentionally unchanged; operators should treat the mappings as readiness metadata until course files, SSG contract mode, and C7 dashboards are added in later phases.
-- EduTrust-course-file risk: `2026-06-22-r194` adds nullable Course File text fields for EduTrust Criterion 5 readiness and saves them from the existing `/admin/edutrust` page. These fields are readiness documentation only; they do not change live teaching delivery, lesson schedules, attendance deduction, packages, contracts, billing, payroll, partner settlement, transport billing, Business Accounts, school applications, or OpenClaw behavior.
-- SSG-contract-mode risk: `2026-06-22-r195` adds defaulted `StudentContract.contractMode` and an SSG Standard PEI-Student Contract v4.0 template/snapshot path. Existing contracts and normal contract creation remain on `TUITION_AGREEMENT`; no production UI currently creates SSG contracts yet, so this is a foundation only and should not affect signing, invoice creation, packages, scheduling, attendance, receipts, payroll, partner settlement, transport billing, Business Accounts, school applications, or OpenClaw.
-- EduTrust-student-evidence risk: `2026-06-22-r196` adds nullable student-level EduTrust evidence records, a C7 outcomes workspace, a Section A/B evidence checklist, and a guarded SSG v4 contract creation entry. The SSG entry is available only for courses marked EduTrust, `PERMITTED`, `APPROVED`, and meeting minimum hours; normal tuition contracts remain default. This should not change scheduling, attendance deduction, package balances, invoices, receipts, payroll, partner settlement, transport billing, Business Accounts, school applications, or OpenClaw.
-- SSG-official-contract-template risk: `2026-06-22-r197` replaces the earlier SSG v4 summary shell with a locked official Standard PEI-Student Contract v4.0 template source extracted from TPGateway DOCX/PDF. System-filled values are intentionally limited to known fields; missing official Schedule values remain blank/placeheld. Normal tuition contracts and billing, scheduling, attendance, package balance, payroll, partner settlement, transport billing, Business Accounts, school applications, and OpenClaw remain unchanged.
-- EduTrust-contract-schedule-setup risk: `2026-06-22-r198` adds nullable course-level contract Schedule defaults and uses them to fill SSG Standard PEI-Student Contract v4.0 Schedule A-D values. SSG sign-link preparation now fails if required Schedule values are missing, so staff must complete `/admin/edutrust` Contract Schedule Setup before issuing new SSG contracts. Existing tuition contracts and normal billing, scheduling, attendance, package balance, payroll, partner settlement, transport billing, Business Accounts, school applications, and OpenClaw remain unchanged.
-- Manager-teacher-feedback risk: `2026-06-23-r199` adds a private manager-to-teacher quality feedback table and teacher acknowledgement view. Feedback is internal coaching data only; scheduling, attendance deduction, package balances, invoices, receipts, payroll, partner settlement, transport billing, Business Accounts, school applications, and OpenClaw remain unchanged.
-- Manager-feedback-link-scroll risk: `2026-06-23-r200` changes only the Lead Desk `Give feedback / ç»™åé¦ˆ` navigation target and form context hint so managers can see the selected session after clicking. Feedback storage, teacher acknowledgement, scheduling, attendance deduction, billing, payroll, and OpenClaw remain unchanged.
-- Renewal-intake-parent-profile risk: `2026-06-23-r201` changes only the public intake guard for renewal contracts that are still waiting for parent profile data and have no reusable parent info saved. Renewal contracts that already have reusable parent info still show `No intake needed`, and formal signing, invoices, receipts, scheduling, attendance deduction, package balances, payroll, partner settlement, transport billing, Business Accounts, school applications, and OpenClaw remain unchanged.
-- Manager-feedback-selected-session-defaults risk: `2026-06-23-r202` changes only Manager Quality Desk feedback form defaults so the selected Lead Desk session controls the teacher and related-session dropdowns. Feedback storage, teacher acknowledgement, scheduling, attendance deduction, billing, payroll, and OpenClaw remain unchanged.
-- Feedback-desk-bulk-overdue-forward risk: `2026-07-02-r203` removes and disables the broad Teacher Feedback Desk bulk overdue-forward action after real data showed it can convert missing/proxy overdue rows into final forwarded admin feedback in one batch. Existing feedback records are not changed; daily operators should use per-session proxy draft actions and Pending Forward marking instead.
-- Resource-followup-CRM risk: `2026-05-28-r154` adds new Lead, LeadFollowUp, and LeadAssessmentRequest tables plus admin/teacher pages; conversion creates Student rows only after explicit admin action, and no billing, contract, package, attendance, payroll, or OpenClaw behavior is changed.
-- Resource-owner-archive risk: `2026-05-28-r155` adds independent CRM owner records, reversible lead archive state, and a guarded test-resource deletion action; operators should only use physical deletion for known test data, while real inactive resources should be archived.
-- Resource-followup-handoff risk: `2026-05-28-r156` adds quick resource filters, cancellable teacher assessments, and a prefilled Booking Link handoff only after conversion to Student; it does not change booking-link creation APIs, scheduling availability, billing, contracts, packages, payroll, attendance, or OpenClaw behavior.
-- Resource-new-form-layout risk: `2026-05-28-r157` only constrains field widths on the new resource form so the owner selector cannot overlap the intent selector; no resource creation or downstream workflow logic is changed.
-- Sales-CS-role risk: `2026-05-28-r158` adds new `SALES` and `CS` user roles and a scoped Resource Follow-up workspace; verify these users cannot enter full admin, finance, student, ticket, package, payroll, contract, or system-user pages.
-- Admin-extra-workspace risk: `2026-05-29-r159` adds `UserWorkspaceAccess` so selected admins can use CS/Sales focused views while remaining `ADMIN`; verify Eva/Jasmine/zhao keep admin access and see only their configured extra workspace shortcuts.
-- Workspace-access-form risk: `2026-05-29-r160` lets the owner manager edit Sales/CS focused workspace access from System User Admin; verify non-owner managers cannot write this endpoint and that main roles remain unchanged.
-- Tutor-Wise-payment-profile risk: `2026-05-29-r161` removes Bank Transfer as a new tutor payment method and adds Wise details plus finance review status; finance should verify PayNow/Wise details before payout exports are used.
-- Teacher-notice-attachment risk: `2026-05-30-r162` lets teachers open only the active Shared Docs file attached to an active teacher notice; verify the notice attachment is intentional before publishing because the full Shared Docs library remains manager/admin controlled.
-
-## Process Guard (Installed)
-
-1. `deploy_app.sh` now calls `verify_release_docs.sh` by default.
-2. GitHub Actions deploy workflow now runs the same gate before SSH deploy.
-3. Emergency bypass exists: `SKIP_RELEASE_DOC_CHECK=true` (use only for urgent hotfix).
-
-## Server Handoff Guard (Installed)
-
-1. Added fixed server profile doc: `docs/SERVER-HANDOFF.md`
-2. Added local config template: `ops/server/server-handoff.env.example`
-3. Added one-command scripts:
-   - `bash ops/server/scripts/quick_check.sh`
-   - `bash ops/server/scripts/quick_deploy.sh`
-
-## Next Mandatory Step (No Business Logic Change)
-
-1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
-2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
-3. Keep ops docs aligned with Neon-as-production-db policy.
-
-## 2026-07-14-r250 Live
-
-- Scope: add formal Credit Notes for partner invoices without changing the existing invoice, receipt or settlement stores.
-- Business impact:
-  - Finance/Superadmin can create a partial line-level draft from an existing partner invoice, then issue or void it with retained history.
-  - Each note receives an independent `RGT-CN-YYYYMM-####` tracking number and stores an immutable source-invoice snapshot.
-  - Original total, issued credits and adjusted net are shown together; drafts and void notes do not reduce the adjusted net.
-  - The PDF identifies the original invoice, reason, credited lines, GST, credit total and adjusted balance; only issued notes show the company seal.
-  - Existing receipts are not changed automatically, and an invoice with Credit Note history cannot be deleted.
-- Safety:
-  - additive migration creates only `CreditNote` and `CreditNoteLine`
-  - no existing business table or `AppSetting` invoice JSON is altered
-  - line and invoice over-credit are rejected inside serializable transactions
-  - current invoice, receipt, package, attendance, payroll and settlement paths keep their existing behavior
-- Verification before deploy:
-  - `npx prisma validate` and `npx prisma generate`
-  - `npx tsc --noEmit`
-  - `npm run test:backend` (66/66)
-  - `npm run build` (193 pages)
-  - `git diff --check`
-  - New Oriental SGD 270 partial-credit and repeated-credit limits covered by tests
-- Deployment status: local READY only; no production migration, commit, push or server deployment has been performed.
-
-## 2026-07-14-r249 Live
-
-- Scope: first implementation phase of the differentiated university-care plan.
-- Business impact:
-  - new projects can be university academic management, postgraduate preparation or internship/employment support
-  - programme selection changes the available and default service scope instead of reusing university-preparation life-care defaults
-  - owner roles and follow-up categories follow the selected university track
-  - university projects store institution, degree, year/term, expected graduation, current/target GPA labels and adult-student consent
-  - parent-report eligibility for university records requires recorded consent and at least one authorized section
-  - existing university scope selections are preserved and marked for review; pre-university defaults and all teaching/finance workflows remain unchanged
-- Verification before deploy:
-  - `npx prisma validate`
-  - `npx tsc --noEmit`
-  - `npm run test:backend` (60/60)
-  - `npm run build` (193 pages)
-- Post-deploy verification:
-  - 104 migrations completed; the university-profile table and postgraduate enum value exist
-  - PM2 online with zero restarts; `/admin/login` => `200`
-  - authenticated create-form switching passed across all five programme types
-  - the existing NUS draft displays its earlier scopes as retained and its stored scope JSON is unchanged
-  - temporary university profile save, limited-consent selection, pre-consent blocking and post-consent parent eligibility passed
-  - desktop and 390px mobile layouts passed without horizontal overflow
-  - the temporary student, project, profile, activity, session and three audit rows were cleaned to zero
-  - protected baseline returned to 89 students, 78 packages, 1,899 sessions, 1,711 attendance rows, 34 partner settlements and 2/0/1/0/0 care engagements/plans/activities/tasks/attachments
-
-## 2026-07-14-r248 Live
-
-- Scope: add private evidence files and structured communication sources to each full-care project.
-- Business impact:
-  - CARE staff can upload school emails, notices, meeting minutes, academic reports and life-coordination evidence, then associate each file with an existing follow-up or task.
-  - Active evidence can be viewed or downloaded only after project access is checked; archive and restore preserve the file and audit history.
-  - Existing lesson, attendance, package, settlement, payroll, invoice, receipt and finance workflows are unchanged.
-- Files:
-  - `prisma/schema.prisma`
-  - `lib/care-evidence-files.ts`
-  - `lib/care-management.ts`
-  - `app/admin/care/[id]/page.tsx`
-  - `app/api/admin/care/**`
-  - `tests/care-evidence.test.ts`
-- Verification before deploy:
-  - `npx prisma validate`
-  - `npx tsc --noEmit`
-  - `npm run test:backend` (53/53)
-  - `npm run build` (193 pages)
-  - production-mode browser upload/download/archive/restore and unauthorized-access checks
-- Post-deploy verification:
-  - 103 migrations current, PM2 online with zero restarts and `/admin/login` => `200`
-  - authenticated upload, project-page listing and private download on a temporary production care project
-  - unauthenticated file access => `401`; authorized file access => private signed `302` and original content
-  - temporary database records, session, audit rows and S3 object cleaned to zero
-  - protected baseline unchanged at 88 students, 78 packages, 1,895 sessions, 1,711 attendance rows, 34 partner settlements and 1/0/1/0/0 care engagements/plans/activities/tasks/attachments
-
-## 2026-07-13-r239 Ready
-
-- Scope: align the native miniapp with the official Boss/GTIA brand and make every staff search interaction consistent and resilient.
-- Search behavior:
-  - student scheduling, scheduling coordination, and assisted-ticket student lookup now share explicit query and clear controls
-  - typing is debounced, keyboard search remains available, and a late response cannot overwrite a newer query
-  - clearing a query immediately resets the correct result set; the student picker also clears any stale selected student
-- Visual language:
-  - official logo appears on parent and staff login pages
-  - primary actions, navigation, and selected tabs use logo orange `#EC5E0A`
-  - charcoal, white, and cool gray form the base palette; green/red remain limited to business status
-  - staff-home rows use a cleaner divider layout instead of a stack of identical cards
-- Copy: remove rollout and implementation wording such as travel, mobile-workbench, first-version, and availability labels from visible screens; replace it with direct operational labels.
-- Safety: no API, permission, schedule, attendance, package, finance, notification, migration, or server-business change.
-- Validation:
-  - all miniapp JavaScript and JSON checks
-  - `npm run miniapp:audit-release` with 26 pages and zero errors
-  - 11 focused scheduling/teacher tests
-  - `npx tsc --noEmit`
-  - `npm run build` with 192 pages
-  - WeChat DevTools compilation with 0 errors and 0 warnings
-  - task doc: `docs/tasks/TASK-20260713-miniapp-ui-search-brand-refresh.md`
-- Remaining before WeChat upload: run the three real-data searches and clear actions in an experience build on a physical phone; the DevTools remote employee request timed out during one final data-loading pass.
-
-## 2026-07-13-r238 Ready
-
-- Scope: add an isolated internal full-care workspace for selectable students, configurable service scope and owners, stage plans, evidence-based updates, risks, and tasks.
-- Business impact:
-  - ADMIN/manager users can create and configure care projects; assigned CARE staff can access only their project records.
-  - Confirmed medical accompaniment, important transport, host-family support, holiday care, and visa/pass administration are selectable service scope and life-activity types.
-  - Daily status confirmation and after-hours onsite support remain conditional and are not enabled by default.
-  - Existing students, schedules, packages, attendance, partner settlement, payroll, invoices, receipts, Business Accounts, and parent miniapp behavior remain unchanged.
-- Files:
-  - `app/admin/care/*`
-  - `lib/care-access.ts`
-  - `lib/care-management.ts`
-  - `lib/care-validation.ts`
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260713160000_add_care_management_core/migration.sql`
-  - `tests/care-validation.test.ts`
-  - `tests/care-migration-safety.test.ts`
-- Verification before deploy:
-  - `npx prisma validate`
-  - `npx tsc --noEmit`
-  - `npm run test:backend` with 45/45 passing
-  - `npm run build` with 192 pages
-  - read-only production baseline and protected-setting hashes saved
-- Post-deploy verification:
-  - confirm 102 migrations current, PM2 online, and `/admin/login` returns 200
-  - compare the same teaching, package, settlement, billing, receipt, payroll-publish, and Business Accounts baseline
-  - verify `/admin/care` renders for an authenticated ADMIN and no care project exists until manually created
-  - verify existing student, package, partner settlement, and finance pages return successfully
-
-## 2026-07-12-r234 Ready
-
-- Scope: convert the tested miniapp source into a repeatable WeChat review build.
-- Code: mock OpenIDs empty, base library pinned to 3.15.2, source maps disabled, production HTTPS and URL checking retained.
-- Audit: add `npm run miniapp:audit-release` for AppID/config/page completeness and release-safety checks.
-- Compliance: document actual data processing, unused sensitive APIs, privacy fields requiring owner input, and reviewer access using non-real test data.
-- Operations: document upload, experience-version regression, audit submission, publishing, monitoring, Emily binding, and cleanup.
-- Remaining external work: privacy contact/address/retention decisions plus WeChat backend basic-info, certification/filing, domain, and privacy-guide confirmation.
-- Privacy intake update: contact and registered address are complete. Indefinite retention with optional super-admin deletion is recorded only as an initial preference; code inspection shows ticket files, finance history, and audit logs do not currently share a universal hard-delete path, so final retention wording still requires minimum-necessary periods and accounting classification.
-
-## 2026-07-13-r235 Live
-
-- Scope: give Jasmine/Eva/ADMIN a dedicated mobile list for students with usable active packages but no future lessons.
-- Classification: distinguish true first scheduling from students who have historical lessons but need renewal scheduling.
-- Workflow: reuse an open `æŽ’è¯¾è¦æ±‚ / æŽ’è¯¾åè°ƒ / æ–°æŽ’è¯¾ / è¡¥è¯¾åŠ è¯¾` ticket or create one internal `æ–°æŽ’è¯¾` ticket, then choose subject, level, teacher, campus, room, date, time, duration, and 1-12 weekly lessons.
-- Permissions: CS/Emily can view the list and create/reuse a coordination ticket; only ADMIN can preview and confirm real Session writes.
-- Safety: preserve package finance gates, balances, teacher qualifications, availability, all conflict checks, duplicate guards, signed ten-minute previews, second confirmation, serializable writes, ticket completion, audit logs, and parent notification behavior.
-- Data evidence: read-only production evaluation reports 25 pending students: 5 first scheduling, 20 renewal scheduling, 24 ready, and 1 blocked.
-- Validation: 27 related regressions, TypeScript, miniapp syntax, 22-page release audit, document sync, diff checks, and local/production 187-page builds pass. Production `ea1dcb8` has 101 migrations current, PM2 online, health 200, and one cron. Authenticated ADMIN GET reports 25/5/20/24/1 and write capability true; unauthenticated GET returns 401. Remaining external validation: WeChat DevTools re-open/compile and phone regression.
-
-## 2026-07-13-r236 Live
-
-- Decision: all students must be searchable and able to enter scheduling; the 25 students are an attention queue, not an eligibility list.
-- Page: rename the entry to `å­¦ç”ŸæŽ’è¯¾` and add all, attention, first, renewal, already scheduled, and prerequisite-blocked filters.
-- Existing schedules: students with future lessons stay visible and can create/reuse a `è¡¥è¯¾åŠ è¯¾` Ticket.
-- Missing prerequisites: students without a usable package can still enter coordination and receive a Ticket, but real Session creation remains blocked until package and finance rules pass.
-- Validation: 28 focused regressions, TypeScript, miniapp syntax, the 22-page release audit, exact document sync, diff checks, and local/production 187-page builds pass. Production `0ba261c` is healthy with 101 migrations, one cron, and authenticated totals 88/25/15/34/39/46/42/4; scheduled scope and 401 boundary checks pass without production writes.
-- Permissions: CS can coordinate only; ADMIN remains the only scheduling writer.
-- Data evidence: read-only evaluation reports 88 total, 25 attention, 39 already scheduled, 46 ready, 42 requiring prerequisites, and 4 with reusable scheduling Tickets.
-- Validation remaining: focused regressions, TypeScript, miniapp audit, full build, deploy, authenticated API, PM2/health/cron, and DevTools regression.
-
-## 2026-07-12-r233 Live
-
-- Scope: close the parent after-class feedback notification loop.
-- Template decision: no dedicated template exists in category 590; use the semantically valid existing `æœåŠ¡å®Œæˆé€šçŸ¥`, with `è¯¾åŽåé¦ˆ` as the service name, rather than misusing report or material templates.
-- Event behavior: desktop and staff-miniapp teacher routes queue only the first publication for every student attached to the lesson.
-- Consent behavior: parent home adds `å¼€å¯è¯¾åŽåé¦ˆæé†’`; invoice and feedback record the same official delivery ID but keep accepted and consumed intent separate.
-- Staff behavior: web and mobile attention lists expose feedback rows waiting for consent.
-- Safety: best-effort notification only, no feedback edit spam, no schema or business workflow change.
-- Validation: TypeScript, nine mapping/student-resolution/consent-intent tests, miniapp/shell syntax, diff check, and local/production 186-page builds passed. Production `5dcd395` reports 8/8 configuration, group sizes 3/2/2/1, one cron, PM2 online, and health 200. No learning audit or feedback row existed before explicit consent. A marked test then sent as `SENT` under consent group `learning` with no failure/retry, and Zhao confirmed the WeChat card arrived normally.
-
-## 2026-07-12-r232 Live
-
-- Scope: make all four request/finance template authorizations independently visible and auditable.
-- Evidence: the real parent audit recorded request `accept` and invoice `accept`, but finance and receipt were missing from the callback on repeated grouped attempts.
-- Parent experience: keep the three-template course button, then show separate buttons for request status, unpaid, invoice, and receipt reminders.
-- Safety: no server delivery, queue, business data, permission, or cron changes.
-- Validation: miniapp JavaScript syntax, diff check, and local/production 186-page builds passed. Production `60fe07f` is healthy with 101 migrations current and one cron. Independent authorization produced accepted quota for all four templates; four marked test notifications each reached `SENT` with no retry or failure. Phone screenshots confirm all four cards and their expected fields rendered correctly in WeChat service notifications.
-
-## 2026-07-12-r231 Live
-
-- Scope: complete the request and finance WeChat subscription-message block.
-- Business impact:
-  - parents can authorize request/unpaid and invoice/receipt notifications in two clear groups
-  - every parent-visible request status update can notify again instead of being suppressed after the first send
-  - invoice creation queues invoice-issued and, when applicable, unpaid messages
-  - receipt messages wait for the configured finance approval to complete
-  - ADMIN/CS staff can find every due notification type that is still missing parent consent
-- Safety boundaries:
-  - exact-template consent quota is checked immediately before send
-  - transient failures retry at most three times and messages older than seven days are skipped
-  - notification failures do not roll back successful request, invoice, or receipt operations
-  - no schema, course reminder, package, attendance, payment, payroll, or permission rule changes
-- Validation before deploy:
-  - TypeScript and full 186-page build
-  - 6 WeChat subscription tests and 8 billing/approval regression tests
-  - miniapp JavaScript/JSON, cron shell syntax, and diff checks
-- Post-deploy checks:
-  - production commit `f28c99d`, 101 migrations current, 186 pages built, PM2 online, and `/admin/login` 200
-  - runtime configuration is 7/7; parent API returns configured group sizes 3, 2, and 2
-  - ADMIN staff attention API returns 200 and currently exposes two request-status rows awaiting consent
-  - exactly one cron includes the service sender; its automatic run scanned 2 and safely left both waiting for consent with no send, retry, failure, or skip
-  - real parent authorization and controlled four-message display test remain the final external check
-
-## 2026-07-11-r225 Live
-
-- Scope: start the second mobile-operations phase while preserving existing desktop scheduling ownership and Ticket workflows.
-- Business impact:
-  - ADMIN can change the campus/online mode and room for one future Session only.
-  - The original Class, historical Sessions, and all other future Sessions keep their original location.
-  - ADMIN can schedule the same lesson weekly for 2-12 weeks; every week must pass package, availability, student, teacher, appointment, duplicate, and room checks before any Session is created.
-  - Matching scheduling Tickets remain optional and can be completed in the same atomic series transaction.
-  - Assigned teachers can submit a reason and preferred time from their own future lesson. The request creates or updates one internal `æ”¹è¯¾ç¨‹æ—¶é—´` Ticket owned by Jasmine and visible to Eva/management in the existing mobile board.
-  - The notification admin page reports AppID/Secret and five template-ID configuration states. Parent reminder buttons appear only for configured template groups and record the result of `wx.requestSubscribeMessage`.
-- Safety boundaries:
-  - No location change for started/attended/deducted Sessions.
-  - No partial weekly scheduling, more than 12 weeks, teacher direct schedule writes, or automatic Ticket completion for teacher requests.
-  - Subscription consent storage is enabled, but outbound WeChat sending remains blocked until official template IDs and template-field mappings are completed.
-- Verification before deploy:
-  - `npx tsc --noEmit`, miniapp syntax/WXML, `git diff --check`, and `npm run build`
-  - local route checks: 401 unauthenticated, 200 valid previews/reads, 409 invalid applies, unchanged database snapshots
-  - configuration check currently reports 0/5 WeChat template IDs
-- Post-deploy verification:
-  - deployed feature commit `b09147b`; PM2 is online and `/admin/login` returns 200
-  - location options and valid preview return 200; invalid apply returns 409
-  - valid two-week series preview returns 200; invalid apply returns 409
-  - teacher-owned request GET returns 200; invalid student POST returns 409 and Ticket count remains unchanged
-  - parent subscription configuration GET returns 200 and all groups remain unconfigured/hidden with 0/5 template IDs
-  - no `MINIAPP_SESSION_CHANGE_LOCATION`, `MINIAPP_SESSION_SERIES_CREATE`, or teacher-request audit writes were created by verification
-
-## 2026-07-11-r224 Live
-
-- Scope: finish the first mobile academic-operations batch without requiring staff to return to the desktop for common single-lesson changes.
-- Business impact:
-  - Scheduling Ticket detail lists the student's next 30 lessons and opens lesson detail directly.
-  - ADMIN can process future leave/cancellation with an explicit charge/no-charge choice and optionally complete matching `ä¸´æ—¶å–æ¶ˆ&è¯·å‡è¯¾ç¨‹` Tickets.
-  - ADMIN can replace the qualified teacher for one future Session and optionally complete matching `æ”¹ä¸Šè¯¾è€å¸ˆ` Tickets; the Class default teacher and other Sessions do not change.
-  - `æ–°æŽ’è¯¾`, `è¡¥è¯¾åŠ è¯¾`, and `æŽ’è¯¾åè°ƒ` Tickets can create a first one-on-one Session without an existing lesson anchor.
-  - Legacy Tickets with no `studentId` are resolved only when `studentName` has exactly one Student match; ambiguous names remain blocked.
-  - Create/reschedule closure matching now respects the action's Ticket types instead of only the exact `æŽ’è¯¾åè°ƒ` type.
-- Safety boundaries:
-  - ADMIN-only writes, future lessons only, single Session only, 10-minute signed previews, and SERIALIZABLE transaction revalidation.
-  - No batch future-series edits, Class default-teacher changes, automatic charge choice, finance writes, payroll writes, or OpenClaw changes.
-  - Existing attendance or package-deduction evidence blocks cancellation or teacher replacement.
-- Verification before deploy:
-  - `npx tsc --noEmit`
-  - miniapp JavaScript/WXML checks and `git diff --check`
-  - `npm run build`
-  - read-only production-data previews and token tamper checks for all three write workflows
-- Post-deploy verification:
-  - deployed code commit `888a0a9`; PM2 is online and `/admin/login` returns 200
-  - unauthenticated first-scheduling, cancellation, and teacher-replacement endpoints return 401
-  - authenticated valid real-data previews return 200 for all three workflows
-  - invalid apply tokens return 409 `PREVIEW_REQUIRED`; first-scheduling Ticket/session count and cancellation Attendance/package-ledger snapshots remain unchanged
-  - teacher replacement listed 15 qualified candidates and previewed Yunfeng successfully without applying the change
-  - release documentation and the persistent miniapp plan were synchronized after production verification
-
-## 2026-07-11-r223 Ready
-
-- Scope: make the 13-item mobile scheduling queue assignable and expose its existing `Need Info` work explicitly.
-- Business impact:
-  - The board adds a `å¾…è¡¥ä¿¡æ¯` filter and summary count; production currently has 3 matching Tickets.
-  - Detail adds an owner selector for unassigned, Jasmine, Eva, and Emily.
-  - Owner changes are written with the communication/status/follow-up update and audit record in one transaction.
-  - Existing state-transition rules remain unchanged; this release does not complete Tickets or write Sessions.
-- Verification before deploy:
-  - authenticated `Need Info` filter returns 3 production Tickets
-  - detail returns four allowed owner options
-  - invalid owner returns 409 and leaves Ticket unchanged
-  - `npx tsc --noEmit`
-  - miniapp JavaScript checks
-  - `npm run build`
-- Post-deploy verification:
-  - ADMIN board summary reports `needInfo=3`
-  - invalid owner PATCH remains 409/no-write
-  - PM2, `/admin/login`, and commit alignment checks
-
-## 2026-07-11-r222 Live
-
-- Scope: fix the misleading mobile count caused by filtering only the exact `æŽ’è¯¾åè°ƒ` Ticket type.
-- Business impact:
-  - The board now includes `æŽ’è¯¾åè°ƒ`, `æ”¹è¯¾ç¨‹æ—¶é—´`, `æ–°æŽ’è¯¾`, `è¡¥è¯¾åŠ è¯¾`, `ä¸´æ—¶å–æ¶ˆ&è¯·å‡è¯¾ç¨‹`, and `æ”¹ä¸Šè¯¾è€å¸ˆ`.
-  - Production reconciliation changes the open board count from 1 to 13 without changing or reclassifying any Ticket data.
-  - Each card and detail header displays the original Ticket type so staff can distinguish the workflow.
-  - Archived, completed, cancelled, and non-scheduling Tickets remain outside the open scheduling board.
-- Verification before deploy:
-  - production read-only reconciliation: 428 total, 414 archived, 13 open scheduling-related Tickets
-  - authenticated local production-data API returns all 13 with exact per-type counts
-  - `npx tsc --noEmit`
-  - miniapp syntax/JSON checks
-  - `npm run build`
-- Post-deploy verification:
-  - authenticated ADMIN board returns `totalOpen=13`
-  - returned per-type counts match production database
-  - unauthenticated access remains 401
-
-## 2026-07-11-r221 Live
-
-- Scope: give Eva/Jasmine one mobile queue for all open scheduling-coordination work instead of requiring entry through an individual lesson.
-- Business impact:
-  - The staff home shows open and overdue coordination counts for permitted roles.
-  - The board supports all-open, overdue, waiting-parent, waiting-teacher, confirmed, and exception views, plus owner filtering and student/course/ticket search.
-  - Detail supports communication target/result, valid status transitions, next action, follow-up date, history, and copying the active parent availability link.
-  - Teachers cannot access the board. Completion remains inside the signed mobile scheduling confirmation workflow.
-- Files:
-  - `lib/miniapp-scheduling-coordination-board.ts`
-  - `app/api/miniapp/staff/scheduling-coordination/*`
-  - `miniapp/boss-academic-parent/pages/staff-home/*`
-  - `miniapp/boss-academic-parent/pages/staff-coordination/*`
-  - `miniapp/boss-academic-parent/pages/staff-coordination-detail/*`
-- Verification before deploy:
-  - `npx tsc --noEmit`
-  - miniapp JavaScript and JSON checks
-  - authenticated real-data list/detail reads
-  - invalid PATCH/no-write verification
-  - permission and unauthenticated checks
-  - `npm run build`
-- Post-deploy verification:
-  - ADMIN list/detail return 200 and summary matches production open Tickets
-  - unauthenticated access returns 401
-  - invalid PATCH returns 409 without changing the Ticket
-  - PM2, `/admin/login`, and commit alignment checks
-
-## 2026-07-11-r220 Live
-
-- Scope: remove duplicate follow-up work after Eva/management finishes a mobile scheduling operation by optionally completing matching scheduling-coordination Tickets at final confirmation.
-- Business impact:
-  - A successful conflict preview lists only open `æŽ’è¯¾åè°ƒ` Tickets for the same lesson students and matching course.
-  - No Ticket is selected by default. ADMIN staff explicitly choose which resolved Tickets to complete before the final scheduling confirmation.
-  - Session creation/rescheduling, Ticket completion, parent-availability-link deactivation, final result, completion identity, and audit records are committed atomically.
-  - Parent-visible completed Tickets enter the existing notification outbox; internal-only Tickets do not notify parents.
-- Files:
-  - `lib/miniapp-session-scheduling.ts`
-  - `app/api/miniapp/staff/schedule/[sessionId]/manage/route.ts`
-  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
-- Verification before deploy:
-  - `npx tsc --noEmit`
-  - miniapp JavaScript and affected WXML checks
-  - signed-preview eligible Ticket checks
-  - read-only real-data preview and no-write route checks
-  - `npm run build`
-- Post-deploy verification:
-  - authenticated ADMIN preview returns 200 and only matching open Ticket candidates
-  - unpreviewed Ticket selection returns 409 without changing Session or Ticket
-  - PM2, `/admin/login`, and commit alignment checks
-
-## 2026-07-11-r219 Live
-
-- Scope: let Eva and management schedule an additional same-class lesson or reschedule one future lesson from the staff miniapp with mandatory conflict preview and confirmation.
-- Business impact:
-  - ADMIN staff can choose date, time, and duration from lesson detail, then run a no-write conflict check before confirming the operation.
-  - The new lesson keeps the current class, effective teacher, campus, and room; rescheduling changes only the selected lesson's time and duration.
-  - Apply requires a short-lived signed preview token and rechecks student, teacher, appointment, room, availability, package, duplicate, attendance-lock, and future-time rules.
-  - CS, teachers, finance, and sales cannot call the scheduling-write route. No package ledger, attendance deduction, billing, receipt, payroll, or OpenClaw behavior changes.
-- Files:
-  - `lib/miniapp-session-scheduling.ts`
-  - `lib/miniapp-staff-session.ts`
-  - `app/api/miniapp/staff/schedule/[sessionId]/manage/route.ts`
-  - `app/api/miniapp/staff/schedule/[sessionId]/route.ts`
-  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
-- Verification before deploy:
-  - `npx tsc --noEmit`
-  - permission, signed-preview, tamper, real-data preview, and missing-preview rejection checks
-  - miniapp JavaScript/JSON and affected WXML checks
-  - `npm run build`
-- Post-deploy verification:
-  - authenticated ADMIN preview returns 200 without changing a Session
-  - apply without a valid preview token returns 409
-  - PM2, `/admin/login`, and commit alignment checks
-
-## 2026-07-11-r218 Ready
-
-- Scope: make staff lesson detail role-aware and add a mobile scheduling-coordination communication workflow backed by the existing Ticket and parent-availability-link models.
-- Business impact:
-  - æ•™åŠ¡/ç®¡ç† can select a lesson student, record who was contacted and the result, set the coordination status/next action/follow-up date, and copy the parent availability link.
-  - An open Ticket for the same student and course is reused; otherwise a formal `æŽ’è¯¾åè°ƒ` Ticket and parent availability request are created.
-  - Teachers continue to see only assigned-lesson attendance and feedback tools. Other staff can read lesson detail but do not receive coordination-write access unless their role/workspace permits it.
-  - Final rescheduling writes, attendance deduction, package balances, finance, receipts, payroll, and OpenClaw remain unchanged.
-- Files:
-  - `lib/miniapp-staff-session.ts`
-  - `app/api/miniapp/staff/schedule/[sessionId]/route.ts`
-  - `app/api/miniapp/staff/schedule/[sessionId]/coordination/route.ts`
-  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
-- Verification before deploy:
-  - `npx tsc --noEmit`
-  - role-capability and authenticated GET-route smoke checks
-  - read-only real lesson-detail check
-  - miniapp JavaScript/JSON and affected WXML checks
-  - `npm run build`
-- Post-deploy verification:
-  - PM2 process and `/admin/login` health checks
-  - unauthenticated lesson-detail route returns 401
-  - local/origin/server commit alignment
-
-## 2026-07-11-r217 Ready
-
-- Scope: formalize parent-request visibility, public summary, internal note, communication source, assisted-entry identity, and parent-facing completion result on Ticket records.
-- Business impact:
-  - Emily's WeChat-group-assisted requests now keep internal original notes and parent-facing content as independent data, while parents remain restricted to the external summary, status, next action, and completion result.
-  - Existing `å®¶é•¿å°ç¨‹åº` Tickets receive a best-effort backfill and keep legacy text fallbacks, so historic request visibility is preserved.
-  - Scheduling, attendance deduction, package balances, finance, receipts, payroll, normal Ticket Center flows, and OpenClaw behavior are intentionally unchanged.
-- Files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260711103000_add_parent_request_visibility_fields/migration.sql`
-  - `lib/miniapp-parent-requests.ts`
-  - `app/api/miniapp/staff/parent-requests/*`
-  - `app/api/miniapp/students/[studentId]/requests/route.ts`
-  - `app/api/admin/ops/parent-requests/[id]/route.ts`
-- Verification before deploy:
-  - `npx prisma generate`
-  - `npx tsc --noEmit`
-  - miniapp JavaScript/JSON and request-detail WXML checks
-  - formal-field and legacy-summary DTO compatibility smoke check
-  - `npm run build`
-- Post-deploy verification:
-  - `npx prisma migrate status` on the server
-  - PM2 process and `/admin/login` health checks
-  - local/origin/server commit alignment
-
-## 2026-07-10-r213 Ready
-
-- Scope: fix student monthly schedule PDF exports to show the per-session replacement teacher when a lesson has been changed from the class default teacher.
-- Business impact:
-  - Student detail pages already showed replacement teachers correctly; exported student schedule PDFs now match that same rule.
-  - The reported 2026-07-12 çŽ‹é’°æ¾„ lesson has class teacher Jasmine and session teacher Zoe, so the export should show Zoe.
-  - Scheduling writes, teacher replacement history, attendance deduction, package balances, payroll, billing, partner settlement, miniapp, and OpenClaw flows are intentionally unchanged.
-- Files:
-  - `app/api/exports/student-schedule/[id]/route.ts`
-  - `lib/student-schedule-export.ts`
-  - `tests/student-schedule-export.test.ts`
-  - `package.json`
-  - `docs/tasks/TASK-20260710-student-schedule-export-teacher-override.md`
-- Verification before deploy:
-  - read-only DB check for the reported 2026-07-12 lesson
-  - `npm run test:backend`
-  - `npx tsc --noEmit`
-- Post-deploy verification:
-  - `curl -I -sS --max-time 20 https://sgtmanage.com/admin/login`
-  - verify production commit hash matches the deployed r213 commit.
-
-## 2026-07-10-r211 Ready
-
-- Scope: add mobile attendance marking to the staff miniapp course detail page.
-- Business impact:
-  - Teachers can open a course from the staff miniapp schedule and mark each visible student as unmarked, present, absent, late, or excused.
-  - Teachers can add attendance notes from mobile.
-  - The server requires a linked teacher profile and permits writes only for sessions assigned to that teacher.
-  - Existing package deduction, billing, payroll, partner settlement, transport billing, Business Accounts, and OpenClaw flows are intentionally unchanged.
-- Files:
-  - `app/api/miniapp/staff/schedule/[sessionId]/attendance/route.ts`
-  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
-  - `docs/tasks/TASK-20260710-miniapp-staff-attendance.md`
-- Verification before deploy:
-  - miniapp JS syntax and JSON parse checks
-  - staff WXML complex-expression scan
-  - `npx tsc --noEmit`
-  - `npm run build`
-- Post-deploy verification:
-  - `curl -sS --max-time 20 https://sgtmanage.com/api/miniapp/staff/schedule/test/attendance`
-  - verify the attendance route returns `Unauthorized` instead of `404`.
-
-## 2026-07-10-r210 Ready
-
-- Scope: fix native miniapp staff page blank rendering by simplifying WXML bindings and making staff-home API loading non-blocking.
-- Business impact:
-  - Employee workbench, daily schedule, request queue, request detail, and course feedback pages avoid complex WXML expressions that can fail in WeChat Developer Tool rendering.
-  - Display fallback values are now computed in page JavaScript before binding.
-  - Employee workbench renders its main action cards before optional request-count and course-count APIs finish; timeout leaves the count at 0 instead of blanking the page.
-  - Unused `scope.writePhotosAlbum` permission was removed from `app.json`.
-  - Backend routes, staff login, parent request updates, schedule reads, feedback writes, scheduling, attendance deduction, package ledger, billing, payroll, and OpenClaw flows are unchanged.
-- Files:
-  - `miniapp/boss-academic-parent/pages/staff-home/*`
-  - `miniapp/boss-academic-parent/pages/staff-schedule/*`
-  - `miniapp/boss-academic-parent/pages/staff-requests/*`
-  - `miniapp/boss-academic-parent/pages/staff-request-detail/*`
-  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
-  - `miniapp/boss-academic-parent/utils/api.js`
-  - `miniapp/boss-academic-parent/app.json`
-  - `docs/tasks/TASK-20260710-miniapp-staff-wxml-render-fix.md`
-- Verification before deploy:
-  - staff WXML complex-expression scan
-  - miniapp JS syntax and JSON parse checks
-  - staff home non-blocking timeout behavior checked by code inspection
-- Post-deploy verification:
-  - Recompile the miniapp in WeChat Developer Tool and open `pages/staff-home/staff-home`.
-
-## 2026-07-10-r209 Ready
-
-- Scope: add staff miniapp course detail feedback submission for teachers.
-- Business impact:
-  - Teachers can tap a course from the staff miniapp schedule and submit or update parent-facing after-class feedback from mobile.
-  - The miniapp form keeps the existing five required parent-readable sections plus homework and previous-homework completion state.
-  - The server requires a linked teacher profile and only permits writing feedback for sessions assigned to that teacher.
-  - Existing scheduling writes, attendance deduction, package ledger, billing, payroll, partner settlement, transport billing, Business Accounts, and OpenClaw flows are intentionally unchanged.
-- Files:
-  - `app/api/miniapp/staff/schedule/[sessionId]/feedback/route.ts`
-  - `miniapp/boss-academic-parent/app.json`
-  - `miniapp/boss-academic-parent/pages/staff-schedule/*`
-  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
-  - `docs/tasks/TASK-20260710-miniapp-staff-feedback.md`
-- Verification before deploy:
-  - miniapp JS syntax and JSON parse checks
-  - `npx tsc --noEmit`
-  - staff feedback route included in Next production build
-  - `npm run build`
-- Post-deploy verification:
-  - `curl -I -sS --max-time 20 https://sgtmanage.com/admin/login | sed -n '1,12p'`
-  - `curl -sS --max-time 20 https://sgtmanage.com/api/miniapp/staff/schedule/test/feedback`
-  - verify the feedback route returns `Unauthorized` instead of `404`.
-
-## 2026-07-10-r208 Ready
-
-- Scope: add staff miniapp daily schedule access and request type filtering for mobile coordination.
-- Business impact:
-  - æ•™åŠ¡å’Œç®¡ç† can open the staff miniapp workbench and see today's course count plus a daily lesson list for coordination while away from desktop.
-  - Teachers can open the staff miniapp schedule page, but their account is forced to their linked teacher schedule even if the client asks for all lessons.
-  - Staff can filter parent requests by type, including schedule requests, leave/cancel, finance, complaints, feedback, school matters, and teacher messages.
-  - Existing scheduling writes, attendance deduction, package ledger, receipts, payroll, partner settlement, transport billing, Business Accounts, and OpenClaw flows are intentionally unchanged.
-- Files:
-  - `lib/miniapp-staff-schedule.ts`
-  - `app/api/miniapp/staff/schedule/route.ts`
-  - `app/api/miniapp/staff/parent-requests/route.ts`
-  - `miniapp/boss-academic-parent/app.json`
-  - `miniapp/boss-academic-parent/pages/staff-home/*`
-  - `miniapp/boss-academic-parent/pages/staff-schedule/*`
-  - `miniapp/boss-academic-parent/pages/staff-requests/*`
-  - `docs/tasks/TASK-20260710-miniapp-staff-schedule.md`
-- Verification before deploy:
-  - miniapp JS syntax and JSON parse checks
-  - `npx tsc --noEmit`
-  - local staff schedule API smoke checks for unauthorized access, admin/all schedule access, and teacher-only schedule scoping
-  - `npm run build`
-- Post-deploy verification:
-  - `curl -I -sS --max-time 20 https://sgtmanage.com/admin/login | sed -n '1,12p'`
-  - `curl -sS --max-time 20 https://sgtmanage.com/api/miniapp/staff/schedule`
-  - verify `/api/miniapp/staff/schedule` returns `Unauthorized` instead of `404`.
-
-## 2026-07-10-r207 Ready
-
-- Scope: ship native miniapp parent access APIs, staff miniapp request handling, notification queue foundation, admin miniapp opening tools, and set the miniapp default API base to `https://sgtmanage.com`.
-- Business impact:
-  - Parents can bind students, view schedule/feedback/finance, submit requests, upload attachments, and download finance PDFs once the miniapp is formally configured.
-  - Staff can bind WeChat, open the miniapp staff workbench, view parent requests, and update request status from mobile.
-  - Existing scheduling, attendance deduction, package ledger, receipts, payroll, partner settlement, transport billing, Business Accounts, and OpenClaw flows are intentionally unchanged.
-- Files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260709110000_add_parent_portal/migration.sql`
-  - `prisma/migrations/20260709123000_add_miniapp_notification_outbox/migration.sql`
-  - `prisma/migrations/20260710103000_add_staff_miniapp/migration.sql`
-  - `app/api/miniapp/**`
-  - `app/api/admin/miniapp-staff/**`
-  - `app/api/admin/miniapp-notifications/**`
-  - `app/api/admin/ops/parent-requests/**`
-  - `app/api/admin/students/[id]/parent-portal/**`
-  - `app/admin/miniapp-staff/**`
-  - `app/admin/miniapp-notifications/**`
-  - `app/admin/mobile/**`
-  - `miniapp/boss-academic-parent/**`
-  - `docs/tasks/TASK-20260710-miniapp-parent-staff-foundation.md`
-- Verification before deploy:
-  - `npx prisma generate`
-  - `npx prisma validate`
-  - `npx prisma migrate status`
-  - `npx tsc --noEmit`
-  - miniapp JS syntax and JSON parse checks
-  - mock staff miniapp binding/login/request-list/status-update smoke checks against local dev server
-  - `npm run build`
-- Post-deploy verification:
-  - `curl -I -sS --max-time 20 https://sgtmanage.com/admin/login | sed -n '1,12p'`
-  - `curl -sS --max-time 20 https://sgtmanage.com/api/miniapp/staff/me`
-  - verify `/api/miniapp/staff/me` returns `Unauthorized` instead of `404`.
-
-## 2026-07-08-r205 Ready
-
-- Scope: add multi-partner settlement configuration, including a Partner setup page, New Oriental legacy backfill, Shanghai Xin Zhuo Si config, and partner-scoped settlement/billing/receipt flows.
-- Business impact:
-  - Admins can open `/admin/partners` to create or update partners, student-source binding, invoice Bill To, online/offline rates, default package minutes, and enabled settlement modes.
-  - Partner settlement and billing pages now include a partner selector so New Oriental and Shanghai Xin Zhuo Si settlement items, invoices, payment proofs, and receipts stay separated.
-  - Existing New Oriental settlement records are preserved and bound to the New Oriental Partner config; old partner-billing JSON without `partnerId` remains visible only in the New Oriental view.
-  - Parent billing, direct-billing contracts, attendance deduction, scheduling, teacher payroll, transport billing, Business Accounts, and OpenClaw behavior are unchanged.
-- Files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260708120000_add_multi_partner_config/migration.sql`
-  - `lib/partners.ts`
-  - `lib/partner-billing.ts`
-  - `app/admin/partners/page.tsx`
-  - `app/admin/reports/partner-settlement/page.tsx`
-  - `app/admin/reports/partner-settlement/billing/page.tsx`
-  - `app/admin/layout.tsx`
-  - `app/admin/packages/PackageCreateFormClient.tsx`
-  - `app/admin/_components/PackageEditModal.tsx`
-  - `app/admin/_components/PurchaseBatchEditor.tsx`
-  - `app/admin/students/page.tsx`
-  - `app/admin/students/[id]/page.tsx`
-  - `app/api/admin/packages/[id]/top-up/route.ts`
-  - `app/api/admin/packages/[id]/ledger/txns/[txnId]/route.ts`
-  - `app/api/exports/partner-invoice-detail/[id]/route.ts`
-  - `lib/tickets.ts`
-  - `docs/tasks/TASK-20260708-multi-partner-settlement-config.md`
-- Verification before deploy:
-  - `npx prisma generate`
-  - `npx tsc --noEmit`
-  - `npm run test:backend`
-  - `npx prisma migrate deploy`
-  - read-only Prisma check confirmed `æ–°ä¸œæ–¹` and `ä¸Šæµ·æ–°å“æ€` Partner configs exist and 32 legacy New Oriental settlements are bound to `legacy-xdf-partner`.
-  - local smoke checks compiled `/admin/reports/partner-settlement`, `/admin/reports/partner-settlement/billing`, and `/admin/partners`.
-  - `npm run build`
-- Post-deploy verification:
-  - `ssh -i "/Users/zhao111/Documents/sgtç³»ç»Ÿ/.ssh/tuition_scheduler888.pem" -o StrictHostKeyChecking=no ubuntu@43.128.46.115 'cd /home/ubuntu/apps/tuition-scheduler && git rev-parse HEAD && pm2 status tuition-scheduler --no-color'`
-  - `curl -I -sS --max-time 20 https://sgtmanage.com/admin/login | sed -n '1,12p'`
-  - `curl -I -sS --max-time 20 https://sgtmanage.com/admin/partners | sed -n '1,12p'`
-
-## 2026-06-17-r189 Ready
-
-- Scope: add a read-only finance/admin report and Excel export for one student's package utilization, calculated from deducted attendance rows and optionally filtered by package ID.
-- Business impact:
-  - Finance can open `/admin/finance/student-package-utilization` or the Finance Workbench shortcut to calculate one student's attended/deducted hours.
-  - Shared packages can be split by student, so Coco Xu and Eason Xu usage can be separated even when they share the same package.
-  - The report also lists available/shared packages to help finance copy the correct package ID before exporting.
-  - Attendance marking, package balances, package ledger transactions, invoices, receipts, scheduling, payroll, partner settlement, transport billing, Business Accounts, school applications, and OpenClaw are unchanged.
-- Files:
-  - `lib/student-package-utilization-report.ts`
-  - `app/admin/finance/student-package-utilization/page.tsx`
-  - `app/api/exports/student-package-utilization/route.ts`
-  - `app/admin/finance/workbench/page.tsx`
-  - `app/admin/layout.tsx`
-  - `app/admin/page.tsx`
-  - `docs/tasks/TASK-20260617-student-package-utilization.md`
-- Verification before deploy:
-  - `npm run build`
-  - `npx tsc --noEmit`
-  - Local auth smoke check confirmed `/admin/finance/student-package-utilization` compiles and redirects unauthenticated users to `/admin/login`.
-  - Read-only data check for `Coco Xu` through `2026-06-17` returned 45 deducted attendance rows and 59.5 deducted hours on shared package `1df7bb95-8de1-4c10-bd7a-6a935af6af0e`.
-- Post-deploy verification:
-  - `ssh -i "/Users/zhao111/Documents/sgtç³»ç»Ÿ/.ssh/tuition_scheduler888.pem" -o StrictHostKeyChecking=no ubuntu@43.128.46.115 'cd /home/ubuntu/apps/tuition-scheduler && git rev-parse HEAD && pm2 status tuition-scheduler --no-color'`
-  - `curl -I -sS --max-time 20 https://sgtmanage.com/admin/login | sed -n '1,12p'`
-
-## 2026-05-30-r162 Ready
-
-- Scope: allow Teacher Notices to attach one active Shared Docs file for direct tutor access from the portal and dashboard notice card.
-- Business impact:
-  - Admin/finance users can upload the bilingual tutor guide through Shared Docs, then select that document while creating or editing a Teacher Notice.
-  - Teachers can open or download only the attached document from the active notice.
-  - Teachers do not receive access to the full Shared Docs library.
-  - Payroll, payment amount calculation, expense claims, attendance, scheduling, packages, contracts, invoices, receipts, and OpenClaw are unchanged.
-- Files:
-  - `lib/teacher-notices.ts`
-  - `app/admin/teacher-notices/page.tsx`
-  - `app/teacher/notices/page.tsx`
-  - `app/teacher/TeacherNoticeCardClient.tsx`
-  - `app/api/shared-docs/[id]/file/route.ts`
-  - `tests/teacher-notices.test.ts`
-  - `docs/tasks/TASK-20260530-teacher-notice-shared-doc-attachments.md`
-- Verification before deploy:
-  - `npx tsx --test tests/teacher-notices.test.ts`
-  - `npx tsc --noEmit --pretty false`
-  - `npm run build`
-- Post-deploy verification:
-  - `ssh -i "/Users/zhao111/Documents/sgtç³»ç»Ÿ/.ssh/tuition_scheduler888.pem" -o StrictHostKeyChecking=no ubuntu@43.128.46.115 'cd /home/ubuntu/apps/tuition-scheduler && git rev-parse HEAD && pm2 status tuition-scheduler --no-color'`
-  - `curl -I -sS --max-time 20 https://sgtmanage.com/admin/login | sed -n '1,12p'`
-
-## 2026-05-29-r161 Ready
-
-- Scope: limit tutor payment-profile collection to PayNow or Wise and add finance review status for payout details.
-- Business impact:
-  - Teachers can submit PayNow for local payout or Wise details for overseas payout.
-  - New Bank Transfer submission is no longer offered; old bank-transfer data remains visible as legacy read-only reference.
-  - Admin/finance users can mark payment profiles as pending review, verified, or rejected with a reason.
-  - Payroll, expense-claim, and tutor-cost cutoff exports include Wise details and payment-profile review status.
-  - Payroll amount calculation, expense approval, attendance, scheduling, package balances, invoices, and receipts are unchanged.
-- Files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260529090000_add_teacher_wise_payment_profile/migration.sql`
-  - `lib/teacher-payment-profile.ts`
-  - `app/teacher/payment-details/page.tsx`
-  - `app/admin/_components/TeacherCreateForm.tsx`
-  - `app/admin/teachers/page.tsx`
-  - `app/admin/teachers/[id]/page.tsx`
-  - `app/api/admin/teachers/route.ts`
-  - `app/api/admin/teachers/[id]/route.ts`
-  - `app/admin/reports/teacher-payroll/export/route.ts`
-  - `app/api/exports/expense-claims/route.ts`
-  - `app/api/exports/tutor-cost-cutoff/route.ts`
-  - `tests/teacher-payment-profile.test.ts`
-  - `docs/tasks/TASK-20260529-tutor-wise-payment-profile.md`
-- Verification before deploy:
-  - `npx prisma generate`
-  - `npx tsc --noEmit --pretty false`
-  - `npx tsx --test tests/teacher-payment-profile.test.ts`
-  - `npm run test:backend`
-  - `npm run build`
-- Post-deploy verification:
-  - `ssh -i "/Users/zhao111/Documents/sgtç³»ç»Ÿ/.ssh/tuition_scheduler888.pem" -o StrictHostKeyChecking=no ubuntu@43.128.46.115 'cd /home/ubuntu/apps/tuition-scheduler && git rev-parse HEAD && pm2 status tuition-scheduler --no-color'`
-  - `curl -I -sS --max-time 20 https://sgtmanage.com/admin/login | sed -n '1,12p'`
-
-## 2026-05-28-r157 Ready
-
-- Scope: fix the Resource Follow-up new resource form layout so owner and intent controls stay within their responsive grid columns.
-- Business impact:
-  - `/admin/leads/new` no longer lets the owner selector visually collide with the intent selector.
-  - Resource creation, owner assignment, follow-up records, teacher assessment, student conversion, booking links, billing, contracts, packages, attendance, payroll, and OpenClaw are unchanged.
-- Files:
-  - `app/admin/leads/new/page.tsx`
-  - `docs/tasks/TASK-20260528-lead-new-form-layout-fix.md`
-- Verification:
-  - `npm run build`
-
-## 2026-05-28-r156 Ready
-
-- Scope: finish the next Resource Follow-up CRM gaps with faster list filters, CSV focus alignment, assessment cancellation, and Booking Link handoff.
-- Business impact:
-  - Admin users can jump directly to My Resources, Today, This Week, Hot, Overdue, Pending Assessment, Won, and Lost from `/admin/leads`.
-  - CSV export uses the same focus filter as the resource list.
-  - Admin users can cancel pending or revision-requested teacher assessments without deleting their records.
-  - Converted resources show a Booking Link handoff that opens the existing Booking Links page with student, title, and note prefilled.
-  - Booking Link creation API, teacher matching, scheduling availability, billing, contracts, packages, receipts, payroll, attendance, and OpenClaw are unchanged.
-- Files:
-  - `lib/leads.ts`
-  - `app/admin/leads/page.tsx`
-  - `app/admin/leads/[id]/page.tsx`
-  - `app/admin/leads/export/route.ts`
-  - `app/admin/booking-links/page.tsx`
-  - `app/admin/booking-links/_components/BookingLinkCreateForm.tsx`
-  - `tests/leads.test.ts`
-  - `docs/tasks/TASK-20260528-resource-followup-shortcuts-and-booking.md`
-- Verification:
-  - `npx prisma validate`
-  - `npx tsx --test tests/leads.test.ts`
-  - `npm run build`
-
-## 2026-05-28-r155 Ready
-
-- Scope: improve the Resource Follow-up CRM after first production testing with owner maintenance, editability, archive cleanup, My Resources filtering, and safer test-data cleanup.
-- Business impact:
-  - Admin users can maintain `/admin/leads/owners` without changing login roles.
-  - New resource creation and resource filters use active owner names from the independent owner list.
-  - Resource detail pages allow admin users to correct owner, source, parent/student details, intent, status, needs, and lost reason.
-  - Old resources can be archived and restored; archived resources are hidden from the default list but can be filtered and exported.
-  - `My resources` filters by the current logged-in admin name and CSV export follows the same filter.
-  - Owner manager can physically delete clearly marked `TEST` resources only; real resources remain archive-only.
-  - Billing, contracts, packages, receipts, attendance, payroll, teacher costs, scheduling conflict logic, and OpenClaw are unchanged.
-- Files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260528093000_resource_owner_and_archive/migration.sql`
-  - `lib/leads.ts`
-  - `app/admin/leads/page.tsx`
-  - `app/admin/leads/new/page.tsx`
-  - `app/admin/leads/[id]/page.tsx`
-  - `app/admin/leads/owners/page.tsx`
-  - `app/admin/leads/export/route.ts`
-  - `tests/leads.test.ts`
-  - `docs/tasks/TASK-20260528-resource-owner-archive-enhancements.md`
-- Verification:
-  - `npx prisma validate`
-  - `npx prisma generate`
-  - `npx tsx --test tests/leads.test.ts`
-  - `npm run build`
-
-## 2026-05-28-r154 Ready
-
-- Scope: add the first Resource Follow-up CRM workflow from customer inquiry through sales follow-up, teacher assessment, student conversion, scheduling ticket handoff, dashboard metrics, and CSV export.
-- Business impact:
-  - Admin users can create resources from sources such as Xiaohongshu, Douyin, short video/self-media, referrals, channels, WeChat/private domain, website/forms, offline events, and manual platforms.
-  - Sales/customer-service owners use existing admin user names rather than a new role.
-  - Resource detail pages keep follow-up history, next action, due date, intent level, and status.
-  - Teachers get a dedicated `Assessment Requests / è¯„ä¼°è¯·æ±‚` page and can submit assigned assessments; submitted assessments are locked until admin approves revision.
-  - Admin can convert a resource into a Student with source channel automatically set and source detail written into the student note.
-  - Admin can create a scheduling coordination ticket after conversion.
-  - Admin can view a 7-day resource dashboard and export filtered resources as CSV.
-  - Billing, contracts, packages, receipts, attendance, payroll, teacher costs, and OpenClaw are unchanged.
-- Files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260528090000_add_resource_followup_crm/migration.sql`
-  - `lib/leads.ts`
-  - `app/admin/leads/page.tsx`
-  - `app/admin/leads/new/page.tsx`
-  - `app/admin/leads/[id]/page.tsx`
-  - `app/admin/leads/dashboard/page.tsx`
-  - `app/admin/leads/export/route.ts`
-  - `app/teacher/assessments/page.tsx`
-  - `app/admin/layout.tsx`
-  - `app/teacher/layout.tsx`
-  - `tests/leads.test.ts`
-  - `docs/tasks/TASK-20260528-resource-followup-crm-plan.md`
-- Verification before deploy:
-  - `npx prisma generate`
-  - `npx tsx --test tests/leads.test.ts`
-  - `npm run build`
-- Post-deploy verification:
-  - confirm `/admin/login` returns `200` and pm2 reports `tuition-scheduler` online
-  - confirm migration adds Lead CRM tables
-  - confirm `/admin/leads` and `/teacher/assessments` redirect unauthenticated users to login
-  - confirm `/admin/leads/export` is protected by admin auth
-
-## 2026-05-27-r153 Ready
-
-- Scope: add a reflection history dashboard to Manager Quality so managers can review previous feedback and checklist completion rates.
-- Business impact:
-  - Managers can choose 7, 14, 30, or 90-day history windows.
-  - The page shows submitted days, fully completed days, all-item checklist completion rate, incomplete day count, per-checklist-item completion, and previous feedback text.
-  - Managers can filter the history table to only incomplete reflection days.
-  - Existing reflection submission, Lead Desk snapshots, feedback snapshots, approvals, scheduling, billing, payroll, and OpenClaw behavior are unchanged.
-- Files:
-  - `app/admin/manager/quality/page.tsx`
-  - `lib/manager-quality-workspace.ts`
-  - `lib/manager-reflection-summary.ts`
-  - `tests/manager-quality-workspace.test.ts`
-- Verification before deploy:
-  - `npx tsx --test tests/manager-quality-workspace.test.ts`
-  - `npm run build`
-- Post-deploy verification:
-  - confirm `/admin/login` returns `200` and pm2 reports `tuition-scheduler` online
-  - confirm `/admin/manager/quality` is still protected by manager/admin auth
-  - confirm empty or low-history managers see the dashboard without errors
-
-## 2026-05-27-r152 Ready
-
-- Scope: support tutors who receive reimbursements or payroll by bank transfer instead of PayNow.
-- Business impact:
-  - Teacher/admin payment profiles now have `Payment Method`, PayNow fields, and bank-transfer fields.
-  - Teacher self-service payment details page can capture bank name, account holder name, account number, and SWIFT/branch code.
-  - Teacher payroll CSV, tutor cost cut-off XLSX, and expense-claim CSV exports include bank-transfer columns.
-  - Salary, tutor cost, expense claim status, approval, scheduling, attendance, and OpenClaw behavior are unchanged.
-- Files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260527093000_add_teacher_bank_payment_profile/migration.sql`
-  - `lib/teacher-payment-profile.ts`
-  - `app/admin/_components/TeacherCreateForm.tsx`
-  - `app/admin/teachers/page.tsx`
-  - `app/admin/teachers/[id]/page.tsx`
-  - `app/teacher/payment-details/page.tsx`
-  - `app/admin/reports/teacher-payroll/export/route.ts`
-  - `app/api/exports/tutor-cost-cutoff/route.ts`
-  - `app/api/exports/expense-claims/route.ts`
-  - `tests/teacher-payment-profile.test.ts`
-- Verification before deploy:
-  - `npx prisma generate`
-  - `npx tsx --test tests/teacher-payment-profile.test.ts tests/tutor-cost-cutoff.test.ts tests/expense-claims.test.ts`
-  - `npm run build`
-- Post-deploy verification:
-  - confirm `/admin/login` returns `200` and pm2 reports `tuition-scheduler` online
-  - confirm production `Teacher` table has bank-transfer columns
-  - confirm teacher payment details route still redirects unauthenticated users as expected
-
-## 2026-05-27-r151 Ready
-
-- Scope: add permanent tutor serial numbers and PayNow payment profiles for tutor payroll and expense-claim reimbursement workflows.
-- Business impact:
-  - Existing teachers receive deterministic `T###` codes during migration; new teachers get the next code automatically unless admin enters one.
-  - Teachers can update their own PayNow details from the teacher portal.
-  - Finance exports for salary slips, tutor cost cut-off, and expense claims include tutor code plus PayNow type/value/name.
-  - Existing payroll amounts, tutor-cost amounts, expense statuses, approvals, scheduling, attendance, and OpenClaw behavior are unchanged.
-- Files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260527090000_add_teacher_payment_profile/migration.sql`
-  - `lib/teacher-payment-profile.ts`
-  - `app/admin/_components/TeacherCreateForm.tsx`
-  - `app/admin/teachers/page.tsx`
-  - `app/admin/teachers/[id]/page.tsx`
-  - `app/teacher/layout.tsx`
-  - `app/teacher/payment-details/page.tsx`
-  - `app/admin/reports/teacher-payroll/page.tsx`
-  - `app/admin/reports/teacher-payroll/export/route.ts`
-  - `app/api/exports/tutor-cost-cutoff/route.ts`
-  - `app/api/exports/expense-claims/route.ts`
-  - `tests/teacher-payment-profile.test.ts`
-- Verification before deploy:
-  - `npx prisma generate`
-  - `npx tsx --test tests/teacher-payment-profile.test.ts`
-  - `npx tsx --test tests/tutor-cost-cutoff.test.ts tests/expense-claims.test.ts tests/teacher-payment-profile.test.ts`
-  - `npm run build`
-- Post-deploy verification:
-  - confirm `/admin/login` returns `200` and pm2 reports `tuition-scheduler` online
-  - confirm teacher payroll export and expense-claim export headers include tutor code and PayNow columns
-  - confirm `/teacher/payment-details` renders for a linked teacher account
-
-## 2026-05-19-r150 Ready
-
-- Scope: allow New Oriental online package-end settlement to handle manually expired packages where a parent forfeits the remaining balance.
-- Business impact:
-  - Staff can close a New Oriental online package, write off the unused balance, and settle the full purchased package minutes.
-  - Active incomplete online partner packages still do not appear as settlement candidates.
-  - No attendance deduction, scheduling, direct-billing, receipt, payroll, or OpenClaw behavior changes.
-- Files:
-  - `lib/partner-settlement.ts`
-  - `app/admin/reports/partner-settlement/page.tsx`
-  - `tests/partner-settlement.test.ts`
-- Verification before deploy:
-  - `npx tsx --test tests/partner-settlement.test.ts`
-  - `npm run build`
-- Post-deploy verification:
-  - apply the è‹é—»ç†¹ one-package closeout data fix only after confirming the same package still has 90 remaining minutes and no settlements
-  - confirm è‹é—»ç†¹ has one pending online partner settlement for 15 hours / SGD 1400, with 90 minutes noted as forfeited
-  - confirm `/admin/login` returns `200` and pm2 reports `tuition-scheduler` online
-
-## 2026-05-17-r149 Ready
-
-- Scope: let the package contract workspace show `Create renewal contract / åˆ›å»ºç»­è´¹åˆåŒ` when a historical student has complete parent information only on a voided intake contract.
-- Business impact:
-  - Historical students who were first sent the parent-info link can switch to renewal contract flow after the mistaken first-purchase draft is voided.
-  - Students with no complete parent profile still need the parent-info link first.
-  - No invoice, receipt, package balance, attendance, scheduling, or payment proof behavior changes.
-- Files:
-  - `lib/student-contract.ts`
-  - `tests/student-contract-renewal-invoice.test.ts`
-- Verification before deploy:
-  - `npx tsx --test tests/student-contract-renewal-invoice.test.ts`
-  - `npm run build`
-- Post-deploy verification:
-  - open æ±ªå®‡è½©'s package contract workspace
-  - confirm the renewal action appears after the voided first-purchase intake contract
-  - create the renewal contract and verify the latest contract has `flowType = RENEWAL`
-
-## 2026-05-16-r148 Ready
-
-- Scope: fix renewal contract signing for legacy direct-billing packages that already have multiple historical invoices.
-- Business impact:
-  - Old students can sign a renewal contract on a legacy package even when that package has prior invoices and receipts.
-  - The renewal signing flow can create the new renewal invoice for this contract instead of being blocked by old invoices.
-  - First-purchase contracts still refuse to guess among multiple old invoices, preserving the original safety guard.
-- Files:
-  - `lib/student-contract.ts`
-  - `tests/student-contract-renewal-invoice.test.ts`
-- Verification before deploy:
-  - `npx tsx --test tests/student-contract-renewal-invoice.test.ts`
-  - `npm run build`
-- Post-deploy verification:
-  - void the mistakenly created first-purchase contract for æ±ªå®‡è½©
-  - create a renewal contract from the package contract workspace
-  - generate the sign link and confirm the parent can submit without returning to the unsigned state
-
-## 2026-05-15-r147 Ready
-
-- Scope: add manager/admin sidebar entries for `Finance Workbench`, `Transport Billing`, and `Invoices & Receipts`.
-- Business impact:
-  - Manager/admin users can find the transport reimbursement billing workflow from the left sidebar.
-  - The same sidebar area also exposes the document center needed after invoice generation.
-  - No billing, receipt, payment proof, package balance, attendance, scheduling, payroll, or OpenClaw logic changed.
-- Files:
-  - `app/admin/layout.tsx`
-- Verification before deploy:
-  - `npm run build`
-- Post-deploy verification:
-  - log in as manager/admin
-  - confirm `Finance & Review / è´¢åŠ¡ä¸Žå®¡æ ¸` shows `Transport Billing / äº¤é€šè´¹æœˆç»“`
-  - open `/admin/finance/transport-billing`
-
-## 2026-05-15-r146 Ready
-
-- Scope: add finance transport reimbursement billing for parent invoices generated from held lessons.
-- Business impact:
-  - Finance sidebar and Finance Workbench now include `Transport Billing / äº¤é€šè´¹æœˆç»“`.
-  - Finance can filter held lessons by month and student.
-  - Finance can mark selected home lessons as parent-billable transport reimbursement rows with an amount and note.
-  - Finance can create a parent invoice for marked, uninvoiced rows for one selected student/month.
-  - Invoiced rows link back to the generated parent invoice PDF.
-  - The workflow is separate from teacher expense claims and does not change attendance, package balances, payroll, partner settlement, receipts, scheduling, or OpenClaw.
-- Files:
-  - `lib/transport-billing.ts`
-  - `app/admin/finance/transport-billing/page.tsx`
-  - `app/admin/layout.tsx`
-  - `app/admin/finance/workbench/page.tsx`
-  - `app/admin/page.tsx`
-- Verification before deploy:
-  - real-data read check for `2026-03`: 45 students and 394 held lesson rows available for review
-  - `npm run build`
-- Post-deploy verification:
-  - open `/admin/finance/transport-billing`
-  - choose a month and student
-  - mark one test/real agreed row only when Finance is ready
-  - confirm generated invoice appears in Full invoices & receipts
-
-## 2026-05-15-r145 Ready
-
-- Scope: classify academically confirmed historical orphan rollback reversals as resolved exceptions instead of active ledger-integrity alerts.
-- Business impact:
-  - The red admin `Ledger Integrity Alert / è¯¾åŒ…å¯¹è´¦å‘Šè­¦` no longer repeats the three already confirmed historical exception rows.
-  - Package transactions, current balances, attendance rows, invoices, receipts, payroll, scheduling, and OpenClaw are unchanged.
-  - New unconfirmed ledger/session mismatches still appear in the alert.
-  - Attendance deductions without package binding still appear in the alert.
-- Files:
-  - `scripts/reconciliation/daily-ledger-integrity.ts`
-- Verification before deploy:
-  - `npx tsx scripts/reconciliation/daily-ledger-integrity.ts`
-  - `npm run build`
-- Post-deploy verification:
-  - rerun `npx tsx scripts/reconciliation/daily-ledger-integrity.ts` on the server
-  - confirm `/admin/packages` no longer shows the stale red alert when no active issues remain
-  - confirm `/admin/login` returns 200
-
-## 2026-05-13-r144 Ready
-
-- Scope: make Manager Quality Desk printing output only the useful Lead Desk schedule on one page.
-- Business impact:
-  - Print preview no longer includes admin sidebar, ledger alerts, Todo Center links, reflection log, or quality snapshot.
-  - Print mode uses a compact A4 landscape Lead Desk table.
-  - Screen view is unchanged.
-  - No data writes or schedule calculations changed.
-- Files:
-  - `app/admin/manager/quality/page.tsx`
-- Verification before deploy:
-  - `npx tsc --noEmit`
-  - `npm run build`
-  - Playwright PDF export for `/admin/manager/quality?date=2026-05-13` produced 1 page
-  - PDF text check confirmed only Lead Desk schedule content was present
-
-## 2026-05-13-r143 Ready
-
-- Scope: add a manager quality workspace for printable Lead Desk schedules and daily manager reflection logging.
-- Business impact:
-  - Manager users such as `jasmine@123.com` see `Manager Quality Desk / ç®¡ç†è€…è´¨é‡å·¥ä½œå°` in the left sidebar.
-  - The page shows a date-filtered Lead Desk daily schedule grouped by teacher for printing.
-  - The page adds a daily workflow checklist covering receipts/invoices/claims, teacher feedback quality, mid-term reports, and end-term reports.
-  - The page stores manager reflection notes for operations wins, problems, improvements, and follow-up actions.
-  - The page surfaces read-only quality snapshots from approval inbox, teacher feedback, mid-term reports, and final reports.
-  - Reminder automation, email reminders, and OpenClaw reminders remain out of scope for this release.
-- Files:
-  - `lib/manager-quality-workspace.ts`
-  - `app/admin/manager/quality/page.tsx`
-  - `app/admin/manager/quality/_components/ManagerQualityPrintButton.tsx`
-  - `app/admin/layout.tsx`
-- Verification before deploy:
-  - `npx tsc --noEmit`
-  - `npm run build`
-  - local authenticated HTTP check for `/admin/manager/quality?date=2026-05-13` returned `200`
-  - Playwright verified the left sidebar entry and page content under a Jasmine test session
-  - Playwright submitted the reflection form and confirmed the saved AppSetting entry, then the local QA entry/session were removed
-- Post-deploy verification:
-  - open `/admin/manager/quality` as Jasmine or another manager user
-  - confirm the left sidebar shows `Manager Quality Desk / ç®¡ç†è€…è´¨é‡å·¥ä½œå°`
-  - confirm the Lead Desk print button opens the browser print flow
-  - save one real daily reflection entry when Jasmine is ready to start using the log
-
-## 2026-05-13-r142 Ready
-
-- Scope: add package balance audit guardrails and ledger/current-balance synchronization for manual ledger corrections.
-- Business impact:
-  - Admin and finance sidebars now include `Package Balance Audit / è¯¾åŒ…ä½™é¢å¤æ ¸`.
-  - The audit page shows packages where current remaining balance differs from the ledger closing balance.
-  - The audit page flags recent rollback or adjustment records that lack a linked session, have missing linked sessions, mention historical orphan/manual reconciliation, or lack structured abnormal-operation notes.
-  - Package ledger pages show a red warning when current remaining balance and ledger closing balance differ.
-  - Manual package transaction edit/delete/restore/create operations now re-sync current remaining balance from the ledger total after the change.
-  - OpenClaw, scheduling, attendance save rules, invoices, receipts, payroll, and partner settlement logic are unchanged.
-- Files:
-  - `lib/package-balance-audit.ts`
-  - `app/admin/reports/package-balance-audit/page.tsx`
-  - `app/admin/packages/[id]/ledger/page.tsx`
-  - `app/api/admin/packages/[id]/ledger/txns/[txnId]/route.ts`
-  - `app/admin/layout.tsx`
-- Verification before deploy:
-  - `npm run build`
-- Post-deploy verification:
-  - open `/admin/reports/package-balance-audit`
-  - confirm the page renders after login
-  - open one package ledger and confirm no red mismatch warning appears when current balance equals ledger closing balance
-  - confirm `/admin/login` returns 200
-
-## 2026-05-12-r141 Ready
-
-- Scope: add weekly/monthly individual student utility Excel reporting for admin and finance.
-- Business impact:
-  - Admin sidebar now includes `Individual Student Utility / ä¸ªäººå­¦ç”Ÿè¯¾æ—¶ä½¿ç”¨` under `Finance & Review`.
-  - Finance sidebar now includes `Individual Student Utility / ä¸ªäººå­¦ç”Ÿè¯¾æ—¶ä½¿ç”¨`.
-  - FINANCE users are allowed to open `/admin/finance/individual-student-utility` directly.
-  - The export includes `Student Summary` and `Utility Detail` sheets.
-  - The report is based on lesson/session date, individual student type, confirmed attendance, and deducted minutes.
-  - It is read-only and does not change reminders, package balances, attendance, scheduling, billing, approvals, payroll, or OpenClaw.
-- Files:
-  - `lib/individual-student-utility-report.ts`
-  - `app/admin/finance/individual-student-utility/page.tsx`
-  - `app/api/exports/individual-student-utility/route.ts`
-  - `app/admin/layout.tsx`
-- Verification before deploy:
-  - real-data helper check for `2026-04`: 20 students, 227 lessons, 399.25 deducted hours
-  - `npx tsc --noEmit`
-  - `npm run build`
-  - local authenticated HTTP page check returned `200`
-  - local authenticated Excel export returned `200` and opened with the expected two sheets
-- Post-deploy verification:
-  - open `/admin/finance/individual-student-utility`
-  - download one Excel workbook for `2026-04`
-  - confirm `/admin/login` returns 200
-  - confirm unauthenticated `/admin/finance/individual-student-utility` redirects to login
-
-## 2026-05-09-r140 Ready
-
-- Scope: expose the tutor cost export in left navigation for admin and finance users.
-- Business impact:
-  - Admin sidebar now includes `Tutor Cost Export / è€å¸ˆæˆæœ¬å¯¼å‡º` under `Finance & Review`.
-  - Finance sidebar now includes `Tutor Cost Export / è€å¸ˆæˆæœ¬å¯¼å‡º`.
-  - FINANCE users are allowed to open `/admin/finance/tutor-cost-export` directly.
-  - Existing export calculation and Excel format are unchanged.
-- Files:
-  - `app/admin/layout.tsx`
-- Verification before deploy:
-  - `npx tsc --noEmit`
-  - `npm run build`
-- Post-deploy verification:
-  - log in as admin or finance and confirm the left sidebar shows `Tutor Cost Export / è€å¸ˆæˆæœ¬å¯¼å‡º`
-  - open `/admin/finance/tutor-cost-export`
-  - confirm `/admin/login` returns 200
-
-## 2026-05-09-r139 Ready
-
-- Scope: add finance self-service tutor cost export for the 15th-to-month-end cut-off.
-- Business impact:
-  - Finance can open `/admin/finance/tutor-cost-export`.
-  - Selecting a month exports completed and confirmed tutor cost from the 15th through month-end.
-  - The Excel workbook includes `Summary` by teacher and `Details` by session.
-  - The export uses existing teacher hourly rates and existing payroll completion rules.
-  - It is read-only and does not mark payroll as sent, confirmed, approved, or paid.
-- Files:
-  - `lib/teacher-payroll.ts`
-  - `app/admin/finance/tutor-cost-export/page.tsx`
-  - `app/api/exports/tutor-cost-cutoff/route.ts`
-  - `app/admin/finance/workbench/page.tsx`
-  - `tests/tutor-cost-cutoff.test.ts`
-- Verification before deploy:
-  - `npx tsx --test tests/tutor-cost-cutoff.test.ts`
-  - `npx tsc --noEmit`
-  - local compile check for `/admin/finance/tutor-cost-export`
-- Post-deploy verification:
-  - open `/admin/finance/tutor-cost-export`
-  - download one Excel workbook for a known month
-  - confirm `/admin/login` returns 200
-
-## 2026-05-08-r138 Ready
-
-- Scope: improve shared mobile usability for authenticated admin and teacher pages.
-- Business impact:
-  - Phone-width pages now stack dense grid sections into one column.
-  - Filter bars and form controls are easier to tap.
-  - Wide tables stay in their own horizontal scroll areas instead of pushing the entire page sideways.
-  - The mobile sidebar menu remains reachable near the top while scrolling.
-  - No business logic or data writes changed.
-- Files:
-  - `app/responsive-layout.css`
-- Verification before deploy:
-  - `npm run build`
-- Post-deploy verification:
-  - open a teacher page and an admin list page on phone width and confirm controls do not crowd horizontally
-  - confirm `/admin/login` returns 200
-
-## 2026-05-08-r137 Ready
-
-- Scope: make the teacher notice admin entry visible near the top of the left sidebar.
-- Business impact:
-  - Admin users see `Teacher Notices / è€å¸ˆé€šçŸ¥` under `Today / ä»Šå¤©`.
-  - Finance users see `Teacher Notices / è€å¸ˆé€šçŸ¥` under their top `Today / ä»Šå¤©` group.
-  - The duplicate lower placement was removed to keep the sidebar cleaner.
-- Files:
-  - `app/admin/layout.tsx`
-- Verification before deploy:
-  - `npm run build`
-- Post-deploy verification:
-  - open admin sidebar and confirm `Teacher Notices / è€å¸ˆé€šçŸ¥` appears near the top
-
-## 2026-05-08-r136 Ready
-
-- Scope: make teacher notices manageable from admin.
-- Business impact:
-  - Admin/finance can open `/admin/teacher-notices`.
-  - Notices now support category, important flag, required acknowledgement, publish date, expiry date, active/archive status, and bilingual content.
-  - Admin can see read/unread detail by teacher and reset read records when a notice needs renewed acknowledgement.
-  - Teacher dashboard shows only the first two unread notices; full history remains under `/teacher/notices`.
-- Files:
-  - `app/admin/teacher-notices/page.tsx`
-  - `app/admin/layout.tsx`
-  - `app/teacher/page.tsx`
-  - `app/teacher/notices/page.tsx`
-  - `lib/teacher-notices.ts`
-  - `tests/teacher-notices.test.ts`
-- Verification before deploy:
-  - `npx tsx --test tests/teacher-notices.test.ts`
-  - `npm run build`
-- Post-deploy verification:
-  - `bash ops/server/scripts/new_chat_startup_check.sh` or equivalent server-side health checks must confirm local/origin/server alignment and `/admin/login => 200`
-  - open `/admin/teacher-notices` and confirm the notice list renders
-  - open `/teacher/notices` and confirm teacher-facing history renders
-
-## 2026-05-08-r135 Ready
-
-- Scope: add a teacher-facing notice for the company-name update.
-- Business impact:
-  - Teachers see an unread company-name notice on `/teacher`.
-  - Teachers can mark the notice as read.
-  - Teachers can open `/teacher/notices` to review notice history.
-- Files:
-  - `app/teacher/page.tsx`
-  - `app/teacher/layout.tsx`
-  - `app/teacher/notices/page.tsx`
-  - `app/teacher/TeacherNoticeCardClient.tsx`
-  - `app/api/teacher/notices/read/route.ts`
-  - `lib/teacher-notices.ts`
-  - `tests/teacher-notices.test.ts`
-- Verification before deploy:
-  - confirmed no existing teacher notice AppSetting rows would be overwritten
-  - `npx tsx --test tests/teacher-notices.test.ts`
-  - `npm run build`
-- Post-deploy verification:
-  - `bash ops/server/scripts/new_chat_startup_check.sh` or equivalent server-side health checks must confirm local/origin/server alignment and `/admin/login => 200`
-  - teacher portal should show the company-name notice until the current teacher marks it read
-
-## 2026-05-08-r134 Ready
-
-- Scope: fix package-ledger PDF export display for negative hour deductions.
-- Business impact:
-  - PDF package-ledger rows now format `-90` minutes as `-1h 30m`, matching the website ledger and the running balance.
-  - Existing ledger transactions and remaining balances are unchanged.
-- Files:
-  - `app/api/exports/package-ledger/[id]/route.ts`
-  - `app/admin/packages/[id]/ledger/page.tsx`
-  - `lib/package-ledger-format.ts`
-  - `tests/package-ledger-format.test.ts`
-- Verification before deploy:
-  - real Dong Xinyi AEIS package ledger query confirms deductions are stored as `-90` minutes
-  - uploaded PDF extraction confirms only the delta text was wrong while balances stepped down by 1h30m
-  - `npx tsx --test tests/package-ledger-format.test.ts`
-  - `npm run build`
-- Post-deploy verification:
-  - `bash ops/server/scripts/new_chat_startup_check.sh` must confirm local/origin/server alignment and `/admin/login => 200`
-  - re-export the same package ledger PDF and confirm the DEDUCT rows show `-1h 30m`
-
-## 2026-05-08-r133 Ready
-
-- Scope: update company name and sealed export stamp across generated documents.
-- Business impact:
-  - Parent invoice and receipt PDFs now show `GT Educational Institute Pte. Ltd.`.
-  - Partner invoice and receipt PDFs now show `GT Educational Institute Pte. Ltd.`.
-  - Parent statement, student detail, student schedule, package ledger, enrollment export, and student contract legal name now use the same company name.
-  - Remittance `Account name` on invoice PDFs now uses `GT Educational Institute Pte. Ltd.`.
-  - Sealed partner invoice PDF and sealed partner detail XLSX now use `public/gt_edu_seal.png`.
-  - Logo files and document layout were not changed.
-  - No billing amounts, invoice numbers, receipt numbers, approval logic, payment status, package deduction, scheduling, attendance, payroll, settlement, expense-claim, or OpenClaw logic changed.
-- Validation:
-  - confirmed uploaded invoice and receipt templates already show `GT Educational Institute Pte. Ltd.` in visible cells
-  - scanned app/lib exports so the old company name no longer appears in system document generation code
-  - confirmed sealed partner invoice/detail exports now reference `public/gt_edu_seal.png`
-  - `npx tsc --noEmit`
-  - `npx next build`
-  - task doc: `docs/tasks/TASK-20260508-company-name-and-seal-update.md`
-- Deploy check:
-  - post-deploy `/admin/login` should return 200
-  - production QA should generate one parent invoice PDF and one sealed partner invoice PDF, then confirm the company name and seal
-
-## 2026-05-08-r132 Ready
-
-- Scope: add payment status, period filters, and Excel export to the finance document center.
-- Business impact:
-  - `/admin/finance/documents` now shows `Payment status / æ”¶æ¬¾çŠ¶æ€` for invoices and receipts.
-  - Payment status is derived from finance-approved receipts: paid, partial, unpaid, pending approval, or rejected.
-  - Finance can filter by payment status plus date range before reviewing PDFs.
-  - Finance can export the current filtered document list as Excel for Statement of Accounts and invoice/receipt follow-up.
-  - The export includes document amount, approved received amount, pending/rejected receipt amount, remaining unpaid amount, receipt count, PDF link, and source page.
-  - No invoice/receipt creation, approval, rejection, deletion, package deduction, student billing, partner settlement, payroll, expense-claim, scheduling, attendance, contract, or OpenClaw logic changed.
-- Validation:
-  - queried real invoice rows with the new status logic: 25 invoices total; paid 15, partial 1, unpaid 8, rejected 1
-  - `npx tsx --test tests/finance-documents.test.ts`
-  - `npx tsc --noEmit`
-  - `npx next build`
-  - task doc: `docs/tasks/TASK-20260508-finance-documents-payment-status-export.md`
-- Deploy check:
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` should confirm local/origin/server alignment and `/admin/login => 200`
-  - production QA should open `/admin/finance/documents?type=INVOICE&paymentStatus=UNPAID`, confirm rows render, then download `/api/exports/finance-documents?type=INVOICE&paymentStatus=UNPAID`
-
-## 2026-05-07-r131 Ready
-
-- Scope: add an all-paid expense-claims view that includes archived paid claims.
-- Business impact:
-  - Finance can open `All paid expenses / æ‰€æœ‰å·²ä»˜æ¬¾æŠ¥é”€` from the expense-claims quick filters.
-  - Advanced filters now expose `Archive view / å½’æ¡£è§†å›¾`: active only, archived only, or include archived.
-  - `Paid / å·²ä»˜æ¬¾` plus `Include archived / åŒ…å«å·²å½’æ¡£` shows the complete paid history instead of only active or only archived claims.
-  - CSV export follows the same archived filter, so exported paid history matches the visible list.
-  - Claim approval, payment marking, archive status, attachment files, student billing, scheduling, attendance, contracts, payroll, settlement, and OpenClaw are unchanged.
-- Validation:
-  - queried real paid expense claims: 41 active, 1 archived, 42 total
-  - `npx tsx --test tests/expense-claims.test.ts`
-  - `npx tsc --noEmit`
-  - `npx next build`
-  - task doc: `docs/tasks/TASK-20260507-expense-claims-all-paid-archive-view.md`
-- Deploy check:
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm local/origin/server alignment and `/admin/login => 200`
-  - production QA should open `/admin/expense-claims?status=PAID&archived=include` and confirm the count includes active and archived paid claims
-
-## 2026-04-29-r130 Ready
-
-- Scope: clarify quick-schedule student conflict wording.
-- Business impact:
-  - quick-schedule candidate rows now say `å­¦ç”Ÿæ—¶é—´å†²çªï¼ˆä¸æ˜¯æ‰€é€‰æ•™å®¤è¢«å ç”¨ï¼‰/ Student time conflict, not selected-room conflict`
-  - the existing session details still show the original class room, but are labeled as `Existing session`
-  - this prevents staff from reading `Room 1` in the conflict detail as the selected `Room 3` being ignored
-  - no room selection, room conflict detection, teacher availability, scheduling write, attendance, package, billing, contract, payroll, settlement, or OpenClaw logic changed
-- Validation:
-  - checked the reported real window: `2026-05-14 17:30-19:00`, Orchard Plaza `Room 3` has no overlapping session
-  - confirmed the displayed `Room 1` row is the student's overlapping existing session at `18:00-19:30`
-  - `npx tsx --test tests/quick-schedule-messages.test.ts tests/quick-schedule-execution.test.ts tests/availability-conflict.test.ts`
-  - `npx tsc --noEmit`
-  - `npx next build`
-  - task doc: `docs/tasks/TASK-20260429-quick-schedule-student-conflict-room-wording.md`
-- Deploy check:
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm local/origin/server alignment and `/admin/login => 200`
-  - production QA should retry the same quick-schedule search and confirm the conflict reads as student-time conflict, not selected-room occupancy
-
-## 2026-04-25-r129 Ready
-
-- Scope: make Todo Center academic-management lane switching instant and fix mismatched counts.
-- Business impact:
-  - `å­¦ä¸šç®¡ç†æé†’` çš„ `å…¨éƒ¨å­¦ç”Ÿ / è‡ªå·±å­¦ç”Ÿ / åˆä½œæ–¹å­¦ç”Ÿ / æœªåˆ†ç±»` ç‚¹å‡»åŽä¸å†æ•´é¡µåˆ·æ–°
-  - ç­›é€‰æŒ‰é’®æ•°é‡æ”¹ä¸ºå½“å‰æé†’è¡Œæ•°ï¼Œä¸å†æ··ç”¨æœ‰æ•ˆè¯¾åŒ…å­¦ç”Ÿæ€»æ•°
-  - ç§»é™¤åŽŸæ¥æœ€å¤šåªæ˜¾ç¤º 20 æ¡æé†’çš„æˆªæ–­ï¼Œé¿å…å­¦ç”Ÿæ˜¾ç¤ºä¸å…¨
-  - ä¿ç•™ URL `academicLane` çŠ¶æ€ï¼Œå¤åˆ¶é“¾æŽ¥ä»èƒ½æ‰“å¼€å¯¹åº”åˆ†æµ
-  - ä¸æ”¹å˜ OpenClawã€æŽ’è¯¾åˆ›å»ºã€ç‚¹åã€æ‰£è´¹ã€åˆåŒã€å·¥èµ„ã€åˆä½œæ–¹ç»“ç®—æˆ–è´¢åŠ¡å®¡æ‰¹é€»è¾‘
-- Validation:
-  - confirmed the old section mixed active-student counts with alert-row counts and capped rows at 20
-  - scanned Todo Center for remaining `todoHref` lane links; only pagination and lazy conflict-load links remain
-  - `npx tsx --test tests/academic-management.test.ts tests/parent-feedback-quality.test.ts`
-  - `npx tsc --noEmit`
-  - `npx next build`
-  - task doc: `docs/tasks/TASK-20260425-todo-academic-alert-filter-counts.md`
-- Deploy check:
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm local/origin/server alignment and `/admin/login => 200`
-  - production QA should click `/admin/todos` academic lane buttons and confirm the page does not reload and counts match visible rows
-
-## 2026-04-25-r128 Ready
-
-- Scope: correct academic management own/partner grouping to use student type instead of package settlement mode.
-- Business impact:
-  - ä»Šæ—¥å·¥ä½œå° `å­¦ä¸šç®¡ç†æé†’` çš„ `è‡ªå·±å­¦ç”Ÿ / åˆä½œæ–¹å­¦ç”Ÿ` ç­›é€‰çŽ°åœ¨æŒ‰å­¦ç”Ÿç±»åž‹åˆ†æµ
-  - `å­¦ä¸šç®¡ç†æœˆæŠ¥` ä½¿ç”¨åŒä¸€å¥—å­¦ç”Ÿç±»åž‹åˆ†æµè§„åˆ™
-  - æ–°å¢ž `æœªåˆ†ç±»` åˆ†æµï¼Œç”¨æ¥æš´éœ²å­¦ç”Ÿç±»åž‹ä¸ºç©ºæˆ–æ— æ³•è¯†åˆ«çš„æœ‰æ•ˆè¯¾åŒ…å­¦ç”Ÿ
-  - è¯¾åŒ… `settlementMode` åªä½œä¸ºå¼‚å¸¸æç¤ºï¼Œä¸å†å†³å®šå­¦ä¸šç®¡ç†å½’å±ž
-  - ä¸æ”¹å˜ OpenClawã€æŽ’è¯¾åˆ›å»ºã€ç‚¹åã€æ‰£è´¹ã€åˆåŒã€å·¥èµ„ã€åˆä½œæ–¹ç»“ç®—æˆ–è´¢åŠ¡å®¡æ‰¹é€»è¾‘
-- Validation:
-  - queried active-package students by the corrected rule: 17 own, 29 partner, 4 unclassified
-  - confirmed warning rows are missing-student-type cleanup items: å¼ ç£Š, lily, é‚µæ¥šç„¶, æŽä¸œæ’
-  - `npx tsx --test tests/academic-management.test.ts tests/parent-feedback-quality.test.ts`
-  - `npx tsc --noEmit`
-  - `npx next build`
-  - task doc: `docs/tasks/TASK-20260425-academic-management-student-type-lanes.md`
-- Deploy check:
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm local/origin/server alignment and `/admin/login => 200`
-  - production read-only QA should confirm `/admin/todos` and `/admin/reports/academic-management` render the corrected `æœªåˆ†ç±»` filter and warning labels
-
-## 2026-04-25-r127 Ready
-
-- Scope: split academic management handling between own/direct students and partner students.
-- Business impact:
-  - ä»Šæ—¥å·¥ä½œå° `å­¦ä¸šç®¡ç†æé†’` å¢žåŠ  `å…¨éƒ¨å­¦ç”Ÿ / è‡ªå·±å­¦ç”Ÿ / åˆä½œæ–¹å­¦ç”Ÿ` åˆ†æµç­›é€‰
-  - `å­¦ä¸šç®¡ç†æœˆæŠ¥` å¢žåŠ åŒæ ·çš„å­¦ç”Ÿç±»åž‹ç­›é€‰
-  - æé†’å’ŒæœˆæŠ¥è¡Œå†…æ˜¾ç¤ºå­¦ç”Ÿç±»åž‹ï¼Œæ–¹ä¾¿æ•™åŠ¡æŠŠè‡ªå·±å­¦ç”Ÿå’Œåˆä½œæ–¹å­¦ç”Ÿåˆ†å¼€å¤„ç†
-  - åˆ†æµä¾æ®ä¼˜å…ˆä½¿ç”¨è¯¾åŒ… `settlementMode`ï¼Œä¸ŽçœŸå®žç»“ç®—æµç¨‹ä¸€è‡´
-  - ä¸æ”¹å˜ OpenClawã€æŽ’è¯¾åˆ›å»ºã€ç‚¹åã€æ‰£è´¹ã€åˆåŒã€å·¥èµ„ã€åˆä½œæ–¹ç»“ç®—æˆ–è´¢åŠ¡å®¡æ‰¹é€»è¾‘
-- Validation:
-  - queried production data: 77 students, 51 active hour packages with remaining balance, 19 direct/own active packages, 32 partner active packages
-  - confirmed student types include `åˆä½œæ–¹å­¦ç”Ÿ`, `è‡ªå·±å­¦ç”Ÿ-æ–°ç”Ÿ`, `è‡ªå·±å­¦ç”Ÿ-ç•™å­¦+è¯¾ç¨‹`, and legacy `ç›´å®¢å­¦ç”Ÿ`
-  - `npx tsx --test tests/academic-management.test.ts tests/parent-feedback-quality.test.ts`
-  - `npm run build`
-  - task doc: `docs/tasks/TASK-20260425-academic-management-own-vs-partner.md`
-  - `npx prisma generate`
-  - `npx prisma migrate deploy`
-  - `npm run build`
-- Deploy check:
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm local/origin/server alignment and `/admin/login => 200`
-  - production read-only QA should confirm `/admin/todos` renders `å­¦ä¸šç®¡ç†æé†’` and student detail renders `å­¦ä¸šç®¡ç†æ¡£æ¡ˆ`
-
-## 2026-04-25-r124 Ready
-
-- Scope: add a WeChat-friendly copy format for admin feedback forwarding.
-- Business impact:
-  - æ•™åŠ¡ç‚¹å‡» `å¤åˆ¶å¾®ä¿¡ç‰ˆåé¦ˆ` æ—¶ï¼Œç²˜è´´åˆ°å¾®ä¿¡çš„æ˜¯å®¶é•¿å¯è¯»åˆ†æ®µæ–‡æœ¬ï¼Œè€Œä¸æ˜¯åŽå°è®°å½•æ ¼å¼
-  - æ–°äº”æ®µåé¦ˆä¼šæŒ‰ `æœ¬èŠ‚è¯¾é‡ç‚¹`ã€`ç›®å‰å‘çŽ°`ã€`è¯¾å ‚è¡¨çŽ°`ã€`ä¸‹ä¸€æ­¥è®¡åˆ’`ã€`å®¶é•¿éœ€è¦çŸ¥é“` è¾“å‡º
-  - æ—§éžç»“æž„åŒ–åé¦ˆä¼šé™çº§æˆ `è¯¾å ‚åé¦ˆ` + `è¯¾åŽä½œä¸š`ï¼Œé¿å…åŽ†å²æ•°æ®å¤åˆ¶å¤±è´¥
-  - åŽŸæ¥çš„å†…éƒ¨è®°å½•å¤åˆ¶ä¿ç•™ä¸º `å¤åˆ¶å†…éƒ¨è®°å½•`
-  - ä¸æ”¹å˜åé¦ˆæäº¤ã€å·²è½¬å‘çŠ¶æ€ã€ç‚¹åã€å·¥èµ„ã€ä½œä¸šæˆ–æ•°æ®åº“ç»“æž„
-- Validation:
-  - tested WeChat text generation against real recent structured feedback
-  - tested fallback formatting against old unstructured feedback
-  - verified the admin feedback page renders WeChat preview and both copy buttons
-  - `npm run build`
-  - task doc: `docs/tasks/TASK-20260425-admin-feedback-wechat-copy.md`
-
-## 2026-04-25-r123 Ready
-
-- Scope: replace the teacher feedback editable template with five separate answer boxes and an automatic parent-facing preview.
-- Business impact:
-  - è€å¸ˆä¸ç”¨å†åˆ é™¤ `Hint / æç¤º`ï¼Œæç¤ºå›ºå®šæ˜¾ç¤ºåœ¨è¾“å…¥æ¡†å¤–
-  - æ¯æ®µåé¦ˆéƒ½æœ‰ç‹¬ç«‹è¾“å…¥æ¡†ï¼š`Lesson focus`ã€`Current finding`ã€`Class performance`ã€`Next plan`ã€`What parents should know`
-  - ç³»ç»Ÿè‡ªåŠ¨æŠŠäº”æ®µç­”æ¡ˆæ‹¼æˆå®¶é•¿å¯è§åé¦ˆé¢„è§ˆï¼Œå¹¶ä¿å­˜åˆ°åŽŸæœ‰åé¦ˆå­—æ®µ
-  - ä¸æ”¹å˜ç‚¹åã€å·¥èµ„ã€åé¦ˆè½¬å‘é˜Ÿåˆ—ã€ä½œä¸šå­—æ®µæˆ–æ•°æ®åº“ç»“æž„
-- Validation:
-  - tested parsing for old Chinese headings, bilingual headings, and unstructured legacy text
-  - tested empty values return all five missing labels
-  - verified a real teacher session page renders five answer boxes and a preview
-  - refreshed SOP screenshot `docs/assets/teacher-sop-20260425/04-parent-feedback-form.png`
-  - `npm run build`
-  - task doc: `docs/tasks/TASK-20260425-teacher-feedback-section-inputs.md`
-
-## 2026-04-25-r122 Ready
-
-- Scope: make the required parent-facing teacher feedback template bilingual for English-first teachers.
-- Business impact:
-  - è€å¸ˆä¼šçœ‹åˆ° `Lesson focus / æœ¬èŠ‚è¯¾é‡ç‚¹` è¿™ç±»ä¸­è‹±æ–‡å¯¹ç…§æ ‡é¢˜
-  - æ¯ä¸ªåé¦ˆæ®µè½ä¸‹æ–¹éƒ½æœ‰ `Hint / æç¤º`ï¼Œè‹±æ–‡è€å¸ˆå¯ä»¥ç›´æŽ¥æŒ‰è‹±æ–‡æç¤ºä½œç­”
-  - ç³»ç»Ÿä»ç„¶æŽ¥å—è‹±æ–‡æ ‡é¢˜ã€ä¸­è‹±æ–‡æ ‡é¢˜ã€æˆ–æ—§ä¸­æ–‡æ ‡é¢˜ï¼Œé¿å…æ—§åé¦ˆè¢«çªç„¶å¡æ­»
-  - ä¸æ”¹å˜ç‚¹åã€å·¥èµ„ã€åé¦ˆè½¬å‘é˜Ÿåˆ—ã€æ•°æ®åº“ç»“æž„æˆ–å®¶é•¿åé¦ˆä¸šåŠ¡é€»è¾‘
-- Validation:
-  - tested empty bilingual template returns all five missing sections
-  - tested English-filled and Chinese-filled feedback both pass section validation
-  - verified a real teacher session page renders the bilingual template
-  - refreshed SOP screenshot `docs/assets/teacher-sop-20260425/04-parent-feedback-form.png`
-  - `npm run build`
-  - task doc: `docs/tasks/TASK-20260425-teacher-feedback-bilingual-prompts.md`
-
-## 2026-04-25-r121 Ready
-
-- Scope: change teacher after-class feedback from a teacher-side lesson log into a parent-facing progress note structure.
-- Business impact:
-  - è€å¸ˆæäº¤è¯¾åŽåé¦ˆæ—¶å¿…é¡»å†™æ¸… `æœ¬èŠ‚è¯¾é‡ç‚¹`ã€`ç›®å‰å‘çŽ°`ã€`è¯¾å ‚è¡¨çŽ°`ã€`ä¸‹ä¸€æ­¥è®¡åˆ’`ã€`å®¶é•¿éœ€è¦çŸ¥é“`
-  - å®¶é•¿æ”¶åˆ°çš„åé¦ˆä¼šæ›´åƒâ€œè€å¸ˆç†è§£æˆ‘å­©å­å½“å‰é—®é¢˜å’Œè®­ç»ƒè·¯å¾„â€ï¼Œè€Œä¸æ˜¯åªçœ‹åˆ°ä»Šå¤©è®²äº†ä»€ä¹ˆçŸ¥è¯†ç‚¹
-  - ä½œä¸šå’Œæ—§ä½œä¸šå®Œæˆæƒ…å†µä»ä¿ç•™åœ¨åŽŸæœ‰å­—æ®µé‡Œ
-  - ä¸æ”¹å˜ç‚¹åã€å·¥èµ„ã€è¶…æ—¶åé¦ˆé˜Ÿåˆ—ã€è½¬å‘çŠ¶æ€æˆ–æ•°æ®åº“ç»“æž„
-- Validation:
-  - inspected recent real `SessionFeedback` examples
-  - tested complete and incomplete parent-facing samples with the shared formatter
-  - `npm run build`
-  - task doc: `docs/tasks/TASK-20260425-parent-facing-teacher-feedback.md`
-
-## 2026-04-25-r120 Ready
-
-- Scope: improve logged-in admin mobile layout globally and fix the remaining teacher payroll mobile overflow.
-- Business impact:
-  - logged-in admin pages now keep common grid/flex content inside the phone viewport instead of creating page-level sideways scrolling
-  - teacher payroll's work queue and selected payroll panel now collapse to one column on phones
-  - wide tables can still scroll horizontally inside their own table area, but the full page should not drift sideways
-  - no student, scheduling, finance, payroll, approval, or attachment records are changed
-- Validation:
-  - queried real admin, student, package, teacher, and ticket records for route coverage
-  - local Playwright mobile viewport `390x844`
-  - verified 17 logged-in admin routes with `overflowX=0` and no oversized sticky/fixed panels
-  - verified mobile admin menu opens with `overflowX=0`
-  - `npm run build`
-  - task doc: `docs/tasks/TASK-20260425-admin-mobile-post-login-layout-sweep.md`
-
-## 2026-04-25-r119 Ready
-
-- Scope: stop the phone-width student detail workbench from sticking over the page while preserving a small jump row.
-- Business impact:
-  - æ•™åŠ¡åœ¨æ‰‹æœºç«¯æ‰“å¼€å­¦ç”Ÿè¯¦æƒ…æ—¶ï¼Œä¸ä¼šå†è¢« `Student workbench / å­¦ç”Ÿå·¥ä½œå°` å¤§å—å›ºå®šé®ä½æ­£æ–‡
-  - æ‰‹æœºç«¯ä»ä¿ç•™ `Jump / è·³è½¬` å¿«æ·å…¥å£ï¼Œä½†å®ƒå˜æˆçº¦ä¸€è¡Œé«˜å¹¶æ”¯æŒæ¨ªå‘æ»‘åŠ¨
-  - å­¦ç”Ÿèµ„æ–™ã€æŽ’è¯¾ã€ç‚¹åã€è¯¾åŒ…ã€åˆåŒã€è´¢åŠ¡é€»è¾‘éƒ½æ²¡æœ‰å˜åŒ–
-- Validation:
-  - `npm run build`
-  - local Playwright mobile viewport `390x844` on real student `çŽ‹è‰ºæ™¨`
-  - verify `#student-workbench-bar` is downgraded to `position: static`
-  - verify compact sticky shortcut row height is `56px` and uses horizontal overflow
-  - verify scroll content remains visible below the compact row
-  - task doc: `docs/tasks/TASK-20260425-student-mobile-sticky-workbench-fix.md`
-
-## 2026-04-24-r111 Ready
-
-- Scope: stop renumbering later draft invoices after deletions and surface deleted-draft history in both parent and partner billing views.
-- Business impact:
-  - deleting a middle draft invoice no longer rewrites later invoice numbers to close that gap
-  - deleting the current month-end tail draft still lets the next new draft reuse that tail slot naturally because new numbering now follows the highest surviving monthly sequence
-  - package billing and package contract pages now show deleted parent invoice draft history so finance can see exactly which number was removed
-  - partner settlement billing now shows deleted partner invoice draft history on the invoices tab
-  - no receipt numbering, approval logic, package balances, or finance-gate rules changed
-- Validation:
-  - `npm run build`
-  - confirm delete actions no longer call monthly resequencing
-  - confirm middle-gap deletes leave later invoices unchanged
-  - confirm deleting the current tail draft lets the next new invoice reuse that tail slot naturally
-  - confirm deleted draft histories render in package billing, package contract, and partner billing
-
-## 2026-04-24-r112 Ready
-
-- Scope: allow only `zhao hongwei` to delete mistaken unused parent-intake links from the student list without touching any already-submitted or downstream-linked intake records.
-- Business impact:
-  - mistaken intake links that never created a student can now be removed directly from `/admin/students`
-  - only the owner account `zhaohongwei0880@gmail.com` sees the delete action
-  - once a link has been submitted or linked to a student/package/contract, it stays in history and cannot be deleted
-  - used parent-intake rows no longer crowd the main active list because they are collapsed under `Used link history / å·²ä½¿ç”¨é“¾æŽ¥åŽ†å²`
-  - no student creation, contract flow, invoice flow, or partner logic changed
-- Validation:
-  - `npm run build`
-  - verify owner account sees `Delete link / åˆ é™¤é“¾æŽ¥` only on unused rows
-  - verify non-owner accounts do not see the action
-  - verify submitted rows stay visible but undeletable
-  - verify submitted rows render under the history section instead of the main active queue
-
-## 2026-04-23-r92 Ready
-
-- Scope: stop splitting direct-billing students across `ç›´å®¢å­¦ç”Ÿ` and `è‡ªå·±å­¦ç”Ÿ-*` by making the new parent-intake flow reuse the existing `è‡ªå·±å­¦ç”Ÿ-*` taxonomy and by treating both names as direct-billing in outward-facing exports.
-- Business impact:
-  - new students created through the parent-intake link now prefer `è‡ªå·±å­¦ç”Ÿ-æ–°ç”Ÿ`, then any existing `è‡ªå·±å­¦ç”Ÿ-*` type, instead of always creating/using `ç›´å®¢å­¦ç”Ÿ`
-  - this prevents the admin student list from continuing to split direct-billing students into two separate type buckets over time
-  - existing legacy `ç›´å®¢å­¦ç”Ÿ` records are still treated as direct-billing in the student detail, student schedule, and package ledger PDF exports, so outward-facing branding stays consistent
-  - no partner-settlement routing, contract logic, invoice creation, receipt flow, finance gate, or scheduling rule changed
-- Validation:
-  - query current `StudentType` records and confirm the real environment contains both `ç›´å®¢å­¦ç”Ÿ` and `è‡ªå·±å­¦ç”Ÿ-*`
-  - create a fresh parent intake and confirm the submitted student is assigned to `è‡ªå·±å­¦ç”Ÿ-æ–°ç”Ÿ`
-  - `npm run build`
-  - verify direct-billing export helpers now recognize both `è‡ªå·±å­¦ç”Ÿ-*` and `ç›´å®¢å­¦ç”Ÿ`
-
-## 2026-04-23-r93 Ready
-
-- Scope: allow deletion of disposable void contract drafts and move void contracts into collapsed history so package billing stays focused on the current usable contract flow.
-- Business impact:
-  - void drafts that were never signed and never generated an invoice can now be deleted from package billing instead of accumulating forever
-  - signed or invoiced void contracts stay preserved in collapsed history for audit and renewal-reference safety
-  - package billing now ignores void contracts when deciding whether there is a current active contract, so an old void row no longer blocks staff from starting the next first-purchase or renewal contract
-  - renewal contracts follow the same cleanup rule: only unsigned/uninvoiced void drafts are deletable
-- Validation:
-  - `npm run build`
-  - create, void, and delete a direct-billing contract draft; confirm the package returns to a normal create-contract state
-  - confirm signed or invoiced void contracts stay in `Void history / ä½œåºŸåŽ†å²` and do not show the delete action
-
-## 2026-04-24-r102 Ready
-
-- Scope: fix the public contract sign pad so the hidden signature payload is updated synchronously while the parent is drawing, preventing false â€œplease draw the handwritten signatureâ€ errors after an immediate submit.
-- Business impact:
-  - parents can now draw and submit in one pass without being bounced back as if no handwritten signature was provided
-  - the sign page still blocks true empty-signature submits, and clearing the signature still removes the payload
-  - no contract-status rules, invoice creation behavior, signed PDF content, partner exclusions, or package balances changed
-- Validation:
-  - `npm run build`
-  - verify drawing a signature and immediately clicking `Sign contract` succeeds
-  - verify clearing the signature still empties the hidden form value and prevents submit until the parent signs again
-
-## 2026-04-24-r103 Ready
-
-- Scope: move the heavy student-contract workflow into `/admin/packages/[id]/contract` and leave a smaller contract summary + entry point inside package billing.
-- Business impact:
-  - package billing now stays focused on invoice and receipt work instead of carrying the full contract workspace inline
-  - contract drafting, parent links, signed history, replacement versions, and void-history cleanup now live on a dedicated package contract page
-  - partner-settlement packages still do not enter the student-contract workflow
-  - no contract-state rules, invoice generation logic, signed-PDF content, or renewal hour top-up behavior changed
-- Validation:
-  - `npm run build`
-  - verify package billing shows a compact contract summary and `Open contract workspace`
-  - verify `/admin/packages/[id]/contract` exposes the same contract actions that previously lived inline on billing
-
-## 2026-04-23-r87 Ready
-
-- Scope: fix the top-right header layout in exported parent statement PDFs so wrapped bilingual titles no longer overlap company and generated-date text.
-- Business impact:
-  - parent statement downloads no longer show the `Statement of Account / å¯¹è´¦å•` title colliding with the company name and generated date
-  - the header now measures the actual title height before placing the next two lines, so the layout remains stable even if the title wraps
-  - statement numbers, periods, student/package data, balances, and all finance figures remain unchanged
-- Validation:
-  - `npm run build`
-  - export a parent statement PDF and confirm the top-right header block renders without overlap
-
-## 2026-04-23-r88 Ready
-
-- Scope: add the first direct-billing student contract flow with package-billing draft creation, parent intake, formal signing, and signed PDF export.
-- Business impact:
-  - package billing now exposes a `Contract flow / åˆåŒæµç¨‹` section where ops can create a contract draft, send the parent intake link, resend the formal sign link, void an open contract, preview the current draft PDF, and download the signed PDF once complete
-  - student detail now shows the latest contract status on each package card and links back to the contract section in package billing
-  - parent public link `/contract-intake/[token]` now collects parent details first and freezes them into a contract snapshot before formal signing
-  - parent public link `/contract/[token]` now serves the formal agreement, accepts typed-name signing, and writes a signed PDF into business storage even when no handwritten signature image is provided
-  - signed contract PDFs are now exportable from `/api/exports/student-contract/[id]`
-  - no partner-settlement flows, invoice/receipt rules, finance gates, scheduling gates, or package balances changed
-- Validation:
-  - `npx prisma generate`
-  - `npx prisma migrate deploy`
-  - `npm run build`
-  - library-level QA confirmed `create draft -> intake submit -> sign -> signed PDF saved`
-
-## 2026-04-23-r91 Ready
-
-- Scope: rework direct-billing student contracts so new students can start from a parent intake link, first purchases use ops-side package setup before formal signing, renewals skip intake, and signing auto-creates the matching invoice draft.
-- Business impact:
-  - admin students now exposes `Parent intake links / å®¶é•¿èµ„æ–™é“¾æŽ¥`, so ops can send a collection link before a student exists in SGT
-  - the new public route `/student-intake/[token]` creates the student record automatically after the parent submits the intake form
-  - student detail now exposes a `First purchase setup / é¦–è´­å»ºæ¡£` card after intake submission, where ops completes course, hours, fee, bill-to name, agreement date, lesson mode, and campus before the formal contract is generated
-  - package billing now starts renewals with `Create renewal contract / åˆ›å»ºç»­è´¹åˆåŒ` and starts first-purchase signing only after the parent-intake/student-creation step is finished
-  - the intake page now collects only parent profile details and no longer asks parents to confirm hours and fee figures directly
-  - ops now completes the business-side contract draft in package billing or first-purchase setup, including hours, fee, bill-to name, and agreement date, before sending the final sign link
-  - renewal contracts reuse the most recent stored parent profile, and the old intake link now clearly says `No intake needed / æ— éœ€å¡«å†™èµ„æ–™`
-  - signing a direct-billing contract now auto-links an existing single invoice when safe, or auto-creates a new parent invoice draft when no invoice exists yet
-  - successful signing now lands on a clearer completion page that shows the linked invoice number directly
-  - partner-settlement packages remain outside the contract flow and were not changed by this release
-- Validation:
-  - `npx prisma generate`
-  - `npx prisma migrate deploy`
-  - `npm run build`
-  - local new-student QA: intake link -> parent submit -> student created -> first purchase setup -> sign -> invoice `RGT-202604-0017`
-  - local renewal QA: reused parent info -> ready to sign -> sign -> invoice `RGT-202604-0018`
-  - verify renewal package moves into `INVOICE_PENDING_MANAGER` after signing
-  - cleanup QA script removed temporary student/intake/package/contract/approval/invoice records after validation
-
-## 2026-04-23-r89 Ready
-
-- Scope: fix the student contract PDF layout so the bilingual header and long summary values no longer overlap in downloaded contracts.
-- Business impact:
-  - downloaded student contracts now place `Tuition Agreement / å­¦è´¹åè®®`, brand name, and legal company line based on actual measured text height instead of hard-coded offsets
-  - long student names, long course names, and package summary values now wrap inside the summary box without colliding with neighboring columns
-  - the agreement-date line now sits below the tallest summary value instead of assuming a fixed one-line layout
-  - no contract statuses, contract links, signing behavior, billing flow, package logic, or finance gates changed
-- Validation:
-  - `npm run build`
-  - generate a real student contract PDF and confirm the header/company lines no longer overlap
-  - confirm long student/course/package content no longer overlaps inside the summary box
-
-## 2026-04-23-r90 Ready
-
-- Scope: remove misleading student-contract entry points from partner-settlement packages.
-- Business impact:
-  - partner-settlement packages no longer show `Create contract draft` inside package billing
-  - student detail no longer tells ops to create a contract for partner-settlement packages from package billing
-  - both pages now explain clearly that partner-settlement packages stay outside the student contract workflow
-  - no settlement data, contract data, finance-gate state, billing logic, or scheduling logic changed
-- Validation:
-  - `npm run build`
-  - verify a partner-settlement package shows the exempt explanation instead of contract creation actions
-
-## 2026-04-21-r84 Ready
-
-- Scope: add a finance reconciliation workbook export for all packages created since the system went live.
-- Business impact:
-  - finance now has one workbook that joins package master data with invoice detail, receipt detail, and uploaded payment-proof detail instead of pulling separate partial reports
-  - the workbook uses the same package amount-basis priority already used elsewhere: purchase transactions first, then receipts, then package paid amount
-  - an exception sheet now highlights common mismatch patterns such as uninvoiced package value, invoices not fully receipted, proofs without receipts, receipts without invoices, and inactive packages with open gaps
-  - finance users can download the workbook directly from both the finance workbench and the student package invoice page
-  - no package balances, invoice creation rules, receipt numbering, approval logic, or scheduling logic changed
-- Validation:
-  - `npm run build`
-  - verify `/api/exports/package-finance-reconciliation` appears in the compiled route list
-  - verify finance workbench and student package invoice pages now show the export entry point
-  - post-deploy: verify the workbook downloads successfully and that all four sheets are populated when production data exists
-
-## 2026-04-21-r85 Ready
-
-- Scope: ship Phase 1 and Phase 2 of the direct-billing package invoice gate for direct-billing chargeable packages only.
-- Business impact:
-  - creating a new direct-billing chargeable package now auto-creates a parent invoice draft and a manager approval item instead of letting finance follow-up stay completely manual
-  - those packages enter `INVOICE_PENDING_MANAGER` first and are not treated as normally schedulable until manager approval completes
-  - package list, package billing, student detail, finance workbench, and approval inbox now surface the invoice gate state so ops, finance, and managers see the same status
-  - the main scheduling entry points now soft-block on `PACKAGE_FINANCE_GATE_BLOCKED` and point users to package billing as the next action
-  - strict super admins can still bypass finance-gate blocks during this soft-block phase, but no one can bypass a true â€œno active packageâ€ condition
-  - partner-settlement packages remain excluded from this workflow and stay `EXEMPT`
-  - receipt remains a finance follow-up control, not the first scheduling gate
-- Validation:
-  - `npx prisma migrate deploy` for `20260421183000_add_package_invoice_gate_phase1`
-  - verify the new `CoursePackage.financeGate*` columns and `PackageInvoiceApproval` table exist
-  - `npm run build`
-  - real-flow QA on a test direct-billing package: pending before manager approval, schedulable after approval
-  - confirm partner-settlement package remains `EXEMPT`
-  - post-deploy: smoke-test package create, package billing approval, quick schedule warning, and partner-package exemption
-
-## 2026-04-21-r86 Ready
-
-- Scope: turn the direct-billing package invoice gate into a true hard scheduling gate by removing the remaining finance-gate bypass paths.
-- Business impact:
-  - pending or blocked direct-billing chargeable packages can no longer slip through scheduling via strict-super-admin bypasses in the main scheduling APIs
-  - quick schedule, enrollments, class session create/generate/reschedule, booking approval, teacher generate sessions, and ops execute now all honor the same hard finance gate
-  - partner-settlement packages remain outside this workflow and continue to stay `EXEMPT`
-  - receipt still remains a later finance-control step, not the first scheduling gate
-  - package billing now clearly tells users that manager approval is required before scheduling can continue, rather than describing hard blocking as a future phase
-- Validation:
-  - `npm run build`
-  - `npm run test:backend`
-  - verify no remaining runtime scheduling path bypasses `PACKAGE_FINANCE_GATE_BLOCKED`
-  - post-deploy: smoke-test a pending direct-billing package through quick schedule, enrollments, create/generate/reschedule, booking approval, teacher generate sessions, and ops execute
-
-## 2026-04-17-r83 Ready
-
-- Scope: tighten shared time-input sync and make quick-schedule conflict copy prioritize the student's own existing session before generic teacher/room blockers.
-- Business impact:
-  - `BlurTimeInput` now follows external value/default changes, so pages that programmatically reset or swap times no longer risk showing a stale hour/minute selection
-  - student quick-schedule preview now tells ops first when the student already has a session in that slot, instead of making the slot look empty until a later refresh or a generic room/teacher blocker
-  - the same student-session-first conflict wording now applies to both `/api/admin/students/[id]/quick-appointment` and `/api/admin/ops/execute`, so different scheduling entry points stop disagreeing about the primary reason
-  - no teacher-availability rules, room-occupancy rules, package checks, repeat scheduling behavior, or database duplicate guards changed
-- Validation:
-  - `npx tsx --test tests/session-conflict.test.ts tests/availability-conflict.test.ts tests/admin-teacher-availability.test.ts tests/quick-schedule-execution.test.ts`
-  - `npm run build`
-  - verify Coco + Jasmine `2026-04-27 17:30-19:00` still exists in the database and now surfaces as the first conflict reason instead of looking like a fresh availability error
-
-## 2026-04-17-r82 Ready
-
-- Scope: harden the quick schedule modal so `Find Available Teachers / æŸ¥æ‰¾å¯ç”¨è€å¸ˆ` always refreshes the candidate snapshot instead of depending on a manual page reload.
-- Business impact:
-  - the Coco + Jasmine investigation confirmed the target lesson on `2026-04-27 17:30-19:00` already exists in the database, so this was not a broad regression in teacher, room, or package rules
-  - quick schedule candidate lookup now explicitly refreshes server-rendered results after the user clicks `Find Available Teachers / æŸ¥æ‰¾å¯ç”¨è€å¸ˆ`
-  - the student-detail section hash is still restored after that refresh, so ops stays anchored in the quick schedule area
-  - no teacher-availability rules, room-conflict rules, duplicate-session rules, repeat scheduling rules, or package checks changed
-- Validation:
-  - `npm run build`
-  - verify Coco + Jasmine `2026-04-27 17:30-19:00` already exists in the database
-  - verify quick schedule candidate lookup refreshes without needing a manual full-page reload
-
-## 2026-04-17-r81 Ready
-
-- Scope: fix the shared scroll interception rule so same-path query+hash links can navigate normally instead of being trapped as pure anchor jumps.
-- Business impact:
-  - student detail calendar month navigation now loads the requested month normally when the link changes `month=...` and keeps `#calendar-tools`
-  - pure same-page hash jumps still keep the fast in-page scroll behavior when pathname and search do not change
-  - the student-detail month pager no longer needs a dedicated client-side workaround because the shared root cause is fixed centrally
-  - no scheduling rules, calendar calculations, package logic, or approval logic changed
-- Validation:
-  - `npm run build`
-  - verify student detail calendar visibly switches months when clicking `Prev Month / ä¸Šæœˆ` and `Next Month / ä¸‹æœˆ`
-  - verify pure same-page hash jumps still scroll correctly
-
-## 2026-04-17-r80 Ready
-
-- Scope: fix the student-detail scheduling calendar month pager so prev/next month visibly reloads the correct month instead of only changing the URL.
-- Business impact:
-  - student detail calendar month navigation now performs a full page navigation for the month pager, so the rendered month always stays in sync with the query string
-  - clicking `Prev Month / ä¸Šæœˆ` and `Next Month / ä¸‹æœˆ` still keeps the page anchored to `#calendar-tools`
-  - server-side calendar month math and the existing routing structure stay unchanged
-  - no scheduling rules, package logic, appointment creation logic, or attendance logic changed
-- Validation:
-  - `npm run build`
-  - verify student detail calendar visibly switches months when clicking `Prev Month / ä¸Šæœˆ` and `Next Month / ä¸‹æœˆ`
-  - verify the page remains anchored to `#calendar-tools` after each click
-
-## 2026-04-16-r71 Ready
-
-- Scope: fix the two real admin work-map anchor issues found during post-ship QA on partner settlement and conflicts.
-- Business impact:
-  - `Partner Settlement / åˆä½œæ–¹ç»“ç®—ä¸­å¿ƒ` now gives the `Action queue / å¾…å¤„ç†é˜Ÿåˆ—` anchor a top offset, so jumping from the work map no longer leaves the destination pressed under the sticky control strip
-  - `Conflict Center / å†²çªå¤„ç†ä¸­å¿ƒ` now always renders a valid `#conflict-results` target, even when the current date range has zero conflicts, so the work-map jump never points into empty space
-  - conflicts results anchor now also has top-offset spacing, making the jump land in a readable place instead of hugging the sticky controls
-  - no settlement rules, conflict rules, scheduling logic, or resolution actions changed
-- Validation:
-  - `npm run build`
-  - verify partner settlement work-map jump to `Action queue` lands visibly below the sticky bar
-  - verify conflicts work-map jump to `Conflict cards` still lands on a valid target when there are zero conflicts in range
-
-## 2026-04-16-r72 Ready
-
-- Scope: fix the approval inbox narrow-width overflow found during the next real admin QA sweep.
-- Business impact:
-  - `Approval Inbox / å®¡æ‰¹æé†’ä¸­å¿ƒ` now uses tighter approval-row and header column minimum widths, so the page fits inside the admin content area even when the left sidebar is visible on narrower desktop windows
-  - the manager-lane narrow view no longer cuts off the right side of the summary/table area or forces unnecessary horizontal overflow
-  - neighboring high-frequency workbenches (`expense claims`, `receipts approvals`, `todos`, `tickets`) were rechecked at the same width and stayed stable
-  - no approval counts, lane routing, queue membership, or approval logic changed
-- Validation:
-  - `npm run build`
-  - verify `/admin/approvals?focus=manager` is overflow-free around `1024px` width with the sidebar visible
-  - verify `expense-claims`, `receipts-approvals`, `todos`, and `tickets` still remain overflow-free at the same width
-
-## 2026-04-16-r73 Ready
-
-- Scope: add an admin-layout sticky guard so oversized work-map bars stop covering the content below them.
-- Business impact:
-  - the large wide admin work-map bars now automatically downgrade from sticky to normal flow blocks when they are tall enough to cover the content below
-  - this fixes the student detail page complaint and the same pattern across the other main admin workbench pages without editing each workflow page separately
-  - narrower intentional sticky elements such as split-view detail panes and table headers remain sticky
-  - no approval rules, ticket logic, scheduling logic, attendance logic, teacher logic, package logic, or finance logic changed
-- Validation:
-  - `npm run build`
-  - production-build browser check confirms the main affected admin pages no longer keep the large work-map bar sticky
-  - confirm the right-side detail pane on expense claims still remains sticky
-
-## 2026-04-16-r74 Ready
-
-- Scope: turn downgraded oversized admin work maps into compact sticky shortcut strips.
-- Business impact:
-  - the original large work map stays visible in normal flow, so the page keeps its full explanatory section
-  - a new thin sticky shortcut strip now appears for downgraded work maps, preserving quick navigation without covering the content below
-  - student detail, ticket center, expense claims, and similar workbench pages now keep a more usable sticky affordance instead of losing sticky behavior entirely
-  - narrow intentional sticky panes, such as the expense-claims right detail pane, remain sticky
-  - no approval, ticket, scheduling, attendance, teacher, package, or finance logic changed
-- Validation:
-  - `npm run build`
-  - production-build browser check confirms compact sticky shortcut strips appear on representative downgraded work-map pages
-  - confirm the expense-claims detail pane still stays sticky
-
-## 2026-04-16-r70 Ready
-
-- Scope: finish the next admin UX consistency pass on packages, partner settlement, teacher payroll, and conflicts.
-- Business impact:
-  - packages now preserve list context better with scroll memory, show clearer shared risk/status chips, and use the shared action-banner pattern for resumed filters, next-step guidance, and empty states
-  - partner settlement now keeps scroll position, resumes remembered workbench context more clearly, and replaces several ad-hoc result blocks with shared action banners so finance sees more consistent next-step guidance
-  - teacher payroll now remembers the last desk filters on normal return, clears through an explicit default-desk path, and uses shared banners plus shared workflow chips in queue/detail/table areas instead of mixed plain text badges
-  - conflicts now remembers the last filter/date range on normal return, clears cleanly through a reset path, preserves scroll position, and uses shared chips/banners for conflict tags and empty results
-  - no payroll rules, settlement rules, package rules, scheduling rules, or conflict-resolution business logic changed
-- Validation:
-  - `npm run build`
-  - verify packages/partner-settlement/teacher-payroll/conflicts all keep or clear remembered context only when expected
-  - verify the new shared banners appear for resumed state, success/failure feedback, and empty states on those four pages
-  - verify payroll workflow state and conflict tags still reflect the same underlying data after the UI refactor
-
-## 2026-04-16-r68 Ready
-
-- Scope: finish the current admin workbench UI consistency pass and fix same-page anchor scrolling inside the admin scroll container.
-- Business impact:
-  - high-frequency admin workbenches now use a shared result banner pattern for success, failure, resumed context, and â€œnext stepâ€ guidance instead of each page inventing its own feedback block
-  - approvals, todos, tickets, expense claims, feedback desk, and receipts approval now share a more consistent sticky work-map treatment, so users can keep context while moving through long pages
-  - the admin ticket center now also remembers scroll position, reducing the â€œback to topâ€ problem when reopening the list after actions
-  - same-page work-map anchors inside the admin app now scroll the actual `.app-main` container instead of only changing the hash, which fixes the â€œclicked jump link but nothing movedâ€ problem on long pages
-  - key anchor targets now include top offset spacing so sticky bars do not cover the destination heading after jump navigation
-  - local narrow-width QA confirmed the main admin queue pages no longer show obvious horizontal overflow in the tested layouts
-  - no approval rules, finance rules, receipt rules, ticket rules, scheduling rules, or feedback business logic changed
-- Validation:
-  - `npm run build`
-  - local browser QA on `/admin/approvals`, `/admin/todos`, `/admin/tickets`, `/admin/expense-claims`, `/admin/feedbacks`, and `/admin/receipts-approvals`
-  - verify work-map anchor links now move to the target section inside the admin scroll container
-  - verify the main tested pages do not show obvious horizontal overflow at narrow widths
-  - verify shared result banners appear on approvals/todos/tickets/expense/feedback/receipt workbenches where applicable
-
-## 2026-04-16-r69 Ready
-
-- Scope: add the second layer of admin UX consistency improvements for remembered desks, shared status chips, clearer form sections, and steadier split workbenches.
-- Business impact:
-  - tickets, teachers, and classes now remember their desk filters more consistently, while explicit `Back to default desk` actions clear that remembered state instead of trapping users in stale filters
-  - students now also remember scroll position, reducing rescanning when returning to the list
-  - approvals, tickets, and receipts now use clearer shared status chips, which makes state, risk, and queue information faster to compare across pages
-  - expense claims now uses a shared split-view pattern for the review and finance workbenches, making the right-side detail area feel steadier while working through longer left-side queues
-  - ticket support links are slightly de-cluttered so the main action path is clearer and secondary reference links are easier to ignore unless needed
-  - no approval logic, finance rules, receipt logic, scheduling rules, or ticket business rules changed
-- Validation:
-  - `npm run build`
-  - verify ticket, teacher, and class desks resume remembered filters only on normal return and clear properly through the default-desk links
-  - verify approvals/tickets/receipts show the shared status-chip treatment
-  - verify expense claims split panes remain stable while moving through queue items
-  - verify students list now preserves scroll position on return
-
-## 2026-04-15-r66 Ready
-
-- Scope: polish approval inbox and receipt approval UX after finance-only receipt approval.
-- Business impact:
-  - Approval Inbox rows stack more cleanly on narrow screens instead of forcing a desktop table layout
-  - receipt detail now explicitly explains legacy manager entries as audit history only
-  - super-admin direct correction copy now says it updates the selected parent receipt, avoiding confusion on rejected receipts
-  - unused receipt manager approve/reject page actions were removed from the receipt approval page; receipt approval remains finance-only
-  - teacher payroll, partner settlement, and expense manager approval workflows remain unchanged
-- Validation:
-  - `npm run build`
-  - `npx tsx --test tests/billing-optimistic-lock.test.ts`
-  - `/admin/approvals` should still show teacher payroll manager/finance reminders and expense reminders
-  - `/admin/receipts-approvals/queue` should still show finance-only receipt state and explain legacy manager entries when present
-
-## 2026-04-16-r67 Ready
-
-- Scope: unify teacher feedback deadline timing and explain the late rule more clearly on teacher pages.
-- Business impact:
-  - teacher session detail now shows the exact time when late starts, instead of only a generic overdue warning
-  - teacher feedback save success now tells the teacher whether that submission still counts as on time or is already late
-  - teacher session list, teacher submit API, admin alerts, admin feedback overdue queue, and proxy/manual admin feedback flows now all use the same shared 12-hour deadline helper
-  - the actual rule did not change: after-class feedback still becomes late only 12 hours after class end
-- Validation:
-  - `npx tsx --test tests/feedback-timing.test.ts`
-  - `npx tsx --test tests/billing-optimistic-lock.test.ts`
-  - `npm run build`
-  - teacher session detail should clearly show `è¯·åœ¨ ... å‰æäº¤ï¼›è¶…è¿‡è¿™ä¸ªæ—¶é—´æ‰ç®—è¿Ÿäº¤`
-  - teacher feedback submit success should clearly show whether the submission is on time or late
-  - admin alerts and admin feedback overdue handling should still follow the same 12-hour cutoff
-
-## 2026-04-15-r65 Ready
-
-- Scope: simplify parent and partner receipt approval to finance-only approval.
-- Business impact:
-  - receipt reminders still appear in Approval Inbox, but only in the finance lane
-  - finance can approve parent and partner receipts without waiting for manager approval
-  - formal receipt PDFs, parent statements, finance workbench, package billing, partner billing, history export, and invoice resequencing now treat finance approval as the receipt completion gate
-  - legacy manager receipt approval/rejection data is preserved as audit history, but it is no longer part of the active receipt flow
-- Validation:
-  - `npm run build`
-  - newly generated receipts should show as `Needs finance / å¾…è´¢åŠ¡å®¡æ‰¹`, not `Needs manager / å¾…ç®¡ç†å®¡æ‰¹`
-  - finance approval should unlock receipt PDF export
-  - teacher payroll, partner settlement, and expense approval manager flows should remain unchanged
-
-## 2026-04-15-r64 Ready
-
-- Scope: add teacher payroll approval reminders into the unified Approval Inbox.
-- Business impact:
-  - management can now see teacher payroll records that teachers have confirmed but managers have not fully approved
-  - finance can now see teacher payroll records that are manager-approved but still need finance confirmation or payout recording
-  - payroll approval rows open the existing Teacher Payroll page with the teacher focused and a return banner back to Approval Inbox
-- Validation:
-  - `npm run build`
-  - teacher-confirmed payroll awaiting management approval should appear under `Needs manager / å¾…ç®¡ç†å®¡æ‰¹`
-  - manager-approved payroll awaiting finance confirmation or payout recording should appear under `Needs finance / å¾…è´¢åŠ¡å®¡æ‰¹`
-  - teacher payroll calculations and approval server actions should remain unchanged
-
-## 2026-04-11-r40 Ready
-
-- Scope: let one active parent-availability link open a same-student multi-course page while still keeping each course on its own coordination ticket, submission payload, and helper lane.
-- Business impact:
-  - the public `/availability/[token]` page can now show multiple active course cards for the same student, and each course submits independently
-  - student detail now treats coordination as course-separated lanes, so ops can switch the helper panel between open tickets and create a new coordination ticket only for courses not already being tracked
-  - intake reuse is now course-aware, so an incoming coordination request will reuse the matching course lane instead of always reusing the first open coordination ticket for that student
-- Validation:
-  - `npm run build`
-  - one valid parent link should render all same-student active coordination course cards on the same page
-  - each course card should keep its own payload and success state
-  - student detail should switch helper focus by selected coordination ticket
-  - intake should only reuse the matching course coordination lane
-
-## 2026-04-12-r41 Ready
-
-- Scope: fix scheduling-coordination helper state after post-confirmation parent re-submissions and search candidate slots inside the parent-submitted availability window before filtering.
-- Business impact:
-  - a coordination ticket that was already confirmed will now show a manual-review state if the parent later submits new availability, instead of still looking immediately ready to schedule
-  - helper candidate generation now searches the parent-submitted availability window first, so it is less likely to miss viable parent-matching times just because the initial teacher slot slice was too small
-  - suggested duration now prefers the coordination ticket's stored duration before falling back to historical session samples or the old `45` minute default
-- Validation:
-  - `npm run build`
-  - post-confirmation parent re-submissions should show `Manual review needed / éœ€äººå·¥å¤æ ¸` on student detail, ticket detail, and todo cards
-  - helper candidate generation should prefer parent-window matches when they exist
-  - suggested duration should use `ticket.durationMin` first when available
-
-## 2026-04-12-r42 Ready
-
-- Scope: rebalance calendar-mode coordination helper shortlists so the first few visible matches cover more of the parent's selected dates.
-- Business impact:
-  - helper candidate generation still uses the same parent-time matching rules, but now the first shortlist is less likely to be dominated by the earliest matching date
-  - ops can see more date coverage immediately when a parent selected several calendar dates and multiple dates already have real availability matches
-  - dates with no real matches still stay absent, so this improves visibility without weakening the filtering rules
-- Validation:
-  - `npm run build`
-  - calendar-mode helper shortlists should try to include more unique parent-selected dates before repeating the same date
-  - the example ticket `20260409-004` should now show `2026-04-11`, `2026-04-13`, `2026-04-19`, and `2026-04-20` inside the first five generated options
-
-## 2026-04-12-r43 Ready
-
-- Scope: move the full scheduling-coordination workspace off the crowded student detail page and into a dedicated student coordination page.
-- Business impact:
-  - the main student detail page becomes shorter and easier to scan because it keeps only a coordination summary card
-  - a dedicated `/admin/students/[id]/coordination` page now carries the full coordination workspace, including helper tools and ticket switching
-  - coordination-related entry points and returns now land on the dedicated coordination page instead of sending ops back into the long main detail page
-- Validation:
-  - `npm run build`
-  - main student detail should show only the lighter coordination summary card
-  - the dedicated coordination page should load the same coordination workspace and actions
-  - coordination helper actions and ticket back-links should return to the dedicated coordination page
-
-## 2026-04-12-r44 Ready
-
-- Scope: add a clear close/return action inside the dedicated student coordination page so ops can leave the workspace in one click.
-- Business impact:
-  - the dedicated `/admin/students/[id]/coordination` page now shows an explicit `Close coordination workspace / å…³é—­æŽ’è¯¾åè°ƒå·¥ä½œå°` action instead of making users infer that they should use browser navigation
-  - the student workbench also changes its first link to the same close action when the user is already inside the dedicated coordination workspace
-  - returning to the main student detail page no longer feels like getting trapped in a one-way workspace
-- Validation:
-  - `npm run build`
-  - the dedicated coordination page should show a visible close action in both the workbench links and the page header
-  - clicking the close action should return to the main student detail page
-  - the main student detail page should still show the normal `Scheduling coordination / æŽ’è¯¾åè°ƒ` entry when not inside the dedicated workspace
-
-## 2026-04-13-r45 Ready
-
-- Scope: support parent-side partial payments by allowing multiple receipts on the same invoice, with remaining-balance-aware create-receipt defaults and a dedicated partial-receipt status in finance workbench.
-- Business impact:
-  - parent invoices can now keep using the same invoice for split payments instead of being blocked after the first receipt
-  - the first receipt stays `InvoiceNo-RC`, and later receipts become `InvoiceNo-RC2`, `InvoiceNo-RC3`, etc.
-  - the receipt creation page now shows how much has already been receipted and how much remains, and defaults the next receipt to the remaining amount
-
-## 2026-04-13-r46 Ready
-
-- Scope: make parent partial-receipt progress more legible across finance-facing package billing, statement export, and receipt-history export views.
-- Business impact:
-  - package billing now shows invoice-level receipt counts, created/approved/pending amounts, and remaining balance, so finance can tell at a glance whether an invoice is still waiting for another receipt
-  - each receipt row in package billing now echoes the linked invoice's overall receipt progress, reducing the need to switch back to the create-receipt view just to understand the remaining balance
-  - statement export and receipt-history CSV now include invoice-level receipt progress so partial receipts are easier to reconcile outside the live app
-- Validation:
-  - `npm run build`
-  - `/admin/packages/[id]/billing` should show invoice-level receipt progress and next-receipt action links
-  - `/api/exports/parent-statement/[id]` should include an invoice receipt breakdown section
-  - `/admin/receipts-approvals/history/export` should include invoice-level total/receipted/pending/remaining fields for parent receipts
-
-## 2026-04-13-r47 Ready
-
-- Scope: streamline the next parent receipt create flow by preloading the recommended invoice/proof pair and making the next receipt number visible before submit.
-- Business impact:
-  - package finance workspace now shows a recommended next-receipt card with invoice number, next receipt number, remaining amount, and suggested proof
-  - when only one usable unlinked payment proof exists, the create flow now auto-selects it and explains that choice
-  - package-level `Create the next receipt` shortcuts now jump into a ready-to-create view instead of a generic create step
-  - invoice pickers now display the next expected receipt number, helping finance confirm whether they are creating `-RC`, `-RC2`, or later
-- Validation:
-  - `npm run build`
-  - package finance workspace should show the recommended next-receipt helper card
-  - package next-step CTA should carry the recommended invoice and proof into the create step
-  - create-step invoice dropdowns should show the next receipt number for each invoice
-
-## 2026-04-13-r48 Ready
-
-- Scope: fix the backend receipt-number validator for parent multi-receipt flows and lock the feature down with focused automated tests.
-- Business impact:
-  - parent multi-receipt flows no longer depend on the old single-receipt regex in the store layer, so `-RC2`, `-RC3`, and later receipt numbers are accepted correctly
-  - automated coverage now protects the main edge cases for partial receipts: numbering progression, second-receipt creation up to the remaining amount, over-receipt blocking, and duplicate payment-record rejection
-  - this release reduces the chance of silently reintroducing the old `RC only` assumption in future finance changes
-- Validation:
-  - `npx tsx --test tests/billing-optimistic-lock.test.ts`
-  - `npm run test:backend`
-  - `npm run build`
-
-## 2026-04-11-r39 Ready
-
-- Scope: let the parent-availability exact-date mode collect multiple time ranges on a single selected day without changing the existing weekly template flow or payload schema.
-- Business impact:
-  - parents using `/availability/[token]` calendar-date mode can now add up to three time ranges for one selected date instead of being limited to one range
-  - submissions still store the existing flat `dateSelections[]` structure, so repeated dates now represent multiple ranges on the same day
-  - admin-side summaries group those repeated date entries into one clearer date line for ticket and student review
-- Validation:
-  - `npm run build`
-  - calendar-date mode should allow adding and removing extra time ranges for a selected day
-  - weekly template mode should continue behaving exactly as before
-  - calendar-mode summary text should show one date followed by all submitted time ranges for that date
-
-## 2026-04-11-r38 Ready
-
-- Scope: add a second parent-availability collection mode so families can either submit a weekly repeating template or choose specific dates and times in a calendar-style grid.
-- Business impact:
-  - the public `/availability/[token]` page now supports both a weekly template mode and a specific-date mode without removing the original weekly flow
-  - ticket detail and student detail summaries now show which mode the parent used and display exact-date picks when that mode was chosen
-  - scheduling-coordination matching now respects exact-date submissions and expands the search window so later selected dates are not dropped before filtering
-- Validation:
-  - `npm run build`
-  - parent form should switch cleanly between weekly and specific-date modes
-  - weekly submissions should continue to behave as before
-  - exact-date submissions should appear in admin summaries and affect matching previews correctly
-
-## 2026-04-11-r37 Ready
-
-- Scope: bring back a clear completion-note prompt before marking a ticket completed, while keeping the new anchored return behavior in ticket-center pages.
-- Business impact:
-  - list and detail status actions now prompt for the required completion note before submitting a `Completed` status change
-  - cancelling the prompt or leaving it blank now stops submission locally, so operators keep their place instead of landing on a top-of-page error
-  - server-side completion-note validation still stays in place as a safety guard
-- Validation:
-  - `npm run build`
-  - selecting `Completed` without a note should open a prompt from both `/admin/tickets` and `/admin/tickets/[id]`
-  - cancelling or leaving the prompt empty should keep the operator on the current row or section with no submit
-  - entering a completion note in the prompt should submit successfully and keep the current anchored return behavior
-
-## 2026-04-11-r36 Ready
-
-- Scope: keep ticket-center actions anchored to the current work area so operators stay on the same ticket row or detail section after each server action.
-- Business impact:
-  - ticket-center list status saves now return to the same ticket row instead of the top of the page
-  - ticket-center archive and permanent-delete actions now return to the ticket list section, including archived-ticket filters
-  - ticket detail status, edit, and scheduling-coordination quick actions now return to the section the operator just used instead of the page top
-- Validation:
-  - `npm run build`
-  - status saves from `/admin/tickets` should stay on the active row
-  - detail-page status, edit, and coordination actions should stay on their section anchors
-  - archived-ticket deletes should preserve filters and return to the archived list area
-
-## 2026-04-11-r35 Ready
-
-- Scope: let Zhao Hongwei permanently delete already-closed tickets from the ticket center while leaving the existing archive-first workflow in place for everyone else.
-- Business impact:
-  - completed or cancelled tickets in the main ticket center can now show a strict-super-admin-only `Delete permanently / æ°¸ä¹…åˆ é™¤` action in addition to archive
-  - archived tickets and ticket detail now expose the same permanent delete action only for Zhao Hongwei
-  - open tickets still cannot be permanently deleted, and other admins keep the existing non-destructive archive flow
-- Validation:
-  - `npm run build`
-  - Zhao Hongwei should see the permanent delete action on completed, cancelled, and archived tickets across ticket center surfaces
-  - non-Zhao users should not be able to use the permanent delete path
-  - open tickets should continue rejecting permanent delete attempts
-
-## 2026-04-11-r34 Ready
-
-- Scope: make scheduling-coordination ticket reuse read consistently in the intake success state so operators are told when the current open ticket was reused rather than being told a new one was created.
-- Business impact:
-  - external intake already reuses the current open scheduling-coordination ticket for the same student; the success card now explains that reuse clearly when an active parent link is still available
-  - newly created scheduling-coordination tickets keep the existing "created" success wording, so operators can still tell the difference between a new ticket and a reused one
-  - no ticket selection rules, parent-link generation, parent submission storage, scheduling execution, session, package, or finance logic changed
-- Validation:
-  - `npm run build`
-  - intake QA should confirm the top success message still says `å·²æ²¿ç”¨å½“å‰æŽ’è¯¾åè°ƒå·¥å• / Reused current coordination ticket` when an open ticket is reused
-  - intake QA should confirm the green parent-link card now also says the current ticket was reused instead of saying the ticket was created
-  - intake QA should confirm genuinely new scheduling-coordination tickets still show the existing "ticket created" wording
-
-## 2026-04-08-r07 Deployed
-
-- Scope: change online partner settlement from whole-package snapshot batching to purchase-batch settlement, with explicit item selection, revert-to-queue behavior, and start/end dates on settlement exports.
-- Business impact:
-  - `/admin/reports/partner-settlement` now shows online settlement candidates per `PackageTxn(PURCHASE)` tranche instead of collapsing multiple purchases into one package row
-  - each online row now includes purchase date, start date, end date, hours, and amount so finance can settle one purchased batch at a time
-  - online billing no longer auto-bundles every pending row; operators must choose the specific settlement items to invoice
-  - reverting an online settlement no longer deletes it permanently; the tranche can return to the queue for re-billing
-  - partner invoice export now includes `Course Start / Course End` when selected online settlement items provide that date window
-  - offline monthly settlement remains unchanged
-- Validation:
-  - `npm run prisma:generate`
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - operator QA should confirm online partner-settlement rows are split by purchase batch and that billing only invoices explicitly selected rows
-
-## 2026-04-09-r04 Deployed
-
-- Scope: let Emily-style external intake operators create `Scheduling Coordination / æŽ’è¯¾åè°ƒ` tickets and immediately generate a temporary parent availability link that feeds back into the coordination workflow.
-- Business impact:
-  - intake submitters can now create coordination tickets without entering the admin system and receive a copyable family link right after submission
-  - each coordination ticket now has at most one active parent availability request with expiry and submission status
-  - parents can submit structured weekday/time preferences through a public `/availability/[token]` page without implying auto-scheduling
-  - submitted parent availability now flows into the linked ticket, student detail scheduling card, and `Todo Center`
-  - no scheduling execution, attendance, package, or finance logic changed
-- Validation:
-  - `npm run prisma:generate`
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - intake QA should confirm `Scheduling Coordination / æŽ’è¯¾åè°ƒ` returns a copyable parent link after submit
-  - parent-form QA should confirm `/availability/[token]` stores a structured submission and that operators can see it from admin ticket detail, student detail, and `Todo Center`
-
-## 2026-04-09-r05 Deployed
-
-- Scope: fix the parent availability link origin returned by the external intake API so Emily receives a production `sgtmanage.com` link instead of a `localhost` URL.
-- Business impact:
-  - intake-created `Scheduling Coordination / æŽ’è¯¾åè°ƒ` tickets now return a copyable parent form link that points at the public production site
-  - the parent availability token and storage flow remain unchanged; only the absolute origin selection is corrected
-  - no ticket status logic, parent submission handling, scheduling coordination cards, availability matching, or finance logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - a real intake submission should now return `https://sgtmanage.com/availability/...` in the JSON payload
-
-## 2026-04-09-r06 Deployed
-
-- Scope: make the Emily intake success state and the parent availability form easier to use without changing the underlying coordination flow.
-- Business impact:
-  - after creating a `Scheduling Coordination / æŽ’è¯¾åè°ƒ` ticket, Emily now sees a clearer handoff panel with step-by-step guidance, a direct copy-link action, and a copyable bilingual parent-message snippet
-  - the public `/availability/[token]` page now explains more clearly that it only collects available times rather than confirming a lesson schedule
-  - the parent form now has friendlier section guidance and more touch-friendly inputs for date, time, and preference fields
-  - no token creation, ticket status, parent-availability storage, scheduling coordination logic, quick schedule, attendance, package, or finance logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - Emily intake success state should show the new copy/send guidance
-  - parent `/availability/[token]` should render the new helper panels and updated form inputs
-  - `èµµæµ‹è¯•` real-flow QA should confirm the returned `parentAvailabilityUrl` uses the public `sgtmanage.com` host
-
-## 2026-04-09-r09 Deployed
-
-- Scope: make scheduling coordination feel more like a true operator state flow by adding a derived coordination phase, clearer next-step guidance, and one-click ticket progression for â€œoptions sentâ€ and â€œteacher exception neededâ€.
-- Business impact:
-  - `/admin/tickets/[id]` now shows a coordination phase summary with clearer operator guidance based on live parent-submission and availability-match state
-  - coordination operators can now move a ticket forward with one click using `Mark options sent / æ ‡è®°å·²å‘å€™é€‰æ—¶é—´` or `Ask teacher exception / è½¬è€å¸ˆä¾‹å¤–ç¡®è®¤`
-  - `/admin/students/[id]` now mirrors the coordination phase summary so the student detail page shows the same state framing as the ticket console
-  - `Todo Center` coordination cards now derive and display the same phase text when a live reminder row exists
-  - no token handling, parent form storage, quick schedule execution, session creation, attendance, package, or finance logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = dea110a` and `https://sgtmanage.com/admin/login` returned `200`
-  - live admin ticket detail for `èµµæµ‹è¯•` showed `Coordination phase / åè°ƒé˜¶æ®µ`, `Availability options ready / å€™é€‰æ—¶é—´å·²å°±ç»ª`, and `Mark options sent / æ ‡è®°å·²å‘å€™é€‰æ—¶é—´`
-  - live student detail for `èµµæµ‹è¯•` showed `Scheduling coordination / æŽ’è¯¾åè°ƒ` actions including `Open parent form`, `Copy link`, `Copy message`, and `Regenerate link`
-  - `Todo Center` phase text was not re-verified against a live due coordination reminder because no qualifying row was available during this QA pass
-
-## 2026-04-09-r10 Ready
-
-- Scope: clarify the date-vs-weekly teacher availability inheritance so the UI no longer implies a teacher has no availability when scheduling is actually falling back to the weekly template.
-- Business impact:
-  - teacher monthly availability cells now explain when there is `No date override / å½“å¤©æ²¡æœ‰æŒ‰æ—¥æœŸè¦†ç›–` but the day is still schedulable through the weekly template
-  - those cells now show `Weekly template still applies / ä»æŒ‰æ¯å‘¨æ¨¡æ¿å¯æŽ’` together with the inherited weekly time range, so ops can see why scheduling is allowed
-  - quick schedule candidate rows now distinguish `æŒ‰æ¯å‘¨æ¨¡æ¿å¯æŽ’` from `æŒ‰æ—¥æœŸæ—¶æ®µå¯æŽ’`, which makes the source of availability clear during manual scheduling
-  - no actual availability rules, session creation behavior, conflict checks, package logic, or finance logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - teacher availability QA should confirm inherited weekly slots render inside monthly cells where there is no date override
-  - quick schedule QA should confirm teacher candidate statuses now indicate whether availability came from the weekly template or from date-specific availability
-
-## 2026-04-09-r11 Ready
-
-- Scope: stop all real scheduling flows from falling back to weekly templates so the only schedulable source is date-based availability for the specific day.
-- Business impact:
-  - quick schedule, class session creation, rescheduling, teacher replacement, appointment creation, and ops execution now reject a time if that day has no date availability row, even when the teacher has a matching weekly template
-  - booking candidate generation now only uses date availability rows within the requested range, so operators and families no longer see slots that come only from a weekly template
-  - the admin teacher availability page now clearly says that real scheduling uses the month date rows and that weekly templates are only for generating those rows
-  - weekly templates still remain available as a bulk month-generation tool; no schema or finance logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - QA should confirm a date with no date availability cannot be quick-scheduled anymore
-  - QA should confirm booking candidates disappear for days that only had weekly-template availability
-
-## 2026-04-10-r12 Ready
-
-- Scope: make the availability wording much more explicit for both teachers and ops so it is obvious which inputs control real scheduling.
-- Business impact:
-  - teacher `/teacher/availability` now clearly states that the saved date slots on that page are the real source used by ops scheduling
-  - admin teacher availability page now labels the weekly area as a generation template and says the template itself is not direct scheduling availability
-  - no scheduling rules, template generation logic, or permissions changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - teacher availability page should show the new blue guidance notice
-  - admin teacher availability page should show the stronger weekly-template wording
-
-## 2026-04-10-r13 Ready
-
-- Scope: make the split finance receipt routes easier to operate by surfacing the next best queue item and adding clearer package-workspace step guidance.
-- Business impact:
-  - `/admin/receipts-approvals` queue-facing screens now show `Next best item / ä¸‹ä¸€æ¡æœ€è¯¥å¤„ç†`, so finance can immediately see which receipt to clear next and why it is the best candidate
-  - the new next-item card now explains whether the row is blocked by missing proof, missing file, prior rejection, or just needs a quick amount/detail check before approval
-  - `/admin/receipts-approvals/package` now shows three step cards for `Upload`, `Check Records`, and `Create Receipt`, with `Done / Current / Next` states so finance can stay oriented while working one package
-  - no receipt creation rules, invoice rules, approval requirements, package balances, settlement logic, or deduction behavior changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - queue QA should confirm `Next best item / ä¸‹ä¸€æ¡æœ€è¯¥å¤„ç†` appears whenever an actionable finance row exists
-  - package-workspace QA should confirm the three step cards render with sensible `Done / Current / Next` states as package proof/receipt progress changes
-
-## 2026-04-10-r14 Ready
-
-- Scope: make receipt history easier to search and make proof-repair triage more obvious on the split finance routes.
-- Business impact:
-  - `/admin/receipts-approvals/history` now includes a dedicated search box that filters completed receipts and recent finance actions by student, course, receipt number, invoice number, or uploader
-  - the history page now keeps the selected receipt aligned with the visible filtered results, so finance does not end up viewing a stale completed row after narrowing the search
-  - `/admin/receipts-approvals/repairs` now shows two separate quick-triage panels for `Missing payment record / ç¼ºä»˜æ¬¾è®°å½•` and `Missing file on linked proof / å·²å…³è”ä½†ç¼ºæ–‡ä»¶`, so finance can immediately see whether a row needs proof linking or file re-upload
-  - no receipt creation rules, invoice rules, approval requirements, package balances, settlement logic, or deduction behavior changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - history QA should confirm search filters both the completed queue and `Recent Finance Actions`
-  - repairs QA should confirm the two triage panels show the right counts and direct jump links for missing-record vs missing-file rows
-
-## 2026-04-10-r15 Ready
-
-- Scope: keep the finance sidebar stable while switching between the top receipt workflow tabs.
-- Business impact:
-  - the top `Receipt Queue`, `Package Workspace`, `Proof Repair`, and `Receipt History` tabs on `/admin/receipts-approvals*` now use client-side navigation instead of raw anchor reloads
-  - switching those top tabs no longer forces a full page refresh, so the left finance sidebar keeps its current scroll position instead of jumping back to the top
-  - no receipt creation rules, invoice rules, approval requirements, package balances, settlement logic, or deduction behavior changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - QA should confirm the top receipt tabs switch pages without a full reload and the left sidebar stays in place
-
-## 2026-04-10-r16 Ready
-
-- Scope: keep the top finance receipt workflow tabs from auto-scrolling the page back to the top after the move to client-side navigation.
-- Business impact:
-  - the top `Receipt Queue`, `Package Workspace`, `Proof Repair`, and `Receipt History` tabs on `/admin/receipts-approvals*` now preserve the current page scroll position while switching modes
-  - `Receipt Queue / æ”¶æ®å®¡æ‰¹é˜Ÿåˆ—` now uses a stable dedicated queue route, so the finance sidebar keeps the same active queue item instead of visually changing when query-based resets fire
-  - finance can continue reading or cross-checking mid-page without being thrown back to the top of the workspace after each tab click
-  - no receipt creation rules, invoice rules, approval requirements, package balances, settlement logic, or deduction behavior changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - QA should confirm the top receipt tabs still switch without a full reload and now also keep the main page scroll position stable
-  - QA should confirm the finance sidebar still highlights `Receipt Queue / æ”¶æ®å®¡æ‰¹é˜Ÿåˆ—` after reopening the queue from top tabs or dashboard shortcuts
-
-## 2026-04-10-r17 Ready
-
-- Scope: make the finance receipt queue easier to advance and give receipt history a clearer focus filter without changing finance business logic.
-- Business impact:
-  - `Next best item / ä¸‹ä¸€æ¡æœ€è¯¥å¤„ç†` now includes a direct `Open next item / æ‰“å¼€ä¸‹ä¸€æ¡` action so finance can jump straight into the recommended row
-  - `/admin/receipts-approvals/history` now supports `All history / å…¨éƒ¨åŽ†å²`, `Receipts only / åªçœ‹æ”¶æ®`, and `Actions only / åªçœ‹åŠ¨ä½œ`, so finance can switch between lookup modes without wading through mixed content
-  - the history page can also narrow `Recent Finance Actions / æœ€è¿‘è´¢åŠ¡åŠ¨ä½œ` by action type such as payment upload, invoice creation, or receipt creation
-  - no receipt creation rules, invoice rules, approval requirements, package balances, settlement logic, or deduction behavior changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - QA should confirm `Next best item / ä¸‹ä¸€æ¡æœ€è¯¥å¤„ç†` opens the recommended row in one click
-  - QA should confirm the history page focus filter can hide receipts or recent actions independently
-  - QA should confirm recent-action type filtering works on `/admin/receipts-approvals/history`
-
-## 2026-04-09-r07 Deployed
-
-- Scope: upgrade scheduling coordination from a basic summary into a more complete operator console with reusable parent-link actions, structured parent submission summaries, and copyable parent-message text from both tickets and student detail pages.
-- Business impact:
-  - `/admin/tickets/[id]` now shows a richer `Scheduling Coordination Console` with clear waiting-vs-submitted status, latest parent submission details, direct parent-form open/copy actions, and one-click link regeneration
-  - `/admin/students/[id]` now mirrors those parent-link controls so ops can work from the student page without jumping back to the ticket center
-  - generated availability candidate slots, exact-match special requests, and nearest alternatives now include `Copy Message` actions that produce ready-to-send parent wording
-  - submitted parent availability is rendered as structured summary rows instead of a raw blob, making it easier for ops to scan the family constraints before scheduling
-  - no ticket token model, quick schedule execution, session creation, attendance, package, or finance logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - admin `/admin/tickets/[id]` should show the new coordination console actions and latest parent summary
-  - admin `/admin/students/[id]` should show matching parent-link actions and summary rows on the scheduling coordination card
-  - `èµµæµ‹è¯•` style live QA should confirm slot cards expose `Copy Message` actions and parent-link regeneration returns a fresh public `/availability/...` URL
-
-## 2026-04-09-r08 Deployed
-
-- Scope: make the scheduling coordination operator console availability-aware by comparing the latest parent-submitted preferences against teacher availability and surfacing either direct matches or nearest alternatives inside the admin ticket detail page.
-- Business impact:
-  - `/admin/tickets/[id]` now shows `Availability-backed result / availability å‘½ä¸­ç»“æžœ` for submitted scheduling coordination tickets
-  - if a parent submission already fits current teacher availability, ops can immediately copy and send those matching slot options from the ticket detail page
-  - if no current availability matches the submission, the ticket detail page now shows the nearest alternative slots and copyable fallback wording instead of leaving ops to cross-check manually
-  - `/admin/students/[id]` now narrows generated coordination slots against the submitted parent availability so the coordination card stays aligned with what the family actually said they can do
-  - no ticket token, quick schedule, session, attendance, package, or finance behavior changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - admin `/admin/tickets/[id]` should show `Availability-backed result` with either matching slot cards or alternative slot cards
-  - student detail scheduling coordination card should only show generated slot cards that fit the submitted parent availability
-
-## 2026-04-09-r09 Ready
-
-- Scope: make scheduling coordination read more like a working queue by adding a derived coordination phase, clearer next-step guidance, and one-click progress actions for â€œoptions sentâ€ and â€œteacher exception neededâ€.
-- Business impact:
-  - `/admin/tickets/[id]` now shows a derived `Coordination phase / åè°ƒé˜¶æ®µ` so ops can tell at a glance whether the item is still waiting for a parent submission, ready to send availability-backed options, waiting for the family to choose, or needs a teacher exception
-  - ticket detail now includes one-click actions to move a coordination item to `Waiting Parent` after sending slot options or to `Waiting Teacher` when a true exception is needed
-  - `/admin/students/[id]` now mirrors the derived coordination phase on the scheduling card so the student detail page no longer hides where the process is stuck
-  - `/admin/todos` now shows the same phase wording on coordination follow-up rows and submitted-parent-availability rows
-  - no token model, parent form storage, quick schedule execution, session creation, attendance, package, or finance behavior changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - ticket detail QA should confirm the new phase card and quick progress actions render for scheduling coordination items
-  - student detail QA should confirm the scheduling coordination card shows the derived phase text
-  - `Todo Center` QA should confirm coordination rows show the phase text instead of only the raw status
-
-## 2026-04-08-r02 Deployed
-
-- Scope: add a first-pass `Teacher Lead / è€å¸ˆä¸»ç®¡` role as a teacher-side additive ACL with a new `Lead Desk / ä¸»ç®¡å·¥ä½œå°` focused on the all-teachers daily schedule.
-- Business impact:
-  - owner-manager edit mode under `System User Admin / ç³»ç»Ÿä½¿ç”¨è€…ç®¡ç†` now includes `Teacher Lead Access List / è€å¸ˆä¸»ç®¡åå•ç»´æŠ¤`
-  - selected teacher-linked accounts can now see `Lead Desk / ä¸»ç®¡å·¥ä½œå°` inside the teacher portal
-  - `/teacher/lead` shows a read-only all-teachers daily schedule with date, teacher, and campus filters
-  - teacher leads do not gain finance approval, admin sidebar, system setup, student editing, or other admin-only powers
-- Validation:
-  - `npm run prisma:generate`
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - owner-manager QA should confirm teacher-lead ACL rows can be added/removed in `/admin/manager/users?mode=edit`
-  - a teacher-lead account should see `Lead Desk / ä¸»ç®¡å·¥ä½œå°` in the teacher sidebar and load `/teacher/lead`
-
-## 2026-04-08-r03 Deployed
-
-- Scope: make the teacher-lead schedule page more visual by replacing the plain table-first view with a calendar-like hourly day board.
-- Business impact:
-  - `/teacher/lead` now opens with `Visual day board / æ—¥åŽ†æ¿è§†å›¾` as the primary all-teachers schedule view
-  - leads can scan the day hour by hour and see session cards grouped by start hour, with teacher, course, campus, and students visible on each card
-  - the original detailed table is still available inside `Detailed schedule table / è¯¦ç»†æŽ’ç­è¡¨`
-  - no ACL, filter, finance, or admin permission behavior changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - teacher-lead QA should confirm `/teacher/lead` shows the new hourly board and still preserves the detailed table below
-
-## 2026-04-08-r06 Deployed
-
-- Scope: replace the teacher-lead month board with a one-week calendar that keeps every day's sessions directly expanded.
-- Business impact:
-  - `/teacher/lead` now focuses on the current week instead of the whole month, so the board is denser and easier to scan
-  - each day cell shows all visible sessions directly, so leads no longer have to rely on `+more` folding
-  - the selected-day details section and detailed table remain below for follow-up
-  - no ACL, filter, finance, or admin permission behavior changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - teacher-lead QA should confirm `/teacher/lead` shows one week only and each day cell expands all sessions directly
-
-## 2026-04-08-r05 Deployed
-
-- Scope: replace the teacher-column lead board with a month-calendar primary view.
-- Business impact:
-  - `/teacher/lead` now opens with a month-calendar board instead of teacher columns, so leads can scan the whole month without large empty lanes
-  - clicking a day in the calendar updates the selected-day detail cards and the detailed table below
-  - teacher and campus filters still work, but now affect the whole month view as well as the selected day
-  - no ACL, filter, finance, or admin permission behavior changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - teacher-lead QA should confirm `/teacher/lead` shows the month calendar above and selected-day details below
-
-## 2026-04-06-r12 Deployed
-
-- Scope: tune the admin sidebar colors only, keeping the layout simple while separating groups more clearly by color.
-- Business impact:
-  - `Today` stays blue, `Core Workflows` now reads as a distinct green-teal block, `Finance & Review` stays warm, `Setup & Control` stays purple, and `Reports` stays neutral
-  - the sidebar remains a short label-first list; no extra copy was added back
-  - no routes, permissions, queue logic, finance logic, or student/teaching workflows changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - operator QA should confirm the groups are easier to distinguish by color while the sidebar stays simple
-
-## 2026-04-06-r11 Deployed
-
-- Scope: simplify the `Core Workflows / æ ¸å¿ƒæµç¨‹` sidebar refinement so the section stays easy to scan without extra text density.
-- Business impact:
-  - `Core Workflows` keeps the stronger group color treatment from the previous pass
-  - the section summary is shorter and item-level explanatory copy is removed again, so the sidebar is closer to the original simple style
-  - no routes, permissions, queue logic, finance logic, or scheduling/student/package workflows changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - operator QA should confirm the sidebar feels simpler while the core-workflows group is still easier to distinguish by color
-
-## 2026-04-06-r10 Deployed
-
-- Scope: strengthen `Core Workflows / æ ¸å¿ƒæµç¨‹` so the admin sidebar reads more clearly as the main operations zone.
-- Business impact:
-  - `Students / Enrollments / Packages / Ticket Center` now carry task-oriented descriptions and stronger visual weight
-  - the `Core Workflows` group summary now explicitly frames the section as the main student/teaching workflow area
-  - the core-workflows group styling is more distinct, making it easier to separate from `Today`, `Finance & Review`, and `Reports`
-  - no routes, permissions, queue logic, finance logic, or scheduling/student/package workflows changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - operator QA should confirm `Core Workflows` now reads more clearly and the first four items stand out as the main workflow entrances
-
-## 2026-04-04-r09 Deployed
-
-- Scope: regroup key admin sidebar links and strengthen sidebar group hierarchy so operators can tell sections apart faster.
-- Business impact:
-  - `SOP One Pager / SOPä¸€é¡µçº¸` now lives under `Core Workflows / æ ¸å¿ƒæµç¨‹`
-  - `Undeducted Completed / å·²å®Œæˆæœªå‡æ‰£` now lives under `Reports / æŠ¥è¡¨`
-  - admin sidebar groups now use stronger per-section accent styling, clearer uppercase titles, and a more obvious active-group indicator
-  - active links now show a stronger left accent bar so operators can see both the current item and the current section at a glance
-  - no permissions, routes, finance logic, reporting logic, or schedule/student/package workflows changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - operator QA should confirm the sidebar now shows the regrouped links in the expected sections and the visual grouping is easier to scan
-
-## 2026-04-04-r08 Deployed
-
-- Scope: move `Monthly Schedule / æœˆè¯¾è¡¨æ€»è§ˆ` from the admin `Reports` group into `Today / ä»Šå¤©`.
-- Business impact:
-  - admin operators now see the month schedule inside the day-first task cluster instead of the lower-priority reports cluster
-  - `Reports / æŠ¥è¡¨` keeps its audit/archive/reporting links while `Today / ä»Šå¤©` now includes both live schedule and month schedule navigation
-  - no schedule data, reporting logic, permissions, finance flows, or teacher workflows changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - operator QA should confirm the sidebar now shows `Monthly Schedule / æœˆè¯¾è¡¨æ€»è§ˆ` under `Today / ä»Šå¤©`
-
-## 2026-04-03-r25 Deployed
-
-- Scope: add a `Final Report Exempt / ç»“è¯¾æŠ¥å‘Šæ— éœ€è·Ÿè¿›` path so operations can mark no-report packages out of the final-report queue without assigning teachers first.
-- Business impact:
-  - admin `Final Report Center` now supports `Mark exempt / æ ‡è®°æ— éœ€æŠ¥å‘Š` from both completed-package candidates and existing report records
-  - exempted final reports now record who exempted them, when, and why
-  - teacher `Final Reports` hides `EXEMPT` items so no-report packages stop appearing as pending teacher work
-  - the candidate loader now drops teacher options already exempted for that package, so those packages do not keep resurfacing in the assign queue
-  - no midterm-report behavior, package completion math, attendance, finance, share-link, or PDF delivery logic changed
-- Validation:
-  - `npm run prisma:generate`
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - production read-only QA must confirm `/admin/reports/final` shows `Exempt`, candidate rows expose `Mark exempt`, and exempted tasks disappear from `/teacher/final-reports`
-
-## 2026-04-03-r26 Deployed
-
-- Scope: add a `Midterm Report Exempt / ä¸­æœŸæŠ¥å‘Šæ— éœ€è·Ÿè¿›` path so operations can mark no-report midpoint tasks out of the midterm-report queue without assigning teachers first.
-- Business impact:
-  - admin `Midterm Report Center` now supports `Mark exempt / æ ‡è®°æ— éœ€æŠ¥å‘Š` from both midpoint candidate rows and existing report records
-  - exempted midterm reports now record who exempted them, when, and why
-  - teacher `Midterm Reports` hides `EXEMPT` items so no-report midpoint tasks stop appearing as teacher work
-  - the candidate loader now drops teacher/package pairs already exempted, so those tasks do not keep resurfacing in the assign queue
-  - no final-report behavior, package progress math, attendance, finance, PDF generation, or existing forwarded-lock behavior changed
-- Validation:
-  - `npm run prisma:generate`
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - production read-only QA must confirm `/admin/reports/midterm` shows `Exempt`, candidate rows expose `Mark exempt`, and teacher `/teacher/midterm-reports` excludes exempt tasks
-
-## 2026-04-03-r27 Deployed
-
-- Scope: add an `Archive / å½’æ¡£` layer to midterm and final reports so completed or exempt records can leave the active desks while staying recoverable.
-- Business impact:
-  - admin `Final Report Center` now supports `Archive / Restore` for delivered or exempt reports, and archiving revokes any active parent share link
-  - admin `Midterm Report Center` now supports `Archive / Restore` for forwarded/locked or exempt reports
-  - both report centers now expose an `Archived` filter so historical items can be reviewed without occupying the main workbench
-  - teacher `Final Reports` and `Midterm Reports` hide archived items by default, and archived detail pages can no longer be opened from teacher routes
-  - candidate loaders now keep archived teacher/package pairs out of assignment options so already-finished history does not keep resurfacing
-  - no report content, delivery workflow, finance logic, attendance, or package progress math changed
-- Validation:
-  - `npm run prisma:generate`
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - production read-only QA must confirm `/admin/reports/final` and `/admin/reports/midterm` show `Archived`, and teacher report lists still load without archived items in their active queues
-
-## 2026-04-04-r01 Deployed
-
-- Scope: keep admin student-detail actions inside the section the operator was already working in instead of returning to the top of the page after refreshes or same-page redirects.
-- Business impact:
-  - calendar month switches now stay in `Planning tools & calendar`
-  - quick-schedule opens and refreshes back into `Quick Schedule`
-  - upcoming-session actions such as `Change Teacher`, `Change Course`, `Cancel`, and `Restore` now return to `Upcoming Sessions`
-  - attendance filter apply / clear now stays in `Attendance`
-  - student profile saves now return to `Edit Student`
-  - no student data rules, scheduling logic, attendance logic, deduction logic, package logic, or billing behavior changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = 14d5980` and `https://sgtmanage.com/admin/login` returned `200`
-  - post-deploy `curl -I https://sgtmanage.com/admin/login` returned `200`
-  - targeted student-detail verification covered calendar links, quick-schedule links, attendance filter routing, and refresh-driven section return helpers
-
-## 2026-04-04-r06 Deployed
-
-- Scope: remove the remaining student-detail `edit-student` id collision so explicit edit returns target the real edit details block.
-- Business impact:
-  - the outer student-detail edit wrapper no longer shadows `#edit-student`
-  - `focus=edit-student#edit-student` can now target the actual edit `<details>` block instead of a wrapper div
-  - no student save/delete behavior, scheduling rules, attendance rules, package logic, billing logic, or reporting logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = 5967863` and `https://sgtmanage.com/admin/login` returned `200`
-  - production read-only QA confirmed `focus=edit-student#edit-student` now lands on a single `DETAILS` target and leaves the edit block open
-
-## 2026-04-04-r07 Deployed
-
-- Scope: fix package-workbench reset shortcuts so "Back to default workbench" clears remembered filters instead of reloading the same remembered package state.
-- Business impact:
-  - the resumed-filters banner now routes `Back to default workbench` through the explicit `clearFilters=1` path
-  - the empty-state shortcut uses the same clear path, so operators can really escape remembered package filters
-  - package filtering rules, billing, ledger, top-up, edit, and delete logic remain unchanged
-- Validation:
-  - `npm run build`
-  - production read-only QA reproduced the bug before the fix: `/admin/packages` resumed remembered `paid=unpaid`, and the "Back to default workbench" shortcut still pointed to bare `/admin/packages`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = a4568df` and `https://sgtmanage.com/admin/login` returned `200`
-  - production read-only QA confirmed the shortcut now routes to `/admin/packages?clearFilters=1`, clears remembered package filters, hides the resumed-filters banner, and resets payment state back to `All / å…¨éƒ¨`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-
-## 2026-04-04-r05 Deployed
-
-- Scope: hotfix the remaining student-detail explicit-focus gap so `Edit Student / ç¼–è¾‘å­¦ç”Ÿ` stays open when operators return to that section.
-- Business impact:
-  - `focus=edit-student#edit-student` now forces the edit-student details block open even in the client-side path that QA found still closed
-  - the broader student-detail focus-open behavior from `r04` remains unchanged for packages, enrollments, quick schedule, attendance, and calendar tools
-  - no student save/delete behavior, scheduling rules, attendance rules, package logic, billing logic, or reporting logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = 9c86c41`
-  - `https://sgtmanage.com/admin/login` returned `200`
-  - follow-up QA found a remaining DOM id collision on `edit-student`, so `r05` should be treated as a partial hotfix only
-
-## 2026-04-04-r04 Deployed
-
-- Scope: keep student-detail first-render focus aligned with the operator's current section when the URL already carries explicit section intent.
-- Business impact:
-  - `focus=packages`, `focus=enrollments`, `focus=quick-schedule`, and `focus=edit-student` now open those student-detail sections on the initial server render
-  - `focus=calendar-tools` now also keeps the planning calendar expanded on the initial server render
-  - attendance clear/reset continues to keep the operator inside attendance
-  - no scheduling, attendance, deduction, package, billing, or student data rules changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = 64040e5`
-  - `https://sgtmanage.com/admin/login` returned `200`
-  - operator click-through should confirm explicit focus returns open the intended student-detail section on first render
-
-## 2026-04-04-r03 Deployed
-
-- Scope: keep student-detail workbench sections open when operators return by hash after refreshes or same-page redirects.
-- Business impact:
-  - hash-driven returns now reopen the matching student-detail `<details>` block instead of leaving the operator on a closed section
-  - packages, attendance, and edit-student flows can return to the intended work area without rescanning the page
-  - attendance `Clear` now explicitly keeps the operator in the attendance section
-  - no scheduling, attendance, deduction, package, billing, or student data rules changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = b3ce26b`
-  - `https://sgtmanage.com/admin/login` returned `200`
-  - the shared student-detail hash restore layer now reopens matching `<details>` blocks for hash-driven returns; targeted operator click-through should confirm closed student-detail sections reopen after refresh returns
-
-## 2026-04-04-r02 Deployed
-
-- Scope: keep `Planning tools & calendar / æŽ’è¯¾å·¥å…·ä¸Žæ—¥åŽ†` expanded when admins click `Prev Month / Next Month` inside student detail.
-- Business impact:
-  - student-detail month navigation now preserves both the `#calendar-tools` hash and the expanded `<details>` state
-  - admins can keep moving month-by-month in the calendar without reopening the planning section every time
-  - no quick scheduling, attendance, deduction, package, or billing behavior changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = 29b623a`
-  - `https://sgtmanage.com/admin/login` returned `200`
-  - the release adds `calendarOpen=1` to month navigation so the calendar details stay expanded on server render; browser click-through should be confirmed in the next operator pass
-
-## 2026-04-03-r18 Deployed
-
-- Scope: fix packages workbench filter-reset behavior so explicitly clearing filters no longer gets overwritten by remembered filters.
-- Business impact:
-  - admins can now switch payment status back from `Unpaid` to `All Payment Status` without the remembered filter restoring `unpaid`
-  - the `Clear` action now truly resets the packages desk instead of immediately resuming the old filter set on first server render
-  - search, course, payment, and alert filters can all be explicitly cleared while keeping remembered filters available for normal revisit flows
-  - no package list rules, package edits, top-up logic, billing behavior, or ledger behavior changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - production read-only QA must confirm explicit blank filter submissions and `clearFilters=1` both bypass remembered filter resume
-
-## 2026-04-03-r17 Deployed
-
-- Scope: move the student package month-end balance report off the invoice workbench into its own finance page.
-- Business impact:
-  - finance now opens the month-end balance report from a dedicated route: `/admin/finance/student-package-balances`
-  - the invoice workbench no longer mixes invoice issuance with balance-report preview content
-  - finance sidebar and finance home now link to the standalone report page
-  - no report math, CSV output, amount-basis logic, invoice behavior, receipt behavior, or approval behavior changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - production read-only QA must confirm the new report route renders and the invoice workbench now shows only the navigation card
-
-## 2026-04-03-r16 Deployed
-
-- Scope: add color-coded amount-basis badges and a small basis legend to the student billing month-end balance report.
-- Business impact:
-  - the month-end report now shows `purchase ledger / receipts / package paid amount / none` as visually distinct badges instead of plain text
-  - finance can scan basis quality faster without reading the full explanatory paragraph row by row
-  - no report math, export output, package ledger writes, billing behavior, or approval behavior changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-- Release doc sync:
-  - `docs/tasks/TASK-20260403-student-package-month-end-balance-badges.md`
-
-## 2026-04-03-r15 Deployed
-
-- Scope: upgrade the student billing month-end balance report to prefer purchase-ledger amount history when available.
-- Business impact:
-  - `PackageTxn` now stores optional `deltaAmount` for purchase/top-up history
-  - new package creation and package top-up writes now persist purchase amount basis on the corresponding `PURCHASE` ledger row when available
-  - single-purchase `HOURS` packages can align that purchase-row amount when package paid amount is edited later
-  - student billing month-end report and CSV now prefer purchase-ledger amount basis when purchase history is complete, and safely fall back to receipt totals or package paid amount for older packages
-  - no deduction logic, package remaining-minute behavior, receipt approval behavior, invoice approval behavior, or partner settlement rules changed
-- Validation:
-  - `npm run prisma:generate`
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-
-## 2026-04-03-r14 Deployed
-
-- Scope: add an inline preview layer to the student billing month-end balance report.
-- Business impact:
-  - the month-end balance block inside `Student Package Invoice Workbench` now shows package count, total remaining hours, estimated remaining amount, and the first 12 rows inline
-  - finance can inspect the month-end report on page before exporting the full CSV
-  - the CSV route and report basis stay unchanged
-  - no invoice preview / issue logic, package deduction logic, receipt logic, or approval logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-
-## 2026-04-03-r13 Deployed
-
-- Scope: add a read-only month-end balance export under student billing.
-- Business impact:
-  - `Student Package Invoice Workbench` now includes a `Month-end balance report / æœˆæœ«ä½™é¢æŠ¥è¡¨` block with month picker and CSV export
-  - finance can export `HOURS` package remaining balance as of a selected month end without touching package deduction, invoice, receipt, or approval flows
-  - the export reports remaining hours from `PackageTxn` history and an estimated remaining amount using receipt totals up to month end when available, otherwise falling back to package `paidAmount`
-  - no package write logic, billing logic, receipt approval logic, or finance workbench behavior changed
-- Validation:
-  - `npm run build`
-  - local logged-in QA on `http://127.0.0.1:3322/admin/finance/student-package-invoices?balanceMonth=2026-03` confirmed the new report block appears
-  - local export QA on `http://127.0.0.1:3322/api/exports/student-package-month-end-balance?month=2026-03` returned `200` and a populated CSV
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-
-## 2026-04-03-r11 Deployed
-
-- Scope: continue the teacher-side UI clarity pass on the teacher card, midterm reports, and payroll desk.
-- Business impact:
-  - teacher card now uses clearer linked-profile/not-found guidance and explicitly nudges teachers to finish their self intro before sharing or exporting the card
-  - midterm reports now explains empty/not-linked/not-found states more clearly, and the list/detail pages now separate primary fill/submit actions from secondary view/save actions
-  - teacher payroll now uses the same workbench-style guidance for not-linked and invalid-month states, and its desk filter row now includes a clear secondary `Clear` action
-  - no intro save logic, card export logic, report save/submit behavior, report locking rules, payroll math, payroll confirmation behavior, or payout workflow changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - logged-in live QA confirmed the new teacher-card guidance, midterm empty-state/action hierarchy, and payroll clear/error-state improvements on `/teacher/card`, `/teacher/midterm-reports`, and `/teacher/payroll`
-
-## 2026-04-03-r10 Deployed
-
-- Scope: continue the teacher-side UI clarity pass on expense claims and sign-in alerts.
-- Business impact:
-  - teacher expense claims now makes `Apply / Clear filters` read more clearly as primary vs. secondary actions, and the history area now explains what to do when the current filter set returns no claims or when no claims exist yet
-  - teacher sign-in alerts now uses fuller â€œnot linked yetâ€ and â€œno alertsâ€ guidance cards, and the main â€œopen session / fill feedbackâ€ entry is visually clearer as the primary next action
-  - no expense submit/resubmit/withdraw rules, attachment logic, alert sync behavior, quick-mark behavior, attendance handling, or feedback-overdue detection changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - logged-in live QA confirmed the same new guidance and action hierarchy on `/teacher/expense-claims`, `/teacher/expense-claims?status=PAID&month=1999-01`, `/teacher/alerts`, and `/teacher/alerts?showResolved=1`
-
-## 2026-04-03-r09 Deployed
-
-- Scope: run the next teacher-side clarity pass on the student feedback desk and ticket board.
-- Business impact:
-  - student feedbacks now explains why the desk is empty when no linked students or no matching feedbacks exist, and it points teachers back to sessions or the full desk instead of stopping at a flat gray message
-  - student feedback timeline drawers now explain why a selected student has no visible items in the current filtered view and offer a direct way back to the full timeline or list
-  - teacher tickets now uses clearer â€œnot linked yetâ€ and empty-board states, plus stronger apply/clear and completion-action emphasis
-  - no feedback read-marking behavior, handoff-risk logic, ticket proof-file handling, completion-note requirements, or ticket status transitions changed
-- Validation:
-  - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-
-## 2026-04-03-r08 Deployed
-
-- Scope: continue button hierarchy and empty-state guidance cleanup on admin feedbacks, packages, and partner settlement.
-- Business impact:
-  - feedbacks now explains whether operators should go back to overdue work, pending-forward work, or final history when the current queue is empty, and its filter actions now read more clearly as main vs. secondary actions
-  - packages now explains whether the filtered list is empty because of active filters or because no package exists yet, and points operators back to the right desk instead of leaving a dead-end blank state
-  - partner settlement now uses a stronger primary/danger action split and replaces several flat â€œno itemsâ€ states with guidance that tells operators whether to open live queues, billing records, or history next
-  - no feedback behavior, package CRUD/top-up logic, settlement calculations, settlement creation rules, or revert semantics changed
-- Validation:
-  - `npm run build`
-  - logged-in local QA on `http://127.0.0.1:3336` confirmed the new empty-state cards and button hierarchy on `/admin/feedbacks`, `/admin/packages`, and `/admin/reports/partner-settlement`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - logged-in live QA confirmed the same guidance and button hierarchy on the same three production pages
-
-## 2026-04-03-r07 Deployed
-
-- Scope: improve button hierarchy and empty-state guidance on teacher payroll, expense claims, and receipt approvals.
-- Business impact:
-  - teacher payroll now uses a clearer no-data card that explicitly says no confirmation is needed yet and links directly back to dashboard or expense claims
-  - expense claims now distinguishes approve/pay actions from reject actions more clearly and explains what to do when review or payout queues are empty
-  - receipt approvals now distinguishes approve vs. reject vs. revoke actions more clearly and explains what to do when queue filters return nothing or no receipt is selected
-  - no payroll math, payroll confirmation rules, expense approval logic, receipt approval order, payout behavior, or attachment rules changed
-- Validation:
-  - `npm run build`
-  - logged-in local QA on `http://127.0.0.1:3335` confirmed the new empty-state cards and button hierarchy on `/teacher/payroll`, `/admin/expense-claims`, and `/admin/receipts-approvals`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - logged-in live QA confirmed the same guidance and button hierarchy on the same three production pages
-
-## 2026-04-03-r06 Deployed
-
-- Scope: run the fourth admin copy-clarity pass on the teacher payroll desk, the student package invoice workbench, and the attachment health desk.
-- Business impact:
-  - the admin payroll desk now uses clearer queue-state, cycle-explainer, and payout-group wording, so finance operators can understand the next step faster
-  - the student package invoice page now reads more like a guided workbench, with clearer preview, form, and recent-invoice wording
-  - the attachment health desk now uses more consistent bilingual workbench copy across hero text, shortcuts, source guides, restore flow, and the missing-file table
-  - no payroll calculations, payout permissions, invoice creation rules, attachment recovery logic, or storage routing changed
-- Validation:
-  - `npm run build`
-  - logged-in local QA on `http://127.0.0.1:3334` confirmed the new copy on `/admin/reports/teacher-payroll`, `/admin/finance/student-package-invoices`, and `/admin/recovery/uploads`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - logged-in live QA confirmed the new wording is visible on the same three production pages
-
-## 2026-04-03-r05 Deployed
-
-- Scope: run the third admin copy-clarity pass on the ticket center, finance workbench, and teacher payroll detail page.
-- Business impact:
-  - the admin ticket center now uses clearer error, intake-link, queue, and action-field wording, so operators can scan ticket actions faster
-  - the finance workbench now uses plainer search, exception-filter, and reminder-preview wording, so invoice follow-up states are easier to understand
-  - the teacher payroll detail page now uses clearer scope/filter wording and no longer shows an unused combo-summary status header
-  - no ticket workflow rules, finance reminder behavior, payroll math, completion rules, or approval logic changed
-- Validation:
-  - `npm run build`
-  - logged-in local QA on `http://127.0.0.1:3333` confirmed the new wording on `/admin/tickets`, `/admin/finance/workbench`, and `/admin/reports/teacher-payroll/[teacherId]`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - logged-in live QA confirmed the new copy is visible on the same three production pages
-
-## 2026-04-03-r04 Deployed
-
-- Scope: run the second bilingual copy-clarity pass on teacher tickets, admin teacher payroll, and partner settlement billing.
-- Business impact:
-  - teacher ticket filters, proof-file labels, and action-error banners read more naturally
-  - admin payroll queue labels, scope notes, and jump shortcuts are clearer for operators
-  - partner billing tabs, payment/receipt form labels, and export headings are easier to scan
-  - no ticket workflow rules, payroll math or approval behavior, partner billing flows, or storage logic changed
-- Validation:
-  - `npm run build`
-  - fresh local logged-in QA on `http://127.0.0.1:3332` confirmed the new wording on teacher tickets, admin payroll, and partner billing
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on `313f3ba` and `https://sgtmanage.com/admin/login` returned `200`
-  - logged-in live QA confirmed the new copy is visible on the same three production pages
-
-## 2026-04-02-r15 Deployed
-
-- Scope: remember the last working filter set on the admin packages workbench.
-- Business impact:
-  - packages can now reopen the operator's last remembered filter set when they come back without explicit URL params
-  - student-name search, payment-status filter, and alert-only filter can all be resumed without rebuilding the workbench by hand
-  - package-flow return pages such as `edited`, `topup`, or `deleted` still keep their own flow-card guidance and do not get overwritten by the remembered-filter banner
-  - no package edit rules, top-up math, billing logic, ledger logic, or focus-return behavior changed
-- Validation:
-  - `npm run build`
-  - fresh local logged-in QA on `http://127.0.0.1:3318` confirmed `/admin/packages` restores `q=èµµ&paid=unpaid&warn=alert` when opened without URL params
-  - fresh local logged-in QA on `http://127.0.0.1:3318` confirmed the resume banner appears on the plain workbench-open path
-  - fresh local logged-in QA on `http://127.0.0.1:3318` confirmed the resume banner is suppressed on `packageFlow=deleted` return pages while the delete flow card still renders
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - logged-in live QA confirmed production `/admin/packages` restores the remembered filter set and still suppresses the resume banner on package-flow return pages
-
-## 2026-04-02-r14 Deployed
-
-- Scope: remember the last working month/history/panel view on the admin partner-settlement workbench.
-- Business impact:
-  - partner settlement can now reopen the operator's last remembered month on first open when they come back without explicit URL params
-  - the same remembered view can also restore the billing-history filter and reopen either the history or setup disclosure without rebuilding the page state
-  - settlement-flow return pages such as `rate-updated` still keep their own flow card guidance and do not get overwritten by the remembered-view banner
-  - no settlement math, settlement creation rules, invoice generation, revert semantics, or approval behavior changed
-- Validation:
-  - `npm run build`
-  - fresh local logged-in QA on `http://127.0.0.1:3317` confirmed `/admin/reports/partner-settlement` restores `month=2026-03&history=receipt-created&panel=history` when opened without URL params
-  - fresh local logged-in QA on `http://127.0.0.1:3317` confirmed `/admin/reports/partner-settlement` also restores `month=2026-03&panel=setup` and opens the setup disclosure
-  - fresh local logged-in QA on `http://127.0.0.1:3317` confirmed the resume banner is suppressed on `settlementFlow=rate-updated` return pages
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - logged-in live QA confirmed production `/admin/reports/partner-settlement` restores the remembered month/history/panel view and still suppresses the resume banner on settlement-flow return pages
-
-## 2026-04-02-r13 Deployed
-
-- Scope: remember the last working queue and student scope on the admin feedback desk.
-- Business impact:
-  - the feedback desk can now reopen the operator's last remembered queue when they come back without explicit URL params
-  - the same remembered state can also restore a student-scope filter, so one student's feedback trail can be resumed without rebuilding it
-  - feedback-flow return pages such as `forwarded` still keep their own success guidance and do not get overwritten by the remembered-queue banner
-  - no feedback write rules, forward-mark rules, proxy-draft behavior, teacher workflows, or focus-return logic changed
-- Validation:
-  - `npm run build`
-  - fresh local logged-in QA on `http://127.0.0.1:3316` confirmed `/admin/feedbacks` restores `status=pending` from cookie when opened without URL params
-  - fresh local logged-in QA on `http://127.0.0.1:3316` confirmed `/admin/feedbacks` also restores `status=pending&studentId=b54eae8f-461f-4aae-9a22-8ec7a1033c8a`
-  - fresh local logged-in QA on `http://127.0.0.1:3316` confirmed the resume banner is suppressed on `feedbackFlow=forwarded` return pages
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - logged-in live QA confirmed production `/admin/feedbacks` restores the remembered queue/student scope and still suppresses the resume banner on feedback-flow return pages
-
-
-## 2026-04-02-r12 Deployed
-
-- Scope: remember the last working queue/filter state on admin receipt approvals and expense claims.
-- Business impact:
-  - receipt approvals can now reopen the last remembered global queue filter/bucket/month view when operators return without explicit URL params
-  - expense claims can now reopen the last remembered finance dataset/filter set when operators return without explicit URL params
-  - both pages now show an explicit resume hint and a direct shortcut back to the default desk/queue
-  - no approval order, selected item routing, receipt creation rules, expense approval rules, payout logic, or attachment business logic changed
-- Validation:
-  - `npm run build`
-  - fresh local logged-in QA on `http://127.0.0.1:3315` confirmed receipts approvals restores `queueFilter=FILE_ISSUE&queueBucket=OPEN` from cookie when opened without URL params
-  - fresh local logged-in QA on `http://127.0.0.1:3315` confirmed expense claims restores `approvedUnpaidOnly=1&currency=SGD` from cookie when opened without URL params
-  - both pages show an explicit resume hint plus a direct return-to-default link
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on `0ff6b71` and `https://sgtmanage.com/admin/login` returned `200`
-  - logged-in live QA confirmed both finance pages restore the remembered cookie state on production when opened without explicit URL params
-
-## 2026-04-02-r11 Deployed
-
-- Scope: partner settlement workspace context-return follow-up for settlement rate updates, online/offline settlement creation, and settlement revert actions.
-- Business impact:
-  - updating settlement rates now returns operators to the same settlement month with an explicit flow card and shortcuts back to setup or the live queue
-  - creating online or offline settlement records now keeps the new billing record highlighted and exposes direct shortcuts into billing workspace plus the next queue item
-  - reverting a settlement record now refreshes the same month view with a direct shortcut to the next pending billing record or back to the online/offline queues
-  - no settlement creation rules, rate math, revert semantics, invoice generation rules, or payout behavior changed
-- Validation:
-  - `npm run build`
-  - fresh local logged-in QA on `http://127.0.0.1:3315` confirmed the `online-created`, `offline-created`, `settlement-reverted`, and `rate-updated` flow cards render with the expected shortcuts
-  - fresh local logged-in QA on `http://127.0.0.1:3315` confirmed both online and offline queue rows now expose stable `partner-online-*` / `partner-offline-*` anchors and focused-row styling when return params are present
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on `294e118` and `https://sgtmanage.com/admin/login` returned `200`
-  - logged-in live QA confirmed the same production page renders the `online-created`, `offline-created`, `settlement-reverted`, and `rate-updated` flow cards plus stable `partner-online-*` / `partner-offline-*` row anchors for `month=2026-04`
-
-## 2026-04-02-r10 Deployed
-
-- Scope: packages workbench context-return follow-up for package edit, top-up, and delete actions.
-- Business impact:
-  - editing a package now returns the operator to the same packages queue with the handled package highlighted and direct shortcuts to billing or ledger
-  - saving a top-up now returns the operator to the same package row with an explicit balance-focused shortcut plus direct billing/ledger links
-  - deleting a package now refreshes the queue with an explicit shortcut to the next visible package instead of leaving the operator to re-scan the whole list
-  - no package CRUD rules, top-up math, billing behavior, ledger behavior, or filter business logic changed
-- Validation:
-  - `npm run build`
-  - fresh local logged-in QA on `http://127.0.0.1:3314` confirmed edit/top-up/delete return cards and row anchors render as expected
-  - source verification confirmed package rows now carry stable `package-row-*` anchors and focused-row styling when return params are present
-
-## 2026-04-02-r09 Deployed
-
-- Scope: feedback desk context-return follow-up for forwarded and proxy-draft actions.
-- Business impact:
-  - marking a feedback as forwarded now returns the operator to the forwarded queue with an explicit flow card and a shortcut to the next pending item
-  - saving a proxy draft now returns the operator to the proxy queue with an explicit flow card and a shortcut back to the missing queue
-  - feedback cards and overdue-session cards can now stay visually focused after a refresh because the page uses URL-based focus anchors instead of scroll-only refresh
-  - no feedback content rules, forward-mark rules, proxy-draft persistence, or teacher-side workflows changed
-- Validation:
-  - `npm run build`
-  - local logged-in QA confirmed the forwarded flow card and next-pending shortcut render as expected
-  - source verification confirmed anchor and focus rendering for both feedback-card and overdue-session-card flows
-
-## 2026-04-02-r08 Deployed
-
-- Scope: finance next-action shortcut follow-up for receipt approvals and expense claims.
-- Business impact:
-  - receipt approvals now sends finance directly to the approval block once a repaired receipt is clean again, while still keeping unresolved receipts on the safer fix-tool path
-  - expense claims now exposes anchor-based shortcuts to review actions and payment details when the returned claim or payout group is actually ready for the next step
-  - unresolved repair-return states still keep the safer `Back to selected claim / group` and attachment-issue shortcuts in place
-  - no approval order, payout batching rules, receipt creation rules, or attachment business logic changed
-- Validation:
-  - `npm run build`
-  - local logged-in QA confirmed unresolved receipt repair returns still show `Open fix tools again` and `Stay on this receipt`
-  - local logged-in QA confirmed unresolved expense repair returns still show `Back to selected claim` and `Open all attachment issues`
-  - source verification confirmed resolved-state anchor shortcuts were added for receipt approval actions, expense review actions, and expense payment details
-
-## 2026-04-02-r07 Deployed
-
-- Scope: finance repair-loop phase 2 follow-up for receipt approvals and expense claims.
-- Business impact:
-  - receipt approvals now translates proof-repair action results into clearer localized success states and tells finance whether the selected receipt is actually ready for review again
-  - expense claims now preserves explicit return context when finance jumps into attachment cleanup or submitter history from a selected review item or payout group
-  - expense claims now surfaces a top-level repair-loop card so finance can return directly to the selected claim or payout group instead of reconstructing queue context
-  - no approval order, payout batching logic, attachment storage rules, receipt creation rules, or expense-claim business transitions changed
-- Validation:
-  - `npm run build`
-  - fresh local logged-in QA on `http://127.0.0.1:3311` confirmed receipt approvals shows the localized proof-repair success label and the new repair-result state card
-  - fresh local logged-in QA on `http://127.0.0.1:3311` confirmed expense claims shows the repair-loop card with direct return links back to the selected claim
-
-## 2026-04-02-r06 Deployed
-
-- Scope: finance repair-loop return-path follow-up plus remembered admin student queues and clearer teacher session status summaries.
-- Business impact:
-  - admin receipt approvals now keeps finance users anchored to the selected receipt review item while they repair proofs or create receipts inside package workspace
-  - admin students can now reopen their remembered queue on first paint instead of briefly landing on the default queue first, with an explicit `Switch to today queue` escape hatch
-  - teacher session detail now surfaces attendance status, feedback status, and the next recommended action before the existing step cards
-  - no approval order, receipt creation rule, student CRUD logic, attendance save behavior, or feedback submission rule changed
-- Validation:
-  - `npm run build`
-  - local logged-in QA confirmed admin students remembered-queue resume and escape hatch
-  - local logged-in QA confirmed admin receipt approvals repair workspace carries return context through repair actions
-  - local logged-in QA confirmed teacher session detail shows the new summary cards and jump links while keeping `Step 1 / Step 2`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-
-## 2026-04-02-r05 Deployed
-
-- Scope: finance attachment-repair path follow-up for admin expense claims and receipt approvals.
-- Business impact:
-  - finance users now get direct repair shortcuts inside the selected expense-claim review area when an attachment is missing
-  - finance payout groups now expose immediate repair/history shortcuts when one of the selected claims still has an attachment problem
-  - receipt approvals now gives a dedicated proof-repair card before the detail/action area when proof is missing or the linked file is broken
-  - no approval order, payment rule, queue source, receipt creation rule, or expense-claim business workflow changed
-- Validation:
-  - `npm run build`
-  - selected expense-claim review area now surfaces `Attachment repair path / é™„ä»¶ä¿®å¤è·¯å¾„` with direct queue/history shortcuts
-  - selected finance payout group now surfaces direct repair/history shortcuts when one or more claims have missing attachments
-  - selected receipt detail now surfaces `Proof repair path / å‡­è¯ä¿®å¤è·¯å¾„` before the approval controls when proof is missing or the linked file is broken
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-
-## 2026-04-02-r03 Deployed
-
-- Scope: admin workspace task-first UI rollout across navigation, homepage, todo center, students, receipts, expense claims, packages, and feedback pages.
-- Business impact:
-  - admin sidebar becomes grouped/collapsible so operators scan by task area instead of one long dense menu
-  - admin homepage and todo center now lead with current work and next actions instead of long setup/supporting blocks
-  - students, student detail, receipts, expense claims, packages, and feedback pages now share the same workbench framing before long forms and tables
-  - no admin routes, permissions, approval order, attendance rules, billing logic, package logic, feedback logic, or student business logic changed
-- Validation:
-  - `npm run build`
-  - `bash ops/server/scripts/new_chat_startup_check.sh`
-  - manual logged-in QA confirmed current production still shows the older dense admin information architecture, which matches the intended value of this rollout
-
-## 2026-04-02-r04 Deployed
-
-- Scope: targeted admin/teacher UX follow-ups plus shared local business-file-storage abstraction for expense claims, payment proofs, partner payment proofs, shared docs local fallback, and ticket attachments.
-- Business impact:
-  - finance/admin screens surface attachment issues earlier without changing approval order, payment rules, or queue data
-  - students page remembers the last queue when re-opened without an explicit view and gives a direct escape hatch when `today` queues are empty
-  - teacher session detail now nudges `attendance first -> feedback second` without blocking feedback submission
-  - expense claims, parent payment proof, partner payment proof, shared-doc local fallback, and ticket attachment paths now go through one shared local storage helper instead of each route/page rebuilding disk paths separately
-  - no DB schema, file URL shape, upload destination, route path, permission rule, or business workflow changed
-- Validation:
-  - `npm run build`
-  - `npm run audit:upload-integrity` on local workspace only highlighted missing production uploads on the local machine; this was confirmed as environment mismatch, not a helper regression
-  - local helper smoke cycle passed for store/read/delete across all currently wired prefixes
-  - quick deploy completed on `feat/strict-superadmin-availability-bypass` and the post-deploy startup check confirmed branch alignment plus `admin/login -> 200`
-  - logged-in live QA confirmed real attachment endpoints still return `200` or trigger the expected file-download flow for:
-    - expense claim receipt route
-    - parent payment proof route
-    - partner payment proof static upload path
-    - shared-doc download route
-    - ticket attachment route
-
-## 2026-03-31-r3 Ready For Deploy
-
-- Scope: fix teacher session visibility window and align availability date-only handling with business timezone in teacher/admin views.
-- Business impact:
-  - teacher `My Sessions / æˆ‘çš„è¯¾æ¬¡` now shows the next `30` days instead of stopping at day `14`
-  - availability dates no longer drift across days because teacher/admin date routes now use business-date parsing/formatting consistently
-  - Yunfeng's April schedule and availability were verified on production data before patching; no underlying lesson rows were missing
-- Validation:
-  - `npm run build`
-  - direct production data probe showed `46` April sessions for Yunfeng
-  - direct production data probe showed intact weekly template plus `57` April date-availability rows
-
-## 2026-03-26-r1 Deployed
-
-- Deployed: group package alignment is live on the current production branch lineage.
-- Scope: use one shared preferred-package rule for group enrollment preview, actual enrollment, attendance default ordering, and balance preview.
-- Business impact: group classes prefer `GROUP_MINUTES`; legacy `GROUP_COUNT` remains fallback. 1-on-1 logic unchanged.
-- Validation:
-  - `npm run build`
-  - `bash ops/server/scripts/new_chat_startup_check.sh`
-  - group enrollment preview result matches enrollment submit result
-  - legacy `GROUP_COUNT` preview is not blocked by minute-duration comparison
-
-## 2026-03-26-r2 Deployed
-
-- Deployed: waived-attendance todo fix is live on the current production branch lineage.
-- Scope: todo deduction summary respects `waiveDeduction` and does not flag assessment lessons as pending deduction.
-- Business impact: dashboard/todo card messaging only. Attendance save and package deduction behavior unchanged.
-- Validation:
-  - `npm run build`
-  - waived attendance sessions show `No deduction required / æ— éœ€å‡æ‰£` in todo center
-  - `bash ops/server/scripts/new_chat_startup_check.sh`
-
-## 2026-03-26-doc-status Deployed
-
-- Deployed: release document alignment patch is live on the current production branch.
-- Scope: close out startup-check mismatch findings and keep release docs consistent with the actual deployed branch state.
-- Business impact: none. Documentation/process alignment only.
-
-## 2026-03-26-r3 Deployed
-
-- Deployed: backend integrity hardening is live on the current production branch lineage.
-- Scope: backend integrity hardening for scheduling, top-up, expense claim transitions, and teacher availability cleanup.
-- Business impact:
-  - exact duplicate `Session` writes are now blocked by DB uniqueness plus controlled `409` handling
-  - admin/teacher availability creation rejects overlapping ranges instead of silently stacking slots
-  - historical availability data has already been normalized in the production database and post-clean audit is clean
-- Validation:
-  - `npm run test:backend`
-  - `npm run build`
-  - `npm run audit:availability-integrity`
-  - `npx prisma migrate deploy`
-- Deploy note:
-  - production DB cleanup + migrations were applied and the application branch has now been deployed
-  - `bash ops/server/scripts/new_chat_startup_check.sh` confirms local/origin/server are aligned on the live branch head
-  - release-doc closeout is tracked as a docs-only follow-up on the same production branch lineage
-
-## 2026-03-27-r1 Deployed
-
-- Scope: optimistic-lock retry guard for `partner/parent billing` blob stores and related approval writes.
-- Business impact:
-  - concurrent `AppSetting` JSON writes in billing/approval flows are retried against latest `updatedAt`
-  - conflicting writes now fail explicitly instead of silently overwriting another operator's invoice / receipt / approval update
-  - existing invoice / receipt / approval data structure and UI flow stay unchanged
-- Validation:
-  - `npm run test:backend`
-  - `npm run build`
-  - billing optimistic-lock regression tests pass
-
-## 2026-03-29-r1 Deployed
-
-- Scope: hotfix approval JSON hydration for parent receipt, partner receipt, and partner settlement approval stores after the optimistic-lock rollout.
-- Business impact:
-  - stored approval rows now load from `AppSetting` arrays correctly instead of falling back to empty state
-  - manager/finance receipt approval status is preserved and visible again
-  - no route, permission, or approval-order rules changed
-- Validation:
-  - `npm run test:backend`
-  - `npm run build`
-  - parent receipt approval regression test reads an existing stored approval row successfully
-
-## 2026-03-29-r2 Deployed
-
-- Scope: add a non-runtime guardrail for the `AppSetting` optimistic-lock helper contract.
-- Business impact:
-  - no business flow or route behavior change
-  - future JSON-store callers are less likely to mis-handle already-parsed `sanitize` input
-- Validation:
-  - `npm run test:backend`
-  - parsed-json contract test for `loadJsonAppSettingForDb` passes
-
-## 2026-03-30-r1 Deployed
-
-- Scope: expense-claim duplicate-submit guard and Ahmar duplicate-row cleanup.
-- Business impact:
-  - repeated taps on expense submission no longer create many identical `SUBMITTED` claims
-  - teacher/admin expense forms disable the submit button after the first tap
-  - Ahmar's duplicated `2026-03-29` transport claims were reduced to one retained claim plus duplicate file cleanup
-  - historical missing file cases are not auto-rewritten; those still require recovery or re-upload
-- Validation:
-  - `npm run test:backend`
-  - `npm run build`
-  - duplicate expense-claim lookup regression test passes
-
-## 2026-03-30-r2 Deployed
-
-- Scope: controlled admin route for parent payment proof open/preview in receipt approvals.
-- Business impact:
-  - admin receipt approvals no longer depends on direct static `relativePath` links for parent payment proof files
-  - payment proof open/preview now resolves from `paymentRecordId`, which avoids false "404 means no upload" conclusions when original filename and stored filename differ
-  - upload, receipt creation, and approval logic remain unchanged
-- Validation:
-  - `npm run build`
-  - admin receipt approvals uses `/api/admin/parent-payment-records/[id]/file` for parent payment proof open/preview
-
-## 2026-03-30-r3 Deployed
-
-- Scope: allow rejected expense claims to be corrected and resubmitted back to `SUBMITTED`.
-- Business impact:
-  - teachers can resubmit a rejected claim instead of creating a second claim manually
-  - resubmit clears reject markers and sends the original claim back into the approval queue
-  - approval, payment, and archive rules remain unchanged
-- Validation:
-  - `npm run test:backend`
-  - `npm run build`
-  - manual deploy check confirms `local/origin/server = fa1d341`
-  - `https://sgtmanage.com/admin/login` returns `200`
-- Release closeout: release-doc gate follow-up synced in the next docs commit on the same live branch lineage.
-
-## 2026-03-30-r4 Deployed
-
-- Scope: teacher expense-claim UX wording/visibility polish for status labels, attachment health, and rejected-claim next-step guidance.
-- Business impact:
-  - statuses now read as bilingual human language instead of raw status codes
-  - missing attachments are explicitly labeled instead of only failing through open/download links
-  - rejected claims show a clearer bilingual action card to guide correction and resubmission
-  - no approval, payment, or archive rule changed
-- Validation:
-  - `npm run build`
-
-## 2026-03-30-r5 Deployed
-
-- Scope: receipt approval page low-risk UX polish for queue readability and main-action focus.
-- Business impact:
-  - queue status and action labels are clearer and more bilingual
-  - selected receipt panel now emphasizes the active item and main review action
-  - fix/revoke/package-billing tools are tucked under `More actions / æ›´å¤šæ“ä½œ`
-  - no approval order, permission, or finance data flow changed
-- Validation:
-  - `npm run build`
-
-## 2026-03-30-r6 Deployed
-
-- Scope: receipt approval flow smoothing with next-item auto-advance, standardized reject reasons, and a lightweight timeline.
-- Business impact:
-  - after approve/reject/revoke, the review flow can carry forward to the next queue item instead of forcing a manual reselect
-  - reject actions now use standardized bilingual reason options with optional detail for clearer operator guidance
-  - the selected receipt panel shows a lightweight bilingual timeline for created / approved / rejected milestones
-  - no approval order, permission, receipt creation, or finance data flow changed
-- Validation:
-  - `npm run build`
-
-## 2026-03-30-r7 Deployed
-
-- Scope: receipt approval worklist polish with task-first queue ordering, clearer post-action success messaging, and action-oriented risk guidance.
-- Business impact:
-  - pending risky items now sort ahead of completed items so the queue behaves more like a to-do list
-  - success banners explain both the action result and whether the page moved to the next item
-  - risk boxes now include clearer bilingual suggested next steps instead of only describing the problem
-  - no approval order, permission, receipt creation, or finance data flow changed
-- Validation:
-  - `npm run build`
-
-## 2026-03-30-r8 Deployed
-
-- Scope: receipt approval role-focus polish with weaker completed rows, clearer queue risk badges, and a stronger cue for the operator's current action area.
-- Business impact:
-  - completed queue items are visually reduced so unfinished work stands out more clearly
-  - queue rows now show bilingual risk badges like missing proof / file missing / ready
-  - selected receipt panel now explicitly shows the operator's current role focus
-  - no approval order, permission, receipt creation, or finance data flow changed
-- Validation:
-  - `npm run build`
-
-## 2026-03-30-r9 Deployed
-
-- Scope: receipt approval bucketed queue with separate sections for my next actions, other open items, and completed history.
-- Business impact:
-  - unfinished work is now visually grouped into clearer operator buckets
-  - completed items are pushed into a history section so they no longer compete with open review work
-  - selected receipt details and approval actions stay on the same page and follow the same rules
-  - no approval order, permission, receipt creation, or finance data flow changed
-- Validation:
-  - `npm run build`
-
-## 2026-03-30-r10 Deployed
-
-- Scope: receipt approval focus filters and collapsed history controls.
-- Business impact:
-  - queue header now shows bilingual count summaries for work buckets
-  - operators can quickly focus on only their own work, only open work, or only history
-  - completed history is collapsed by default to keep attention on active review work
-  - no approval order, permission, receipt creation, or finance data flow changed
-- Validation:
-  - `npm run build`
-
-## 2026-03-30-r11 Deployed
-
-- Scope: receipt approval queue fix shortcuts and higher-priority ordering for missing proof/file issues.
-- Business impact:
-  - risky parent receipt rows now expose a direct `Fix payment proof / ä¿®å¤ç¼´è´¹å‡­è¯` shortcut from the queue
-  - missing proof and file-missing problems now rise above generic review items inside the queue
-  - no approval order, permission, receipt creation, or finance data flow changed
-- Validation:
-  - `npm run build`
-
-## 2026-03-30-r12 Deployed
-
-- Scope: receipt approval QA follow-up fixes for risk-message consistency, duplicated bilingual copy, and empty-my-actions default selection behavior.
-- Business impact:
-  - right-side receipt details now reflect the same file-missing and missing-proof risk state shown in the queue
-  - duplicated bilingual labels in the queue and detail panel are reduced back to a single readable bilingual line
-  - `Only my actions / åªçœ‹æˆ‘å¾…å¤„ç†çš„` no longer auto-selects unrelated open work when the current operator has zero pending items
-  - no approval order, permission, receipt creation, or finance data flow changed
-- Validation:
-  - `npm run build`
-
-## 2026-03-30-r13 Deployed
-
-- Scope: receipt approval selected-panel copy cleanup.
-- Business impact:
-  - remaining duplicated bilingual labels in the selected receipt timeline, action cards, and more-actions area are reduced back to one readable bilingual line
-  - no approval order, permission, receipt creation, or finance data flow changed
-- Validation:
-  - `npm run build`
-
-## 2026-03-30-r14 Deployed
-
-- Scope: receipt approval batch-flow wording, stronger risk tiers, and fix-flow return guidance.
-- Business impact:
-  - selected receipt actions now make it clearer when the operator can approve or reject and continue directly to the next item
-  - queue risk badges now separate blocker items from softer review checks, with a short bilingual risk-detail hint in each row
-  - fix flows now provide a clearer bilingual link back to the currently selected receipt review item
-  - no approval order, permission, receipt creation, or finance data flow changed
-- Validation:
-  - `npm run build`
-
-## 2026-03-30-r15 Deployed
-
-- Scope: expense-claim submit pending-state hotfix for browser validation failures.
-- Business impact:
-  - missing required fields or files no longer make the expense submit button get stuck on `Submitting...`
-  - valid expense submits still lock the button once a real submit starts
-  - no expense validation rule, approval rule, or duplicate-submit logic changed
-- Validation:
-  - `npm run build`
-
-## 2026-03-30-r16 Deployed
-
-- Scope: teacher expense-claim form guidance polish.
-- Business impact:
-  - teachers now see a clearer bilingual checklist before submit
-  - transport, attachment, and purpose fields now explain what to fill in more directly
-  - no expense validation rule, approval rule, or duplicate-submit logic changed
-- Validation:
-  - `npm run build`
-
-## 2026-03-30-r17 Deployed
-
-- Scope: expense-claim route-stability fix for teacher/admin submit flows.
-- Business impact:
-  - teacher new submit and rejected-claim resubmit now go through stable POST routes instead of deployment-sensitive Server Action ids
-  - admin self-submit for expense claims now uses the same stable-route pattern
-  - validation, duplicate-submit guard, approval, payment, and archive rules stay unchanged
-- Validation:
-  - `npm run build`
-
-## 2026-03-31-r01 Deployed
-
-- Scope: expense submit-button timing hotfix for browsers that cancel native form submission when the clicked submit button disables itself too early.
-- Business impact:
-  - teacher/admin expense submit buttons still lock after a valid submit starts
-  - mobile browsers now get a chance to send the real multipart POST before the button becomes disabled
-  - no expense validation rule, duplicate-submit guard, approval, payment, or archive logic changed
-- Validation:
-  - `npm run build`
-
-## 2026-03-31-r02 Deployed
-
-- Scope: teacher expense-claim withdraw flow for submitted claims.
-- Business impact:
-  - teachers can withdraw their own `SUBMITTED` expense claims before approval if they uploaded the wrong file or details
-  - withdrawn claims are preserved for audit as `WITHDRAWN` instead of being hard-deleted
-  - approval, reject, paid, and archive paths for existing claims stay unchanged
-- Validation:
-  - `npm run build`
-
-## 2026-03-31-r03 Deployed
-
-- Scope: teacher expense-claim default list hides withdrawn items.
-- Business impact:
-  - teachers no longer see `WITHDRAWN / å·²æ’¤å›ž` claims mixed into the default `All active claims / å…¨éƒ¨æœ‰æ•ˆæŠ¥é”€å•` view
-  - withdrawn claims remain available through the explicit status filter when needed
-  - no submit, withdraw, approval, payment, or archive rules changed
-- Validation:
-  - `npm run build`
-
-## 2026-03-31-r04 Deployed
-
-- Scope: upload ops toolkit for backup, integrity audit, disk alerts, and large-directory reporting.
-- Business impact:
-  - operators can now audit whether upload records still point to files that exist on disk
-  - server can be configured to alert earlier when storage usage climbs or upload files go missing
-  - uploads can be archived to S3-compatible object storage on a schedule without changing runtime upload behavior
-  - no upload route, receipt flow, expense flow, or approval rule changed
-- Validation:
-  - `npm run audit:upload-integrity`
-  - `bash ops/server/scripts/check-disk-usage.sh`
-  - `bash ops/server/scripts/report-large-dirs.sh`
-  - `npm run build`
-
-## 2026-03-31-r05 Deployed
-
-- Scope: object-storage backup upload hotfix for archive files.
-- Business impact:
-  - upload archive backups now avoid the multipart code path that the current S3-compatible endpoint rejected with `MissingContentLength`
-  - runtime business uploads, receipt access, expense-claim files, and ticket files stay unchanged
-- Validation:
-  - `bash -n ops/server/scripts/upload_object_storage_s3.sh`
-  - manual backup archive upload succeeds against the configured object-storage bucket
-
-## 2026-03-31-r06 Deployed
-
-- Scope: admin student list counter fix.
-- Business impact:
-  - `Full List / å®Œæ•´åˆ—è¡¨` now shows the true total number of students instead of reusing the current filtered-view count
-  - `Showing x / y` and pagination continue to reflect the active filter correctly
-  - no student records, filters, or edit/delete behavior changed
-- Validation:
-  - `npm run build`
-  - production total verified as `73`
-
-## 2026-03-31-r07 Deployed
-
-- Scope: partner settlement page workflow reorder.
-- Business impact:
-  - daily settlement work now focuses on pending billing records and pending online/offline queues before history and setup
-  - invoiced history is separated into its own collapsed section to reduce clutter
-  - rate settings and package mode config are moved into a collapsed `Settlement setup / ç»“ç®—é…ç½®` area
-  - no settlement rules, rates, permissions, invoice creation, or revert logic changed
-- Validation:
-  - `npm run build`
-
-## 2026-03-31-r08 Deployed
-
-- Scope: partner settlement focus helpers and history filters.
-- Business impact:
-  - finance and management users can now pick one queue row and work from a sticky `Selected item / å½“å‰å¤„ç†é¡¹` panel instead of scanning large tables
-  - the page now exposes an `Integrity workbench / å¼‚å¸¸å·¥ä½œå°` section with direct repair/report links
-  - invoiced history can be filtered by all records, invoice-only items, or records that already have receipts
-  - no settlement rules, amounts, permissions, invoice creation, or revert behavior changed
-- Validation:
-  - `npm run build`
-
-## 2026-03-31-r09 Deployed
-
-- Scope: partner settlement action-focused wording and grouped warning summary.
-- Business impact:
-  - the sticky selected-item panel now presents clearer direct-action labels such as `Review billing record`, `Create online settlement`, and `Fix attendance issues`
-  - the integrity workbench now shows grouped warning counts for missing feedback rows and status-excluded rows
-  - no settlement logic, billing flows, permissions, or calculations changed
-- Validation:
-  - `npm run build`
-
-## 2026-03-31-r10 Deployed
-
-- Scope: partner settlement direct actions and warning review shortcuts.
-- Business impact:
-  - the sticky `Selected item / å½“å‰å¤„ç†é¡¹` panel can now directly trigger online or offline settlement creation instead of sending the user back to the queue first
-  - the integrity workbench warning cards now provide `Review first row / æŸ¥çœ‹é¦–æ¡` shortcuts for missing-feedback and status-excluded groups
-  - no settlement formulas, permission rules, invoicing, or revert semantics changed
-- Validation:
-  - `npm run build`
-
-## 2026-03-31-r11 Deployed
-
-- Scope: partner settlement history open-state fix.
-- Business impact:
-  - `Open history / æ‰“å¼€åŽ†å²` from the overview card now opens the billing history section instead of only jumping to a collapsed anchor
-  - no settlement actions, warnings, billing flows, or permission checks changed
-- Validation:
-  - `npm run build`
-
-## 2026-03-31-r12 Deployed
-
-- Scope: partner settlement Todo Center shortcut fix.
-- Business impact:
-  - `Open todo center / æ‰“å¼€å¾…åŠžä¸­å¿ƒ` inside the integrity workbench now opens the real admin todo page instead of a 404 route
-  - no settlement actions, repair logic, warnings, or permissions changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r01 Deployed
-
-- Scope: admin expense-claim review queue and selected-claim workflow polish.
-- Business impact:
-  - the page now leads with a dedicated submitted-claim queue instead of making managers scan one full table first
-  - a selected-claim panel keeps attachment preview, claim details, and approval actions together in one place
-  - `Approve & next / æ‰¹å‡†å¹¶ä¸‹ä¸€æ¡` and `Reject & next / é©³å›žå¹¶ä¸‹ä¸€æ¡` speed up multi-claim review
-  - the full claim list is still available below in a collapsed details/history section
-  - no approval rules, rejection rules, finance payment rules, or archive behavior changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r02 Deployed
-
-- Scope: admin expense-claim review-page noise reduction.
-- Business impact:
-  - the main review queue now appears before reminders and before the self-submit tool, so management lands on the approval workflow faster
-  - follow-up reminders are condensed into a collapsed summary block instead of expanding a long list above the queue
-  - the collapsed full-history section no longer preloads receipt thumbnails, which reduces avoidable 404 console noise from legacy missing files
-  - no expense approval, rejection, payment, archive, or export rules changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r03 Deployed
-
-- Scope: admin expense-claim finance queue and selected payout flow.
-- Business impact:
-  - finance users now get a dedicated `Approved unpaid / å·²æ‰¹æœªä»˜` queue instead of working only from the mixed full-history table
-  - a `Selected payout item / å½“å‰ä»˜æ¬¾é¡¹` panel keeps payment method, reference, batch month, and remarks together in one place
-  - `Mark paid & next / æ ‡è®°å·²ä»˜æ¬¾å¹¶ä¸‹ä¸€æ¡` speeds up multi-claim finance processing
-  - no approval, rejection, archive, export, or payment-record persistence rules changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r04 Deployed
-
-- Scope: admin expense-claim grouped batch payout flow for finance.
-- Business impact:
-  - approved unpaid claims now group by submitter and currency so finance can process a teacher's batch together
-  - each group opens into a shared payment form with checkboxes for included claims
-  - finance can mark selected claims paid in one action with shared payment details instead of repeating the same form claim by claim
-  - the underlying payment write path and audit trail remain claim-level and unchanged
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r05 Deployed
-
-- Scope: expense-claim filter clarity on the admin review page.
-- Business impact:
-  - the page now separates `Quick work filters / å·¥ä½œæµå¿«é€Ÿç­›é€‰` from `Advanced filters / é«˜çº§ç­›é€‰`
-  - finance and management users get a clearer explanation that the active filter set affects the review queue, finance queue, full history list, and CSV export together
-  - no approval, payment, archive, grouping, or export rules changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r06 Deployed
-
-- Scope: receipt-approval finance queue readability and width reduction.
-- Business impact:
-  - the unified receipt queue now uses compact card items instead of a wide 9-column table
-  - core finance triage stays visible without horizontal scrolling on normal-width laptop screens
-  - invoice number, progress, and risk detail move into compact supporting text and the full review context remains on the right-side selected panel
-  - no receipt approval, reject, redo, receipt creation, or payment-record rules changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r07 Deployed
-
-- Scope: receipt-approval package-mode clarity for finance users.
-- Business impact:
-  - selecting one package now switches the page into a clearer `Package finance workspace / è¯¾åŒ…è´¢åŠ¡å·¥ä½œåŒº` context
-  - a dedicated top context card shows the student, course, package id, current step, and a clear way back to the global receipt queue
-  - the package workspace opens by default, while the global receipt queue stays available as a secondary section instead of competing with the current package flow
-  - no receipt approval, reject, redo, receipt creation, or payment-record rules changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r08 Deployed
-
-- Scope: admin sign-in alert workbench readability.
-- Business impact:
-  - the admin sign-in alert page now groups all issues for one session into one warning card instead of mixing teacher-sign-in, student-sign-in, and feedback rows inside a wide table
-  - teaching staff can switch between `All open sessions`, `Urgent first`, `Attendance only`, and `Feedback only` without scanning unrelated rows
-  - alert settings stay available in a secondary collapsed block, while the main page leads with action-focused session cards and clearer next-step guidance
-  - no alert thresholds, sync rules, attendance marking logic, or feedback rules changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r09 Deployed
-
-- Scope: sign-in alert quick-focus summary alignment.
-- Business impact:
-  - when users switch to `Urgent first`, `Attendance only`, or `Feedback only`, the top summary cards now shrink to match the currently filtered queue
-  - this removes the confusing state where the queue looked filtered but the summary still showed full-page totals
-  - no alert thresholds, sync rules, card grouping, or action links changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r10 Deployed
-
-- Scope: package-create flow clarity on the admin packages page.
-- Business impact:
-  - the create-package modal now guides staff through four steps instead of one long stacked form
-  - a live `Package summary / è¯¾åŒ…æ‘˜è¦` card keeps the selected student, course, package type, balance, validity, payment, and settlement mode visible while editing
-  - sharing fields and internal notes move into an advanced section so common package creation stays simpler
-  - no package creation API rules, settlement mode behavior, overlap checks, or ledger writes changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r11 Deployed
-
-- Scope: package-create defaults and reminders on the admin packages page.
-- Business impact:
-  - the default package type now starts from `HOURS / è¯¾æ—¶åŒ…`, which better matches common teaching-office usage
-  - common minute presets reduce repeated manual typing during package creation
-  - selecting a student now shows active-package and same-course reminders before staff create another package
-  - no package creation API rules, settlement mode behavior, overlap checks, or ledger writes changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r12 Deployed
-
-- Scope: package-create smart defaults and duplicate-package warnings on the admin packages page.
-- Business impact:
-  - selecting a course now auto-suggests the most common minute balance used for that course
-  - staff still keep full control because manual minute edits are not overwritten after they start typing
-  - the final review step now shows a stronger yellow warning when the selected student already has active packages for the same course
-  - no package creation API rules, settlement mode behavior, overlap checks, or ledger writes changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r13 Deployed
-
-- Scope: package-create minute presets and fallback defaults aligned to real teaching-office package patterns.
-- Business impact:
-  - regular package creation now surfaces 10h / 20h / 40h / 100h quick presets instead of mixed minute chips
-  - New Oriental partner students now get 45-minute lesson presets (6 / 8 / 10 / 20 / 40 lessons), which better matches how those packages are sold and recorded
-  - course-based suggested balances still apply first, while fallback defaults now follow the more realistic package patterns for each student context
-  - no package creation API rules, settlement mode behavior, overlap checks, or ledger writes changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r14 Deployed
-
-- Scope: package-create ACTIVE defaults and package edit/top-up clarity improvements.
-- Business impact:
-  - newly created packages now default to `ACTIVE`, which better matches common teaching-office workflow
-  - the package modal now separates `Edit package / ç¼–è¾‘è¯¾åŒ…` and `Top-up / å¢žè´­` into clearer focused flows instead of mixing both jobs inside one long form
-  - top-up now shows a before/after balance summary and realistic quick-add presets for regular packages and New Oriental partner packages
-  - no package creation API rules, top-up API behavior, settlement mode behavior, overlap checks, or ledger writes changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r15 Deployed
-
-- Scope: package edit/top-up follow-up polish.
-- Business impact:
-  - less-common edit fields now stay inside a collapsed advanced block, so everyday validity/status edits are easier to scan
-  - edit mode only expands paid-related fields when staff explicitly mark the package as paid
-  - top-up now shows a stronger human-readable confirmation sentence with student, course, and before/after balance values before submission
-  - no package update API rules, top-up API behavior, settlement mode behavior, overlap checks, or ledger writes changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r16 Deployed
-
-- Scope: package edit/top-up context card.
-- Business impact:
-  - the package modal now shows a stronger top context card so staff can always see the student, course, source, status, remaining balance, and total balance before editing or topping up
-  - switching between `Edit package / ç¼–è¾‘è¯¾åŒ…` and `Top-up / å¢žè´­` no longer feels like changing to a different record because the current package context stays fixed at the top
-  - no package update API rules, top-up API behavior, settlement mode behavior, overlap checks, or ledger writes changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r17 Deployed
-
-- Scope: package modal mode-layout polish for edit and top-up.
-- Business impact:
-  - switching to `Top-up / å¢žè´­` now moves the top-up form directly under the fixed package context card, instead of keeping it visually buried below edit-only layout structure
-  - the package modal now behaves more like two focused modes sharing one context, which reduces teaching-office confusion when they switch from editing to topping up
-  - no package update API rules, top-up API behavior, settlement mode behavior, overlap checks, or ledger writes changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r18 Deployed
-
-- Scope: searchable shared-student and shared-course selectors in package create/edit flows.
-- Business impact:
-  - package create and package edit now use searchable add/remove pickers instead of long native multi-select boxes for `Shared Students / å…±äº«å­¦ç”Ÿ` and `Shared Courses / å…±äº«è¯¾ç¨‹`
-  - the current student and course are excluded from their own sharing lists, which reduces accidental self-selection
-  - shared student results now show source and active-package context to make similar names easier to distinguish
-  - no package creation API rules, package update API behavior, top-up API behavior, settlement mode behavior, overlap checks, or ledger writes changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r19 Deployed
-
-- Scope: package sharing selection summaries and same-course warnings.
-- Business impact:
-  - package create and package edit now show how many shared students and shared courses are currently selected, so teaching staff can confirm scope without reopening the picker
-  - both forms now show a yellow warning when selected shared students already have an active package for the same course, which reduces accidental duplicate sharing across the same course
-  - no package creation API rules, package update API behavior, top-up API behavior, settlement mode behavior, overlap checks, or ledger writes changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r20 Deployed
-
-- Scope: teacher payroll work queue and anomaly-filter pass.
-- Business impact:
-  - teacher payroll now shows a role-aware `My work queue / æˆ‘çš„å¾…å¤„ç†` so management and finance can jump into the next teacher that needs action instead of scanning the full salary table first
-  - the page now surfaces a `Selected payroll / å½“å‰å¤„ç†è€å¸ˆ` panel with the next workflow action, which reduces table-scanning and hidden-details clicks
-  - teacher payroll detail now supports quick anomaly filters for pending rows, fallback-rate rows, and cancelled-but-charged rows
-  - no payroll calculation logic, send flow, approval rules, finance payout rules, or audit logging changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r21 Deployed
-
-- Scope: teacher payroll finance batch payout and exception-summary follow-up.
-- Business impact:
-  - finance can now batch-mark multiple finance-ready teachers as paid from the payroll work queue instead of processing one teacher at a time
-  - the selected payroll panel now highlights pending sessions, cancelled-but-charged sessions, fallback-rate combos, and approval timeline context before the operator takes action
-  - teacher payroll detail now surfaces exception summary cards at the top so staff can see pending/fallback/charged issues before scanning the full tables
-  - no payroll calculation logic, send flow, approval rules, finance payout rules, or audit logging changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r22 Deployed
-
-- Scope: teacher payroll status-clarity follow-up for teachers and finance.
-- Business impact:
-  - teacher self-service payroll now shows a clearer bilingual stage card so staff can tell whether the sheet is waiting for teacher confirmation, manager approval, finance confirmation, payout, or has been returned by finance
-  - teacher payroll detail anomaly summary cards now jump directly into the matching filtered rows, which reduces extra clicks when drilling into pending, fallback-rate, or cancelled-but-charged issues
-  - finance batch payout now shows a currency-group summary before payout so finance can understand payable totals by currency at a glance
-  - no payroll calculation logic, send flow, approval rules, finance payout rules, or audit logging changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r23 Deployed
-
-- Scope: teacher payroll current-owner guidance on the teacher self-service page.
-- Business impact:
-  - teacher payroll now explicitly shows which side currently owns the flow and what the next expected step is, instead of only showing a high-level status label
-  - waiting-for-manager, waiting-for-finance, waiting-for-payout, and finance-returned states are now easier for teachers to understand without asking operations for clarification
-  - no payroll calculation logic, send flow, approval rules, finance payout rules, or audit logging changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r24 Deployed
-
-- Scope: teacher payroll action-clarity and finance grouping follow-up.
-- Business impact:
-  - teacher payroll now clearly tells teachers whether they need to act right now, instead of only showing a status label and owner hint
-  - teacher payroll milestones are now shown as a visual timeline for sent, teacher confirm, manager approve, finance confirm, and payout
-  - finance-ready payroll queue now shows how many teachers in each currency group are clean vs still carrying issues, so payout batches are easier to judge at a glance
-  - no payroll calculation logic, send flow, approval rules, finance payout rules, or audit logging changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r25 Deployed
-
-- Scope: first-round teacher portal cleanup with grouped navigation, teacher-side language switching, and a today-first dashboard.
-- Business impact:
-  - teachers now get a clearer `Today / My Work / Schedule / Finance` information architecture instead of a flat menu feel
-  - the teacher homepage now prioritizes today, task cards, schedule, and finance so the portal feels more like a workbench and less like a mini admin backend
-  - teachers can now switch `ä¸­æ–‡ / English / Bilingual` directly from the teacher portal sidebar
-  - no teacher auth, attendance, feedback, availability, payroll, or expense-claim business rules changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r26 Deployed
-
-- Scope: unify high-frequency teacher pages under the new teacher workspace visual language.
-- Business impact:
-  - teacher `My Sessions`, `My Availability`, `My Expense Claims`, and `My Payroll` now open with the same teacher-workspace hero and summary-card structure as the refreshed dashboard
-  - each page now gives a clearer first-screen explanation of what it is for and where to go next, which should reduce the â€œlooks messy / hard to orientâ€ feedback from teachers
-  - no attendance rules, availability editing rules, expense-claim rules, or payroll workflow rules changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r27 Deployed
-
-- Scope: bring teacher alerts, feedbacks, and tickets into the same teacher-workspace first-screen structure.
-- Business impact:
-  - teacher `Sign-in Alerts` now starts with the same workspace hero and summary cards as the refreshed teacher dashboard, sessions, availability, expense claims, and payroll pages
-  - teacher `Student Feedbacks` now leads with handoff-focused summary cards and a clearer filter workspace before the student timeline list
-  - teacher `Ticket Board` now leads with open/urgent/missing-proof summaries and a clearer filter card before the ticket table
-  - no sign-in alert sync logic, feedback timeline read/write logic, ticket transition rules, or proof-file access rules changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-01-r28 Deployed
-
-- Scope: bring teacher card and midterm-report pages into the same teacher-workspace first-screen structure.
-- Business impact:
-  - teacher `My Teacher Card` now starts with the same workspace hero and summary cards before intro editing and PDF export
-  - teacher `Midterm Reports` now starts with the same workspace hero and task summaries before the report list
-  - teacher midterm report detail now starts with a clearer report context header and summary cards before the long evaluation form
-  - no teacher intro save behavior, midterm report save/submit rules, report lock rules, or PDF export logic changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-02-r01 Deployed
-
-- Scope: reduce first-screen density on teacher expense claims and teacher payroll.
-- Business impact:
-  - teacher `My Expense Claims` now surfaces the most common next actions first, keeps new-claim creation in a lighter secondary block, and moves the full claim list/history behind a disclosure so the first screen is less crowded in bilingual mode
-  - teacher `My Payroll` now focuses first on the current action/status card and moves the detailed payroll calculations behind a disclosure so the page feels less like a dense admin report
-  - no expense-claim submission, resubmission, withdrawal, payroll calculation, teacher confirmation, or payroll approval rules changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-02-r02 Deployed
-
-- Scope: collapse low-priority teacher sidebar groups and page guides.
-- Business impact:
-  - teacher sidebar groups now collapse by work area so bilingual mode no longer shows every navigation block expanded at once
-  - the currently active teacher area auto-expands, which keeps orientation clear without forcing the whole sidebar open
-  - teacher workspace hero subtitles now live behind a `Quick guide / å¿«é€Ÿè¯´æ˜Ž` disclosure, reducing first-screen text density across teacher pages
-  - no teacher auth, navigation permissions, attendance, availability, payroll, expense-claim, or report logic changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-02-r16 Deployed
-
-- Scope: remember the last admin students desk context, not just the queue label.
-- Business impact:
-  - `/admin/students` now restores the operator's last queue together with lightweight search context (`q`, source, type, and page size) when the page is reopened without explicit URL params
-  - the resumed-desk banner now explains that both queue and filters were restored, and gives a direct way back to the default student desk
-  - explicit `view` and search params still win, so deep links and one-off filtered URLs keep their intended behavior
-  - no student creation, deletion, filtering semantics, pagination semantics, or student profile/business rules changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-02-r17 Deployed
-
-- Scope: remember the last admin todo desk context and add direct next-step shortcuts.
-- Business impact:
-  - `/admin/todos` now restores the last warning thresholds and desk toggles when the page is reopened without explicit URL params, so operators do not need to rebuild the same working context each time
-  - the page now shows a resumed-desk hint plus direct jump links back to today's attendance queue, overdue follow-up, system checks, and reminder desk when those areas are active
-  - explicit URL params still win, so one-off todo deep links keep their intended behavior without remembered-state override
-  - no attendance task calculation, reminder confirmation logic, conflict-audit logic, deduction repair logic, or renewal-alert logic changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-02-r18 Deployed
-
-- Scope: unify attachment anomaly visibility into a single admin workbench and connect finance anomaly links back to it.
-- Business impact:
-  - `/admin/recovery/uploads` now acts like an `Attachment Health Desk`, with summary metrics, source filters, workflow shortcuts, and the existing bulk re-upload recovery action on one page
-  - finance users can now open the attachment-health desk directly from the finance/review navigation instead of being redirected away
-  - receipt proof issues and expense attachment issues now expose a direct jump into the global anomaly desk, while still keeping their local queue views available
-  - no attachment storage rules, receipt approval logic, expense approval logic, recovery matching logic, or ticket workflow logic changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-02-r19 Deployed
-
-- Scope: reduce context loss on the admin student detail page with a sticky action bar and section return links.
-- Business impact:
-  - `/admin/students/[id]` now keeps a sticky `Student workbench` bar in view so operators can jump between packages, attendance, upcoming sessions, planning, edit actions, and export without rescanning the long page
-  - the major student-detail sections now include lightweight return bars that point back to the sticky workbench or the next likely section
-  - no student edit logic, quick-schedule logic, attendance filter logic, package/billing logic, or session action logic changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-02-r20 Deployed
-
-- Scope: speed up teacher availability editing with reusable templates and quick date-copy actions.
-- Business impact:
-  - `/teacher/availability` now provides common templates that can preload either quick-add or bulk-add forms for common weekday/weekend patterns
-  - the page now supports quick date-to-date copy plus one-click `Copy +1d` and `Copy +7d` actions directly from calendar days that already have slots
-  - no availability overlap rules, clear-day behavior, undo behavior, or slot save/delete APIs changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-02-r21 Deployed
-
-- Scope: add completion-state guidance to teacher session detail so the page more clearly moves from attendance into feedback and then into a finished state.
-- Business impact:
-  - `/teacher/sessions/[id]` now shows a `Completion state` banner that explains whether the teacher still needs to finish attendance, submit feedback, or can safely return to `My Sessions`
-  - attendance save success now points the teacher directly toward the feedback section instead of leaving them on a generic saved message
-  - feedback save success now explains that the session record is up to date while still leaving the form editable for revisions
-  - no attendance save rules, feedback validation rules, routing rules, or session permissions changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-03-r01 Deployed
-
-- Scope: trim repeated teacher-payroll copy on the first screen so the workflow reads once and the detailed calculations stay behind the disclosure.
-- Business impact:
-  - `/teacher/payroll` no longer repeats the same payroll stage as both a large summary card and a second status block
-  - the first screen now focuses on total salary, sessions, total hours, cycle window, and one `What happens next` workflow card
-  - the detailed calculation disclosure no longer repeats the same top-level payroll recap before the combo and session tables
-  - no payroll calculation, teacher confirmation, approval-stage, payout, or finance-return logic changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-03-r02 Deployed
-
-- Scope: hotfix duplicated bilingual labels on teacher payroll.
-- Business impact:
-  - teacher payroll status labels such as `What happens next`, `Current owner`, `Timeline`, stage pills, and owner names no longer render as repeated `EN / ZH / ZH / EN` text in bilingual mode
-  - the page wording now reads once per label while keeping the same payroll workflow states and actions
-  - no payroll calculation, teacher confirmation, approval-stage, payout, or finance-return logic changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-03-r03 Deployed
-
-- Scope: first admin-side copy-clarity pass on high-frequency workbench pages.
-- Business impact:
-  - receipt approval now uses clearer `proof or file issues` wording instead of the slash-heavy label that looked like two competing filters
-  - partner settlement now uses more natural invoice wording such as `Grouped by invoice number`, `Invoice line count`, and `Invoice created`
-  - the admin students workbench search box now reads more naturally as `Search name, school, notes, or ID`
-  - no receipt queue behavior, partner-settlement logic, invoicing logic, or student-search behavior changed
-- Validation:
-  - `npm run build`
-
-## 2026-04-03-r12 Deployed
-
-- Scope: mobile shell and form-overflow cleanup for teacher finance workbenches and admin receipt approvals.
-- Business impact:
-  - the shared admin/teacher app shell now keeps mobile-width content inside the viewport instead of letting `width: 100%` controls drift past the screen edge
-  - teacher workbench hero actions now stack more cleanly on phone widths, which improves first-screen readability on payroll and expense pages without changing routes or actions
-  - `/teacher/payroll` now uses the existing stacked filter-bar pattern on mobile, so the month/scope controls and `Apply / Clear` actions read as one clear block
-  - `/admin/receipts-approvals` no longer lets the quick package selector or the receipt-creation/payment-proof forms overflow on mobile, because the old fixed 2/3/4-column grids now collapse responsively
-  - no payroll calculations, receipt approval rules, payment-record logic, receipt creation logic, or remembered queue behavior changed
-- Validation:
-  - `npm run build`
-  - local mobile-width QA confirmed `scrollWidth === clientWidth` on `/teacher/payroll`, `/teacher/expense-claims`, and `/admin/receipts-approvals`
-
-## 2026-04-03-r19 Deployed
-
-- Scope: remember-filter blank-param audit and reset-link fix across the remaining high-frequency admin workbenches.
-- Business impact:
-  - `/admin/students` now treats `clearDesk=1` as an intentional reset, so `Clear` and `Back to default desk` no longer reopen the last remembered queue/filter state
-  - `/admin/expense-claims` now respects explicit blank submissions for status/month/type/currency/query/boolean queue toggles, and `Clear filters` now truly resets the workbench
-  - `/admin/receipts-approvals` now treats blank month/view/queue params as intentional input and uses `clearQueue=1` for reset links, so finance can get back to the default queue without remembered-state bounce-back
-  - `/admin/reports/partner-settlement` and `/admin/todos` now use explicit clear flags on their â€œback to defaultâ€ shortcuts, so remembered month/panel/todo thresholds do not immediately resume after reset
-  - `/admin/feedbacks` now respects an explicit student-filter clear path instead of silently reviving the last remembered student scope
-  - no student filtering semantics, receipt approval logic, expense approval logic, settlement calculations, todo calculations, or remembered-state behavior on untouched pages changed
-- Validation:
-  - `npm run build`
-  - production read-only QA on the affected pages
-  - post-deploy startup check confirmed `local / origin / server = bd33bef`
-  - release docs synced again in a follow-up docs-only pass to satisfy the release gate
-
-## 2026-04-03-r20 Deployed
-
-- Scope: add a separate final-report workflow for completed hour packages, with teacher-side fill pages and an admin-side assign / submitted / forwarded center.
-- Business impact:
-  - the system now has a dedicated `Final Reports / ç»“è¯¾æŠ¥å‘Š` flow instead of overloading midterm reports for end-of-package summaries
-  - teachers can open `/teacher/final-reports`, save drafts, and submit final reports assigned to their completed `HOURS` packages
-  - admins can open `/admin/reports/final`, review completed-package candidates, manually assign a report to the relevant teacher, and mark submitted reports as forwarded
-  - teacher and admin navigation now include final-report entries so the workflow is visible without relying on hidden links
-  - no midterm-report logic, attendance/deduction logic, package balance logic, or finance logic changed
-- Validation:
-  - `npm run prisma:generate`
-  - `npm run build`
-  - post-deploy startup check
-  - production read-only QA on `/teacher/final-reports` and `/admin/reports/final`
-
-## 2026-04-03-r21 Deployed
-
-- Scope: finish the first final-report workflow with admin PDF export and a clearer forwarded-to-parent action.
-- Business impact:
-  - admins can now download a printable PDF for each final report directly from `/admin/reports/final`
-  - the forwarded action now reads as `Mark forwarded to parent`, which makes the operational intent clearer
-  - forwarded reports now also display who marked them as forwarded, when that metadata is available
-  - no final-report assignment rules, teacher submission logic, schema, attendance logic, or finance logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - production read-only QA on `/admin/reports/final`
-  - production read-only QA on `/api/admin/final-reports/[id]/pdf`
-  - release task record synced in a follow-up docs pass so the task file reflects the deployed state
-  - final docs sync pass bundled changelog / release board / task in one commit for the release gate
-
-## 2026-04-03-r22 Deployed
-
-- Scope: add final-report delivery records, parent read-only share links, and a more formal PDF handoff version.
-- Business impact:
-  - `/admin/reports/final` now supports a real parent-delivery step with delivery channel, delivery note, delivery timestamp, and delivery actor tracking
-  - admins can now generate, refresh, and disable tokenized parent share links directly from the final-report center
-  - parents or operations can open `/final-report/[id]?token=...` as a read-only final-report page without needing an admin or teacher login
-  - the admin PDF export now includes a clearer delivery-record section so it is easier to send as a parent-facing handoff document
-  - no final-report assignment rules, teacher submit rules, midterm-report logic, attendance logic, package balances, or finance logic changed
-- Validation:
-  - `npm run prisma:generate`
-  - `npm run build`
-  - post-deploy startup check
-  - production read-only QA on `/admin/reports/final`
-  - production read-only QA on `/api/admin/final-reports/[id]/pdf`
-  - production read-only QA on a tokenized `/final-report/[id]?token=...` share page
-
-## 2026-04-03-r23 Deployed
-
-- Scope: add expiry windows to final-report parent share links.
-- Business impact:
-  - `/admin/reports/final` now lets operations choose a 7 / 30 / 90 day validity window when creating or refreshing a parent share link
-  - active share links now display when they expire, and expired links are surfaced separately from active ones
-  - `/final-report/[id]?token=...` now blocks expired links the same way it blocks missing or revoked links
-  - no teacher final-report content, delivery-record semantics, attendance logic, package balances, or finance logic changed
-- Validation:
-  - `npm run prisma:generate`
-  - `npm run build`
-  - post-deploy startup check
-  - production read-only QA on `/admin/reports/final`
-  - production read-only QA on `/final-report/[id]?token=invalid`
-
-## 2026-04-03-r24 Deployed
-
-- Scope: add share-link access audit to final-report parent read-only pages.
-- Business impact:
-  - `/final-report/[id]?token=...` now records first-view time, last-view time, and total view count
-  - `/admin/reports/final` now surfaces whether a parent share link has ever been opened and when it was last viewed
-  - no final-report content, delivery flow, expiry rules, attendance logic, package balances, or finance logic changed
-- Validation:
-  - `npm run prisma:generate`
-  - `npm run build`
-  - post-deploy startup check
-  - production read-only QA on `/admin/reports/final`
-  - production read-only QA on `/final-report/[id]?token=...`
-
-## 2026-04-06-r01 Deployed
-
-- Scope: add a teacher-payroll batch CSV export for finance.
-- Business impact:
-  - `/admin/reports/teacher-payroll` now exposes `Export CSV / å¯¼å‡º CSV` next to the existing workbench filters
-  - finance and admins can export the current payroll month, scope, teacher search, pending-only, and unsent-only view in one CSV file
-  - the CSV includes salary totals and workflow milestones for every visible teacher row
-  - no payroll math, teacher confirmation rules, approval flow, or payout behavior changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - production read-only QA on `/admin/reports/teacher-payroll`
-  - production read-only QA on `/admin/reports/teacher-payroll/export`
-
-## 2026-04-06-r02 Deployed
-
-- Scope: add permanent delete support to shared documents and present shared-doc categories as clearer folder groups.
-- Business impact:
-  - `/admin/shared-docs` now groups visible files under category sections so operations can understand which logical folder each document belongs to
-  - new shared-doc uploads now store into category-based paths such as `shared-docs/<category>/<yyyy-mm>/...`
-  - admins can now permanently delete a shared document, which removes the database row and deletes the backing object from S3 or the local uploads directory
-  - archive / restore behavior remains available and unchanged for documents that should stay in the library
-  - no shared-doc permission rules, finance logic, payroll logic, attendance logic, or report logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - production UI check on `/admin/shared-docs`
-  - production UI check confirmed `Delete / åˆ é™¤` appears alongside `Archive / å½’æ¡£`
-
-## 2026-04-07-r01 Deployed
-
-- Scope: fix shared-package midterm/final report routing so report candidates are generated per student instead of only per package owner.
-- Business impact:
-  - `/admin/reports/midterm` now creates and tracks candidate rows separately for each student who used the same shared `HOURS` package
-  - `/admin/reports/final` now does the same for completed shared packages, so operations can push a final report to the correct student even when two students share one package
-  - assign / exempt actions now validate the selected student against package ownership plus shared-student membership before creating or updating a report
-  - existing report lookups now key off `package + student + teacher`, so pushing a report for one shared student no longer hides the other student's candidate
-  - no report content fields, attendance deduction rules, package balances, payroll logic, or finance workflows changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - production read-only QA should confirm separate shared-package candidate rows on `/admin/reports/midterm` and `/admin/reports/final`
-
-## 2026-04-07-r02 Deployed
-
-- Scope: compress the final-report PDF into a single-page landscape layout.
-- Business impact:
-  - `/api/admin/final-reports/[id]/pdf` now generates a denser one-page handoff layout instead of the previous taller portrait layout
-  - the overview, outcome, and delivery sections are more compact, and the narrative sections now render in a fixed multi-column grid
-  - normal-length final reports should fit on one page without changing any underlying report content or workflow state
-  - no final-report assignment logic, delivery/share behavior, attendance logic, package balances, or finance logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - admin final-report PDF route should continue returning `200` with `application/pdf`
-
-## 2026-04-07-r03 Deployed
-
-- Scope: make the final-report PDF more parent-facing by removing internal delivery/admin metadata and hiding empty sections.
-- Business impact:
-  - `/api/admin/final-reports/[id]/pdf` now focuses the printable layout on student progress, end-of-course outcome, and the recommended next step
-  - empty report sections no longer show `-` placeholders, so the page reads more like a finished handoff instead of a system export
-  - delivery/admin-only details are still kept in the admin workbench, but they are no longer shown in the parent-facing PDF
-  - no final-report data, assignment logic, delivery/share actions, attendance logic, package balances, or finance logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - admin final-report PDF route should continue returning `200` with `application/pdf`
-
-## 2026-04-07-r04 Deployed
-
-- Scope: make the final-report PDF read more like a parent-facing continuation handoff by emphasizing the student's progress and the recommended renewal path.
-- Business impact:
-  - `/api/admin/final-reports/[id]/pdf` now frames the top summary as `Progress and continuation / é˜¶æ®µæˆæžœä¸Žç»­è¯¾æ–¹å‘`
-  - the package-completion line now reads like a completed learning-stage summary instead of a raw internal package metric
-  - the previous short `Recommended next step` card is replaced with a fuller `Recommended continuation / ç»­è¯¾å»ºè®®` narrative built from the teacher's recommendation, current level, and next-focus guidance
-  - no final-report data, assignment logic, delivery/share actions, attendance logic, package balances, or finance logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - admin final-report PDF route should continue returning `200` with `application/pdf`
-
-## 2026-04-07-r05 Deployed
-
-- Scope: soften the final-report PDF again so it reads as a parent-friendly growth reflection instead of a renewal prompt.
-- Business impact:
-  - `/api/admin/final-reports/[id]/pdf` now uses `Learning snapshot / å­¦ä¹ æˆé•¿æ¦‚è§ˆ` and `Next learning focus / ä¸‹ä¸€é˜¶æ®µå…³æ³¨é‡ç‚¹` wording instead of explicit renewal-oriented language
-  - the recommendation narrative is now framed as a teacher observation about progress, remaining gaps, and the next area worth focusing on
-  - no final-report data, assignment logic, delivery/share actions, attendance logic, package balances, or finance logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - admin final-report PDF route should continue returning `200` with `application/pdf`
-
-## 2026-04-07-r06 Deployed
-
-- Scope: further soften the parent-facing final-report PDF so the section titles and summary row read more like a teacher reflection to the family.
-- Business impact:
-  - `/api/admin/final-reports/[id]/pdf` now uses softer family-facing labels such as `This stage in summary`, `Progress we observed`, and `Teacher note to family`
-  - the top summary row now uses `Current growth focus / å½“å‰æˆé•¿é‡ç‚¹` instead of a recommendation-style label
-  - no final-report data, assignment logic, delivery/share actions, attendance logic, package balances, or finance logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - admin final-report PDF route should continue returning `200` with `application/pdf`
-
-## 2026-04-07-r07 Deployed
-
-- Scope: remove the large empty lower-right area from the parent-facing final-report PDF by making the lower cards reflow to match the actual number of filled sections.
-- Business impact:
-  - `/api/admin/final-reports/[id]/pdf` no longer keeps a fixed 3-column lower grid when only one or two sections are filled
-  - filled sections can now expand wider across the page, so sparse reports read more naturally and do not leave a large empty corner
-  - no final-report data, wording intent, assignment logic, delivery/share actions, attendance logic, package balances, or finance logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - admin final-report PDF route should continue returning `200` with `application/pdf`
-
-## 2026-04-07-r08 Deployed
-
-- Scope: remove the remaining duplicate feel in the parent-facing final-report PDF by not showing an extra `Next learning focus` body card when the teacher already wrote `Areas to keep strengthening`.
-- Business impact:
-  - `/api/admin/final-reports/[id]/pdf` still keeps the top summary-row growth focus, but no longer repeats a second body card with the same meaning when the teacher already filled the strengthening section
-  - sparse reports stay cleaner and read more like one coherent family note rather than a form with repeated prompts
-  - no final-report data, summary wording, assignment logic, delivery/share actions, attendance logic, package balances, or finance logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - admin final-report PDF route should continue returning `200` with `application/pdf`
-
-## 2026-04-08-r08 Deployed
-
-- Scope: let ops record HOURS package sales and top-ups as split purchase batches so partner settlement can later split batches like `6h + 30h` without manual production repair.
-- Business impact:
-  - `/api/admin/packages` now accepts `purchaseBatches` and writes multiple ordered `PURCHASE` txns instead of one merged txn when requested
-  - `/api/admin/packages/[id]/top-up` supports the same split-batch input for future partner top-ups
-  - the admin package create form and top-up modal now expose a batch-entry block for æ–°ä¸œæ–¹ students, including a one-click `6h + 30h` preset
-  - total paid amount is proportionally allocated across the split purchase txns, while package totals and remaining balance behavior stay unchanged
-  - no attendance deduction logic, student billing, parent billing, or offline monthly settlement logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - package create/top-up flows preserve tranche order for later partner settlement FIFO
-
-## 2026-04-08-r09 Deployed
-
-- Scope: change æ–°ä¸œæ–¹ split purchase-batch entry from minute/hour language to lesson-based entry so ops can record batch sales in the same `6 / 8 / 10 / 20 / 40 lessons` vocabulary they already use elsewhere.
-- Business impact:
-  - `app/admin/_components/PurchaseBatchEditor.tsx` now shows lesson counts for æ–°ä¸œæ–¹ rows, converts them to `45 minutes = 1 lesson` behind the scenes, and offers quick-add chips for `6 / 8 / 10 / 20 / 40 lessons`
-  - enabling split purchase batches no longer jumps straight to a hard-coded `2160` minute template; create/top-up now start from the currently selected package total and let ops split it from there
-  - the hint copy now uses lesson-bundle wording such as `8 lessons + 40 lessons`, keeping the entry UI aligned with how æ–°ä¸œæ–¹ packages are actually sold
-  - no settlement FIFO logic, package balances, deduction logic, or invoice rules changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - æ–°ä¸œæ–¹ split batch rows now read/write in lessons while still storing minute totals under the hood
-
-## 2026-04-09-r01 Deployed
-
-- Scope: introduce scheduling coordination as a ticket-backed student-detail workflow so ops can follow up with parents, generate slot suggestions directly from trusted teacher availability, and decide whether a parent special-time request really needs a teacher exception.
-- Business impact:
-  - `lib/tickets.ts` now defines `SCHEDULE_COORDINATION / æŽ’è¯¾åè°ƒ`, so scheduling follow-up can stay inside the existing ticket workflow instead of becoming a separate system
-  - `Ticket.studentId` now exists as a nullable relation, allowing student detail pages to show the active coordination ticket, owner, summary, and next follow-up directly on the student record
-  - student detail pages can now generate the next 3-5 candidate slots from teacher availability without touching session creation, and can also check whether a parent-requested special time already matches current availability
-  - `Todo Center` now surfaces due scheduling coordination follow-ups, so ops do not need to remember which parent timing conversations are aging out
-  - ticket intake/admin edit flows no longer force a teacher field for every ticket type, allowing scheduling coordination tickets to stay parent-led by default
-  - no session creation, attendance, booking-link approval, package balance, payroll, or finance logic changed
-- Validation:
-  - `npm run prisma:generate`
-  - `npm run build`
-  - post-deploy startup check
-  - `/admin/students/[id]` should show the new scheduling coordination card and helper panels
-
-## 2026-04-09-r02 Deployed
-
-- Scope: add a lightweight teacher-side scheduling exception queue so teachers only answer coordination tickets that already fell outside their submitted availability.
-- Business impact:
-  - `/teacher/scheduling-exceptions` now lists only `æŽ’è¯¾åè°ƒ / Scheduling Coordination` tickets that are in `Waiting Teacher` or `Exception`
-  - teachers can respond with `Can do`, `Cannot do`, or `Suggest another slot`, and the ticket is pushed back to ops with an updated next action instead of forcing teachers into the full admin ticket editor
-  - the teacher sidebar now exposes `Scheduling Exceptions / æŽ’è¯¾ä¾‹å¤–ç¡®è®¤` alongside other daily teacher tasks
-  - no teacher availability data, session creation logic, booking links, attendance, package balance, or finance logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - `/teacher/scheduling-exceptions` route should be present in the production build and protected by the normal teacher login flow
-
-## 2026-04-09-r03 Deployed
-
-- Scope: turn student-detail scheduling coordination results into action cards and let ops jump straight from a suggested slot into `Quick Schedule` with the same time and suggested teacher already carried over.
-- Business impact:
-  - generated candidate slots now render as readable cards instead of plain rows, so ops can scan date, time, teacher, and action much faster during parent follow-up
-  - matching special-time results and nearest alternatives use the same card pattern, so there is one consistent path whether the parent request already fits availability or needs a fallback
-  - `Quick Schedule` now respects a carried-over suggested teacher and floats that teacher to the top of the eligible list, reducing one more manual step for ops
-  - if campus or subject still needs one extra confirmation, the card now says so explicitly before opening `Quick Schedule`
-  - no teacher availability rules, session-creation endpoints, booking links, attendance, package balances, or finance logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - `/admin/students/[id]` coordination cards now show `Use in Quick Schedule` actions for generated slots, matched special requests, and nearest availability alternatives
-
-## 2026-04-10-r24 Ready
-
-- Scope: make the finance student package invoice picker easier to use when many students and packages are in the list.
-- Business impact:
-  - `/admin/finance/student-package-invoices` now lets finance search packages locally by student name, course name, or package ID before selecting one
-  - the package picker no longer auto-submits on every dropdown change, so finance can search calmly and then confirm with `Load package summary / åŠ è½½è¯¾åŒ…æ‘˜è¦`
-  - the invoice page keeps the same summary-loading and invoice-preview logic after the package is submitted
-  - no invoice issuance rules, receipt rules, approval logic, package balances, settlement calculations, or deduction logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - verify finance can search and narrow the package list locally before loading the package summary
-
-## 2026-04-10-r25 Ready
-
-- Scope: keep recently used package shortcuts on the finance invoice page so repeated invoice work does not require searching the same student packages again and again.
-- Business impact:
-  - `/admin/finance/student-package-invoices` now remembers recently chosen packages in the browser and shows them as one-click shortcuts near the package picker
-  - choosing a recent package shortcut updates the selection without auto-submitting, so finance can still review the form and then confirm with `Load package summary / åŠ è½½è¯¾åŒ…æ‘˜è¦`
-  - no invoice issuance rules, receipt rules, approval logic, package balances, settlement calculations, or deduction logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - verify the finance invoice page shows `Recent packages / æœ€è¿‘ä½¿ç”¨è¯¾åŒ…` after a package has been loaded once
-  - verify clicking a recent package chip changes the selected package but still waits for explicit summary load
-
-## 2026-04-10-r26 Ready
-
-- Scope: keep the finance receipt queue and history workable on narrower screens by opening selected receipt details in an overlay instead of forcing a long stacked layout.
-- Business impact:
-  - `/admin/receipts-approvals/queue` and `/admin/receipts-approvals/history` now open selected receipt details as a dismissible overlay on narrower screens, so finance can stay anchored in the queue list
-  - the overlay includes an explicit `Back to list / è¿”å›žåˆ—è¡¨` action and outside-tap close path, both of which return to the same filtered queue or history view without changing the underlying review state
-  - wider screens keep the existing two-column layout, so desktop finance users do not lose the side-by-side workflow
-  - no receipt approval rules, package finance actions, invoice rules, settlement calculations, or deduction logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - verify narrow receipt queue/history screens now show the selected detail pane as an overlay with `Back to list / è¿”å›žåˆ—è¡¨`
-  - verify wide screens still show the normal left queue plus right detail layout
-
-## 2026-04-10-r27 Ready
-
-- Scope: fix the narrow-screen receipt overlay so it does not auto-open on page load and feels more like a contained drawer than a full-screen takeover.
-- Business impact:
-  - narrow `Receipt Queue / æ”¶æ®å®¡æ‰¹é˜Ÿåˆ—` and `Receipt History / æ”¶æ®åŽ†å²` screens now open the detail drawer only after finance explicitly clicks a receipt row
-  - the drawer now sits with visible margins and a narrower width, so finance keeps more context of the page behind it
-  - wider screens still keep the side-by-side queue and detail layout, and no receipt approval or package-finance logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - verify narrow queue/history views stay list-only until a row is clicked
-  - verify the opened detail panel looks like a smaller drawer rather than covering almost the full viewport
-
-## 2026-04-10-r28 Ready
-
-- Scope: show amount information much more clearly in the selected receipt detail panel so finance can immediately tell which receipt is open.
-- Business impact:
-  - selected receipt details now show both `Receipt amount / æ”¶æ®é‡‘é¢` and `Invoice total / å‘ç¥¨æ€»é¢` near the top of the panel
-  - the amount summary now also signals whether the receipt matches the linked invoice amount, reducing the chance that finance reviews the wrong row
-  - no receipt approval rules, invoice rules, package finance actions, settlement calculations, or deduction logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - verify selected receipt details show the amount summary cards and mismatch indicator near the top
-
-## 2026-04-10-r23 Ready
-
-- Scope: make the package finance picker more compact so finance can see search, recent shortcuts, and package candidates without as much scrolling.
-- Business impact:
-  - the `Recently opened packages / æœ€è¿‘æ‰“å¼€çš„è¯¾åŒ…` list now shows fewer, tighter rows so it stays useful without taking over the page
-  - search-result and priority package cards now use a denser row layout with shorter metadata, keeping the package workspace higher on screen
-  - clearing search also resets the quick-select field back toward the currently open package, reducing confusion after repeated searches
-  - no invoice creation rules, receipt rules, approval logic, package balances, settlement calculations, or deduction logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - verify the package picker now occupies less vertical space while keeping the same open-package actions
-
-## 2026-04-10-r22 Ready
-
-- Scope: stop package searching from reloading the whole finance workspace and give finance a clearer confirm flow before opening a package.
-- Business impact:
-  - the package workspace search now stays entirely in the browser, so finance can search repeatedly without refreshing the page each time
-  - the search area now has explicit `Search / æœç´¢`, `Clear / æ¸…é™¤`, and `Open Finance Operations / æ‰“å¼€è´¢åŠ¡æ“ä½œ` buttons, making the flow clearer when package lists are crowded
-  - recent-package shortcuts and priority package cards now use the same client-side opener, so they stay fast and consistent
-  - no invoice creation rules, receipt rules, approval logic, package balances, settlement calculations, or deduction logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - verify package search filters locally without a full page reload
-  - verify only the open buttons navigate into a package workspace
-
-## 2026-04-10-r21 Ready
-
-- Scope: help finance jump back into recently handled student packages without searching from scratch each time.
-- Business impact:
-  - the package finance workspace now shows `Recently opened packages / æœ€è¿‘æ‰“å¼€çš„è¯¾åŒ…`, so finance can reopen the same few active student packages in one click
-  - opening a package from the search form, quick-select dropdown, or priority list now records that package into the recent list inside the current browser
-  - finance can clear the recent list at any time without touching billing data, because the memory is stored only in browser local storage
-  - no invoice creation rules, receipt rules, approval logic, package balances, settlement calculations, or deduction logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - verify package opens now populate `Recently opened packages / æœ€è¿‘æ‰“å¼€çš„è¯¾åŒ…`
-  - verify the recent list offers direct reopen actions and can be cleared from the package workspace
-
-## 2026-04-10-r20 Ready
-
-- Scope: make the package finance workspace easier to open when finance is dealing with a large number of student packages.
-- Business impact:
-  - the package workspace opener now supports keyword search by student, course, invoice number, receipt number, and package ID, so finance no longer has to scan a crowded dropdown one item at a time
-  - the same opener now shows a priority package list with direct `Open package / æ‰“å¼€è¯¾åŒ…` actions, pushing the most urgent finance packages to the top
-  - the quick-select dropdown now follows the same filtered search results, so searching once narrows both the shortlist and the dropdown options together
-  - no invoice creation rules, receipt rules, approval logic, package balances, settlement calculations, or deduction logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - verify package search matches student, course, invoice number, receipt number, and package ID keywords
-  - verify the priority package list shows direct `Open package / æ‰“å¼€è¯¾åŒ…` actions and floats urgent packages first
-  - verify the quick-select dropdown only shows the currently filtered package matches
-
-## 2026-04-10-r19 Ready
-
-- Scope: add a filtered CSV export for receipt history and give the package finance workspace a more explicit next-step handoff.
-- Business impact:
-  - `Receipt History / æ”¶æ®åŽ†å²` now has a direct `Export CSV / å¯¼å‡ºCSV` action that follows the current focus, side, month, action-type, and keyword filters instead of making finance copy table results manually
-  - the history CSV now includes partner-side uploads, invoices, and receipts when finance switches to the partner view
-  - the package workspace now shows a `Suggested next step / å»ºè®®ä¸‹ä¸€æ­¥` panel that points finance straight to the most relevant next action for that package
-  - no invoice creation rules, receipt rules, approval logic, package balances, settlement calculations, or deduction logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - verify `Receipt History / æ”¶æ®åŽ†å²` exports CSV using the current filters
-  - verify partner-side timeline rows appear in the CSV when `Partner only / åªçœ‹åˆä½œæ–¹` is active
-  - verify the package workspace next-step panel points to upload, create receipt, review queue, or global queue according to current package state
-
-## 2026-04-10-r18 Ready
-
-- Scope: make the finance receipt flow easier to keep moving by improving next-item feedback, widening history filters, simplifying repair-card actions, and expanding package-workspace progress states.
-- Business impact:
-  - after approve/reject actions, finance now gets an explicit banner telling them whether they were moved onto the next receipt or whether the current queue lane is already clear
-  - `Receipt History / æ”¶æ®åŽ†å²` now has one search/filter strip that can narrow by focus, party side, month, and action type instead of forcing finance to combine scattered controls
-  - partner-side uploads, invoices, and receipts now appear in the history action timeline when finance switches to the partner view
-  - repair queue cards now present one obvious primary fix action and tuck secondary links under `More actions / æ›´å¤šæ“ä½œ`, reducing button noise on blocker-heavy screens
-  - the package workspace now exposes four progress cards, ending with `Step 4 Approval Queue / æ­¥éª¤4 è¿›å…¥å®¡æ‰¹`, plus compact chips showing usable proofs, receipt count, waiting approvals, and completed receipts
-  - no invoice rules, receipt rules, approval logic, package balances, settlement calculations, or deduction logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - verify approve/reject actions show either the next-item banner or the queue-cleared banner
-  - verify history filters now include party side and month, and partner recent actions appear when selected
-  - verify repair queue cards now show a single primary fix action with `More actions` for secondary paths
-  - verify package workspace now shows four progress cards and the extra status chips
-
-## 2026-04-10-r01 Ready
-
-- Scope: add a read-only `Statement of Account / å¯¹è´¦å•` PDF for one parent package and make receipt-export gating much clearer to finance users.
-- Business impact:
-  - `/api/exports/parent-statement/[id]` now generates a finance-facing package statement that lists invoice transactions, approved receipt payments, running balance, pending receipts not yet counted, and the current balance owing
-  - the same statement PDF now reads more like a formal outward-facing finance document, with a cleaner heading area, summary row, and more scannable transaction table
-  - `/admin/finance/student-package-invoices` now exposes a direct statement export link once a package is selected, so finance can export the package statement without jumping into another workflow first
-  - the same finance invoice page now shows `Prepared by / åˆ›å»ºäºº` in the preview block and `Created by / åˆ›å»ºäºº` in the recent invoice table, so finance can see who issued each invoice without opening another page
-  - when the invoice creator matches a known user record, the recent invoice table now shows `Name (email)` instead of only a raw email string
-  - `/admin/packages/[id]/billing` now resolves the invoice `By` column the same way, so package billing no longer falls back to raw emails when the user profile exists
-  - `/admin/receipts-approvals` now checks proof-file health against each queue row's linked payment record even in the all-packages queue, so valid uploads no longer get falsely blocked as missing just because no package filter is selected
-  - receipt finance work is now split into four clearer routes: `Receipt Queue`, `Package Workspace`, `Proof Repair`, and `Receipt History`, so approval, package handling, repair, and lookup no longer compete on one long mixed page
-  - `Proof Repair` now defaults to a blocker-first repair queue, so rejected receipts and other repair-needed rows still appear even when there are no pure attachment-health issues
-  - the `All / å…¨éƒ¨` chip on `Proof Repair` now explicitly clears into the wider repair-page queue instead of bouncing back into the implicit default blocker filter
-  - `Receipt History` now suppresses the lower bucket-switch controls that conflicted with the top `Receipt History` page mode, leaving only history-safe controls on that screen
-  - `Receipt History` now routes `Back to default queue / å›žåˆ°é»˜è®¤é˜Ÿåˆ—` back to `/admin/receipts-approvals` instead of staying on `/history`, which fixes the false "button did nothing" feeling during QA
-  - finance sidebar and receipt-center `Receipt Queue / æ”¶æ®å®¡æ‰¹é˜Ÿåˆ—` links now explicitly clear remembered queue state, so clicking the queue entry always lands on the live approval queue instead of unexpectedly reopening history
-  - the top receipt-page `Receipt Queue / æ”¶æ®å®¡æ‰¹é˜Ÿåˆ—` tab now also clears remembered queue state instead of preserving `queueBucket=HISTORY`, so the page-level mode switch behaves the same way as the sidebar
-  - `/admin/packages/[id]/billing` now exposes the same statement export link and replaces the vague receipt `Pending approval` copy with a clearer explanation that formal receipt PDFs unlock only after manager and finance approval
-  - `/admin/receipts-approvals` now uses the same plain-language receipt export message, reducing confusion without changing the approval gate itself
-  - no invoice creation rules, receipt creation rules, approval requirements, package balance math, settlement logic, or deduction behavior changed
-- Validation:
-  - `npm run build`
-  - verify statement export works from both finance invoice workbench and package billing
-  - verify unapproved receipts are shown as pending and still excluded from formal paid totals
-  - verify `Proof Repair` shows repair blockers by default, while the explicit `Proof or file issues` chip still narrows to attachment-only problems
-  - verify clicking `All / å…¨éƒ¨` inside `Proof Repair` actually widens the page queue instead of appearing stuck
-  - verify `Receipt History` no longer shows conflicting lower bucket toggles such as `Show all buckets` and `Only open work`
-  - verify `Back to default queue / å›žåˆ°é»˜è®¤é˜Ÿåˆ—` from `Receipt History` lands on `/admin/receipts-approvals?clearQueue=1`
-  - verify clicking the finance sidebar `Receipt Queue / æ”¶æ®å®¡æ‰¹é˜Ÿåˆ—` entry opens `/admin/receipts-approvals?clearQueue=1` and no longer re-enters `Receipt History`
-  - verify clicking the top `Receipt Queue / æ”¶æ®å®¡æ‰¹é˜Ÿåˆ—` page tab from `Receipt History` also opens `/admin/receipts-approvals?clearQueue=1`
-
-## 2026-04-11-r34 Ready
-
-- Scope: make scheduling-coordination wording bilingual and expose duplicate open coordination tickets on the student workbench.
-- Business impact:
-  - the student scheduling-coordination card now warns when a student has more than one open coordination ticket and shows which ticket is currently selected by the system
-  - the same student card now lists the open ticket numbers so ops can jump straight into the right ticket instead of guessing
-  - scheduling-coordination system text now renders as Chinese + English on the student coordination card, ticket detail page, admin ticket list, archived ticket list, and teacher ticket list, which cleans up old test tickets that previously looked half-English
-  - future parent-availability summaries now save bilingual field labels such as `å¯ä¸Šè¯¾æ˜ŸæœŸ / Available days` and `è€å¸ˆåå¥½ / Teacher preference`
-  - no package rules, finance logic, receipt rules, invoice rules, attendance logic, or scheduling placement logic changed
-- Validation:
-  - `npm run build`
-  - post-deploy startup check
-  - verify `èµµæµ‹è¯•` shows the duplicate-ticket warning on the student coordination card when multiple open coordination tickets exist
-  - verify student and ticket views now show bilingual scheduling-coordination summary text instead of English-only system copy
-  - verify new parent submissions write bilingual summary labels into the linked coordination ticket
-
-## 2026-04-11-r35 Ready
-
-- Scope: reuse the current open scheduling-coordination ticket instead of creating another one for the same student.
-- Business impact:
-  - student detail now shows a clearer `Open active ticket / æ‰“å¼€å½“å‰å·¥å•` action and a reuse note whenever the student already has an open coordination ticket
-  - the student-side server action now redirects back with `Existing coordination ticket reused / å·²æ²¿ç”¨å½“å‰æŽ’è¯¾åè°ƒå·¥å•` instead of silently opening a second path
-  - the ticket-intake API now returns the existing open scheduling-coordination ticket for the same student, which prevents duplicate test tickets from being created through intake links
-  - the intake form now surfaces a bilingual reuse success message and still exposes the existing parent-availability link when that open ticket is still waiting for submission
-  - no scheduling placement rules, finance logic, package logic, receipt logic, invoice logic, or attendance logic changed
-- Validation:
-  - `npm run build`
-  - verify student detail shows only the reuse/open-current action when an open coordination ticket already exists
-  - verify the student-detail create action returns to the coordination card with a bilingual reuse message instead of creating another open ticket
-  - verify ticket intake returns the current open coordination ticket for the same student and shows the bilingual reuse success message
-## 2026-04-24-r94 Ready
-
-- Scope: make direct-billing renewal signing increase package balance automatically and reframe old direct package top-up as a special/manual operation.
-- Business impact:
-  - when a direct-billing renewal contract is signed, the system now adds the renewal lesson minutes onto the same package automatically instead of leaving ops to do a second manual top-up
-  - the same renewal signature still auto-creates the parent invoice draft, so the renewal path now closes as `sign -> add hours -> invoice draft`
-  - direct-billing package edit modal now labels old top-up as a legacy/manual path and warns that it bypasses renewal contract + auto-invoice workflow
-  - partner-style top-up behavior is unchanged
-- Validation:
-  - `npm run build`
-  - verify temporary renewal QA package moved from `600 / 600` minutes to `900 / 900` minutes after signature
-  - verify one invoice draft was created for the signed renewal contract
-  - verify one package purchase txn exists with note marker `student-contract-renewal-topup:<contractId>`
-  - verify all temporary QA data was removed afterwards
-
-## 2026-04-24-r95 Ready
-
-- Scope: polish the student contract workflow with business-facing status labels, stronger contract entry points from student detail, lighter parent pages, explicit signed-contract correction guidance, and cleaner archived/void history.
-- Business impact:
-  - student detail now surfaces the contract workspace directly and explains the next business step instead of exposing only technical contract states
-  - package billing now shows clearer sign-stage and signed-stage guidance, including direct invoice/open-approval links once a contract has produced an invoice
-  - parent intake and sign pages now frame the process as a simple three-step journey, reducing parent-facing clutter without changing the underlying workflow
-  - signed or invoiced contracts now steer ops toward `void + regenerate` instead of implying direct edits to historical contract versions
-  - void drafts that are safe to delete stay separate from archived signed/invoiced history, so active workspaces no longer fill up with old contract noise
-  - direct-billing packages with clear legacy billing/use history but no contract now warn ops that the next renewal should use the renewal-contract path
-  - no signing rules, invoice math, package balance rules, partner exclusions, or receipt logic changed
-- Validation:
-  - `npm run build`
-  - verify student detail shows the direct contract workspace link and stage-specific next-step message
-  - verify package billing shows business-stage copy for sign-ready contracts and invoice/open-approval links for signed/invoiced contracts
-  - verify parent intake page shows `Parent profile confirmation / å®¶é•¿èµ„æ–™ç¡®è®¤`
-  - verify parent sign page shows `Agreement preview / æ­£å¼åˆåŒé¢„è§ˆ`
-  - verify temporary QA student/package/contract/auth-session data was removed afterwards
-
-## 2026-04-24-r96 Ready
-
-- Scope: make package edits resync invoice-gate status and reason when settlement mode changes, so direct-billing packages no longer keep stale partner-settlement wording.
-- Business impact:
-  - editing a package from partner settlement back to direct-billing now also refreshes the package invoice-gate copy instead of leaving old partner wording behind
-  - approval-backed package gate states remain intact when approval history exists
-  - packages without approval history now at least fall back to a correct generic direct-billing exempt message instead of the wrong partner message
-  - no receipt rules, invoice totals, partner settlement calculations, or scheduling rules changed
-- Validation:
-  - `npm run build`
-  - verify `èµµæµ‹è¯•` package now stores `settlementMode = null`
-  - verify `èµµæµ‹è¯•` package now stores `financeGateReason = Package is exempt from direct-billing invoice gate.`
-
-## 2026-04-24-r97 Ready
-
-- Scope: make signed-contract signatures visible again by requiring handwritten signature image capture for future signings and serving a compatibility rendering for legacy signed contracts that have no stored signature image.
-- Business impact:
-  - future parent sign attempts now stop with a clear error unless a handwritten signature is actually drawn
-  - the signed confirmation page now shows the captured signature block instead of only invoice/download info
-  - older signed contracts that were completed before the handwritten-signature requirement will no longer download with an empty signature area
-  - no invoice math, contract snapshot payloads, package balance rules, or partner-exclusion logic changed
-- Validation:
-  - `npm run build`
-  - verify a temporary `READY_TO_SIGN` contract now rejects empty `signatureDataUrl` with `Handwritten signature is required`
-  - generate a compatibility PDF for an existing signed contract with `signatureImagePath = null`
-  - render the compatibility PDF and verify the signature block is visible instead of blank
-
-## 2026-04-24-r98 Ready
-
-- Scope: make the signed-contract correction path explicit in package billing by explaining that `Void` is no longer available after signing and that ops should stop using the old invoice draft before creating a replacement contract version.
-- Business impact:
-  - signed/invoiced contracts now clearly explain why the `Void` action is missing
-  - ops and finance now get a direct two-step correction path: open the old invoice lane first, then create a replacement contract version
-  - no contract-state rules, invoice creation logic, package balances, or partner exclusions changed
-- Validation:
-  - `npm run build`
-  - verify the signed-result card now warns not to keep using the old invoice draft
-  - verify the terminal contract warning explicitly says `Void` is no longer available after signing
-
-## 2026-04-24-r99 Ready
-
-- Scope: let ops delete the old invoice draft from a signed student contract, detach that invoice from contract history, and immediately create a replacement contract version that reuses the previous parent profile.
-- Business impact:
-  - signed contracts that only have an unreceipted invoice draft can now be corrected in one cleaner path from package billing
-  - deleting the old invoice draft now clears the contractâ€™s linked invoice fields instead of leaving stale invoice references behind
-  - the linked package invoice-approval rows for that deleted draft are removed as part of the correction cleanup
-  - replacement contract creation is no longer blocked by old `SIGNED / INVOICE_CREATED` versions on the same package
-  - replacement first-purchase contracts now reuse the previous parent profile so ops do not need to resend the parent intake form just to correct fee or contract details
-  - no receipt logic, partner settlement logic, or signed PDF logic changed
-- Validation:
-  - `npm run build`
-  - verify deleting a signed contractâ€™s old invoice draft clears `invoiceId / invoiceNo / invoiceCreatedAt` from that contract
-  - verify the contract falls back to signed history
-  - verify replacement contract creation produces a fresh `CONTRACT_DRAFT`
-  - verify the replacement contract reuses the previous parent profile instead of reopening intake
-
-## 2026-04-24-r100 Ready
-
-- Scope: simplify the contract section in package billing by reducing repeated bilingual copy and replacing the old â€œsave draftâ€ plus â€œgenerate/refresh sign linkâ€ sequence with one main save-and-prepare action.
-- Business impact:
-  - ops no longer need two separate clicks just to save fee details and prepare the latest sign link
-  - the contract draft section now explains one cleaner action instead of a save-then-regenerate workflow
-  - the signed-result summary is shorter and easier to scan, without duplicated invoice and approval labels
-  - no contract-state rules, invoice creation logic, signed-PDF behavior, or partner exclusions changed
-- Validation:
-  - `npm run build`
-  - verify editing lesson hours / fee / bill-to / agreement date and submitting once updates the draft and prepares the latest sign link
-  - verify the `READY_TO_SIGN` state now offers a single â€œsave and refresh sign linkâ€ action
-  - verify the signed-result card no longer duplicates bilingual labels on invoice, gate, and approval rows
-  - task doc: `docs/tasks/TASK-20260424-student-contract-billing-copy-and-action-simplify.md`
-  - release-doc bundle finalized in the same release train
-
-## 2026-04-24-r101 Ready
-
-- Scope: make the public contract sign page refresh into a clear submitted-success state after the parent clicks `Sign contract`, instead of silently landing back on the same page.
-- Business impact:
-  - parents now see an explicit green confirmation banner immediately after a successful sign submit
-  - the public sign route is revalidated before redirect so the signed-result view is less likely to lag behind the database update
-  - no contract-status rules, invoice creation logic, signed PDF output, or partner exclusions changed
-- Validation:
-  - `npm run build`
-  - verify sign submit revalidates the public contract route before redirect
-  - verify `?msg=signed` now shows a clear success banner at the top of the sign page
-
-## 2026-04-24-r104 Ready
-
-- Scope: make address optional in both parent-facing intake pages and keep contract generation compatible when no address is provided.
-- Business impact:
-  - parents can now submit student intake and contract-profile forms without sharing an address
-  - the school team can continue to reuse parent details even when address is blank
-  - signed and unsigned contract snapshots will no longer print an empty address row when no address is on file
-  - no contract-state rules, invoice creation logic, package balances, or partner exclusions changed
-- Validation:
-  - `npm run build`
-  - verify `/student-intake/[token]` marks address as optional and accepts submission without it
-  - verify `/contract-intake/[token]` marks address as optional and accepts submission without it
-  - verify contract snapshot generation omits the address line when address is absent
-  - task doc: `docs/tasks/TASK-20260424-parent-address-optional-intake.md`
-
-## 2026-04-24-r105 Ready
-
-- Scope: render the full partner invoice settlement list across paginated PDF pages instead of collapsing the export after the first 10 rows.
-- Business impact:
-  - finance can print and share partner invoices with every selected settlement line visible
-  - long partner invoice batches no longer end with a hidden `... and N more items` summary
-  - continuation pages keep invoice/table headers so reviewers do not lose context across pages
-  - no invoice totals, approval flow, or receipt behavior changed
-- Validation:
-  - `npm run build`
-  - export a partner invoice with more than 10 selected settlement rows
-  - verify every row appears across one or more pages
-  - verify the old collapsed-summary line is gone
-  - task doc: `docs/tasks/TASK-20260424-partner-invoice-full-line-pagination.md`
-
-## 2026-04-24-r106 Ready
-
-- Scope: tighten the follow-up partner invoice summary-page layout so the totals and remittance notes sit directly after the last rows instead of drifting to the page bottom.
-- Business impact:
-  - finance no longer sees a mostly blank final page with totals floating at the bottom
-  - remittance notes remain fully readable on the last page
-  - the full multi-page line-item rendering from `r105` stays intact
-  - no invoice totals, approval flow, or receipt behavior changed
-- Validation:
-  - `npm run build`
-  - export a multi-page partner invoice
-  - verify subtotal / GST / amount due appear directly after the final row set
-  - verify remittance notes are fully visible on the last page
-  - task doc: `docs/tasks/TASK-20260424-partner-invoice-final-page-layout-followup.md`
-
-## 2026-04-24-r107 Ready
-
-- Scope: move the optional partner invoice seal next to the subtotal summary area instead of leaving it pinned near the lower page edge.
-- Business impact:
-  - finance sees the seal where they expect it, aligned with the subtotal summary block
-  - the seal no longer looks detached from the financial totals on long partner invoices
-  - no line-item pagination, totals, approval flow, or receipt behavior changed
-- Validation:
-  - `npm run build`
-  - export a sealed partner invoice
-  - verify the seal sits beside the subtotal block
-  - verify subtotal / GST / amount due remain readable
-  - task doc: `docs/tasks/TASK-20260424-partner-invoice-seal-near-subtotal.md`
-
-## 2026-04-24-r108 Ready
-
-- Scope: push the optional partner invoice seal closer so it visibly anchors to the subtotal block instead of reading as a detached page-bottom element.
-- Business impact:
-  - finance now sees the seal clearly attached to the subtotal summary area
-  - the subtotal block remains readable while the stamp placement looks intentional
-  - no invoice line rendering, totals, approval flow, or receipt behavior changed
-- Validation:
-  - `npm run build`
-  - export a sealed partner invoice
-  - verify the seal visibly overlaps or hugs the subtotal area
-  - verify subtotal / GST / amount due remain readable
-  - task doc: `docs/tasks/TASK-20260424-partner-invoice-seal-subtotal-overlap-followup.md`
-
-## 2026-04-24-r109 Ready
-
-- Scope: compact the final page of partner invoices so long settlement batches do not leave a large blank area before totals, while keeping the optional seal and remittance notes attached to the subtotal block as one grouped section.
-- Business impact:
-  - finance sees fuller use of the last content page before the totals block
-  - the optional seal now stays visually locked to the subtotal area instead of drifting lower than expected
-  - remittance notes and bank details start below the totals/seal group, so the page reads as one coherent finance summary
-  - no invoice totals, selected settlements, approval flow, or receipt behavior changed
-- Validation:
-  - `npm run build`
-  - export a multi-page sealed partner invoice
-  - verify line items continue lower before the totals summary starts
-  - verify the seal sits against the subtotal block
-  - verify remittance notes begin below the totals/seal group
-  - task doc: `docs/tasks/TASK-20260424-partner-invoice-final-page-compaction-and-seal-anchor.md`
-
-## 2026-04-24-r110 Ready
-
-- Scope: give first-purchase setup its own admin page so student detail no longer carries a large mixed-purpose embedded form.
-- Business impact:
-  - ops can start first-purchase setup from a clearer, more prominent CTA on the student detail page
-  - the setup form no longer competes with package, scheduling, and profile sections on the same page
-  - duplicated bilingual wording is reduced because the dedicated page only explains the step once
-  - successful setup now flows directly into the package contract workspace
-- Validation:
-  - `npm run build`
-  - verify student detail shows a dedicated first-purchase CTA instead of the large inline form
-  - verify `/admin/students/[id]/first-purchase` loads and shows the setup fields once
-  - verify submit redirects into `/admin/packages/[id]/contract`
-  - task doc: `docs/tasks/TASK-20260424-student-first-purchase-dedicated-page.md`
-- 2026-04-24 `c54a15a` Finance document centers: shipped a full invoices/receipts page plus deleted draft invoice history page, and linked them into finance workbench, package billing, package contract, and partner settlement billing.
-
-## 2026-04-24-r112 Ready
-
-- Scope: add the finance document center and deleted draft invoice history pages to the finance-role access allowlist and sidebar navigation.
-- Business impact:
-  - finance users can now open the two new pages directly instead of getting bounced back to another finance page
-  - the pages are now discoverable from the sidebar, not only through deep links inside workspaces
-  - no invoice, receipt, or approval data changes
-- Validation:
-  - `npm run build`
-  - verify finance sidebar shows `Invoices & Receipts` and `Deleted Draft History`
-  - verify finance users can open `/admin/finance/documents`
-  - verify finance users can open `/admin/finance/deleted-invoices`
-  - task doc: `docs/tasks/TASK-20260424-finance-document-center-nav-and-allowlist.md`
-
-## 2026-04-24-r113 Ready
-
-- Scope: move the student-detail first-purchase CTA card to the top of the page content so ops can starté¦–è´­å»ºæ¡£ immediately.
-- Business impact:
-  - ops no longer need to scroll down past planning and enrollment sections to find the first-purchase entry point
-  - the CTA still opens the same dedicated first-purchase setup page
-  - no intake, contract, invoice, or package logic changed
-- Validation:
-  - `npm run build`
-  - verify the `Start first purchase setup / å¼€å§‹é¦–è´­å»ºæ¡£` card shows before the summary cards
-  - verify the original lower duplicate location is gone
-  - verify the dedicated first-purchase page field labels are no longer duplicated
-  - task doc: `docs/tasks/TASK-20260424-student-detail-first-purchase-cta-top.md`
-
-## 2026-04-24-r114 Ready
-
-- Scope: fix the first-purchase setup redirect flow so successful submits do not render a red `NEXT_REDIRECT` banner on the dedicated setup page.
-- Business impact:
-  - ops can complete `åˆ›å»ºé¦–è´­è¯¾åŒ…å’ŒåˆåŒ` without seeing a misleading framework error after success
-  - successful submits now continue into the package contract workspace as intended
-  - genuine validation or business-rule failures still route back to the setup page with a readable message
-  - no contract rules, package payloads, or intake eligibility logic changed
-- Validation:
-  - `npm run build`
-  - verify successful submit rethrows the redirect and lands in `/admin/packages/[id]/contract`
-  - verify ordinary failures still redirect back with `err=...` instead of crashing
-  - task doc: `docs/tasks/TASK-20260424-first-purchase-redirect-error-fix.md`
-
-## 2026-04-24-r115 Ready
-
-- Scope: rename student contract PDF downloads to a business-readable format for both admin and parent downloads.
-- Business impact:
-  - contract PDFs no longer download with a technical internal-style filename
-  - ops and parents now receive clearer names such as `å­¦ç”Ÿå_è¯¾ç¨‹å_é¦–è´­åˆåŒ_å·²ç­¾_YYYYMMDD.pdf`
-  - the same naming convention applies whether the PDF is downloaded from admin pages or the parent signing link
-  - no contract, signing, billing, or invoice behavior changed
-- Validation:
-  - `npm run build`
-  - verify signed and unsigned contract downloads use the new business-friendly filename pattern
-  - verify parent token downloads and admin downloads share the same naming logic
-  - task doc: `docs/tasks/TASK-20260424-student-contract-download-filename.md`
-
-## 2026-04-24-r116 Ready
-
-- Scope: fix the stored signed-contract download branch so older saved PDFs also use the business-readable filename instead of the old technical fallback.
-- Business impact:
-  - already-saved signed contract PDFs now download with the same business-friendly naming pattern as regenerated PDFs
-  - admin downloads and parent-access downloads no longer diverge based on whether the PDF came from storage or regeneration
-  - inline preview responses now advertise the same UTF-8 filename too
-  - no contract, signing, invoice, or permission logic changed
-- Validation:
-  - `npm run build`
-  - verify stored signed-contract responses use the business filename in `Content-Disposition`
-  - verify inline and attachment headers both include the UTF-8 filename
-  - task doc: `docs/tasks/TASK-20260424-stored-student-contract-download-filename-fix.md`
-
-## 2026-04-24-r117 Ready
-
-- Scope: add the missing renewal CTA to the package contract workspace after a first-purchase contract is already signed.
-- Business impact:
-  - ops no longer need to infer that renewal should happen elsewhere after a signedé¦–è´­åˆåŒ
-  - the same contract workspace now shows both next-step options: start a renewal or create a correction/replacement version
-  - no contract signing, invoice, or package rules changed
-- Validation:
-  - `npm run build`
-  - verify a signed first-purchase contract now exposes `Create renewal contract / åˆ›å»ºç»­è´¹åˆåŒ`
-  - verify the replacement-contract CTA still remains visible for correction scenarios
-  - task doc: `docs/tasks/TASK-20260424-package-contract-renewal-cta-after-first-purchase.md`
-
-
-## 2026-04-24-r118 Ready
-
-- Scope: let the current package's signed first-purchase contract count as reusable parent info for renewal.
-- Business impact:
-  - a package that already has a signedé¦–è´­åˆåŒ now correctly shows `Create renewal contract / åˆ›å»ºç»­è´¹åˆåŒ`
-  - ops can start renewal directly from the same package workspace instead of being blocked by a false "no reusable parent profile" condition
-  - no signing, invoice, or partner-settlement rules changed
-- Validation:
-  - `npm run build`
-  - verify `èµµæµ‹è¯• 2`-style packages with only a signed current-package first-purchase contract now show the renewal CTA
-  - verify renewal draft creation succeeds from the same package workspace
-  - task doc: `docs/tasks/TASK-20260424-renewal-parent-info-current-package-fix.md`
-
-## 2026-07-13-r237 Live
-
-- Scope: add the complete first teacher-mobile workbench for own availability, leave/reschedule requests, personal expenses, and monthly teaching history.
-- Permission: every new endpoint requires a TEACHER role and linked teacher profile; management users and unauthenticated callers cannot enter the teacher-only APIs.
-- Reuse: availability, Ticket, ExpenseClaim, upload storage, audit, approval/payment, Session, attendance, and feedback data all remain in their existing system of record.
-- Safety: leave/reschedule creates or updates a coordination Ticket only; expense submission never grants approval/payment rights; teaching history excludes payroll amounts.
-- Data evidence: 46 linked teacher accounts are eligible, with 179 future-30-day sessions, 107 current-month completed sessions, 664 future availability slots, and existing teacher expense records available. Active teacher miniapp bindings remain 0 until rollout.
-- Validation: 28 focused tests, TypeScript, miniapp syntax, 26-page audit, exact document sync, diff checks, read-only reconciliation, and local/production 191-page builds pass. Production `fc0ee9f` has 101 migrations, PM2 online, health 200, and one cron; all four teacher endpoints return ADMIN 403 and anonymous 401, while ADMIN schedule remains 200. First bound-teacher phone regression remains.
+YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éí×m<çdèµ©hºÚn¶X§zÍHÈ‘SPTÑH“ÐT‘‚ˆÈÈÝ\œ™[›ÙXÝ[ÛˆÛ˜\ÚÝ‚‹HÝ\œ™[Ù\šXÙNˆÙÝX[˜YÙK˜ÛÛX‹H›ØÙ\ÜÎˆLˆOˆZ][Û‹\ØÚY[\˜‹H\ÝÚXÚÙYˆŒ‹LËLM‹HX[ÚXÚÎˆØYZ[‹ÛÙÚ[˜OˆŒ‹H™\œÚ[Ûˆ[YÛ›Y[ˆSQÓ‘Q‹H^XÝÙ\™\‹ÛØØ[ÛÜšYÚ[ˆÛÛ[Z]\Ú\Îˆ\ÙH˜\ÚÜËÜÙ\™\‹ÜØÜš\ËÛ™]×ØÚ]ÜÝ\\ØÚXÚËœÚ‚ˆÈÈÝ\œ™[Û›ÝÛˆÝ]B‚‹HØØ[PQˆÝ\œ™[›ÙXÝ[Ûˆœ˜[˜ÚXY›Üˆ™X]ÜÝšXÝ\Ý\\˜YZ[‹X]˜Z[Xš[]KXž\\ÜØ‚‹H™]š[Ý\ÈÙ\™\ˆš^™[XZ[œÈ[ˆXÙNˆ\ØYÝ]XÈ]È[™\ˆÝ\ØYËÊ˜\™H™XXÚX›K‚‹H˜\ÚÜËÜÙ\™\‹ÜØÜš\ËÛ™]×ØÚ]ÜÝ\\ØÚXÚËœÚÛÛ™š\›YYØØ[ÛÜšYÚ[‹ÜÙ\™\ˆ\™H[YÛ™Y[™ØYZ[‹ÛÙÚ[˜OˆŒ‚‹HÝ\œ™[›ÙXÝ[Ûˆ™[X\ÙNˆŒ‹LËLM\ŒLX][[YHÛÛ[Z]L™ˆH\ÛÛ]Y\™\ˆÜ™Y]›ÝHYÙ\‹š[˜[˜ÙHÛÜšÙ›ÝÈ[™ˆ\™H]™NÈÛ™ÈˆXY\ˆ[X™\œÈ›ÝÈš]Û™H[™Kˆ›ÙXÝ[Ûˆ\ÈLHZYÜ˜][ÛœÈ[™›È™X[Ü™Y]›ÝH™XÛÜ™ÈY]ˆ[š]™\œÚ]KXØ\™HŒX[™X\›Y\ˆ™[X\Ù\È™[XZ[ˆÛˆHØ[YH[[YH[™XYÙK‚‹H™\\™Y™[X\ÙNˆŒ‹LËLM\ŒL˜[YÛœÈ[\ÞYYK[Z[šX\ÝY[ØÚY[[™ÈÚ]HÙXˆÛÜšÙ›ÝËˆÝY[Ù[XÝ[Ûˆ\È™XY[Û›NÈQRSˆ\™XÝØÚY[[™ÈÜ™X]\ÈÙ\ÜÚ[ÛœÈÚ]Ý]XÚÙ]ÎÈ^XÚ]ÛÛÜ™[˜][Ûˆ™\]Z\™\ÈHÛÝ\œÙH[™™X\ÛÛ‹ˆš]™HYØXÞH]]ËXÜ™X]YXÚÙ]ÈÙ\™HØ[˜Ù[YÚ]™]Z[™Y]Y]\ÝÜžK‚‹H™^[›™YØ\™H™[X\ÙNˆ[š]™\œÚ]HÙ[Y\Ý\‹ÛÝ\œÙH[™\ÜÙ\ÜÛY[Z[\ÝÛ™\ÈÚ]ÔKÜ™Y]XY[™H[™XØY[ZXË\š\ÚÈ˜XÚÚ[™ËˆÜÝÜ˜YX]H[™Ø\™Y\ˆ\[[™\È™[XZ[ˆÝXœÙ\]Y[\ÛÛ]Y\Ù\Ë‚‹HŒ‹LËL‹\ŒXŒ‹LËL‹\Œ˜[™Œ‹LËL‹\ŒØ\™H›ÝÈ]™HÛˆHÝ\œ™[Ù\™\ˆÛÛ[Z][™XYÙK‚‹H™[X\ÙKYØÈØ]H™\]Z\™\ÈÒS‘ÑSÑËSU‘X‘SPTÑKP“ÐT‘[™HX]Ú[™ÈTÒËJ˜š[H[ˆHØ[YH\ÞHÛÛ[Z]‚‚ˆÈÈÜ[ˆš\ÚÜÂ‚‹HZ[šX\\™XÝ\ØÚY[[™È›ÛÝ]š\ÚÎˆŒ‹LËLM\ŒL˜\È™\\™YˆÙ\™\‹\ÚYH˜[Y][Ûˆ[™™XY[Û›H]HÚXÚÜÈ\ÜË]H™]ÈŽZ[šX\YÙHÝ[™YYÈÛ™HÙPÚ]]™[Ü\ˆÛÛÈ[™\ÚXØ[\Û™H\ÜÈY\ˆH^\šY[˜ÙH™\œÚ[Ûˆ\È\ØYYˆ™\šYžHQRSˆ\™XÝØÚY[[™È™]šY]ËØ\H[™ÔÈ^XÚ]ÛÛÜ™[˜][ÛˆÜ™X][ÛŽÈY\™[HÜ[š[™È[™™]\›š[™È]\ÝX]™HXÚÙ]ÛÝ[È[˜Ú[™ÙY‚‹H\™\‹XÜ™Y][›ÝH[Ûš]Üš[™ÎˆŒ‹LËLM\ŒLX\È]™Kˆ˜YÈ™[XZ[ˆ^ÛYYœ›ÛHY\ÝYÝ[ÎÈ\ÜÝYY›Û‹]›ÚY›Ý\È\™HHÛ›HÜ™Y]ÈÛÝ[Yˆ^\Ý[™È™XÙZ\È\™H[[[Û˜[H›Ý™]Üš][ˆ[™]\Ý™H™]šY]ÙYžHš[˜[˜ÙHYˆHÜ™Y]Y[›ÚXÙH[™XYH\ÈH™XÙZ\ˆHš\œÝ™X[\ÜÝYH™[XZ[œÈ[™[™ËˆHÛ™Ë[[X™\ˆ›ÙXÝ[Ûˆˆ\ÜÙYÚ]Ý]XY\ˆÝ™\›\[™[ÓÔ[[È™XÛÜ™ÈÙ\™HÛX[™YÈ™\›Ë‚‹H[š]™\œÚ]KXØ\™H[Ûš]Üš[™ÎˆŒ‹LËLM\ŒX\È]™KˆX[˜YÙ[Y[™]šY]ÙYH^\Ý[™ÈHÚ[™Ú[È•TÈ˜YÛˆŒ‹LËLM[™^XÚ]H[YÛ™Y]ÈHš]™HÝ\œ™[[š]™\œÚ]KXXØY[ZXÈØÛÜ\ËZ[\ÝÛ™KÛ[ÛHØY[˜ÙH[™˜\ÛZ[™HÝÛ™\œÚ\È]ÈX\›Y\ˆ™K][š]™\œÚ]HY™KXØ\™HØÛÜ\È\™H›ÈÛ™Ù\ˆXÝ]™Kˆ]™[XZ[œÈH˜Y[™]\Ý›Ý™HXÝ]˜]Y[[YÜ™YKÜ›ÙÜ˜[[YKÝ\œ™[\›H[™^XÝYÜ˜YX][Ûˆ\™HÛÛ\]YˆY[\ÝY[ÛÛœÙ[™[XZ[œÈ›Ý™XÛÜ™YÛÈ\™[\™\Ü[YÚXš[]H\ÈÝ[›ØÚÙYˆÝZ\È™[XZ[œÈ[ˆXÝ]™H™K][š]™\œÚ]H[XØ\™H›Ú™XÝ[™\È›ÝÈ[YÛ™YÈHÛÛ\]HZYÚ\ØÛÜHÝ[™\™‚‹H[XØ\™KY]šY[˜ÙH[Ûš]Üš[™ÎˆŒ‹LËLM\Œ\È]™Kˆ\™[[]™\žH\È[[[Û˜[H\ØX›YÈHš[HX\šÙYT‘S•\ÈÛ›H[YÚX›H›ÜˆH]\ˆ™]šY]ÙY™\Üˆ[Ûš]ÜˆHš\œÝ™X[ØÚÛÛY[XZ[\ØY[™ÛÛ™š\›HH[[™YØ\™HX[HØ[ˆÜ[ˆ]Ú[H[œ™[]YÝY™ˆØ[››Ý‚‹H\™[\Ù\šXÙK\›ÙÜ™\ÜÈ›ÛÝ]š\ÚÎˆ[ÝY[ÈÝ\œ™[H]™HH[Ù\šXÙH\KÛÈH\™[\[\Ü˜\š[H\Ù\ÈÜ™[˜\žKXÛÝ\œÙHÛÜ™[™ÈÚ]Ý]Ú[™Ú[™ÈH]X˜\ÙKˆX[˜YÙ[Y[]\ÝÛ\ÜÚYžHÝY[È™Y›Ü™HXØY[ZXË[X[˜YÙ[Y[Ù[XØ\™K\ÜXÚYšXÈÛÛ[][šXØ][Ûˆ\È™[YY\Û‹ˆ[XØ\™H™XÛÜ™È™[XZ[ˆ[š\ÚX›H[[^XÚ]HX›\ÚYÈ\™[ËˆÛÛ\]HH\ÚXØ[\Û™H\ÜÈY\ˆH™^^\šY[˜ÙK]™\œÚ[Ûˆ\ØY‚‹Hš\ÝX[\ØÚY[[™ËXØ[[™\ˆ›ÛÝ]š\ÚÎˆŒ‹LËLLË\Œ˜\È]™H[™YÈH‹Y^HZ[šX\˜[™ÙH]Y\žKÜ\˜][Û˜[Ý™\›\[™XØ]ÜœË[™XXÚ\ˆœ™YK\ÛÝ\Ü^KˆÚ[™ÛK\]Y\žH™[][ÛˆØY[™È™YXÙYH›ÙXÝ[Ûˆ‹Y^H™\]Y\Ýœ›ÛHŒ‹ÙXÛÛ™ÈÈKŽNÙXÛÛ™Ë]HÛ™ÈÛÛ™È\XØ][ÛˆÙ\™\ˆÈÚ[™Ø\Ü™H]X˜\ÙH]Ý[X]™\È[ˆLLÙXÛÛ™˜\Ù[[™H[™ÚÝ[™HY™\ÜÙY\ÈHÙ\\˜]H[™œ˜\ÝXÝ\™H›Ú™XÝˆ]Ù\È›ÝYHÜš]H]ˆÛÛ\]HÛ™H\ÚXØ[\Û™H\ÜÈ›Üˆ[ÛÝÙYZËÙ^HÝÚ]Ú[™Ëš[\œË\ÜÛÛˆÜ[š[™Ë[™]KÝ[YH[™Ù™ˆ™Y›Ü™H™[Z[™ÈÛˆ]›ÜˆZ[HØÚY[[™Ë‚‹HÙÚ[‹\Ü[^\šY[˜ÙHš\ÚÎˆŒ‹LËLLË\ŒX™[[Ý™\ÈH[\ÞYYH[žHœ›ÛH]][XØ]Y\™[YÙ\È[™YÈ\™[ÙÛÝ]ˆ™[Y[X™\™Y\Ü[]]ËY[žKÙÛÝ]ÛÛ™š\›X][Û‹ÜÙ\ÜÚ[ÛˆÛX[\[™Hš[˜[\™[[Û›HÛ™H^\šY[˜ÙHÝ[™YYÛ™H\ÚXØ[\Û™H\ÜÈY\ˆ\ØY[™ÈH™^^\šY[˜ÙH™\œÚ[Û‹‚‹HYZ[‹]ÛÜšÜÜXÙKXÛÛ^[Ûš]Üš[™ÎˆŒ‹LËLLË\Œ˜\È]™KˆHÚ\™Y›Ý]K\Ù[œÚ]]™H^›ÝÈ›ÛÝÜÈ\ÙT]˜[YXÈ]][XØ]Y›ÙXÝ[Ûˆ™YÜ™\ÜÚ[Ûˆ\ÜÙ\È[Ø\™HÈÝY[ÛÝ\˜Ù\È[™˜XÚÈÚ]Ý]H\™™Yœ™\Ú‚‹HÚ\™Y\XÚØYÙHÝY[\ØÛÜH[Ûš]Üš[™ÎˆŒ‹LËLLË\ŒX\È]™H[™]È]][XØ]YZ\ÞKÓÝZ\È›ÙXÝ[ÛˆTHÚXÚÈ\ÜÙ\ËˆH^XÚ]Ù\ÜÚ[ÛˆÝY[\È]]Üš]]]™H›ÜˆØ\XÚ]K[Û™H\™[ØÚY[K™YY˜XÚË[™™[Z[™\ˆ™XYÎÈXÚØYÙHš[˜[˜ÙHØÝ[Y[È™[XZ[ˆÝÛ™\‹\ØÛÜY[™Ù\™H[[[Û˜[H›Ýœ›ØY[™Y‚‹H[XØ\™KXXÝ[Ûˆ[Ûš]Üš[™ÎˆŒ‹LËLLË\Œ\È]™KˆH[Ù[K[]™[Ù\™\ˆXÝ[Ûˆ[\ˆ\ÜÙY™X[›ÙXÝ[Û‹[[ÙHÝX›Z\ÜÚ[ÛœÈ™Y›Ü™H\ÞNÈÜÝY\ÞHX[ÚXÚÜÈ[™›ÝXÝYY]H˜\Ù[[™\È\ÜËˆ›È[Ý[™ØYÙ[Y[^\ÝÈY][™\™[X›\Ú[™È™[XZ[œÈ\ØX›Y‚‹H[XØ\™KXÛÜ™H[Ûš]Üš[™ÎˆŒ‹LËLLË\ŒŒÎ\È]™HÚ]š]™H\ÛÛ]YØ\™HX›\È[™ØYZ[‹ØØ\™XˆH]\Ý™XY[Û›HÛ˜\ÚÝÚÝÜÈHX[X[HÜ™X]Y[™ØYÙ[Y[[™HXÝ]š]KÚ][œÈ[™\ÚÜÎÈXXÚ[™È[™š[˜[˜ÙH˜\Ù[[™\È™[XZ[ˆÙ\\˜]H[™™\Ù\™Y‚‹HÛÜšÚ[™È™YHYÚY[™Hš\ÚÎˆØØ[™\ÈÝ\œ™[HÛÛZ[œÈ[œ™[]Y[˜XÚÙYš[\È[™Ù[™\˜]Y\Y˜XÝÎÈ]›ÚYZ^[™È[H[È\ÞHÛÛ[Z]Ë‚‹HZ[šX\™]šY]Ë\™XY[™\ÜÈš\ÚÎˆHÛÙH\È\™[™Y]š]˜XÞHÛÛXÝÜ™][[Ûˆ]Z[È[™ÙPÚ]˜XÚÙ[™ØÜ™Y[œÚÝÈÝ[™\]Z\™Hš[È[œ]™Y›Ü™HÝX›Z][™ÈKŒŒˆÈ›ÝÝX›Z]Ú][™[Y™][[Ûˆ›ÛZ\Ù\ÈÜˆH™]šY]Ù\ˆ]]^ÜÙ\È™X[ÝY[]K‚‹H™YY˜XÚË[›ÝYšXØ][Ûˆ›ÛÝ]š\ÚÎˆŒ‹LËLL‹\ŒŒÌØ]Y]Y\ÈÛ›HHš\œÝXXÚ\ˆ™YY˜XÚÈX›XØ][Û‹ˆ[›ÚXÙH[™™YY˜XÚÈÚ\™HHØ[YHÙ™šXÚX[Q]ÙY\Ù\\˜]H]]Üš^˜][Ûˆ[[È™\šYžHHš\œÝ™X[™YY˜XÚÈ[™ÛÛ™š\›HY]ÈÈ›Ý[œ]Y]YH\XØ]\Ë‚‹HÙ\šXÙKXÛÛœÙ[RHš\ÚÎˆÙPÚ]™]\›™YÛ›HHš\œÝQœ›ÛHXXÚÛË][\]HÙ\šXÙKÙØÝ[Y[™\]Y\Ý]™[ˆÚ[ˆH\™[[ÝÙYH\Ü^YYÜ[Û‹ˆŒ‹LËLL‹\ŒŒÌ˜Ú[™Ù\È\ÙHÈ›Ý\ˆÛ™K][\]H]ÛœÎÈ™\šYžHš[˜[˜ÙH[™™XÙZ\XXÚ™XÛÜ™Û™HXØÙ\Y\ˆ\Þ[Y[‚‹H™\]Y\ÝÙš[˜[˜ÙH›ÝYšXØ][Ûˆ›ÛÝ]š\ÚÎˆŒ‹LËLL‹\ŒŒÌXYÈ›Ý\ˆÙ™šXÚX[Û™K][YH[\]\Ëˆ[]™\žH\ÈÛÛœÙ[YØ]Y[™\›Z\ÜÚ[Û‹\ØÛÜYÈ™\šYžH›Ý™]È\™[]]Üš^˜][ÛˆÜ›Ý\È[™Û™HÛÛ›ÛY\Ü^H\Ý›Üˆ™\]Y\Ý[œZY[›ÚXÙK[™™XÙZ\Y\ÜØYÙ\È™Y›Ü™Hœ›ØY\ÙK‚‹H™[Z[™\‹XÛÝ™\˜YÙH›ÛÝ]š\ÚÎˆŒ‹LËLL‹\ŒŒÌ\š]™\ÈH\™[	ÜÈÚ\™Y][ÝHXÜ›ÜÜÈ]™\žH[šÙYÝY[[™\ÜÚYÛœÈ]ÈHX\›Y\Ý]\™H\ÜÛÛœÈ›Üˆ\Ü^KˆHÝY™ˆ][[Ûˆ\Ý\È™XY[Û›H[™\›Z\ÜÚ[Û‹\™\ÝšXÝYÈ™\šYžHHš\œÝ][K\ÝY[˜[Z[H[™š\œÝ›ËXÛÛœÙ[™[Z[™\ˆY\ˆ™[X\ÙK‚‹H™[Z[™\‹XÜ›Ûˆ[Ûš]Üš[™Îˆ\ÞHÛX[\™]š[Ý\ÛH™[[Ý™YÜËÛÙÜØØ]\Ú[™ÈÚ[™Y\™XÝ[ÛˆÈ˜Z[™Y›Ü™H]Y]YKÜÙ[™\ˆÝ\\ˆŒ‹LËLL‹\ŒŒŽX›ÝÈÜ™X]\ÈH\™XÝÜžH\ˆ[ˆ[™™Z[œÝ[ÈHÜ›ÛˆY\ˆXXÚ\ÞNÈHš\œÝ]]ÛX]XÈ›ÙXÝ[Ûˆ™\^H\ÜÙY‚‹H™YK][\]HÛÛœÙ[š\ÚÎˆŒ‹LËLL‹\ŒŒŽ›Ú[]]Üš^˜][Ûˆ™]\›™Y™YHXØÙ\™\Ý[ÈÛˆH™X[Û™Kˆ[™YH^[ØYX\[™ÜÈ]™H\ÜÙY\™XÝÙPÚ]Ù[™ÎÈÛÛ[YH[Ûš]Üš[™È›Ü›X[\™[\ØYÙH[™ÛÛœÙ[™\[š\ÚY[‚‹H]]ÛX]XÈÛÝ\œÙK\™[Z[™\ˆš\ÚÎˆŒ‹LËLL‹\ŒŒØÙ[™ÈÛ›HYHZÝ\ˆ™[Z[™\œÈÚ[ˆXØÙ\YÛÛœÙ[^ÙYYÈš[ÜˆÙ[™Ëˆ[Ûš]ÜˆHš\œÝ™X[\™[™[Z[™\ŽÈ‹ZÝ\ˆ]]ÛX][Ûˆ™[XZ[œÈ\ØX›Y‚‹HÛÝ\œÙK\™[Z[™\ˆ[\]H[Ûš]Üš[™Îˆ[™YHÙ™šXÚX[ÛÝ\œÙK][\]HÙ^]ÛÜ™X\[™ÜÈ]™H\ÜÙY\™XÝÙ[™Ë[™HÜšYÚ[˜[[\]H\È[ÛÈ\ÜÙYH]]ÛX]XÈÜ›Ûˆ]ˆÛÛ[YHÚXÚÚ[™ÈÛÛœÙ[˜[[˜ÙH[™\™[Y˜XÚ[™ÈÛÜ™[™È\š[™È›Ü›X[\ÙK‚‹H\ÞHœ˜[˜ÚY™]Úš\ÚÎˆHš\œÝŒŒˆ\ÞH][\™[XZ[™YÛˆH™]š[Ý\È™[[ÝK]˜XÚÚ[™ÈÛÛ[Z]™XØ]\ÙHHÙ\™\‰ÜÈ˜\œ›ÝÈ™]Ú™YœÜXÈY›Ý\]HH™\]Y\ÝY™X]\™Hœ˜[˜ÚÈŒŒˆ›ÝÈ™]Ú\È]œ˜[˜Ú[È]È^XÝ™[[ÝK]˜XÚÚ[™È™Yˆ™Y›Ü™H™\Ù]ØZ[‚‹HZ[šX\\\ÙK]ÛÈš\ÚÎˆŒ‹LËLLK\ŒŒXYÈQRS‹[Û›HØØ][Ûˆ[™Ù\šY\ÈØÚY[[™ÈÜš]\È\ÈXXÚ\‹[ÜšYÚ[˜]YXÚÙ]Ü™X][Û‹ˆØØ][ÛˆÚ[™Ù\È[Ý™HÛ™HÙ\ÜÚ[ÛˆÈHÛÛ™YØ[YKXÛÝ\œÙHÛ\ÜËÙ\šY\ÈÜš]\È\™H[[Ü‹[›Ý[™È›Üˆ‹LLˆÙYZÜË[™XXÚ\ˆ™\]Y\ÝÈÈ›Ý[ÙYžHØÚY[\Ëˆ[Ûš]ÜˆHš\œÝ™X[XÝ[Ûˆ[ˆXXÚ][™ÛÛ™š\›H™\ÜÈ™]Z[ˆH^XÝYÛÝ\œÙKÜÝY[ÛÛ^‚‹HZ[šX\[[Øš[KXXØY[ZXËXXÝ[ÛœÈš\ÚÎˆŒ‹LËLLK\ŒŒYÈQRS‹[Û›HÜš]\È›ÜˆX]™KØØ[˜Ù[][Û‹Û™K\Ù\ÜÚ[ÛˆXXÚ\ˆ™\XÙ[Y[[™š\œÝØÚY[[™Èœ›ÛHHXÚÙ]ˆ]™\žHÜš]H™\]Z\™\ÈHœ™\ÚÚYÛ™Y™]šY]È[™˜[œØXÝ[Ûˆ™]˜[Y][ÛŽÈ[Ûš]Üˆ]˜KÒ˜\ÛZ[™IÜÈš\œÝ™X[XÝ[Ûˆ[ˆXXÚÛÜšÙ›ÝÈ[™ÛÛ™š\›HHX]Ú[™ÈXÚÙ]ÛÛ\][Ûˆ™\Ý[™Y›Ü™HÚY\ˆZ[H\ÙK‚‹HZ[šX\\ØÚY[[™Ë[ÝÛ™\ˆš\ÚÎˆŒ‹LËLLK\ŒŒŒØ[ÝÜÈ\›Z]YÝY™ˆÈÚ[™ÙHØÚY[[™ÈXÚÙ]ÝÛ™\‹ˆ[ÝÙY˜[Y\È\™H™\ÝšXÝYÈ[˜\ÜÚYÛ™Y˜\ÛZ[™K]˜K[™[Z[NÈ]™\žHÚ[™ÙH\È]Y]Y[™Û\ˆÛY[È™\Ù\™HHÝ\œ™[ÝÛ™\ˆÚ[ˆÛZ][™ÈHšY[‚‹HZ[šX\\ØÚY[[™ËX›Ø\™\ØÛÜHš\ÚÎˆŒ‹LËLLK\ŒŒŒ˜œ›ØY[œÈHŒŒŒH›Ø\™œ›ÛH^XÝ9£¤º+ï¹ccú, ØXÚÙ]ÈÈ[Ú^ØÚY[[™Ë\™[]YÙXˆXÚÙ]Ù[\ˆØ]YÛÜšY\Ëˆ^\Ý[™È\›Z\ÜÚ[Û‹˜[œÚ][Û‹[™]Y]ÛÛ›ÛÈ™[XZ[ŽÈ™\šYžHÜ\˜]ÜœÈ›ÝXÙHXXÚXÚÙ]	ÜÈÜšYÚ[˜[\HX™[™Y›Ü™H\][™È]‚‹HZ[šX\XÛÛÜ™[˜][Û‹X›Ø\™š\ÚÎˆŒ‹LËLLK\ŒŒŒX^ÜÙ\È[Ü[ˆØÚY[[™ËXÛÛÜ™[˜][ÛˆXÚÙ]ÈÈQRS‹ÔË[™ÔË]ÛÜšÜÜXÙHÝY™ˆ[™[ÝÜÈÛÛ[][šXØ][Û‹ÜÝ]\ËÙ›ÛÝË]\\]\Ëˆ]Ù\È›ÝÛÛ\]HXÚÙ]ÈÜˆÜš]HÙ\ÜÚ[ÛœÎÈ[Ûš]ÜˆHš\œÝ]˜KÒ˜\ÛZ[™H\]\È›ÜˆÛÜœ™XÝÝÛ™\‹™^XÝ[Û‹[™YH]H\ØYÙK‚‹HZ[šX\\ØÚY[[™Ë]XÚÙ]XÛÜÝ\™Hš\ÚÎˆŒ‹LËLLK\ŒŒŒØ[ˆÛÛ\]HÜ[ˆØÚY[[™ËXÛÛÜ™[˜][ÛˆXÚÙ]ÈÙÙ]\ˆÚ]H[Øš[HØÚY[[™ÈÜš]KˆÙ[XÝ[ÛˆY˜][È[\K\È™\ÝšXÝYÈØ[YK\ÝY[ÜØ[YKXÛÝ\œÙH™]šY]È™\Ý[Ë[™\È™]˜[Y]Y[ˆHØ[YH˜[œØXÝ[ÛŽÈ[Ûš]ÜˆHš\œÝ™X[ÛÜÝ\™H™Y›Ü™Hœ›ØY[š[™È]]ÛX]XÈÛÜšÙ›ÝÈXÝ[ÛœË‚‹HZ[šX\\ØÚY[[™Ë]Üš]Hš\ÚÎˆŒ‹LËLLK\ŒŒNXYÈ™X[Ù\ÜÚ[ÛˆÜ™X][Û‹Ü™\ØÚY[[™Èœ›ÛHHZ[šX\ˆXXÚÜ\˜][Ûˆ\ÈQRS‹[Û›KÚ[™ÛK\Ù\ÜÚ[Û‹™]šY]Ë\ÚYÛ™Y™]˜[Y]Y[[YYX][H™Y›Ü™H\K[™]Y]YÈ[Ûš]Üˆ]˜KÛX[˜YÙ[Y[	ÜÈš\œÝ™X[Ü\˜][ÛœÈ™Y›Ü™H^[™[™ÈÈXXÚ\‹Ü›ÛÛHÚ[™Ù\ÈÜˆ]\™K\Ù\šY\È\]\Ë‚‹HZ[šX\\ØÚY[[™ËXÛÛÜ™[˜][Ûˆš\ÚÎˆŒ‹LËLLK\ŒŒN]ÈQRS‹ÐÔÈÝY™ˆÜ™X]HÜˆ\]H[\›˜[ØÚY[[™ËXÛÛÜ™[˜][ÛˆXÚÙ]Èœ›ÛH\ÜÛÛˆ]Z[[™\[™ÛÛ[][šXØ][Ûˆ›Ý\Ëˆ][[[Û˜[HÝÜÈ™Y›Ü™HÚ[™Ú[™È\ÜÛÛˆ[Y\ÎÈÝY™ˆ]\ÝÝ[\ÙHH\ÚÝÜØÚY[[™ÈÛÜšÙ›ÝÈ›ÜˆHš[˜[[Y]X›HÜš]K‚‹H\™[\™\]Y\ÝY›Ü›X[YšY[Èš\ÚÎˆŒ‹LËLLK\ŒŒMØYÈHXÚÙ]ZYÜ˜][Ûˆ[™ÝXÝ\™Y\™[\™\]Y\ÝšY[Ëˆ^\Ý[™È9k­ºeoùl#ùê"ùn£ØXÚÙ]È\™HX\šÙY\™[]š\ÚX›H[™™XÙZ]™H™\ÝYY™›Ü˜XÚÙš[ÈÛÛ™š\›HH\ÝÜšXØ[[Z[KX\ÜÚ\ÝY™\]Y\ÝÝ[ÚÝÜÈÛ›H]È^\›˜[Ý[[X\žHÈH\™[[™]È[\›˜[›ÝHÈÝY™‹‚‹H\ÞKY[‹[Z[šX\XÜ™Y[X[Èš\ÚÎˆŒ‹LËLL\ŒŒM˜Ú[™Ù\ÈÛ›H\ÞH[ˆ™[™\š[™ÈÛÈ]\™H\Þ\È™\Ù\™HÙPÚ]Z[šX\Ü™Y[X[È[ˆ™[˜È™\šYžHZ[šX\ÙÚ[ˆÙ\È›Ý™YÜ™\ÜÈY\ˆ\ÞK‚‹H\™[\™\]Y\ÝXÛÛ\][Û‹\™\Ý[š\ÚÎˆŒ‹LËLL\ŒŒMX›ØÚÜÈÝY™‹ØYZ[ˆœ›ÛHX\šÚ[™È\™[™\]Y\ÝÈÛÛ\]Y[›\ÜÈH\™[]š\ÚX›HÛÛ\][Ûˆ™\Ý[\È›ÝšYYÈ™\šYžH]˜KÒ˜\ÛZ[™H[™\œÝ[™H™\Ý[Ú[™Hš\ÚX›HÈ\™[Ë‚‹HÝY™‹X\ÜÚ\ÝY\™\]Y\Ý]š\ÚXš[]Hš\ÚÎˆŒ‹LËLL\ŒŒMÚ[™Ù\È\™[\™\]Y\ÝÈ›Ú™XÝ[Û‹ˆ™\šYžH\™[ÈÛ›HÙYHHX›XÈÝ[[X\žKÚ[HÝY™‹ØYZ[ˆÝ[ÙYH[\›˜[ÜšYÚ[˜[›Ý\È[™ÛÛ[][šXØ][ÛˆÛÝ\˜ÙH›Üˆ\ÜÚ\ÝY™\]Y\ÝË‚‹HÝY[\ØÚY[KT‹]XXÚ\ˆš\ÚÎˆŒ‹LËLL\ŒŒLØÚ[™Ù\ÈÛ›HHÝY[[ÛHØÚY[HˆXXÚ\ˆX™[È\ÙH\‹\Ù\ÜÚ[Ûˆ™\XÙ[Y[XXÚ\œÈÚ[ˆ™\Ù[ÈØÚY[[™Ë™\XÙ[Y[\ÝÜžK][™[˜ÙKXÚØYÙH˜[[˜Ù\Ë^\›Ûš[[™Ë\™\ˆÙ][Y[Z[šX\[™Ü[Û]È™Z]š[Üˆ™[XZ[ˆ[˜Ú[™ÙY‚‹HÝY™‹X\ÜÚ\ÝY\\™[\™\]Y\Ýš\ÚÎˆŒ‹LËLL\ŒŒL˜YÈHÝY™‹X]][XØ]YXÚÙ]Ü™X][Ûˆ]›ÜˆÙPÚ]YÜ›Ý\\Ý[H\™[™\]Y\ÝËˆ™\šYžH[Z[KÑ]˜HØ[ˆÙ[XÝH[[™YÝY[[™]\™[]š\ÚX›HÝ[[X\šY\È\™HÜš][ˆØ\™Y[H™Y›Ü™HÛÛ\][™È™\]Y\ÝË‚‹HÝY™‹[Z[šX\X][™[˜ÙHš\ÚÎˆŒ‹LËLL\ŒŒLXYÈHZ[šX\Üš]H]›ÜˆXXÚ\ˆ][™[˜ÙHX\šÚ[™ÎÈ]™\Ù\™\È^\Ý[™ÈYXÝ[Û‹ÜXÚØYÙHšY[È[™Û›H]ÈH[šÙYXXÚ\ˆÜš]H][™[˜ÙH›ÜˆZ\ˆÝÛˆÙ\ÜÚ[ÛœË‚‹HÝY™‹[Z[šX\UÖS\™[™\ˆš\ÚÎˆŒ‹LËLL\ŒŒL™[[Ý™\ÈÛÛ\^ÖS˜[˜XÚÈ^™\ÜÚ[ÛœÈœ›ÛHÝY™ˆYÙ\È[™™]™[ÈÜ[Û˜[ÝY™‹ZÛYHÛÝ[TH[Y[Ý]Èœ›ÛH›[šÚ[™ÈHÛÜšØ™[˜ÚY\ˆHÙPÚ]]™[Ü\ˆÛÛÚÝÙYH›[šÈÝY™ˆÛÜšØ™[˜ÚÈ\ÈÚÝ[[\›Ý™HZ[šX\™[™\š[™ÈÛÛ\]Xš[]HÚ]Ý]Ú[™Ú[™È˜XÚÙ[™™Z]š[Ü‹‚‹HÝY™‹[Z[šX\Y™YY˜XÚÈš\ÚÎˆŒ‹LËLL\ŒŒXYÈHZ[šX\Üš]H]›ÜˆXXÚ\ˆY\‹XÛ\ÜÈ™YY˜XÚÎÈ]™]\Ù\ÈH^\Ý[™Èš]™K\ÙXÝ[Ûˆ\™[Y˜XÚ[™È™YY˜XÚÈ™\]Z\™[Y[È[™ÚXÚÜÈ]HÝY™ˆ\Ù\ˆ\È[šÙYÈH\ÜÛÛˆXXÚ\ˆ™Y›Ü™HÜš][™Ë‚‹HÝY™‹[Z[šX\\ØÚY[Hš\ÚÎˆŒ‹LËLL\ŒŒYÈ™XY\ÚYHZ[HØÚY[HXØÙ\ÜÈ›Üˆ[Øš[HÝY™ŽÈXXÚ\‹\›ÛHXØÛÝ[È\™HÛÛœÝ˜Z[™YÈZ\ˆ[šÙYXXÚ\ˆØÚY[KÚ[HÜËÛX[˜YÙ[Y[Ø[ˆÙYH[\ÜÛÛœÈ›ÜˆØ[YKY^HÛÛÜ™[˜][Û‹‚‹HÝY™‹\™\]Y\ÝYš[\ˆš\ÚÎˆŒ‹LËLL\ŒŒYÈZ[šX\™\]Y\Ý\Hš[\š[™ÈÛ›NÈ\™[™\]Y\ÝÜ™X][Û‹ÝÛ™\œÚ\Ý]\È˜[œÚ][ÛœË[™›ÝYšXØ][ÛœÈ™[XZ[ˆ[˜Ú[™ÙY‚‹HZ[šX\YÛXZ[ˆš\ÚÎˆŒ‹LËLL\ŒŒØÝÚ]Ú\ÈH˜]]™HZ[šX\Y˜][TH˜\ÙHÈÎ‹ËÜÙÝX[˜YÙK˜ÛÛXÈÙPÚ]X›XÈ]›Ü›H]\ÝÚ][\Ý\ÈÛXZ[ˆ›Üˆ™\]Y\Ý\ØYš[K[™ÝÛ›ØYš[H™Y›Ü™H›Ü›X[Y]šXÙH\Ý[™Ë‚‹HZ[šX\X]]š\ÚÎˆŒ‹LËLL\ŒŒØYÈ\™[ÜÝY™ˆZ[šX\Ù\ÜÚ[ÛœÈ[™š[™[™ÈX›\ÎÈ›ÙXÝ[Ûˆ\ÙHÝ[\[™ÈÛˆÛÛ™šYÝ\š[™ÈÑPÒUÓRS’PTÔÑPÔ‘U[™ÙPÚ]ÝXœØÜš\[Ûˆ[\]HQË‚‹H\™\‹\˜]KY[žHš\ÚÎˆŒ‹LËL\ŒŒ˜™[[Ý™\ÈH˜]HØ]™HXÝ[Ûˆœ›ÛH\™\ˆÙ][Y[ÛÈÜ\˜]ÜœÈ]\ÝY]X\Ý\ˆ˜]\È[ˆ\™\ˆÙ]\È^\Ý[™ÈÙ][Y[™XÛÜ™ÈÙY\Z\ˆØ]™Y[[Ý[È[™\™H›Ý]]ÛX]XØ[H™XØ[Ý[]Y‚‹H][K\\™\ˆÙ][Y[š\ÚÎˆŒ‹LËL\ŒŒXYÈ\™\˜ÛÛ™šYÝ\˜][Ûˆ[™\™\’Yš[\š[™ÈÈÙ][Y[š[[™Ë™XÙZ\Ë^[Y[›ÛÙœË[™Ü]\Û˜\ÚÝÎÈ™\šYžHÜ\˜]ÜœÈÙ[XÝHÛÜœ™XÝ\™\ˆ™Y›Ü™HÜ™X][™È[›ÚXÙ\Ë‚‹HXXÚ\‹Y™YY˜XÚÈØØ[ˆš\ÚÎˆŒ‹LËL‹\ŒŒ[˜Ü™X\Ù\ÈH™XY\ÚYHÝ™\™YHØØ[ˆœ›ÛHŒÈŒÙ\ÜÚ[ÛœËÚ[HÙY\[™ÈHš\ÚX›HÛÜšÈ][HØ\]LÈ[Ûš]ÜˆYÙHØYYˆ\ÝÜšXØ[Ù\ÜÚ[Ûˆ›Û[YHÜ›ÝÜÈÝXœÝ[X[K‚‹H[X[ˆY[[ÜžHš\ÚÎˆÚ[™Ù\ÈÙ\™HÜ™XYXÜ›ÜÜÈ][\HÙ\ÜÚ[ÛœË‚‹Hš[˜[˜ÙHY[H\˜Ù\[Ûˆš\ÚÎˆ›ÛKX˜\ÙYÚYX˜\ˆØ[ˆÛÚÈZÙH›Z\ÜÚ[™È™X]\™\Èˆ›Üˆ’SSÑH\Ù\œË‚‹H™]È›ØÙ\ÜÈš\ÚÎˆ\ÞHÚ[˜Z[Yˆ™[X\ÙHØÜÈ\™H›Ý[˜ÛYY[ˆH\ÞHÛÛ[Z]‚‹H\ÝÜšXØ[š\ÚÈÛÛ™š\›YYˆÙ\™\ˆ[ˆ™]š[Ý\ÛHÚ[YÈØØ[ÜÝˆ[ˆÛ\ˆ˜XÚÝ\Ë‚‹HZYÜ˜][ÛˆÜ™\ˆš\ÚÎˆH\™XÝXš[[™ÈXÚØYÙH[›ÚXÙHØ]H[[YH\[™ÈÛˆ™]ÈÛÝ\œÙTXÚØYÙK™š[˜[˜ÙQØ]J˜ÛÛ[[œÈ[™HXÚØYÙR[›ÚXÙP\›Ý˜[X›KÛÈ\ÞHÜ™\ˆ]\ÝÙY\ˆØÚ[XH[™[[YH[YÛ™Y‚‹HÜËY›ÝÈš\ÚÎˆŒ‹LLŒK\Ž˜™[[Ý™\ÈH™[XZ[š[™Èš[˜[˜ÙKYØ]Hž\\ÜÈ]ËÛÈ[žH\™XÝXš[[™ÈÚ\™ÙXX›HXÚØYÙHÝ[ØZ][™È›ÜˆX[˜YÙ\ˆ[›ÚXÙH\›Ý˜[Ú[›ÝÈ˜Z[ØÚY[[™ÈÛÛœÚ\Ý[H[[XÚØYÙHš[[™È\Èš^Y‚‹H^Ü[^[Ý]š\ÚÎˆ\™[Ý][Y[œÈ™]š[Ý\ÛH]Hš[[™ÝX[XY\ˆ]HÛÛYHÚ]HÛÛ\[žKÙ]H›ØÚÈÚ[ˆH]HÜ˜\YÈŒ‹LLŒË\ŽØ™[[Ý™\È]Ý™\›\Ú]Ý]Ú[™Ú[™ÈÝ][Y[]K‚‹HÛÛ˜XÝY›ÝÈš\ÚÎˆŒ‹LLŒË\ŽYÈ™]ÈX›XÈÚÙ[ˆYÙ\ËÛÛ˜XÝˆÙ[™\˜][Û‹[™Ý\ØYËØÛÛ˜XÝËÊ˜ÝÜ˜YÙKÛÈ\ÞHÜ™\ˆ]\ÝÙY\HZYÜ˜][Ûˆ[™[[YH[YÛ™Y‚‹HÛÛ˜XÝ[^[Ý]š\ÚÎˆX\›HŒ‹LLŒË\ŽÝY[ÛÛ˜XÝÝÛ›ØYÈÛÝ[]Hš[[™ÝX[]H›ØÚÈ[™Û™ÈÝ[[X\žH˜[Y\ÈÜ›ÝÙXXÚÝ\ŽÈŒ‹LLŒË\ŽXYÚ[œÈ^[Ý]\Ú[™ÈYX\Ý\™Y^ZYÚÈÚ]Ý]Ú[™Ú[™ÈÛÛ˜XÝÙÚXË‚‹H\™\‹XÛÛ˜XÝ]ZHš\ÚÎˆ\™\‹\Ù][Y[XÚØYÙ\È\™H^[\œ›ÛHHÝY[ÛÛ˜XÝ›ÝË]ÛÛYHYÙK[]™[ÚÜÝ]ÈÝ[ÛÚÙYZÙH›Ü›X[ÛÛ˜XÝXÝ[ÛœÈ[[Œ‹LLŒË\ŽL™[[Ý™\ÈÜÙHZ\ÛXY[™È[žHÚ[Ë‚‹HÛÛ˜XÝ\™]ÛÜšÈš\ÚÎˆŒ‹LLŒË\ŽLXÚ[™Ù\ÈH\™XÝXš[[™ÈÝY[ÛÛ˜XÝ›Ý\›™^Hœ›ÛHHÚ[\H˜YÜÚYÛˆ›ÝÈ[ÈH™]Ë\ÝY[[ZÙH]\ÈÙ\\˜]Hš\œÝ\\˜Ú\ÙH[™™[™]Ø[[Ù\Ë[™]›ÝÈ]]ËXÜ™X]\È[›ÚXÙH˜YÈY\ˆÚYÛš[™ËÛÈ\ÞH™\šYšXØ][Ûˆ]\ÝÛÝ™\ˆÝY[Ü™X][Û‹›ÝÛÛ˜XÝœ˜[˜Ú\Ë[™[›ÚXÙHY\K‚‹HÝY[]\H[X\Èš\ÚÎˆŒ‹LLŒË\ŽL˜Ú[™Ù\ÈÚXÚÝY[\HH™]È\™[Z[ZÙH›ÝÈ\ÜÚYÛœÈ›Üˆ\™XÝXš[[™ÈÝY[ËÛÈ\ÞH™\šYšXØ][Ûˆ]\ÝÛÛ™š\›H™]È[ZÙKXÜ™X]YÝY[È›ÝÈ™]\ÙHH^\Ý[™È:!ê¹mìyki¹å'ËJ˜^Û›Û^H[™]YØXÞH9æí9k¨¹ki¹å'Ø^ÜÈÝ[™[™\ˆ\È\™XÝXš[[™Ë‚‹HÛÛ˜XÝZ\ÝÜžHš\ÚÎˆŒ‹LLŒË\ŽLØÚ[™Ù\ÈXÚØYÙHš[[™ÈÈYÛ›Ü™H›ÚYÛÛ˜XÝÈÚ[ˆÚÛÜÚ[™ÈHÝ\œ™[XÝ]™HÛÛ˜XÝ[™YÈ\ÚXØ[[][Ûˆ›Üˆ[œÚYÛ™YÝ[š[›ÚXÙY›ÚY˜YËÛÈ™\šYšXØ][Ûˆ]\ÝÛÛ™š\›HØY™H˜YÈØ[ˆ™H™[[Ý™YÚ[HÚYÛ™YÚ[›ÚXÙY›ÚY›ÝÜÈ™[XZ[ˆ[ˆÛÛ\ÙY\ÝÜžK‚‹HÚYÛ˜]\™K\ÝX›Z]š\ÚÎˆŒ‹LL\ŒL˜Ú[™Ù\ÈÝÈHX›XÈ[™Üš][‹\ÚYÛ˜]\™HYÞ[˜ÜÈ]ÈY[ˆ^[ØYÚ[HH\™[\È˜]Ú[™ËÛÈ™\šYšXØ][ÛˆÚÝ[ÛÛ™š\›HH]ZXÚÈ˜]ËX[™\ÝX›Z]›ÈÛ™Ù\ˆ˜[Ù[HšYÙÙ\œÈH8 'X\ÙH˜]ÈH[™Üš][ˆÚYÛ˜]\™x 'H\œ›Ü‹‚‹HÛÛ˜XÝ]ÛÜšÜÜXÙH˜]šYØ][Ûˆš\ÚÎˆŒ‹LL\ŒLØ[Ý™\ÈHÝY[XÛÛ˜XÝÛÜšÙ›ÝÈÙ™ˆHXÚØYÙHš[[™ÈYÙH[ÈHYXØ]YXÚØYÙHÛÛ˜XÝYÙKÛÈ™\šYšXØ][ÛˆÚÝ[ÛÛ™š\›HÝY™ˆØ[ˆÝ[™XXÚ]™\žHÛÛ˜XÝXÝ[Ûˆœ›ÛHH™]ÈYÙH[™]š[[™È›ÝÈ™Y[ÈYÚ\‹‚‹H[›ÚXÙKY[]HÙ\]Y[˜Ú[™Èš\ÚÎˆŒ‹LL\ŒLLXÝÜÈÛÛ\XÝ[™È]\ˆ˜Y[›ÚXÙH[X™\œÈY\ˆ[][Û‹ÛÈ™\šYšXØ][Ûˆ]\ÝÛÛ™š\›HZYHØ\È™[XZ[ˆš\ÚX›KZ[Ø\ÈÙ]™]\ÙYÛ›H˜]\˜[HžHH™^™]È˜Y[™[]Y˜Y[X™\œÈ\X\ˆ[ˆ\ÝÜžH›Üˆ]Y]‚‹H\™[Z[ZÙHÛX[\š\ÚÎˆŒ‹LL\ŒLL˜YÈ[][Ûˆ›Üˆ[\ÙY\™[Z[ZÙH[šÜËÛÈ™\šYšXØ][Ûˆ]\ÝÛÛ™š\›HÛ›Hš[ÚÛ™ÝÙZLÛXZ[˜ÛÛXÙY\ÈHXÝ[Ûˆ[™][žH[ZÙH[™XYHÝX›Z]Y[ÈHÝY[ÜXÚØYÙKØÛÛ˜XÝ™[XZ[œÈ[™[]X›K‚‹HÝY[[Øš[HÝXÚÞHš\ÚÎˆ™Y›Ü™HŒ‹LLK\ŒLNXHÝY[]Z[ÛÜšØ™[˜ÚÛÝ[™[XZ[ˆH[ZZYÚÝXÚÞH[™[ÛˆÛ™\È™XØ]\ÙHHÝXÚÞHÝX\™\ÙYH\ÚÝÜZ[š[][HÚYˆ™\šYšXØ][ÛˆÚÝ[ÛÛ™š\›HH\™ÙHÛÜšØ™[˜Ú\ÈÝÛ™Ü˜YY[™Û›HHÛÛ\XÝÚÜÝ]›ÝÈÝ^\ÈÝXÚÞK‚‹HYZ[ˆ[Øš[H^[Ý]š\ÚÎˆŒ‹LLK\ŒLŒYÈÚ\™Y[Øš[HÚš[šÈÝX\™˜Z[È›ÜˆÙÙÙYZ[ˆYZ[ˆÛÛ[ÛÈ™\šYšXØ][ÛˆÚÝ[ÛÝ™\ˆ™\™\Ù[]]™HYZ[ˆYÙ\È[™ÛÛ™š\›HX›\È™[XZ[ˆÜš^›Û[HØÜ›ÛX›H[œÚYHZ\ˆÝÛˆÛÛZ[™\œÈ[œÝXYÙˆ›Ü˜Ú[™ÈHÚÛHYÙHÚY]Ø^\Ë‚‹H\™[Y™YY˜XÚÈÛÜšÙ›ÝÈš\ÚÎˆŒ‹LLK\ŒLŒXXZÙ\Èš]™H\™[Y˜XÚ[™ÈÙXÝ[ÛœÈ™\]Z\™Y›ÜˆXXÚ\ˆY\‹XÛ\ÜÈ™YY˜XÚËÛÈXXÚ\œÈ™]š\Ú[™ÈÛ™YY˜XÚÈ]\Ý™\Ú\H][ÈH™]ÈÝXÝ\™H™Y›Ü™H™\ÝX›Z][™Ë‚‹HXXÚ\‹Y™YY˜XÚÈ[™ÝXYÙHš\ÚÎˆŒ‹LLK\ŒLŒ˜Ú[™Ù\ÈHXXÚ\ˆ™YY˜XÚÈ[\]HÈ[™Û\ÚÐÚ[™\ÙHXY[™ÜÈ[™[ËÛÈØÜ™Y[œÚÝÈ[™˜Z[š[™ÈØÜÈÚÝ[Ý^H[YÛ™YÚ]H]™H›Ü›K‚‹HXXÚ\‹Y™YY˜XÚÈ[œ]š\ÚÎˆŒ‹LLK\ŒLŒØÚ[™Ù\ÈHXXÚ\ˆ™YY˜XÚÈ›Ü›Hœ›ÛHÛ™H^\™XHÈš]™HÙXÝ[Ûˆ^\™X\È\È™]šY]ËÛÈ\ÞH™\šYšXØ][ÛˆÚÝ[ÛÛ™š\›HÛ›Ü›X]Y™YY˜XÚÈÝ[\œÙ\È[™™]ÈÝX›Z]È\ÜÙ[X›H[ÈHØ[YHØ]™YšY[Ë‚‹HYZ[‹Y™YY˜XÚÈ›ÜØ\™[™Èš\ÚÎˆŒ‹LLK\ŒLÚ[™Ù\ÈHš[X\žHÛÜYY^›Üˆ™YY˜XÚÈ›ÜØ\™[™ÈÈH\™[\™XYX›HÙPÚ]›Ü›X]Ú[HÙY\[™ÈHÙ\\˜]H[\›˜[\™XÛÜ™ÛÜH]Ûˆ›Üˆ]Y]\Ý[H^‚‹HÝY[XXØY[ZXË[X[˜YÙ[Y[š\ÚÎˆŒ‹LLK\ŒLXYÈ[X›HÝY[X[˜YÙ[Y[šY[È[™HÙÈÙ[\ˆ™XY]›ÜˆXÝ]™K\XÚØYÙHÝY[ÈÚ]Ý]\ÛÛZ[™È\ÜÛÛœÎÈ™\šYšXØ][ÛˆÚÝ[ÛÛ™š\›HHYÙH™[™\œÈ™Y›Ü™HÜ\˜]ÜœÈÝ\š[[™È\ÙHšY[Ë‚‹HXØY[ZXË[X[˜YÙ[Y[Y›ÛÝÝ\š\ÚÎˆŒ‹LLK\ŒL˜YÈ]X[]KØÛÛ\][™\ÜÈÚYÛ˜[È[™[ˆXØY[ZXÈX[˜YÙ[Y[[ÛH™\ÜÚ]Ý]ÝXÚ[™ÈÜ[Û]ÎÈ™\šYšXØ][ÛˆÚÝ[ÛÛ™š\›HH™]È™\Ü[™ÙÈÙ[\ˆ™[™\ˆÛÜœ™XÝHÚ][ÜÝH[\H›Ùš[HšY[Ë‚‹HXØY[ZXË[X[˜YÙ[Y[[[™Hš\ÚÎˆŒ‹LLK\ŒLŽÛÜœ™XÝÈHÜ]È\ÙHÝY[\H\ÈHXØY[ZXË[X[˜YÙ[Y[ÛÝ\˜ÙHÙˆ][™ÚÝÜÈXÚØYÙHÙ][Y[Y™™\™[˜Ù\È\ÈØ\›š[™ÜÈÛ›NÈ™\šYšXØ][ÛˆÚÝ[ÛÛ™š\›HHš[\œÈÈ›ÝÚ[™ÙHš[[™ËÙ][Y[ØÚY[[™ËÜˆ][™[˜ÙH]K‚‹HÙËXXØY[ZXËX[\RHš\ÚÎˆŒ‹LLK\ŒLŽX[Ý™\ÈHÙÈÙ[\ˆXØY[ZXÈ[™Hš[\ˆÈÛY[\ÚYHÝÚ]Ú[™È[™Ú[™Ù\È[ÛÝ[ÈÈš\ÚX›H[\ÛÝ[ÎÈ™\šYšXØ][ÛˆÚÝ[ÛÛ™š\›H[™H]ÛœÈ›ÈÛ™Ù\ˆ™[ØYH[YÙH[™ÛÝ[ÈX]ÚH›ÝÜÈÚÝÛ‹‚‹H]ZXÚË\ØÚY[HÛÜ™[™Èš\ÚÎˆŒ‹LLŽK\ŒLÌÛ\šYšY\ÈÝY[[YHÛÛ™›XÝÈÛÈ[ˆ^\Ý[™ÈÙ\ÜÚ[Û‰ÜÈ›ÛÛHÙ\È›ÝÛÚÈZÙHHÝ\œ™[HÙ[XÝY›ÛÛHØ\ÈYÛ›Ü™YÈ™\šYšXØ][ÛˆÚÝ[ÛÛ™š\›H›ÛÛHÛÛ™›XÝÙÚXÈ[™ØÚY[[™ÈÜš]\È™[XZ[ˆ[˜Ú[™ÙY‚‹H^[œÙK\ZYZ\ÝÜžHš\ÚÎˆŒ‹LKLË\ŒLÌXYÈ[ˆ[˜ÛYKX\˜Ú]™YZYXÛZ[\ÈšY]È[™^[™ÈÔÕˆ^ÜÈX]Ú]È™\šYšXØ][ÛˆÚÝ[ÛÛ™š\›Hš[˜[˜ÙHØ[ˆÙYH›ÝXÝ]™H[™\˜Ú]™YZYÛZ[\ÈÚ]Ý]Ú[™Ú[™È^[Y[™XÛÜ™Ë‚‹Hš[˜[˜ÙKYØÝ[Y[Y^Üš\ÚÎˆŒ‹LKL\ŒLÌ˜\š]™\È[›ÚXÙH^[Y[Ý]\Èœ›ÛHš[˜[˜ÙKX\›Ý™Y™XÙZ\È[™YÈš[\™Y^Ù[^ÜÈ™\šYšXØ][ÛˆÚÝ[ÛÛ™š\›Hš[˜[˜ÙH[™\œÝ[™È[™[™ÈÜˆ™Z™XÝY™XÙZ\È\™H›ÝÛÝ[Y\ÈZY‚‹HÛÛ\[žK[˜[YKXÚ[™ÙHš\ÚÎˆŒ‹LKL\ŒLÌØ\]\ÈØÝ[Y[XY\œÈ[™™[Z][˜ÙHXØÛÝ[˜[Y\ÈÈÕYXØ][Û˜[[œÝ]]HKˆ˜Èš[˜[˜ÙHÚÝ[ÛÛ™š\›H˜[šÈXØÛÝ[˜[Z[™È\ÈYØ[KØ˜[šÚ[™ÈÛÜœ™XÝ™Y›Ü™H\Ú[™ÈœÈ^\›˜[K‚‹HXÚØYÙK[YÙ\‹T‹Y\Ü^Hš\ÚÎˆŒ‹LKL\ŒLÍÚ[™Ù\ÈÛ›HÝ\‹ÛZ[]H›Ü›X][™È[ˆXÚØYÙK[YÙ\ˆ\Ü^\È[™^ÜÎÈ™\šYšXØ][ÛˆÚÝ[ÛÛ™š\›HÛYXÝ[ÛœÈ\™H›ÝX[X[HÛÜœ™XÝY™XØ]\ÙHÝÜ™YYÙ\ˆ]H[™XYHÛÛZ[œÈHÛÜœ™XÝNLZ[]H˜[Y\Ë‚‹HXXÚ\‹[›ÝXÙHš\ÚÎˆŒ‹LKL\ŒLÍXYÈHXXÚ\ˆÜ[[››Ý[˜Ù[Y[[™™XY˜XÚÚ[™ÎÈ™\šYšXØ][ÛˆÚÝ[ÛÛ™š\›HXXÚ\œÈØ[ˆÝ[Ü[ˆH\Ú›Ø\™[™X\šÚ[™ÈH›ÝXÙH™XYÙ\È›ÝY™™XÝXXÚ[™Ë^\›ÛÜˆ^[œÙHÛÜšÙ›ÝÜË‚‹HXXÚ\‹[›ÝXÙKXYZ[ˆš\ÚÎˆŒ‹LKL\ŒLÍ˜]ÈYZ[‹Ùš[˜[˜ÙHX›\Ú[™\˜Ú]™HXXÚ\ˆ›ÝXÙ\ÈÚ]™XY˜XÚÚ[™ÎÈ™\šYšXØ][ÛˆÚÝ[ÛÛ™š\›H›ÝXÙHÜš]\ÈY™™XÝÛ›H\Ù][™Ø›ÝXÙHÙ^\È[™È›ÝÝXÚXXÚ\ˆ^\›Û^[œÙ\ËÛ\ÜÙ\ËÜˆ][™[˜ÙK‚‹HXXÚ\‹[›ÝXÙK[˜]ˆš\ÚÎˆŒ‹LKL\ŒLÍØ[Ý™\ÈH›ÝXÙHYZ[ˆ[šÈYÚ\ˆ[ˆHÚYX˜\ˆÛ›NÈ™\šYšXØ][ÛˆÚÝ[ÛÛ™š\›HH›Ý]H™[XZ[œÈ™XXÚX›H›ÜˆYZ[ˆ[™š[˜[˜ÙH\Ù\œË‚‹HÚ\™Y[[Øš[KPÔÔÈš\ÚÎˆŒ‹LKL\ŒLÎÚ[™Ù\ÈÚ\™YÛX[\ØÜ™Y[ˆÔÔÈ›ÜˆYZ[ˆ[™XXÚ\ˆYÙ\ÎÈ™\šYšXØ][ÛˆÚÝ[ÛÛ™š\›HÛ™H^[Ý]È\™HX\ÚY\ˆÈ\[™X›\ÈØÜ›Û[œÚYHZ\ˆÛÛZ[™\œÈÚ]Ý]Ú[™Ú[™È\ÚÝÜ™Z]š[Ü‹‚‹H]Ü‹XÛÜÝXÝ]Ù™‹Y^Üš\ÚÎˆŒ‹LKLK\ŒLÎXYÈH™XY[Û›Hš[˜[˜ÙH^Ù[^Ü›ÜˆÛÛ\]Y[™ÛÛ™š\›YY]ÜˆÛÜÝœ›ÛHHM]È[ÛY[™È™\šYšXØ][ÛˆÚÝ[ÛÛ™š\›Hš[˜[˜ÙH[™\œÝ[™È]\È›Ý\œ˜[™ÙYY]\™K\Ù\ÜÚ[ÛˆÛÜÝ[™]™\›Ë\˜]H›ÝÜÈ[™XØ]HZ\ÜÚ[™ÈXXÚ\‹\˜]HÙ]\‚‹H]Ü‹XÛÜÝ\ÚYX˜\ˆš\ÚÎˆŒ‹LKLK\ŒMÚ[™Ù\È˜]šYØ][Ûˆ[™’SSÑH›ÛHXØÙ\ÜÈ›ÜˆH]ÜˆÛÜÝ^ÜÛ›NÈ™\šYšXØ][ÛˆÚÝ[ÛÛ™š\›H›ÝYZ[ˆ[™š[˜[˜ÙHÚYX˜\œÈÚÝÈH[šË‚‹H[™]šYX[\ÝY[]][]Hš\ÚÎˆŒ‹LKLL‹\ŒMXYÈH™XY[Û›Hš[˜[˜ÙKØYZ[ˆ^Ù[^Ü˜\ÙYÛˆÛÛ™š\›YYYXÝY][™[˜ÙHžH\ÜÛÛˆ]NÈš[˜[˜ÙHÚÝ[ÛÛ™š\›H\È\ÈHØ[\È›Ü™XØ\Ý][]HYš[š][Ûˆ^HØ[™Y›Ü™H™[Z[™\ˆ]]ÛX][Ûˆ\ÈYY‚‹HXÚØYÙKX˜[[˜ÙKX]Y]š\ÚÎˆŒ‹LKLLË\ŒM˜XZÙ\ÈXÚØYÙHYÙ\ˆY][™Ú[È™K\Þ[˜ÈÝ\œ™[™[XZ[š[™È˜[[˜ÙHœ›ÛHYÙ\ˆÝ[È[™YÈ]Y]šY]ÜÈ›Üˆ˜[[˜ÙHZ\ÛX]Ú\È\Èš\ÚÞH›Û˜XÚËØY\ÝY[›ÝÜÎÈXØY[ZXÈ\Ù\œÈÚÝ[Ý[˜[Y]HX››Ü›X[ÛÜœ™XÝ[ÛœÈÚ]Û\ÜÒ[ˆÜˆ][™[˜ÙH]šY[˜ÙH™Y›Ü™H™[Z[™ÈÛˆÛÜœ™XÝY˜[[˜Ù\Ë‚‹HX[˜YÙ\‹\]X[]KY\ÚÈš\ÚÎˆŒ‹LKLLË\ŒMØYÈHX[˜YÙ\‹[Û›HZ[H™Y›XÝ[ÛˆÙÈÝÜ™Y[ˆ\Ù][™Ø\È™XY[Û›HXY\ÚË™YY˜XÚË™\Ü[™\›Ý˜[Û˜\ÚÝÎÈ]Ù\È›ÝY]Ù[™™[Z[™\œÈÜˆÜ[Û]ÈY\ÜØYÙ\ËÛÈX[˜YÙ\œÈÝ[™YYÈÜ[ˆHYÙH[\Ù[™\Ë‚‹HX[˜YÙ\‹\š[š\ÚÎˆŒ‹LKLLË\ŒMÚ[™Ù\ÈÛ›HX[˜YÙ\ˆ]X[]H\ÚÈš[™[™\š[™ÈÈHÛÛ\XÝÛ™K\YÙHXY\ÚÈX›NÈÜ\˜]ÜœÈÚÝ[\ÙHœ›ÝÜÙ\ˆš[™]šY]È›Üˆ[\ÝX[H\ÞH^\È™XØ]\ÙH™\žHYÚÙ\ÜÚ[ÛˆÛÝ[ÈX^HÝ[™YYØØ[[™Ë‚‹HYÙ\‹XÛÛ™š\›YYY^Ù\[Ûˆš\ÚÎˆŒ‹LKLMK\ŒMX™[[Ý™\ÈXØY[ZXØ[HÛÛ™š\›YY\ÝÜšXØ[Üœ[ˆ›Û˜XÚÈ™]™\œØ[Èœ›ÛHHXÝ]™H™YYÙ\‹Z[YÜš]H[\ÛÝ[È™]È[˜ÛÛ™š\›YYZ\ÛX]Ú\È[™›Ë\XÚØYÙHYXÝ[ÛœÈÝ[™YYÜ\˜]Üˆ™]šY]Ë‚‹H˜[œÜÜXš[[™Èš\ÚÎˆŒ‹LKLMK\ŒM˜YÈH\™[˜[œÜÜ™Z[X\œÙ[Y[š[[™ÈÛÜšÙ›ÝÈ]™]\Ù\È\™[[›ÚXÙHÜ™X][ÛˆY\ˆš[˜[˜ÙHX\šÜÈÙ\ÜÚ[ÛœÈš[X›NÈš[˜[˜ÙH]\Ý]›ÚYX\šÚ[™È›Ü›X[Ø[\\È\ÜÛÛœÈÜˆ\ÜÛÛœÈÚ]Ý]\™[YÜ™Y[Y[‚‹HYZ[‹\ÚYX˜\‹]˜[œÜÜš\ÚÎˆŒ‹LKLMK\ŒMØÚ[™Ù\ÈYZ[‹ÛX[˜YÙ\ˆ˜]šYØ][Ûˆš\ÚXš[]HÛ›HÛÈX[˜YÙ\œÈØ[ˆš[™˜[œÜÜš[[™È[™™[]Yš[˜[˜ÙHØÝ[Y[YÙ\Èœ›ÛHHÚYX˜\ŽÈ]Ù\È›ÝÚ[™ÙHš[[™È\›Z\ÜÚ[ÛœÈÜˆ˜[œØXÝ[ÛˆÙÚXË‚‹H™[™]Ø[XÛÛ˜XÝZ\ÝÜžHš\ÚÎˆŒ‹LKLM‹\ŒMÚ[™Ù\È™[™]Ø[ÛÛ˜XÝÚYÛš[™ÈÛÈYØXÞHXÚØYÙH[›ÚXÙ\È›ÈÛ™Ù\ˆ›ØÚÈH™[™]Ø[›ÝÎÈš\œÝ\\˜Ú\ÙHÛÛ˜XÝÈÙY\H][KZ[›ÚXÙH[XšYÝZ]HÝX\™[™š[˜[˜ÙHÚÝ[Ý[™\šYžHH™]ÛHÙ[™\˜]Y™[™]Ø[[›ÚXÙHY\ˆÚYÛš[™Ë‚‹H™[™]Ø[\\™[Z[™›Èš\ÚÎˆŒ‹LKLMË\ŒMX[ÝÜÈÛÛ\]H\™[›Ùš[\ÈÛˆ›ÚYYÛÛ˜XÝÈÈ[›ØÚÈ™[™]Ø[XÛÛ˜XÝÜ™X][ÛŽÈÜ\˜]ÜœÈÚÝ[Ý[]›ÚY™]\Ú[™È\™[[™›ÈYˆ^H›ÚYYHÛÛÛ˜XÝÜXÚYšXØ[H™XØ]\ÙHH\™[]Z[ÈÙ\™HÜ›Û™Ë‚‹H‹[Û›[™K\\X[XÛÜÙ[Ý]š\ÚÎˆŒ‹LKLNK\ŒML]È^\™Y™]ÈÜšY[[Û›[™H\™\ˆXÚØYÙ\ÈÙ]HžH[\˜Ú\ÙYZ[]\ÈÚ[ˆ™[XZ[š[™ÈZ[]\ÈÙ\™H›Ü™™Z]YÈXÝ]™H[˜ÛÛ\]HXÚØYÙ\ÈÝ[™[XZ[ˆ›ØÚÙYœ›ÛHÙ][Y[Ø[™Y]\Ë‚‹H]Ü‹\^[Y[\›Ùš[Hš\ÚÎˆŒ‹LKLË\ŒMLXYÈ[^S›ÝÈ]Z[ÈÈš[˜[˜ÙH^[Ý]^ÜËÛÈš[˜[˜ÙH\Ù\œÈ]\Ý™X]Ù[™\˜]YÔÕ‹ÖÖš[\È\ÈÙ[œÚ]]™H^[Y[]K‚‹H]Ü‹X˜[šË\^[Y[\›Ùš[Hš\ÚÎˆŒ‹LKLË\ŒML˜YÈ[˜[šÈXØÛÝ[]Z[ÈÈš[˜[˜ÙH^[Ý]^ÜËÛÈÔÕ‹ÖÖš[\È›ÝÈØ\œžH›Ý^S›ÝÈ[™˜[šË]˜[œÙ™\ˆÙ[œÚ]]™H^[Y[]K‚‹HX[˜YÙ\‹\]X[]KZ\ÝÜžHš\ÚÎˆŒ‹LKLË\ŒMLØ™XYÈ^\Ý[™ÈX[˜YÙ\ˆ™Y›XÝ[Ûˆ[šY\È[ÈH\Ú›Ø\™[™[˜ÛÛ\]Hš[\ŽÈ™XØ]\ÙH]Ù\È›ÝÚ[™ÙHHØ]™Y™Y›XÝ[Ûˆ›Ü›X]Û[šY\ÈÚÝ[™[XZ[ˆ™XYX›K]X[˜YÙ\œÈÚ]›È™XÙ[ÝX›Z\ÜÚ[ÛœÈÚ[ÙYH[\H\Ú›Ø\™Ý]\Ë‚‹HX[˜YÙ\‹\]X[]K[^[Ý]š\ÚÎˆŒ‹L‹LL‹\ŒNÚ[™Ù\ÈÛ›HHÛËXÛÛ[[ˆ[YÛ›Y[ÛˆHX[˜YÙ\ˆ]X[]H\ÚÈ™Y›XÝ[ÛˆÙXÝ[ÛŽÈ™\šYžHHZ[H™Y›XÝ[Ûˆ›Ü›HÝ^\ÈÛÛ[ZZYÚÚ[HHšYÚ\ÚYH]X[]HÛ˜\ÚÝÝ[ÝXÚÜÈ›Ü›X[K‚‹HÝY[\XÚØYÙK]][^˜][Ûˆš\ÚÎˆŒ‹L‹LMË\ŒNXYÈH™XY[Û›H][™[˜ÙKX˜\ÙY^˜XÝ[Ûˆ›ÜˆÚ\™YXÚØYÙ\ÎÈš[˜[˜ÙHÚÝ[\ÙH]›Üˆ\‹\ÝY[\ØYÙHÜ]È[™]›ÚY\Ú[™ÈXÚØYÙHYÙ\ˆÝ[È[Û™HÚ[ˆÚX›[™ÜÈÚ\™HHØ[YHXÚØYÙK‚‹H™KX\›Ý™Y\ØÚY[[™ËY^Ù\[Ûˆš\ÚÎˆŒ‹L‹LN\ŒNLYÈ™\]Z\™YY]Y]HÛ›HÚ[ˆÝY™ˆX[X[H^[\H\™XÝXš[[™ÈXÚØYÙHœ›ÛHH[›ÚXÙHØ]NÈØÚY[[™ÈÝ[ÙY\ÈHØ[YHVSTØ]HÝ]\ËÛÈÜÈ]\Ý\ÙHH™XÛÜ™Y\›Ý™\‹Ü™X\ÛÛ‹Ù›ÛÝË]\šY[ÈÈX[˜YÙH\Ú[™\ÜÈš\ÚÈÝ]ÚYHHØÚY[\‹‚‹Hš[˜[\™\ÜT‹]]K[Ý™\›\š\ÚÎˆŒ‹L‹LNK\ŒNLXÚ[™Ù\ÈÛ›HØ\™Z[\›˜[™\XØ[ÜXÚ[™È[ˆš[˜[™\ÜœÎÈ™\žH[œÙH™\ÜÈÝ[š]žHÚš[šÚ[™È›ÙH^]š[[™ÝX[]\ÈÚÝ[›ÈÛ™Ù\ˆÚ]ÛˆÜÙˆ›ÙHÛÛ[‚‹HÝY[\XÚØYÙK]][^˜][Û‹Yš[[˜[YHš\ÚÎˆŒ‹L‹LŒ‹\ŒNL˜Ú[™Ù\ÈÛ›HHÝÛ›ØYš[[˜[YH˜[˜XÚÈ›ÜˆHÝY[XÚØYÙH][^˜][Ûˆ^Ù[^ÜÈš[˜[˜ÙHÚÝ[™]žHHØ[YH^Ü[šÈY\ˆ\ÞKÚ[H™]šY]ÈÝ[È[™][™[˜ÙH]Z[›ÝÜÈ™[XZ[ˆ[˜Ú[™ÙY‚‹HYU\ÝXÛÝ\œÙK\™XY[™\ÜÈš\ÚÎˆŒ‹L‹LŒ‹\ŒNLØYÈ[X›HYU\ÝÛÝ\œÙK\›Ùš[HY]Y]KHZYÜ˜][Û‹[™H™]ÈYZ[ˆX\[™ÈYÙKˆ^\Ý[™ÈÛÝ\œÙH˜[Y\ËÛ\ÜÈÙ]\XÚØYÙ\ËØÚY[[™Ë][™[˜ÙKÛÛ˜XÝË[›ÚXÙ\Ë™XÙZ\Ë^\›Û\™\ˆÙ][Y[˜[œÜÜš[[™Ë\Ú[™\ÜÈXØÛÝ[ËØÚÛÛ\XØ][ÛœË[™Ü[Û]È™Z]š[Üˆ\™H[[[Û˜[H[˜Ú[™ÙYÈÜ\˜]ÜœÈÚÝ[™X]HX\[™ÜÈ\È™XY[™\ÜÈY]Y]H[[ÛÝ\œÙHš[\ËÔÑÈÛÛ˜XÝ[ÙK[™ÍÈ\Ú›Ø\™È\™HYY[ˆ]\ˆ\Ù\Ë‚‹HYU\ÝXÛÝ\œÙKYš[Hš\ÚÎˆŒ‹L‹LŒ‹\ŒNMYÈ[X›HÛÝ\œÙHš[H^šY[È›ÜˆYU\ÝÜš]\š[ÛˆH™XY[™\ÜÈ[™Ø]™\È[Hœ›ÛHH^\Ý[™ÈØYZ[‹ÙY]\ÝYÙKˆ\ÙHšY[È\™H™XY[™\ÜÈØÝ[Y[][ÛˆÛ›NÈ^HÈ›ÝÚ[™ÙH]™HXXÚ[™È[]™\žK\ÜÛÛˆØÚY[\Ë][™[˜ÙHYXÝ[Û‹XÚØYÙ\ËÛÛ˜XÝËš[[™Ë^\›Û\™\ˆÙ][Y[˜[œÜÜš[[™Ë\Ú[™\ÜÈXØÛÝ[ËØÚÛÛ\XØ][ÛœËÜˆÜ[Û]È™Z]š[Ü‹‚‹HÔÑËXÛÛ˜XÝ[[ÙHš\ÚÎˆŒ‹L‹LŒ‹\ŒNMXYÈY˜][YÝY[ÛÛ˜XÝ˜ÛÛ˜XÝ[ÙX[™[ˆÔÑÈÝ[™\™RKTÝY[ÛÛ˜XÝŒ[\]KÜÛ˜\ÚÝ]ˆ^\Ý[™ÈÛÛ˜XÝÈ[™›Ü›X[ÛÛ˜XÝÜ™X][Ûˆ™[XZ[ˆÛˆRUSÓ—ÐQÔ‘QSQS•È›È›ÙXÝ[ÛˆRHÝ\œ™[HÜ™X]\ÈÔÑÈÛÛ˜XÝÈY]ÛÈ\È\ÈH›Ý[™][ÛˆÛ›H[™ÚÝ[›ÝY™™XÝÚYÛš[™Ë[›ÚXÙHÜ™X][Û‹XÚØYÙ\ËØÚY[[™Ë][™[˜ÙK™XÙZ\Ë^\›Û\™\ˆÙ][Y[˜[œÜÜš[[™Ë\Ú[™\ÜÈXØÛÝ[ËØÚÛÛ\XØ][ÛœËÜˆÜ[Û]Ë‚‹HYU\Ý\ÝY[Y]šY[˜ÙHš\ÚÎˆŒ‹L‹LŒ‹\ŒNM˜YÈ[X›HÝY[[]™[YU\Ý]šY[˜ÙH™XÛÜ™ËHÍÈÝ]ÛÛY\ÈÛÜšÜÜXÙKHÙXÝ[ÛˆKÐˆ]šY[˜ÙHÚXÚÛ\Ý[™HÝX\™YÔÑÈÛÛ˜XÝÜ™X][Ûˆ[žKˆHÔÑÈ[žH\È]˜Z[X›HÛ›H›ÜˆÛÝ\œÙ\ÈX\šÙYYU\ÝT“RUQT“Õ‘Q[™YY][™ÈZ[š[][HÝ\œÎÈ›Ü›X[Z][ÛˆÛÛ˜XÝÈ™[XZ[ˆY˜][ˆ\ÈÚÝ[›ÝÚ[™ÙHØÚY[[™Ë][™[˜ÙHYXÝ[Û‹XÚØYÙH˜[[˜Ù\Ë[›ÚXÙ\Ë™XÙZ\Ë^\›Û\™\ˆÙ][Y[˜[œÜÜš[[™Ë\Ú[™\ÜÈXØÛÝ[ËØÚÛÛ\XØ][ÛœËÜˆÜ[Û]Ë‚‹HÔÑË[Ù™šXÚX[XÛÛ˜XÝ][\]Hš\ÚÎˆŒ‹L‹LŒ‹\ŒNMØ™\XÙ\ÈHX\›Y\ˆÔÑÈÝ[[X\žHÚ[Ú]HØÚÙYÙ™šXÚX[Ý[™\™RKTÝY[ÛÛ˜XÝŒ[\]HÛÝ\˜ÙH^˜XÝYœ›ÛHØ]]Ø^HÐÖÔ‹ˆÞ\Ý[KYš[Y˜[Y\È\™H[[[Û˜[H[Z]YÈÛ›ÝÛˆšY[ÎÈZ\ÜÚ[™ÈÙ™šXÚX[ØÚY[H˜[Y\È™[XZ[ˆ›[šËÜXÙZ[ˆ›Ü›X[Z][ÛˆÛÛ˜XÝÈ[™š[[™ËØÚY[[™Ë][™[˜ÙKXÚØYÙH˜[[˜ÙK^\›Û\™\ˆÙ][Y[˜[œÜÜš[[™Ë\Ú[™\ÜÈXØÛÝ[ËØÚÛÛ\XØ][ÛœË[™Ü[Û]È™[XZ[ˆ[˜Ú[™ÙY‚‹HYU\ÝXÛÛ˜XÝ\ØÚY[K\Ù]\š\ÚÎˆŒ‹L‹LŒ‹\ŒNNYÈ[X›HÛÝ\œÙK[]™[ÛÛ˜XÝØÚY[HY˜][È[™\Ù\È[HÈš[ÔÑÈÝ[™\™RKTÝY[ÛÛ˜XÝŒØÚY[HKQ˜[Y\ËˆÔÑÈÚYÛ‹[[šÈ™\\˜][Ûˆ›ÝÈ˜Z[ÈYˆ™\]Z\™YØÚY[H˜[Y\È\™HZ\ÜÚ[™ËÛÈÝY™ˆ]\ÝÛÛ\]HØYZ[‹ÙY]\ÝÛÛ˜XÝØÚY[HÙ]\™Y›Ü™H\ÜÝZ[™È™]ÈÔÑÈÛÛ˜XÝËˆ^\Ý[™ÈZ][ÛˆÛÛ˜XÝÈ[™›Ü›X[š[[™ËØÚY[[™Ë][™[˜ÙKXÚØYÙH˜[[˜ÙK^\›Û\™\ˆÙ][Y[˜[œÜÜš[[™Ë\Ú[™\ÜÈXØÛÝ[ËØÚÛÛ\XØ][ÛœË[™Ü[Û]È™[XZ[ˆ[˜Ú[™ÙY‚‹HX[˜YÙ\‹]XXÚ\‹Y™YY˜XÚÈš\ÚÎˆŒ‹L‹LŒË\ŒNNXYÈHš]˜]HX[˜YÙ\‹]Ë]XXÚ\ˆ]X[]H™YY˜XÚÈX›H[™XXÚ\ˆXÚÛ›ÝÛYÙ[Y[šY]Ëˆ™YY˜XÚÈ\È[\›˜[ÛØXÚ[™È]HÛ›NÈØÚY[[™Ë][™[˜ÙHYXÝ[Û‹XÚØYÙH˜[[˜Ù\Ë[›ÚXÙ\Ë™XÙZ\Ë^\›Û\™\ˆÙ][Y[˜[œÜÜš[[™Ë\Ú[™\ÜÈXØÛÝ[ËØÚÛÛ\XØ][ÛœË[™Ü[Û]È™[XZ[ˆ[˜Ú[™ÙY‚‹HX[˜YÙ\‹Y™YY˜XÚË[[šË\ØÜ›Ûš\ÚÎˆŒ‹L‹LŒË\ŒŒÚ[™Ù\ÈÛ›HHXY\ÚÈÚ]™H™YY˜XÚÈÈ9îæycãzi¢˜]šYØ][Ûˆ\™Ù][™›Ü›HÛÛ^[ÛÈX[˜YÙ\œÈØ[ˆÙYHHÙ[XÝYÙ\ÜÚ[ÛˆY\ˆÛXÚÚ[™Ëˆ™YY˜XÚÈÝÜ˜YÙKXXÚ\ˆXÚÛ›ÝÛYÙ[Y[ØÚY[[™Ë][™[˜ÙHYXÝ[Û‹š[[™Ë^\›Û[™Ü[Û]È™[XZ[ˆ[˜Ú[™ÙY‚‹H™[™]Ø[Z[ZÙK\\™[\›Ùš[Hš\ÚÎˆŒ‹L‹LŒË\ŒŒXÚ[™Ù\ÈÛ›HHX›XÈ[ZÙHÝX\™›Üˆ™[™]Ø[ÛÛ˜XÝÈ]\™HÝ[ØZ][™È›Üˆ\™[›Ùš[H]H[™]™H›È™]\ØX›H\™[[™›ÈØ]™Yˆ™[™]Ø[ÛÛ˜XÝÈ][™XYH]™H™]\ØX›H\™[[™›ÈÝ[ÚÝÈ›È[ZÙH™YYY[™›Ü›X[ÚYÛš[™Ë[›ÚXÙ\Ë™XÙZ\ËØÚY[[™Ë][™[˜ÙHYXÝ[Û‹XÚØYÙH˜[[˜Ù\Ë^\›Û\™\ˆÙ][Y[˜[œÜÜš[[™Ë\Ú[™\ÜÈXØÛÝ[ËØÚÛÛ\XØ][ÛœË[™Ü[Û]È™[XZ[ˆ[˜Ú[™ÙY‚‹HX[˜YÙ\‹Y™YY˜XÚË\Ù[XÝY\Ù\ÜÚ[Û‹YY˜][Èš\ÚÎˆŒ‹L‹LŒË\ŒŒ˜Ú[™Ù\ÈÛ›HX[˜YÙ\ˆ]X[]H\ÚÈ™YY˜XÚÈ›Ü›HY˜][ÈÛÈHÙ[XÝYXY\ÚÈÙ\ÜÚ[ÛˆÛÛ›ÛÈHXXÚ\ˆ[™™[]Y\Ù\ÜÚ[Ûˆ›ÜÝÛœËˆ™YY˜XÚÈÝÜ˜YÙKXXÚ\ˆXÚÛ›ÝÛYÙ[Y[ØÚY[[™Ë][™[˜ÙHYXÝ[Û‹š[[™Ë^\›Û[™Ü[Û]È™[XZ[ˆ[˜Ú[™ÙY‚‹H™YY˜XÚËY\ÚËX[Ë[Ý™\™YKY›ÜØ\™š\ÚÎˆŒ‹LËL‹\ŒŒØ™[[Ý™\È[™\ØX›\ÈHœ›ØYXXÚ\ˆ™YY˜XÚÈ\ÚÈ[ÈÝ™\™YKY›ÜØ\™XÝ[ÛˆY\ˆ™X[]HÚÝÙY]Ø[ˆÛÛ™\Z\ÜÚ[™ËÜ›ÞHÝ™\™YH›ÝÜÈ[Èš[˜[›ÜØ\™YYZ[ˆ™YY˜XÚÈ[ˆÛ™H˜]Úˆ^\Ý[™È™YY˜XÚÈ™XÛÜ™È\™H›ÝÚ[™ÙYÈZ[HÜ\˜]ÜœÈÚÝ[\ÙH\‹\Ù\ÜÚ[Ûˆ›ÞH˜YXÝ[ÛœÈ[™[™[™È›ÜØ\™X\šÚ[™È[œÝXY‚‹H™\ÛÝ\˜ÙKY›ÛÝÝ\PÔ“Hš\ÚÎˆŒ‹LKLŽ\ŒMMYÈ™]ÈXYXY›ÛÝÕ\[™XY\ÜÙ\ÜÛY[™\]Y\ÝX›\È\ÈYZ[‹ÝXXÚ\ˆYÙ\ÎÈÛÛ™\œÚ[ÛˆÜ™X]\ÈÝY[›ÝÜÈÛ›HY\ˆ^XÚ]YZ[ˆXÝ[Û‹[™›Èš[[™ËÛÛ˜XÝXÚØYÙK][™[˜ÙK^\›ÛÜˆÜ[Û]È™Z]š[Üˆ\ÈÚ[™ÙY‚‹H™\ÛÝ\˜ÙK[ÝÛ™\‹X\˜Ú]™Hš\ÚÎˆŒ‹LKLŽ\ŒMMXYÈ[™\[™[Ô“HÝÛ™\ˆ™XÛÜ™Ë™]™\œÚX›HXY\˜Ú]™HÝ]K[™HÝX\™Y\Ý\™\ÛÝ\˜ÙH[][ÛˆXÝ[ÛŽÈÜ\˜]ÜœÈÚÝ[Û›H\ÙH\ÚXØ[[][Ûˆ›ÜˆÛ›ÝÛˆ\Ý]KÚ[H™X[[˜XÝ]™H™\ÛÝ\˜Ù\ÈÚÝ[™H\˜Ú]™Y‚‹H™\ÛÝ\˜ÙKY›ÛÝÝ\Z[™Ù™ˆš\ÚÎˆŒ‹LKLŽ\ŒMM˜YÈ]ZXÚÈ™\ÛÝ\˜ÙHš[\œËØ[˜Ù[X›HXXÚ\ˆ\ÜÙ\ÜÛY[Ë[™H™Yš[Y›ÛÚÚ[™È[šÈ[™Ù™ˆÛ›HY\ˆÛÛ™\œÚ[ÛˆÈÝY[È]Ù\È›ÝÚ[™ÙH›ÛÚÚ[™Ë[[šÈÜ™X][ÛˆT\ËØÚY[[™È]˜Z[Xš[]Kš[[™ËÛÛ˜XÝËXÚØYÙ\Ë^\›Û][™[˜ÙKÜˆÜ[Û]È™Z]š[Ü‹‚‹H™\ÛÝ\˜ÙK[™]ËY›Ü›K[^[Ý]š\ÚÎˆŒ‹LKLŽ\ŒMMØÛ›HÛÛœÝ˜Z[œÈšY[ÚYÈÛˆH™]È™\ÛÝ\˜ÙH›Ü›HÛÈHÝÛ™\ˆÙ[XÝÜˆØ[››ÝÝ™\›\H[[Ù[XÝÜŽÈ›È™\ÛÝ\˜ÙHÜ™X][ÛˆÜˆÝÛœÝ™X[HÛÜšÙ›ÝÈÙÚXÈ\ÈÚ[™ÙY‚‹HØ[\ËPÔË\›ÛHš\ÚÎˆŒ‹LKLŽ\ŒMNYÈ™]ÈÐSTØ[™ÔØ\Ù\ˆ›Û\È[™HØÛÜY™\ÛÝ\˜ÙH›ÛÝË]\ÛÜšÜÜXÙNÈ™\šYžH\ÙH\Ù\œÈØ[››Ý[\ˆ[YZ[‹š[˜[˜ÙKÝY[XÚÙ]XÚØYÙK^\›ÛÛÛ˜XÝÜˆÞ\Ý[K]\Ù\ˆYÙ\Ë‚‹HYZ[‹Y^˜K]ÛÜšÜÜXÙHš\ÚÎˆŒ‹LKLŽK\ŒMNXYÈ\Ù\•ÛÜšÜÜXÙPXØÙ\ÜØÛÈÙ[XÝYYZ[œÈØ[ˆ\ÙHÔËÔØ[\È›ØÝ\ÙYšY]ÜÈÚ[H™[XZ[š[™ÈQRS˜È™\šYžH]˜KÒ˜\ÛZ[™KÞš[ÈÙY\YZ[ˆXØÙ\ÜÈ[™ÙYHÛ›HZ\ˆÛÛ™šYÝ\™Y^˜HÛÜšÜÜXÙHÚÜÝ]Ë‚‹HÛÜšÜÜXÙKXXØÙ\ÜËY›Ü›Hš\ÚÎˆŒ‹LKLŽK\ŒMŒ]ÈHÝÛ™\ˆX[˜YÙ\ˆY]Ø[\ËÐÔÈ›ØÝ\ÙYÛÜšÜÜXÙHXØÙ\ÜÈœ›ÛHÞ\Ý[H\Ù\ˆYZ[ŽÈ™\šYžH›Û‹[ÝÛ™\ˆX[˜YÙ\œÈØ[››ÝÜš]H\È[™Ú[[™]XZ[ˆ›Û\È™[XZ[ˆ[˜Ú[™ÙY‚‹H]Ü‹UÚ\ÙK\^[Y[\›Ùš[Hš\ÚÎˆŒ‹LKLŽK\ŒMŒX™[[Ý™\È˜[šÈ˜[œÙ™\ˆ\ÈH™]È]Üˆ^[Y[Y]Ù[™YÈÚ\ÙH]Z[È\Èš[˜[˜ÙH™]šY]ÈÝ]\ÎÈš[˜[˜ÙHÚÝ[™\šYžH^S›ÝËÕÚ\ÙH]Z[È™Y›Ü™H^[Ý]^ÜÈ\™H\ÙY‚‹HXXÚ\‹[›ÝXÙKX]XÚY[š\ÚÎˆŒ‹LKLÌ\ŒMŒ˜]ÈXXÚ\œÈÜ[ˆÛ›HHXÝ]™HÚ\™YØÜÈš[H]XÚYÈ[ˆXÝ]™HXXÚ\ˆ›ÝXÙNÈ™\šYžHH›ÝXÙH]XÚY[\È[[[Û˜[™Y›Ü™HX›\Ú[™È™XØ]\ÙHH[Ú\™YØÜÈXœ˜\žH™[XZ[œÈX[˜YÙ\‹ØYZ[ˆÛÛ›ÛY‚‚ˆÈÈ›ØÙ\ÜÈÝX\™
+[œÝ[Y
+B‚ŒKˆ\ÞWØ\œÚ›ÝÈØ[È™\šYžWÜ™[X\ÙWÙØÜËœÚžHY˜][‚Œ‹ˆÚ]XˆXÝ[ÛœÈ\ÞHÛÜšÙ›ÝÈ›ÝÈ[œÈHØ[YHØ]H™Y›Ü™HÔÒ\ÞK‚ŒËˆ[Y\™Ù[˜ÞHž\\ÜÈ^\ÝÎˆÒÒTÔ‘SPTÑWÑÐ×ÐÒPÒÏ]YX
+\ÙHÛ›H›Üˆ\™Ù[Ýš^
+K‚‚ˆÈÈÙ\™\ˆ[™Ù™ˆÝX\™
+[œÝ[Y
+B‚ŒKˆYYš^YÙ\™\ˆ›Ùš[HØÎˆØÜËÔÑT•‘T‹RS‘Ñ‘‹›YŒ‹ˆYYØØ[ÛÛ™šYÈ[\]NˆÜËÜÙ\™\‹ÜÙ\™\‹Z[™Ù™‹™[‹™^[\XŒËˆYYÛ™KXÛÛ[X[™ØÜš\Î‚ˆH˜\ÚÜËÜÙ\™\‹ÜØÜš\ËÜ]ZXÚ×ØÚXÚËœÚˆH˜\ÚÜËÜÙ\™\‹ÜØÜš\ËÜ]ZXÚ×Ù\ÞKœÚ‚ˆÈÈ™^X[™]ÜžHÝ\
+›È\Ú[™\ÜÈÙÚXÈÚ[™ÙJB‚ŒKˆÙY\ÒS‘ÑSÑËSU‘X‘SPTÑKP“ÐT‘TÒËJ˜\]Y›ÜˆXXÚ\ÞHÛÛ[Z]‚Œ‹ˆYÜÝY\ÞH]ZXÚÈÚXÚÈ›ÜˆHÛ›ÝÛˆÝ\ØYËÜ^[Y[\›ÛÙœËÊ˜T“‚ŒËˆÙY\ÜÈØÜÈ[YÛ™YÚ]™[Û‹X\Ë\›ÙXÝ[Û‹YˆÛXÞK‚‚ˆÈÈŒ‹LËLM\ŒLˆ™XYB‚‹HØÛÜNˆ™[[Ý™H[\XÚ]XÚÙ]Ü™X][Ûˆœ›ÛH[\ÞYYK[Z[šX\ÝY[Ù[XÝ[Ûˆ[™YHYXØ]YÝY[ØÚY[[™ÈÛÜšÜÜXÙK‚‹H\Ú[™\ÜÈ[\XÝ‚ˆHÙ[XÝ[™ÈHÝY[›ÝÈÛ›H™XYÈXÚØYÙ\ËÛÝ\œÙ\ËXXÚ\œËØ[\\Ù\Ë\ÛÛZ[™ÈÙ\ÜÚ[ÛœÈ[™^\Ý[™ÈÛÛÜ™[˜][ÛˆXÚÙ]ÂˆHQRSˆØ[ˆØÚY[H\™XÝHÚ]HØ[YHØY™]HÚXÚÜÈ\ÈH^\Ý[™È[Øš[KÝÙXˆØÚY[[™È]Ú]Ý]X[Y˜XÝ\š[™ÈHXÚÙ]ˆHQRS‹ÐÔÈÛ›HÜ™X]HHÛÛÜ™[˜][ÛˆXÚÙ]Y\ˆÙ[XÝ[™ÈHÛÝ\œÙK[\š[™ÈH™X\ÛÛˆ[™ÛÛ™š\›Z[™ÂˆHÛÛ˜Ý\œ™[\XØ]HÛÛÜ™[˜][ÛˆÝX›Z\ÜÚ[ÛœÈ›ÜˆHØ[YHÝY[[™ÛÝ\œÙH\™HÙ\šX[^™Y[™™]\ÙHHÜ[ˆXÚÙ]ˆHš]™HÛ›ÝÛˆYØXÞH]]ËXÜ™X]YXÚÙ]ÈÙ\™HØ[˜Ù[YÚ]š]™H]Y]›ÝÜÈ[™›È\™[][Û‚‹H˜[Y][ÛŽ‚ˆHœØÈK[›Ñ[Z]K\™]H˜[ÙXˆHœH[ˆ\Ý˜˜XÚÙ[™
+‹ÍŠBˆHœÞK]\Ý\ÝËÛZ[šX\Yš\œÝ\ØÚY[[™Ë\ÝØ
+LÌL
+BˆHœH[ˆZ[šX\˜]Y]\™[X\ÙX
+ŽYÙ\ÊBˆH[Z[šX\˜]˜TØÜš\\ÜÙY›ÙHKXÚXÚØˆHœH[ˆZ[
+NLÈYÙ\ÊBˆH™X[™XY[Û›HÛÜšÜÜXÙHÚXÚÈÙ\Ü[ˆ[\ÞYYK[Z[šX\ØÚY[[™ÈXÚÙ]È]OˆˆH\ÚÈØÎˆØÜËÝ\ÚÜËÕTÒËLŒŒÌM[Z[šX\\ØÚY[[™Ë\™XY[Û›KY[žK›Y‚ˆÈÈŒ‹LËLM\ŒL]™B‚‹HØÛÜNˆY›Ü›X[Ü™Y]›Ý\È›Üˆ\™\ˆ[›ÚXÙ\ÈÚ]Ý]Ú[™Ú[™ÈH^\Ý[™È[›ÚXÙK™XÙZ\ÜˆÙ][Y[ÝÜ™\Ë‚‹H\Ú[™\ÜÈ[\XÝ‚ˆHš[˜[˜ÙKÔÝ\\˜YZ[ˆØ[ˆÜ™X]HH\X[[™K[]™[˜Yœ›ÛH[ˆ^\Ý[™È\™\ˆ[›ÚXÙK[ˆ\ÜÝYHÜˆ›ÚY]Ú]™]Z[™Y\ÝÜžK‚ˆHXXÚ›ÝH™XÙZ]™\È[ˆ[™\[™[‘ÕPÓ‹VVVVSSKHÈÈÈØ˜XÚÚ[™È[X™\ˆ[™ÝÜ™\È[ˆ[[]]X›HÛÝ\˜ÙKZ[›ÚXÙHÛ˜\ÚÝ‚ˆHÜšYÚ[˜[Ý[\ÜÝYYÜ™Y]È[™Y\ÝY™]\™HÚÝÛˆÙÙ]\ŽÈ˜YÈ[™›ÚY›Ý\ÈÈ›Ý™YXÙHHY\ÝY™]‚ˆHHˆY[YšY\ÈHÜšYÚ[˜[[›ÚXÙK™X\ÛÛ‹Ü™Y]Y[™\ËÔÕÜ™Y]Ý[[™Y\ÝY˜[[˜ÙNÈÛ›H\ÜÝYY›Ý\ÈÚÝÈHÛÛ\[žHÙX[‚ˆH^\Ý[™È™XÙZ\È\™H›ÝÚ[™ÙY]]ÛX]XØ[K[™[ˆ[›ÚXÙHÚ]Ü™Y]›ÝH\ÝÜžHØ[››Ý™H[]Y‚‹HØY™]N‚ˆHY]]™HZYÜ˜][ÛˆÜ™X]\ÈÛ›HÜ™Y]›ÝX[™Ü™Y]›ÝS[™XˆH›È^\Ý[™È\Ú[™\ÜÈX›HÜˆ\Ù][™Ø[›ÚXÙH”ÓÓˆ\È[\™YˆH[™H[™[›ÚXÙHÝ™\‹XÜ™Y]\™H™Z™XÝY[œÚYHÙ\šX[^˜X›H˜[œØXÝ[ÛœÂˆHÝ\œ™[[›ÚXÙK™XÙZ\XÚØYÙK][™[˜ÙK^\›Û[™Ù][Y[]ÈÙY\Z\ˆ^\Ý[™È™Z]š[Ü‚‹H™\šYšXØ][Ûˆ™Y›Ü™H\ÞN‚ˆHœš\ÛXH˜[Y]X[™œš\ÛXHÙ[™\˜]XˆHœØÈK[›Ñ[Z]ˆHœH[ˆ\Ý˜˜XÚÙ[™
+‹ÍŠBˆHœH[ˆZ[
+NLÈYÙ\ÊBˆHÚ]Y™ˆKXÚXÚØˆH™]ÈÜšY[[ÑÑÌ\X[XÜ™Y][™™\X]YXÜ™Y][Z]ÈÛÝ™\™YžH\ÝÂ‹H\Þ[Y[Ý]\ÎˆØØ[‘PQHÛ›NÈ›È›ÙXÝ[ÛˆZYÜ˜][Û‹ÛÛ[Z]\ÚÜˆÙ\™\ˆ\Þ[Y[\È™Y[ˆ\™›Ü›YY‚‚ˆÈÈŒ‹LËLM\ŒH]™B‚‹HØÛÜNˆš\œÝ[\[Y[][Ûˆ\ÙHÙˆHY™™\™[X]Y[š]™\œÚ]KXØ\™H[‹‚‹H\Ú[™\ÜÈ[\XÝ‚ˆH™]È›Ú™XÝÈØ[ˆ™H[š]™\œÚ]HXØY[ZXÈX[˜YÙ[Y[ÜÝÜ˜YX]H™\\˜][ÛˆÜˆ[\›œÚ\Ù[\Þ[Y[Ý\ÜˆH›ÙÜ˜[[YHÙ[XÝ[ÛˆÚ[™Ù\ÈH]˜Z[X›H[™Y˜][Ù\šXÙHØÛÜH[œÝXYÙˆ™]\Ú[™È[š]™\œÚ]K\™\\˜][ÛˆY™KXØ\™HY˜][ÂˆHÝÛ™\ˆ›Û\È[™›ÛÝË]\Ø]YÛÜšY\È›ÛÝÈHÙ[XÝY[š]™\œÚ]H˜XÚÂˆH[š]™\œÚ]H›Ú™XÝÈÝÜ™H[œÝ]][Û‹YÜ™YKYX\‹Ý\›K^XÝYÜ˜YX][Û‹Ý\œ™[Ý\™Ù]ÔHX™[È[™Y[\ÝY[ÛÛœÙ[ˆH\™[\™\Ü[YÚXš[]H›Üˆ[š]™\œÚ]H™XÛÜ™È™\]Z\™\È™XÛÜ™YÛÛœÙ[[™]X\ÝÛ™H]]Üš^™YÙXÝ[Û‚ˆH^\Ý[™È[š]™\œÚ]HØÛÜHÙ[XÝ[ÛœÈ\™H™\Ù\™Y[™X\šÙY›Üˆ™]šY]ÎÈ™K][š]™\œÚ]HY˜][È[™[XXÚ[™ËÙš[˜[˜ÙHÛÜšÙ›ÝÜÈ™[XZ[ˆ[˜Ú[™ÙY‹H™\šYšXØ][Ûˆ™Y›Ü™H\ÞN‚ˆHœš\ÛXH˜[Y]XˆHœØÈK[›Ñ[Z]ˆHœH[ˆ\Ý˜˜XÚÙ[™
+ŒÍŒ
+BˆHœH[ˆZ[
+NLÈYÙ\ÊB‹HÜÝY\ÞH™\šYšXØ][ÛŽ‚ˆHLZYÜ˜][ÛœÈÛÛ\]YÈH[š]™\œÚ]K\›Ùš[HX›H[™ÜÝÜ˜YX]H[[H˜[YH^\ÝˆHLˆÛ›[™HÚ]™\›È™\Ý\ÎÈØYZ[‹ÛÙÚ[˜OˆŒˆH]][XØ]YÜ™X]KY›Ü›HÝÚ]Ú[™È\ÜÙYXÜ›ÜÜÈ[š]™H›ÙÜ˜[[YH\\ÂˆHH^\Ý[™È•TÈ˜Y\Ü^\È]ÈX\›Y\ˆØÛÜ\È\È™]Z[™Y[™]ÈÝÜ™YØÛÜH”ÓÓˆ\È[˜Ú[™ÙYˆH[\Ü˜\žH[š]™\œÚ]H›Ùš[HØ]™K[Z]YXÛÛœÙ[Ù[XÝ[Û‹™KXÛÛœÙ[›ØÚÚ[™È[™ÜÝXÛÛœÙ[\™[[YÚXš[]H\ÜÙYˆH\ÚÝÜ[™ÎL[Øš[H^[Ý]È\ÜÙYÚ]Ý]Üš^›Û[Ý™\™›ÝÂˆHH[\Ü˜\žHÝY[›Ú™XÝ›Ùš[KXÝ]š]KÙ\ÜÚ[Ûˆ[™™YH]Y]›ÝÜÈÙ\™HÛX[™YÈ™\›ÂˆH›ÝXÝY˜\Ù[[™H™]\›™YÈHÝY[ËÎXÚØYÙ\ËKNHÙ\ÜÚ[ÛœËKÌLH][™[˜ÙH›ÝÜËÍ\™\ˆÙ][Y[È[™‹ÌÌKÌÌØ\™H[™ØYÙ[Y[ËÜ[œËØXÝ]š]Y\ËÝ\ÚÜËØ]XÚY[Â‚ˆÈÈŒ‹LËLM\Œ]™B‚‹HØÛÜNˆYš]˜]H]šY[˜ÙHš[\È[™ÝXÝ\™YÛÛ[][šXØ][ÛˆÛÝ\˜Ù\ÈÈXXÚ[XØ\™H›Ú™XÝ‚‹H\Ú[™\ÜÈ[\XÝ‚ˆHÐT‘HÝY™ˆØ[ˆ\ØYØÚÛÛ[XZ[Ë›ÝXÙ\ËYY][™ÈZ[]\ËXØY[ZXÈ™\ÜÈ[™Y™KXÛÛÜ™[˜][Ûˆ]šY[˜ÙK[ˆ\ÜÛØÚX]HXXÚš[HÚ][ˆ^\Ý[™È›ÛÝË]\Üˆ\ÚË‚ˆHXÝ]™H]šY[˜ÙHØ[ˆ™HšY]ÙYÜˆÝÛ›ØYYÛ›HY\ˆ›Ú™XÝXØÙ\ÜÈ\ÈÚXÚÙYÈ\˜Ú]™H[™™\ÝÜ™H™\Ù\™HHš[H[™]Y]\ÝÜžK‚ˆH^\Ý[™È\ÜÛÛ‹][™[˜ÙKXÚØYÙKÙ][Y[^\›Û[›ÚXÙK™XÙZ\[™š[˜[˜ÙHÛÜšÙ›ÝÜÈ\™H[˜Ú[™ÙY‚‹Hš[\Î‚ˆHš\ÛXKÜØÚ[XKœš\ÛXXˆHX‹ØØ\™KY]šY[˜ÙKYš[\ËØˆHX‹ØØ\™K[X[˜YÙ[Y[ØˆH\ØYZ[‹ØØ\™KÖÚYKÜYÙKÞˆH\Ø\KØYZ[‹ØØ\™KÊŠ˜ˆH\ÝËØØ\™KY]šY[˜ÙK\ÝØ‹H™\šYšXØ][Ûˆ™Y›Ü™H\ÞN‚ˆHœš\ÛXH˜[Y]XˆHœØÈK[›Ñ[Z]ˆHœH[ˆ\Ý˜˜XÚÙ[™
+LËÍLÊBˆHœH[ˆZ[
+NLÈYÙ\ÊBˆH›ÙXÝ[Û‹[[ÙHœ›ÝÜÙ\ˆ\ØYÙÝÛ›ØYØ\˜Ú]™KÜ™\ÝÜ™H[™[˜]]Üš^™YXXØÙ\ÜÈÚXÚÜÂ‹HÜÝY\ÞH™\šYšXØ][ÛŽ‚ˆHLÈZYÜ˜][ÛœÈÝ\œ™[LˆÛ›[™HÚ]™\›È™\Ý\È[™ØYZ[‹ÛÙÚ[˜OˆŒˆH]][XØ]Y\ØY›Ú™XÝ\YÙH\Ý[™È[™š]˜]HÝÛ›ØYÛˆH[\Ü˜\žH›ÙXÝ[ÛˆØ\™H›Ú™XÝˆH[˜]][XØ]Yš[HXØÙ\ÜÈOˆXÈ]]Üš^™Yš[HXØÙ\ÜÈOˆš]˜]HÚYÛ™YÌ˜[™ÜšYÚ[˜[ÛÛ[ˆH[\Ü˜\žH]X˜\ÙH™XÛÜ™ËÙ\ÜÚ[Û‹]Y]›ÝÜÈ[™ÌÈØš™XÝÛX[™YÈ™\›ÂˆH›ÝXÝY˜\Ù[[™H[˜Ú[™ÙY]ÝY[ËÎXÚØYÙ\ËKMHÙ\ÜÚ[ÛœËKÌLH][™[˜ÙH›ÝÜËÍ\™\ˆÙ][Y[È[™KÌÌKÌÌØ\™H[™ØYÙ[Y[ËÜ[œËØXÝ]š]Y\ËÝ\ÚÜËØ]XÚY[Â‚ˆÈÈŒ‹LËLLË\ŒŒÎH™XYB‚‹HØÛÜNˆ[YÛˆH˜]]™HZ[šX\Ú]HÙ™šXÚX[›ÜÜËÑÕPHœ˜[™[™XZÙH]™\žHÝY™ˆÙX\˜Ú[\˜XÝ[ÛˆÛÛœÚ\Ý[[™™\Ú[Y[‚‹HÙX\˜Ú™Z]š[ÜŽ‚ˆHÝY[ØÚY[[™ËØÚY[[™ÈÛÛÜ™[˜][Û‹[™\ÜÚ\ÝY]XÚÙ]ÝY[ÛÚÝ\›ÝÈÚ\™H^XÚ]]Y\žH[™ÛX\ˆÛÛ›ÛÂˆH\[™È\ÈX›Ý[˜ÙYÙ^X›Ø\™ÙX\˜Ú™[XZ[œÈ]˜Z[X›K[™H]H™\ÜÛœÙHØ[››ÝÝ™\Üš]HH™]Ù\ˆ]Y\žBˆHÛX\š[™ÈH]Y\žH[[YYX][H™\Ù]ÈHÛÜœ™XÝ™\Ý[Ù]ÈHÝY[XÚÙ\ˆ[ÛÈÛX\œÈ[žHÝ[HÙ[XÝYÝY[‹Hš\ÝX[[™ÝXYÙN‚ˆHÙ™šXÚX[ÙÛÈ\X\œÈÛˆ\™[[™ÝY™ˆÙÚ[ˆYÙ\ÂˆHš[X\žHXÝ[ÛœË˜]šYØ][Û‹[™Ù[XÝYXœÈ\ÙHÙÛÈÜ˜[™ÙHÑPÍQLXˆHÚ\˜ÛØ[Ú]K[™ÛÛÛÜ˜^H›Ü›HH˜\ÙH[]NÈÜ™Y[‹Ü™Y™[XZ[ˆ[Z]YÈ\Ú[™\ÜÈÝ]\ÂˆHÝY™‹ZÛYH›ÝÜÈ\ÙHHÛX[™\ˆ]šY\ˆ^[Ý][œÝXYÙˆHÝXÚÈÙˆY[XØ[Ø\™Â‹HÛÜNˆ™[[Ý™H›ÛÝ][™[\[Y[][ÛˆÛÜ™[™ÈÝXÚ\È˜]™[[Øš[K]ÛÜšØ™[˜Úš\œÝ]™\œÚ[Û‹[™]˜Z[Xš[]HX™[Èœ›ÛHš\ÚX›HØÜ™Y[œÎÈ™\XÙH]Ú]\™XÝÜ\˜][Û˜[X™[Ë‚‹HØY™]Nˆ›ÈTK\›Z\ÜÚ[Û‹ØÚY[K][™[˜ÙKXÚØYÙKš[˜[˜ÙK›ÝYšXØ][Û‹ZYÜ˜][Û‹ÜˆÙ\™\‹X\Ú[™\ÜÈÚ[™ÙK‚‹H˜[Y][ÛŽ‚ˆH[Z[šX\˜]˜TØÜš\[™”ÓÓˆÚXÚÜÂˆHœH[ˆZ[šX\˜]Y]\™[X\ÙXÚ]ˆYÙ\È[™™\›È\œ›ÜœÂˆHLH›ØÝ\ÙYØÚY[[™ËÝXXÚ\ˆ\ÝÂˆHœØÈK[›Ñ[Z]ˆHœH[ˆZ[Ú]NLˆYÙ\ÂˆHÙPÚ]]•ÛÛÈÛÛ\[][ÛˆÚ]\œ›ÜœÈ[™Ø\›š[™ÜÂˆH\ÚÈØÎˆØÜËÝ\ÚÜËÕTÒËLŒŒÌLË[Z[šX\]ZK\ÙX\˜ÚXœ˜[™\™Yœ™\Ú›Y‹H™[XZ[š[™È™Y›Ü™HÙPÚ]\ØYˆ[ˆH™YH™X[Y]HÙX\˜Ú\È[™ÛX\ˆXÝ[ÛœÈ[ˆ[ˆ^\šY[˜ÙHZ[ÛˆH\ÚXØ[Û™NÈH]•ÛÛÈ™[[ÝH[\ÞYYH™\]Y\Ý[YYÝ]\š[™ÈÛ™Hš[˜[]K[ØY[™È\ÜË‚‚ˆÈÈŒ‹LËLLË\ŒŒÎ™XYB‚‹HØÛÜNˆY[ˆ\ÛÛ]Y[\›˜[[XØ\™HÛÜšÜÜXÙH›ÜˆÙ[XÝX›HÝY[ËÛÛ™šYÝ\˜X›HÙ\šXÙHØÛÜH[™ÝÛ™\œËÝYÙH[œË]šY[˜ÙKX˜\ÙY\]\Ëš\ÚÜË[™\ÚÜË‚‹H\Ú[™\ÜÈ[\XÝ‚ˆHQRS‹ÛX[˜YÙ\ˆ\Ù\œÈØ[ˆÜ™X]H[™ÛÛ™šYÝ\™HØ\™H›Ú™XÝÎÈ\ÜÚYÛ™YÐT‘HÝY™ˆØ[ˆXØÙ\ÜÈÛ›HZ\ˆ›Ú™XÝ™XÛÜ™Ë‚ˆHÛÛ™š\›YYYYXØ[XØÛÛ\[š[Y[[\Ü[˜[œÜÜÜÝY˜[Z[HÝ\ÜÛY^HØ\™K[™š\ØKÜ\ÜÈYZ[š\Ý˜][Ûˆ\™HÙ[XÝX›HÙ\šXÙHØÛÜH[™Y™KXXÝ]š]H\\Ë‚ˆHZ[HÝ]\ÈÛÛ™š\›X][Ûˆ[™Y\‹ZÝ\œÈÛœÚ]HÝ\Ü™[XZ[ˆÛÛ™][Û˜[[™\™H›Ý[˜X›YžHY˜][‚ˆH^\Ý[™ÈÝY[ËØÚY[\ËXÚØYÙ\Ë][™[˜ÙK\™\ˆÙ][Y[^\›Û[›ÚXÙ\Ë™XÙZ\Ë\Ú[™\ÜÈXØÛÝ[Ë[™\™[Z[šX\™Z]š[Üˆ™[XZ[ˆ[˜Ú[™ÙY‚‹Hš[\Î‚ˆH\ØYZ[‹ØØ\™KÊ˜ˆHX‹ØØ\™KXXØÙ\ÜËØˆHX‹ØØ\™K[X[˜YÙ[Y[ØˆHX‹ØØ\™K]˜[Y][Û‹ØˆHš\ÛXKÜØÚ[XKœš\ÛXXˆHš\ÛXKÛZYÜ˜][ÛœËÌŒŒÌLÌMŒØYØØ\™WÛX[˜YÙ[Y[ØÛÜ™KÛZYÜ˜][Û‹œÜ[ˆH\ÝËØØ\™K]˜[Y][Û‹\ÝØˆH\ÝËØØ\™K[ZYÜ˜][Û‹\ØY™]K\ÝØ‹H™\šYšXØ][Ûˆ™Y›Ü™H\ÞN‚ˆHœš\ÛXH˜[Y]XˆHœØÈK[›Ñ[Z]ˆHœH[ˆ\Ý˜˜XÚÙ[™Ú]KÍH\ÜÚ[™ÂˆHœH[ˆZ[Ú]NLˆYÙ\ÂˆH™XY[Û›H›ÙXÝ[Ûˆ˜\Ù[[™H[™›ÝXÝY\Ù][™È\Ú\ÈØ]™Y‹HÜÝY\ÞH™\šYšXØ][ÛŽ‚ˆHÛÛ™š\›HLˆZYÜ˜][ÛœÈÝ\œ™[LˆÛ›[™K[™ØYZ[‹ÛÙÚ[˜™]\›œÈŒˆHÛÛ\\™HHØ[YHXXÚ[™ËXÚØYÙKÙ][Y[š[[™Ë™XÙZ\^\›Û\X›\Ú[™\Ú[™\ÜÈXØÛÝ[È˜\Ù[[™BˆH™\šYžHØYZ[‹ØØ\™X™[™\œÈ›Üˆ[ˆ]][XØ]YQRSˆ[™›ÈØ\™H›Ú™XÝ^\ÝÈ[[X[X[HÜ™X]YˆH™\šYžH^\Ý[™ÈÝY[XÚØYÙK\™\ˆÙ][Y[[™š[˜[˜ÙHYÙ\È™]\›ˆÝXØÙ\ÜÙ[B‚ˆÈÈŒ‹LËLL‹\ŒŒÍ™XYB‚‹HØÛÜNˆÛÛ™\H\ÝYZ[šX\ÛÝ\˜ÙH[ÈH™\X]X›HÙPÚ]™]šY]ÈZ[‚‹HÛÙNˆ[ØÚÈÜ[’QÈ[\K˜\ÙHXœ˜\žH[›™YÈËŒMKŒ‹ÛÝ\˜ÙHX\È\ØX›Y›ÙXÝ[ÛˆÈ[™T“ÚXÚÚ[™È™]Z[™Y‚‹H]Y]ˆYœH[ˆZ[šX\˜]Y]\™[X\ÙX›Üˆ\QØÛÛ™šYËÜYÙHÛÛ\][™\ÜÈ[™™[X\ÙK\ØY™]HÚXÚÜË‚‹HÛÛ\X[˜ÙNˆØÝ[Y[XÝX[]H›ØÙ\ÜÚ[™Ë[\ÙYÙ[œÚ]]™HT\Ëš]˜XÞHšY[È™\]Z\š[™ÈÝÛ™\ˆ[œ][™™]šY]Ù\ˆXØÙ\ÜÈ\Ú[™È›Û‹\™X[\Ý]K‚‹HÜ\˜][ÛœÎˆØÝ[Y[\ØY^\šY[˜ÙK]™\œÚ[Ûˆ™YÜ™\ÜÚ[Û‹]Y]ÝX›Z\ÜÚ[Û‹X›\Ú[™Ë[Ûš]Üš[™Ë[Z[Hš[™[™Ë[™ÛX[\‚‹H™[XZ[š[™È^\›˜[ÛÜšÎˆš]˜XÞHÛÛXÝØY™\ÜËÜ™][[ÛˆXÚ\Ú[ÛœÈ\ÈÙPÚ]˜XÚÙ[™˜\ÚXËZ[™›ËÙ\YšXØ][Û‹Ùš[[™ËÛXZ[‹[™š]˜XÞKYÝZYHÛÛ™š\›X][Û‹‚‹Hš]˜XÞH[ZÙH\]NˆÛÛXÝ[™™YÚ\Ý\™YY™\ÜÈ\™HÛÛ\]Kˆ[™Yš[š]H™][[ÛˆÚ]Ü[Û˜[Ý\\‹XYZ[ˆ[][Ûˆ\È™XÛÜ™YÛ›H\È[ˆ[š]X[™Y™\™[˜ÙNÈÛÙH[œÜXÝ[ÛˆÚÝÜÈXÚÙ]š[\Ëš[˜[˜ÙH\ÝÜžK[™]Y]ÙÜÈÈ›ÝÝ\œ™[HÚ\™HH[š]™\œØ[\™Y[]H]ÛÈš[˜[™][[ÛˆÛÜ™[™ÈÝ[™\]Z\™\ÈZ[š[][K[™XÙ\ÜØ\žH\š[ÙÈ[™XØÛÝ[[™ÈÛ\ÜÚYšXØ][Û‹‚‚ˆÈÈŒ‹LËLLË\ŒŒÍH]™B‚‹HØÛÜNˆÚ]™H˜\ÛZ[™KÑ]˜KÐQRSˆHYXØ]Y[Øš[H\Ý›ÜˆÝY[ÈÚ]\ØX›HXÝ]™HXÚØYÙ\È]›È]\™H\ÜÛÛœË‚‹HÛ\ÜÚYšXØ][ÛŽˆ\Ý[™ÝZ\ÚYHš\œÝØÚY[[™Èœ›ÛHÝY[ÈÚÈ]™H\ÝÜšXØ[\ÜÛÛœÈ]™YY™[™]Ø[ØÚY[[™Ë‚‹HÛÜšÙ›ÝÎˆ™]\ÙH[ˆÜ[ˆ9£¤º+ïº) y¬`ˆÈ9£¤º+ï¹ccú, ÈÈ9¥¬9£¤º+ïˆÈ:(iz+ï¹b¨:+ï˜XÚÙ]ÜˆÜ™X]HÛ™H[\›˜[9¥¬9£¤º+ï˜XÚÙ][ˆÚÛÜÙHÝXš™XÝ]™[XXÚ\‹Ø[\\Ë›ÛÛK]K[YK\˜][Û‹[™KLLˆÙYZÛH\ÜÛÛœË‚‹H\›Z\ÜÚ[ÛœÎˆÔËÑ[Z[HØ[ˆšY]ÈH\Ý[™Ü™X]KÜ™]\ÙHHÛÛÜ™[˜][ÛˆXÚÙ]ÈÛ›HQRSˆØ[ˆ™]šY]È[™ÛÛ™š\›H™X[Ù\ÜÚ[ÛˆÜš]\Ë‚‹HØY™]Nˆ™\Ù\™HXÚØYÙHš[˜[˜ÙHØ]\Ë˜[[˜Ù\ËXXÚ\ˆ]X[YšXØ][ÛœË]˜Z[Xš[]K[ÛÛ™›XÝÚXÚÜË\XØ]HÝX\™ËÚYÛ™Y[‹[Z[]H™]šY]ÜËÙXÛÛ™ÛÛ™š\›X][Û‹Ù\šX[^˜X›HÜš]\ËXÚÙ]ÛÛ\][Û‹]Y]ÙÜË[™\™[›ÝYšXØ][Ûˆ™Z]š[Ü‹‚‹H]H]šY[˜ÙNˆ™XY[Û›H›ÙXÝ[Ûˆ]˜[X][Ûˆ™\ÜÈH[™[™ÈÝY[ÎˆHš\œÝØÚY[[™ËŒ™[™]Ø[ØÚY[[™Ë™XYK[™H›ØÚÙY‚‹H˜[Y][ÛŽˆÈ™[]Y™YÜ™\ÜÚ[ÛœË\TØÜš\Z[šX\Þ[^Œ‹\YÙH™[X\ÙH]Y]ØÝ[Y[Þ[˜ËY™ˆÚXÚÜË[™ØØ[Ü›ÙXÝ[ÛˆNË\YÙHZ[È\ÜËˆ›ÙXÝ[ÛˆXLYØŽ\ÈLHZYÜ˜][ÛœÈÝ\œ™[LˆÛ›[™KX[Œ[™Û™HÜ›Û‹ˆ]][XØ]YQRSˆÑU™\ÜÈKÍKÌŒÌÌH[™Üš]HØ\Xš[]HYNÈ[˜]][XØ]YÑU™]\›œÈKˆ™[XZ[š[™È^\›˜[˜[Y][ÛŽˆÙPÚ]]•ÛÛÈ™K[Ü[‹ØÛÛ\[H[™Û™H™YÜ™\ÜÚ[Û‹‚‚ˆÈÈŒ‹LËLLË\ŒŒÍˆ]™B‚‹HXÚ\Ú[ÛŽˆ[ÝY[È]\Ý™HÙX\˜ÚX›H[™X›HÈ[\ˆØÚY[[™ÎÈHHÝY[È\™H[ˆ][[Ûˆ]Y]YK›Ý[ˆ[YÚXš[]H\Ý‚‹HYÙNˆ™[˜[YHH[žHÈ9ki¹å'ù£¤º+ï˜[™Y[][[Û‹š\œÝ™[™]Ø[[™XYHØÚY[Y[™™\™\]Z\Ú]KX›ØÚÙYš[\œË‚‹H^\Ý[™ÈØÚY[\ÎˆÝY[ÈÚ]]\™H\ÜÛÛœÈÝ^Hš\ÚX›H[™Ø[ˆÜ™X]KÜ™]\ÙHH:(iz+ï¹b¨:+ï˜XÚÙ]‚‹HZ\ÜÚ[™È™\™\]Z\Ú]\ÎˆÝY[ÈÚ]Ý]H\ØX›HXÚØYÙHØ[ˆÝ[[\ˆÛÛÜ™[˜][Ûˆ[™™XÙZ]™HHXÚÙ]]™X[Ù\ÜÚ[ÛˆÜ™X][Ûˆ™[XZ[œÈ›ØÚÙY[[XÚØYÙH[™š[˜[˜ÙH[\È\ÜË‚‹H˜[Y][ÛŽˆŽ›ØÝ\ÙY™YÜ™\ÜÚ[ÛœË\TØÜš\Z[šX\Þ[^HŒ‹\YÙH™[X\ÙH]Y]^XÝØÝ[Y[Þ[˜ËY™ˆÚXÚÜË[™ØØ[Ü›ÙXÝ[ÛˆNË\YÙHZ[È\ÜËˆ›ÙXÝ[Ûˆ˜LŒXØ\ÈX[HÚ]LHZYÜ˜][ÛœËÛ™HÜ›Û‹[™]][XØ]YÝ[ÈÌKÌMKÌÍÌÎKÍ‹Í‹ÍÈØÚY[YØÛÜH[™H›Ý[™\žHÚXÚÜÈ\ÜÈÚ]Ý]›ÙXÝ[ÛˆÜš]\Ë‚‹H\›Z\ÜÚ[ÛœÎˆÔÈØ[ˆÛÛÜ™[˜]HÛ›NÈQRSˆ™[XZ[œÈHÛ›HØÚY[[™ÈÜš]\‹‚‹H]H]šY[˜ÙNˆ™XY[Û›H]˜[X][Ûˆ™\ÜÈÝ[H][[Û‹ÎH[™XYHØÚY[Yˆ™XYKˆ™\]Z\š[™È™\™\]Z\Ú]\Ë[™Ú]™]\ØX›HØÚY[[™ÈXÚÙ]Ë‚‹H˜[Y][Ûˆ™[XZ[š[™Îˆ›ØÝ\ÙY™YÜ™\ÜÚ[ÛœË\TØÜš\Z[šX\]Y][Z[\ÞK]][XØ]YTKL‹ÚX[ØÜ›Û‹[™]•ÛÛÈ™YÜ™\ÜÚ[Û‹‚‚ˆÈÈŒ‹LËLL‹\ŒŒÌÈ]™B‚‹HØÛÜNˆÛÜÙHH\™[Y\‹XÛ\ÜÈ™YY˜XÚÈ›ÝYšXØ][ÛˆÛÜ‚‹H[\]HXÚ\Ú[ÛŽˆ›ÈYXØ]Y[\]H^\ÝÈ[ˆØ]YÛÜžHNLÈ\ÙHHÙ[X[XØ[H˜[Y^\Ý[™È9§#yb¨yk£9¢$:`&¹çéXÚ]:+ï¹d#¹cãzi¢\ÈHÙ\šXÙH˜[YK˜]\ˆ[ˆZ\Ý\Ú[™È™\ÜÜˆX]\šX[[\]\Ë‚‹H]™[™Z]š[ÜŽˆ\ÚÝÜ[™ÝY™‹[Z[šX\XXÚ\ˆ›Ý]\È]Y]YHÛ›HHš\œÝX›XØ][Ûˆ›Üˆ]™\žHÝY[]XÚYÈH\ÜÛÛ‹‚‹HÛÛœÙ[™Z]š[ÜŽˆ\™[ÛYHYÈ9o 9d+ú+ï¹d#¹cãzi¢9£ä:a¤˜È[›ÚXÙH[™™YY˜XÚÈ™XÛÜ™HØ[YHÙ™šXÚX[[]™\žHQ]ÙY\XØÙ\Y[™ÛÛœÝ[YY[[Ù\\˜]K‚‹HÝY™ˆ™Z]š[ÜŽˆÙXˆ[™[Øš[H][[Ûˆ\ÝÈ^ÜÙH™YY˜XÚÈ›ÝÜÈØZ][™È›ÜˆÛÛœÙ[‚‹HØY™]Nˆ™\ÝYY™›Ü›ÝYšXØ][ÛˆÛ›K›È™YY˜XÚÈY]Ü[K›ÈØÚ[XHÜˆ\Ú[™\ÜÈÛÜšÙ›ÝÈÚ[™ÙK‚‹H˜[Y][ÛŽˆ\TØÜš\š[™HX\[™ËÜÝY[\™\ÛÛ][Û‹ØÛÛœÙ[Z[[\ÝËZ[šX\ÜÚ[Þ[^Y™ˆÚXÚË[™ØØ[Ü›ÙXÝ[ÛˆN‹\YÙHZ[È\ÜÙYˆ›ÙXÝ[ÛˆYÙÎMX™\ÜÈÎÛÛ™šYÝ\˜][Û‹Ü›Ý\Ú^™\ÈËÌ‹Ì‹ÌKÛ™HÜ›Û‹LˆÛ›[™K[™X[Œˆ›ÈX\›š[™È]Y]Üˆ™YY˜XÚÈ›ÝÈ^\ÝY™Y›Ü™H^XÚ]ÛÛœÙ[ˆHX\šÙY\Ý[ˆÙ[\ÈÑS•[™\ˆÛÛœÙ[Ü›Ý\X\›š[™ØÚ]›È˜Z[\™KÜ™]žK[™š[ÈÛÛ™š\›YYHÙPÚ]Ø\™\œš]™Y›Ü›X[K‚‚ˆÈÈŒ‹LËLL‹\ŒŒÌˆ]™B‚‹HØÛÜNˆXZÙH[›Ý\ˆ™\]Y\ÝÙš[˜[˜ÙH[\]H]]Üš^˜][ÛœÈ[™\[™[Hš\ÚX›H[™]Y]X›K‚‹H]šY[˜ÙNˆH™X[\™[]Y]™XÛÜ™Y™\]Y\ÝXØÙ\[™[›ÚXÙHXØÙ\]š[˜[˜ÙH[™™XÙZ\Ù\™HZ\ÜÚ[™Èœ›ÛHHØ[˜XÚÈÛˆ™\X]YÜ›Ý\Y][\Ë‚‹H\™[^\šY[˜ÙNˆÙY\H™YK][\]HÛÝ\œÙH]Û‹[ˆÚÝÈÙ\\˜]H]ÛœÈ›Üˆ™\]Y\ÝÝ]\Ë[œZY[›ÚXÙK[™™XÙZ\™[Z[™\œË‚‹HØY™]Nˆ›ÈÙ\™\ˆ[]™\žK]Y]YK\Ú[™\ÜÈ]K\›Z\ÜÚ[Û‹ÜˆÜ›ÛˆÚ[™Ù\Ë‚‹H˜[Y][ÛŽˆZ[šX\˜]˜TØÜš\Þ[^Y™ˆÚXÚË[™ØØ[Ü›ÙXÝ[ÛˆN‹\YÙHZ[È\ÜÙYˆ›ÙXÝ[ÛˆŒ™LÙ˜\ÈX[HÚ]LHZYÜ˜][ÛœÈÝ\œ™[[™Û™HÜ›Û‹ˆ[™\[™[]]Üš^˜][Ûˆ›ÙXÙYXØÙ\Y][ÝH›Üˆ[›Ý\ˆ[\]\ÎÈ›Ý\ˆX\šÙY\Ý›ÝYšXØ][ÛœÈXXÚ™XXÚYÑS•Ú]›È™]žHÜˆ˜Z[\™KˆÛ™HØÜ™Y[œÚÝÈÛÛ™š\›H[›Ý\ˆØ\™È[™Z\ˆ^XÝYšY[È™[™\™YÛÜœ™XÝH[ˆÙPÚ]Ù\šXÙH›ÝYšXØ][ÛœË‚‚ˆÈÈŒ‹LËLL‹\ŒŒÌH]™B‚‹HØÛÜNˆÛÛ\]HH™\]Y\Ý[™š[˜[˜ÙHÙPÚ]ÝXœØÜš\[Û‹[Y\ÜØYÙH›ØÚË‚‹H\Ú[™\ÜÈ[\XÝ‚ˆH\™[ÈØ[ˆ]]Üš^™H™\]Y\ÝÝ[œZY[™[›ÚXÙKÜ™XÙZ\›ÝYšXØ][ÛœÈ[ˆÛÈÛX\ˆÜ›Ý\ÂˆH]™\žH\™[]š\ÚX›H™\]Y\ÝÝ]\È\]HØ[ˆ›ÝYžHYØZ[ˆ[œÝXYÙˆ™Z[™ÈÝ\™\ÜÙYY\ˆHš\œÝÙ[™ˆH[›ÚXÙHÜ™X][Ûˆ]Y]Y\È[›ÚXÙKZ\ÜÝYY[™Ú[ˆ\XØX›K[œZYY\ÜØYÙ\ÂˆH™XÙZ\Y\ÜØYÙ\ÈØZ]›ÜˆHÛÛ™šYÝ\™Yš[˜[˜ÙH\›Ý˜[ÈÛÛ\]BˆHQRS‹ÐÔÈÝY™ˆØ[ˆš[™]™\žHYH›ÝYšXØ][Ûˆ\H]\ÈÝ[Z\ÜÚ[™È\™[ÛÛœÙ[‹HØY™]H›Ý[™\šY\Î‚ˆH^XÝ][\]HÛÛœÙ[][ÝH\ÈÚXÚÙY[[YYX][H™Y›Ü™HÙ[™ˆH˜[œÚY[˜Z[\™\È™]žH][ÜÝ™YH[Y\È[™Y\ÜØYÙ\ÈÛ\ˆ[ˆÙ]™[ˆ^\È\™HÚÚ\YˆH›ÝYšXØ][Ûˆ˜Z[\™\ÈÈ›Ý›Û˜XÚÈÝXØÙ\ÜÙ[™\]Y\Ý[›ÚXÙKÜˆ™XÙZ\Ü\˜][ÛœÂˆH›ÈØÚ[XKÛÝ\œÙH™[Z[™\‹XÚØYÙK][™[˜ÙK^[Y[^\›ÛÜˆ\›Z\ÜÚ[Ûˆ[HÚ[™Ù\Â‹H˜[Y][Ûˆ™Y›Ü™H\ÞN‚ˆH\TØÜš\[™[N‹\YÙHZ[ˆHˆÙPÚ]ÝXœØÜš\[Ûˆ\ÝÈ[™š[[™ËØ\›Ý˜[™YÜ™\ÜÚ[Ûˆ\ÝÂˆHZ[šX\˜]˜TØÜš\Ò”ÓÓ‹Ü›ÛˆÚ[Þ[^[™Y™ˆÚXÚÜÂ‹HÜÝY\ÞHÚXÚÜÎ‚ˆH›ÙXÝ[ÛˆÛÛ[Z]ŒŽÎNYLHZYÜ˜][ÛœÈÝ\œ™[NˆYÙ\ÈZ[LˆÛ›[™K[™ØYZ[‹ÛÙÚ[˜ŒˆH[[YHÛÛ™šYÝ\˜][Ûˆ\ÈËÍÎÈ\™[TH™]\›œÈÛÛ™šYÝ\™YÜ›Ý\Ú^™\ÈË‹[™‚ˆHQRSˆÝY™ˆ][[ÛˆTH™]\›œÈŒ[™Ý\œ™[H^ÜÙ\ÈÛÈ™\]Y\Ý\Ý]\È›ÝÜÈ]ØZ][™ÈÛÛœÙ[ˆH^XÝHÛ™HÜ›Ûˆ[˜ÛY\ÈHÙ\šXÙHÙ[™\ŽÈ]È]]ÛX]XÈ[ˆØØ[›™Yˆ[™ØY™[HY›ÝØZ][™È›ÜˆÛÛœÙ[Ú]›ÈÙ[™™]žK˜Z[\™KÜˆÚÚ\ˆH™X[\™[]]Üš^˜][Ûˆ[™ÛÛ›ÛY›Ý\‹[Y\ÜØYÙH\Ü^H\Ý™[XZ[ˆHš[˜[^\›˜[ÚXÚÂ‚ˆÈÈŒ‹LËLLK\ŒŒH]™B‚‹HØÛÜNˆÝ\HÙXÛÛ™[Øš[K[Ü\˜][ÛœÈ\ÙHÚ[H™\Ù\š[™È^\Ý[™È\ÚÝÜØÚY[[™ÈÝÛ™\œÚ\[™XÚÙ]ÛÜšÙ›ÝÜË‚‹H\Ú[™\ÜÈ[\XÝ‚ˆHQRSˆØ[ˆÚ[™ÙHHØ[\\ËÛÛ›[™H[ÙH[™›ÛÛH›ÜˆÛ™H]\™HÙ\ÜÚ[ÛˆÛ›K‚ˆHHÜšYÚ[˜[Û\ÜË\ÝÜšXØ[Ù\ÜÚ[ÛœË[™[Ý\ˆ]\™HÙ\ÜÚ[ÛœÈÙY\Z\ˆÜšYÚ[˜[ØØ][Û‹‚ˆHQRSˆØ[ˆØÚY[HHØ[YH\ÜÛÛˆÙYZÛH›Üˆ‹LLˆÙYZÜÎÈ]™\žHÙYZÈ]\Ý\ÜÈXÚØYÙK]˜Z[Xš[]KÝY[XXÚ\‹\Ú[Y[\XØ]K[™›ÛÛHÚXÚÜÈ™Y›Ü™H[žHÙ\ÜÚ[Ûˆ\ÈÜ™X]Y‚ˆHX]Ú[™ÈØÚY[[™ÈXÚÙ]È™[XZ[ˆÜ[Û˜[[™Ø[ˆ™HÛÛ\]Y[ˆHØ[YH]ÛZXÈÙ\šY\È˜[œØXÝ[Û‹‚ˆH\ÜÚYÛ™YXXÚ\œÈØ[ˆÝX›Z]H™X\ÛÛˆ[™™Y™\œ™Y[YHœ›ÛHZ\ˆÝÛˆ]\™H\ÜÛÛ‹ˆH™\]Y\ÝÜ™X]\ÈÜˆ\]\ÈÛ™H[\›˜[9¥.z+ï¹ê"ù¥íºeíXÚÙ]ÝÛ™YžH˜\ÛZ[™H[™š\ÚX›HÈ]˜KÛX[˜YÙ[Y[[ˆH^\Ý[™È[Øš[H›Ø\™‚ˆHH›ÝYšXØ][ÛˆYZ[ˆYÙH™\ÜÈ\QÔÙXÜ™][™š]™H[\]KRQÛÛ™šYÝ\˜][ÛˆÝ]\Ëˆ\™[™[Z[™\ˆ]ÛœÈ\X\ˆÛ›H›ÜˆÛÛ™šYÝ\™Y[\]HÜ›Ý\È[™™XÛÜ™H™\Ý[ÙˆÞœ™\]Y\ÝÝXœØÜšX™SY\ÜØYÙX‚‹HØY™]H›Ý[™\šY\Î‚ˆH›ÈØØ][ÛˆÚ[™ÙH›ÜˆÝ\YØ][™YÙYXÝYÙ\ÜÚ[ÛœË‚ˆH›È\X[ÙYZÛHØÚY[[™Ë[Ü™H[ˆLˆÙYZÜËXXÚ\ˆ\™XÝØÚY[HÜš]\ËÜˆ]]ÛX]XÈXÚÙ]ÛÛ\][Ûˆ›ÜˆXXÚ\ˆ™\]Y\ÝË‚ˆHÝXœØÜš\[ÛˆÛÛœÙ[ÝÜ˜YÙH\È[˜X›Y]Ý]›Ý[™ÙPÚ]Ù[™[™È™[XZ[œÈ›ØÚÙY[[Ù™šXÚX[[\]HQÈ[™[\]KYšY[X\[™ÜÈ\™HÛÛ\]Y‚‹H™\šYšXØ][Ûˆ™Y›Ü™H\ÞN‚ˆHœØÈK[›Ñ[Z]Z[šX\Þ[^ÕÖSÚ]Y™ˆKXÚXÚØ[™œH[ˆZ[ˆHØØ[›Ý]HÚXÚÜÎˆH[˜]][XØ]YŒ˜[Y™]šY]ÜËÜ™XYËH[˜[Y\Y\Ë[˜Ú[™ÙY]X˜\ÙHÛ˜\ÚÝÂˆHÛÛ™šYÝ\˜][ÛˆÚXÚÈÝ\œ™[H™\ÜÈÍHÙPÚ][\]HQÂ‹HÜÝY\ÞH™\šYšXØ][ÛŽ‚ˆH\ÞYY™X]\™HÛÛ[Z]ŒLMØ˜ÈLˆ\ÈÛ›[™H[™ØYZ[‹ÛÙÚ[˜™]\›œÈŒˆHØØ][ÛˆÜ[ÛœÈ[™˜[Y™]šY]È™]\›ˆŒÈ[˜[Y\H™]\›œÈBˆH˜[YÛË]ÙYZÈÙ\šY\È™]šY]È™]\›œÈŒÈ[˜[Y\H™]\›œÈBˆHXXÚ\‹[ÝÛ™Y™\]Y\ÝÑU™]\›œÈŒÈ[˜[YÝY[ÔÕ™]\›œÈH[™XÚÙ]ÛÝ[™[XZ[œÈ[˜Ú[™ÙYˆH\™[ÝXœØÜš\[ÛˆÛÛ™šYÝ\˜][ÛˆÑU™]\›œÈŒ[™[Ü›Ý\È™[XZ[ˆ[˜ÛÛ™šYÝ\™YÚY[ˆÚ]ÍH[\]HQÂˆH›ÈRS’PTÔÑTÔÒSÓ—ÐÒS‘ÑWÓÐÐUSÓ˜RS’PTÔÑTÔÒSÓ—ÔÑT’QT×ÐÔ‘PUXÜˆXXÚ\‹\™\]Y\Ý]Y]Üš]\ÈÙ\™HÜ™X]YžH™\šYšXØ][Û‚‚ˆÈÈŒ‹LËLLK\ŒŒ]™B‚‹HØÛÜNˆš[š\ÚHš\œÝ[Øš[HXØY[ZXË[Ü\˜][ÛœÈ˜]ÚÚ]Ý]™\]Z\š[™ÈÝY™ˆÈ™]\›ˆÈH\ÚÝÜ›ÜˆÛÛ[[ÛˆÚ[™ÛK[\ÜÛÛˆÚ[™Ù\Ë‚‹H\Ú[™\ÜÈ[\XÝ‚ˆHØÚY[[™ÈXÚÙ]]Z[\ÝÈHÝY[	ÜÈ™^Ì\ÜÛÛœÈ[™Ü[œÈ\ÜÛÛˆ]Z[\™XÝK‚ˆHQRSˆØ[ˆ›ØÙ\ÜÈ]\™HX]™KØØ[˜Ù[][ÛˆÚ][ˆ^XÚ]Ú\™ÙKÛ›ËXÚ\™ÙHÚÚXÙH[™Ü[Û˜[HÛÛ\]HX]Ú[™È9.-9¥í¹cå¹­¢	º+íù`aú+ï¹ê"ØXÚÙ]Ë‚ˆHQRSˆØ[ˆ™\XÙHH]X[YšYYXXÚ\ˆ›ÜˆÛ™H]\™HÙ\ÜÚ[Ûˆ[™Ü[Û˜[HÛÛ\]HX]Ú[™È9¥.y."º+ïº  yn"XÚÙ]ÎÈHÛ\ÜÈY˜][XXÚ\ˆ[™Ý\ˆÙ\ÜÚ[ÛœÈÈ›ÝÚ[™ÙK‚ˆH9¥¬9£¤º+ï˜:(iz+ï¹b¨:+ï˜[™9£¤º+ï¹ccú, ØXÚÙ]ÈØ[ˆÜ™X]HHš\œÝÛ™K[Û‹[Û™HÙ\ÜÚ[ÛˆÚ]Ý][ˆ^\Ý[™È\ÜÛÛˆ[˜ÚÜ‹‚ˆHYØXÞHXÚÙ]ÈÚ]›ÈÝY[Y\™H™\ÛÛ™YÛ›HÚ[ˆÝY[˜[YX\È^XÝHÛ™HÝY[X]ÚÈ[XšYÝ[Ý\È˜[Y\È™[XZ[ˆ›ØÚÙY‚ˆHÜ™X]KÜ™\ØÚY[HÛÜÝ\™HX]Ú[™È›ÝÈ™\ÜXÝÈHXÝ[Û‰ÜÈXÚÙ]\\È[œÝXYÙˆÛ›HH^XÝ9£¤º+ï¹ccú, Ø\K‚‹HØY™]H›Ý[™\šY\Î‚ˆHQRS‹[Û›HÜš]\Ë]\™H\ÜÛÛœÈÛ›KÚ[™ÛHÙ\ÜÚ[ÛˆÛ›KL[Z[]HÚYÛ™Y™]šY]ÜË[™ÑT’PSVP“H˜[œØXÝ[Ûˆ™]˜[Y][Û‹‚ˆH›È˜]Ú]\™K\Ù\šY\ÈY]ËÛ\ÜÈY˜][]XXÚ\ˆÚ[™Ù\Ë]]ÛX]XÈÚ\™ÙHÚÚXÙKš[˜[˜ÙHÜš]\Ë^\›ÛÜš]\ËÜˆÜ[Û]ÈÚ[™Ù\Ë‚ˆH^\Ý[™È][™[˜ÙHÜˆXÚØYÙKYYXÝ[Ûˆ]šY[˜ÙH›ØÚÜÈØ[˜Ù[][ÛˆÜˆXXÚ\ˆ™\XÙ[Y[‚‹H™\šYšXØ][Ûˆ™Y›Ü™H\ÞN‚ˆHœØÈK[›Ñ[Z]ˆHZ[šX\˜]˜TØÜš\ÕÖSÚXÚÜÈ[™Ú]Y™ˆKXÚXÚØˆHœH[ˆZ[ˆH™XY[Û›H›ÙXÝ[Û‹Y]H™]šY]ÜÈ[™ÚÙ[ˆ[\\ˆÚXÚÜÈ›Üˆ[™YHÜš]HÛÜšÙ›ÝÜÂ‹HÜÝY\ÞH™\šYšXØ][ÛŽ‚ˆH\ÞYYÛÙHÛÛ[Z]LNXÈLˆ\ÈÛ›[™H[™ØYZ[‹ÛÙÚ[˜™]\›œÈŒˆH[˜]][XØ]Yš\œÝ\ØÚY[[™ËØ[˜Ù[][Û‹[™XXÚ\‹\™\XÙ[Y[[™Ú[È™]\›ˆBˆH]][XØ]Y˜[Y™X[Y]H™]šY]ÜÈ™]\›ˆŒ›Üˆ[™YHÛÜšÙ›ÝÜÂˆH[˜[Y\HÚÙ[œÈ™]\›ˆH‘U’QU×Ô‘TURT‘QÈš\œÝ\ØÚY[[™ÈXÚÙ]ÜÙ\ÜÚ[ÛˆÛÝ[[™Ø[˜Ù[][Ûˆ][™[˜ÙKÜXÚØYÙK[YÙ\ˆÛ˜\ÚÝÈ™[XZ[ˆ[˜Ú[™ÙYˆHXXÚ\ˆ™\XÙ[Y[\ÝYMH]X[YšYYØ[™Y]\È[™™]šY]ÙY][™™[™ÈÝXØÙ\ÜÙ[HÚ]Ý]\Z[™ÈHÚ[™ÙBˆH™[X\ÙHØÝ[Y[][Ûˆ[™H\œÚ\Ý[Z[šX\[ˆÙ\™HÞ[˜Ú›Ûš^™YY\ˆ›ÙXÝ[Ûˆ™\šYšXØ][Û‚‚ˆÈÈŒ‹LËLLK\ŒŒŒÈ™XYB‚‹HØÛÜNˆXZÙHHLËZ][H[Øš[HØÚY[[™È]Y]YH\ÜÚYÛ˜X›H[™^ÜÙH]È^\Ý[™È™YY[™›ØÛÜšÈ^XÚ]K‚‹H\Ú[™\ÜÈ[\XÝ‚ˆHH›Ø\™YÈH9o¡z(iy/èy kØš[\ˆ[™Ý[[X\žHÛÝ[È›ÙXÝ[ÛˆÝ\œ™[H\ÈÈX]Ú[™ÈXÚÙ]Ë‚ˆH]Z[YÈ[ˆÝÛ™\ˆÙ[XÝÜˆ›Üˆ[˜\ÜÚYÛ™Y˜\ÛZ[™K]˜K[™[Z[K‚ˆHÝÛ™\ˆÚ[™Ù\È\™HÜš][ˆÚ]HÛÛ[][šXØ][Û‹ÜÝ]\ËÙ›ÛÝË]\\]H[™]Y]™XÛÜ™[ˆÛ™H˜[œØXÝ[Û‹‚ˆH^\Ý[™ÈÝ]K]˜[œÚ][Ûˆ[\È™[XZ[ˆ[˜Ú[™ÙYÈ\È™[X\ÙHÙ\È›ÝÛÛ\]HXÚÙ]ÈÜˆÜš]HÙ\ÜÚ[ÛœË‚‹H™\šYšXØ][Ûˆ™Y›Ü™H\ÞN‚ˆH]][XØ]Y™YY[™›Øš[\ˆ™]\›œÈÈ›ÙXÝ[ÛˆXÚÙ]ÂˆH]Z[™]\›œÈ›Ý\ˆ[ÝÙYÝÛ™\ˆÜ[ÛœÂˆH[˜[YÝÛ™\ˆ™]\›œÈH[™X]™\ÈXÚÙ][˜Ú[™ÙYˆHœØÈK[›Ñ[Z]ˆHZ[šX\˜]˜TØÜš\ÚXÚÜÂˆHœH[ˆZ[‹HÜÝY\ÞH™\šYšXØ][ÛŽ‚ˆHQRSˆ›Ø\™Ý[[X\žH™\ÜÈ™YY[™›ÏLØˆH[˜[YÝÛ™\ˆUÒ™[XZ[œÈKÛ›Ë]Üš]BˆHL‹ØYZ[‹ÛÙÚ[˜[™ÛÛ[Z][YÛ›Y[ÚXÚÜÂ‚ˆÈÈŒ‹LËLLK\ŒŒŒˆ]™B‚‹HØÛÜNˆš^HZ\ÛXY[™È[Øš[HÛÝ[Ø]\ÙYžHš[\š[™ÈÛ›HH^XÝ9£¤º+ï¹ccú, ØXÚÙ]\K‚‹H\Ú[™\ÜÈ[\XÝ‚ˆHH›Ø\™›ÝÈ[˜ÛY\È9£¤º+ï¹ccú, Ø9¥.z+ï¹ê"ù¥íºeí9¥¬9£¤º+ï˜:(iz+ï¹b¨:+ï˜9.-9¥í¹cå¹­¢	º+íù`aú+ï¹ê"Ø[™9¥.y."º+ïº  yn"‚ˆH›ÙXÝ[Ûˆ™XÛÛ˜Ú[X][ÛˆÚ[™Ù\ÈHÜ[ˆ›Ø\™ÛÝ[œ›ÛHHÈLÈÚ]Ý]Ú[™Ú[™ÈÜˆ™XÛ\ÜÚYžZ[™È[žHXÚÙ]]K‚ˆHXXÚØ\™[™]Z[XY\ˆ\Ü^\ÈHÜšYÚ[˜[XÚÙ]\HÛÈÝY™ˆØ[ˆ\Ý[™ÝZ\ÚHÛÜšÙ›ÝË‚ˆH\˜Ú]™YÛÛ\]YØ[˜Ù[Y[™›Û‹\ØÚY[[™ÈXÚÙ]È™[XZ[ˆÝ]ÚYHHÜ[ˆØÚY[[™È›Ø\™‚‹H™\šYšXØ][Ûˆ™Y›Ü™H\ÞN‚ˆH›ÙXÝ[Ûˆ™XY[Û›H™XÛÛ˜Ú[X][ÛŽˆŽÝ[M\˜Ú]™YLÈÜ[ˆØÚY[[™Ë\™[]YXÚÙ]ÂˆH]][XØ]YØØ[›ÙXÝ[Û‹Y]HTH™]\›œÈ[LÈÚ]^XÝ\‹]\HÛÝ[ÂˆHœØÈK[›Ñ[Z]ˆHZ[šX\Þ[^Ò”ÓÓˆÚXÚÜÂˆHœH[ˆZ[‹HÜÝY\ÞH™\šYšXØ][ÛŽ‚ˆH]][XØ]YQRSˆ›Ø\™™]\›œÈÝ[Ü[LLØˆH™]\›™Y\‹]\HÛÝ[ÈX]Ú›ÙXÝ[Ûˆ]X˜\ÙBˆH[˜]][XØ]YXØÙ\ÜÈ™[XZ[œÈB‚ˆÈÈŒ‹LËLLK\ŒŒŒH]™B‚‹HØÛÜNˆÚ]™H]˜KÒ˜\ÛZ[™HÛ™H[Øš[H]Y]YH›Üˆ[Ü[ˆØÚY[[™ËXÛÛÜ™[˜][ÛˆÛÜšÈ[œÝXYÙˆ™\]Z\š[™È[žH›ÝYÚ[ˆ[™]šYX[\ÜÛÛ‹‚‹H\Ú[™\ÜÈ[\XÝ‚ˆHHÝY™ˆÛYHÚÝÜÈÜ[ˆ[™Ý™\™YHÛÛÜ™[˜][ÛˆÛÝ[È›Üˆ\›Z]Y›Û\Ë‚ˆHH›Ø\™Ý\ÜÈ[[Ü[‹Ý™\™YKØZ][™Ë\\™[ØZ][™Ë]XXÚ\‹ÛÛ™š\›YY[™^Ù\[ÛˆšY]ÜË\ÈÝÛ™\ˆš[\š[™È[™ÝY[ØÛÝ\œÙKÝXÚÙ]ÙX\˜Ú‚ˆH]Z[Ý\ÜÈÛÛ[][šXØ][Ûˆ\™Ù]Ü™\Ý[˜[YÝ]\È˜[œÚ][ÛœË™^XÝ[Û‹›ÛÝË]\]K\ÝÜžK[™ÛÜZ[™ÈHXÝ]™H\™[]˜Z[Xš[]H[šË‚ˆHXXÚ\œÈØ[››ÝXØÙ\ÜÈH›Ø\™ˆÛÛ\][Ûˆ™[XZ[œÈ[œÚYHHÚYÛ™Y[Øš[HØÚY[[™ÈÛÛ™š\›X][ÛˆÛÜšÙ›ÝË‚‹Hš[\Î‚ˆHX‹ÛZ[šX\\ØÚY[[™ËXÛÛÜ™[˜][Û‹X›Ø\™ØˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[[™ËXÛÛÜ™[˜][Û‹Ê˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹ZÛYKÊ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹XÛÛÜ™[˜][Û‹Ê˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹XÛÛÜ™[˜][Û‹Y]Z[Ê˜‹H™\šYšXØ][Ûˆ™Y›Ü™H\ÞN‚ˆHœØÈK[›Ñ[Z]ˆHZ[šX\˜]˜TØÜš\[™”ÓÓˆÚXÚÜÂˆH]][XØ]Y™X[Y]H\ÝÙ]Z[™XYÂˆH[˜[YUÒÛ›Ë]Üš]H™\šYšXØ][Û‚ˆH\›Z\ÜÚ[Ûˆ[™[˜]][XØ]YÚXÚÜÂˆHœH[ˆZ[‹HÜÝY\ÞH™\šYšXØ][ÛŽ‚ˆHQRSˆ\ÝÙ]Z[™]\›ˆŒ[™Ý[[X\žHX]Ú\È›ÙXÝ[ÛˆÜ[ˆXÚÙ]ÂˆH[˜]][XØ]YXØÙ\ÜÈ™]\›œÈBˆH[˜[YUÒ™]\›œÈHÚ]Ý]Ú[™Ú[™ÈHXÚÙ]ˆHL‹ØYZ[‹ÛÙÚ[˜[™ÛÛ[Z][YÛ›Y[ÚXÚÜÂ‚ˆÈÈŒ‹LËLLK\ŒŒŒ]™B‚‹HØÛÜNˆ™[[Ý™H\XØ]H›ÛÝË]\ÛÜšÈY\ˆ]˜KÛX[˜YÙ[Y[š[š\Ú\ÈH[Øš[HØÚY[[™ÈÜ\˜][ÛˆžHÜ[Û˜[HÛÛ\][™ÈX]Ú[™ÈØÚY[[™ËXÛÛÜ™[˜][ÛˆXÚÙ]È]š[˜[ÛÛ™š\›X][Û‹‚‹H\Ú[™\ÜÈ[\XÝ‚ˆHHÝXØÙ\ÜÙ[ÛÛ™›XÝ™]šY]È\ÝÈÛ›HÜ[ˆ9£¤º+ï¹ccú, ØXÚÙ]È›ÜˆHØ[YH\ÜÛÛˆÝY[È[™X]Ú[™ÈÛÝ\œÙK‚ˆH›ÈXÚÙ]\ÈÙ[XÝYžHY˜][ˆQRSˆÝY™ˆ^XÚ]HÚÛÜÙHÚXÚ™\ÛÛ™YXÚÙ]ÈÈÛÛ\]H™Y›Ü™HHš[˜[ØÚY[[™ÈÛÛ™š\›X][Û‹‚ˆHÙ\ÜÚ[ÛˆÜ™X][Û‹Ü™\ØÚY[[™ËXÚÙ]ÛÛ\][Û‹\™[X]˜Z[Xš[]K[[šÈXXÝ]˜][Û‹š[˜[™\Ý[ÛÛ\][ÛˆY[]K[™]Y]™XÛÜ™È\™HÛÛ[Z]Y]ÛZXØ[K‚ˆH\™[]š\ÚX›HÛÛ\]YXÚÙ]È[\ˆH^\Ý[™È›ÝYšXØ][ÛˆÝ]›ÞÈ[\›˜[[Û›HXÚÙ]ÈÈ›Ý›ÝYžH\™[Ë‚‹Hš[\Î‚ˆHX‹ÛZ[šX\\Ù\ÜÚ[Û‹\ØÚY[[™ËØˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[KÖÜÙ\ÜÚ[Û’YKÛX[˜YÙKÜ›Ý]KØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\Ù\ÜÚ[Û‹Y]Z[Ê˜‹H™\šYšXØ][Ûˆ™Y›Ü™H\ÞN‚ˆHœØÈK[›Ñ[Z]ˆHZ[šX\˜]˜TØÜš\[™Y™™XÝYÖSÚXÚÜÂˆHÚYÛ™Y\™]šY]È[YÚX›HXÚÙ]ÚXÚÜÂˆH™XY[Û›H™X[Y]H™]šY]È[™›Ë]Üš]H›Ý]HÚXÚÜÂˆHœH[ˆZ[‹HÜÝY\ÞH™\šYšXØ][ÛŽ‚ˆH]][XØ]YQRSˆ™]šY]È™]\›œÈŒ[™Û›HX]Ú[™ÈÜ[ˆXÚÙ]Ø[™Y]\ÂˆH[œ™]šY]ÙYXÚÙ]Ù[XÝ[Ûˆ™]\›œÈHÚ]Ý]Ú[™Ú[™ÈÙ\ÜÚ[ÛˆÜˆXÚÙ]ˆHL‹ØYZ[‹ÛÙÚ[˜[™ÛÛ[Z][YÛ›Y[ÚXÚÜÂ‚ˆÈÈŒ‹LËLLK\ŒŒNH]™B‚‹HØÛÜNˆ]]˜H[™X[˜YÙ[Y[ØÚY[H[ˆY][Û˜[Ø[YKXÛ\ÜÈ\ÜÛÛˆÜˆ™\ØÚY[HÛ™H]\™H\ÜÛÛˆœ›ÛHHÝY™ˆZ[šX\Ú]X[™]ÜžHÛÛ™›XÝ™]šY]È[™ÛÛ™š\›X][Û‹‚‹H\Ú[™\ÜÈ[\XÝ‚ˆHQRSˆÝY™ˆØ[ˆÚÛÜÙH]K[YK[™\˜][Ûˆœ›ÛH\ÜÛÛˆ]Z[[ˆ[ˆH›Ë]Üš]HÛÛ™›XÝÚXÚÈ™Y›Ü™HÛÛ™š\›Z[™ÈHÜ\˜][Û‹‚ˆHH™]È\ÜÛÛˆÙY\ÈHÝ\œ™[Û\ÜËY™™XÝ]™HXXÚ\‹Ø[\\Ë[™›ÛÛNÈ™\ØÚY[[™ÈÚ[™Ù\ÈÛ›HHÙ[XÝY\ÜÛÛ‰ÜÈ[YH[™\˜][Û‹‚ˆH\H™\]Z\™\ÈHÚÜ[]™YÚYÛ™Y™]šY]ÈÚÙ[ˆ[™™XÚXÚÜÈÝY[XXÚ\‹\Ú[Y[›ÛÛK]˜Z[Xš[]KXÚØYÙK\XØ]K][™[˜ÙK[ØÚË[™]\™K][YH[\Ë‚ˆHÔËXXÚ\œËš[˜[˜ÙK[™Ø[\ÈØ[››ÝØ[HØÚY[[™Ë]Üš]H›Ý]Kˆ›ÈXÚØYÙHYÙ\‹][™[˜ÙHYXÝ[Û‹š[[™Ë™XÙZ\^\›ÛÜˆÜ[Û]È™Z]š[ÜˆÚ[™Ù\Ë‚‹Hš[\Î‚ˆHX‹ÛZ[šX\\Ù\ÜÚ[Û‹\ØÚY[[™ËØˆHX‹ÛZ[šX\\ÝY™‹\Ù\ÜÚ[Û‹ØˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[KÖÜÙ\ÜÚ[Û’YKÛX[˜YÙKÜ›Ý]KØˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[KÖÜÙ\ÜÚ[Û’YKÜ›Ý]KØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\Ù\ÜÚ[Û‹Y]Z[Ê˜‹H™\šYšXØ][Ûˆ™Y›Ü™H\ÞN‚ˆHœØÈK[›Ñ[Z]ˆH\›Z\ÜÚ[Û‹ÚYÛ™Y\™]šY]Ë[\\‹™X[Y]H™]šY]Ë[™Z\ÜÚ[™Ë\™]šY]È™Z™XÝ[ÛˆÚXÚÜÂˆHZ[šX\˜]˜TØÜš\Ò”ÓÓˆ[™Y™™XÝYÖSÚXÚÜÂˆHœH[ˆZ[‹HÜÝY\ÞH™\šYšXØ][ÛŽ‚ˆH]][XØ]YQRSˆ™]šY]È™]\›œÈŒÚ]Ý]Ú[™Ú[™ÈHÙ\ÜÚ[Û‚ˆH\HÚ]Ý]H˜[Y™]šY]ÈÚÙ[ˆ™]\›œÈBˆHL‹ØYZ[‹ÛÙÚ[˜[™ÛÛ[Z][YÛ›Y[ÚXÚÜÂ‚ˆÈÈŒ‹LËLLK\ŒŒN™XYB‚‹HØÛÜNˆXZÙHÝY™ˆ\ÜÛÛˆ]Z[›ÛKX]Ø\™H[™YH[Øš[HØÚY[[™ËXÛÛÜ™[˜][ÛˆÛÛ[][šXØ][ÛˆÛÜšÙ›ÝÈ˜XÚÙYžHH^\Ý[™ÈXÚÙ][™\™[X]˜Z[Xš[]K[[šÈ[Ù[Ë‚‹H\Ú[™\ÜÈ[\XÝ‚ˆH9¥fyb¨Kùë¨yä!ˆØ[ˆÙ[XÝH\ÜÛÛˆÝY[™XÛÜ™ÚÈØ\ÈÛÛXÝY[™H™\Ý[Ù]HÛÛÜ™[˜][ÛˆÝ]\ËÛ™^XÝ[Û‹Ù›ÛÝË]\]K[™ÛÜHH\™[]˜Z[Xš[]H[šË‚ˆH[ˆÜ[ˆXÚÙ]›ÜˆHØ[YHÝY[[™ÛÝ\œÙH\È™]\ÙYÈÝ\Ú\ÙHH›Ü›X[9£¤º+ï¹ccú, ØXÚÙ][™\™[]˜Z[Xš[]H™\]Y\Ý\™HÜ™X]Y‚ˆHXXÚ\œÈÛÛ[YHÈÙYHÛ›H\ÜÚYÛ™Y[\ÜÛÛˆ][™[˜ÙH[™™YY˜XÚÈÛÛËˆÝ\ˆÝY™ˆØ[ˆ™XY\ÜÛÛˆ]Z[]È›Ý™XÙZ]™HÛÛÜ™[˜][Û‹]Üš]HXØÙ\ÜÈ[›\ÜÈZ\ˆ›ÛKÝÛÜšÜÜXÙH\›Z]È]‚ˆHš[˜[™\ØÚY[[™ÈÜš]\Ë][™[˜ÙHYXÝ[Û‹XÚØYÙH˜[[˜Ù\Ëš[˜[˜ÙK™XÙZ\Ë^\›Û[™Ü[Û]È™[XZ[ˆ[˜Ú[™ÙY‚‹Hš[\Î‚ˆHX‹ÛZ[šX\\ÝY™‹\Ù\ÜÚ[Û‹ØˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[KÖÜÙ\ÜÚ[Û’YKÜ›Ý]KØˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[KÖÜÙ\ÜÚ[Û’YKØÛÛÜ™[˜][Û‹Ü›Ý]KØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\Ù\ÜÚ[Û‹Y]Z[Ê˜‹H™\šYšXØ][Ûˆ™Y›Ü™H\ÞN‚ˆHœØÈK[›Ñ[Z]ˆH›ÛKXØ\Xš[]H[™]][XØ]YÑU\›Ý]HÛ[ÚÙHÚXÚÜÂˆH™XY[Û›H™X[\ÜÛÛ‹Y]Z[ÚXÚÂˆHZ[šX\˜]˜TØÜš\Ò”ÓÓˆ[™Y™™XÝYÖSÚXÚÜÂˆHœH[ˆZ[‹HÜÝY\ÞH™\šYšXØ][ÛŽ‚ˆHLˆ›ØÙ\ÜÈ[™ØYZ[‹ÛÙÚ[˜X[ÚXÚÜÂˆH[˜]][XØ]Y\ÜÛÛ‹Y]Z[›Ý]H™]\›œÈBˆHØØ[ÛÜšYÚ[‹ÜÙ\™\ˆÛÛ[Z][YÛ›Y[‚ˆÈÈŒ‹LËLLK\ŒŒMÈ™XYB‚‹HØÛÜNˆ›Ü›X[^™H\™[\™\]Y\Ýš\ÚXš[]KX›XÈÝ[[X\žK[\›˜[›ÝKÛÛ[][šXØ][ÛˆÛÝ\˜ÙK\ÜÚ\ÝYY[žHY[]K[™\™[Y˜XÚ[™ÈÛÛ\][Ûˆ™\Ý[ÛˆXÚÙ]™XÛÜ™Ë‚‹H\Ú[™\ÜÈ[\XÝ‚ˆH[Z[IÜÈÙPÚ]YÜ›Ý\X\ÜÚ\ÝY™\]Y\ÝÈ›ÝÈÙY\[\›˜[ÜšYÚ[˜[›Ý\È[™\™[Y˜XÚ[™ÈÛÛ[\È[™\[™[]KÚ[H\™[È™[XZ[ˆ™\ÝšXÝYÈH^\›˜[Ý[[X\žKÝ]\Ë™^XÝ[Û‹[™ÛÛ\][Ûˆ™\Ý[‚ˆH^\Ý[™È9k­ºeoùl#ùê"ùn£ØXÚÙ]È™XÙZ]™HH™\ÝYY™›Ü˜XÚÙš[[™ÙY\YØXÞH^˜[˜XÚÜËÛÈ\ÝÜšXÈ™\]Y\Ýš\ÚXš[]H\È™\Ù\™Y‚ˆHØÚY[[™Ë][™[˜ÙHYXÝ[Û‹XÚØYÙH˜[[˜Ù\Ëš[˜[˜ÙK™XÙZ\Ë^\›Û›Ü›X[XÚÙ]Ù[\ˆ›ÝÜË[™Ü[Û]È™Z]š[Üˆ\™H[[[Û˜[H[˜Ú[™ÙY‚‹Hš[\Î‚ˆHš\ÛXKÜØÚ[XKœš\ÛXXˆHš\ÛXKÛZYÜ˜][ÛœËÌŒŒÌLLLÌØYÜ\™[Ü™\]Y\ÝÝš\ÚXš[]WÙšY[ËÛZYÜ˜][Û‹œÜ[ˆHX‹ÛZ[šX\\\™[\™\]Y\ÝËØˆH\Ø\KÛZ[šX\ÜÝY™‹Ü\™[\™\]Y\ÝËÊ˜ˆH\Ø\KÛZ[šX\ÜÝY[ËÖÜÝY[YKÜ™\]Y\ÝËÜ›Ý]KØˆH\Ø\KØYZ[‹ÛÜËÜ\™[\™\]Y\ÝËÖÚYKÜ›Ý]KØ‹H™\šYšXØ][Ûˆ™Y›Ü™H\ÞN‚ˆHœš\ÛXHÙ[™\˜]XˆHœØÈK[›Ñ[Z]ˆHZ[šX\˜]˜TØÜš\Ò”ÓÓˆ[™™\]Y\ÝY]Z[ÖSÚXÚÜÂˆH›Ü›X[YšY[[™YØXÞK\Ý[[X\žHÈÛÛ\]Xš[]HÛ[ÚÙHÚXÚÂˆHœH[ˆZ[‹HÜÝY\ÞH™\šYšXØ][ÛŽ‚ˆHœš\ÛXHZYÜ˜]HÝ]\ØÛˆHÙ\™\‚ˆHLˆ›ØÙ\ÜÈ[™ØYZ[‹ÛÙÚ[˜X[ÚXÚÜÂˆHØØ[ÛÜšYÚ[‹ÜÙ\™\ˆÛÛ[Z][YÛ›Y[‚ˆÈÈŒ‹LËLL\ŒŒLÈ™XYB‚‹HØÛÜNˆš^ÝY[[ÛHØÚY[Hˆ^ÜÈÈÚÝÈH\‹\Ù\ÜÚ[Ûˆ™\XÙ[Y[XXÚ\ˆÚ[ˆH\ÜÛÛˆ\È™Y[ˆÚ[™ÙYœ›ÛHHÛ\ÜÈY˜][XXÚ\‹‚‹H\Ú[™\ÜÈ[\XÝ‚ˆHÝY[]Z[YÙ\È[™XYHÚÝÙY™\XÙ[Y[XXÚ\œÈÛÜœ™XÝNÈ^ÜYÝY[ØÚY[HœÈ›ÝÈX]Ú]Ø[YH[K‚ˆHH™\ÜYŒ‹LËLLˆ9ã¢úd¬9¯¡\ÜÛÛˆ\ÈÛ\ÜÈXXÚ\ˆ˜\ÛZ[™H[™Ù\ÜÚ[ÛˆXXÚ\ˆ›ÙKÛÈH^ÜÚÝ[ÚÝÈ›ÙK‚ˆHØÚY[[™ÈÜš]\ËXXÚ\ˆ™\XÙ[Y[\ÝÜžK][™[˜ÙHYXÝ[Û‹XÚØYÙH˜[[˜Ù\Ë^\›Ûš[[™Ë\™\ˆÙ][Y[Z[šX\[™Ü[Û]È›ÝÜÈ\™H[[[Û˜[H[˜Ú[™ÙY‚‹Hš[\Î‚ˆH\Ø\KÙ^ÜËÜÝY[\ØÚY[KÖÚYKÜ›Ý]KØˆHX‹ÜÝY[\ØÚY[KY^ÜØˆH\ÝËÜÝY[\ØÚY[KY^Ü\ÝØˆHXÚØYÙKšœÛÛ˜ˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌL\ÝY[\ØÚY[KY^Ü]XXÚ\‹[Ý™\œšYK›Y‹H™\šYšXØ][Ûˆ™Y›Ü™H\ÞN‚ˆH™XY[Û›HˆÚXÚÈ›ÜˆH™\ÜYŒ‹LËLLˆ\ÜÛÛ‚ˆHœH[ˆ\Ý˜˜XÚÙ[™ˆHœØÈK[›Ñ[Z]‹HÜÝY\ÞH™\šYšXØ][ÛŽ‚ˆHÝ\›RH\ÔÈK[X^][YHŒÎ‹ËÜÙÝX[˜YÙK˜ÛÛKØYZ[‹ÛÙÚ[˜ˆH™\šYžH›ÙXÝ[ÛˆÛÛ[Z]\ÚX]Ú\ÈH\ÞYYŒŒLÈÛÛ[Z]‚‚ˆÈÈŒ‹LËLL\ŒŒLH™XYB‚‹HØÛÜNˆY[Øš[H][™[˜ÙHX\šÚ[™ÈÈHÝY™ˆZ[šX\ÛÝ\œÙH]Z[YÙK‚‹H\Ú[™\ÜÈ[\XÝ‚ˆHXXÚ\œÈØ[ˆÜ[ˆHÛÝ\œÙHœ›ÛHHÝY™ˆZ[šX\ØÚY[H[™X\šÈXXÚš\ÚX›HÝY[\È[›X\šÙY™\Ù[XœÙ[]KÜˆ^Ý\ÙY‚ˆHXXÚ\œÈØ[ˆY][™[˜ÙH›Ý\Èœ›ÛH[Øš[K‚ˆHHÙ\™\ˆ™\]Z\™\ÈH[šÙYXXÚ\ˆ›Ùš[H[™\›Z]ÈÜš]\ÈÛ›H›ÜˆÙ\ÜÚ[ÛœÈ\ÜÚYÛ™YÈ]XXÚ\‹‚ˆH^\Ý[™ÈXÚØYÙHYXÝ[Û‹š[[™Ë^\›Û\™\ˆÙ][Y[˜[œÜÜš[[™Ë\Ú[™\ÜÈXØÛÝ[Ë[™Ü[Û]È›ÝÜÈ\™H[[[Û˜[H[˜Ú[™ÙY‚‹Hš[\Î‚ˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[KÖÜÙ\ÜÚ[Û’YKØ][™[˜ÙKÜ›Ý]KØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\Ù\ÜÚ[Û‹Y]Z[Ê˜ˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌL[Z[šX\\ÝY™‹X][™[˜ÙK›Y‹H™\šYšXØ][Ûˆ™Y›Ü™H\ÞN‚ˆHZ[šX\”ÈÞ[^[™”ÓÓˆ\œÙHÚXÚÜÂˆHÝY™ˆÖSÛÛ\^Y^™\ÜÚ[ÛˆØØ[‚ˆHœØÈK[›Ñ[Z]ˆHœH[ˆZ[‹HÜÝY\ÞH™\šYšXØ][ÛŽ‚ˆHÝ\›\ÔÈK[X^][YHŒÎ‹ËÜÙÝX[˜YÙK˜ÛÛKØ\KÛZ[šX\ÜÝY™‹ÜØÚY[KÝ\ÝØ][™[˜ÙXˆH™\šYžHH][™[˜ÙH›Ý]H™]\›œÈ[˜]]Üš^™Y[œÝXYÙˆ‚‚ˆÈÈŒ‹LËLL\ŒŒL™XYB‚‹HØÛÜNˆš^˜]]™HZ[šX\ÝY™ˆYÙH›[šÈ™[™\š[™ÈžHÚ[\YžZ[™ÈÖSš[™[™ÜÈ[™XZÚ[™ÈÝY™‹ZÛYHTHØY[™È›Û‹X›ØÚÚ[™Ë‚‹H\Ú[™\ÜÈ[\XÝ‚ˆH[\ÞYYHÛÜšØ™[˜ÚZ[HØÚY[K™\]Y\Ý]Y]YK™\]Y\Ý]Z[[™ÛÝ\œÙH™YY˜XÚÈYÙ\È]›ÚYÛÛ\^ÖS^™\ÜÚ[ÛœÈ]Ø[ˆ˜Z[[ˆÙPÚ]]™[Ü\ˆÛÛ™[™\š[™Ë‚ˆH\Ü^H˜[˜XÚÈ˜[Y\È\™H›ÝÈÛÛ\]Y[ˆYÙH˜]˜TØÜš\™Y›Ü™Hš[™[™Ë‚ˆH[\ÞYYHÛÜšØ™[˜Ú™[™\œÈ]ÈXZ[ˆXÝ[ÛˆØ\™È™Y›Ü™HÜ[Û˜[™\]Y\ÝXÛÝ[[™ÛÝ\œÙKXÛÝ[T\Èš[š\ÚÈ[Y[Ý]X]™\ÈHÛÝ[][œÝXYÙˆ›[šÚ[™ÈHYÙK‚ˆH[\ÙYØÛÜKÜš]TÝÜÐ[[X\›Z\ÜÚ[ÛˆØ\È™[[Ý™Yœ›ÛH\šœÛÛ˜‚ˆH˜XÚÙ[™›Ý]\ËÝY™ˆÙÚ[‹\™[™\]Y\Ý\]\ËØÚY[H™XYË™YY˜XÚÈÜš]\ËØÚY[[™Ë][™[˜ÙHYXÝ[Û‹XÚØYÙHYÙ\‹š[[™Ë^\›Û[™Ü[Û]È›ÝÜÈ\™H[˜Ú[™ÙY‚‹Hš[\Î‚ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹ZÛYKÊ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\ØÚY[KÊ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\™\]Y\ÝËÊ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\™\]Y\ÝY]Z[Ê˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\Ù\ÜÚ[Û‹Y]Z[Ê˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[Ý][ËØ\KšœØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[Ø\šœÛÛ˜ˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌL[Z[šX\\ÝY™‹]Þ[\™[™\‹Yš^›Y‹H™\šYšXØ][Ûˆ™Y›Ü™H\ÞN‚ˆHÝY™ˆÖSÛÛ\^Y^™\ÜÚ[ÛˆØØ[‚ˆHZ[šX\”ÈÞ[^[™”ÓÓˆ\œÙHÚXÚÜÂˆHÝY™ˆÛYH›Û‹X›ØÚÚ[™È[Y[Ý]™Z]š[ÜˆÚXÚÙYžHÛÙH[œÜXÝ[Û‚‹HÜÝY\ÞH™\šYšXØ][ÛŽ‚ˆH™XÛÛ\[HHZ[šX\[ˆÙPÚ]]™[Ü\ˆÛÛ[™Ü[ˆYÙ\ËÜÝY™‹ZÛYKÜÝY™‹ZÛYX‚‚ˆÈÈŒ‹LËLL\ŒŒH™XYB‚‹HØÛÜNˆYÝY™ˆZ[šX\ÛÝ\œÙH]Z[™YY˜XÚÈÝX›Z\ÜÚ[Ûˆ›ÜˆXXÚ\œË‚‹H\Ú[™\ÜÈ[\XÝ‚ˆHXXÚ\œÈØ[ˆ\HÛÝ\œÙHœ›ÛHHÝY™ˆZ[šX\ØÚY[H[™ÝX›Z]Üˆ\]H\™[Y˜XÚ[™ÈY\‹XÛ\ÜÈ™YY˜XÚÈœ›ÛH[Øš[K‚ˆHHZ[šX\›Ü›HÙY\ÈH^\Ý[™Èš]™H™\]Z\™Y\™[\™XYX›HÙXÝ[ÛœÈ\ÈÛY]ÛÜšÈ[™™]š[Ý\ËZÛY]ÛÜšÈÛÛ\][ÛˆÝ]K‚ˆHHÙ\™\ˆ™\]Z\™\ÈH[šÙYXXÚ\ˆ›Ùš[H[™Û›H\›Z]ÈÜš][™È™YY˜XÚÈ›ÜˆÙ\ÜÚ[ÛœÈ\ÜÚYÛ™YÈ]XXÚ\‹‚ˆH^\Ý[™ÈØÚY[[™ÈÜš]\Ë][™[˜ÙHYXÝ[Û‹XÚØYÙHYÙ\‹š[[™Ë^\›Û\™\ˆÙ][Y[˜[œÜÜš[[™Ë\Ú[™\ÜÈXØÛÝ[Ë[™Ü[Û]È›ÝÜÈ\™H[[[Û˜[H[˜Ú[™ÙY‚‹Hš[\Î‚ˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[KÖÜÙ\ÜÚ[Û’YKÙ™YY˜XÚËÜ›Ý]KØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[Ø\šœÛÛ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\ØÚY[KÊ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\Ù\ÜÚ[Û‹Y]Z[Ê˜ˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌL[Z[šX\\ÝY™‹Y™YY˜XÚË›Y‹H™\šYšXØ][Ûˆ™Y›Ü™H\ÞN‚ˆHZ[šX\”ÈÞ[^[™”ÓÓˆ\œÙHÚXÚÜÂˆHœØÈK[›Ñ[Z]»ÓÎv¶‰žËkºwµçfVB7FFW2&Ræ÷rV6–W"f÷"FV6†W'2FòVæFW'7FæBv—F†÷WB6¶–ær÷W&F–öç2f÷"6Æ&–f–6F–öà¢Òæò—&öÆÂ6Æ7VÆF–öâÆöv–2Â6VæBfÆ÷rÂ&÷fÂ'VÆW2Âf–ææ6R–÷WB'VÆW2Â÷"VF—BÆövv–ær6†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF  ¢22##bÓBÓ×##BFWÆ÷–V@ ¢Ò66÷S¢FV6†W"—&öÆÂ7F–öâÖ6Æ&—G’æBf–ææ6Rw&÷W–ærföÆÆ÷r×Wà¢Ò'W6–æW72–×7C ¢ÒFV6†W"—&öÆÂæ÷r6ÆV&Ç’FVÆÇ2FV6†W'2v†WF†W"F†W’æVVBFò7B&–v‡Bæ÷rÂ–ç7FVBöböæÇ’6†÷v–ær7FGW2Æ&VÂæB÷væW"†–ç@¢ÒFV6†W"—&öÆÂÖ–ÆW7FöæW2&Ræ÷r6†÷vâ2f—7VÂF–ÖVÆ–æRf÷"6VçBÂFV6†W"6öæf—&ÒÂÖævW"&÷fRÂf–ææ6R6öæf—&ÒÂæB–÷W@¢Òf–ææ6R×&VG’—&öÆÂVWVRæ÷r6†÷w2†÷rÖç’FV6†W'2–âV6‚7W'&Væ7’w&÷W&R6ÆVâg27F–ÆÂ6''––ær—77VW2Â6ò–÷WB&F6†W2&RV6–W"Fò§VFvRBvÆæ6P¢Òæò—&öÆÂ6Æ7VÆF–öâÆöv–2Â6VæBfÆ÷rÂ&÷fÂ'VÆW2Âf–ææ6R–÷WB'VÆW2Â÷"VF—BÆövv–ær6†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF  ¢22##bÓBÓ×##RFWÆ÷–V@ ¢Ò66÷S¢f—'7B×&÷VæBFV6†W"÷'FÂ6ÆVçWv—F‚w&÷WVBæf–vF–öâÂFV6†W"×6–FRÆæwVvR7v—F6†–ærÂæBFöF’Öf—'7BF6†&ö&Bà¢Ò'W6–æW72–×7C ¢ÒFV6†W'2æ÷rvWB6ÆV&W"FöF’ò×’v÷&²ò66†VGVÆRòf–ææ6V–æf÷&ÖF–öâ&6†—FV7GW&R–ç7FVBöbfÆBÖVçRfVVÀ¢ÒF†RFV6†W"†öÖWvRæ÷r&–÷&—F—¦W2FöF’ÂF6²6&G2Â66†VGVÆRÂæBf–ææ6R6òF†R÷'FÂfVVÇ2Ö÷&RÆ–¶Rv÷&¶&Væ6‚æBÆW72Æ–¶RÖ–æ’FÖ–â&6¶Væ@¢ÒFV6†W'26âæ÷r7v—F6‚KŠÞihròVævÆ—6‚ò&–Æ–æwVÆF—&V7FÇ’g&öÒF†RFV6†W"÷'FÂ6–FV& ¢ÒæòFV6†W"WF‚ÂGFVæFæ6RÂfVVF&6²Âf–Æ&–Æ—G’Â—&öÆÂÂ÷"W‡Vç6RÖ6Æ–Ò'W6–æW72'VÆW26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF  ¢22##bÓBÓ×##bFWÆ÷–V@ ¢Ò66÷S¢Væ–g’†–v‚Ög&WVVæ7’FV6†W"vW2VæFW"F†RæWrFV6†W"v÷&·76Rf—7VÂÆæwVvRà¢Ò'W6–æW72–×7C ¢ÒFV6†W"×’6W76–öç6Â×’f–Æ&–Æ—G–Â×’W‡Vç6R6Æ–×6ÂæB×’—&öÆÆæ÷r÷Vâv—F‚F†R6ÖRFV6†W"×v÷&·76R†W&òæB7VÖÖ'’Ö6&B7G'V7GW&R2F†R&Vg&W6†VBF6†&ö&@¢ÒV6‚vRæ÷rv—fW26ÆV&W"f—'7B×67&VVâW‡ÆæF–öâöbv†B—B—2f÷"æBv†W&RFòvòæW‡BÂv†–6‚6†÷VÆB&VGV6RF†R(	ÆÆöö·2ÖW77’ò†&BFò÷&–VçN(	ÒfVVF&6²g&öÒFV6†W'0¢ÒæòGFVæFæ6R'VÆW2Âf–Æ&–Æ—G’VF—F–ær'VÆW2ÂW‡Vç6RÖ6Æ–Ò'VÆW2Â÷"—&öÆÂv÷&¶fÆ÷r'VÆW26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF  ¢22##bÓBÓ×##rFWÆ÷–V@ ¢Ò66÷S¢'&–ærFV6†W"ÆW'G2ÂfVVF&6·2ÂæBF–6¶WG2–çFòF†R6ÖRFV6†W"×v÷&·76Rf—'7B×67&VVâ7G'V7GW&Rà¢Ò'W6–æW72–×7C ¢ÒFV6†W"6–vâÖ–âÆW'G6æ÷r7F'G2v—F‚F†R6ÖRv÷&·76R†W&òæB7VÖÖ'’6&G22F†R&Vg&W6†VBFV6†W"F6†&ö&BÂ6W76–öç2Âf–Æ&–Æ—G’ÂW‡Vç6R6Æ–×2ÂæB—&öÆÂvW0¢ÒFV6†W"7GVFVçBfVVF&6·6æ÷rÆVG2v—F‚†æFöfbÖfö7W6VB7VÖÖ'’6&G2æB6ÆV&W"f–ÇFW"v÷&·76R&Vf÷&RF†R7GVFVçBF–ÖVÆ–æRÆ—7@¢ÒFV6†W"F–6¶WB&ö&Fæ÷rÆVG2v—F‚÷Vâ÷W&vVçBöÖ—76–ær×&ööb7VÖÖ&–W2æB6ÆV&W"f–ÇFW"6&B&Vf÷&RF†RF–6¶WBF&ÆP¢Òæò6–vâÖ–âÆW'B7–æ2Æöv–2ÂfVVF&6²F–ÖVÆ–æR&VB÷w&—FRÆöv–2ÂF–6¶WBG&ç6—F–öâ'VÆW2Â÷"&ööbÖf–ÆR66W72'VÆW26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF  ¢22##bÓBÓ×##‚FWÆ÷–V@ ¢Ò66÷S¢'&–ærFV6†W"6&BæBÖ–GFW&Ò×&W÷'BvW2–çFòF†R6ÖRFV6†W"×v÷&·76Rf—'7B×67&VVâ7G'V7GW&Rà¢Ò'W6–æW72–×7C ¢ÒFV6†W"×’FV6†W"6&Fæ÷r7F'G2v—F‚F†R6ÖRv÷&·76R†W&òæB7VÖÖ'’6&G2&Vf÷&R–çG&òVF—F–æræBDbW‡÷'@¢ÒFV6†W"Ö–GFW&Ò&W÷'G6æ÷r7F'G2v—F‚F†R6ÖRv÷&·76R†W&òæBF6²7VÖÖ&–W2&Vf÷&RF†R&W÷'BÆ—7@¢ÒFV6†W"Ö–GFW&Ò&W÷'BFWF–Âæ÷r7F'G2v—F‚6ÆV&W"&W÷'B6öçFW‡B†VFW"æB7VÖÖ'’6&G2&Vf÷&RF†RÆöærWfÇVF–öâf÷&Ð¢ÒæòFV6†W"–çG&ò6fR&V†f–÷"ÂÖ–GFW&Ò&W÷'B6fR÷7V&Ö—B'VÆW2Â&W÷'BÆö6²'VÆW2Â÷"DbW‡÷'BÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF  ¢22##bÓBÓ"×#FWÆ÷–V@ ¢Ò66÷S¢&VGV6Rf—'7B×67&VVâFVç6—G’öâFV6†W"W‡Vç6R6Æ–×2æBFV6†W"—&öÆÂà¢Ò'W6–æW72–×7C ¢ÒFV6†W"×’W‡Vç6R6Æ–×6æ÷r7W&f6W2F†RÖ÷7B6öÖÖöâæW‡B7F–öç2f—'7BÂ¶VW2æWrÖ6Æ–Ò7&VF–öâ–âÆ–v‡FW"6V6öæF'’&Æö6²ÂæBÖ÷fW2F†RgVÆÂ6Æ–ÒÆ—7Bö†—7F÷'’&V†–æBF—66Æ÷7W&R6òF†Rf—'7B67&VVâ—2ÆW727&÷vFVB–â&–Æ–æwVÂÖöFP¢ÒFV6†W"×’—&öÆÆæ÷rfö7W6W2f—'7BöâF†R7W'&VçB7F–öâ÷7FGW26&BæBÖ÷fW2F†RFWF–ÆVB—&öÆÂ6Æ7VÆF–öç2&V†–æBF—66Æ÷7W&R6òF†RvRfVVÇ2ÆW72Æ–¶RFVç6RFÖ–â&W÷'@¢ÒæòW‡Vç6RÖ6Æ–Ò7V&Ö—76–öâÂ&W7V&Ö—76–öâÂv—F†G&vÂÂ—&öÆÂ6Æ7VÆF–öâÂFV6†W"6öæf—&ÖF–öâÂ÷"—&öÆÂ&÷fÂ'VÆW26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF  ¢22##bÓBÓ"×#"FWÆ÷–V@ ¢Ò66÷S¢6öÆÆ6RÆ÷r×&–÷&—G’FV6†W"6–FV&"w&÷W2æBvRwV–FW2à¢Ò'W6–æW72–×7C ¢ÒFV6†W"6–FV&"w&÷W2æ÷r6öÆÆ6R'’v÷&²&V6ò&–Æ–æwVÂÖöFRæòÆöævW"6†÷w2WfW'’æf–vF–öâ&Æö6²W‡æFVBBöæ6P¢ÒF†R7W'&VçFÇ’7F—fRFV6†W"&VWFòÖW‡æG2Âv†–6‚¶VW2÷&–VçFF–öâ6ÆV"v—F†÷WBf÷&6–ærF†Rv†öÆR6–FV&"÷Và¢ÒFV6†W"v÷&·76R†W&ò7V'F—FÆW2æ÷rÆ—fR&V†–æBV–6²wV–FRò[ú¾˜	þŠûNiˆæF—66Æ÷7W&RÂ&VGV6–ærf—'7B×67&VVâFW‡BFVç6—G’7&÷72FV6†W"vW0¢ÒæòFV6†W"WF‚Âæf–vF–öâW&Ö—76–öç2ÂGFVæFæ6RÂf–Æ&–Æ—G’Â—&öÆÂÂW‡Vç6RÖ6Æ–ÒÂ÷"&W÷'BÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF  ¢22##bÓBÓ"×#bFWÆ÷–V@ ¢Ò66÷S¢&VÖVÖ&W"F†RÆ7BFÖ–â7GVFVçG2FW6²6öçFW‡BÂæ÷B§W7BF†RVWVRÆ&VÂà¢Ò'W6–æW72–×7C ¢ÒöFÖ–â÷7GVFVçG6æ÷r&W7F÷&W2F†R÷W&F÷"w2Æ7BVWVRFövWF†W"v—F‚Æ–v‡GvV–v‡B6V&6‚6öçFW‡B†Â6÷W&6RÂG—RÂæBvR6—¦R’v†VâF†RvR—2&V÷VæVBv—F†÷WBW‡Æ–6—BU$Â&×0¢ÒF†R&W7VÖVBÖFW6²&ææW"æ÷rW‡Æ–ç2F†B&÷F‚VWVRæBf–ÇFW'2vW&R&W7F÷&VBÂæBv—fW2F—&V7Bv’&6²FòF†RFVfVÇB7GVFVçBFW6°¢ÒW‡Æ–6—Bf–WvæB6V&6‚&×27F–ÆÂv–âÂ6òFVWÆ–æ·2æBöæRÖöfbf–ÇFW&VBU$Ç2¶VWF†V—"–çFVæFVB&V†f–÷ ¢Òæò7GVFVçB7&VF–öâÂFVÆWF–öâÂf–ÇFW&–ær6VÖçF–72Âv–æF–öâ6VÖçF–72Â÷"7GVFVçB&öf–ÆRö'W6–æW72'VÆW26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF  ¢22##bÓBÓ"×#rFWÆ÷–V@ ¢Ò66÷S¢&VÖVÖ&W"F†RÆ7BFÖ–âFöFòFW6²6öçFW‡BæBFBF—&V7BæW‡B×7FW6†÷'F7WG2à¢Ò'W6–æW72–×7C ¢ÒöFÖ–â÷FöF÷6æ÷r&W7F÷&W2F†RÆ7Bv&æ–ærF‡&W6†öÆG2æBFW6²FövvÆW2v†VâF†RvR—2&V÷VæVBv—F†÷WBW‡Æ–6—BU$Â&×2Â6ò÷W&F÷'2Fòæ÷BæVVBFò&V'V–ÆBF†R6ÖRv÷&¶–ær6öçFW‡BV6‚F–ÖP¢ÒF†RvRæ÷r6†÷w2&W7VÖVBÖFW6²†–çBÇW2F—&V7B§V×Æ–æ·2&6²FòFöF’w2GFVæFæ6RVWVRÂ÷fW&GVRföÆÆ÷r×WÂ7—7FVÒ6†V6·2ÂæB&VÖ–æFW"FW6²v†VâF†÷6R&V2&R7F—fP¢ÒW‡Æ–6—BU$Â&×27F–ÆÂv–âÂ6òöæRÖöfbFöFòFVWÆ–æ·2¶VWF†V—"–çFVæFVB&V†f–÷"v—F†÷WB&VÖVÖ&W&VB×7FFR÷fW'&–FP¢ÒæòGFVæFæ6RF6²6Æ7VÆF–öâÂ&VÖ–æFW"6öæf—&ÖF–öâÆöv–2Â6öæfÆ–7BÖVF—BÆöv–2ÂFVGV7F–öâ&W—"Æöv–2Â÷"&VæWvÂÖÆW'BÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF  ¢22##bÓBÓ"×#‚FWÆ÷–V@ ¢Ò66÷S¢Væ–g’GF6†ÖVçBæöÖÇ’f—6–&–Æ—G’–çFò6–ævÆRFÖ–âv÷&¶&Væ6‚æB6öææV7Bf–ææ6RæöÖÇ’Æ–æ·2&6²Fò—Bà¢Ò'W6–æW72–×7C ¢ÒöFÖ–â÷&V6÷fW'’÷WÆöG6æ÷r7G2Æ–¶RâGF6†ÖVçB†VÇF‚FW6¶Âv—F‚7VÖÖ'’ÖWG&–72Â6÷W&6Rf–ÇFW'2Âv÷&¶fÆ÷r6†÷'F7WG2ÂæBF†RW†—7F–ær'VÆ²&R×WÆöB&V6÷fW'’7F–öâöâöæRvP¢Òf–ææ6RW6W'26âæ÷r÷VâF†RGF6†ÖVçBÖ†VÇF‚FW6²F—&V7FÇ’g&öÒF†Rf–ææ6R÷&Wf–Wræf–vF–öâ–ç7FVBöb&V–ær&VF—&V7FVBv¢Ò&V6V—B&ööb—77VW2æBW‡Vç6RGF6†ÖVçB—77VW2æ÷rW‡÷6RF—&V7B§V×–çFòF†RvÆö&ÂæöÖÇ’FW6²Âv†–ÆR7F–ÆÂ¶VW–ærF†V—"Æö6ÂVWVRf–Ww2f–Æ&ÆP¢ÒæòGF6†ÖVçB7F÷&vR'VÆW2Â&V6V—B&÷fÂÆöv–2ÂW‡Vç6R&÷fÂÆöv–2Â&V6÷fW'’ÖF6†–ærÆöv–2Â÷"F–6¶WBv÷&¶fÆ÷rÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF  ¢22##bÓBÓ"×#’FWÆ÷–V@ ¢Ò66÷S¢&VGV6R6öçFW‡BÆ÷72öâF†RFÖ–â7GVFVçBFWF–ÂvRv—F‚7F–6·’7F–öâ&"æB6V7F–öâ&WGW&âÆ–æ·2à¢Ò'W6–æW72–×7C ¢ÒöFÖ–â÷7GVFVçG2õ¶–EÖæ÷r¶VW27F–6·’7GVFVçBv÷&¶&Væ6†&"–âf–Wr6ò÷W&F÷'26â§V×&WGvVVâ6¶vW2ÂGFVæFæ6RÂW6öÖ–ær6W76–öç2ÂÆææ–ærÂVF—B7F–öç2ÂæBW‡÷'Bv—F†÷WB&W66ææ–ærF†RÆöærvP¢ÒF†RÖ¦÷"7GVFVçBÖFWF–Â6V7F–öç2æ÷r–æ6ÇVFRÆ–v‡GvV–v‡B&WGW&â&'2F†Bö–çB&6²FòF†R7F–6·’v÷&¶&Væ6‚÷"F†RæW‡BÆ–¶VÇ’6V7F–öà¢Òæò7GVFVçBVF—BÆöv–2ÂV–6²×66†VGVÆRÆöv–2ÂGFVæFæ6Rf–ÇFW"Æöv–2Â6¶vRö&–ÆÆ–ærÆöv–2Â÷"6W76–öâ7F–öâÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF  ¢22##bÓBÓ"×##FWÆ÷–V@ ¢Ò66÷S¢7VVBWFV6†W"f–Æ&–Æ—G’VF—F–ærv—F‚&WW6&ÆRFV×ÆFW2æBV–6²FFRÖ6÷’7F–öç2à¢Ò'W6–æW72–×7C ¢Ò÷FV6†W"öf–Æ&–Æ—G–æ÷r&÷f–FW26öÖÖöâFV×ÆFW2F†B6â&VÆöBV—F†W"V–6²ÖFB÷"'VÆ²ÖFBf÷&×2f÷"6öÖÖöâvVV¶F’÷vVV¶VæBGFW&ç0¢ÒF†RvRæ÷r7W÷'G2V–6²FFR×FòÖFFR6÷’ÇW2öæRÖ6Æ–6²6÷’³FæB6÷’³vF7F–öç2F—&V7FÇ’g&öÒ6ÆVæF"F—2F†BÇ&VG’†fR6Æ÷G0¢Òæòf–Æ&–Æ—G’÷fW&Æ'VÆW2Â6ÆV"ÖF’&V†f–÷"ÂVæFò&V†f–÷"Â÷"6Æ÷B6fRöFVÆWFR—26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF  ¢22##bÓBÓ"×##FWÆ÷–V@ ¢Ò66÷S¢FB6ö×ÆWF–öâ×7FFRwV–Fæ6RFòFV6†W"6W76–öâFWF–Â6òF†RvRÖ÷&R6ÆV&Ç’Ö÷fW2g&öÒGFVæFæ6R–çFòfVVF&6²æBF†Vâ–çFòf–æ—6†VB7FFRà¢Ò'W6–æW72–×7C ¢Ò÷FV6†W"÷6W76–öç2õ¶–EÖæ÷r6†÷w26ö×ÆWF–öâ7FFV&ææW"F†BW‡Æ–ç2v†WF†W"F†RFV6†W"7F–ÆÂæVVG2Fòf–æ—6‚GFVæFæ6RÂ7V&Ö—BfVVF&6²Â÷"6â6fVÇ’&WGW&âFò×’6W76–öç6 ¢ÒGFVæFæ6R6fR7V66W72æ÷rö–çG2F†RFV6†W"F—&V7FÇ’F÷v&BF†RfVVF&6²6V7F–öâ–ç7FVBöbÆVf–ærF†VÒöâvVæW&–26fVBÖW76vP¢ÒfVVF&6²6fR7V66W72æ÷rW‡Æ–ç2F†BF†R6W76–öâ&V6÷&B—2WFòFFRv†–ÆR7F–ÆÂÆVf–ærF†Rf÷&ÒVF—F&ÆRf÷"&Wf—6–öç0¢ÒæòGFVæFæ6R6fR'VÆW2ÂfVVF&6²fÆ–FF–öâ'VÆW2Â&÷WF–ær'VÆW2Â÷"6W76–öâW&Ö—76–öç26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF  ¢22##bÓBÓ2×#FWÆ÷–V@ ¢Ò66÷S¢G&–Ò&WVFVBFV6†W"×—&öÆÂ6÷’öâF†Rf—'7B67&VVâ6òF†Rv÷&¶fÆ÷r&VG2öæ6RæBF†RFWF–ÆVB6Æ7VÆF–öç27F’&V†–æBF†RF—66Æ÷7W&Rà¢Ò'W6–æW72–×7C ¢Ò÷FV6†W"÷—&öÆÆæòÆöævW"&WVG2F†R6ÖR—&öÆÂ7FvR2&÷F‚Æ&vR7VÖÖ'’6&BæB6V6öæB7FGW2&Æö6°¢ÒF†Rf—'7B67&VVâæ÷rfö7W6W2öâF÷FÂ6Æ'’Â6W76–öç2ÂF÷FÂ†÷W'2Â7–6ÆRv–æF÷rÂæBöæRv†B†Vç2æW‡Fv÷&¶fÆ÷r6&@¢ÒF†RFWF–ÆVB6Æ7VÆF–öâF—66Æ÷7W&RæòÆöævW"&WVG2F†R6ÖRF÷ÖÆWfVÂ—&öÆÂ&V6&Vf÷&RF†R6öÖ&òæB6W76–öâF&ÆW0¢Òæò—&öÆÂ6Æ7VÆF–öâÂFV6†W"6öæf—&ÖF–öâÂ&÷fÂ×7FvRÂ–÷WBÂ÷"f–ææ6R×&WGW&âÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF  ¢22##bÓBÓ2×#"FWÆ÷–V@ ¢Ò66÷S¢†÷Ff—‚GWÆ–6FVB&–Æ–æwVÂÆ&VÇ2öâFV6†W"—&öÆÂà¢Ò'W6–æW72–×7C ¢ÒFV6†W"—&öÆÂ7FGW2Æ&VÇ27V6‚2v†B†Vç2æW‡FÂ7W'&VçB÷væW&ÂF–ÖVÆ–æVÂ7FvR–ÆÇ2ÂæB÷væW"æÖW2æòÆöævW"&VæFW"2&WVFVBTâò¤‚ò¤‚òTæFW‡B–â&–Æ–æwVÂÖöFP¢ÒF†RvRv÷&F–æræ÷r&VG2öæ6RW"Æ&VÂv†–ÆR¶VW–ærF†R6ÖR—&öÆÂv÷&¶fÆ÷r7FFW2æB7F–öç0¢Òæò—&öÆÂ6Æ7VÆF–öâÂFV6†W"6öæf—&ÖF–öâÂ&÷fÂ×7FvRÂ–÷WBÂ÷"f–ææ6R×&WGW&âÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF  ¢22##bÓBÓ2×#2FWÆ÷–V@ ¢Ò66÷S¢f—'7BFÖ–â×6–FR6÷’Ö6Æ&—G’72öâ†–v‚Ög&WVVæ7’v÷&¶&Væ6‚vW2à¢Ò'W6–æW72–×7C ¢Ò&V6V—B&÷fÂæ÷rW6W26ÆV&W"&ööb÷"f–ÆR—77VW6v÷&F–ær–ç7FVBöbF†R6Æ6‚Ö†Vg’Æ&VÂF†BÆöö¶VBÆ–¶RGvò6ö×WF–ærf–ÇFW'0¢Ò'FæW"6WGFÆVÖVçBæ÷rW6W2Ö÷&RæGW&Â–çfö–6Rv÷&F–ær7V6‚2w&÷WVB'’–çfö–6RçVÖ&W&Â–çfö–6RÆ–æR6÷VçFÂæB–çfö–6R7&VFVF ¢ÒF†RFÖ–â7GVFVçG2v÷&¶&Væ6‚6V&6‚&÷‚æ÷r&VG2Ö÷&RæGW&ÆÇ’26V&6‚æÖRÂ66†ööÂÂæ÷FW2Â÷"”F ¢Òæò&V6V—BVWVR&V†f–÷"Â'FæW"×6WGFÆVÖVçBÆöv–2Â–çfö–6–ærÆöv–2Â÷"7GVFVçB×6V&6‚&V†f–÷"6†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF  ¢22##bÓBÓ2×#"FWÆ÷–V@ ¢Ò66÷S¢Öö&–ÆR6†VÆÂæBf÷&ÒÖ÷fW&fÆ÷r6ÆVçWf÷"FV6†W"f–ææ6Rv÷&¶&Væ6†W2æBFÖ–â&V6V—B&÷fÇ2à¢Ò'W6–æW72–×7C ¢ÒF†R6†&VBFÖ–â÷FV6†W"6†VÆÂæ÷r¶VW2Öö&–ÆR×v–GF‚6öçFVçB–ç6–FRF†Rf–Ww÷'B–ç7FVBöbÆWGF–ærv–GFƒ¢V6öçG&öÇ2G&–gB7BF†R67&VVâVFvP¢ÒFV6†W"v÷&¶&Væ6‚†W&ò7F–öç2æ÷r7F6²Ö÷&R6ÆVæÇ’öâ†öæRv–GF‡2Âv†–6‚–×&÷fW2f—'7B×67&VVâ&VF&–Æ—G’öâ—&öÆÂæBW‡Vç6RvW2v—F†÷WB6†æv–ær&÷WFW2÷"7F–öç0¢Ò÷FV6†W"÷—&öÆÆæ÷rW6W2F†RW†—7F–ær7F6¶VBf–ÇFW"Ö&"GFW&âöâÖö&–ÆRÂ6òF†RÖöçF‚÷66÷R6öçG&öÇ2æBÇ’ò6ÆV&7F–öç2&VB2öæR6ÆV"&Æö6°¢ÒöFÖ–â÷&V6V—G2Ö&÷fÇ6æòÆöævW"ÆWG2F†RV–6²6¶vR6VÆV7F÷"÷"F†R&V6V—BÖ7&VF–öâ÷–ÖVçB×&ööbf÷&×2÷fW&fÆ÷röâÖö&–ÆRÂ&V6W6RF†RöÆBf—†VB"ó2óBÖ6öÇVÖâw&–G2æ÷r6öÆÆ6R&W7öç6—fVÇ¢Òæò—&öÆÂ6Æ7VÆF–öç2Â&V6V—B&÷fÂ'VÆW2Â–ÖVçB×&V6÷&BÆöv–2Â&V6V—B7&VF–öâÆöv–2Â÷"&VÖVÖ&W&VBVWVR&V†f–÷"6†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢ÒÆö6ÂÖö&–ÆR×v–GF‚6öæf—&ÖVB67&öÆÅv–GF‚ÓÓÒ6Æ–VçEv–GF†öâ÷FV6†W"÷—&öÆÆÂ÷FV6†W"öW‡Vç6RÖ6Æ–×6ÂæBöFÖ–â÷&V6V—G2Ö&÷fÇ6  ¢22##bÓBÓ2×#’FWÆ÷–V@ ¢Ò66÷S¢&VÖVÖ&W"Öf–ÇFW"&Ææ²×&ÒVF—BæB&W6WBÖÆ–æ²f—‚7&÷72F†R&VÖ–æ–ær†–v‚Ög&WVVæ7’FÖ–âv÷&¶&Væ6†W2à¢Ò'W6–æW72–×7C ¢ÒöFÖ–â÷7GVFVçG6æ÷rG&VG26ÆV$FW6³Ó2â–çFVçF–öæÂ&W6WBÂ6ò6ÆV&æB&6²FòFVfVÇBFW6¶æòÆöævW"&V÷VâF†RÆ7B&VÖVÖ&W&VBVWVRöf–ÇFW"7FFP¢ÒöFÖ–âöW‡Vç6RÖ6Æ–×6æ÷r&W7V7G2W‡Æ–6—B&Ææ²7V&Ö—76–öç2f÷"7FGW2öÖöçF‚÷G—Rö7W'&Væ7’÷VW'’ö&ööÆVâVWVRFövvÆW2ÂæB6ÆV"f–ÇFW'6æ÷rG'VÇ’&W6WG2F†Rv÷&¶&Væ6€¢ÒöFÖ–â÷&V6V—G2Ö&÷fÇ6æ÷rG&VG2&Ææ²ÖöçF‚÷f–Wr÷VWVR&×22–çFVçF–öæÂ–çWBæBW6W26ÆV%VWVSÓf÷"&W6WBÆ–æ·2Â6òf–ææ6R6âvWB&6²FòF†RFVfVÇBVWVRv—F†÷WB&VÖVÖ&W&VB×7FFR&÷Væ6RÖ&6°¢ÒöFÖ–â÷&W÷'G2÷'FæW"×6WGFÆVÖVçFæBöFÖ–â÷FöF÷6æ÷rW6RW‡Æ–6—B6ÆV"fÆw2öâF†V—"(	Æ&6²FòFVfVÇN(	Ò6†÷'F7WG2Â6ò&VÖVÖ&W&VBÖöçF‚÷æVÂ÷FöFòF‡&W6†öÆG2Fòæ÷B–ÖÖVF–FVÇ’&W7VÖRgFW"&W6W@¢ÒöFÖ–âöfVVF&6·6æ÷r&W7V7G2âW‡Æ–6—B7GVFVçBÖf–ÇFW"6ÆV"F‚–ç7FVBöb6–ÆVçFÇ’&Wf—f–ærF†RÆ7B&VÖVÖ&W&VB7GVFVçB66÷P¢Òæò7GVFVçBf–ÇFW&–ær6VÖçF–72Â&V6V—B&÷fÂÆöv–2ÂW‡Vç6R&÷fÂÆöv–2Â6WGFÆVÖVçB6Æ7VÆF–öç2ÂFöFò6Æ7VÆF–öç2Â÷"&VÖVÖ&W&VB×7FFR&V†f–÷"öâVçF÷V6†VBvW26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò&öGV7F–öâ&VBÖöæÇ’öâF†RffV7FVBvW0¢Ò÷7BÖFWÆ÷’7F'GW6†V6²6öæf—&ÖVBÆö6Âò÷&–v–âò6W'fW"Ò&C36&Vf ¢Ò&VÆV6RFö727–æ6VBv–â–âföÆÆ÷r×WFö72ÖöæÇ’72Fò6F—6g’F†R&VÆV6RvFP ¢22##bÓBÓ2×##FWÆ÷–V@ ¢Ò66÷S¢FB6W&FRf–æÂ×&W÷'Bv÷&¶fÆ÷rf÷"6ö×ÆWFVB†÷W"6¶vW2Âv—F‚FV6†W"×6–FRf–ÆÂvW2æBâFÖ–â×6–FR76–vâò7V&Ö—GFVBòf÷'v&FVB6VçFW"à¢Ò'W6–æW72–×7C ¢ÒF†R7—7FVÒæ÷r†2FVF–6FVBf–æÂ&W÷'G2ò{¹>Šûîhª^Y¦fÆ÷r–ç7FVBöb÷fW&ÆöF–ærÖ–GFW&Ò&W÷'G2f÷"VæBÖöb×6¶vR7VÖÖ&–W0¢ÒFV6†W'26â÷Vâ÷FV6†W"öf–æÂ×&W÷'G6Â6fRG&gG2ÂæB7V&Ö—Bf–æÂ&W÷'G276–væVBFòF†V—"6ö×ÆWFVB„õU%66¶vW0¢ÒFÖ–ç26â÷VâöFÖ–â÷&W÷'G2öf–æÆÂ&Wf–Wr6ö×ÆWFVB×6¶vR6æF–FFW2ÂÖçVÆÇ’76–vâ&W÷'BFòF†R&VÆWfçBFV6†W"ÂæBÖ&²7V&Ö—GFVB&W÷'G22f÷'v&FV@¢ÒFV6†W"æBFÖ–âæf–vF–öâæ÷r–æ6ÇVFRf–æÂ×&W÷'BVçG&–W26òF†Rv÷&¶fÆ÷r—2f—6–&ÆRv—F†÷WB&VÇ––æröâ†–FFVâÆ–æ·0¢ÒæòÖ–GFW&Ò×&W÷'BÆöv–2ÂGFVæFæ6RöFVGV7F–öâÆöv–2Â6¶vR&Ææ6RÆöv–2Â÷"f–ææ6RÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ&—6Ö¦vVæW&FV ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢Ò&öGV7F–öâ&VBÖöæÇ’öâ÷FV6†W"öf–æÂ×&W÷'G6æBöFÖ–â÷&W÷'G2öf–æÆ  ¢22##bÓBÓ2×##FWÆ÷–V@ ¢Ò66÷S¢f–æ—6‚F†Rf—'7Bf–æÂ×&W÷'Bv÷&¶fÆ÷rv—F‚FÖ–âDbW‡÷'BæB6ÆV&W"f÷'v&FVB×Fò×&VçB7F–öâà¢Ò'W6–æW72–×7C ¢ÒFÖ–ç26âæ÷rF÷væÆöB&–çF&ÆRDbf÷"V6‚f–æÂ&W÷'BF—&V7FÇ’g&öÒöFÖ–â÷&W÷'G2öf–æÆ ¢ÒF†Rf÷'v&FVB7F–öâæ÷r&VG22Ö&²f÷'v&FVBFò&VçFÂv†–6‚Ö¶W2F†R÷W&F–öæÂ–çFVçB6ÆV&W ¢Òf÷'v&FVB&W÷'G2æ÷rÇ6òF—7Æ’v†òÖ&¶VBF†VÒ2f÷'v&FVBÂv†VâF†BÖWFFF—2f–Æ&ÆP¢Òæòf–æÂ×&W÷'B76–væÖVçB'VÆW2ÂFV6†W"7V&Ö—76–öâÆöv–2Â66†VÖÂGFVæFæ6RÆöv–2Â÷"f–ææ6RÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢Ò&öGV7F–öâ&VBÖöæÇ’öâöFÖ–â÷&W÷'G2öf–æÆ ¢Ò&öGV7F–öâ&VBÖöæÇ’öâö’öFÖ–âöf–æÂ×&W÷'G2õ¶–EÒ÷Ff ¢Ò&VÆV6RF6²&V6÷&B7–æ6VB–âföÆÆ÷r×WFö72726òF†RF6²f–ÆR&VfÆV7G2F†RFWÆ÷–VB7FFP¢Òf–æÂFö727–æ272'VæFÆVB6†ævVÆörò&VÆV6R&ö&BòF6²–âöæR6öÖÖ—Bf÷"F†R&VÆV6RvFP ¢22##bÓBÓ2×##"FWÆ÷–V@ ¢Ò66÷S¢FBf–æÂ×&W÷'BFVÆ—fW'’&V6÷&G2Â&VçB&VBÖöæÇ’6†&RÆ–æ·2ÂæBÖ÷&Rf÷&ÖÂDb†æFöfbfW'6–öâà¢Ò'W6–æW72–×7C ¢ÒöFÖ–â÷&W÷'G2öf–æÆæ÷r7W÷'G2&VÂ&VçBÖFVÆ—fW'’7FWv—F‚FVÆ—fW'’6†ææVÂÂFVÆ—fW'’æ÷FRÂFVÆ—fW'’F–ÖW7F×ÂæBFVÆ—fW'’7F÷"G&6¶–æp¢ÒFÖ–ç26âæ÷rvVæW&FRÂ&Vg&W6‚ÂæBF—6&ÆRFö¶Væ—¦VB&VçB6†&RÆ–æ·2F—&V7FÇ’g&öÒF†Rf–æÂ×&W÷'B6VçFW ¢Ò&VçG2÷"÷W&F–öç26â÷Vâöf–æÂ×&W÷'Bõ¶–EÓ÷Fö¶VãÒââæ2&VBÖöæÇ’f–æÂ×&W÷'BvRv—F†÷WBæVVF–ærâFÖ–â÷"FV6†W"Æöv–à¢ÒF†RFÖ–âDbW‡÷'Bæ÷r–æ6ÇVFW26ÆV&W"FVÆ—fW'’×&V6÷&B6V7F–öâ6ò—B—2V6–W"Fò6VæB2&VçBÖf6–ær†æFöfbFö7VÖVç@¢Òæòf–æÂ×&W÷'B76–væÖVçB'VÆW2ÂFV6†W"7V&Ö—B'VÆW2ÂÖ–GFW&Ò×&W÷'BÆöv–2ÂGFVæFæ6RÆöv–2Â6¶vR&Ææ6W2Â÷"f–ææ6RÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ&—6Ö¦vVæW&FV ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢Ò&öGV7F–öâ&VBÖöæÇ’öâöFÖ–â÷&W÷'G2öf–æÆ ¢Ò&öGV7F–öâ&VBÖöæÇ’öâö’öFÖ–âöf–æÂ×&W÷'G2õ¶–EÒ÷Ff ¢Ò&öGV7F–öâ&VBÖöæÇ’öâFö¶Væ—¦VBöf–æÂ×&W÷'Bõ¶–EÓ÷Fö¶VãÒââæ6†&RvP ¢22##bÓBÓ2×##2FWÆ÷–V@ ¢Ò66÷S¢FBW‡—'’v–æF÷w2Fòf–æÂ×&W÷'B&VçB6†&RÆ–æ·2à¢Ò'W6–æW72–×7C ¢ÒöFÖ–â÷&W÷'G2öf–æÆæ÷rÆWG2÷W&F–öç26†ö÷6Rrò3ò“F’fÆ–F—G’v–æF÷rv†Vâ7&VF–ær÷"&Vg&W6†–ær&VçB6†&RÆ–æ°¢Ò7F—fR6†&RÆ–æ·2æ÷rF—7Æ’v†VâF†W’W‡—&RÂæBW‡—&VBÆ–æ·2&R7W&f6VB6W&FVÇ’g&öÒ7F—fRöæW0¢Òöf–æÂ×&W÷'Bõ¶–EÓ÷Fö¶VãÒââææ÷r&Æö6·2W‡—&VBÆ–æ·2F†R6ÖRv’—B&Æö6·2Ö—76–ær÷"&Wfö¶VBÆ–æ·0¢ÒæòFV6†W"f–æÂ×&W÷'B6öçFVçBÂFVÆ—fW'’×&V6÷&B6VÖçF–72ÂGFVæFæ6RÆöv–2Â6¶vR&Ææ6W2Â÷"f–ææ6RÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ&—6Ö¦vVæW&FV ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢Ò&öGV7F–öâ&VBÖöæÇ’öâöFÖ–â÷&W÷'G2öf–æÆ ¢Ò&öGV7F–öâ&VBÖöæÇ’öâöf–æÂ×&W÷'Bõ¶–EÓ÷Fö¶VãÖ–çfÆ–F  ¢22##bÓBÓ2×##BFWÆ÷–V@ ¢Ò66÷S¢FB6†&RÖÆ–æ²66W72VF—BFòf–æÂ×&W÷'B&VçB&VBÖöæÇ’vW2à¢Ò'W6–æW72–×7C ¢Òöf–æÂ×&W÷'Bõ¶–EÓ÷Fö¶VãÒââææ÷r&V6÷&G2f—'7B×f–WrF–ÖRÂÆ7B×f–WrF–ÖRÂæBF÷FÂf–Wr6÷Vç@¢ÒöFÖ–â÷&W÷'G2öf–æÆæ÷r7W&f6W2v†WF†W"&VçB6†&RÆ–æ²†2WfW"&VVâ÷VæVBæBv†Vâ—Bv2Æ7Bf–WvV@¢Òæòf–æÂ×&W÷'B6öçFVçBÂFVÆ—fW'’fÆ÷rÂW‡—'’'VÆW2ÂGFVæFæ6RÆöv–2Â6¶vR&Ææ6W2Â÷"f–ææ6RÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ&—6Ö¦vVæW&FV ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢Ò&öGV7F–öâ&VBÖöæÇ’öâöFÖ–â÷&W÷'G2öf–æÆ ¢Ò&öGV7F–öâ&VBÖöæÇ’öâöf–æÂ×&W÷'Bõ¶–EÓ÷Fö¶VãÒââæ  ¢22##bÓBÓb×#FWÆ÷–V@ ¢Ò66÷S¢FBFV6†W"×—&öÆÂ&F6‚55bW‡÷'Bf÷"f–ææ6Rà¢Ò'W6–æW72–×7C ¢ÒöFÖ–â÷&W÷'G2÷FV6†W"×—&öÆÆæ÷rW‡÷6W2W‡÷'B55bòZûÎX{¢55fæW‡BFòF†RW†—7F–ærv÷&¶&Væ6‚f–ÇFW'0¢Òf–ææ6RæBFÖ–ç26âW‡÷'BF†R7W'&VçB—&öÆÂÖöçF‚Â66÷RÂFV6†W"6V&6‚ÂVæF–ærÖöæÇ’ÂæBVç6VçBÖöæÇ’f–Wr–âöæR55bf–ÆP¢ÒF†R55b–æ6ÇVFW26Æ'’F÷FÇ2æBv÷&¶fÆ÷rÖ–ÆW7FöæW2f÷"WfW'’f—6–&ÆRFV6†W"&÷p¢Òæò—&öÆÂÖF‚ÂFV6†W"6öæf—&ÖF–öâ'VÆW2Â&÷fÂfÆ÷rÂ÷"–÷WB&V†f–÷"6†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢Ò&öGV7F–öâ&VBÖöæÇ’öâöFÖ–â÷&W÷'G2÷FV6†W"×—&öÆÆ ¢Ò&öGV7F–öâ&VBÖöæÇ’öâöFÖ–â÷&W÷'G2÷FV6†W"×—&öÆÂöW‡÷'F  ¢22##bÓBÓb×#"FWÆ÷–V@ ¢Ò66÷S¢FBW&ÖæVçBFVÆWFR7W÷'BFò6†&VBFö7VÖVçG2æB&W6VçB6†&VBÖFö26FVv÷&–W226ÆV&W"föÆFW"w&÷W2à¢Ò'W6–æW72–×7C ¢ÒöFÖ–â÷6†&VBÖFö76æ÷rw&÷W2f—6–&ÆRf–ÆW2VæFW"6FVv÷'’6V7F–öç26ò÷W&F–öç26âVæFW'7FæBv†–6‚Æöv–6ÂföÆFW"V6‚Fö7VÖVçB&VÆöæw2Fð¢ÒæWr6†&VBÖFö2WÆöG2æ÷r7F÷&R–çFò6FVv÷'’Ö&6VBF‡27V6‚26†&VBÖFö72óÆ6FVv÷'“âóÇ———’ÖÖÓâòââæ ¢ÒFÖ–ç26âæ÷rW&ÖæVçFÇ’FVÆWFR6†&VBFö7VÖVçBÂv†–6‚&VÖ÷fW2F†RFF&6R&÷ræBFVÆWFW2F†R&6¶–ærö&¦V7Bg&öÒ32÷"F†RÆö6ÂWÆöG2F—&V7F÷'¢Ò&6†—fRò&W7F÷&R&V†f–÷"&VÖ–ç2f–Æ&ÆRæBVæ6†ævVBf÷"Fö7VÖVçG2F†B6†÷VÆB7F’–âF†RÆ–'&'¢Òæò6†&VBÖFö2W&Ö—76–öâ'VÆW2Âf–ææ6RÆöv–2Â—&öÆÂÆöv–2ÂGFVæFæ6RÆöv–2Â÷"&W÷'BÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢Ò&öGV7F–öâT’6†V6²öâöFÖ–â÷6†&VBÖFö76 ¢Ò&öGV7F–öâT’6†V6²6öæf—&ÖVBFVÆWFRòXŠ™šFV'2Æöæw6–FR&6†—fRò[Ù.j6  ¢22##bÓBÓr×#FWÆ÷–V@ ¢Ò66÷S¢f—‚6†&VB×6¶vRÖ–GFW&Òöf–æÂ&W÷'B&÷WF–ær6ò&W÷'B6æF–FFW2&RvVæW&FVBW"7GVFVçB–ç7FVBöböæÇ’W"6¶vR÷væW"à¢Ò'W6–æW72–×7C ¢ÒöFÖ–â÷&W÷'G2öÖ–GFW&Öæ÷r7&VFW2æBG&6·26æF–FFR&÷w26W&FVÇ’f÷"V6‚7GVFVçBv†òW6VBF†R6ÖR6†&VB„õU%66¶vP¢ÒöFÖ–â÷&W÷'G2öf–æÆæ÷rFöW2F†R6ÖRf÷"6ö×ÆWFVB6†&VB6¶vW2Â6ò÷W&F–öç26âW6‚f–æÂ&W÷'BFòF†R6÷'&V7B7GVFVçBWfVâv†VâGvò7GVFVçG26†&RöæR6¶vP¢Ò76–vâòW†V×B7F–öç2æ÷rfÆ–FFRF†R6VÆV7FVB7GVFVçBv–ç7B6¶vR÷væW'6†—ÇW26†&VB×7GVFVçBÖVÖ&W'6†—&Vf÷&R7&VF–ær÷"WFF–ær&W÷'@¢ÒW†—7F–ær&W÷'BÆöö·W2æ÷r¶W’öfb6¶vR²7GVFVçB²FV6†W&Â6òW6†–ær&W÷'Bf÷"öæR6†&VB7GVFVçBæòÆöævW"†–FW2F†R÷F†W"7GVFVçBw26æF–FFP¢Òæò&W÷'B6öçFVçBf–VÆG2ÂGFVæFæ6RFVGV7F–öâ'VÆW2Â6¶vR&Ææ6W2Â—&öÆÂÆöv–2Â÷"f–ææ6Rv÷&¶fÆ÷w26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢Ò&öGV7F–öâ&VBÖöæÇ’6†÷VÆB6öæf—&Ò6W&FR6†&VB×6¶vR6æF–FFR&÷w2öâöFÖ–â÷&W÷'G2öÖ–GFW&ÖæBöFÖ–â÷&W÷'G2öf–æÆ  ¢22##bÓBÓr×#"FWÆ÷–V@ ¢Ò66÷S¢6ö×&W72F†Rf–æÂ×&W÷'BDb–çFò6–ævÆR×vRÆæG66RÆ–÷WBà¢Ò'W6–æW72–×7C ¢Òö’öFÖ–âöf–æÂ×&W÷'G2õ¶–EÒ÷Ffæ÷rvVæW&FW2FVç6W"öæR×vR†æFöfbÆ–÷WB–ç7FVBöbF†R&Wf–÷W2FÆÆW"÷'G&—BÆ–÷W@¢ÒF†R÷fW'f–WrÂ÷WF6öÖRÂæBFVÆ—fW'’6V7F–öç2&RÖ÷&R6ö×7BÂæBF†Ræ'&F—fR6V7F–öç2æ÷r&VæFW"–âf—†VB×VÇF’Ö6öÇVÖâw&–@¢Òæ÷&ÖÂÖÆVæwF‚f–æÂ&W÷'G26†÷VÆBf—BöâöæRvRv—F†÷WB6†æv–ærç’VæFW&Ç––ær&W÷'B6öçFVçB÷"v÷&¶fÆ÷r7FFP¢Òæòf–æÂ×&W÷'B76–væÖVçBÆöv–2ÂFVÆ—fW'’÷6†&R&V†f–÷"ÂGFVæFæ6RÆöv–2Â6¶vR&Ææ6W2Â÷"f–ææ6RÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢ÒFÖ–âf–æÂ×&W÷'BDb&÷WFR6†÷VÆB6öçF–çVR&WGW&æ–ær#v—F‚Æ–6F–öâ÷Ff  ¢22##bÓBÓr×#2FWÆ÷–V@ ¢Ò66÷S¢Ö¶RF†Rf–æÂ×&W÷'BDbÖ÷&R&VçBÖf6–ær'’&VÖ÷f–ær–çFW&æÂFVÆ—fW'’öFÖ–âÖWFFFæB†–F–ærV×G’6V7F–öç2à¢Ò'W6–æW72–×7C ¢Òö’öFÖ–âöf–æÂ×&W÷'G2õ¶–EÒ÷Ffæ÷rfö7W6W2F†R&–çF&ÆRÆ–÷WBöâ7GVFVçB&öw&W72ÂVæBÖöbÖ6÷W'6R÷WF6öÖRÂæBF†R&V6öÖÖVæFVBæW‡B7FW ¢ÒV×G’&W÷'B6V7F–öç2æòÆöævW"6†÷rÖÆ6V†öÆFW'2Â6òF†RvR&VG2Ö÷&RÆ–¶Rf–æ—6†VB†æFöfb–ç7FVBöb7—7FVÒW‡÷'@¢ÒFVÆ—fW'’öFÖ–âÖöæÇ’FWF–Ç2&R7F–ÆÂ¶WB–âF†RFÖ–âv÷&¶&Væ6‚Â'WBF†W’&RæòÆöævW"6†÷vâ–âF†R&VçBÖf6–ærD`¢Òæòf–æÂ×&W÷'BFFÂ76–væÖVçBÆöv–2ÂFVÆ—fW'’÷6†&R7F–öç2ÂGFVæFæ6RÆöv–2Â6¶vR&Ææ6W2Â÷"f–ææ6RÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢ÒFÖ–âf–æÂ×&W÷'BDb&÷WFR6†÷VÆB6öçF–çVR&WGW&æ–ær#v—F‚Æ–6F–öâ÷Ff  ¢22##bÓBÓr×#BFWÆ÷–V@ ¢Ò66÷S¢Ö¶RF†Rf–æÂ×&W÷'BDb&VBÖ÷&RÆ–¶R&VçBÖf6–ær6öçF–çVF–öâ†æFöfb'’V×†6—¦–ærF†R7GVFVçBw2&öw&W72æBF†R&V6öÖÖVæFVB&VæWvÂF‚à¢Ò'W6–æW72–×7C ¢Òö’öFÖ–âöf–æÂ×&W÷'G2õ¶–EÒ÷Ffæ÷rg&ÖW2F†RF÷7VÖÖ'’2&öw&W72æB6öçF–çVF–öâò™‹një^h‰iéÎKˆî{ºÞŠûîikžY	 ¢ÒF†R6¶vRÖ6ö×ÆWF–öâÆ–æRæ÷r&VG2Æ–¶R6ö×ÆWFVBÆV&æ–ær×7FvR7VÖÖ'’–ç7FVBöb&r–çFW&æÂ6¶vRÖWG&–0¢ÒF†R&Wf–÷W26†÷'B&V6öÖÖVæFVBæW‡B7FW6&B—2&WÆ6VBv—F‚gVÆÆW"&V6öÖÖVæFVB6öçF–çVF–öâò{ºÞŠûî[»®Šêææ'&F—fR'V–ÇBg&öÒF†RFV6†W"w2&V6öÖÖVæFF–öâÂ7W'&VçBÆWfVÂÂæBæW‡BÖfö7W2wV–Fæ6P¢Òæòf–æÂ×&W÷'BFFÂ76–væÖVçBÆöv–2ÂFVÆ—fW'’÷6†&R7F–öç2ÂGFVæFæ6RÆöv–2Â6¶vR&Ææ6W2Â÷"f–ææ6RÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢ÒFÖ–âf–æÂ×&W÷'BDb&÷WFR6†÷VÆB6öçF–çVR&WGW&æ–ær#v—F‚Æ–6F–öâ÷Ff  ¢22##bÓBÓr×#RFWÆ÷–V@ ¢Ò66÷S¢6ögFVâF†Rf–æÂ×&W÷'BDbv–â6ò—B&VG22&VçBÖg&–VæFÇ’w&÷wF‚&VfÆV7F–öâ–ç7FVBöb&VæWvÂ&ö×Bà¢Ò'W6–æW72–×7C ¢Òö’öFÖ–âöf–æÂ×&W÷'G2õ¶–EÒ÷Ffæ÷rW6W2ÆV&æ–ær6æ6†÷BòZÚnKšh‰™[þjh.Šx†æBæW‡BÆV&æ–ærfö7W2òKˆ¾Kˆ™‹një^X[>k:Ž˜xÞx+–v÷&F–ær–ç7FVBöbW‡Æ–6—B&VæWvÂÖ÷&–VçFVBÆæwVvP¢ÒF†R&V6öÖÖVæFF–öâæ'&F—fR—2æ÷rg&ÖVB2FV6†W"ö'6W'fF–öâ&÷WB&öw&W72Â&VÖ–æ–ærv2ÂæBF†RæW‡B&Vv÷'F‚fö7W6–æröà¢Òæòf–æÂ×&W÷'BFFÂ76–væÖVçBÆöv–2ÂFVÆ—fW'’÷6†&R7F–öç2ÂGFVæFæ6RÆöv–2Â6¶vR&Ææ6W2Â÷"f–ææ6RÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢ÒFÖ–âf–æÂ×&W÷'BDb&÷WFR6†÷VÆB6öçF–çVR&WGW&æ–ær#v—F‚Æ–6F–öâ÷Ff  ¢22##bÓBÓr×#bFWÆ÷–V@ ¢Ò66÷S¢gW'F†W"6ögFVâF†R&VçBÖf6–ærf–æÂ×&W÷'BDb6òF†R6V7F–öâF—FÆW2æB7VÖÖ'’&÷r&VBÖ÷&RÆ–¶RFV6†W"&VfÆV7F–öâFòF†RfÖ–Ç’à¢Ò'W6–æW72–×7C ¢Òö’öFÖ–âöf–æÂ×&W÷'G2õ¶–EÒ÷Ffæ÷rW6W26ögFW"fÖ–Ç’Öf6–ærÆ&VÇ27V6‚2F†—27FvR–â7VÖÖ'–Â&öw&W72vRö'6W'fVFÂæBFV6†W"æ÷FRFòfÖ–Ç– ¢ÒF†RF÷7VÖÖ'’&÷ræ÷rW6W27W'&VçBw&÷wF‚fö7W2ò[Ù>X˜Þh‰™[þ˜xÞx+––ç7FVBöb&V6öÖÖVæFF–öâ×7G–ÆRÆ&VÀ¢Òæòf–æÂ×&W÷'BFFÂ76–væÖVçBÆöv–2ÂFVÆ—fW'’÷6†&R7F–öç2ÂGFVæFæ6RÆöv–2Â6¶vR&Ææ6W2Â÷"f–ææ6RÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢ÒFÖ–âf–æÂ×&W÷'BDb&÷WFR6†÷VÆB6öçF–çVR&WGW&æ–ær#v—F‚Æ–6F–öâ÷Ff  ¢22##bÓBÓr×#rFWÆ÷–V@ ¢Ò66÷S¢&VÖ÷fRF†RÆ&vRV×G’Æ÷vW"×&–v‡B&Vg&öÒF†R&VçBÖf6–ærf–æÂ×&W÷'BDb'’Ö¶–ærF†RÆ÷vW"6&G2&VfÆ÷rFòÖF6‚F†R7GVÂçVÖ&W"öbf–ÆÆVB6V7F–öç2à¢Ò'W6–æW72–×7C ¢Òö’öFÖ–âöf–æÂ×&W÷'G2õ¶–EÒ÷FfæòÆöævW"¶VW2f—†VB2Ö6öÇVÖâÆ÷vW"w&–Bv†VâöæÇ’öæR÷"Gvò6V7F–öç2&Rf–ÆÆV@¢Òf–ÆÆVB6V7F–öç26âæ÷rW‡æBv–FW"7&÷72F†RvRÂ6ò7'6R&W÷'G2&VBÖ÷&RæGW&ÆÇ’æBFòæ÷BÆVfRÆ&vRV×G’6÷&æW ¢Òæòf–æÂ×&W÷'BFFÂv÷&F–ær–çFVçBÂ76–væÖVçBÆöv–2ÂFVÆ—fW'’÷6†&R7F–öç2ÂGFVæFæ6RÆöv–2Â6¶vR&Ææ6W2Â÷"f–ææ6RÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢ÒFÖ–âf–æÂ×&W÷'BDb&÷WFR6†÷VÆB6öçF–çVR&WGW&æ–ær#v—F‚Æ–6F–öâ÷Ff  ¢22##bÓBÓr×#‚FWÆ÷–V@ ¢Ò66÷S¢&VÖ÷fRF†R&VÖ–æ–ærGWÆ–6FRfVVÂ–âF†R&VçBÖf6–ærf–æÂ×&W÷'BDb'’æ÷B6†÷v–ærâW‡G&æW‡BÆV&æ–ærfö7W6&öG’6&Bv†VâF†RFV6†W"Ç&VG’w&÷FR&V2Fò¶VW7G&VæwF†Væ–ævà¢Ò'W6–æW72–×7C ¢Òö’öFÖ–âöf–æÂ×&W÷'G2õ¶–EÒ÷Ff7F–ÆÂ¶VW2F†RF÷7VÖÖ'’×&÷rw&÷wF‚fö7W2Â'WBæòÆöævW"&WVG26V6öæB&öG’6&Bv—F‚F†R6ÖRÖVæ–ærv†VâF†RFV6†W"Ç&VG’f–ÆÆVBF†R7G&VæwF†Væ–ær6V7F–öà¢Ò7'6R&W÷'G27F’6ÆVæW"æB&VBÖ÷&RÆ–¶RöæR6ö†W&VçBfÖ–Ç’æ÷FR&F†W"F†âf÷&Òv—F‚&WVFVB&ö×G0¢Òæòf–æÂ×&W÷'BFFÂ7VÖÖ'’v÷&F–ærÂ76–væÖVçBÆöv–2ÂFVÆ—fW'’÷6†&R7F–öç2ÂGFVæFæ6RÆöv–2Â6¶vR&Ææ6W2Â÷"f–ææ6RÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢ÒFÖ–âf–æÂ×&W÷'BDb&÷WFR6†÷VÆB6öçF–çVR&WGW&æ–ær#v—F‚Æ–6F–öâ÷Ff  ¢22##bÓBÓ‚×#‚FWÆ÷–V@ ¢Ò66÷S¢ÆWB÷2&V6÷&B„õU%26¶vR6ÆW2æBF÷×W227Æ—BW&6†6R&F6†W26ò'FæW"6WGFÆVÖVçB6âÆFW"7Æ—B&F6†W2Æ–¶Rf‚²3†v—F†÷WBÖçVÂ&öGV7F–öâ&W—"à¢Ò'W6–æW72–×7C ¢Òö’öFÖ–â÷6¶vW6æ÷r66WG2W&6†6T&F6†W6æBw&—FW2×VÇF—ÆR÷&FW&VBU$4„4VG†ç2–ç7FVBöböæRÖW&vVBG†âv†Vâ&WVW7FV@¢Òö’öFÖ–â÷6¶vW2õ¶–EÒ÷F÷×W7W÷'G2F†R6ÖR7Æ—BÖ&F6‚–çWBf÷"gWGW&R'FæW"F÷×W0¢ÒF†RFÖ–â6¶vR7&VFRf÷&ÒæBF÷×WÖöFÂæ÷rW‡÷6R&F6‚ÖVçG'’&Æö6²f÷"ikK‰Îik’7GVFVçG2Â–æ6ÇVF–æröæRÖ6Æ–6²f‚²3†&W6W@¢ÒF÷FÂ–BÖ÷VçB—2&÷÷'F–öæÆÇ’ÆÆö6FVB7&÷72F†R7Æ—BW&6†6RG†ç2Âv†–ÆR6¶vRF÷FÇ2æB&VÖ–æ–ær&Ææ6R&V†f–÷"7F’Væ6†ævV@¢ÒæòGFVæFæ6RFVGV7F–öâÆöv–2Â7GVFVçB&–ÆÆ–ærÂ&VçB&–ÆÆ–ærÂ÷"öffÆ–æRÖöçF†Ç’6WGFÆVÖVçBÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢Ò6¶vR7&VFR÷F÷×WfÆ÷w2&W6W'fRG&æ6†R÷&FW"f÷"ÆFW"'FæW"6WGFÆVÖVçBd”dð ¢22##bÓBÓ‚×#’FWÆ÷–V@ ¢Ò66÷S¢6†ævRikK‰Îik’7Æ—BW&6†6RÖ&F6‚VçG'’g&öÒÖ–çWFRö†÷W"ÆæwVvRFòÆW76öâÖ&6VBVçG'’6ò÷26â&V6÷&B&F6‚6ÆW2–âF†R6ÖRbò‚òò#òCÆW76öç6fö6'VÆ'’F†W’Ç&VG’W6RVÇ6Wv†W&Rà¢Ò'W6–æW72–×7C ¢ÒöFÖ–âõö6ö×öæVçG2õW&6†6T&F6„VF—F÷"çG7†æ÷r6†÷w2ÆW76öâ6÷VçG2f÷"ikK‰Îik’&÷w2Â6öçfW'G2F†VÒFòCRÖ–çWFW2ÒÆW76öæ&V†–æBF†R66VæW2ÂæBöffW'2V–6²ÖFB6†—2f÷"bò‚òò#òCÆW76öç6 ¢ÒVæ&Æ–ær7Æ—BW&6†6R&F6†W2æòÆöævW"§V×27G&–v‡BFò†&BÖ6öFVB#cÖ–çWFRFV×ÆFS²7&VFR÷F÷×Wæ÷r7F'Bg&öÒF†R7W'&VçFÇ’6VÆV7FVB6¶vRF÷FÂæBÆWB÷27Æ—B—Bg&öÒF†W&P¢ÒF†R†–çB6÷’æ÷rW6W2ÆW76öâÖ'VæFÆRv÷&F–ær7V6‚2‚ÆW76öç2²CÆW76öç6Â¶VW–ærF†RVçG'’T’Æ–væVBv—F‚†÷rikK‰Îik’6¶vW2&R7GVÆÇ’6öÆ@¢Òæò6WGFÆVÖVçBd”dòÆöv–2Â6¶vR&Ææ6W2ÂFVGV7F–öâÆöv–2Â÷"–çfö–6R'VÆW26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢ÒikK‰Îik’7Æ—B&F6‚&÷w2æ÷r&VB÷w&—FR–âÆW76öç2v†–ÆR7F–ÆÂ7F÷&–ærÖ–çWFRF÷FÇ2VæFW"F†R†öö@ ¢22##bÓBÓ’×#FWÆ÷–V@ ¢Ò66÷S¢–çG&öGV6R66†VGVÆ–ær6ö÷&F–æF–öâ2F–6¶WBÖ&6¶VB7GVFVçBÖFWF–Âv÷&¶fÆ÷r6ò÷26âföÆÆ÷rWv—F‚&VçG2ÂvVæW&FR6Æ÷B7VvvW7F–öç2F—&V7FÇ’g&öÒG'W7FVBFV6†W"f–Æ&–Æ—G’ÂæBFV6–FRv†WF†W"&VçB7V6–Â×F–ÖR&WVW7B&VÆÇ’æVVG2FV6†W"W†6WF–öâà¢Ò'W6–æW72–×7C ¢ÒÆ–"÷F–6¶WG2çG6æ÷rFVf–æW244„TETÄUô4ôõ$D”äD”ôâòhé.ŠûîXØþ‹6Â6ò66†VGVÆ–ærföÆÆ÷r×W6â7F’–ç6–FRF†RW†—7F–ærF–6¶WBv÷&¶fÆ÷r–ç7FVBöb&V6öÖ–ær6W&FR7—7FVÐ¢ÒF–6¶WBç7GVFVçD–Fæ÷rW†—7G22çVÆÆ&ÆR&VÆF–öâÂÆÆ÷v–ær7GVFVçBFWF–ÂvW2Fò6†÷rF†R7F—fR6ö÷&F–æF–öâF–6¶WBÂ÷væW"Â7VÖÖ'’ÂæBæW‡BföÆÆ÷r×WF—&V7FÇ’öâF†R7GVFVçB&V6÷&@¢Ò7GVFVçBFWF–ÂvW26âæ÷rvVæW&FRF†RæW‡B2ÓR6æF–FFR6Æ÷G2g&öÒFV6†W"f–Æ&–Æ—G’v—F†÷WBF÷V6†–ær6W76–öâ7&VF–öâÂæB6âÇ6ò6†V6²v†WF†W"&VçB×&WVW7FVB7V6–ÂF–ÖRÇ&VG’ÖF6†W27W'&VçBf–Æ&–Æ—G¢ÒFöFò6VçFW&æ÷r7W&f6W2GVR66†VGVÆ–ær6ö÷&F–æF–öâföÆÆ÷r×W2Â6ò÷2Fòæ÷BæVVBFò&VÖVÖ&W"v†–6‚&VçBF–Ö–ær6öçfW'6F–öç2&Rv–ær÷W@¢ÒF–6¶WB–çF¶RöFÖ–âVF—BfÆ÷w2æòÆöævW"f÷&6RFV6†W"f–VÆBf÷"WfW'’F–6¶WBG—RÂÆÆ÷v–ær66†VGVÆ–ær6ö÷&F–æF–öâF–6¶WG2Fò7F’&VçBÖÆVB'’FVfVÇ@¢Òæò6W76–öâ7&VF–öâÂGFVæFæ6RÂ&öö¶–ærÖÆ–æ²&÷fÂÂ6¶vR&Ææ6RÂ—&öÆÂÂ÷"f–ææ6RÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ&—6Ö¦vVæW&FV ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢ÒöFÖ–â÷7GVFVçG2õ¶–EÖ6†÷VÆB6†÷rF†RæWr66†VGVÆ–ær6ö÷&F–æF–öâ6&BæB†VÇW"æVÇ0 ¢22##bÓBÓ’×#"FWÆ÷–V@ ¢Ò66÷S¢FBÆ–v‡GvV–v‡BFV6†W"×6–FR66†VGVÆ–ærW†6WF–öâVWVR6òFV6†W'2öæÇ’ç7vW"6ö÷&F–æF–öâF–6¶WG2F†BÇ&VG’fVÆÂ÷WG6–FRF†V—"7V&Ö—GFVBf–Æ&–Æ—G’à¢Ò'W6–æW72–×7C ¢Ò÷FV6†W"÷66†VGVÆ–ærÖW†6WF–öç6æ÷rÆ—7G2öæÇ’hé.ŠûîXØþ‹2ò66†VGVÆ–ær6ö÷&F–æF–öæF–6¶WG2F†B&R–âv—F–ærFV6†W&÷"W†6WF–öæ ¢ÒFV6†W'26â&W7öæBv—F‚6âFöÂ6ææ÷BFöÂ÷"7VvvW7Bæ÷F†W"6Æ÷FÂæBF†RF–6¶WB—2W6†VB&6²Fò÷2v—F‚âWFFVBæW‡B7F–öâ–ç7FVBöbf÷&6–ærFV6†W'2–çFòF†RgVÆÂFÖ–âF–6¶WBVF—F÷ ¢ÒF†RFV6†W"6–FV&"æ÷rW‡÷6W266†VGVÆ–ærW†6WF–öç2òhé.ŠûîKè¾ZInzîŠêFÆöæw6–FR÷F†W"F–Ç’FV6†W"F6·0¢ÒæòFV6†W"f–Æ&–Æ—G’FFÂ6W76–öâ7&VF–öâÆöv–2Â&öö¶–ærÆ–æ·2ÂGFVæFæ6RÂ6¶vR&Ææ6RÂ÷"f–ææ6RÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢Ò÷FV6†W"÷66†VGVÆ–ærÖW†6WF–öç6&÷WFR6†÷VÆB&R&W6VçB–âF†R&öGV7F–öâ'V–ÆBæB&÷FV7FVB'’F†Ræ÷&ÖÂFV6†W"Æöv–âfÆ÷p ¢22##bÓBÓ’×#2FWÆ÷–V@ ¢Ò66÷S¢GW&â7GVFVçBÖFWF–Â66†VGVÆ–ær6ö÷&F–æF–öâ&W7VÇG2–çFò7F–öâ6&G2æBÆWB÷2§V×7G&–v‡Bg&öÒ7VvvW7FVB6Æ÷B–çFòV–6²66†VGVÆVv—F‚F†R6ÖRF–ÖRæB7VvvW7FVBFV6†W"Ç&VG’6'&–VB÷fW"à¢Ò'W6–æW72–×7C ¢ÒvVæW&FVB6æF–FFR6Æ÷G2æ÷r&VæFW"2&VF&ÆR6&G2–ç7FVBöbÆ–â&÷w2Â6ò÷26â66âFFRÂF–ÖRÂFV6†W"ÂæB7F–öâ×V6‚f7FW"GW&–ær&VçBföÆÆ÷r×W ¢ÒÖF6†–ær7V6–Â×F–ÖR&W7VÇG2æBæV&W7BÇFW&æF—fW2W6RF†R6ÖR6&BGFW&âÂ6òF†W&R—2öæR6öç6—7FVçBF‚v†WF†W"F†R&VçB&WVW7BÇ&VG’f—G2f–Æ&–Æ—G’÷"æVVG2fÆÆ&6°¢ÒV–6²66†VGVÆVæ÷r&W7V7G26'&–VBÖ÷fW"7VvvW7FVBFV6†W"æBfÆöG2F†BFV6†W"FòF†RF÷öbF†RVÆ–v–&ÆRÆ—7BÂ&VGV6–æröæRÖ÷&RÖçVÂ7FWf÷"÷0¢Ò–b6×W2÷"7V&¦V7B7F–ÆÂæVVG2öæRW‡G&6öæf—&ÖF–öâÂF†R6&Bæ÷r6—26òW‡Æ–6—FÇ’&Vf÷&R÷Væ–ærV–6²66†VGVÆV ¢ÒæòFV6†W"f–Æ&–Æ—G’'VÆW2Â6W76–öâÖ7&VF–öâVæGö–çG2Â&öö¶–ærÆ–æ·2ÂGFVæFæ6RÂ6¶vR&Ææ6W2Â÷"f–ææ6RÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢ÒöFÖ–â÷7GVFVçG2õ¶–EÖ6ö÷&F–æF–öâ6&G2æ÷r6†÷rW6R–âV–6²66†VGVÆV7F–öç2f÷"vVæW&FVB6Æ÷G2ÂÖF6†VB7V6–Â&WVW7G2ÂæBæV&W7Bf–Æ&–Æ—G’ÇFW&æF—fW0 ¢22##bÓBÓ×##B&VG ¢Ò66÷S¢Ö¶RF†Rf–ææ6R7GVFVçB6¶vR–çfö–6R–6¶W"V6–W"FòW6Rv†VâÖç’7GVFVçG2æB6¶vW2&R–âF†RÆ—7Bà¢Ò'W6–æW72–×7C ¢ÒöFÖ–âöf–ææ6R÷7GVFVçB×6¶vRÖ–çfö–6W6æ÷rÆWG2f–ææ6R6V&6‚6¶vW2Æö6ÆÇ’'’7GVFVçBæÖRÂ6÷W'6RæÖRÂ÷"6¶vR”B&Vf÷&R6VÆV7F–æröæP¢ÒF†R6¶vR–6¶W"æòÆöævW"WFò×7V&Ö—G2öâWfW'’G&÷F÷vâ6†ævRÂ6òf–ææ6R6â6V&6‚6ÆÖÇ’æBF†Vâ6öæf—&Òv—F‚ÆöB6¶vR7VÖÖ'’òXª‹ÛÞŠûîXÈ^iŽŠh ¢ÒF†R–çfö–6RvR¶VW2F†R6ÖR7VÖÖ'’ÖÆöF–æræB–çfö–6R×&Wf–WrÆöv–2gFW"F†R6¶vR—27V&Ö—GFV@¢Òæò–çfö–6R—77Væ6R'VÆW2Â&V6V—B'VÆW2Â&÷fÂÆöv–2Â6¶vR&Ææ6W2Â6WGFÆVÖVçB6Æ7VÆF–öç2Â÷"FVGV7F–öâÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢ÒfW&–g’f–ææ6R6â6V&6‚æBæ'&÷rF†R6¶vRÆ—7BÆö6ÆÇ’&Vf÷&RÆöF–ærF†R6¶vR7VÖÖ' ¢22##bÓBÓ×##R&VG ¢Ò66÷S¢¶VW&V6VçFÇ’W6VB6¶vR6†÷'F7WG2öâF†Rf–ææ6R–çfö–6RvR6ò&WVFVB–çfö–6Rv÷&²FöW2æ÷B&WV—&R6V&6†–ærF†R6ÖR7GVFVçB6¶vW2v–âæBv–âà¢Ò'W6–æW72–×7C ¢ÒöFÖ–âöf–ææ6R÷7GVFVçB×6¶vRÖ–çfö–6W6æ÷r&VÖVÖ&W'2&V6VçFÇ’6†÷6Vâ6¶vW2–âF†R'&÷w6W"æB6†÷w2F†VÒ2öæRÖ6Æ–6²6†÷'F7WG2æV"F†R6¶vR–6¶W ¢Ò6†ö÷6–ær&V6VçB6¶vR6†÷'F7WBWFFW2F†R6VÆV7F–öâv—F†÷WBWFò×7V&Ö—GF–ærÂ6òf–ææ6R6â7F–ÆÂ&Wf–WrF†Rf÷&ÒæBF†Vâ6öæf—&Òv—F‚ÆöB6¶vR7VÖÖ'’òXª‹ÛÞŠûîXÈ^iŽŠh ¢Òæò–çfö–6R—77Væ6R'VÆW2Â&V6V—B'VÆW2Â&÷fÂÆöv–2Â6¶vR&Ææ6W2Â6WGFÆVÖVçB6Æ7VÆF–öç2Â÷"FVGV7F–öâÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢ÒfW&–g’F†Rf–ææ6R–çfö–6RvR6†÷w2&V6VçB6¶vW2òiÈ‹ùKÛþyJŽŠûîXÈVgFW"6¶vR†2&VVâÆöFVBöæ6P¢ÒfW&–g’6Æ–6¶–ær&V6VçB6¶vR6†—6†ævW2F†R6VÆV7FVB6¶vR'WB7F–ÆÂv—G2f÷"W‡Æ–6—B7VÖÖ'’Æö@ ¢22##bÓBÓ×##b&VG ¢Ò66÷S¢¶VWF†Rf–ææ6R&V6V—BVWVRæB†—7F÷'’v÷&¶&ÆRöâæ'&÷vW"67&VVç2'’÷Væ–ær6VÆV7FVB&V6V—BFWF–Ç2–ââ÷fW&Æ’–ç7FVBöbf÷&6–ærÆöær7F6¶VBÆ–÷WBà¢Ò'W6–æW72–×7C ¢ÒöFÖ–â÷&V6V—G2Ö&÷fÇ2÷VWVVæBöFÖ–â÷&V6V—G2Ö&÷fÇ2ö†—7F÷'–æ÷r÷Vâ6VÆV7FVB&V6V—BFWF–Ç22F—6Ö—76–&ÆR÷fW&Æ’öâæ'&÷vW"67&VVç2Â6òf–ææ6R6â7F’æ6†÷&VB–âF†RVWVRÆ—7@¢ÒF†R÷fW&Æ’–æ6ÇVFW2âW‡Æ–6—B&6²FòÆ—7Bò‹ùNY¹îX‰~Š†7F–öâæB÷WG6–FR×F6Æ÷6RF‚Â&÷F‚öbv†–6‚&WGW&âFòF†R6ÖRf–ÇFW&VBVWVR÷"†—7F÷'’f–Wrv—F†÷WB6†æv–ærF†RVæFW&Ç––ær&Wf–Wr7FFP¢Òv–FW"67&VVç2¶VWF†RW†—7F–ærGvòÖ6öÇVÖâÆ–÷WBÂ6òFW6·F÷f–ææ6RW6W'2Fòæ÷BÆ÷6RF†R6–FRÖ'’×6–FRv÷&¶fÆ÷p¢Òæò&V6V—B&÷fÂ'VÆW2Â6¶vRf–ææ6R7F–öç2Â–çfö–6R'VÆW2Â6WGFÆVÖVçB6Æ7VÆF–öç2Â÷"FVGV7F–öâÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢ÒfW&–g’æ'&÷r&V6V—BVWVRö†—7F÷'’67&VVç2æ÷r6†÷rF†R6VÆV7FVBFWF–ÂæR2â÷fW&Æ’v—F‚&6²FòÆ—7Bò‹ùNY¹îX‰~Š† ¢ÒfW&–g’v–FR67&VVç27F–ÆÂ6†÷rF†Ræ÷&ÖÂÆVgBVWVRÇW2&–v‡BFWF–ÂÆ–÷W@ ¢22##bÓBÓ×##r&VG ¢Ò66÷S¢f—‚F†Ræ'&÷r×67&VVâ&V6V—B÷fW&Æ’6ò—BFöW2æ÷BWFòÖ÷VâöâvRÆöBæBfVVÇ2Ö÷&RÆ–¶R6öçF–æVBG&vW"F†âgVÆÂ×67&VVâF¶V÷fW"à¢Ò'W6–æW72–×7C ¢Òæ'&÷r&V6V—BVWVRòiKnhÚîZêh›ž™‰þX‰væB&V6V—B†—7F÷'’òiKnhÚîXènXû&67&VVç2æ÷r÷VâF†RFWF–ÂG&vW"öæÇ’gFW"f–ææ6RW‡Æ–6—FÇ’6Æ–6·2&V6V—B&÷p¢ÒF†RG&vW"æ÷r6—G2v—F‚f—6–&ÆRÖ&v–ç2æBæ'&÷vW"v–GF‚Â6òf–ææ6R¶VW2Ö÷&R6öçFW‡BöbF†RvR&V†–æB—@¢Òv–FW"67&VVç27F–ÆÂ¶VWF†R6–FRÖ'’×6–FRVWVRæBFWF–ÂÆ–÷WBÂæBæò&V6V—B&÷fÂ÷"6¶vRÖf–ææ6RÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢ÒfW&–g’æ'&÷rVWVRö†—7F÷'’f–Ww27F’Æ—7BÖöæÇ’VçF–Â&÷r—26Æ–6¶V@¢ÒfW&–g’F†R÷VæVBFWF–ÂæVÂÆöö·2Æ–¶R6ÖÆÆW"G&vW"&F†W"F†â6÷fW&–ærÆÖ÷7BF†RgVÆÂf–Ww÷'@ ¢22##bÓBÓ×##‚&VG ¢Ò66÷S¢6†÷rÖ÷VçB–æf÷&ÖF–öâ×V6‚Ö÷&R6ÆV&Ç’–âF†R6VÆV7FVB&V6V—BFWF–ÂæVÂ6òf–ææ6R6â–ÖÖVF–FVÇ’FVÆÂv†–6‚&V6V—B—2÷Vâà¢Ò'W6–æW72–×7C ¢Ò6VÆV7FVB&V6V—BFWF–Ç2æ÷r6†÷r&÷F‚&V6V—BÖ÷VçBòiKnhÚî˜yš)ÖæB–çfö–6RF÷FÂòXùzZŽh¾š)ÖæV"F†RF÷öbF†RæVÀ¢ÒF†RÖ÷VçB7VÖÖ'’æ÷rÇ6ò6–væÇ2v†WF†W"F†R&V6V—BÖF6†W2F†RÆ–æ¶VB–çfö–6RÖ÷VçBÂ&VGV6–ærF†R6†æ6RF†Bf–ææ6R&Wf–Ww2F†Rw&öær&÷p¢Òæò&V6V—B&÷fÂ'VÆW2Â–çfö–6R'VÆW2Â6¶vRf–ææ6R7F–öç2Â6WGFÆVÖVçB6Æ7VÆF–öç2Â÷"FVGV7F–öâÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢ÒfW&–g’6VÆV7FVB&V6V—BFWF–Ç26†÷rF†RÖ÷VçB7VÖÖ'’6&G2æBÖ—6ÖF6‚–æF–6F÷"æV"F†RF÷  ¢22##bÓBÓ×##2&VG ¢Ò66÷S¢Ö¶RF†R6¶vRf–ææ6R–6¶W"Ö÷&R6ö×7B6òf–ææ6R6â6VR6V&6‚Â&V6VçB6†÷'F7WG2ÂæB6¶vR6æF–FFW2v—F†÷WB2×V6‚67&öÆÆ–ærà¢Ò'W6–æW72–×7C ¢ÒF†R&V6VçFÇ’÷VæVB6¶vW2òiÈ‹ùh™>[Èy¨NŠûîXÈVÆ—7Bæ÷r6†÷w2fWvW"ÂF–v‡FW"&÷w26ò—B7F—2W6VgVÂv—F†÷WBF¶–ær÷fW"F†RvP¢Ò6V&6‚×&W7VÇBæB&–÷&—G’6¶vR6&G2æ÷rW6RFVç6W"&÷rÆ–÷WBv—F‚6†÷'FW"ÖWFFFÂ¶VW–ærF†R6¶vRv÷&·76R†–v†W"öâ67&VVà¢Ò6ÆV&–ær6V&6‚Ç6ò&W6WG2F†RV–6²×6VÆV7Bf–VÆB&6²F÷v&BF†R7W'&VçFÇ’÷Vâ6¶vRÂ&VGV6–ær6öægW6–öâgFW"&WVFVB6V&6†W0¢Òæò–çfö–6R7&VF–öâ'VÆW2Â&V6V—B'VÆW2Â&÷fÂÆöv–2Â6¶vR&Ææ6W2Â6WGFÆVÖVçB6Æ7VÆF–öç2Â÷"FVGV7F–öâÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢ÒfW&–g’F†R6¶vR–6¶W"æ÷rö67W–W2ÆW72fW'F–6Â76Rv†–ÆR¶VW–ærF†R6ÖR÷Vâ×6¶vR7F–öç0 ¢22##bÓBÓ×##"&VG ¢Ò66÷S¢7F÷6¶vR6V&6†–ærg&öÒ&VÆöF–ærF†Rv†öÆRf–ææ6Rv÷&·76RæBv—fRf–ææ6R6ÆV&W"6öæf—&ÒfÆ÷r&Vf÷&R÷Væ–ær6¶vRà¢Ò'W6–æW72–×7C ¢ÒF†R6¶vRv÷&·76R6V&6‚æ÷r7F—2VçF—&VÇ’–âF†R'&÷w6W"Â6òf–ææ6R6â6V&6‚&WVFVFÇ’v—F†÷WB&Vg&W6†–ærF†RvRV6‚F–ÖP¢ÒF†R6V&6‚&Væ÷r†2W‡Æ–6—B6V&6‚òi	Î{J&Â6ÆV"òkˆ^™šFÂæB÷Vâf–ææ6R÷W&F–öç2òh™>[È‹J.Xªi8ÞKÙÆ'WGFöç2ÂÖ¶–ærF†RfÆ÷r6ÆV&W"v†Vâ6¶vRÆ—7G2&R7&÷vFV@¢Ò&V6VçB×6¶vR6†÷'F7WG2æB&–÷&—G’6¶vR6&G2æ÷rW6RF†R6ÖR6Æ–VçB×6–FR÷VæW"Â6òF†W’7F’f7BæB6öç6—7FVç@¢Òæò–çfö–6R7&VF–öâ'VÆW2Â&V6V—B'VÆW2Â&÷fÂÆöv–2Â6¶vR&Ææ6W2Â6WGFÆVÖVçB6Æ7VÆF–öç2Â÷"FVGV7F–öâÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢ÒfW&–g’6¶vR6V&6‚f–ÇFW'2Æö6ÆÇ’v—F†÷WBgVÆÂvR&VÆö@¢ÒfW&–g’öæÇ’F†R÷Vâ'WGFöç2æf–vFR–çFò6¶vRv÷&·76P ¢22##bÓBÓ×##&VG ¢Ò66÷S¢†VÇf–ææ6R§V×&6²–çFò&V6VçFÇ’†æFÆVB7GVFVçB6¶vW2v—F†÷WB6V&6†–ærg&öÒ67&F6‚V6‚F–ÖRà¢Ò'W6–æW72–×7C ¢ÒF†R6¶vRf–ææ6Rv÷&·76Ræ÷r6†÷w2&V6VçFÇ’÷VæVB6¶vW2òiÈ‹ùh™>[Èy¨NŠûîXÈVÂ6òf–ææ6R6â&V÷VâF†R6ÖRfWr7F—fR7GVFVçB6¶vW2–âöæR6Æ–6°¢Ò÷Væ–ær6¶vRg&öÒF†R6V&6‚f÷&ÒÂV–6²×6VÆV7BG&÷F÷vâÂ÷"&–÷&—G’Æ—7Bæ÷r&V6÷&G2F†B6¶vR–çFòF†R&V6VçBÆ—7B–ç6–FRF†R7W'&VçB'&÷w6W ¢Òf–ææ6R6â6ÆV"F†R&V6VçBÆ—7BBç’F–ÖRv—F†÷WBF÷V6†–ær&–ÆÆ–ærFFÂ&V6W6RF†RÖVÖ÷'’—27F÷&VBöæÇ’–â'&÷w6W"Æö6Â7F÷&vP¢Òæò–çfö–6R7&VF–öâ'VÆW2Â&V6V—B'VÆW2Â&÷fÂÆöv–2Â6¶vR&Ææ6W2Â6WGFÆVÖVçB6Æ7VÆF–öç2Â÷"FVGV7F–öâÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢ÒfW&–g’6¶vR÷Vç2æ÷r÷VÆFR&V6VçFÇ’÷VæVB6¶vW2òiÈ‹ùh™>[Èy¨NŠûîXÈV ¢ÒfW&–g’F†R&V6VçBÆ—7BöffW'2F—&V7B&V÷Vâ7F–öç2æB6â&R6ÆV&VBg&öÒF†R6¶vRv÷&·76P ¢22##bÓBÓ×##&VG ¢Ò66÷S¢Ö¶RF†R6¶vRf–ææ6Rv÷&·76RV6–W"Fò÷Vâv†Vâf–ææ6R—2FVÆ–ærv—F‚Æ&vRçVÖ&W"öb7GVFVçB6¶vW2à¢Ò'W6–æW72–×7C ¢ÒF†R6¶vRv÷&·76R÷VæW"æ÷r7W÷'G2¶W—v÷&B6V&6‚'’7GVFVçBÂ6÷W'6RÂ–çfö–6RçVÖ&W"Â&V6V—BçVÖ&W"ÂæB6¶vR”BÂ6òf–ææ6RæòÆöævW"†2Fò66â7&÷vFVBG&÷F÷vâöæR—FVÒBF–ÖP¢ÒF†R6ÖR÷VæW"æ÷r6†÷w2&–÷&—G’6¶vRÆ—7Bv—F‚F—&V7B÷Vâ6¶vRòh™>[ÈŠûîXÈV7F–öç2ÂW6†–ærF†RÖ÷7BW&vVçBf–ææ6R6¶vW2FòF†RF÷ ¢ÒF†RV–6²×6VÆV7BG&÷F÷vâæ÷rföÆÆ÷w2F†R6ÖRf–ÇFW&VB6V&6‚&W7VÇG2Â6ò6V&6†–æröæ6Ræ'&÷w2&÷F‚F†R6†÷'FÆ—7BæBF†RG&÷F÷vâ÷F–öç2FövWF†W ¢Òæò–çfö–6R7&VF–öâ'VÆW2Â&V6V—B'VÆW2Â&÷fÂÆöv–2Â6¶vR&Ææ6W2Â6WGFÆVÖVçB6Æ7VÆF–öç2Â÷"FVGV7F–öâÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢ÒfW&–g’6¶vR6V&6‚ÖF6†W27GVFVçBÂ6÷W'6RÂ–çfö–6RçVÖ&W"Â&V6V—BçVÖ&W"ÂæB6¶vR”B¶W—v÷&G0¢ÒfW&–g’F†R&–÷&—G’6¶vRÆ—7B6†÷w2F—&V7B÷Vâ6¶vRòh™>[ÈŠûîXÈV7F–öç2æBfÆöG2W&vVçB6¶vW2f—'7@¢ÒfW&–g’F†RV–6²×6VÆV7BG&÷F÷vâöæÇ’6†÷w2F†R7W'&VçFÇ’f–ÇFW&VB6¶vRÖF6†W0 ¢22##bÓBÓ×#’&VG ¢Ò66÷S¢FBf–ÇFW&VB55bW‡÷'Bf÷"&V6V—B†—7F÷'’æBv—fRF†R6¶vRf–ææ6Rv÷&·76RÖ÷&RW‡Æ–6—BæW‡B×7FW†æFöfbà¢Ò'W6–æW72–×7C ¢Ò&V6V—B†—7F÷'’òiKnhÚîXènXû&æ÷r†2F—&V7BW‡÷'B55bòZûÎX{¤55f7F–öâF†BföÆÆ÷w2F†R7W'&VçBfö7W2Â6–FRÂÖöçF‚Â7F–öâ×G—RÂæB¶W—v÷&Bf–ÇFW'2–ç7FVBöbÖ¶–ærf–ææ6R6÷’F&ÆR&W7VÇG2ÖçVÆÇ¢ÒF†R†—7F÷'’55bæ÷r–æ6ÇVFW2'FæW"×6–FRWÆöG2Â–çfö–6W2ÂæB&V6V—G2v†Vâf–ææ6R7v—F6†W2FòF†R'FæW"f–Wp¢ÒF†R6¶vRv÷&·76Ræ÷r6†÷w27VvvW7FVBæW‡B7FWò[»®ŠêîKˆ¾KˆjÚVæVÂF†Bö–çG2f–ææ6R7G&–v‡BFòF†RÖ÷7B&VÆWfçBæW‡B7F–öâf÷"F†B6¶vP¢Òæò–çfö–6R7&VF–öâ'VÆW2Â&V6V—B'VÆW2Â&÷fÂÆöv–2Â6¶vR&Ææ6W2Â6WGFÆVÖVçB6Æ7VÆF–öç2Â÷"FVGV7F–öâÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢ÒfW&–g’&V6V—B†—7F÷'’òiKnhÚîXènXû&W‡÷'G255bW6–ærF†R7W'&VçBf–ÇFW'0¢ÒfW&–g’'FæW"×6–FRF–ÖVÆ–æR&÷w2V"–âF†R55bv†Vâ'FæW"öæÇ’òXú®yÈ¾YŽKÙÎik–—27F—fP¢ÒfW&–g’F†R6¶vRv÷&·76RæW‡B×7FWæVÂö–çG2FòWÆöBÂ7&VFR&V6V—BÂ&Wf–WrVWVRÂ÷"vÆö&ÂVWVR66÷&F–ærFò7W'&VçB6¶vR7FFP ¢22##bÓBÓ×#‚&VG ¢Ò66÷S¢Ö¶RF†Rf–ææ6R&V6V—BfÆ÷rV6–W"Fò¶VWÖ÷f–ær'’–×&÷f–æræW‡BÖ—FVÒfVVF&6²Âv–FVæ–ær†—7F÷'’f–ÇFW'2Â6–×Æ–g––ær&W—"Ö6&B7F–öç2ÂæBW‡æF–ær6¶vR×v÷&·76R&öw&W727FFW2à¢Ò'W6–æW72–×7C ¢ÒgFW"&÷fR÷&V¦V7B7F–öç2Âf–ææ6Ræ÷rvWG2âW‡Æ–6—B&ææW"FVÆÆ–ærF†VÒv†WF†W"F†W’vW&RÖ÷fVBöçFòF†RæW‡B&V6V—B÷"v†WF†W"F†R7W'&VçBVWVRÆæR—2Ç&VG’6ÆV ¢Ò&V6V—B†—7F÷'’òiKnhÚîXènXû&æ÷r†2öæR6V&6‚öf–ÇFW"7G&—F†B6âæ'&÷r'’fö7W2Â'G’6–FRÂÖöçF‚ÂæB7F–öâG—R–ç7FVBöbf÷&6–ærf–ææ6RFò6öÖ&–æR66GFW&VB6öçG&öÇ0¢Ò'FæW"×6–FRWÆöG2Â–çfö–6W2ÂæB&V6V—G2æ÷rV"–âF†R†—7F÷'’7F–öâF–ÖVÆ–æRv†Vâf–ææ6R7v—F6†W2FòF†R'FæW"f–Wp¢Ò&W—"VWVR6&G2æ÷r&W6VçBöæRö'f–÷W2&–Ö'’f—‚7F–öâæBGV6²6V6öæF'’Æ–æ·2VæFW"Ö÷&R7F–öç2òi»NZI®i8ÞKÙÆÂ&VGV6–ær'WGFöâæö—6Röâ&Æö6¶W"Ö†Vg’67&VVç0¢ÒF†R6¶vRv÷&·76Ræ÷rW‡÷6W2f÷W"&öw&W726&G2ÂVæF–ærv—F‚7FWB&÷fÂVWVRòjÚ^šªCB‹ù¾XZ^Zêh›–ÂÇW26ö×7B6†—26†÷v–ærW6&ÆR&öög2Â&V6V—B6÷VçBÂv—F–ær&÷fÇ2ÂæB6ö×ÆWFVB&V6V—G0¢Òæò–çfö–6R'VÆW2Â&V6V—B'VÆW2Â&÷fÂÆöv–2Â6¶vR&Ææ6W2Â6WGFÆVÖVçB6Æ7VÆF–öç2Â÷"FVGV7F–öâÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢ÒfW&–g’&÷fR÷&V¦V7B7F–öç26†÷rV—F†W"F†RæW‡BÖ—FVÒ&ææW"÷"F†RVWVRÖ6ÆV&VB&ææW ¢ÒfW&–g’†—7F÷'’f–ÇFW'2æ÷r–æ6ÇVFR'G’6–FRæBÖöçF‚ÂæB'FæW"&V6VçB7F–öç2V"v†Vâ6VÆV7FV@¢ÒfW&–g’&W—"VWVR6&G2æ÷r6†÷r6–ævÆR&–Ö'’f—‚7F–öâv—F‚Ö÷&R7F–öç6f÷"6V6öæF'’F‡0¢ÒfW&–g’6¶vRv÷&·76Ræ÷r6†÷w2f÷W"&öw&W726&G2æBF†RW‡G&7FGW26†—0 ¢22##bÓBÓ×#&VG ¢Ò66÷S¢FB&VBÖöæÇ’7FFVÖVçBöb66÷VçBòZûž‹JnXÙVDbf÷"öæR&VçB6¶vRæBÖ¶R&V6V—BÖW‡÷'BvF–ær×V6‚6ÆV&W"Fòf–ææ6RW6W'2à¢Ò'W6–æW72–×7C ¢Òö’öW‡÷'G2÷&VçB×7FFVÖVçBõ¶–EÖæ÷rvVæW&FW2f–ææ6RÖf6–ær6¶vR7FFVÖVçBF†BÆ—7G2–çfö–6RG&ç67F–öç2Â&÷fVB&V6V—B–ÖVçG2Â'Vææ–ær&Ææ6RÂVæF–ær&V6V—G2æ÷B–WB6÷VçFVBÂæBF†R7W'&VçB&Ææ6R÷v–æp¢ÒF†R6ÖR7FFVÖVçBDbæ÷r&VG2Ö÷&RÆ–¶Rf÷&ÖÂ÷WGv&BÖf6–ærf–ææ6RFö7VÖVçBÂv—F‚6ÆVæW"†VF–ær&VÂ7VÖÖ'’&÷rÂæBÖ÷&R66ææ&ÆRG&ç67F–öâF&ÆP¢ÒöFÖ–âöf–ææ6R÷7GVFVçB×6¶vRÖ–çfö–6W6æ÷rW‡÷6W2F—&V7B7FFVÖVçBW‡÷'BÆ–æ²öæ6R6¶vR—26VÆV7FVBÂ6òf–ææ6R6âW‡÷'BF†R6¶vR7FFVÖVçBv—F†÷WB§V×–ær–çFòæ÷F†W"v÷&¶fÆ÷rf—'7@¢ÒF†R6ÖRf–ææ6R–çfö–6RvRæ÷r6†÷w2&W&VB'’òX‰¾[»®K«¦–âF†R&Wf–Wr&Æö6²æB7&VFVB'’òX‰¾[»®K«¦–âF†R&V6VçB–çfö–6RF&ÆRÂ6òf–ææ6R6â6VRv†ò—77VVBV6‚–çfö–6Rv—F†÷WB÷Væ–æræ÷F†W"vP¢Òv†VâF†R–çfö–6R7&VF÷"ÖF6†W2¶æ÷vâW6W"&V6÷&BÂF†R&V6VçB–çfö–6RF&ÆRæ÷r6†÷w2æÖR†VÖ–Â––ç7FVBöböæÇ’&rVÖ–Â7G&–æp¢ÒöFÖ–â÷6¶vW2õ¶–EÒö&–ÆÆ–ævæ÷r&W6öÇfW2F†R–çfö–6R'–6öÇVÖâF†R6ÖRv’Â6ò6¶vR&–ÆÆ–æræòÆöævW"fÆÇ2&6²Fò&rVÖ–Ç2v†VâF†RW6W"&öf–ÆRW†—7G0¢ÒöFÖ–â÷&V6V—G2Ö&÷fÇ6æ÷r6†V6·2&ööbÖf–ÆR†VÇF‚v–ç7BV6‚VWVR&÷rw2Æ–æ¶VB–ÖVçB&V6÷&BWfVâ–âF†RÆÂ×6¶vW2VWVRÂ6òfÆ–BWÆöG2æòÆöævW"vWBfÇ6VÇ’&Æö6¶VB2Ö—76–ær§W7B&V6W6Ræò6¶vRf–ÇFW"—26VÆV7FV@¢Ò&V6V—Bf–ææ6Rv÷&²—2æ÷r7Æ—B–çFòf÷W"6ÆV&W"&÷WFW3¢&V6V—BVWVVÂ6¶vRv÷&·76VÂ&ööb&W—&ÂæB&V6V—B†—7F÷'–Â6ò&÷fÂÂ6¶vR†æFÆ–ærÂ&W—"ÂæBÆöö·WæòÆöævW"6ö×WFRöâöæRÆöærÖ—†VBvP¢Ò&ööb&W—&æ÷rFVfVÇG2Fò&Æö6¶W"Öf—'7B&W—"VWVRÂ6ò&V¦V7FVB&V6V—G2æB÷F†W"&W—"ÖæVVFVB&÷w27F–ÆÂV"WfVâv†VâF†W&R&RæòW&RGF6†ÖVçBÖ†VÇF‚—77VW0¢ÒF†RÆÂòXZŽ˜:†6†—öâ&ööb&W—&æ÷rW‡Æ–6—FÇ’6ÆV'2–çFòF†Rv–FW"&W—"×vRVWVR–ç7FVBöb&÷Væ6–ær&6²–çFòF†R–×Æ–6—BFVfVÇB&Æö6¶W"f–ÇFW ¢Ò&V6V—B†—7F÷'–æ÷r7W&W76W2F†RÆ÷vW"'V6¶WB×7v—F6‚6öçG&öÇ2F†B6öæfÆ–7FVBv—F‚F†RF÷&V6V—B†—7F÷'–vRÖöFRÂÆVf–æröæÇ’†—7F÷'’×6fR6öçG&öÇ2öâF†B67&VVà¢Ò&V6V—B†—7F÷'–æ÷r&÷WFW2&6²FòFVfVÇBVWVRòY¹îX‹›¹ŽŠêN™‰þX‰v&6²FòöFÖ–â÷&V6V—G2Ö&÷fÇ6–ç7FVBöb7F––æröâö†—7F÷'–Âv†–6‚f—†W2F†RfÇ6R&'WGFöâF–Bæ÷F†–ær"fVVÆ–ærGW&–ær¢Òf–ææ6R6–FV&"æB&V6V—BÖ6VçFW"&V6V—BVWVRòiKnhÚîZêh›ž™‰þX‰vÆ–æ·2æ÷rW‡Æ–6—FÇ’6ÆV"&VÖVÖ&W&VBVWVR7FFRÂ6ò6Æ–6¶–ærF†RVWVRVçG'’Çv—2ÆæG2öâF†RÆ—fR&÷fÂVWVR–ç7FVBöbVæW‡V7FVFÇ’&V÷Væ–ær†—7F÷'¢ÒF†RF÷&V6V—B×vR&V6V—BVWVRòiKnhÚîZêh›ž™‰þX‰vF"æ÷rÇ6ò6ÆV'2&VÖVÖ&W&VBVWVR7FFR–ç7FVBöb&W6W'f–ærVWVT'V6¶WCÔ„•5Dõ%–Â6òF†RvRÖÆWfVÂÖöFR7v—F6‚&V†fW2F†R6ÖRv’2F†R6–FV& ¢ÒöFÖ–â÷6¶vW2õ¶–EÒö&–ÆÆ–ævæ÷rW‡÷6W2F†R6ÖR7FFVÖVçBW‡÷'BÆ–æ²æB&WÆ6W2F†RfwVR&V6V—BVæF–ær&÷fÆ6÷’v—F‚6ÆV&W"W‡ÆæF–öâF†Bf÷&ÖÂ&V6V—BDg2VæÆö6²öæÇ’gFW"ÖævW"æBf–ææ6R&÷fÀ¢ÒöFÖ–â÷&V6V—G2Ö&÷fÇ6æ÷rW6W2F†R6ÖRÆ–âÖÆæwVvR&V6V—BW‡÷'BÖW76vRÂ&VGV6–ær6öægW6–öâv—F†÷WB6†æv–ærF†R&÷fÂvFR—G6VÆ`¢Òæò–çfö–6R7&VF–öâ'VÆW2Â&V6V—B7&VF–öâ'VÆW2Â&÷fÂ&WV—&VÖVçG2Â6¶vR&Ææ6RÖF‚Â6WGFÆVÖVçBÆöv–2Â÷"FVGV7F–öâ&V†f–÷"6†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢ÒfW&–g’7FFVÖVçBW‡÷'Bv÷&·2g&öÒ&÷F‚f–ææ6R–çfö–6Rv÷&¶&Væ6‚æB6¶vR&–ÆÆ–æp¢ÒfW&–g’Væ&÷fVB&V6V—G2&R6†÷vâ2VæF–æræB7F–ÆÂW†6ÇVFVBg&öÒf÷&ÖÂ–BF÷FÇ0¢ÒfW&–g’&ööb&W—&6†÷w2&W—"&Æö6¶W'2'’FVfVÇBÂv†–ÆRF†RW‡Æ–6—B&ööb÷"f–ÆR—77VW66†—7F–ÆÂæ'&÷w2FòGF6†ÖVçBÖöæÇ’&ö&ÆV×0¢ÒfW&–g’6Æ–6¶–ærÆÂòXZŽ˜:†–ç6–FR&ööb&W—&7GVÆÇ’v–FVç2F†RvRVWVR–ç7FVBöbV&–ær7GV6°¢ÒfW&–g’&V6V—B†—7F÷'–æòÆöævW"6†÷w26öæfÆ–7F–ærÆ÷vW"'V6¶WBFövvÆW27V6‚26†÷rÆÂ'V6¶WG6æBöæÇ’÷Vâv÷&¶ ¢ÒfW&–g’&6²FòFVfVÇBVWVRòY¹îX‹›¹ŽŠêN™‰þX‰vg&öÒ&V6V—B†—7F÷'–ÆæG2öâöFÖ–â÷&V6V—G2Ö&÷fÇ3ö6ÆV%VWVSÓ ¢ÒfW&–g’6Æ–6¶–ærF†Rf–ææ6R6–FV&"&V6V—BVWVRòiKnhÚîZêh›ž™‰þX‰vVçG'’÷Vç2öFÖ–â÷&V6V—G2Ö&÷fÇ3ö6ÆV%VWVSÓæBæòÆöævW"&RÖVçFW'2&V6V—B†—7F÷'– ¢ÒfW&–g’6Æ–6¶–ærF†RF÷&V6V—BVWVRòiKnhÚîZêh›ž™‰þX‰vvRF"g&öÒ&V6V—B†—7F÷'–Ç6ò÷Vç2öFÖ–â÷&V6V—G2Ö&÷fÇ3ö6ÆV%VWVSÓ  ¢22##bÓBÓ×#3B&VG ¢Ò66÷S¢Ö¶R66†VGVÆ–ærÖ6ö÷&F–æF–öâv÷&F–ær&–Æ–æwVÂæBW‡÷6RGWÆ–6FR÷Vâ6ö÷&F–æF–öâF–6¶WG2öâF†R7GVFVçBv÷&¶&Væ6‚à¢Ò'W6–æW72–×7C ¢ÒF†R7GVFVçB66†VGVÆ–ærÖ6ö÷&F–æF–öâ6&Bæ÷rv&ç2v†Vâ7GVFVçB†2Ö÷&RF†âöæR÷Vâ6ö÷&F–æF–öâF–6¶WBæB6†÷w2v†–6‚F–6¶WB—27W'&VçFÇ’6VÆV7FVB'’F†R7—7FVÐ¢ÒF†R6ÖR7GVFVçB6&Bæ÷rÆ—7G2F†R÷VâF–6¶WBçVÖ&W'26ò÷26â§V×7G&–v‡B–çFòF†R&–v‡BF–6¶WB–ç7FVBöbwVW76–æp¢Ò66†VGVÆ–ærÖ6ö÷&F–æF–öâ7—7FVÒFW‡Bæ÷r&VæFW'226†–æW6R²VævÆ—6‚öâF†R7GVFVçB6ö÷&F–æF–öâ6&BÂF–6¶WBFWF–ÂvRÂFÖ–âF–6¶WBÆ—7BÂ&6†—fVBF–6¶WBÆ—7BÂæBFV6†W"F–6¶WBÆ—7BÂv†–6‚6ÆVç2WöÆBFW7BF–6¶WG2F†B&Wf–÷W6Ç’Æöö¶VB†ÆbÔVævÆ—6€¢ÒgWGW&R&VçBÖf–Æ&–Æ—G’7VÖÖ&–W2æ÷r6fR&–Æ–æwVÂf–VÆBÆ&VÇ27V6‚2XúþKˆ®Šûîi‰þiÉòòf–Æ&ÆRF—6æBˆ[ˆŽXþZ[ÒòFV6†W"&VfW&Væ6V ¢Òæò6¶vR'VÆW2Âf–ææ6RÆöv–2Â&V6V—B'VÆW2Â–çfö–6R'VÆW2ÂGFVæFæ6RÆöv–2Â÷"66†VGVÆ–ærÆ6VÖVçBÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢Ò÷7BÖFWÆ÷’7F'GW6†V6°¢ÒfW&–g’‹[^kX¾ŠùV6†÷w2F†RGWÆ–6FR×F–6¶WBv&æ–æröâF†R7GVFVçB6ö÷&F–æF–öâ6&Bv†Vâ×VÇF—ÆR÷Vâ6ö÷&F–æF–öâF–6¶WG2W†—7@¢ÒfW&–g’7GVFVçBæBF–6¶WBf–Ww2æ÷r6†÷r&–Æ–æwVÂ66†VGVÆ–ærÖ6ö÷&F–æF–öâ7VÖÖ'’FW‡B–ç7FVBöbVævÆ—6‚ÖöæÇ’7—7FVÒ6÷¢ÒfW&–g’æWr&VçB7V&Ö—76–öç2w&—FR&–Æ–æwVÂ7VÖÖ'’Æ&VÇ2–çFòF†RÆ–æ¶VB6ö÷&F–æF–öâF–6¶W@ ¢22##bÓBÓ×#3R&VG ¢Ò66÷S¢&WW6RF†R7W'&VçB÷Vâ66†VGVÆ–ærÖ6ö÷&F–æF–öâF–6¶WB–ç7FVBöb7&VF–æræ÷F†W"öæRf÷"F†R6ÖR7GVFVçBà¢Ò'W6–æW72–×7C ¢Ò7GVFVçBFWF–Âæ÷r6†÷w26ÆV&W"÷Vâ7F—fRF–6¶WBòh™>[È[Ù>X˜Þ[z^XÙV7F–öâæB&WW6Ræ÷FRv†VæWfW"F†R7GVFVçBÇ&VG’†2â÷Vâ6ö÷&F–æF–öâF–6¶W@¢ÒF†R7GVFVçB×6–FR6W'fW"7F–öâæ÷r&VF—&V7G2&6²v—F‚W†—7F–ær6ö÷&F–æF–öâF–6¶WB&WW6VBò[{.k+þyJŽ[Ù>X˜Þhé.ŠûîXØþ‹>[z^XÙV–ç7FVBöb6–ÆVçFÇ’÷Væ–ær6V6öæBF€¢ÒF†RF–6¶WBÖ–çF¶R’æ÷r&WGW&ç2F†RW†—7F–ær÷Vâ66†VGVÆ–ærÖ6ö÷&F–æF–öâF–6¶WBf÷"F†R6ÖR7GVFVçBÂv†–6‚&WfVçG2GWÆ–6FRFW7BF–6¶WG2g&öÒ&V–ær7&VFVBF‡&÷Vv‚–çF¶RÆ–æ·0¢ÒF†R–çF¶Rf÷&Òæ÷r7W&f6W2&–Æ–æwVÂ&WW6R7V66W72ÖW76vRæB7F–ÆÂW‡÷6W2F†RW†—7F–ær&VçBÖf–Æ&–Æ—G’Æ–æ²v†VâF†B÷VâF–6¶WB—27F–ÆÂv—F–ærf÷"7V&Ö—76–öà¢Òæò66†VGVÆ–ærÆ6VÖVçB'VÆW2Âf–ææ6RÆöv–2Â6¶vRÆöv–2Â&V6V—BÆöv–2Â–çfö–6RÆöv–2Â÷"GFVæFæ6RÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢ÒfW&–g’7GVFVçBFWF–Â6†÷w2öæÇ’F†R&WW6Rö÷VâÖ7W'&VçB7F–öâv†Vââ÷Vâ6ö÷&F–æF–öâF–6¶WBÇ&VG’W†—7G0¢ÒfW&–g’F†R7GVFVçBÖFWF–Â7&VFR7F–öâ&WGW&ç2FòF†R6ö÷&F–æF–öâ6&Bv—F‚&–Æ–æwVÂ&WW6RÖW76vR–ç7FVBöb7&VF–æræ÷F†W"÷VâF–6¶W@¢ÒfW&–g’F–6¶WB–çF¶R&WGW&ç2F†R7W'&VçB÷Vâ6ö÷&F–æF–öâF–6¶WBf÷"F†R6ÖR7GVFVçBæB6†÷w2F†R&–Æ–æwVÂ&WW6R7V66W72ÖW76vP¢22##bÓBÓ#B×#“B&VG ¢Ò66÷S¢Ö¶RF—&V7BÖ&–ÆÆ–ær&VæWvÂ6–væ–ær–æ7&V6R6¶vR&Ææ6RWFöÖF–6ÆÇ’æB&Vg&ÖRöÆBF—&V7B6¶vRF÷×W27V6–ÂöÖçVÂ÷W&F–öâà¢Ò'W6–æW72–×7C ¢Òv†VâF—&V7BÖ&–ÆÆ–ær&VæWvÂ6öçG&7B—26–væVBÂF†R7—7FVÒæ÷rFG2F†R&VæWvÂÆW76öâÖ–çWFW2öçFòF†R6ÖR6¶vRWFöÖF–6ÆÇ’–ç7FVBöbÆVf–ær÷2FòFò6V6öæBÖçVÂF÷×W ¢ÒF†R6ÖR&VæWvÂ6–væGW&R7F–ÆÂWFòÖ7&VFW2F†R&VçB–çfö–6RG&gBÂ6òF†R&VæWvÂF‚æ÷r6Æ÷6W226–vâÓâFB†÷W'2Óâ–çfö–6RG&gF ¢ÒF—&V7BÖ&–ÆÆ–ær6¶vRVF—BÖöFÂæ÷rÆ&VÇ2öÆBF÷×W2ÆVv7’öÖçVÂF‚æBv&ç2F†B—B'—76W2&VæWvÂ6öçG&7B²WFòÖ–çfö–6Rv÷&¶fÆ÷p¢Ò'FæW"×7G–ÆRF÷×W&V†f–÷"—2Væ6†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢ÒfW&–g’FV×÷&'’&VæWvÂ6¶vRÖ÷fVBg&öÒcòcÖ–çWFW2Fò“ò“Ö–çWFW2gFW"6–væGW&P¢ÒfW&–g’öæR–çfö–6RG&gBv27&VFVBf÷"F†R6–væVB&VæWvÂ6öçG&7@¢ÒfW&–g’öæR6¶vRW&6†6RG†âW†—7G2v—F‚æ÷FRÖ&¶W"7GVFVçBÖ6öçG&7B×&VæWvÂ×F÷W£Æ6öçG&7D–Cæ ¢ÒfW&–g’ÆÂFV×÷&'’FFv2&VÖ÷fVBgFW'v&G0 ¢22##bÓBÓ#B×#“R&VG ¢Ò66÷S¢öÆ—6‚F†R7GVFVçB6öçG&7Bv÷&¶fÆ÷rv—F‚'W6–æW72Öf6–ær7FGW2Æ&VÇ2Â7G&öævW"6öçG&7BVçG'’ö–çG2g&öÒ7GVFVçBFWF–ÂÂÆ–v‡FW"&VçBvW2ÂW‡Æ–6—B6–væVBÖ6öçG&7B6÷'&V7F–öâwV–Fæ6RÂæB6ÆVæW"&6†—fVB÷fö–B†—7F÷'’à¢Ò'W6–æW72–×7C ¢Ò7GVFVçBFWF–Âæ÷r7W&f6W2F†R6öçG&7Bv÷&·76RF—&V7FÇ’æBW‡Æ–ç2F†RæW‡B'W6–æW727FW–ç7FVBöbW‡÷6–æröæÇ’FV6†æ–6Â6öçG&7B7FFW0¢Ò6¶vR&–ÆÆ–æræ÷r6†÷w26ÆV&W"6–vâ×7FvRæB6–væVB×7FvRwV–Fæ6RÂ–æ6ÇVF–ærF—&V7B–çfö–6Rö÷VâÖ&÷fÂÆ–æ·2öæ6R6öçG&7B†2&öGV6VBâ–çfö–6P¢Ò&VçB–çF¶RæB6–vâvW2æ÷rg&ÖRF†R&ö6W7226–×ÆRF‡&VR×7FW¦÷W&æW’Â&VGV6–ær&VçBÖf6–ær6ÇWGFW"v—F†÷WB6†æv–ærF†RVæFW&Ç––ærv÷&¶fÆ÷p¢Ò6–væVB÷"–çfö–6VB6öçG&7G2æ÷r7FVW"÷2F÷v&Bfö–B²&VvVæW&FV–ç7FVBöb–×Ç––ærF—&V7BVF—G2Fò†—7F÷&–6Â6öçG&7BfW'6–öç0¢Òfö–BG&gG2F†B&R6fRFòFVÆWFR7F’6W&FRg&öÒ&6†—fVB6–væVBö–çfö–6VB†—7F÷'’Â6ò7F—fRv÷&·76W2æòÆöævW"f–ÆÂWv—F‚öÆB6öçG&7Bæö—6P¢ÒF—&V7BÖ&–ÆÆ–ær6¶vW2v—F‚6ÆV"ÆVv7’&–ÆÆ–ær÷W6R†—7F÷'’'WBæò6öçG&7Bæ÷rv&â÷2F†BF†RæW‡B&VæWvÂ6†÷VÆBW6RF†R&VæWvÂÖ6öçG&7BF€¢Òæò6–væ–ær'VÆW2Â–çfö–6RÖF‚Â6¶vR&Ææ6R'VÆW2Â'FæW"W†6ÇW6–öç2Â÷"&V6V—BÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢ÒfW&–g’7GVFVçBFWF–Â6†÷w2F†RF—&V7B6öçG&7Bv÷&·76RÆ–æ²æB7FvR×7V6–f–2æW‡B×7FWÖW76vP¢ÒfW&–g’6¶vR&–ÆÆ–ær6†÷w2'W6–æW72×7FvR6÷’f÷"6–vâ×&VG’6öçG&7G2æB–çfö–6Rö÷VâÖ&÷fÂÆ–æ·2f÷"6–væVBö–çfö–6VB6öçG&7G0¢ÒfW&–g’&VçB–çF¶RvR6†÷w2&VçB&öf–ÆR6öæf—&ÖF–öâòZën™[þ‹XNiižzîŠêF ¢ÒfW&–g’&VçB6–vâvR6†÷w2w&VVÖVçB&Wf–WròjÚ>[ÈþYŽYÎš(NŠx† ¢ÒfW&–g’FV×÷&'’7GVFVçB÷6¶vRö6öçG&7BöWF‚×6W76–öâFFv2&VÖ÷fVBgFW'v&G0 ¢22##bÓBÓ#B×#“b&VG ¢Ò66÷S¢Ö¶R6¶vRVF—G2&W7–æ2–çfö–6RÖvFR7FGW2æB&V6öâv†Vâ6WGFÆVÖVçBÖöFR6†ævW2Â6òF—&V7BÖ&–ÆÆ–ær6¶vW2æòÆöævW"¶VW7FÆR'FæW"×6WGFÆVÖVçBv÷&F–ærà¢Ò'W6–æW72–×7C ¢ÒVF—F–ær6¶vRg&öÒ'FæW"6WGFÆVÖVçB&6²FòF—&V7BÖ&–ÆÆ–æræ÷rÇ6ò&Vg&W6†W2F†R6¶vR–çfö–6RÖvFR6÷’–ç7FVBöbÆVf–æröÆB'FæW"v÷&F–ær&V†–æ@¢Ò&÷fÂÖ&6¶VB6¶vRvFR7FFW2&VÖ–â–çF7Bv†Vâ&÷fÂ†—7F÷'’W†—7G0¢Ò6¶vW2v—F†÷WB&÷fÂ†—7F÷'’æ÷rBÆV7BfÆÂ&6²Fò6÷'&V7BvVæW&–2F—&V7BÖ&–ÆÆ–ærW†V×BÖW76vR–ç7FVBöbF†Rw&öær'FæW"ÖW76vP¢Òæò&V6V—B'VÆW2Â–çfö–6RF÷FÇ2Â'FæW"6WGFÆVÖVçB6Æ7VÆF–öç2Â÷"66†VGVÆ–ær'VÆW26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢ÒfW&–g’‹[^kX¾ŠùV6¶vRæ÷r7F÷&W26WGFÆVÖVçDÖöFRÒçVÆÆ ¢ÒfW&–g’‹[^kX¾ŠùV6¶vRæ÷r7F÷&W2f–ææ6TvFU&V6öâÒ6¶vR—2W†V×Bg&öÒF—&V7BÖ&–ÆÆ–ær–çfö–6RvFRæ  ¢22##bÓBÓ#B×#“r&VG ¢Ò66÷S¢Ö¶R6–væVBÖ6öçG&7B6–væGW&W2f—6–&ÆRv–â'’&WV—&–ær†æGw&—GFVâ6–væGW&R–ÖvR6GW&Rf÷"gWGW&R6–væ–æw2æB6W'f–ær6ö×F–&–Æ—G’&VæFW&–ærf÷"ÆVv7’6–væVB6öçG&7G2F†B†fRæò7F÷&VB6–væGW&R–ÖvRà¢Ò'W6–æW72–×7C ¢ÒgWGW&R&VçB6–vâGFV×G2æ÷r7F÷v—F‚6ÆV"W'&÷"VæÆW72†æGw&—GFVâ6–væGW&R—27GVÆÇ’G&và¢ÒF†R6–væVB6öæf—&ÖF–öâvRæ÷r6†÷w2F†R6GW&VB6–væGW&R&Æö6²–ç7FVBöböæÇ’–çfö–6RöF÷væÆöB–æfð¢ÒöÆFW"6–væVB6öçG&7G2F†BvW&R6ö×ÆWFVB&Vf÷&RF†R†æGw&—GFVâ×6–væGW&R&WV—&VÖVçBv–ÆÂæòÆöævW"F÷væÆöBv—F‚âV×G’6–væGW&R&V¢Òæò–çfö–6RÖF‚Â6öçG&7B6æ6†÷B–ÆöG2Â6¶vR&Ææ6R'VÆW2Â÷"'FæW"ÖW†6ÇW6–öâÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢ÒfW&–g’FV×÷&'’$TE•õDõõ4”tæ6öçG&7Bæ÷r&V¦V7G2V×G’6–væGW&TFFW&Æv—F‚†æGw&—GFVâ6–væGW&R—2&WV—&VF ¢ÒvVæW&FR6ö×F–&–Æ—G’Dbf÷"âW†—7F–ær6–væVB6öçG&7Bv—F‚6–væGW&T–ÖvUF‚ÒçVÆÆ ¢Ò&VæFW"F†R6ö×F–&–Æ—G’DbæBfW&–g’F†R6–væGW&R&Æö6²—2f—6–&ÆR–ç7FVBöb&Ææ° ¢22##bÓBÓ#B×#“‚&VG ¢Ò66÷S¢Ö¶RF†R6–væVBÖ6öçG&7B6÷'&V7F–öâF‚W‡Æ–6—B–â6¶vR&–ÆÆ–ær'’W‡Æ–æ–ærF†Bfö–F—2æòÆöævW"f–Æ&ÆRgFW"6–væ–æræBF†B÷26†÷VÆB7F÷W6–ærF†RöÆB–çfö–6RG&gB&Vf÷&R7&VF–ær&WÆ6VÖVçB6öçG&7BfW'6–öâà¢Ò'W6–æW72–×7C ¢Ò6–væVBö–çfö–6VB6öçG&7G2æ÷r6ÆV&Ç’W‡Æ–âv‡’F†Rfö–F7F–öâ—2Ö—76–æp¢Ò÷2æBf–ææ6Ræ÷rvWBF—&V7BGvò×7FW6÷'&V7F–öâFƒ¢÷VâF†RöÆB–çfö–6RÆæRf—'7BÂF†Vâ7&VFR&WÆ6VÖVçB6öçG&7BfW'6–öà¢Òæò6öçG&7B×7FFR'VÆW2Â–çfö–6R7&VF–öâÆöv–2Â6¶vR&Ææ6W2Â÷"'FæW"W†6ÇW6–öç26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢ÒfW&–g’F†R6–væVB×&W7VÇB6&Bæ÷rv&ç2æ÷BFò¶VWW6–ærF†RöÆB–çfö–6RG&g@¢ÒfW&–g’F†RFW&Ö–æÂ6öçG&7Bv&æ–ærW‡Æ–6—FÇ’6—2fö–F—2æòÆöævW"f–Æ&ÆRgFW"6–væ–æp ¢22##bÓBÓ#B×#“’&VG ¢Ò66÷S¢ÆWB÷2FVÆWFRF†RöÆB–çfö–6RG&gBg&öÒ6–væVB7GVFVçB6öçG&7BÂFWF6‚F†B–çfö–6Rg&öÒ6öçG&7B†—7F÷'’ÂæB–ÖÖVF–FVÇ’7&VFR&WÆ6VÖVçB6öçG&7BfW'6–öâF†B&WW6W2F†R&Wf–÷W2&VçB&öf–ÆRà¢Ò'W6–æW72–×7C ¢Ò6–væVB6öçG&7G2F†BöæÇ’†fRâVç&V6V—FVB–çfö–6RG&gB6âæ÷r&R6÷'&V7FVB–âöæR6ÆVæW"F‚g&öÒ6¶vR&–ÆÆ–æp¢ÒFVÆWF–ærF†RöÆB–çfö–6RG&gBæ÷r6ÆV'2F†R6öçG&7N(	—2Æ–æ¶VB–çfö–6Rf–VÆG2–ç7FVBöbÆVf–ær7FÆR–çfö–6R&VfW&Væ6W2&V†–æ@¢ÒF†RÆ–æ¶VB6¶vR–çfö–6RÖ&÷fÂ&÷w2f÷"F†BFVÆWFVBG&gB&R&VÖ÷fVB2'BöbF†R6÷'&V7F–öâ6ÆVçW ¢Ò&WÆ6VÖVçB6öçG&7B7&VF–öâ—2æòÆöævW"&Æö6¶VB'’öÆB4”täTBò”ådô”4Uô5$TDTFfW'6–öç2öâF†R6ÖR6¶vP¢Ò&WÆ6VÖVçBf—'7B×W&6†6R6öçG&7G2æ÷r&WW6RF†R&Wf–÷W2&VçB&öf–ÆR6ò÷2Fòæ÷BæVVBFò&W6VæBF†R&VçB–çF¶Rf÷&Ò§W7BFò6÷'&V7BfVR÷"6öçG&7BFWF–Ç0¢Òæò&V6V—BÆöv–2Â'FæW"6WGFÆVÖVçBÆöv–2Â÷"6–væVBDbÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢ÒfW&–g’FVÆWF–ær6–væVB6öçG&7N(	—2öÆB–çfö–6RG&gB6ÆV'2–çfö–6T–Bò–çfö–6Tæòò–çfö–6T7&VFVDFg&öÒF†B6öçG&7@¢ÒfW&–g’F†R6öçG&7BfÆÇ2&6²Fò6–væVB†—7F÷'¢ÒfW&–g’&WÆ6VÖVçB6öçG&7B7&VF–öâ&öGV6W2g&W6‚4ôåE$5EôE$eF ¢ÒfW&–g’F†R&WÆ6VÖVçB6öçG&7B&WW6W2F†R&Wf–÷W2&VçB&öf–ÆR–ç7FVBöb&V÷Væ–ær–çF¶P ¢22##bÓBÓ#B×#&VG ¢Ò66÷S¢6–×Æ–g’F†R6öçG&7B6V7F–öâ–â6¶vR&–ÆÆ–ær'’&VGV6–ær&WVFVB&–Æ–æwVÂ6÷’æB&WÆ6–ærF†RöÆB(	Ç6fRG&gN(	ÒÇW2(	ÆvVæW&FR÷&Vg&W6‚6–vâÆ–æ¾(	Ò6WVVæ6Rv—F‚öæRÖ–â6fRÖæB×&W&R7F–öâà¢Ò'W6–æW72–×7C ¢Ò÷2æòÆöævW"æVVBGvò6W&FR6Æ–6·2§W7BFò6fRfVRFWF–Ç2æB&W&RF†RÆFW7B6–vâÆ–æ°¢ÒF†R6öçG&7BG&gB6V7F–öâæ÷rW‡Æ–ç2öæR6ÆVæW"7F–öâ–ç7FVBöb6fR×F†Vâ×&VvVæW&FRv÷&¶fÆ÷p¢ÒF†R6–væVB×&W7VÇB7VÖÖ'’—26†÷'FW"æBV6–W"Fò66âÂv—F†÷WBGWÆ–6FVB–çfö–6RæB&÷fÂÆ&VÇ0¢Òæò6öçG&7B×7FFR'VÆW2Â–çfö–6R7&VF–öâÆöv–2Â6–væVBÕDb&V†f–÷"Â÷"'FæW"W†6ÇW6–öç26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢ÒfW&–g’VF—F–ærÆW76öâ†÷W'2òfVRò&–ÆÂ×Fòòw&VVÖVçBFFRæB7V&Ö—GF–æröæ6RWFFW2F†RG&gBæB&W&W2F†RÆFW7B6–vâÆ–æ°¢ÒfW&–g’F†R$TE•õDõõ4”tæ7FFRæ÷röffW'26–ævÆR(	Ç6fRæB&Vg&W6‚6–vâÆ–æ¾(	Ò7F–öà¢ÒfW&–g’F†R6–væVB×&W7VÇB6&BæòÆöævW"GWÆ–6FW2&–Æ–æwVÂÆ&VÇ2öâ–çfö–6RÂvFRÂæB&÷fÂ&÷w0¢ÒF6²Fö3¢Fö72÷F6·2õD4²Ó##cC#B×7GVFVçBÖ6öçG&7BÖ&–ÆÆ–ærÖ6÷’ÖæBÖ7F–öâ×6–×Æ–g’æÖF ¢Ò&VÆV6RÖFö2'VæFÆRf–æÆ—¦VB–âF†R6ÖR&VÆV6RG&–à ¢22##bÓBÓ#B×#&VG ¢Ò66÷S¢Ö¶RF†RV&Æ–26öçG&7B6–vâvR&Vg&W6‚–çFò6ÆV"7V&Ö—GFVB×7V66W727FFRgFW"F†R&VçB6Æ–6·26–vâ6öçG&7FÂ–ç7FVBöb6–ÆVçFÇ’ÆæF–ær&6²öâF†R6ÖRvRà¢Ò'W6–æW72–×7C ¢Ò&VçG2æ÷r6VRâW‡Æ–6—Bw&VVâ6öæf—&ÖF–öâ&ææW"–ÖÖVF–FVÇ’gFW"7V66W76gVÂ6–vâ7V&Ö—@¢ÒF†RV&Æ–26–vâ&÷WFR—2&WfÆ–FFVB&Vf÷&R&VF—&V7B6òF†R6–væVB×&W7VÇBf–Wr—2ÆW72Æ–¶VÇ’FòÆr&V†–æBF†RFF&6RWFFP¢Òæò6öçG&7B×7FGW2'VÆW2Â–çfö–6R7&VF–öâÆöv–2Â6–væVBDb÷WGWBÂ÷"'FæW"W†6ÇW6–öç26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢ÒfW&–g’6–vâ7V&Ö—B&WfÆ–FFW2F†RV&Æ–26öçG&7B&÷WFR&Vf÷&R&VF—&V7@¢ÒfW&–g’ö×6s×6–væVFæ÷r6†÷w26ÆV"7V66W72&ææW"BF†RF÷öbF†R6–vâvP ¢22##bÓBÓ#B×#B&VG ¢Ò66÷S¢Ö¶RFG&W72÷F–öæÂ–â&÷F‚&VçBÖf6–ær–çF¶RvW2æB¶VW6öçG&7BvVæW&F–öâ6ö×F–&ÆRv†VâæòFG&W72—2&÷f–FVBà¢Ò'W6–æW72–×7C ¢Ò&VçG26âæ÷r7V&Ö—B7GVFVçB–çF¶RæB6öçG&7B×&öf–ÆRf÷&×2v—F†÷WB6†&–ærâFG&W70¢ÒF†R66†ööÂFVÒ6â6öçF–çVRFò&WW6R&VçBFWF–Ç2WfVâv†VâFG&W72—2&Ææ°¢Ò6–væVBæBVç6–væVB6öçG&7B6æ6†÷G2v–ÆÂæòÆöævW"&–çBâV×G’FG&W72&÷rv†VâæòFG&W72—2öâf–ÆP¢Òæò6öçG&7B×7FFR'VÆW2Â–çfö–6R7&VF–öâÆöv–2Â6¶vR&Ææ6W2Â÷"'FæW"W†6ÇW6–öç26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢ÒfW&–g’÷7GVFVçBÖ–çF¶Rõ·Fö¶VåÖÖ&·2FG&W722÷F–öæÂæB66WG27V&Ö—76–öâv—F†÷WB—@¢ÒfW&–g’ö6öçG&7BÖ–çF¶Rõ·Fö¶VåÖÖ&·2FG&W722÷F–öæÂæB66WG27V&Ö—76–öâv—F†÷WB—@¢ÒfW&–g’6öçG&7B6æ6†÷BvVæW&F–öâöÖ—G2F†RFG&W72Æ–æRv†VâFG&W72—2'6Vç@¢ÒF6²Fö3¢Fö72÷F6·2õD4²Ó##cC#B×&VçBÖFG&W72Ö÷F–öæÂÖ–çF¶RæÖF  ¢22##bÓBÓ#B×#R&VG ¢Ò66÷S¢&VæFW"F†RgVÆÂ'FæW"–çfö–6R6WGFÆVÖVçBÆ—7B7&÷72v–æFVBDbvW2–ç7FVBöb6öÆÆ6–ærF†RW‡÷'BgFW"F†Rf—'7B&÷w2à¢Ò'W6–æW72–×7C ¢Òf–ææ6R6â&–çBæB6†&R'FæW"–çfö–6W2v—F‚WfW'’6VÆV7FVB6WGFÆVÖVçBÆ–æRf—6–&ÆP¢ÒÆöær'FæW"–çfö–6R&F6†W2æòÆöævW"VæBv—F‚†–FFVââââæBâÖ÷&R—FV×67VÖÖ'¢Ò6öçF–çVF–öâvW2¶VW–çfö–6R÷F&ÆR†VFW'26ò&Wf–WvW'2Fòæ÷BÆ÷6R6öçFW‡B7&÷72vW0¢Òæò–çfö–6RF÷FÇ2Â&÷fÂfÆ÷rÂ÷"&V6V—B&V†f–÷"6†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢ÒW‡÷'B'FæW"–çfö–6Rv—F‚Ö÷&RF†â6VÆV7FVB6WGFÆVÖVçB&÷w0¢ÒfW&–g’WfW'’&÷rV'27&÷72öæR÷"Ö÷&RvW0¢ÒfW&–g’F†RöÆB6öÆÆ6VB×7VÖÖ'’Æ–æR—2vöæP¢ÒF6²Fö3¢Fö72÷F6·2õD4²Ó##cC#B×'FæW"Ö–çfö–6RÖgVÆÂÖÆ–æR×v–æF–öâæÖF  ¢22##bÓBÓ#B×#b&VG ¢Ò66÷S¢F–v‡FVâF†RföÆÆ÷r×W'FæW"–çfö–6R7VÖÖ'’×vRÆ–÷WB6òF†RF÷FÇ2æB&VÖ—GFæ6Ræ÷FW26—BF—&V7FÇ’gFW"F†RÆ7B&÷w2–ç7FVBöbG&–gF–ærFòF†RvR&÷GFöÒà¢Ò'W6–æW72–×7C ¢Òf–ææ6RæòÆöævW"6VW2Ö÷7FÇ’&Ææ²f–æÂvRv—F‚F÷FÇ2fÆöF–ærBF†R&÷GFöÐ¢Ò&VÖ—GFæ6Ræ÷FW2&VÖ–âgVÆÇ’&VF&ÆRöâF†RÆ7BvP¢ÒF†RgVÆÂ×VÇF’×vRÆ–æRÖ—FVÒ&VæFW&–ærg&öÒ#V7F—2–çF7@¢Òæò–çfö–6RF÷FÇ2Â&÷fÂfÆ÷rÂ÷"&V6V—B&V†f–÷"6†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢ÒW‡÷'B×VÇF’×vR'FæW"–çfö–6P¢ÒfW&–g’7V'F÷FÂòu5BòÖ÷VçBGVRV"F—&V7FÇ’gFW"F†Rf–æÂ&÷r6W@¢ÒfW&–g’&VÖ—GFæ6Ræ÷FW2&RgVÆÇ’f—6–&ÆRöâF†RÆ7BvP¢ÒF6²Fö3¢Fö72÷F6·2õD4²Ó##cC#B×'FæW"Ö–çfö–6RÖf–æÂ×vRÖÆ–÷WBÖföÆÆ÷wWæÖF  ¢22##bÓBÓ#B×#r&VG ¢Ò66÷S¢Ö÷fRF†R÷F–öæÂ'FæW"–çfö–6R6VÂæW‡BFòF†R7V'F÷FÂ7VÖÖ'’&V–ç7FVBöbÆVf–ær—B–ææVBæV"F†RÆ÷vW"vRVFvRà¢Ò'W6–æW72–×7C ¢Òf–ææ6R6VW2F†R6VÂv†W&RF†W’W‡V7B—BÂÆ–væVBv—F‚F†R7V'F÷FÂ7VÖÖ'’&Æö6°¢ÒF†R6VÂæòÆöævW"Æöö·2FWF6†VBg&öÒF†Rf–ææ6–ÂF÷FÇ2öâÆöær'FæW"–çfö–6W0¢ÒæòÆ–æRÖ—FVÒv–æF–öâÂF÷FÇ2Â&÷fÂfÆ÷rÂ÷"&V6V—B&V†f–÷"6†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢ÒW‡÷'B6VÆVB'FæW"–çfö–6P¢ÒfW&–g’F†R6VÂ6—G2&W6–FRF†R7V'F÷FÂ&Æö6°¢ÒfW&–g’7V'F÷FÂòu5BòÖ÷VçBGVR&VÖ–â&VF&ÆP¢ÒF6²Fö3¢Fö72÷F6·2õD4²Ó##cC#B×'FæW"Ö–çfö–6R×6VÂÖæV"×7V'F÷FÂæÖF  ¢22##bÓBÓ#B×#‚&VG ¢Ò66÷S¢W6‚F†R÷F–öæÂ'FæW"–çfö–6R6VÂ6Æ÷6W"6ò—Bf—6–&Ç’æ6†÷'2FòF†R7V'F÷FÂ&Æö6²–ç7FVBöb&VF–ær2FWF6†VBvRÖ&÷GFöÒVÆVÖVçBà¢Ò'W6–æW72–×7C ¢Òf–ææ6Ræ÷r6VW2F†R6VÂ6ÆV&Ç’GF6†VBFòF†R7V'F÷FÂ7VÖÖ'’&V¢ÒF†R7V'F÷FÂ&Æö6²&VÖ–ç2&VF&ÆRv†–ÆRF†R7F×Æ6VÖVçBÆöö·2–çFVçF–öæÀ¢Òæò–çfö–6RÆ–æR&VæFW&–ærÂF÷FÇ2Â&÷fÂfÆ÷rÂ÷"&V6V—B&V†f–÷"6†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢ÒW‡÷'B6VÆVB'FæW"–çfö–6P¢ÒfW&–g’F†R6VÂf—6–&Ç’÷fW&Æ2÷"‡Vw2F†R7V'F÷FÂ&V¢ÒfW&–g’7V'F÷FÂòu5BòÖ÷VçBGVR&VÖ–â&VF&ÆP¢ÒF6²Fö3¢Fö72÷F6·2õD4²Ó##cC#B×'FæW"Ö–çfö–6R×6VÂ×7V'F÷FÂÖ÷fW&ÆÖföÆÆ÷wWæÖF  ¢22##bÓBÓ#B×#’&VG ¢Ò66÷S¢6ö×7BF†Rf–æÂvRöb'FæW"–çfö–6W26òÆöær6WGFÆVÖVçB&F6†W2Fòæ÷BÆVfRÆ&vR&Ææ²&V&Vf÷&RF÷FÇ2Âv†–ÆR¶VW–ærF†R÷F–öæÂ6VÂæB&VÖ—GFæ6Ræ÷FW2GF6†VBFòF†R7V'F÷FÂ&Æö6²2öæRw&÷WVB6V7F–öâà¢Ò'W6–æW72–×7C ¢Òf–ææ6R6VW2gVÆÆW"W6RöbF†RÆ7B6öçFVçBvR&Vf÷&RF†RF÷FÇ2&Æö6°¢ÒF†R÷F–öæÂ6VÂæ÷r7F—2f—7VÆÇ’Æö6¶VBFòF†R7V'F÷FÂ&V–ç7FVBöbG&–gF–ærÆ÷vW"F†âW‡V7FV@¢Ò&VÖ—GFæ6Ræ÷FW2æB&æ²FWF–Ç27F'B&VÆ÷rF†RF÷FÇ2÷6VÂw&÷WÂ6òF†RvR&VG22öæR6ö†W&VçBf–ææ6R7VÖÖ'¢Òæò–çfö–6RF÷FÇ2Â6VÆV7FVB6WGFÆVÖVçG2Â&÷fÂfÆ÷rÂ÷"&V6V—B&V†f–÷"6†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢ÒW‡÷'B×VÇF’×vR6VÆVB'FæW"–çfö–6P¢ÒfW&–g’Æ–æR—FV×26öçF–çVRÆ÷vW"&Vf÷&RF†RF÷FÇ27VÖÖ'’7F'G0¢ÒfW&–g’F†R6VÂ6—G2v–ç7BF†R7V'F÷FÂ&Æö6°¢ÒfW&–g’&VÖ—GFæ6Ræ÷FW2&Vv–â&VÆ÷rF†RF÷FÇ2÷6VÂw&÷W ¢ÒF6²Fö3¢Fö72÷F6·2õD4²Ó##cC#B×'FæW"Ö–çfö–6RÖf–æÂ×vRÖ6ö×7F–öâÖæB×6VÂÖæ6†÷"æÖF  ¢22##bÓBÓ#B×#&VG ¢Ò66÷S¢v—fRf—'7B×W&6†6R6WGW—G2÷vâFÖ–âvR6ò7GVFVçBFWF–ÂæòÆöævW"6'&–W2Æ&vRÖ—†VB×W'÷6RVÖ&VFFVBf÷&Òà¢Ò'W6–æW72–×7C ¢Ò÷26â7F'Bf—'7B×W&6†6R6WGWg&öÒ6ÆV&W"ÂÖ÷&R&öÖ–æVçB5DöâF†R7GVFVçBFWF–ÂvP¢ÒF†R6WGWf÷&ÒæòÆöævW"6ö×WFW2v—F‚6¶vRÂ66†VGVÆ–ærÂæB&öf–ÆR6V7F–öç2öâF†R6ÖRvP¢ÒGWÆ–6FVB&–Æ–æwVÂv÷&F–ær—2&VGV6VB&V6W6RF†RFVF–6FVBvRöæÇ’W‡Æ–ç2F†R7FWöæ6P¢Ò7V66W76gVÂ6WGWæ÷rfÆ÷w2F—&V7FÇ’–çFòF†R6¶vR6öçG&7Bv÷&·76P¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢ÒfW&–g’7GVFVçBFWF–Â6†÷w2FVF–6FVBf—'7B×W&6†6R5D–ç7FVBöbF†RÆ&vR–æÆ–æRf÷&Ð¢ÒfW&–g’öFÖ–â÷7GVFVçG2õ¶–EÒöf—'7B×W&6†6VÆöG2æB6†÷w2F†R6WGWf–VÆG2öæ6P¢ÒfW&–g’7V&Ö—B&VF—&V7G2–çFòöFÖ–â÷6¶vW2õ¶–EÒö6öçG&7F ¢ÒF6²Fö3¢Fö72÷F6·2õD4²Ó##cC#B×7GVFVçBÖf—'7B×W&6†6RÖFVF–6FVB×vRæÖF ¢Ò##bÓBÓ#B3SFVf–ææ6RFö7VÖVçB6VçFW'3¢6†—VBgVÆÂ–çfö–6W2÷&V6V—G2vRÇW2FVÆWFVBG&gB–çfö–6R†—7F÷'’vRÂæBÆ–æ¶VBF†VÒ–çFòf–ææ6Rv÷&¶&Væ6‚Â6¶vR&–ÆÆ–ærÂ6¶vR6öçG&7BÂæB'FæW"6WGFÆVÖVçB&–ÆÆ–ærà ¢22##bÓBÓ#B×#"&VG ¢Ò66÷S¢FBF†Rf–ææ6RFö7VÖVçB6VçFW"æBFVÆWFVBG&gB–çfö–6R†—7F÷'’vW2FòF†Rf–ææ6R×&öÆR66W72ÆÆ÷vÆ—7BæB6–FV&"æf–vF–öâà¢Ò'W6–æW72–×7C ¢Òf–ææ6RW6W'26âæ÷r÷VâF†RGvòæWrvW2F—&V7FÇ’–ç7FVBöbvWGF–ær&÷Væ6VB&6²Fòæ÷F†W"f–ææ6RvP¢ÒF†RvW2&Ræ÷rF—66÷fW&&ÆRg&öÒF†R6–FV&"Âæ÷BöæÇ’F‡&÷Vv‚FVWÆ–æ·2–ç6–FRv÷&·76W0¢Òæò–çfö–6RÂ&V6V—BÂ÷"&÷fÂFF6†ævW0¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢ÒfW&–g’f–ææ6R6–FV&"6†÷w2–çfö–6W2b&V6V—G6æBFVÆWFVBG&gB†—7F÷'– ¢ÒfW&–g’f–ææ6RW6W'26â÷VâöFÖ–âöf–ææ6RöFö7VÖVçG6 ¢ÒfW&–g’f–ææ6RW6W'26â÷VâöFÖ–âöf–ææ6RöFVÆWFVBÖ–çfö–6W6 ¢ÒF6²Fö3¢Fö72÷F6·2õD4²Ó##cC#BÖf–ææ6RÖFö7VÖVçBÖ6VçFW"ÖæbÖæBÖÆÆ÷vÆ—7BæÖF  ¢22##bÓBÓ#B×#2&VG ¢Ò66÷S¢Ö÷fRF†R7GVFVçBÖFWF–Âf—'7B×W&6†6R5D6&BFòF†RF÷öbF†RvR6öçFVçB6ò÷26â7F'Nšin‹JÞ[»®j2–ÖÖVF–FVÇ’à¢Ò'W6–æW72–×7C ¢Ò÷2æòÆöævW"æVVBFò67&öÆÂF÷vâ7BÆææ–æræBVç&öÆÆÖVçB6V7F–öç2Fòf–æBF†Rf—'7B×W&6†6RVçG'’ö–ç@¢ÒF†R5D7F–ÆÂ÷Vç2F†R6ÖRFVF–6FVBf—'7B×W&6†6R6WGWvP¢Òæò–çF¶RÂ6öçG&7BÂ–çfö–6RÂ÷"6¶vRÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢ÒfW&–g’F†R7F'Bf—'7BW&6†6R6WGWò[ÈZx¾šin‹JÞ[»®j66&B6†÷w2&Vf÷&RF†R7VÖÖ'’6&G0¢ÒfW&–g’F†R÷&–v–æÂÆ÷vW"GWÆ–6FRÆö6F–öâ—2vöæP¢ÒfW&–g’F†RFVF–6FVBf—'7B×W&6†6RvRf–VÆBÆ&VÇ2&RæòÆöævW"GWÆ–6FV@¢ÒF6²Fö3¢Fö72÷F6·2õD4²Ó##cC#B×7GVFVçBÖFWF–ÂÖf—'7B×W&6†6RÖ7F×F÷æÖF  ¢22##bÓBÓ#B×#B&VG ¢Ò66÷S¢f—‚F†Rf—'7B×W&6†6R6WGW&VF—&V7BfÆ÷r6ò7V66W76gVÂ7V&Ö—G2Fòæ÷B&VæFW"&VBäU…Eõ$TD•$T5F&ææW"öâF†RFVF–6FVB6WGWvRà¢Ò'W6–æW72–×7C ¢Ò÷26â6ö×ÆWFRX‰¾[»®šin‹JÞŠûîXÈ^Y(ÎYŽYÆv—F†÷WB6VV–ærÖ—6ÆVF–ærg&ÖWv÷&²W'&÷"gFW"7V66W70¢Ò7V66W76gVÂ7V&Ö—G2æ÷r6öçF–çVR–çFòF†R6¶vR6öçG&7Bv÷&·76R2–çFVæFV@¢ÒvVçV–æRfÆ–FF–öâ÷"'W6–æW72×'VÆRf–ÇW&W27F–ÆÂ&÷WFR&6²FòF†R6WGWvRv—F‚&VF&ÆRÖW76vP¢Òæò6öçG&7B'VÆW2Â6¶vR–ÆöG2Â÷"–çF¶RVÆ–v–&–Æ—G’Æöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢ÒfW&–g’7V66W76gVÂ7V&Ö—B&WF‡&÷w2F†R&VF—&V7BæBÆæG2–âöFÖ–â÷6¶vW2õ¶–EÒö6öçG&7F ¢ÒfW&–g’÷&F–æ'’f–ÇW&W27F–ÆÂ&VF—&V7B&6²v—F‚W'#Òââæ–ç7FVBöb7&6†–æp¢ÒF6²Fö3¢Fö72÷F6·2õD4²Ó##cC#BÖf—'7B×W&6†6R×&VF—&V7BÖW'&÷"Öf—‚æÖF  ¢22##bÓBÓ#B×#R&VG ¢Ò66÷S¢&VæÖR7GVFVçB6öçG&7BDbF÷væÆöG2Fò'W6–æW72×&VF&ÆRf÷&ÖBf÷"&÷F‚FÖ–âæB&VçBF÷væÆöG2à¢Ò'W6–æW72–×7C ¢Ò6öçG&7BDg2æòÆöævW"F÷væÆöBv—F‚FV6†æ–6Â–çFW&æÂ×7G–ÆRf–ÆVæÖP¢Ò÷2æB&VçG2æ÷r&V6V—fR6ÆV&W"æÖW27V6‚2ZÚnyIþYÕþŠûîzˆ¾YÕþšin‹JÞYŽYÅþ[{.zÛåõ•••”ÔÔDBçFf ¢ÒF†R6ÖRæÖ–ær6öçfVçF–öâÆ–W2v†WF†W"F†RDb—2F÷væÆöFVBg&öÒFÖ–âvW2÷"F†R&VçB6–væ–ærÆ–æ°¢Òæò6öçG&7BÂ6–væ–ærÂ&–ÆÆ–ærÂ÷"–çfö–6R&V†f–÷"6†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢ÒfW&–g’6–væVBæBVç6–væVB6öçG&7BF÷væÆöG2W6RF†RæWr'W6–æW72Ög&–VæFÇ’f–ÆVæÖRGFW&à¢ÒfW&–g’&VçBFö¶VâF÷væÆöG2æBFÖ–âF÷væÆöG26†&RF†R6ÖRæÖ–ærÆöv–0¢ÒF6²Fö3¢Fö72÷F6·2õD4²Ó##cC#B×7GVFVçBÖ6öçG&7BÖF÷væÆöBÖf–ÆVæÖRæÖF  ¢22##bÓBÓ#B×#b&VG ¢Ò66÷S¢f—‚F†R7F÷&VB6–væVBÖ6öçG&7BF÷væÆöB'&æ6‚6òöÆFW"6fVBDg2Ç6òW6RF†R'W6–æW72×&VF&ÆRf–ÆVæÖR–ç7FVBöbF†RöÆBFV6†æ–6ÂfÆÆ&6²à¢Ò'W6–æW72–×7C ¢ÒÇ&VG’×6fVB6–væVB6öçG&7BDg2æ÷rF÷væÆöBv—F‚F†R6ÖR'W6–æW72Ög&–VæFÇ’æÖ–ærGFW&â2&VvVæW&FVBDg0¢ÒFÖ–âF÷væÆöG2æB&VçBÖ66W72F÷væÆöG2æòÆöævW"F—fW&vR&6VBöâv†WF†W"F†RDb6ÖRg&öÒ7F÷&vR÷"&VvVæW&F–öà¢Ò–æÆ–æR&Wf–Wr&W7öç6W2æ÷rGfW'F—6RF†R6ÖRUDbÓ‚f–ÆVæÖRFöð¢Òæò6öçG&7BÂ6–væ–ærÂ–çfö–6RÂ÷"W&Ö—76–öâÆöv–26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢ÒfW&–g’7F÷&VB6–væVBÖ6öçG&7B&W7öç6W2W6RF†R'W6–æW72f–ÆVæÖR–â6öçFVçBÔF—7÷6—F–öæ ¢ÒfW&–g’–æÆ–æRæBGF6†ÖVçB†VFW'2&÷F‚–æ6ÇVFRF†RUDbÓ‚f–ÆVæÖP¢ÒF6²Fö3¢Fö72÷F6·2õD4²Ó##cC#B×7F÷&VB×7GVFVçBÖ6öçG&7BÖF÷væÆöBÖf–ÆVæÖRÖf—‚æÖF  ¢22##bÓBÓ#B×#r&VG ¢Ò66÷S¢FBF†RÖ—76–ær&VæWvÂ5DFòF†R6¶vR6öçG&7Bv÷&·76RgFW"f—'7B×W&6†6R6öçG&7B—2Ç&VG’6–væVBà¢Ò'W6–æW72–×7C ¢Ò÷2æòÆöævW"æVVBFò–æfW"F†B&VæWvÂ6†÷VÆB†VâVÇ6Wv†W&RgFW"6–væVNšin‹JÞYŽYÀ¢ÒF†R6ÖR6öçG&7Bv÷&·76Ræ÷r6†÷w2&÷F‚æW‡B×7FW÷F–öç3¢7F'B&VæWvÂ÷"7&VFR6÷'&V7F–öâ÷&WÆ6VÖVçBfW'6–öà¢Òæò6öçG&7B6–væ–ærÂ–çfö–6RÂ÷"6¶vR'VÆW26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢ÒfW&–g’6–væVBf—'7B×W&6†6R6öçG&7Bæ÷rW‡÷6W27&VFR&VæWvÂ6öçG&7BòX‰¾[»®{ºÞ‹KžYŽYÆ ¢ÒfW&–g’F†R&WÆ6VÖVçBÖ6öçG&7B5D7F–ÆÂ&VÖ–ç2f—6–&ÆRf÷"6÷'&V7F–öâ66Væ&–÷0¢ÒF6²Fö3¢Fö72÷F6·2õD4²Ó##cC#B×6¶vRÖ6öçG&7B×&VæWvÂÖ7FÖgFW"Öf—'7B×W&6†6RæÖF   ¢22##bÓBÓ#B×#‚&VG ¢Ò66÷S¢ÆWBF†R7W'&VçB6¶vRw26–væVBf—'7B×W&6†6R6öçG&7B6÷VçB2&WW6&ÆR&VçB–æfòf÷"&VæWvÂà¢Ò'W6–æW72–×7C ¢Ò6¶vRF†BÇ&VG’†26–væVNšin‹JÞYŽYÂæ÷r6÷'&V7FÇ’6†÷w27&VFR&VæWvÂ6öçG&7BòX‰¾[»®{ºÞ‹KžYŽYÆ ¢Ò÷26â7F'B&VæWvÂF—&V7FÇ’g&öÒF†R6ÖR6¶vRv÷&·76R–ç7FVBöb&V–ær&Æö6¶VB'’fÇ6R&æò&WW6&ÆR&VçB&öf–ÆR"6öæF—F–öà¢Òæò6–væ–ærÂ–çfö–6RÂ÷"'FæW"×6WGFÆVÖVçB'VÆW26†ævV@¢ÒfÆ–FF–öã ¢ÒçÒ'Vâ'V–ÆF ¢ÒfW&–g’‹[^kX¾ŠùR&×7G–ÆR6¶vW2v—F‚öæÇ’6–væVB7W'&VçB×6¶vRf—'7B×W&6†6R6öçG&7Bæ÷r6†÷rF†R&VæWvÂ5D¢ÒfW&–g’&VæWvÂG&gB7&VF–öâ7V66VVG2g&öÒF†R6ÖR6¶vRv÷&·76P¢ÒF6²Fö3¢Fö72÷F6·2õD4²Ó##cC#B×&VæWvÂ×&VçBÖ–æfòÖ7W'&VçB×6¶vRÖf—‚æÖF  ¢22##bÓrÓ2×##3rÆ—fP ¢Ò66÷S¢FBF†R6ö×ÆWFRf—'7BFV6†W"ÖÖö&–ÆRv÷&¶&Væ6‚f÷"÷vâf–Æ&–Æ—G’ÂÆVfR÷&W66†VGVÆR&WVW7G2ÂW'6öæÂW‡Vç6W2ÂæBÖöçF†Ç’FV6†–ær†—7F÷'’à¢ÒW&Ö—76–öã¢WfW'’æWrVæGö–çB&WV—&W2DT4„U"&öÆRæBÆ–æ¶VBFV6†W"&öf–ÆS²ÖævVÖVçBW6W'2æBVæWF†VçF–6FVB6ÆÆW'26ææ÷BVçFW"F†RFV6†W"ÖöæÇ’—2à¢Ò&WW6S¢f–Æ&–Æ—G’ÂF–6¶WBÂW‡Vç6T6Æ–ÒÂWÆöB7F÷&vRÂVF—BÂ&÷fÂ÷–ÖVçBÂ6W76–öâÂGFVæFæ6RÂæBfVVF&6²FFÆÂ&VÖ–â–âF†V—"W†—7F–ær7—7FVÒöb&V6÷&Bà¢Ò6fWG“¢ÆVfR÷&W66†VGVÆR7&VFW2÷"WFFW26ö÷&F–æF–öâF–6¶WBöæÇ“²W‡Vç6R7V&Ö—76–öâæWfW"w&çG2&÷fÂ÷–ÖVçB&–v‡G3²FV6†–ær†—7F÷'’W†6ÇVFW2—&öÆÂÖ÷VçG2à¢ÒFFWf–FVæ6S¢CbÆ–æ¶VBFV6†W"66÷VçG2&RVÆ–v–&ÆRÂv—F‚s’gWGW&RÓ3ÖF’6W76–öç2Âr7W'&VçBÖÖöçF‚6ö×ÆWFVB6W76–öç2ÂccBgWGW&Rf–Æ&–Æ—G’6Æ÷G2ÂæBW†—7F–ærFV6†W"W‡Vç6R&V6÷&G2f–Æ&ÆRâ7F—fRFV6†W"Ö–æ–&–æF–æw2&VÖ–âVçF–Â&öÆÆ÷WBà¢ÒfÆ–FF–öã¢#‚fö7W6VBFW7G2ÂG—U67&—BÂÖ–æ–7–çF‚Â#b×vRVF—BÂW†7BFö7VÖVçB7–æ2ÂF–fb6†V6·2Â&VBÖöæÇ’&V6öæ6–Æ–F–öâÂæBÆö6Â÷&öGV7F–öâ“×vR'V–ÆG272â&öGV7F–öâf3VS–f†2Ö–w&F–öç2ÂÓ"öæÆ–æRÂ†VÇF‚#ÂæBöæR7&öã²ÆÂf÷W"FV6†W"VæGö–çG2&WGW&âDÔ”âC2æBæöç–Ö÷W2CÂv†–ÆRDÔ”â66†VGVÆR&VÖ–ç2#âf—'7B&÷VæB×FV6†W"†öæR&Vw&W76–öâ&VÖ–ç2à 

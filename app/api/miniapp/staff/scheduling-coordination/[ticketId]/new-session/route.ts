@@ -23,6 +23,7 @@ function parseInput(body: any, ticketId: string) {
   const startAt = new Date(clean(body?.startAt, 80));
   return {
     ticketId,
+    studentId: null,
     subjectId: clean(body?.subjectId, 80),
     levelId: clean(body?.levelId, 80) || null,
     teacherId: clean(body?.teacherId, 80),
@@ -73,6 +74,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ ticketId: stri
         {
           userId: access.auth.user.id,
           ticketId,
+          studentId: null,
           subjectId: input.subjectId,
           levelId: input.levelId,
           teacherId: input.teacherId,
@@ -92,6 +94,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ ticketId: stri
       !payload ||
       payload.userId !== access.auth.user.id ||
       payload.ticketId !== ticketId ||
+      payload.studentId !== null ||
       payload.subjectId !== input.subjectId ||
       payload.levelId !== input.levelId ||
       payload.teacherId !== input.teacherId ||
@@ -109,6 +112,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ ticketId: stri
       name: access.auth.user.name,
       role: access.auth.user.role,
     });
+    if (!applied.ticket) return bad("排课工单状态已变化，请重新打开。", 409);
     if (applied.ticket.parentVisible && applied.ticket.studentId) {
       await queueMiniappNotificationsForStudent({
         studentId: applied.ticket.studentId,

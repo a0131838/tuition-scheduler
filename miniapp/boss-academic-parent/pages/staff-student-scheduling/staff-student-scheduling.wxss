@@ -1,0 +1,174 @@
+.page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 28rpx;
+  background: #f5f6f7;
+  color: #202124;
+}
+
+.top {
+  padding: 12rpx 4rpx 24rpx;
+}
+
+.eyebrow {
+  color: #c84b05;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.title {
+  margin-top: 8rpx;
+  font-size: 42rpx;
+  font-weight: 800;
+}
+
+.subtitle,
+.hint {
+  color: #6b6f76;
+  font-size: 24rpx;
+  line-height: 1.55;
+}
+
+.subtitle {
+  margin-top: 8rpx;
+}
+
+.section {
+  margin-bottom: 22rpx;
+  padding: 26rpx;
+  border: 1rpx solid #e2e4e7;
+  border-radius: 8rpx;
+  background: #ffffff;
+}
+
+.section-title {
+  margin-bottom: 18rpx;
+  font-size: 30rpx;
+  font-weight: 800;
+}
+
+.section-hint {
+  margin: -8rpx 0 20rpx;
+}
+
+.list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 96rpx;
+  padding: 18rpx 0;
+  border-top: 1rpx solid #eceef0;
+}
+
+.list-row:first-of-type {
+  border-top: 0;
+}
+
+.label {
+  margin-bottom: 8rpx;
+  color: #4f5358;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.arrow {
+  color: #c84b05;
+  font-size: 44rpx;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18rpx;
+}
+
+.field {
+  min-width: 0;
+  margin-bottom: 18rpx;
+}
+
+.field.wide {
+  grid-column: 1 / -1;
+}
+
+.picker,
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1rpx solid #d7dade;
+  border-radius: 6rpx;
+  background: #ffffff;
+  color: #202124;
+  font-size: 26rpx;
+}
+
+.picker {
+  min-height: 82rpx;
+  padding: 22rpx 20rpx;
+}
+
+textarea {
+  height: 180rpx;
+  padding: 20rpx;
+}
+
+.muted,
+.empty {
+  color: #85898f;
+}
+
+.empty {
+  padding: 24rpx 0;
+  font-size: 25rpx;
+}
+
+button {
+  min-height: 84rpx;
+  border-radius: 6rpx;
+  font-size: 27rpx;
+  font-weight: 700;
+}
+
+.primary {
+  margin-top: 20rpx;
+  background: #ec5e0a;
+  color: #ffffff;
+}
+
+.secondary {
+  margin-top: 8rpx;
+  background: #fff1e8;
+  color: #a93d00;
+}
+
+.outline {
+  margin-top: 6rpx;
+  border: 1rpx solid #ec5e0a;
+  background: #ffffff;
+  color: #c84b05;
+}
+
+.preview {
+  margin-top: 20rpx;
+  padding: 22rpx;
+  border-left: 6rpx solid #ec5e0a;
+  background: #fff7f2;
+  font-size: 25rpx;
+  line-height: 1.65;
+}
+
+.preview-title {
+  margin-bottom: 8rpx;
+  color: #9f3b03;
+  font-weight: 800;
+}
+
+.coordination {
+  border-top: 6rpx solid #ec5e0a;
+}
+
+.loading {
+  padding-top: 160rpx;
+  text-align: center;
+  color: #6b6f76;
+}

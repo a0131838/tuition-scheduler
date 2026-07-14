@@ -1,8763 +1,236 @@
-# CHANGELOG LIVE
-
-This file is the single source of truth for what changed in production.
-
-## Entry Template
-
-- Release ID:
-- Date/Time (Asia/Shanghai):
-- Deployment status:
-- Scope:
-- Key files:
-- Risk impact (if any):
-- Verification:
-- Rollback point:
-
----
-
-## 2026-07-14-r251
-
-- Release ID: `2026-07-14-r251`
-- Date/Time (Asia/Shanghai): `2026-07-14`
-- Deployment status: `READY`
-- Scope: keep long Credit Note numbers on one fitted line in the PDF header so they cannot overlap the original-invoice row.
-- Key files:
-  - `app/api/exports/partner-credit-note/[id]/route.ts`
-- Risk impact (if any): Low and isolated to the new Credit Note PDF header. No database, workflow, amount, permission, invoice, receipt or settlement behavior changes.
-- Verification: TypeScript, backend regression, production build and a rendered long-number PDF preview are required before marking live.
-- Rollback point: `ba72d02` (`2026-07-14-r250`).
-
----
-
-## 2026-07-14-r250
-
-- Release ID: `2026-07-14-r250`
-- Date/Time (Asia/Shanghai): `2026-07-14`
-- Deployment status: `LIVE` at runtime commit `ba72d02`
-- Scope: add an isolated Credit Note ledger for partner invoices, including partial line credits, independent tracking numbers, draft/issue/void controls, adjusted-net display and a printable PDF linked to the original invoice.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260714180000_add_partner_credit_notes/migration.sql`
-  - `lib/partner-credit-notes.ts`
-  - `lib/partner-billing.ts`
-  - `app/admin/reports/partner-settlement/billing/page.tsx`
-  - `app/api/exports/partner-credit-note/[id]/route.ts`
-  - `tests/partner-credit-notes.test.ts`
-  - `tests/partner-credit-note-migration-safety.test.ts`
-  - `docs/tasks/TASK-20260714-partner-credit-notes.md`
-- Risk impact (if any): Medium and isolated to partner billing. The migration creates only `CreditNote` and `CreditNoteLine`; it does not alter existing invoice JSON, receipts, settlements, students, packages, lessons, attendance or payroll. Drafts do not change adjusted totals. Only issued, non-void notes reduce the displayed net. Existing invoices with any Credit Note history cannot be deleted, and existing receipts remain unchanged for finance review.
-- Verification: Prisma validation and generation, TypeScript, all 66 backend tests, migration-safety assertions, the full 193-page production build and `git diff --check` pass. The New Oriental case is covered as an SGD 270 partial credit against `RGT-202606-0019`. Production has 105 completed migrations, PM2 is online with zero restarts, `/admin/login` returns `200`, and post-deploy protected counts and billing JSON hashes match the pre-deploy baseline. SOP capture drafts were cleaned back to zero Credit Notes and zero lines.
-- Rollback point: previous production runtime `60d00d8` (`2026-07-14-r249`); deployed feature commit is `ba72d02`.
-
----
-
-## 2026-07-14-r249
-
-- Release ID: `2026-07-14-r249`
-- Date/Time (Asia/Shanghai): `2026-07-14`
-- Deployment status: `LIVE` at runtime commit `60d00d8`
-- Scope: differentiate university-stage care into university academic management, postgraduate preparation and internship/employment support, with programme-specific scopes and owner roles, a university profile, academic position, adult-student consent and granular parent-report eligibility.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260714113000_add_care_university_profiles/migration.sql`
-  - `lib/care-validation.ts`
-  - `lib/care-management.ts`
-  - `app/admin/care/page.tsx`
-  - `app/admin/care/[id]/page.tsx`
-  - `app/admin/care/_components/CareProgramSetupFields.tsx`
-  - `tests/care-university-config.test.ts`
-  - `docs/tasks/TASK-20260714-care-university-differentiation.md`
-- Risk impact (if any): Medium and isolated to CARE configuration. The migration adds one enum value, one consent enum and one university-profile table; no existing project or protected teaching/finance table is updated. Both pre-university programme defaults remain byte-for-byte equivalent in tests. Existing university projects retain earlier selected scopes and show them as retained until a manager reviews them. University parent-report eligibility is blocked until adult-student consent and at least one authorized section are recorded.
-- Verification: Prisma validation and generation, TypeScript, all 60 backend tests and the full 193-page production build pass. Production has 104 completed migrations, including the new university-profile table and postgraduate enum value. PM2 is online with zero restarts and `/admin/login` returns `200`. Authenticated production browser checks passed programme switching for all five care programmes, retained-scope display on the existing NUS draft, university-profile save, consent blocking before authorization, parent-report eligibility after limited authorization, and desktop/mobile layout without horizontal overflow. The temporary student, project, profile, activity, session and three associated audit rows were removed with zero residue. Protected baselines returned to 89 students, 78 packages, 1,899 sessions, 1,711 attendance rows, 34 partner settlements and 2/0/1/0/0 care engagements/plans/activities/tasks/attachments; the two real projects and their selected scopes remained unchanged.
-- Rollback point: previous production runtime `7bf4b04` (`2026-07-14-r248`); deployed runtime commit is `60d00d8`.
-
----
-
-## 2026-07-14-r248
-
-- Release ID: `2026-07-14-r248`
-- Date/Time (Asia/Shanghai): `2026-07-14`
-- Deployment status: `LIVE` at runtime commit `7bf4b04`
-- Scope: add private evidence attachments and structured school-communication sources to the isolated full-care workspace, with project-scoped access, activity/task links, archive/restore and audit history.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260714100000_add_care_evidence_attachments/migration.sql`
-  - `lib/care-evidence-files.ts`
-  - `lib/care-management.ts`
-  - `lib/care-validation.ts`
-  - `app/admin/care/[id]/page.tsx`
-  - `app/admin/care/_components/CareAttachmentUploader.tsx`
-  - `app/api/admin/care/engagements/[id]/attachments/route.ts`
-  - `app/api/admin/care/attachments/[id]/file/route.ts`
-  - `tests/care-evidence.test.ts`
-  - `docs/tasks/TASK-20260714-care-evidence-attachments.md`
-- Risk impact (if any): Medium and isolated to CARE. Files are stored under a private S3/local CARE path and every download rechecks care-project access. The migration only adds one enum and one table; it does not alter students, sessions, attendance, packages, partner settlement, payroll, invoices, receipts or finance settings. Parent delivery remains disabled; `PARENT` means eligible for a later reviewed report, not immediately visible.
-- Verification: Prisma validation, TypeScript, all 53 backend tests and the full 193-page production build pass. Production-mode Playwright used a temporary student/project to upload a school-email file, link it to a school update, open/download it, archive it and restore it. Production deployment found all 103 migrations current, PM2 online with zero restarts and `/admin/login` returning `200`. A second temporary project on `sgtmanage.com` uploaded and listed a school-email file; unauthenticated access returned `401`, authorized access returned a private signed `302`, and the signed object returned the original content. The temporary student, session, project, attachment, audit rows and S3 objects were cleaned to zero. Before/after counts remained 88 students, 78 packages, 1,895 sessions, 1,711 attendance rows, 34 partner settlements and 1/0/1/0/0 care engagements/plans/activities/tasks/attachments.
-- Rollback point: current production runtime `a8a261f` (`2026-07-13-r246`); immediate Git parent `1d1e395` is the prepared `2026-07-14-r247` parent service-progress source.
-
----
-
-## 2026-07-14-r247
-
-- Release ID: `2026-07-14-r247`
-- Date/Time (Asia/Shanghai): `2026-07-14`
-- Deployment status: `READY`
-- Scope: add the native parent service-progress center for all students, with this-week lesson/feedback/request summaries, responsible person, next step, parent-visible action items, and a unified timeline of lessons, feedback, requests, and formally published full-care updates.
-- Key files:
-  - `app/api/miniapp/students/[studentId]/service-progress/route.ts`
-  - `lib/miniapp-parent-service-progress.ts`
-  - `miniapp/boss-academic-parent/pages/progress/*`
-  - `miniapp/boss-academic-parent/pages/home/*`
-  - `tests/miniapp-parent-service-progress.test.ts`
-  - `docs/tasks/TASK-20260714-miniapp-parent-service-progress.md`
-- Risk impact (if any): Medium read-side and privacy-sensitive parent experience. The endpoint requires parent report permission, respects schedule and feedback permissions, reads only parent-visible Tickets, and exposes full-care activities only when published to parents. It does not add database tables or any write path. All 88 current students have a null service type and therefore temporarily receive ordinary-course wording without changing stored data; management must classify them before relying on type-specific messaging.
-- Verification: 49 existing backend tests plus 5 new progress tests and 4 retained calendar tests pass; TypeScript, all native-miniapp JavaScript syntax, the 27-page release audit, an authenticated read-only real-data endpoint check, and the full 193-page production build pass. The real-data call returned HTTP 200; one active care engagement currently has zero parent-published activities and zero parent-visible action tasks. Physical-phone confirmation remains for the next experience version.
-- Rollback point: `2026-07-13-r246` (`a8a261f`).
-
----
-
-## 2026-07-13-r246
-
-- Release ID: `2026-07-13-r246`
-- Date/Time (Asia/Shanghai): `2026-07-13`
-- Deployment status: `LIVE` at runtime commit `a8a261f`
-- Scope: add the native-miniapp visual scheduling calendar with month/week/day views, teacher/campus/course/student filters, daily coordination and overlap indicators, teacher free slots, and date/time handoff into the existing all-student scheduling workflow.
-- Key files:
-  - `app/api/miniapp/staff/schedule/calendar/route.ts`
-  - `lib/miniapp-staff-schedule-calendar.ts`
-  - `prisma/schema.prisma`
-  - `miniapp/boss-academic-parent/pages/staff-schedule/*`
-  - `miniapp/boss-academic-parent/pages/staff-first-scheduling/staff-first-scheduling.js`
-  - `miniapp/boss-academic-parent/pages/staff-coordination-detail/staff-coordination-detail.js`
-  - `tests/miniapp-staff-schedule-calendar.test.ts`
-  - `docs/tasks/TASK-20260713-miniapp-visual-scheduling-calendar.md`
-- Risk impact (if any): Medium read-side and navigation change. The calendar adds a range query and operational overlap indicators but does not add a scheduling write path. Prisma `relationJoins` is enabled so this query can load nested relations in one database query; other Prisma calls keep their existing strategy. Formal scheduling remains ADMIN-only and continues through the existing signed preview and second confirmation. CS can coordinate but not write Sessions; teachers remain constrained to their own schedule.
-- Verification: 49 existing backend tests and 4 new calendar tests pass; TypeScript, JavaScript syntax, the 26-page release audit, a 42-day real-data read, and the full 193-page production build pass. Real data returned 244 visible lessons across 49 teachers after hiding one fully cancelled lesson, and produced 124 free slots for a selected teacher. Single-query relation loading reduced the local 42-day read from about 16 seconds to 2.4 seconds. Production improved from 62.64 seconds to 9.98 seconds for 42 days and returned 7 days in 8.64 seconds; PM2 is online with zero restarts, 102 migrations are current, health is 200, and one reminder cron remains. Physical-phone visual confirmation remains for the next experience version.
-- Rollback point: `2026-07-13-r245` (`4276638`).
-
----
-
-## 2026-07-13-r245
-
-- Release ID: `2026-07-13-r245`
-- Date/Time (Asia/Shanghai): `2026-07-13`
-- Deployment status: `READY`
-- Scope: add a complete parent logout flow to the authenticated miniapp student page, including confirmation, server-session invalidation, local student/session cleanup, and return to the parent login page.
-- Key files:
-  - `miniapp/boss-academic-parent/pages/students/students.js`
-  - `miniapp/boss-academic-parent/pages/students/students.wxml`
-  - `scripts/audit-miniapp-release.ts`
-  - `tests/miniapp-login-entry.test.ts`
-  - `docs/tasks/TASK-20260713-miniapp-parent-logout.md`
-- Risk impact (if any): Low and client-side integration only. The existing parent logout endpoint is reused without backend changes. Parent logout clears only the parent session and selected student; an employee session on the same WeChat account is not deleted.
-- Verification: all native-miniapp JavaScript syntax checks, 18 focused tests, the 26-page release audit, TypeScript, and the full 192-page production build pass. The logout-flow test executes the confirmation path and verifies server logout, parent-session cleanup, selected-student cleanup, parent-portal retention, and login-page relaunch in order. Physical-phone confirmation remains for the next experience version.
-- Rollback point: `2026-07-13-r244` (`62d6afc`).
-
----
-
-## 2026-07-13-r244
-
-- Release ID: `2026-07-13-r244`
-- Date/Time (Asia/Shanghai): `2026-07-13`
-- Deployment status: `READY`
-- Scope: remove the employee-portal switch from the authenticated parent student page so the parent experience stays entirely parent-facing after login.
-- Key files:
-  - `miniapp/boss-academic-parent/pages/students/students.js`
-  - `miniapp/boss-academic-parent/pages/students/students.wxml`
-  - `scripts/audit-miniapp-release.ts`
-  - `tests/miniapp-login-entry.test.ts`
-  - `docs/tasks/TASK-20260713-miniapp-authenticated-parent-purity.md`
-- Risk impact (if any): Low and client-side only. Employee login remains available from the unauthenticated login screen, and the employee workbench still allows returning to the parent portal. Authentication APIs, tokens, bindings, permissions, and business data are unchanged.
-- Verification: all native-miniapp JavaScript syntax checks, 17 focused tests, the 26-page release audit, TypeScript, and the full 192-page production build pass. The release audit now fails if authenticated parent pages contain employee-entry wording or employee-login navigation; WeChat DevTools recompiled the package and confirmed the employee-to-parent journey still opens correctly.
-- Rollback point: `2026-07-13-r243` (`a350bf5`).
-
----
-
-## 2026-07-13-r243
-
-- Release ID: `2026-07-13-r243`
-- Date/Time (Asia/Shanghai): `2026-07-13`
-- Deployment status: `READY`
-- Scope: separate parent and employee login journeys, remove invitation binding from the first-screen hierarchy, remember the last-used portal, and retain low-priority switching for dual-role WeChat users.
-- Key files:
-  - `miniapp/boss-academic-parent/app.js`
-  - `miniapp/boss-academic-parent/app.wxss`
-  - `miniapp/boss-academic-parent/pages/login/*`
-  - `miniapp/boss-academic-parent/pages/staff-login/*`
-  - `miniapp/boss-academic-parent/pages/students/*`
-  - `miniapp/boss-academic-parent/pages/staff-home/*`
-  - `scripts/audit-miniapp-release.ts`
-  - `tests/miniapp-login-entry.test.ts`
-  - `docs/tasks/TASK-20260713-miniapp-login-portal-separation.md`
-- Risk impact (if any): Low and client-side only. Authentication endpoints, permissions, tokens, invitations, and bindings are unchanged. The main remaining risk is stored-session behavior on a physical WeChat device; dual-role users retain explicit portal switches after login.
-- Verification: all miniapp JavaScript syntax checks, 17 focused tests, the 26-page release audit, TypeScript, and the full 192-page production build pass. WeChat DevTools on an iPhone 12/13 simulator confirms the parent-first hierarchy, separate employee page, and two-way portal navigation render without overlap.
-- Rollback point: `2026-07-13-r242` (`d15016a`).
-
----
-
-## 2026-07-13-r242
-
-- Release ID: `2026-07-13-r242`
-- Date/Time (Asia/Shanghai): `2026-07-13`
-- Deployment status: `READY`
-- Scope: make the shared admin workspace title and hint follow the current client-side route so leaving Full Care no longer leaves `Full Care / å…¨æ‰˜ç®¡` stuck above unrelated pages.
-- Key files:
-  - `app/admin/layout.tsx`
-  - `app/admin/_components/AdminWorkspaceContextClient.tsx`
-  - `app/admin/_components/adminWorkspaceContext.ts`
-  - `tests/admin-workspace-context.test.ts`
-  - `package.json`
-  - `docs/tasks/TASK-20260713-admin-workspace-context-navigation.md`
-  - `docs/å…¨æ‰˜ç®¡ä¸šåŠ¡ç³»ç»Ÿæ€»ä½“è§„åˆ’-20260713.md`
-- Risk impact (if any): Low and display-only. The change moves existing title/hint selection into a client route-aware component. It does not change permissions, navigation destinations, schemas, student data, care records, scheduling, attendance, packages, partner settlement, payroll, invoices, receipts, or finance settings.
-- Verification: TypeScript passes; all 49 backend tests pass; the full 192-page production build passes. A production-mode Playwright flow with one temporary admin session verifies `Full Care -> Student Sources -> Full Care` without page refresh: the top title changes to `Admin Workspace / ç®¡ç†å·¥ä½œå°` on Student Sources, contains no Full Care label there, and restores Full Care on return. Temporary QA sessions were cleaned to zero.
-- Rollback point: `2026-07-13-r241` documentation-aligned head `16afda6` (production runtime `1a553e1`).
-- Production commit: `d15016a48825f6c61f24917937a19791c9d82c4a`.
-- Deployment result: backup `tuition-scheduler_2026-07-13_192426.dump` completed; 102 migrations remain current with none applied; the 192-page server build passed; PM2 is online with zero restarts; `/admin/login` returns `200`. Authenticated production Playwright again passed `Full Care -> Student Sources -> Full Care`, and the temporary session count returned to zero. Packages, attendance totals, package transactions, partner settlements, protected finance-setting hashes, and existing care counts remained unchanged. Session count changed from 1895 to 1891 because Eva separately used the audited `delete_safe` workflow four times between 19:22 and 19:25; the four audit rows exactly account for the difference and are unrelated to this display-only release.
-
----
-
-## 2026-07-13-r241
-
-- Release ID: `2026-07-13-r241`
-- Date/Time (Asia/Shanghai): `2026-07-13`
-- Deployment status: `LIVE`
-- Scope: make shared packages available to every linked student while isolating one-to-one lessons, feedback, and reminders by the session's actual student.
-- Key files:
-  - `lib/session-students.ts`
-  - `lib/miniapp-first-scheduling.ts`
-  - `lib/miniapp-course-reminder-coverage.ts`
-  - `lib/miniapp-feedback-notification.ts`
-  - `app/api/miniapp/students/[studentId]/*`
-  - `app/api/miniapp/feedbacks/[feedbackId]/route.ts`
-  - `app/api/miniapp/staff/scheduling-coordination/[ticketId]/route.ts`
-  - `tests/miniapp-first-scheduling.test.ts`
-  - `tests/miniapp-feedback-notification.test.ts`
-  - `docs/tasks/TASK-20260713-miniapp-shared-package-student-scope-fix.md`
-- Risk impact (if any): Medium and corrective. The release narrows parent-visible lesson, feedback, and reminder reads for capacity-one classes to the actual session student, while broadening internal scheduling-package eligibility to include explicitly shared packages. It does not rewrite data or change package balances, ledger deductions, finance gates, attendance, payroll, invoices, receipts, or financial-document access.
-- Verification: TypeScript, 22 focused tests, the 26-page miniapp release audit, and the full 192-page production build pass. Read-only real-data checks show Daisy ready with the shared package, no prerequisite blocker, 24 correctly attributed future lessons, and zero foreign explicit students; Louis is ready for renewal with zero future lessons instead of inheriting Daisy's schedule.
-- Rollback point: `2026-07-13-r240` documentation-aligned head `efff27a` (production runtime `caa9cbd`).
-- Production commit: `1a553e11d5f4d69528bc759dad49f37f7df408d5`.
-- Deployment result: release-doc gate and the 192-page server build passed; 102 migrations remain current with none applied; PM2 is online with zero restarts; `/admin/login` returns `200`. Authenticated production miniapp API checks return Daisy as ready with `101å°æ—¶15åˆ†é’Ÿ Â· å…±äº«è¯¾åŒ…ä¸»å­¦ç”Ÿï¼šçŽ‹å˜‰æ¯…ï¼ˆLouisï¼‰` and Louis as ready for renewal with `101å°æ—¶15åˆ†é’Ÿ Â· ä¸Ž çŽ‹é’°æ¾„ï¼ˆDaisyï¼‰ å…±ç”¨`; neither has a prerequisite blocker.
-
----
-
-## 2026-07-13-r240
-
-- Release ID: `2026-07-13-r240`
-- Date/Time (Asia/Shanghai): `2026-07-13`
-- Deployment status: `LIVE`
-- Scope: repair the full-care detail-page Server Action boundary discovered while producing the operator SOP, add a focused regression guard, and publish the complete 20-page full-care training SOP with real annotated system screenshots.
-- Key files:
-  - `app/admin/care/[id]/page.tsx`
-  - `tests/care-server-action-safety.test.ts`
-  - `package.json`
-  - `docs/SOP-æ•™åŠ¡-å…¨æ‰˜ç®¡å·¥ä½œå°å®Œæ•´æ“ä½œæµç¨‹-åŸ¹è®­ç‰ˆ-20260713.html`
-  - `docs/assets/sop-æ•™åŠ¡-å…¨æ‰˜ç®¡å·¥ä½œå°å®Œæ•´æ“ä½œ-20260713/annotated/*`
-  - `docs/å…¨æ‰˜ç®¡ä¸šåŠ¡ç³»ç»Ÿæ€»ä½“è§„åˆ’-20260713.md`
-  - `docs/tasks/TASK-20260713-full-care-action-safety-and-sop.md`
-- Risk impact (if any): Low and isolated. The runtime change only moves the care action redirect/error helper outside the page component so Next.js can serialize each Server Action. It does not change schemas, permissions, service validation, page layout, scheduling, attendance, packages, partner settlement, payroll, invoices, receipts, or existing finance data.
-- Verification: TypeScript, 46 backend tests, and the full 192-page production build pass. A production-mode Playwright flow used a temporary student and care project to submit status activation, configuration save, stage plan, HIGH-risk parent-summary update, automatic linked task creation, and DONE completion evidence; persisted values matched expectations. Cleanup was verified at zero temporary students, sessions, engagements, plans, activities, and tasks. The SOP renders as 20 A4 landscape pages (2.33 MB); visual contact-sheet review and key-text extraction pass.
-- Rollback point: web production commit `f6b5519`; immediate Git parent `327f8aa` contains only the already-prepared native-miniapp source refresh on top of r238.
-- Production commit: `caa9cbda565bfe607e2c8b6b4e82b3c4a15e5340`.
-- Deployment result: backup `tuition-scheduler_2026-07-13_181341.dump` completed; 102 migrations are current; the 192-page production build passed; PM2 is online with zero restarts; `/admin/login` returns `200`; unauthenticated `/admin/care` redirects to login; pre/post teaching, package, partner-settlement, and protected-finance baselines match exactly; all four full-care business tables remain empty.
-
----
-
-## 2026-07-13-r239
-
-- Release ID: `2026-07-13-r239`
-- Date/Time (Asia/Shanghai): `2026-07-13`
-- Deployment status: `READY`
-- Scope: refresh the native miniapp visual language around the official Boss/GTIA logo, remove internal rollout-style copy, and repair all three staff search experiences so typing, keyboard confirmation, explicit query, clearing, and overlapping requests behave consistently.
-- Key files:
-  - `miniapp/boss-academic-parent/assets/boss-logo.png`
-  - `miniapp/boss-academic-parent/app.json`
-  - `miniapp/boss-academic-parent/app.wxss`
-  - `miniapp/boss-academic-parent/pages/**/*.{wxml,wxss,js}`
-  - `miniapp/boss-academic-parent/README.md`
-  - `scripts/audit-miniapp-release.ts`
-  - `docs/tasks/TASK-20260713-miniapp-ui-search-brand-refresh.md`
-  - `docs/å°ç¨‹åºä¸Žå®¶é•¿ç«¯å…¨ç¨‹æ‰˜ç®¡è§„åˆ’-20260709.md`
-- Risk impact (if any): Low and client-side only. This release does not change APIs, permissions, schedules, attendance, packages, finance, notifications, database schema, or server business logic. The main remaining risk is visual/interaction variance on physical WeChat devices; employee data could not be reloaded during one DevTools pass because the existing remote request timed out, so experience-version search regression remains required before upload.
-- Verification: all miniapp JavaScript syntax and JSON parsing pass; the 26-page release audit passes with AppID, production HTTPS, logo-orange navigation, standard search controls, stale-request protection, mock login off, URL checking on, source maps off, and zero errors; 11 focused scheduling/teacher tests, TypeScript, the full 192-page production build, diff checks, and WeChat DevTools compilation with 0 errors/0 warnings pass. Login visual inspection confirms the official logo and orange/charcoal/gray palette render correctly.
-- Rollback point: `2026-07-13-r238` (`f6b5519`).
-
----
-
-## 2026-07-13-r238
-
-- Release ID: `2026-07-13-r238`
-- Date/Time (Asia/Shanghai): `2026-07-13`
-- Deployment status: `LIVE`
-- Scope: add the isolated internal full-care workspace for selectable students, service scope, responsibility team, stage plans, evidence-based updates, risk controls, and tasks without changing teaching or finance workflows.
-- Key files:
-  - `app/admin/care/*`
-  - `lib/care-access.ts`
-  - `lib/care-management.ts`
-  - `lib/care-validation.ts`
-  - `prisma/migrations/20260713160000_add_care_management_core/migration.sql`
-  - `tests/care-validation.test.ts`
-  - `tests/care-migration-safety.test.ts`
-  - `docs/tasks/TASK-20260713-full-care-core-workspace.md`
-  - `docs/å…¨æ‰˜ç®¡ä¸šåŠ¡ç³»ç»Ÿæ€»ä½“è§„åˆ’-20260713.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Medium and isolated. The migration adds only CARE enums, workspace access, five new care tables, foreign keys, and indexes. The care service never writes packages, package transactions, sessions, attendance, partner settlement, payroll, invoices, receipts, or Business Accounts. Parent publication and automatic pilot-student activation are not included.
-- Verification: Prisma validate, TypeScript, 45 backend regressions, migration non-intrusion assertions, diff checks, exact planning-document sync, and two full 192-page production builds pass. Read-only production baseline records 88 students, 78 packages, 1895 sessions, 1704 attendances, 34 partner settlements, package/ledger minute and amount totals, plus hashes of protected billing, receipt, payroll-publish, and Business Accounts settings. The new migration is confirmed pending before deploy.
-- Rollback point: production commit `7ebbbc68eda4237d5be045d3e3bdc645b5bd64c6` before `2026-07-13-r238`.
-
----
-
-## 2026-07-13-r237
-
-- Release ID: `2026-07-13-r237`
-- Date/Time (Asia/Shanghai): `2026-07-13`
-- Deployment status: `LIVE`
-- Scope: add a role-specific teacher mobile workbench to the native miniapp with future availability maintenance, leave/reschedule entry, personal expense submission/status, and monthly teaching history, while preserving the existing own-schedule, attendance, and feedback workflow.
-- Key files:
-  - `app/api/miniapp/staff/teacher/*`
-  - `lib/miniapp-teacher-workbench.ts`
-  - `miniapp/boss-academic-parent/pages/staff-teacher-*`
-  - `miniapp/boss-academic-parent/pages/staff-home/*`
-  - `tests/miniapp-teacher-workbench.test.ts`
-  - `docs/tasks/TASK-20260713-miniapp-teacher-mobile-workbench.md`
-- Risk impact (if any): Medium and constrained. Teacher endpoints require a TEACHER staff session with a linked teacher profile. Availability writes are limited to the teacher's own next 30 days; leave/reschedule remains a Ticket and never changes a Session directly; expenses remain the teacher's own claims and preserve existing file, duplicate, audit, approval, and payment rules; history is read-only and excludes payroll amounts.
-- Verification: 28 focused teacher/scheduling/conflict/auth/notification tests, TypeScript, all miniapp JavaScript syntax, the 26-page release audit, exact planning-document sync, diff checks, read-only real-data reconciliation, and local/production 191-page builds pass. Production deployed at `fc0ee9f` with 101 migrations current, PM2 online, health 200, and one reminder cron. ADMIN gets 403 and unauthenticated callers get 401 from all four teacher-only read endpoints, while the existing ADMIN staff-schedule endpoint remains 200. No teacher session or business write was created because active teacher miniapp bindings remain 0.
-- Rollback point: `2026-07-13-r236`.
-
----
-
-## 2026-07-13-r236
-
-- Release ID: `2026-07-13-r236`
-- Date/Time (Asia/Shanghai): `2026-07-13`
-- Deployment status: `LIVE`
-- Scope: change the staff-miniapp scheduling center from a restricted 25-student attention list into an all-student scheduling entry, while retaining the 25 students as an operational attention filter rather than an eligibility rule.
-- Key files:
-  - `lib/miniapp-first-scheduling.ts`
-  - `app/api/miniapp/staff/first-scheduling/route.ts`
-  - `miniapp/boss-academic-parent/pages/staff-first-scheduling/*`
-  - `miniapp/boss-academic-parent/pages/staff-home/*`
-  - `tests/miniapp-first-scheduling.test.ts`
-  - `docs/tasks/TASK-20260713-miniapp-all-student-scheduling.md`
-- Risk impact (if any): Medium and constrained. All students become visible and can enter coordination, including students with existing future lessons or missing packages. Final Session writes still require ADMIN permission and the unchanged package, finance gate, qualification, availability, conflict, duplicate, preview-token, second-confirmation, and transaction checks. Creating a coordination Ticket does not bypass scheduling prerequisites.
-- Verification: 28 focused scheduling/conflict/auth/notification tests, TypeScript, miniapp JavaScript syntax, the 22-page release audit, exact planning-document sync, diff checks, and local/production 187-page builds pass. Production deployed at `0ba261c` with 101 migrations current, PM2 online, health 200, and exactly one reminder cron. Authenticated ADMIN GET reports 88 total, 25 attention, 15 first, 34 renewal, 39 scheduled, 46 ready, 42 requiring prerequisites, 4 reusable Tickets, and `canSchedule=true`; the scheduled scope returns an existing future-course student and unauthenticated GET returns 401. No production Ticket or Session was created during verification.
-- Rollback point: `2026-07-13-r235`.
-
----
-
-## 2026-07-13-r235
-
-- Release ID: `2026-07-13-r235`
-- Date/Time (Asia/Shanghai): `2026-07-13`
-- Deployment status: `LIVE`
-- Scope: add a complete staff-miniapp scheduling center for students who have usable active packages but no future lessons, distinguish first scheduling from renewal scheduling, repair the `æŽ’è¯¾è¦æ±‚` ticket-category gap, and allow an ADMIN to create one or 1-12 weekly lessons through the existing preview/confirmation engine.
-- Key files:
-  - `lib/miniapp-first-scheduling.ts`
-  - `lib/miniapp-ticket-new-session.ts`
-  - `lib/miniapp-scheduling-coordination-board.ts`
-  - `app/api/miniapp/staff/first-scheduling/route.ts`
-  - `app/api/miniapp/staff/scheduling-coordination/[ticketId]/new-session/route.ts`
-  - `miniapp/boss-academic-parent/pages/staff-first-scheduling/*`
-  - `miniapp/boss-academic-parent/pages/staff-home/*`
-  - `tests/miniapp-first-scheduling.test.ts`
-  - `docs/tasks/TASK-20260713-miniapp-first-scheduling-center.md`
-- Risk impact (if any): High but constrained. This release creates real Classes, Enrollments, Sessions, Ticket completion records, and AuditLogs only after ADMIN preview and second confirmation. CS can find students and create/reuse a scheduling ticket but cannot write lessons. Existing package finance gates, balance checks, teacher qualification/availability, student/teacher/room conflict checks, duplicate protection, serializable transactions, request notifications, and course reminder cron remain authoritative.
-- Verification: 27 focused scheduling/auth/notification regression tests, TypeScript, miniapp JavaScript syntax, release audit with 22 complete pages, exact planning-document sync, diff checks, and local/production 187-page builds pass. Production deployed at `ea1dcb8` with 101 migrations current, PM2 online, health 200, and exactly one reminder cron. Authenticated ADMIN GET returns 200 with total 25, first 5, renewal 20, ready 24, blocked 1, one returned row for `limit=1`, and `canSchedule=true`; the same endpoint without a staff token returns 401. No production Ticket or Session was created during verification.
-- Rollback point: `2026-07-12-r234`.
-
----
-
-## 2026-07-12-r234
-
-- Release ID: `2026-07-12-r234`
-- Date/Time (Asia/Shanghai): `2026-07-12`
-- Deployment status: `READY`
-- Scope: harden the native miniapp for WeChat review by disabling tracked mock login, pinning the verified base library, disabling source-map upload, adding a repeatable release audit, and producing the privacy/reviewer/upload/submission checklist for version 1.0.0.
-- Key files:
-  - `miniapp/boss-academic-parent/utils/config.js`
-  - `miniapp/boss-academic-parent/project.config.json`
-  - `miniapp/boss-academic-parent/README.md`
-  - `scripts/audit-miniapp-release.ts`
-  - `docs/å°ç¨‹åºæ­£å¼å‘å¸ƒå‡†å¤‡ä¸Žå®¡æ ¸æ¸…å•-20260712.md`
-  - `docs/tasks/TASK-20260712-miniapp-release-readiness.md`
-- Risk impact (if any): Low. This release changes miniapp packaging/review defaults and documentation only. Production API, parent/staff authentication, business routes, database, notification delivery, and server runtime are unchanged. Developers must explicitly make any temporary local mock change and restore it before upload.
-- Privacy intake: contact owner, email, phone, and registered address are confirmed. The owner's initial indefinite-retention preference is recorded but is not approved as submitted wording because code review found no universal physical-file/finance/audit hard-delete path; minimum-necessary business/upload periods and accounting-record classification remain release gates.
-- Verification: automated release audit passes with AppID correct, 21 complete pages, base library 3.15.2, production HTTPS API, URL checking on, source maps off, mock login off, and zero errors. Miniapp JavaScript/JSON syntax, TypeScript, diff checks, exact planning-document sync, and the full 186-page production build also pass. Experience-version parent/staff regression remains after upload.
-- Rollback point: `2026-07-12-r233`.
-
----
-
-## 2026-07-12-r233
-
-- Release ID: `2026-07-12-r233`
-- Date/Time (Asia/Shanghai): `2026-07-12`
-- Deployment status: `LIVE`
-- Scope: notify parents when a teacher first publishes after-class feedback from either desktop or staff miniapp, with an independent parent authorization action and explicit consent-intent accounting despite sharing the official service-completion template with invoices.
-- Key files:
-  - `lib/miniapp-feedback-notification.ts`
-  - `lib/wechat-miniapp-service-subscription.ts`
-  - `lib/miniapp-subscription-config.ts`
-  - `lib/miniapp-reminder-attention.ts`
-  - `app/api/teacher/sessions/[id]/feedback/route.ts`
-  - `app/api/miniapp/staff/schedule/[sessionId]/feedback/route.ts`
-  - `miniapp/boss-academic-parent/pages/home/home.js`
-  - `scripts/send-miniapp-service-notifications.ts`
-  - `tests/wechat-miniapp-subscription.test.ts`
-  - `docs/tasks/TASK-20260712-miniapp-feedback-published-notification.md`
-- Risk impact (if any): Medium and constrained. Only the first feedback publication queues a message; edits do not notify again. Student resolution covers direct, one-to-one, and enrolled class students, while parent delivery remains permission- and consent-gated. Invoice and feedback share one official template ID but keep separate consent-intent buckets, preventing invoice authorization from silently enabling feedback delivery.
-- Verification: official category and keyword APIs were checked; no dedicated feedback template exists and duplicate addition of `æœåŠ¡å®Œæˆé€šçŸ¥` was rejected as already added. TypeScript, nine mapping/student-resolution/consent-intent tests, miniapp and shell syntax, diff check, and local/production 186-page builds passed. Production deployed at `5dcd395` with 101 migrations current, PM2 online, health 200, one cron, and 8/8 configured entries across groups sized 3, 2, 2, and 1. Before authorization there was no learning audit or feedback outbox row. After explicit learning consent, one marked feedback test sent as `SENT` with consent group `learning`, no retry/failure, and no invoice-consent use; Zhao confirmed the WeChat card arrived and displayed normally.
-- Rollback point: `2026-07-12-r232`.
-
----
-
-## 2026-07-12-r232
-
-- Release ID: `2026-07-12-r232`
-- Date/Time (Asia/Shanghai): `2026-07-12`
-- Deployment status: `LIVE`
-- Scope: split request, unpaid, invoice, and receipt subscription authorization into four explicit one-template actions after real-phone evidence showed WeChat returned only the first template from each two-template group.
-- Key files:
-  - `miniapp/boss-academic-parent/pages/home/home.js`
-  - `docs/tasks/TASK-20260712-miniapp-request-finance-notifications.md`
-  - `docs/å°ç¨‹åºä¸Žå®¶é•¿ç«¯å…¨ç¨‹æ‰˜ç®¡è§„åˆ’-20260709.md`
-- Risk impact (if any): Low. Delivery, template IDs, backend consent audit, queueing, finance/request writes, and cron behavior are unchanged. The parent now makes one clear click per service template so the WeChat result is unambiguous.
-- Verification: production consent audit first showed request and invoice `accept` while finance and receipt were absent from grouped callbacks. After the split UI, the test parent recorded request 4, unpaid 1, invoice 2, and receipt 1 accepted quotas. Miniapp syntax, diff check, and local/production 186-page builds passed; production deployed at `60fe07f` with 101 migrations current, one cron, PM2 online, and health 200. Four clearly marked test outbox rows then sent successfully through the production sender with `SENT` 4, retry 0, failure 0, and skip 0; two unrelated no-consent rows remained waiting. Zhao supplied phone screenshots confirming all four WeChat service notifications rendered with the expected request, deadline, invoice, student, amount, account, and date fields.
-- Rollback point: `2026-07-12-r231`.
-
----
-
-## 2026-07-12-r231
-
-- Release ID: `2026-07-12-r231`
-- Date/Time (Asia/Shanghai): `2026-07-12`
-- Deployment status: `LIVE`
-- Scope: complete official WeChat subscription notifications for parent-visible request status changes, unpaid invoices, issued invoices, and finance-approved receipts; add grouped parent consent actions, bounded delivery, and shared staff consent-attention monitoring.
-- Key files:
-  - `lib/wechat-miniapp-service-subscription.ts`
-  - `scripts/send-miniapp-service-notifications.ts`
-  - `lib/student-parent-billing.ts`
-  - `lib/parent-receipt-approval.ts`
-  - `lib/miniapp-reminder-attention.ts`
-  - `app/api/admin/ops/parent-requests/[id]/route.ts`
-  - `app/api/miniapp/staff/parent-requests/[id]/route.ts`
-  - `app/api/miniapp/staff/schedule/[sessionId]/*`
-  - `app/api/miniapp/staff/scheduling-coordination/[ticketId]/*`
-  - `ops/server/scripts/setup_miniapp_course_reminder_cron.sh`
-  - `tests/wechat-miniapp-subscription.test.ts`
-  - `docs/tasks/TASK-20260712-miniapp-request-finance-notifications.md`
-- Risk impact (if any): Medium and constrained. Business events only enqueue best-effort notifications for active linked parents with matching permissions. Delivery requires unused consent for the exact official template, claims rows before sending, retries transient failures at most three times, and skips stale rows after seven days. Receipt messages require completed finance approval. No schema or existing business write rule changes.
-- Verification: TypeScript, six WeChat mapping/quota tests, eight billing/approval regression tests, miniapp syntax, cron shell syntax, diff check, and a full 186-page build passed locally and in production. Production deployed at `f28c99d`; runtime reports 7/7 templates and parent API reports configured groups of 3 course, 2 request/finance, and 2 document templates. ADMIN staff API returns 200 with two current request notifications awaiting consent. Exactly one cron is installed; its automatic service run scanned 2, correctly left 2 waiting for consent, and recorded zero sends, retries, failures, or skips. PM2 is online and `/admin/login` returns 200. Real-parent authorization and controlled display tests remain the external follow-up.
-- Rollback point: `2026-07-12-r230`.
-
----
-
-## 2026-07-12-r230
-
-- Release ID: `2026-07-12-r230`
-- Date/Time (Asia/Shanghai): `2026-07-12`
-- Deployment status: `LIVE`
-- Scope: show family-shared course-reminder quota and next-three-lesson coverage to parents, add a natural reauthorization action on the schedule, and expose due reminders without consent to admin and permitted staff mobile users.
-- Key files:
-  - `lib/wechat-miniapp-subscription.ts`
-  - `lib/miniapp-course-reminder-coverage.ts`
-  - `lib/miniapp-reminder-attention.ts`
-  - `app/api/miniapp/subscriptions/intent/route.ts`
-  - `app/api/miniapp/staff/reminder-attention/route.ts`
-  - `app/api/admin/miniapp-notifications/route.ts`
-  - `app/admin/miniapp-notifications/MiniappNotificationsClient.tsx`
-  - `miniapp/boss-academic-parent/pages/home/*`
-  - `miniapp/boss-academic-parent/pages/schedule/*`
-  - `miniapp/boss-academic-parent/pages/staff-reminder-attention/*`
-  - `tests/wechat-miniapp-subscription.test.ts`
-  - `docs/tasks/TASK-20260712-miniapp-reminder-coverage-and-attention.md`
-- Risk impact (if any): Low to medium and read-focused. Quota and coverage are derived from existing consent audits, successful sends, linked students, and future Sessions. The new staff list is read-only and restricted to ADMIN, CS, or active CS-workspace users. Sending, scheduling, package, attendance, finance, Ticket, and payroll writes are unchanged.
-- Verification: TypeScript, four quota/mapping tests, miniapp JavaScript/JSON syntax, diff check, and full production build passed. Production deployed at `3ffa260` with 101 migrations current and 186 pages built. Parent and permitted-staff production APIs both return 200; the test parent reports 8 accepted, 4 consumed, 4 available and the test Session as `SENT`; staff attention total is 0. PM2 is online, `/admin/login` returns 200, and exactly one reminder cron remains installed.
-- Rollback point: `2026-07-12-r229`.
-
----
-
-## 2026-07-12-r229
-
-- Release ID: `2026-07-12-r229`
-- Date/Time (Asia/Shanghai): `2026-07-12`
-- Deployment status: `LIVE`
-- Scope: recover automatic course reminders when deploy cleanup removes the untracked cron log directory.
-- Key files:
-  - `ops/server/scripts/setup_miniapp_course_reminder_cron.sh`
-  - `ops/server/scripts/deploy_app.sh`
-  - `docs/tasks/TASK-20260712-miniapp-reminder-cron-log-recovery.md`
-- Risk impact (if any): Low. The cron creates its log directory before redirection and is idempotently reinstalled after deploy. Reminder timing, consent, mapping, retries, and business data are unchanged.
-- Verification: shell syntax and diff checks passed; production deployed at `b8f2426`; PM2 is online and `/admin/login` returns 200. Deployment reinstalled exactly one reminder cron and recreated `ops/logs`. Without a manual queue or sender call, the `12:10` cron scanned 13 sessions, queued exactly 1 dedicated test reminder, sent it successfully at `12:10:08`, and persisted `SENT` with no retry, failure, or skip.
-- Rollback point: `2026-07-12-r228`.
-
----
-
-## 2026-07-12-r228
-
-- Release ID: `2026-07-12-r228`
-- Date/Time (Asia/Shanghai): `2026-07-12`
-- Deployment status: `LIVE`
-- Scope: bundle three legitimate one-time course templates into one parent authorization action and consume their quotas independently across future lessons.
-- Key files:
-  - `lib/miniapp-subscription-config.ts`
-  - `lib/wechat-miniapp-subscription.ts`
-  - `scripts/queue-miniapp-course-reminders.ts`
-  - `scripts/send-miniapp-course-reminders.ts`
-  - `ops/server/scripts/deploy_app.sh`
-  - `tests/wechat-miniapp-subscription.test.ts`
-  - `docs/tasks/TASK-20260712-three-template-course-reminder-bundle.md`
-- Risk impact (if any): Medium and constrained. Three official course templates are requested together, but each accepted quota is counted and consumed separately. Existing 24-hour timing, stale-window, retry, and deduplication rules remain unchanged.
-- Verification: exact WeChat fields fetched from the account; three mapping tests, TypeScript, shell syntax, diff check, and full build passed; production deployed at `884e945`; runtime reports 3 configured course templates, joint label `å¼€å¯æœªæ¥ 3 èŠ‚è¯¾æé†’`, one cron entry, PM2 online, and `/admin/login` 200. Real-phone preview returned `accept` for all three template IDs; after the earlier smoke send, the test parent has 7 accumulated course-message quotas available.
-- Rollback point: `2026-07-12-r227`.
-
----
-
-## 2026-07-12-r227
-
-- Release ID: `2026-07-12-r227`
-- Date/Time (Asia/Shanghai): `2026-07-12`
-- Deployment status: `LIVE`
-- Scope: automatically queue and send verified 24-hour WeChat course reminders with terminal-state deduplication, consent-quota gating, bounded retries, and a five-minute server cron.
-- Key files:
-  - `lib/miniapp-notifications.ts`
-  - `lib/wechat-miniapp-subscription.ts`
-  - `scripts/queue-miniapp-course-reminders.ts`
-  - `scripts/send-miniapp-course-reminders.ts`
-  - `ops/server/scripts/setup_miniapp_course_reminder_cron.sh`
-  - `tests/wechat-miniapp-subscription.test.ts`
-  - `docs/tasks/TASK-20260712-miniapp-automatic-course-reminders.md`
-- Risk impact (if any): Medium and constrained. Only due 24-hour reminders with recorded unused consent can call WeChat. Sent/skipped records are not reset, stale reminders are skipped, and 6-hour automation remains disabled.
-- Verification: local unit tests, TypeScript, shell syntax, diff check, and full build passed; production deployed at `7aca10c`; PM2 is online and `/admin/login` returns 200; manual queue scanned 11 sessions and queued 0, sender scanned/sent 0, and the five-minute cron is installed exactly once.
-- Rollback point: `2026-07-12-r226`.
-
----
-
-## 2026-07-12-r226
-
-- Release ID: `2026-07-12-r226`
-- Date/Time (Asia/Shanghai): `2026-07-12`
-- Deployment status: `LIVE`
-- Scope: configure the official course-reminder subscription template, preserve all five template variables across production deploys, and make deployment fetch the requested branch explicitly.
-- Key files:
-  - `ops/server/scripts/deploy_app.sh`
-  - `ops/server/scripts/quick_deploy.sh`
-  - `docs/tasks/TASK-20260712-miniapp-course-template-configuration.md`
-  - `docs/å°ç¨‹åºä¸Žå®¶é•¿ç«¯å…¨ç¨‹æ‰˜ç®¡è§„åˆ’-20260709.md`
-- Risk impact (if any): Low. The parent course-reminder consent entry becomes available when the runtime variable is present, but no outbound WeChat sender is enabled and the other four reminder groups remain hidden. The deploy fetch change only makes the requested branch ref explicit.
-- Verification: shell and configuration checks passed; production deployed at `e9f5f94`; runtime reports 1/5 templates configured with course enabled and the other groups hidden; PM2 is online and `/admin/login` returns 200. Follow-up deploy-fetch hardening is committed locally but awaits GitHub connectivity before source synchronization.
-- Rollback point: `2026-07-11-r225`.
-
----
-
-## 2026-07-11-r225
-
-- Release ID: `2026-07-11-r225`
-- Date/Time (Asia/Shanghai): `2026-07-11`
-- Deployment status: `LIVE`
-- Scope: begin the second staff-miniapp phase with one-session location changes, atomic 2-12 week scheduling, teacher-originated reschedule Tickets, and subscription-message configuration/consent readiness.
-- Key files:
-  - `lib/miniapp-session-location-change.ts`
-  - `lib/miniapp-session-scheduling.ts`
-  - `lib/miniapp-subscription-config.ts`
-  - `app/api/miniapp/staff/schedule/[sessionId]/*`
-  - `app/api/miniapp/subscriptions/intent/route.ts`
-  - `app/api/admin/miniapp-notifications/route.ts`
-  - `app/admin/miniapp-notifications/MiniappNotificationsClient.tsx`
-  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
-  - `miniapp/boss-academic-parent/pages/home/*`
-  - `docs/tasks/TASK-20260711-miniapp-phase-two-operations.md`
-- Risk impact (if any): High but constrained. Location change creates a same-course/same-student branch Class and moves only the selected future Session, preserving the original Class and every other Session. Series scheduling is ADMIN-only, capped at 12 weeks, and all-or-nothing after per-week package and conflict checks. Teacher requests create or update internal `æ”¹è¯¾ç¨‹æ—¶é—´` Tickets but never change a Session directly. Subscription controls remain hidden from parents until template IDs are configured; this release records consent but does not claim outbound WeChat delivery is enabled.
-- Verification:
-  - TypeScript, miniapp JavaScript/WXML, diff, and full Next.js build checks
-  - real-data no-write location and two-week series previews with signed-token tamper rejection
-  - route-level unauthenticated 401, valid preview 200, invalid apply 409, and unchanged Class/Session/Ticket snapshots
-  - teacher-owned future Session request GET 200 and invalid-student POST 409/no-write
-  - parent subscription configuration GET 200 with all five currently missing template IDs correctly reported
-  - production deployment at commit `b09147b`, PM2 online, `/admin/login` 200
-  - production valid location/series previews 200, invalid applies 409, teacher and parent permission checks passed, and no new workflow audit writes were created by testing
-- Rollback point: previous production commit before `2026-07-11-r225`.
-
----
-
-## 2026-07-11-r224
-
-- Release ID: `2026-07-11-r224`
-- Date/Time (Asia/Shanghai): `2026-07-11`
-- Deployment status: `LIVE`
-- Scope: complete the first mobile academic-operations set: link scheduling Tickets to future lessons, handle leave/cancellation with an explicit charge decision, replace the teacher for one future lesson, and create the first one-on-one lesson directly from an open scheduling Ticket when no lesson anchor exists.
-- Key files:
-  - `lib/miniapp-session-cancellation.ts`
-  - `lib/miniapp-session-teacher-replacement.ts`
-  - `lib/miniapp-ticket-new-session.ts`
-  - `lib/miniapp-session-scheduling.ts`
-  - `app/api/miniapp/staff/schedule/[sessionId]/*`
-  - `app/api/miniapp/staff/scheduling-coordination/[ticketId]/*`
-  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
-  - `miniapp/boss-academic-parent/pages/staff-coordination-detail/*`
-  - `docs/tasks/TASK-20260711-miniapp-mobile-academic-actions.md`
-- Risk impact (if any): High but constrained. New writes are ADMIN-only, future-session-only, signed-preview-confirmed, transactionally revalidated, and audited. Cancellation cannot proceed after attendance/deduction records exist; charge and no-charge are explicit. Teacher replacement affects one Session only. Ticket-originated first scheduling requires an active package, a qualified and available teacher, no student/teacher/room conflict, and an exact unique student-name match when a legacy Ticket lacks `studentId`.
-- Verification:
-  - TypeScript, miniapp JavaScript, WXML compatibility, diff, and full Next.js build checks
-  - real-data read-only cancellation previews for charge and no-charge paths
-  - real-data read-only teacher replacement preview and signed-token tamper rejection
-  - real-data read-only first-scheduling preview for Ticket `20260709-009`, including unique legacy student matching
-  - route-level apply rejection checks with unchanged Session, Attendance, Package, and Ticket data
-  - production deployment at commit `888a0a9`, PM2 online, `/admin/login` 200
-  - production authenticated previews return 200 for first scheduling, leave/cancellation, and one-session teacher replacement; unauthenticated access returns 401 and invalid apply tokens return 409
-  - production verification documentation synchronized after the live checks
-- Rollback point: previous production commit before `2026-07-11-r224`.
-
----
-
-## 2026-07-11-r223
-
-- Release ID: `2026-07-11-r223`
-- Date/Time (Asia/Shanghai): `2026-07-11`
-- Deployment status: `READY`
-- Scope: add a dedicated `Need Info` board filter/count and allow permitted mobile staff to assign scheduling Tickets to Jasmine, Eva, Emily, or unassigned from the detail workflow.
-- Key files:
-  - `lib/miniapp-scheduling-coordination-board.ts`
-  - `app/api/miniapp/staff/scheduling-coordination/*`
-  - `miniapp/boss-academic-parent/pages/staff-coordination/staff-coordination.js`
-  - `miniapp/boss-academic-parent/pages/staff-coordination-detail/*`
-  - `docs/tasks/TASK-20260711-miniapp-scheduling-owner-assignment.md`
-- Risk impact (if any): Low to medium. This changes only Ticket owner, coordination status/history, next action, and due date through the existing permission and transition checks. Older miniapp clients that omit owner preserve the existing owner. Session, package, attendance, finance, payroll, and completion behavior are unchanged.
-- Verification:
-  - production-data `Need Info` count is 3
-  - owner option and invalid-owner rejection checks
-  - invalid owner PATCH leaves the real Ticket unchanged
-  - TypeScript, miniapp JavaScript, full build, and diff checks
-- Rollback point: previous production commit before `2026-07-11-r223`.
-
----
-
-## 2026-07-11-r222
-
-- Release ID: `2026-07-11-r222`
-- Date/Time (Asia/Shanghai): `2026-07-11`
-- Deployment status: `READY`
-- Scope: align the staff-miniapp scheduling board with the web Ticket Center by including all six active scheduling-related Ticket types instead of only the exact `æŽ’è¯¾åè°ƒ` type.
-- Key files:
-  - `lib/miniapp-scheduling-coordination-board.ts`
-  - `app/api/miniapp/staff/scheduling-coordination/*`
-  - `miniapp/boss-academic-parent/pages/staff-home/staff-home.wxml`
-  - `miniapp/boss-academic-parent/pages/staff-coordination/*`
-  - `miniapp/boss-academic-parent/pages/staff-coordination-detail/staff-coordination-detail.wxml`
-  - `docs/tasks/TASK-20260711-miniapp-scheduling-board-scope.md`
-- Risk impact (if any): Low to medium. This broadens read/update scope to existing open Tickets of `æŽ’è¯¾åè°ƒ`, `æ”¹è¯¾ç¨‹æ—¶é—´`, `æ–°æŽ’è¯¾`, `è¡¥è¯¾åŠ è¯¾`, `ä¸´æ—¶å–æ¶ˆ&è¯·å‡è¯¾ç¨‹`, and `æ”¹ä¸Šè¯¾è€å¸ˆ`. Permissions, state-transition validation, auditing, Session writes, and Ticket completion rules are unchanged.
-- Verification:
-  - production-data category reconciliation
-  - authenticated board count changed from 1 exact coordination Ticket to 13 open scheduling-related Tickets
-  - per-type count verification
-  - TypeScript, miniapp syntax/JSON, and full build
-- Rollback point: previous production commit before `2026-07-11-r222`.
-
----
-
-## 2026-07-11-r221
-
-- Release ID: `2026-07-11-r221`
-- Date/Time (Asia/Shanghai): `2026-07-11`
-- Deployment status: `READY`
-- Scope: add a dedicated staff-miniapp scheduling-coordination board with open/overdue counts, filters, search, detail access, communication history updates, and follow-up management.
-- Key files:
-  - `lib/miniapp-scheduling-coordination-board.ts`
-  - `app/api/miniapp/staff/scheduling-coordination/*`
-  - `miniapp/boss-academic-parent/pages/staff-home/*`
-  - `miniapp/boss-academic-parent/pages/staff-coordination/*`
-  - `miniapp/boss-academic-parent/pages/staff-coordination-detail/*`
-  - `miniapp/boss-academic-parent/app.json`
-  - `docs/tasks/TASK-20260711-miniapp-coordination-board.md`
-- Risk impact (if any): Medium. ADMIN, CS, and active CS-workspace staff can update open scheduling-coordination Ticket status, communication history, next action, and due date from the miniapp. Teachers and other staff cannot access the board. Ticket completion remains tied to the guarded mobile scheduling workflow; this board cannot directly complete a Ticket or write Sessions.
-- Verification:
-  - ADMIN/CS/teacher/CS-workspace permission checks
-  - authenticated real-data board and detail GET checks
-  - invalid PATCH rejection with unchanged Ticket verification
-  - unauthenticated 401 check
-  - miniapp JavaScript/JSON checks
-  - `npx tsc --noEmit`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-07-11-r221`.
-
----
-
-## 2026-07-11-r220
-
-- Release ID: `2026-07-11-r220`
-- Date/Time (Asia/Shanghai): `2026-07-11`
-- Deployment status: `READY`
-- Scope: let an ADMIN explicitly complete matching open scheduling-coordination Tickets in the same transaction as a successful miniapp lesson create/reschedule operation.
-- Key files:
-  - `lib/miniapp-session-scheduling.ts`
-  - `app/api/miniapp/staff/schedule/[sessionId]/manage/route.ts`
-  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
-  - `docs/tasks/TASK-20260711-miniapp-scheduling-ticket-closure.md`
-- Risk impact (if any): Medium. Ticket completion is optional and defaults to no selection. Only open scheduling-coordination Tickets for the same lesson students and matching course returned by the signed preview can be selected; eligibility is checked again inside the Session write transaction. No teacher, room, campus, package ledger, attendance deduction, billing, receipt, payroll, or OpenClaw behavior changes.
-- Verification:
-  - TypeScript and miniapp JavaScript syntax checks
-  - preview-token eligible-ticket binding and unpreviewed-ticket rejection checks
-  - read-only real-data scheduling preview
-  - no-selection/no-write route smoke check
-  - `npm run build`
-- Rollback point: previous production commit before `2026-07-11-r220`.
-
----
-
-## 2026-07-11-r219
-
-- Release ID: `2026-07-11-r219`
-- Date/Time (Asia/Shanghai): `2026-07-11`
-- Deployment status: `READY`
-- Scope: allow Eva and management ADMIN accounts to create a same-class lesson or reschedule one future lesson from the staff miniapp after a signed conflict-check preview.
-- Key files:
-  - `lib/miniapp-session-scheduling.ts`
-  - `lib/miniapp-staff-session.ts`
-  - `app/api/miniapp/staff/schedule/[sessionId]/manage/route.ts`
-  - `app/api/miniapp/staff/schedule/[sessionId]/route.ts`
-  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
-  - `docs/tasks/TASK-20260711-miniapp-scheduling-writes.md`
-- Risk impact (if any): High. This adds production Session writes from the native miniapp, restricted to ADMIN staff and to one lesson per confirmed operation. It revalidates student, teacher, room, availability, package, duplicate, attendance-lock, and future-time rules immediately before writing. Billing, attendance deduction, package ledger mutation, payroll, and OpenClaw are unchanged.
-- Verification:
-  - ADMIN/CS/TEACHER permission checks
-  - signed preview token and tamper checks
-  - read-only real-data reschedule preview through the staff route
-  - apply-without-preview rejection check
-  - miniapp JavaScript and affected WXML checks
-  - `npx tsc --noEmit`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-07-11-r219`.
-
----
-
-## 2026-07-11-r218
-
-- Release ID: `2026-07-11-r218`
-- Date/Time (Asia/Shanghai): `2026-07-11`
-- Deployment status: `READY`
-- Scope: add a role-aware staff miniapp lesson detail and a mobile scheduling-coordination communication loop that creates or reuses the existing Ticket workflow.
-- Key files:
-  - `lib/miniapp-staff-session.ts`
-  - `app/api/miniapp/staff/schedule/[sessionId]/route.ts`
-  - `app/api/miniapp/staff/schedule/[sessionId]/coordination/route.ts`
-  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
-  - `docs/tasks/TASK-20260711-miniapp-scheduling-coordination.md`
-- Risk impact (if any): Medium. Admin/CS staff can now create or update scheduling-coordination Tickets and append internal communication records from a lesson detail. Teachers remain restricted to their assigned lesson and do not receive coordination-write access. This release does not change lesson times, scheduling execution, attendance deduction, package balances, finance, receipts, payroll, or OpenClaw.
-- Verification:
-  - role-capability unit smoke checks
-  - read-only production-data lesson-detail check
-  - authenticated admin staff detail/coordination GET route smoke check
-  - miniapp JavaScript, JSON, and affected WXML checks
-  - `npx tsc --noEmit`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-07-11-r218`.
-
----
-
-## 2026-07-11-r217
-
-- Release ID: `2026-07-11-r217`
-- Date/Time (Asia/Shanghai): `2026-07-11`
-- Deployment status: `READY`
-- Scope: move parent-request visibility, internal intake notes, communication source, assisted-entry identity, and parent-facing completion result from temporary Ticket text conventions into formal Ticket fields.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260711103000_add_parent_request_visibility_fields/migration.sql`
-  - `lib/miniapp-parent-requests.ts`
-  - `app/api/miniapp/staff/parent-requests/*`
-  - `app/api/miniapp/students/[studentId]/requests/route.ts`
-  - `app/api/miniapp/requests/[ticketId]/route.ts`
-  - `app/api/admin/ops/parent-requests/[id]/route.ts`
-  - `docs/tasks/TASK-20260711-parent-request-formal-fields.md`
-- Risk impact (if any): Medium. The migration marks existing `å®¶é•¿å°ç¨‹åº` Tickets parent-visible and backfills structured values where their legacy tagged summary contains them. API reads retain a legacy fallback, while scheduling, attendance, package balance, finance, receipt, payroll, and normal Ticket flows are unchanged.
-- Verification:
-  - `npx prisma generate`
-  - `npx tsc --noEmit`
-  - miniapp JavaScript and JSON parse checks
-  - `npm run build`
-  - production migration, health, and version-alignment checks
-- Rollback point: previous production commit before `2026-07-11-r217`.
-
----
-
-## 2026-07-10-r216
-
-- Release ID: `2026-07-10-r216`
-- Date/Time (Asia/Shanghai): `2026-07-10`
-- Deployment status: `READY`
-- Scope: preserve WeChat miniapp credentials when the production deploy script rewrites `.env`.
-- Key files:
-  - `ops/server/scripts/deploy_app.sh`
-  - `docs/tasks/TASK-20260710-deploy-preserve-miniapp-credentials.md`
-- Risk impact (if any): Low. This changes deploy-time environment rendering only. It prevents future deploys from dropping `WECHAT_MINIAPP_APPID` and `WECHAT_MINIAPP_SECRET` after they are configured in `ops/server/.deploy.env`.
-- Verification:
-  - release doc gate
-  - production `.env` contains the miniapp variable names after deploy without printing secret values
-  - `/admin/login` health check
-  - miniapp unauthenticated endpoints still return `Unauthorized`
-- Rollback point: previous production commit before `2026-07-10-r216`.
-
----
-
-## 2026-07-10-r215
-
-- Release ID: `2026-07-10-r215`
-- Date/Time (Asia/Shanghai): `2026-07-10`
-- Deployment status: `READY`
-- Scope: require a parent-visible completion result before staff/admin can mark parent requests as completed, and show that result in the parent miniapp request detail.
-- Key files:
-  - `lib/miniapp-parent-requests.ts`
-  - `app/api/miniapp/staff/parent-requests/[id]/route.ts`
-  - `app/api/admin/ops/parent-requests/[id]/route.ts`
-  - `miniapp/boss-academic-parent/pages/staff-request-detail/*`
-  - `miniapp/boss-academic-parent/pages/request-detail/*`
-  - `app/admin/mobile/parent-requests/ParentRequestsMobileClient.tsx`
-  - `docs/tasks/TASK-20260710-parent-request-completion-result-required.md`
-- Risk impact (if any): Medium. Completing a parent request now requires staff/admin to write a parent-facing result. This reduces vague closures, but staff need to understand the result is visible to parents.
-- Verification:
-  - `npx tsc --noEmit`
-  - miniapp JS syntax and JSON parse checks
-  - parent/staff request-detail WXML complex-expression scan
-  - `npm run build`
-- Rollback point: previous production commit before `2026-07-10-r215`.
-
----
-
-## 2026-07-10-r214
-
-- Release ID: `2026-07-10-r214`
-- Date/Time (Asia/Shanghai): `2026-07-10`
-- Deployment status: `READY`
-- Scope: sanitize staff-assisted parent request visibility so parent miniapp views only receive the parent-facing summary while staff/admin views can still see internal original notes and communication source.
-- Key files:
-  - `lib/miniapp-parent-requests.ts`
-  - `app/api/miniapp/staff/parent-requests/*`
-  - `app/api/admin/ops/parent-requests/*`
-  - `app/api/miniapp/students/[studentId]/requests/route.ts`
-  - `miniapp/boss-academic-parent/pages/request-detail/*`
-  - `miniapp/boss-academic-parent/pages/staff-request-detail/*`
-  - `docs/tasks/TASK-20260710-miniapp-staff-assisted-request-visibility.md`
-- Risk impact (if any): Medium. This changes the DTO projection for parent-request tickets. It intentionally hides staff-assisted internal original notes and screenshots from parent miniapp responses while preserving them for staff/admin responses.
-- Verification:
-  - miniapp JS syntax and JSON parse checks
-  - parent/staff request-detail WXML complex-expression scan
-  - `npx tsc --noEmit`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-07-10-r214`.
-
----
-
-## 2026-07-10-r213
-
-- Release ID: `2026-07-10-r213`
-- Date/Time (Asia/Shanghai): `2026-07-10`
-- Deployment status: `READY`
-- Scope: fix student monthly schedule PDF exports so lessons with a per-session replacement teacher show the replacement teacher instead of the class default teacher.
-- Key files:
-  - `app/api/exports/student-schedule/[id]/route.ts`
-  - `lib/student-schedule-export.ts`
-  - `tests/student-schedule-export.test.ts`
-  - `package.json`
-  - `docs/tasks/TASK-20260710-student-schedule-export-teacher-override.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This changes only the read-side student schedule PDF teacher label. Scheduling writes, teacher replacement history, attendance deduction, package balances, payroll, billing, partner settlement, miniapp, and OpenClaw behavior are unchanged.
-- Verification:
-  - read-only DB check confirmed the 2026-07-12 çŽ‹é’°æ¾„ lesson has class teacher Jasmine, session teacher Zoe, and effective teacher Zoe
-  - `npm run test:backend`
-  - `npx tsc --noEmit`
-- Rollback point: previous production commit before `2026-07-10-r213`.
-
----
-
-## 2026-07-10-r212
-
-- Release ID: `2026-07-10-r212`
-- Date/Time (Asia/Shanghai): `2026-07-10`
-- Deployment status: `READY`
-- Scope: add staff miniapp assisted parent-request creation so Emily-style operators can turn WeChat group messages into existing Ticket-based parent requests.
-- Key files:
-  - `app/api/miniapp/staff/parent-requests/route.ts`
-  - `app/api/miniapp/staff/parent-requests/[id]/attachments/route.ts`
-  - `app/api/miniapp/staff/students/route.ts`
-  - `miniapp/boss-academic-parent/pages/staff-request-new/*`
-  - `miniapp/boss-academic-parent/pages/staff-home/*`
-  - `miniapp/boss-academic-parent/pages/staff-requests/*`
-  - `miniapp/boss-academic-parent/utils/api.js`
-  - `docs/tasks/TASK-20260710-miniapp-staff-assisted-parent-request.md`
-- Risk impact (if any): Medium. This adds a new staff-authenticated Ticket creation path for parent requests. It reuses existing parent request ownership/status rules and stores screenshots as ticket files; it does not change package deduction, scheduling writes, finance, payroll, or parent binding.
-- Verification:
-  - miniapp JS syntax and JSON parse checks
-  - staff WXML complex-expression scan
-  - `npx tsc --noEmit`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-07-10-r212`.
-
----
-
-## 2026-07-10-r211
-
-- Release ID: `2026-07-10-r211`
-- Date/Time (Asia/Shanghai): `2026-07-10`
-- Deployment status: `READY`
-- Scope: add teacher mobile attendance marking to the staff miniapp course detail page.
-- Key files:
-  - `app/api/miniapp/staff/schedule/[sessionId]/attendance/route.ts`
-  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
-  - `docs/tasks/TASK-20260710-miniapp-staff-attendance.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Medium. This adds a new miniapp write path to `Attendance`, using the same teacher/session permission rule as the existing teacher portal and preserving deduction/package fields on updates. It does not deduct packages, reschedule lessons, change billing, payroll, partner settlement, or OpenClaw behavior.
-- Verification:
-  - miniapp JS syntax and JSON parse checks
-  - staff WXML complex-expression scan
-  - `npx tsc --noEmit`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-07-10-r211`.
-
----
-
-## 2026-07-10-r210
-
-- Release ID: `2026-07-10-r210`
-- Date/Time (Asia/Shanghai): `2026-07-10`
-- Deployment status: `READY`
-- Scope: fix native miniapp staff-page blank rendering by removing complex WXML expressions from staff pages, moving display fallbacks into page JavaScript data, and making the staff home page resilient to slow miniapp API requests.
-- Key files:
-  - `miniapp/boss-academic-parent/pages/staff-home/*`
-  - `miniapp/boss-academic-parent/pages/staff-schedule/*`
-  - `miniapp/boss-academic-parent/pages/staff-requests/*`
-  - `miniapp/boss-academic-parent/pages/staff-request-detail/*`
-  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
-  - `miniapp/boss-academic-parent/utils/api.js`
-  - `miniapp/boss-academic-parent/app.json`
-  - `docs/tasks/TASK-20260710-miniapp-staff-wxml-render-fix.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This changes only native miniapp presentation binding and request timeout behavior for staff pages. Backend routes, authentication, schedule reading, request updates, feedback writes, scheduling, attendance deduction, package ledger, billing, payroll, and OpenClaw behavior are unchanged.
-- Verification:
-  - staff WXML complex-expression scan
-  - miniapp JS syntax and JSON parse checks
-  - staff home remains renderable when optional count APIs time out
-- Rollback point: previous production commit before `2026-07-10-r210`.
-
----
-
-## 2026-07-10-r209
-
-- Release ID: `2026-07-10-r209`
-- Date/Time (Asia/Shanghai): `2026-07-10`
-- Deployment status: `READY`
-- Scope: add staff miniapp course detail feedback submission so teachers can submit or update parent-facing after-class feedback from the native miniapp.
-- Key files:
-  - `app/api/miniapp/staff/schedule/[sessionId]/feedback/route.ts`
-  - `miniapp/boss-academic-parent/app.json`
-  - `miniapp/boss-academic-parent/pages/staff-schedule/*`
-  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
-  - `docs/tasks/TASK-20260710-miniapp-staff-feedback.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Medium. This adds a new teacher-facing miniapp write path to `SessionFeedback`, reusing the same five-section parent-facing feedback rules and server-side teacher/session permission checks as the existing teacher portal. Scheduling, attendance deduction, package ledger, billing, payroll, partner settlement, transport billing, Business Accounts, and OpenClaw behavior are unchanged.
-- Verification:
-  - miniapp JS syntax and JSON parse checks
-  - `npx tsc --noEmit`
-  - staff feedback route included in Next production build
-  - post-deploy unauthorized route smoke check
-  - `npm run build`
-- Rollback point: previous production commit before `2026-07-10-r209`.
-
----
-
-## 2026-07-10-r208
-
-- Release ID: `2026-07-10-r208`
-- Date/Time (Asia/Shanghai): `2026-07-10`
-- Deployment status: `READY`
-- Scope: add the staff miniapp daily schedule view so ops/management can see all same-day lessons and teachers can see their own lessons, with request type filtering for scheduling coordination.
-- Key files:
-  - `lib/miniapp-staff-schedule.ts`
-  - `app/api/miniapp/staff/schedule/route.ts`
-  - `app/api/miniapp/staff/parent-requests/route.ts`
-  - `miniapp/boss-academic-parent/pages/staff-home/*`
-  - `miniapp/boss-academic-parent/pages/staff-schedule/*`
-  - `miniapp/boss-academic-parent/pages/staff-requests/*`
-  - `docs/tasks/TASK-20260710-miniapp-staff-schedule.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low to medium. This adds read-side staff miniapp schedule access and type filtering for miniapp request queues. Teacher accounts are forced to their linked teacher schedule. Scheduling writes, attendance deduction, package ledger, receipts, payroll, partner settlement, transport billing, Business Accounts, and OpenClaw behavior are unchanged.
-- Verification:
-  - miniapp JS syntax and JSON parse checks
-  - `npx tsc --noEmit`
-  - staff schedule API smoke check for unauthorized access, admin/all schedule access, and teacher-only schedule scoping
-  - `npm run build`
-- Rollback point: previous production commit before `2026-07-10-r208`.
-
----
-
-## 2026-07-10-r207
-
-- Release ID: `2026-07-10-r207`
-- Date/Time (Asia/Shanghai): `2026-07-10`
-- Deployment status: `READY`
-- Scope: ship the native miniapp backend foundation for parent access, staff mobile request handling, notification queueing, and production-domain miniapp configuration.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260709110000_add_parent_portal/migration.sql`
-  - `prisma/migrations/20260709123000_add_miniapp_notification_outbox/migration.sql`
-  - `prisma/migrations/20260710103000_add_staff_miniapp/migration.sql`
-  - `app/api/miniapp/**`
-  - `app/api/admin/miniapp-staff/**`
-  - `app/api/admin/miniapp-notifications/**`
-  - `app/api/admin/ops/parent-requests/**`
-  - `app/api/admin/students/[id]/parent-portal/**`
-  - `app/admin/miniapp-staff/**`
-  - `app/admin/miniapp-notifications/**`
-  - `app/admin/mobile/**`
-  - `miniapp/boss-academic-parent/**`
-  - `docs/tasks/TASK-20260710-miniapp-parent-staff-foundation.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Medium. This adds new miniapp-facing auth/session/binding tables and routes, plus staff request handling. Existing admin login, scheduling, attendance deduction, package ledger, receipts, payroll, partner settlement, transport billing, Business Accounts, and OpenClaw behavior are unchanged.
-- Verification:
-  - `npx prisma generate`
-  - `npx prisma validate`
-  - `npx prisma migrate status`
-  - `npx tsc --noEmit`
-  - miniapp JS syntax and JSON parse checks
-  - mock staff miniapp binding/login/request-list/status-update smoke checks against local dev server
-  - `npm run build`
-- Rollback point: previous production commit before `2026-07-10-r207`.
-
----
-
-## 2026-07-08-r206
-
-- Release ID: `2026-07-08-r206`
-- Date/Time (Asia/Shanghai): `2026-07-08`
-- Deployment status: `READY`
-- Scope: make the Partner Settlement rate section read-only and route rate edits to Partner Setup, so settlement operators cannot accidentally overwrite partner master rates from the settlement workbench.
-- Key files:
-  - `app/admin/reports/partner-settlement/page.tsx`
-  - `docs/tasks/TASK-20260708-partner-settlement-rate-readonly.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This removes only the settlement-page rate update action and keeps settlement amount calculation unchanged. Future settlement records still use the selected partner's saved rates, while existing generated settlement records keep their stored amounts.
-- Verification:
-  - `npx tsc --noEmit`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-07-08-r206`.
-
----
-
-## 2026-07-08-r205
-
-- Release ID: `2026-07-08-r205`
-- Date/Time (Asia/Shanghai): `2026-07-08`
-- Deployment status: `READY`
-- Scope: add multi-partner settlement configuration so New Oriental remains the legacy partner while Shanghai Xin Zhuo Si and future partners can be configured, billed, receipted, and settled independently.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260708120000_add_multi_partner_config/migration.sql`
-  - `lib/partners.ts`
-  - `lib/partner-billing.ts`
-  - `app/admin/partners/page.tsx`
-  - `app/admin/reports/partner-settlement/page.tsx`
-  - `app/admin/reports/partner-settlement/billing/page.tsx`
-  - `docs/tasks/TASK-20260708-multi-partner-settlement-config.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Medium. This adds a Partner configuration table and threads `partnerId` through partner settlement, invoice, receipt, payment-proof, top-up snapshot, and billing workbench flows. Legacy New Oriental data is backfilled and old partner-billing JSON without `partnerId` is treated as New Oriental only. Parent billing, direct-billing contracts, attendance deduction, scheduling, teacher payroll, transport billing, Business Accounts, and OpenClaw behavior are unchanged.
-- Verification:
-  - `npx prisma generate`
-  - `npx tsc --noEmit`
-  - `npm run test:backend`
-  - `npx prisma migrate deploy`
-  - read-only Prisma check confirmed `æ–°ä¸œæ–¹` and `ä¸Šæµ·æ–°å“æ€` Partner configs exist and 32 legacy New Oriental settlement records are bound to `legacy-xdf-partner`.
-  - local smoke checks compiled `/admin/reports/partner-settlement`, `/admin/reports/partner-settlement/billing`, and `/admin/partners`.
-  - `npm run build`
-- Rollback point: previous production commit before `2026-07-08-r205`.
-
----
-
-## 2026-07-02-r204
-
-- Release ID: `2026-07-02-r204`
-- Date/Time (Asia/Shanghai): `2026-07-02`
-- Deployment status: `READY`
-- Scope: widen the Teacher Feedback Desk overdue-session scan so older valid missing-feedback sessions inside the 90-day lookback are included in `Missing > 12h`, while keeping excused/no-effective-student sessions excluded.
-- Key files:
-  - `app/admin/feedbacks/page.tsx`
-  - `docs/tasks/TASK-20260702-feedback-desk-overdue-scan-limit.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This only increases the read-side scan limit for the admin feedback workbench and keeps the display cap in place. Feedback writes, proxy drafts, forwarded records, teacher submissions, attendance, package balances, payroll, billing, scheduling, and OpenClaw behavior are unchanged.
-- Verification:
-  - read-only Prisma check confirmed the restored overdue queue now includes 13 valid missing-feedback sessions instead of 10 under the same 90-day lookback.
-  - `npm run build`
-- Rollback point: previous production commit before `2026-07-02-r204`.
-
----
-
-## 2026-07-02-r203
-
-- Release ID: `2026-07-02-r203`
-- Date/Time (Asia/Shanghai): `2026-07-02`
-- Deployment status: `READY`
-- Scope: remove the dangerous bulk overdue-feedback forwarding action from Teacher Feedback Desk and disable its API endpoint, so `Missing > 12h` and `Proxy draft pending teacher` queues cannot be accidentally cleared as manually forwarded feedback.
-- Key files:
-  - `app/admin/feedbacks/page.tsx`
-  - `app/api/admin/feedbacks/bulk-forward-overdue/route.ts`
-  - `docs/tasks/TASK-20260702-feedback-desk-disable-bulk-overdue-forward.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low to medium. This removes a broad admin cleanup shortcut from the live feedback desk and keeps the safer per-item workflow: create/update proxy drafts from overdue queues, then mark completed teacher feedback from Pending Forward. Existing feedback records, teacher submission, forwarded history, attendance, package balances, payroll, billing, scheduling, and OpenClaw behavior are unchanged.
-- Verification:
-  - `npm run build`
-- Rollback point: previous production commit before `2026-07-02-r203`.
-
----
-
-## 2026-06-23-r202
-
-- Release ID: `2026-06-23-r202`
-- Date/Time (Asia/Shanghai): `2026-06-23`
-- Deployment status: `READY`
-- Scope: fix the Manager Quality Desk feedback form so selecting `Give feedback / ç»™åé¦ˆ` from a Lead Desk session refreshes the teacher and related-session dropdowns to match the selected course.
-- Key files:
-  - `app/admin/manager/quality/page.tsx`
-  - `docs/tasks/TASK-20260623-manager-feedback-selected-session-defaults.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This only changes default UI selection for the manager feedback form. Feedback storage, teacher acknowledgement, scheduling, attendance deduction, package balances, invoices, receipts, payroll, partner settlement, transport billing, Business Accounts, school applications, and OpenClaw behavior are unchanged.
-- Verification:
-  - `npm run build`
-- Rollback point: previous production commit before `2026-06-23-r202`.
-
----
-
-## 2026-06-23-r201
-
-- Release ID: `2026-06-23-r201`
-- Date/Time (Asia/Shanghai): `2026-06-23`
-- Deployment status: `READY`
-- Scope: fix renewal contract parent-intake links for existing students who do not have reusable parent profile data yet. These renewal contracts now keep the parent profile form open until parent details are submitted, instead of showing `No intake needed / æ— éœ€å¡«å†™èµ„æ–™`.
-- Key files:
-  - `app/contract-intake/[token]/page.tsx`
-  - `docs/tasks/TASK-20260623-renewal-intake-without-parent-profile.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This only changes the public intake page guard for renewal contracts that are still waiting for parent info and have no parent profile saved. Renewal contracts with reusable parent info, formal sign links, signed contracts, invoices, receipts, scheduling, attendance deduction, package balances, payroll, partner settlement, transport billing, Business Accounts, school applications, and OpenClaw behavior are unchanged.
-- Verification:
-  - `npm run build`
-- Rollback point: previous production commit before `2026-06-23-r201`.
-
----
-
-## 2026-06-23-r200
-
-- Release ID: `2026-06-23-r200`
-- Date/Time (Asia/Shanghai): `2026-06-23`
-- Deployment status: `READY`
-- Scope: improve the Manager Quality Desk `Give feedback / ç»™åé¦ˆ` action so clicking from the Lead Desk table jumps directly to the feedback form and shows the selected teacher/session context.
-- Key files:
-  - `app/admin/manager/quality/page.tsx`
-  - `docs/tasks/TASK-20260623-manager-feedback-link-scroll.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This is a UI navigation and context hint improvement only. It does not change feedback storage, teacher acknowledgement, scheduling, attendance deduction, package balances, invoices, receipts, payroll, partner settlement, transport billing, Business Accounts, school applications, or OpenClaw behavior.
-- Verification:
-  - `npm run build`
-- Rollback point: previous production commit before `2026-06-23-r200`.
-
----
-
-## 2026-06-23-r199
-
-- Release ID: `2026-06-23-r199`
-- Date/Time (Asia/Shanghai): `2026-06-23`
-- Deployment status: `READY`
-- Scope: add a private Manager Feedback workflow so managers can send classroom quality comments to individual teachers from Manager Quality Desk, and teachers can review and acknowledge their own feedback in the teacher portal.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260623110000_add_manager_teacher_feedback/migration.sql`
-  - `lib/manager-teacher-feedback.ts`
-  - `lib/manager-quality-workspace.ts`
-  - `app/admin/manager/quality/page.tsx`
-  - `app/teacher/page.tsx`
-  - `app/teacher/layout.tsx`
-  - `app/teacher/manager-feedback/page.tsx`
-  - `docs/tasks/TASK-20260623-manager-teacher-feedback.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low to medium. This adds a new isolated feedback table and teacher-facing read/acknowledge view. It does not change scheduling, attendance deduction, package balances, invoices, receipts, payroll, partner settlement, transport billing, Business Accounts, school applications, or OpenClaw behavior.
-- Verification:
-  - `npx prisma generate`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-06-23-r199`.
-
----
-
-## 2026-06-22-r198
-
-- Release ID: `2026-06-22-r198`
-- Date/Time (Asia/Shanghai): `2026-06-22`
-- Deployment status: `READY`
-- Scope: add EduTrust contract Schedule setup defaults so SSG Standard PEI-Student Contract v4.0 can fill official Schedule A-D fields from course-level configuration, and block SSG sign-link preparation when required Schedule data is incomplete.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260622170000_add_edutrust_contract_setup/migration.sql`
-  - `app/admin/edutrust/page.tsx`
-  - `app/admin/edutrust/EduTrustCourseProfilesClient.tsx`
-  - `app/api/admin/edutrust/course-profiles/route.ts`
-  - `lib/ssg-standard-pei-contract-v4.ts`
-  - `lib/student-contract-template.ts`
-  - `lib/student-contract.ts`
-  - `tests/student-contract-mode.test.ts`
-  - `docs/tasks/TASK-20260622-edutrust-course-readiness-phase1.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Medium. This adds a nullable EduTrust contract setup table and extends the admin-only EduTrust readiness page. Existing tuition contracts remain on `TUITION_AGREEMENT`; SSG v4 contracts can still be drafted only for ready EduTrust courses, and sign-link preparation now requires configured Schedule A-D values. Scheduling, attendance deduction, package balances, invoices, receipts, payroll, partner settlement, transport billing, Business Accounts, school applications, and OpenClaw behavior are unchanged.
-- Verification:
-  - `npx prisma format`
-  - `npx prisma migrate deploy`
-  - `npx prisma generate`
-  - `npx tsx --test tests/student-contract-mode.test.ts tests/edutrust-student-record.test.ts`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-06-22-r198`.
-
----
-
-## 2026-06-22-r197
-
-- Release ID: `2026-06-22-r197`
-- Date/Time (Asia/Shanghai): `2026-06-22`
-- Deployment status: `READY`
-- Scope: replace the SSG v4 contract summary template with a locked official Standard PEI-Student Contract Version 4.0 template extracted from the official TPGateway DOCX/PDF sources, while keeping system-filled fields limited to PEI identity, student/contracting-party names, course title, course hours, fees, and placeholders where the current system does not yet hold official Schedule data.
-- Key files:
-  - `lib/ssg-standard-pei-contract-v4.ts`
-  - `lib/student-contract-template.ts`
-  - `tests/student-contract-mode.test.ts`
-  - `docs/tasks/TASK-20260622-edutrust-course-readiness-phase1.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Medium. SSG v4 contract snapshots now render the official English PEI-Student Contract v4.0 structure instead of the earlier bilingual summary shell. The template is source-tagged and locked, but fields that are not yet captured by the system remain as official blanks/placeholders rather than guessed values. Normal tuition contracts remain unchanged.
-- Verification:
-  - Official source checked: TPGateway Standard PEI-Student Contract Version 4.0 PDF and DOCX.
-  - `npx tsx --test tests/student-contract-mode.test.ts tests/edutrust-student-record.test.ts`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-06-22-r197`.
-
----
-
-## 2026-06-22-r196
-
-- Release ID: `2026-06-22-r196`
-- Date/Time (Asia/Shanghai): `2026-06-22`
-- Deployment status: `READY`
-- Scope: complete the next EduTrust readiness layer by adding student-level delivery evidence records, a C7 outcomes dashboard, a Section A/B evidence-pack checklist, and a guarded SSG Standard PEI-Student Contract v4.0 creation entry for fully ready EduTrust packages only.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260622153000_add_edutrust_student_records/migration.sql`
-  - `lib/edutrust-student-record.ts`
-  - `app/admin/edutrust/students/page.tsx`
-  - `app/admin/edutrust/students/EduTrustStudentRecordsClient.tsx`
-  - `app/api/admin/edutrust/student-records/route.ts`
-  - `app/admin/edutrust/page.tsx`
-  - `app/admin/packages/[id]/contract/page.tsx`
-  - `lib/student-contract.ts`
-  - `app/admin/layout.tsx`
-  - `tests/edutrust-student-record.test.ts`
-  - `docs/tasks/TASK-20260622-edutrust-course-readiness-phase1.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Medium. This adds a new nullable student evidence table and a new admin-only EduTrust student evidence workspace. It also exposes SSG v4 contract creation only when the course is marked EduTrust, SSG permission is `PERMITTED`, Course File is `APPROVED`, and package hours meet the configured minimum. Normal tuition contracts remain the default path. Scheduling, attendance deduction, package balances, invoices, receipts, payroll, partner settlement, transport billing, Business Accounts, school applications, and OpenClaw behavior are not changed.
-- Verification:
-  - Official reference checked: SSG/TPGateway Standard PEI-Student Contract Version 4.0 and EduTrust Guidance Document v4 resources.
-  - `npx prisma format`
-  - `npx prisma migrate deploy`
-  - `npx prisma generate`
-  - `npx tsx --test tests/edutrust-student-record.test.ts tests/student-contract-mode.test.ts`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-06-22-r196`.
-
----
-
-## 2026-06-22-r195
-
-- Release ID: `2026-06-22-r195`
-- Date/Time (Asia/Shanghai): `2026-06-22`
-- Deployment status: `READY`
-- Scope: add the foundation for a separate SSG Standard PEI-Student Contract v4.0 mode while keeping all existing tuition contracts on the current tuition agreement mode by default.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260622143000_add_student_contract_mode/migration.sql`
-  - `lib/student-contract-template.ts`
-  - `lib/student-contract.ts`
-  - `tests/student-contract-mode.test.ts`
-  - `docs/tasks/TASK-20260622-edutrust-course-readiness-phase1.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low to medium. This adds a defaulted `contractMode` field and an SSG v4 template path, but does not expose a production UI button for SSG contract creation yet. Existing contracts, signing links, invoice creation, package balances, attendance deduction, scheduling, receipts, payroll, partner settlement, transport billing, Business Accounts, school applications, and OpenClaw behavior remain on the existing path.
-- Verification:
-  - `npx prisma format`
-  - `npx prisma migrate deploy`
-  - `npx prisma generate`
-  - `npx tsx --test tests/student-contract-mode.test.ts`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-06-22-r195`.
-
----
-
-## 2026-06-22-r194
-
-- Release ID: `2026-06-22-r194`
-- Date/Time (Asia/Shanghai): `2026-06-22`
-- Deployment status: `READY`
-- Scope: extend the EduTrust readiness page with a Course File layer so each mapped course can store Criterion 5 evidence fields such as course write-up, admission requirements, learning outcomes, syllabus, lesson plan, assessment plan, teacher deployment, Academic Board approval, Examination Board approval, course review, evidence notes, and approver.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260622133000_add_edutrust_course_files/migration.sql`
-  - `app/admin/edutrust/page.tsx`
-  - `app/admin/edutrust/EduTrustCourseProfilesClient.tsx`
-  - `app/api/admin/edutrust/course-profiles/route.ts`
-  - `docs/tasks/TASK-20260622-edutrust-course-readiness-phase1.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low to medium. This adds a nullable Course File table and editable admin-only text fields for EduTrust readiness. It does not change operational course names, class setup, scheduling, attendance deduction, package balances, tuition contracts, invoices, receipts, payroll, partner settlement, transport billing, Business Accounts, school applications, or OpenClaw behavior.
-- Verification:
-  - `npx prisma format`
-  - `npx prisma migrate deploy`
-  - `npx prisma generate`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-06-22-r194`.
-
----
-
-## 2026-06-22-r193
-
-- Release ID: `2026-06-22-r193`
-- Date/Time (Asia/Shanghai): `2026-06-22`
-- Deployment status: `READY`
-- Scope: add the first EduTrust readiness layer so existing operational course names stay unchanged while admin users can map each course to an EduTrust-ready course line, compliance name, public name, delivery mode, permission status, course file status, and minimum-hour threshold.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260622120000_add_edutrust_course_profiles/migration.sql`
-  - `lib/edutrust-course-profile.ts`
-  - `app/admin/edutrust/page.tsx`
-  - `app/admin/edutrust/EduTrustCourseProfilesClient.tsx`
-  - `app/api/admin/edutrust/course-profiles/route.ts`
-  - `app/admin/layout.tsx`
-  - `docs/tasks/TASK-20260622-edutrust-course-readiness-phase1.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low to medium. This adds nullable EduTrust mapping metadata and a new admin-only readiness page. It does not rename existing courses, subjects, levels, classes, packages, or contracts, and it does not change scheduling, attendance deduction, package balances, invoices, receipts, payroll, partner settlement, transport billing, Business Accounts, school applications, or OpenClaw behavior.
-- Verification:
-  - `npx prisma format`
-  - `npx prisma migrate deploy`
-  - `npx prisma generate`
-  - `npm run build`
-  - local smoke check confirmed `/admin/edutrust` compiles and redirects unauthenticated users to `/admin/login`
-- Rollback point: previous production commit before `2026-06-22-r193`.
-
----
-
-## 2026-06-22-r192
-
-- Release ID: `2026-06-22-r192`
-- Date/Time (Asia/Shanghai): `2026-06-22`
-- Deployment status: `READY`
-- Scope: fix the student package utilization Excel export so Chinese student names no longer make the download response fail with HTTP 500.
-- Key files:
-  - `app/api/exports/student-package-utilization/route.ts`
-  - `docs/tasks/TASK-20260622-student-package-utilization-excel-filename.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This only changes the `Content-Disposition` filename fallback for one Excel export. It does not change utilization report data, preview calculations, package balances, attendance deduction, invoices, receipts, contracts, scheduling, payroll, partner settlement, transport billing, Business Accounts, school applications, or OpenClaw behavior.
-- Verification:
-  - reproduced the production failure for `çŽ‹çŽ«å“` as HTTP 500 and confirmed the server log error was a non-ASCII `filename` header ByteString failure
-  - `npx tsc --noEmit --pretty false`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-06-22-r192`.
-
----
-
-## 2026-06-19-r191
-
-- Release ID: `2026-06-19-r191`
-- Date/Time (Asia/Shanghai): `2026-06-19`
-- Deployment status: `READY`
-- Scope: fix final report PDF card layout so long bilingual section titles no longer overlap the section body text.
-- Key files:
-  - `app/api/admin/final-reports/[id]/pdf/route.ts`
-  - `docs/tasks/TASK-20260619-final-report-pdf-title-overlap.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This only changes vertical spacing inside final report PDF section cards. It does not change final report data, teacher submission workflow, parent share links, package balances, attendance deduction, invoices, receipts, contracts, scheduling, payroll, partner settlement, transport billing, Business Accounts, school applications, or OpenClaw behavior.
-- Verification:
-  - rendered the supplied `final-report-æŽæ˜±è¾°-å›½é™…å­¦æ ¡å…¥å­¦è€ƒè¯•.pdf` and confirmed the overlap was caused by fixed body positioning under wrapping bilingual titles
-  - `npx tsc --noEmit --pretty false`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-06-19-r191`.
-
----
-
-## 2026-06-18-r190
-
-- Release ID: `2026-06-18-r190`
-- Date/Time (Asia/Shanghai): `2026-06-18`
-- Deployment status: `READY`
-- Scope: add pre-approved scheduling exception capture to package creation when staff manually exempt a direct-billing package from the invoice-before-scheduling gate.
-- Key files:
-  - `app/admin/packages/PackageCreateFormClient.tsx`
-  - `app/api/admin/packages/route.ts`
-  - `docs/tasks/TASK-20260618-pre-approved-scheduling-exception.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This only adds required approval metadata for manual invoice-gate exemptions at package creation and stores it in existing package finance-gate reason/note fields. It does not change scheduling eligibility rules, attendance deduction, package balances, invoice numbering, receipts, contracts, payroll, partner settlement, transport billing, Business Accounts, school applications, or OpenClaw behavior.
-- Verification:
-  - `npx tsc --noEmit --pretty false`
-  - `npm run build`
-  - verified manual invoice-gate exemptions now require approver and reason before submit
-  - verified partner-settlement package exemptions still stay outside the new manual-exception fields
-- Rollback point: previous production commit before `2026-06-18-r190`.
-
----
-
-## 2026-06-17-r189
-
-- Release ID: `2026-06-17-r189`
-- Date/Time (Asia/Shanghai): `2026-06-17`
-- Deployment status: `READY`
-- Scope: add a read-only finance report that extracts one student's deducted package utilization from attendance rows, including shared-package cases such as Coco Xu and Eason Xu.
-- Key files:
-  - `lib/student-package-utilization-report.ts`
-  - `app/admin/finance/student-package-utilization/page.tsx`
-  - `app/api/exports/student-package-utilization/route.ts`
-  - `app/admin/finance/workbench/page.tsx`
-  - `app/admin/layout.tsx`
-  - `app/admin/page.tsx`
-  - `docs/tasks/TASK-20260617-student-package-utilization.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This is a read-only finance/admin extraction and Excel export based on existing attendance deductions. It does not change attendance marking, package balances, package ledger transactions, invoice numbering, receipts, scheduling, payroll, partner settlement, transport billing, Business Accounts, school applications, or OpenClaw behavior.
-- Verification:
-  - `npm run build`
-  - `npx tsc --noEmit`
-  - Local auth smoke check confirmed `/admin/finance/student-package-utilization` compiles and redirects unauthenticated users to `/admin/login`.
-  - Read-only data check for `Coco Xu` through `2026-06-17` returned 45 deducted attendance rows and 59.5 deducted hours on shared package `1df7bb95-8de1-4c10-bd7a-6a935af6af0e`.
-- Rollback point: previous production commit before `2026-06-17-r189`.
-
----
-
-## 2026-06-12-r188
-
-- Release ID: `2026-06-12-r188`
-- Date/Time (Asia/Shanghai): `2026-06-12`
-- Deployment status: `DEPLOYED`
-- Scope: prevent the Manager Quality Desk daily manager reflection form from stretching to match the taller right-side quality snapshot column.
-- Key files:
-  - `app/admin/manager/quality/page.tsx`
-  - `docs/tasks/TASK-20260612-manager-quality-reflection-layout.md`
-- Risk impact (if any): Low. This is a layout-only change on the manager quality desk. It does not change saved reflection data, Lead Desk rows, feedback quality logic, report follow-up logic, approvals, billing, receipts, packages, attendance, scheduling, payroll, partner settlement, transport billing, school applications, or Business Accounts.
-- Verification:
-  - `npm run build`
-- Rollback point: previous production state before `2026-06-12-r188`.
-
----
-
-## 2026-06-05-r187
-
-- Release ID: `2026-06-05-r187`
-- Date/Time (Asia/Shanghai): `2026-06-05`
-- Deployment status: `DEPLOYED`
-- Scope: make the school application public signing page show the full agreement terms, add agreement PDF preview before signing, require a handwritten signature, store the signature image, and include it in the signed school application PDF.
-- Key files:
-  - `app/school-application/[token]/page.tsx`
-  - `lib/school-application.ts`
-  - `lib/school-application-pdf.ts`
-  - `docs/tasks/TASK-20260605-school-application-full-signature-page.md`
-- Risk impact (if any): Low to medium. This changes only the school application service signing page and signed agreement PDF output. It does not change student tuition contracts, package balances, attendance deductions, receipt approval, invoice numbering rules, scheduling, payroll, partner settlement, transport billing, or Business Accounts.
-- Verification:
-  - `npm run build`
-  - `npx tsc --noEmit --pretty false`
-  - Local smoke tested `signSchoolApplication` without `signatureDataUrl` and confirmed it rejects with `Handwritten signature is required`.
-- Rollback point: previous production state before `2026-06-05-r187`.
-
----
-
-## 2026-06-05-r186
-
-- Release ID: `2026-06-05-r186`
-- Date/Time (Asia/Shanghai): `2026-06-05`
-- Deployment status: `DEPLOYED`
-- Scope: add required-field markers and a client-side save guard to the school application draft form so missing required fields or zero total amount are caught before a server redirect can refresh the page and lose unsaved input.
-- Key files:
-  - `app/admin/students/[id]/school-applications/page.tsx`
-  - `app/admin/students/[id]/school-applications/SchoolApplicationDraftGuard.tsx`
-  - `docs/tasks/TASK-20260605-school-application-required-fields.md`
-- Risk impact (if any): Low. This only changes the school application draft form validation experience. It does not change saved school application data structures, invoice numbering, receipt approval, package balances, attendance deductions, scheduling, payroll, partner settlement, transport billing, student contracts, or Business Accounts.
-- Verification:
-  - `npm run build`
-  - `npx tsc --noEmit --pretty false`
-- Rollback point: previous production state before `2026-06-05-r186`.
-
----
-
-## 2026-06-05-r185
-
-- Release ID: `2026-06-05-r185`
-- Date/Time (Asia/Shanghai): `2026-06-05`
-- Deployment status: `DEPLOYED`
-- Scope: clarify school application agreement PDF labels and prevent empty school-application drafts from opening a 500 error when the agreement PDF is not ready.
-- Key files:
-  - `app/admin/students/[id]/school-applications/page.tsx`
-  - `app/api/exports/school-application/[id]/route.ts`
-  - `docs/tasks/TASK-20260605-school-application-agreement-pdf-label-and-empty-draft.md`
-- Risk impact (if any): Low. This changes only the school application agreement PDF label and not-ready handling. It does not change contract content, signing, invoice numbering, receipt approval, lesson packages, attendance, scheduling, payroll, partner settlement, transport billing, or Business Accounts.
-- Verification:
-  - `npm run build`
-  - `npx tsc --noEmit --pretty false`
-  - Smoke tested an empty temporary school application draft by calling the PDF export route directly and confirmed it returns `400 Agreement PDF is not ready` instead of `500`.
-- Rollback point: previous production state before `2026-06-05-r185`.
-
----
-
-## 2026-06-05-r184
-
-- Release ID: `2026-06-05-r184`
-- Date/Time (Asia/Shanghai): `2026-06-05`
-- Deployment status: `DEPLOYED`
-- Scope: add a delete action for school application parent information links so old public tokens can be revoked without removing already submitted parent details.
-- Key files:
-  - `lib/school-application.ts`
-  - `app/admin/students/[id]/school-applications/page.tsx`
-  - `docs/tasks/TASK-20260605-school-application-parent-info-link-delete.md`
-- Risk impact (if any): Low. This only clears `parentInfoToken`, expiry, and viewed timestamp on school application services. It does not delete parent info, submitted timestamp, contracts, invoices, receipts, lesson packages, attendance, scheduling, payroll, partner settlement, transport billing, or Business Accounts.
-- Verification:
-  - `npx tsc --noEmit --pretty false`
-  - `npm run build`
-  - Smoke tested with a temporary student: generated a school application parent info link, submitted parent info, deleted the link, verified the old token no longer resolves, verified parent info and submitted timestamp remain, then cleaned up temporary rows.
-- Rollback point: previous production state before `2026-06-05-r184`.
-
----
-
-## 2026-06-04-r183
-
-- Release ID: `2026-06-04-r183`
-- Date/Time (Asia/Shanghai): `2026-06-04`
-- Deployment status: `DEPLOYED`
-- Scope: add a dedicated parent information collection link for school application services, with reuse from existing student-contract or parent-intake details, parent submission status tracking, and safe write-back to the school application draft and student school/grade details.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260604183000_add_school_application_parent_info_link/migration.sql`
-  - `lib/school-application.ts`
-  - `app/admin/students/[id]/school-applications/page.tsx`
-  - `app/school-application-info/[token]/page.tsx`
-  - `docs/tasks/TASK-20260604-school-application-parent-info-link.md`
-- Risk impact (if any): Low to medium. This adds nullable school-application fields and a new public token page. It does not change normal lesson packages, lesson balance deduction, attendance, invoice numbering, receipt approval, student-contract signing, payroll, partner settlement, transport billing, or Business Accounts.
-- Verification:
-  - `npx prisma generate`
-  - `npx prisma migrate deploy`
-  - `npx tsc --noEmit --pretty false`
-  - `npm run build`
-  - Smoke tested with a temporary student: created school application draft, generated parent info link, submitted parent details, verified application parent info and `billTo` updated, verified student school/grade/note updated, verified service billing case stayed at `0` total minutes and `0` remaining minutes, then cleaned up the temporary rows.
-- Rollback point: previous production state before `2026-06-04-r183`.
-
----
-
-## 2026-06-04-r182
-
-- Release ID: `2026-06-04-r182`
-- Date/Time (Asia/Shanghai): `2026-06-04`
-- Deployment status: `READY`
-- Scope: improve the school application workspace usability by keeping parent name blank by default, preserving the school-application entry context, returning to the school application list when appropriate, and remembering sidebar scroll during form refreshes.
-- Key files:
-  - `lib/school-application.ts`
-  - `app/admin/school-applications/page.tsx`
-  - `app/admin/students/[id]/school-applications/page.tsx`
-  - `app/admin/layout.tsx`
-  - `app/admin/_components/SidebarScrollMemoryClient.tsx`
-  - `docs/tasks/TASK-20260604-school-application-workspace-usability.md`
-- Risk impact (if any): Low. This changes only school application workspace defaults, navigation context, and sidebar scroll memory. It does not change invoice numbering, receipt approval, lesson package balances, attendance deduction, scheduling, payroll, partner settlement, or Business Accounts.
-- Verification:
-  - `npx tsc --noEmit --pretty false`
-  - `npm run build`
-  - Checked local and server code for removal of the school-application service-hours UI and verified parent-name defaults no longer use the student name.
-- Rollback point: previous production state before `2026-06-04-r182`.
-
----
-
-## 2026-06-04-r181
-
-- Release ID: `2026-06-04-r181`
-- Date/Time (Asia/Shanghai): `2026-06-04`
-- Deployment status: `READY`
-- Scope: upgrade school application service agreements to remove misleading service-hour wording, keep the contract scoped by application schools and fees, and add sealed contract PDF export after parent signing.
-- Key files:
-  - `lib/school-application-pdf.ts`
-  - `lib/school-application.ts`
-  - `app/api/exports/school-application/[id]/route.ts`
-  - `app/admin/students/[id]/school-applications/page.tsx`
-  - `docs/tasks/TASK-20260604-school-application-sealed-contract.md`
-- Risk impact (if any): Low. This changes only school application agreement PDF wording/export and the school application admin form. It does not change receipt approval rules, invoice numbering, lesson package balances, attendance deduction, scheduling, payroll, partner settlement, or Business Accounts.
-- Verification:
-  - `npx tsc --noEmit --pretty false`
-  - Generated signed and sealed sample school application agreement PDFs.
-  - Rendered the sealed sample PDF and confirmed `Service Hours`, `service hours`, and `æœåŠ¡æ—¶æ•°` are absent; the agreement title and Appendix A are present; the company seal appears in the agency signature box.
-- Rollback point: previous production commit before `2026-06-04-r181`.
-
----
-
-## 2026-06-04-r180
-
-- Release ID: `2026-06-04-r180`
-- Date/Time (Asia/Shanghai): `2026-06-04`
-- Deployment status: `READY`
-- Scope: make school application services use a separate `School Application Service` billing case for both new and existing students, so application invoices and receipts do not get mixed into normal lesson packages.
-- Key files:
-  - `lib/school-application.ts`
-  - `app/admin/students/[id]/school-applications/page.tsx`
-  - `docs/tasks/TASK-20260604-school-application-service-billing-case.md`
-- Risk impact (if any): Low. This changes only how school application service records choose their billing case. It does not change receipt approval rules, invoice numbering, lesson package balances, attendance deduction, scheduling, payroll, partner settlement, or Business Accounts.
-- Verification:
-  - `npx tsc --noEmit --pretty false`
-  - `npm run build`
-  - Smoke tested with a temporary student that had a normal lesson package: school application draft creation and save both used the separate service billing case, ignored the normal lesson package override, left normal package remaining minutes at `4800`, and cleanup left `0` temporary students.
-- Rollback point: previous production commit before `2026-06-04-r180`.
-
----
-
-## 2026-06-04-r179
-
-- Release ID: `2026-06-04-r179`
-- Date/Time (Asia/Shanghai): `2026-06-04`
-- Deployment status: `READY`
-- Scope: allow admins to delete voided school application service records only when the record is not linked to an invoice, while keeping invoice-linked voided records for audit history.
-- Key files:
-  - `lib/school-application.ts`
-  - `app/admin/students/[id]/school-applications/page.tsx`
-  - `docs/tasks/TASK-20260604-school-application-void-delete.md`
-- Risk impact (if any): Low. This only adds a guarded delete path for voided school application service records without invoice linkage. It does not change invoice numbering, receipts, lesson package balances, signing, attendance, payroll, partner settlement, or Business Accounts.
-- Verification:
-  - `npx tsc --noEmit --pretty false`
-  - `npm run build`
-  - Smoke tested with a temporary student: non-void record delete was blocked, voided record without invoice was deleted, voided record with invoice marker was blocked, and temporary test student cleanup left `0` rows.
-- Rollback point: previous production commit before `2026-06-04-r179`.
-
----
-
-## 2026-06-04-r178
-
-- Release ID: `2026-06-04-r178`
-- Date/Time (Asia/Shanghai): `2026-06-04`
-- Deployment status: `READY`
-- Scope: split school application level entry into school-facing grade and internal equivalent level so British Year 13 can be shown as Grade 12 equivalent while keeping the school's own level wording on the agreement.
-- Key files:
-  - `lib/school-application-directory.ts`
-  - `lib/school-application.ts`
-  - `lib/school-application-pdf.ts`
-  - `app/admin/students/[id]/school-applications/page.tsx`
-  - `app/school-application/[token]/page.tsx`
-  - `docs/tasks/TASK-20260604-school-application-grade-equivalency.md`
-- Risk impact (if any): Low. This changes school application service display and JSON payloads only. It does not change invoice numbering, receipt approval, lesson balances, attendance, scheduling, payroll, partner settlement, or Business Accounts.
-- Verification:
-  - `npx tsc --noEmit --pretty false`
-  - `npm run build`
-  - Smoke tested a temporary no-package student with `Year 13`; confirmed saved item, signing snapshot, and generated PDF all carry `Grade 12 equivalent`. Confirmed remaining temporary students: `0`.
-- Rollback point: previous production commit before `2026-06-04-r178`.
-
----
-
-## 2026-06-04-r177
-
-- Release ID: `2026-06-04-r177`
-- Date/Time (Asia/Shanghai): `2026-06-04`
-- Deployment status: `READY`
-- Scope: replace free-text school application rows with a selectable school/application directory, including AEIS/S-AEIS options and Singapore international school options, and allow new students with no lesson package to use the school application service by creating a service billing case only when invoice creation is needed.
-- Key files:
-  - `lib/school-application-directory.ts`
-  - `lib/school-application.ts`
-  - `app/admin/students/[id]/school-applications/page.tsx`
-  - `docs/tasks/TASK-20260604-school-application-directory-and-service-billing.md`
-- Risk impact (if any): Medium. This changes school application service data entry and no-package billing fallback. It does not change lesson balance deduction, attendance, scheduling, payroll, partner settlement, Business Accounts, transport billing, or existing student contract workflows.
-- Verification:
-  - `npx tsc --noEmit --pretty false`
-  - `npm run build`
-  - Smoke tested a temporary no-package student through directory-based AEIS and international-school selection, draft save, sign-link preparation, PDF generation, and cleanup. Confirmed remaining temporary students: `0`.
-- Rollback point: previous production commit before `2026-06-04-r177`.
-
----
-
-## 2026-06-04-r176
-
-- Release ID: `2026-06-04-r176`
-- Date/Time (Asia/Shanghai): `2026-06-04`
-- Deployment status: `READY`
-- Scope: make the school application service workflow easier to find by adding a dedicated `/admin/school-applications` entry page, a sidebar link, and a first-screen student detail shortcut.
-- Key files:
-  - `app/admin/layout.tsx`
-  - `app/admin/school-applications/page.tsx`
-  - `app/admin/students/[id]/page.tsx`
-- Risk impact (if any): Low. This changes navigation and discovery only; it does not change signing, invoice creation, receipt handling, lesson balances, attendance, scheduling, payroll, partner settlement, or Business Accounts.
-- Verification:
-  - `npx tsc --noEmit --pretty false`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-06-04-r176`.
-
----
-
-## 2026-06-04-r175
-
-- Release ID: `2026-06-04-r175`
-- Date/Time (Asia/Shanghai): `2026-06-04`
-- Deployment status: `READY`
-- Scope: add a school application service agreement workflow for parent signing, dynamic 1-5 school fee lines, signed-service PDF export, and automatic parent invoice creation through the existing package billing and receipt process.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260604170000_add_school_application_service/migration.sql`
-  - `lib/school-application.ts`
-  - `lib/school-application-pdf.ts`
-  - `app/admin/students/[id]/school-applications/page.tsx`
-  - `app/school-application/[token]/page.tsx`
-  - `app/api/exports/school-application/[id]/route.ts`
-  - `app/admin/students/[id]/page.tsx`
-  - `app/admin/packages/[id]/billing/page.tsx`
-  - `app/admin/packages/[id]/contract/page.tsx`
-  - `lib/finance-documents.ts`
-  - `docs/tasks/TASK-20260604-school-application-service.md`
-- Risk impact (if any): Medium. This adds a new agreement and invoice source that reuses parent package billing and receipt approvals. It does not change lesson package balances, attendance deduction, scheduling, payroll, transport billing, partner settlement, or Business Accounts.
-- Verification:
-  - `npx prisma validate`
-  - `npx prisma generate`
-  - `npx prisma migrate deploy`
-  - `npx tsc --noEmit --pretty false`
-  - `npm run build`
-  - Smoke tested a temporary student/package through draft creation, 3-school fee entry, sign-link preparation, PDF generation, and cleanup; confirmed `remainingTestStudents: 0`.
-- Rollback point: previous production commit before `2026-06-04-r175`.
-
----
-
-## 2026-06-02-r174
-
-- Release ID: `2026-06-02-r174`
-- Date/Time (Asia/Shanghai): `2026-06-02`
-- Deployment status: `READY`
-- Scope: add renewal-contract invoice safeguards so staff must choose whether a renewal creates a new invoice or links an existing invoice before the parent sign link is prepared, and make invoice/contract links visible and protected from accidental deletion.
-- Key files:
-  - `lib/student-contract.ts`
-  - `lib/student-contract-invoice-choice.ts`
-  - `app/admin/packages/[id]/contract/page.tsx`
-  - `app/admin/packages/[id]/billing/page.tsx`
-  - `lib/finance-documents.ts`
-  - `app/admin/finance/documents/page.tsx`
-  - `docs/tasks/TASK-20260602-renewal-contract-invoice-safeguards.md`
-- Risk impact (if any): Medium. This changes direct-billing student renewal contract signing and parent invoice deletion guards. It does not change attendance deduction, package scheduling logic, payroll, partner settlement, transport billing, Business Accounts, or receipt PDF generation.
-- Verification:
-  - Read-only Prisma check confirmed Coco's `RGT-202605-0011` invoice is receipted and linked to contract history, so the new option/display path identifies it as protected.
-  - `npx tsc --noEmit --pretty false`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-06-02-r174`.
-
----
-
-## 2026-06-02-r173
-
-- Release ID: `2026-06-02-r173`
-- Date/Time (Asia/Shanghai): `2026-06-02`
-- Deployment status: `READY`
-- Scope: show recent historical teacher sessions that still need teacher feedback on the teacher `My Sessions` page, so overdue feedback tasks do not disappear when they fall outside the normal current timeline.
-- Key files:
-  - `app/teacher/sessions/page.tsx`
-  - `docs/tasks/TASK-20260602-teacher-sessions-historical-feedback-recovery.md`
-- Risk impact (if any): Low. This changes only the teacher portal read query and display copy for `My Sessions`; it does not change attendance saves, feedback submission APIs, scheduling, billing, payroll, package balances, or admin workflows.
-- Verification:
-  - Read-only Prisma check confirmed Ahmar's `2026-05-30 17:00-18:30` missing-feedback session is included by the recovery query.
-  - `npx tsc --noEmit --pretty false`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-06-02-r173`.
-
----
-
-## 2026-06-02-r172
-
-- Release ID: `2026-06-02-r172`
-- Date/Time (Asia/Shanghai): `2026-06-02`
-- Deployment status: `READY`
-- Scope: unify invoice number reservation across parent/student, partner, and Business Accounts so deleted invoice numbers remain reserved and are not reused by the global `RGT-yyyymm-xxxx` sequence.
-- Key files:
-  - `lib/global-invoice-sequence.ts`
-  - `lib/business-accounts.ts`
-  - `app/admin/finance/deleted-invoices/page.tsx`
-  - `tests/billing-optimistic-lock.test.ts`
-  - `docs/tasks/TASK-20260602-global-invoice-deleted-number-reservation.md`
-- Risk impact (if any): Medium. This changes the global next-invoice-number calculation to include deleted parent/student invoices, deleted partner invoices, and deleted Business Account invoices as fixed reserved numbers. It does not change package balances, receipt PDFs, attendance, scheduling, payroll, or tutor payments.
-- Verification:
-  - `npx tsx --test tests/billing-optimistic-lock.test.ts`
-  - `npx tsc --noEmit --pretty false`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-06-02-r172`.
-
----
-
-## 2026-06-02-r171
-
-- Release ID: `2026-06-02-r171`
-- Date/Time (Asia/Shanghai): `2026-06-02`
-- Deployment status: `READY`
-- Scope: allow Business Accounts voided receipts/documents to be physically deleted so old voided receipt rows do not accumulate.
-- Key files:
-  - `app/admin/finance/business-accounts/page.tsx`
-  - `lib/business-accounts.ts`
-  - `tests/billing-optimistic-lock.test.ts`
-  - `docs/tasks/TASK-20260602-business-accounts-delete-voided-receipts.md`
-- Risk impact (if any): Low to medium. Deletion is restricted to Business Accounts documents already marked `VOID`; linked Business Account payment proof records and files are removed with the deleted voided document. Existing parent/student receipts, New Oriental partner receipts, package balances, payroll, attendance, and scheduling logic are not changed.
-- Verification:
-  - `npx tsx --test tests/billing-optimistic-lock.test.ts`
-  - `npx tsc --noEmit --pretty false`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-06-02-r171`.
-
----
-
-## 2026-06-01-r170
-
-- Release ID: `2026-06-01-r170`
-- Date/Time (Asia/Shanghai): `2026-06-01`
-- Deployment status: `READY`
-- Scope: add the same payment-proof-first receipt flow to Business Accounts so company transfers are recorded before a receipt is created.
-- Key files:
-  - `app/admin/finance/business-accounts/page.tsx`
-  - `lib/business-accounts.ts`
-  - `lib/business-file-storage.ts`
-  - `tests/billing-optimistic-lock.test.ts`
-  - `docs/tasks/TASK-20260601-business-accounts-payment-proof-receipts.md`
-- Risk impact (if any): Low to medium. This extends only the new Business Accounts AppSetting store with payment records and links receipts to uploaded company payment proofs. Existing parent/student receipts, New Oriental partner receipts, package balances, payroll, attendance, and scheduling logic are not changed.
-- Verification:
-  - `npx tsx --test tests/billing-optimistic-lock.test.ts`
-  - `npx tsc --noEmit --pretty false`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-06-01-r170`.
-
----
-
-## 2026-06-01-r169
-
-- Release ID: `2026-06-01-r169`
-- Date/Time (Asia/Shanghai): `2026-06-01`
-- Deployment status: `READY`
-- Scope: align Business Accounts invoice numbers and receipt PDFs with the existing student and New Oriental finance document flow.
-- Key files:
-  - `lib/global-invoice-sequence.ts`
-  - `lib/business-accounts.ts`
-  - `lib/business-account-pdf.ts`
-  - `app/admin/finance/business-accounts/page.tsx`
-  - `docs/tasks/TASK-20260601-business-accounts-global-invoice-receipt-template.md`
-- Risk impact (if any): Low to medium. New Business Accounts documents now reserve the same global `RGT-yyyymm-xxxx` invoice sequence used by parent and partner invoices, and Business Accounts receipts now use the same receipt number pattern and PDF layout style. Existing student, New Oriental, partner settlement, package, payroll, attendance, and scheduling logic is not changed.
-- Verification:
-  - `npx tsc --noEmit --pretty false`
-  - `npm run build`
-  - Generated local sample Business Accounts invoice, receipt, and service report PDFs.
-  - Extracted text from the local sample PDFs to confirm `RGT-202605-0099`, `RGT-202605-0099-RC`, GT Educational, OCBC, account number `595214891001`, Shanghai Xin Zhuo Si, and `SGD 1400.00`.
-- Rollback point: previous production commit before `2026-06-01-r169`.
-
----
-
-## 2026-06-01-r168
-
-- Release ID: `2026-06-01-r168`
-- Date/Time (Asia/Shanghai): `2026-06-01`
-- Deployment status: `READY`
-- Scope: clarify Business Accounts remittance fields as GT Educational's receiving account, and default them to the same OCBC remittance details used by existing student and New Oriental invoice PDFs.
-- Key files:
-  - `lib/business-accounts.ts`
-  - `lib/business-account-pdf.ts`
-  - `app/admin/finance/business-accounts/page.tsx`
-  - `docs/tasks/TASK-20260601-business-accounts-gt-receiving-account.md`
-- Risk impact (if any): Low. This changes labels/defaults for the new Business Accounts remittance fields only. It does not modify New Oriental settlement, parent invoices/receipts, package balances, payroll, attendance, or scheduling.
-- Verification:
-  - Confirmed existing parent and partner invoice PDFs use GT Educational / OCBC remittance details.
-  - `npx tsc --noEmit --pretty false`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-06-01-r168`.
-
----
-
-## 2026-06-01-r167
-
-- Release ID: `2026-06-01-r167`
-- Date/Time (Asia/Shanghai): `2026-06-01`
-- Deployment status: `READY`
-- Scope: reorganize Business Accounts into clearer workflow tabs and align its receipt/payment capture with existing student and New Oriental receipt fields.
-- Key files:
-  - `app/admin/finance/business-accounts/page.tsx`
-  - `lib/business-accounts.ts`
-  - `lib/business-account-pdf.ts`
-  - `docs/tasks/TASK-20260601-business-accounts-clean-workflow-receipt-fields.md`
-- Risk impact (if any): Low to medium. This refines the Business Accounts workspace and its AppSetting-backed receipt metadata only. It does not modify New Oriental partner settlement, parent invoice/receipt workflows, package balances, payroll, attendance, or scheduling.
-- Verification:
-  - `npx tsc --noEmit --pretty false`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-06-01-r167`.
-
----
-
-## 2026-06-01-r166
-
-- Release ID: `2026-06-01-r166`
-- Date/Time (Asia/Shanghai): `2026-06-01`
-- Deployment status: `READY`
-- Scope: upgrade Business Accounts from a Shanghai-only billing page into a reusable company-account workspace with account profiles, bank-transfer payment instructions, draft deletion, issued/paid/void status flow, payment recording, and business receipt PDF export.
-- Key files:
-  - `lib/business-accounts.ts`
-  - `lib/business-account-pdf.ts`
-  - `app/admin/finance/business-accounts/page.tsx`
-  - `app/api/exports/business-accounts/[id]/receipt/route.ts`
-  - `docs/tasks/TASK-20260601-business-accounts-status-payment-receipts.md`
-- Risk impact (if any): Medium. This expands the new Business Accounts AppSetting store and PDF exports only. It remains separate from New Oriental partner settlement, parent invoices, receipts approvals, package balances, payroll, attendance, and scheduling.
-- Verification:
-  - `npx tsc --noEmit --pretty false`
-  - `npm run build`
-  - Generated local sample Business Accounts invoice, service report, and receipt PDFs; all files were written successfully.
-- Rollback point: previous production commit before `2026-06-01-r166`.
-
----
-
-## 2026-06-01-r165
-
-- Release ID: `2026-06-01-r165`
-- Date/Time (Asia/Shanghai): `2026-06-01`
-- Deployment status: `READY`
-- Scope: add a separate Business Accounts workspace for company-level intercompany invoicing, seeded with Shanghai Xin Zhuo Si details and monthly invoice/service-report PDF generation.
-- Key files:
-  - `lib/business-accounts.ts`
-  - `lib/business-account-pdf.ts`
-  - `app/admin/finance/business-accounts/page.tsx`
-  - `app/api/exports/business-accounts/[id]/invoice/route.ts`
-  - `app/api/exports/business-accounts/[id]/service-report/route.ts`
-  - `app/admin/layout.tsx`
-  - `app/admin/page.tsx`
-  - `docs/tasks/TASK-20260601-business-accounts-intercompany-invoicing.md`
-- Risk impact (if any): Medium. This adds a new finance workspace and AppSetting-backed store. It is intentionally separate from New Oriental partner settlement, student package billing, parent invoices, receipts, payroll, and package ledger logic.
-- Verification:
-  - `npx tsc --noEmit`
-  - `npm run build`
-  - Generated sample Business Accounts invoice and service report PDFs locally; invoice text extraction confirmed the Shanghai Xin Zhuo Si English name and unified social credit code.
-- Rollback point: previous production commit before `2026-06-01-r165`.
-
----
-
-## 2026-05-31-r164
-
-- Release ID: `2026-05-31-r164`
-- Date/Time (Asia/Shanghai): `2026-05-31`
-- Deployment status: `READY`
-- Scope: add an admin-facing `Convert to Assessment` repair action on the attendance page for rows that were accidentally deducted but should be assessment/waive lessons.
-- Key files:
-  - `app/admin/sessions/[id]/attendance/page.tsx`
-  - `app/admin/sessions/[id]/attendance/AdminSessionAttendanceClient.tsx`
-  - `docs/tasks/TASK-20260531-attendance-convert-assessment-button.md`
-- Risk impact (if any): Medium. This adds a new repair trigger on the attendance UI, but it reuses the existing attendance save API and package rollback path instead of editing balances directly.
-- Verification:
-  - `npx tsc --noEmit`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-05-31-r164`.
-
----
-
-## 2026-05-31-r163
-
-- Release ID: `2026-05-31-r163`
-- Date/Time (Asia/Shanghai): `2026-05-31`
-- Deployment status: `READY`
-- Scope: fix attendance ledger consistency checks so assessment/waive saves can reconcile historical auto-repair package transactions that identify the row by `attendanceId` instead of `studentId`.
-- Key files:
-  - `app/api/admin/sessions/[id]/attendance/route.ts`
-  - `app/api/admin/sessions/[id]/attendance/mark-all-present/route.ts`
-  - `docs/tasks/TASK-20260531-attendance-waive-legacy-ledger-check.md`
-- Risk impact (if any): Medium. This touches attendance save ledger verification only; it does not relax package balance checks, change deduction amounts, payroll, invoices, receipts, or scheduling. It lets the existing checker attribute older repair transactions to the correct student before comparing net ledger movement.
-- Verification:
-  - `npx tsc --noEmit`
-  - Simulated the affected legacy pattern: `attendanceId` repair `-30` plus `studentId` rollback `+30` resolves to net `0`.
-  - Read-only production lookup confirmed the failing row used an older repair transaction note with `attendanceId=bc00897f-e395-436f-955d-468ffe75bba5` and no `studentId`.
-- Rollback point: previous production commit before `2026-05-31-r163`.
-
----
-
-## 2026-05-30-r162
-
-- Release ID: `2026-05-30-r162`
-- Date/Time (Asia/Shanghai): `2026-05-30`
-- Deployment status: `READY`
-- Scope: allow Teacher Notices to attach an active Shared Docs file so tutors can open or download the specific guide directly from the notice.
-- Key files:
-  - `lib/teacher-notices.ts`
-  - `app/admin/teacher-notices/page.tsx`
-  - `app/teacher/notices/page.tsx`
-  - `app/teacher/TeacherNoticeCardClient.tsx`
-  - `app/api/shared-docs/[id]/file/route.ts`
-  - `tests/teacher-notices.test.ts`
-  - `docs/tasks/TASK-20260530-teacher-notice-shared-doc-attachments.md`
-- Risk impact (if any): Medium. This release changes teacher-notice attachment display and Shared Docs file authorization for notice-bound files only. It does not open the full Shared Docs library to teachers and does not change payroll, attendance, billing, scheduling, package balances, invoices, or receipts.
-- Verification:
-  - `npx tsx --test tests/teacher-notices.test.ts`
-  - `npx tsc --noEmit --pretty false`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-05-30-r162`.
-
----
-
-## 2026-05-29-r161
-
-- Release ID: `2026-05-29-r161`
-- Date/Time (Asia/Shanghai): `2026-05-29`
-- Deployment status: `READY`
-- Scope: replace new tutor payment-profile collection with PayNow or Wise only, while keeping legacy bank-transfer details read-only for finance reference.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260529090000_add_teacher_wise_payment_profile/migration.sql`
-  - `lib/teacher-payment-profile.ts`
-  - `app/teacher/payment-details/page.tsx`
-  - `app/admin/_components/TeacherCreateForm.tsx`
-  - `app/admin/teachers/page.tsx`
-  - `app/admin/teachers/[id]/page.tsx`
-  - `app/api/admin/teachers/route.ts`
-  - `app/api/admin/teachers/[id]/route.ts`
-  - `app/admin/reports/teacher-payroll/export/route.ts`
-  - `app/api/exports/expense-claims/route.ts`
-  - `app/api/exports/tutor-cost-cutoff/route.ts`
-  - `tests/teacher-payment-profile.test.ts`
-  - `docs/tasks/TASK-20260529-tutor-wise-payment-profile.md`
-- Risk impact (if any): Medium. This release changes teacher payout-profile collection, review status, and finance exports, but does not change payroll amount calculation, expense claim approval, lesson scheduling, attendance deduction, package balance, receipt, or invoice logic.
-- Verification:
-  - `npx prisma generate`
-  - `npx tsc --noEmit --pretty false`
-  - `npx tsx --test tests/teacher-payment-profile.test.ts`
-  - `npm run test:backend`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-05-29-r161`.
-
----
-
-## 2026-05-29-r160
-
-- Release ID: `2026-05-29-r160`
-- Date/Time (Asia/Shanghai): `2026-05-29`
-- Deployment status: `READY`
-- Scope: add an owner-manager-only management form for turning Sales and CS workspace access on or off per system user.
-- Key files:
-  - `app/admin/manager/users/page.tsx`
-  - `app/admin/manager/users/_components/UserWorkspaceAccessFormClient.tsx`
-  - `app/api/admin/manager/users/[id]/workspaces/route.ts`
-  - `lib/staff-roles.ts`
-  - `tests/staff-roles.test.ts`
-  - `docs/tasks/TASK-20260529-workspace-access-management-form.md`
-- Risk impact (if any): Low to medium. This release adds a workspace-access management surface under System User Admin edit mode and restricts writes to the owner manager. It does not change user main-role editing rules, billing, packages, contracts, attendance, payroll, receipts, or scheduling logic.
-- Verification:
-  - `npx prisma validate`
-  - `npx prisma generate`
-  - `npx tsx --test tests/staff-roles.test.ts tests/leads.test.ts`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-05-29-r160`.
-
----
-
-## 2026-05-29-r159
-
-- Release ID: `2026-05-29-r159`
-- Date/Time (Asia/Shanghai): `2026-05-29`
-- Deployment status: `READY`
-- Scope: allow selected admin users to carry extra Sales or CS workspace access without changing their main `ADMIN` role.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260529093000_user_workspace_access/migration.sql`
-  - `lib/auth.ts`
-  - `lib/staff-roles.ts`
-  - `app/admin/layout.tsx`
-  - `app/admin/page.tsx`
-  - `app/admin/manager/users/page.tsx`
-  - `tests/staff-roles.test.ts`
-  - `docs/tasks/TASK-20260529-admin-extra-workspace-access.md`
-- Risk impact (if any): Low to medium. This release adds a focused-workspace access table and seeds Eva with CS workspace access plus Jasmine/zhao hongwei with Sales workspace access, while leaving their main role as `ADMIN`. Pure `SALES` and `CS` role restrictions remain unchanged. Billing, packages, contracts, attendance, payroll, receipts, and scheduling logic are unchanged.
-- Verification:
-  - `npx prisma validate`
-  - `npx prisma generate`
-  - `npx tsx --test tests/staff-roles.test.ts tests/leads.test.ts`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-05-29-r159`.
-
----
-
-## 2026-05-28-r158
-
-- Release ID: `2026-05-28-r158`
-- Date/Time (Asia/Shanghai): `2026-05-28`
-- Deployment status: `READY`
-- Scope: add independent `SALES` and `CS` roles with a scoped Resource Follow-up workspace instead of full admin access.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260528103000_add_sales_cs_roles/migration.sql`
-  - `lib/auth.ts`
-  - `lib/staff-roles.ts`
-  - `app/admin/layout.tsx`
-  - `app/admin/page.tsx`
-  - `app/admin/leads/*`
-  - `app/admin/manager/users/*`
-  - `tests/staff-roles.test.ts`
-  - `docs/tasks/TASK-20260528-sales-cs-independent-roles.md`
-- Risk impact (if any): Low to medium. This release adds new user roles and a scoped resource workspace. `requireAdmin()` remains restricted to existing admin/finance/manager access, while Sales/CS can only enter Resource Follow-up pages through resource-specific guards. Billing, packages, contracts, attendance, payroll, teacher portal, and finance workflows are unchanged.
-- Verification:
-  - `npx prisma validate`
-  - `npx prisma generate`
-  - `npx tsx --test tests/staff-roles.test.ts tests/leads.test.ts`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-05-28-r158`.
-
----
-
-## 2026-05-28-r157
-
-- Release ID: `2026-05-28-r157`
-- Date/Time (Asia/Shanghai): `2026-05-28`
-- Deployment status: `READY`
-- Scope: fix the Resource Follow-up new resource form layout so the owner selector no longer overflows into the intent selector.
-- Key files:
-  - `app/admin/leads/new/page.tsx`
-  - `docs/tasks/TASK-20260528-lead-new-form-layout-fix.md`
-- Risk impact (if any): Low. This is a CSS/layout constraint fix on the new resource form only. It does not change resource creation logic, owner assignment, follow-up records, teacher assessment, student conversion, booking links, billing, contracts, packages, attendance, payroll, or OpenClaw behavior.
-- Verification:
-  - `npm run build`
-- Rollback point: previous production commit before `2026-05-28-r157`.
-
----
-
-## 2026-05-28-r156
-
-- Release ID: `2026-05-28-r156`
-- Date/Time (Asia/Shanghai): `2026-05-28`
-- Deployment status: `READY`
-- Scope: finish the next Resource Follow-up CRM workflow gaps with quick list filters, matching CSV focus export, cancellable teacher assessments, and a Booking Link handoff after student conversion.
-- Key files:
-  - `lib/leads.ts`
-  - `app/admin/leads/page.tsx`
-  - `app/admin/leads/[id]/page.tsx`
-  - `app/admin/leads/export/route.ts`
-  - `app/admin/booking-links/page.tsx`
-  - `app/admin/booking-links/_components/BookingLinkCreateForm.tsx`
-  - `tests/leads.test.ts`
-  - `docs/tasks/TASK-20260528-resource-followup-shortcuts-and-booking.md`
-- Risk impact (if any): Low. This release only improves the new Resource Follow-up workflow and adds a prefilled handoff into the existing Booking Link page. It does not change booking-link creation APIs, scheduling availability logic, contracts, packages, invoices, receipts, payroll, attendance, or OpenClaw behavior.
-- Verification:
-  - `npx prisma validate`
-  - `npx tsx --test tests/leads.test.ts`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-05-28-r156`.
-
----
-
-## 2026-05-28-r155
-
-- Release ID: `2026-05-28-r155`
-- Date/Time (Asia/Shanghai): `2026-05-28`
-- Deployment status: `READY`
-- Scope: enhance the Resource Follow-up CRM with an independent owner list, owner maintenance page, resource profile editing, archived-resource handling, My Resources filtering, and guarded test-resource deletion.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260528093000_resource_owner_and_archive/migration.sql`
-  - `lib/leads.ts`
-  - `app/admin/leads/page.tsx`
-  - `app/admin/leads/new/page.tsx`
-  - `app/admin/leads/[id]/page.tsx`
-  - `app/admin/leads/owners/page.tsx`
-  - `app/admin/leads/export/route.ts`
-  - `tests/leads.test.ts`
-  - `docs/tasks/TASK-20260528-resource-owner-archive-enhancements.md`
-- Risk impact (if any): Low to medium. This release only extends the new CRM lead workflow. Archive is reversible, owner names are independent from login roles, and physical deletion is restricted to clearly marked `TEST` resources for the owner manager. Billing, package, contract, receipt, attendance, payroll, teacher cost, scheduling conflict, and OpenClaw logic are unchanged.
-- Verification:
-  - `npx prisma validate`
-  - `npx prisma generate`
-  - `npx tsx --test tests/leads.test.ts`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-05-28-r155`.
-
----
-
-## 2026-05-28-r154
-
-- Release ID: `2026-05-28-r154`
-- Date/Time (Asia/Shanghai): `2026-05-28`
-- Deployment status: `READY`
-- Scope: add the first Resource Follow-up CRM workflow for inquiry intake, sales follow-up, teacher assessments, student conversion, scheduling ticket handoff, dashboard metrics, and CSV export.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260528090000_add_resource_followup_crm/migration.sql`
-  - `lib/leads.ts`
-  - `app/admin/leads/page.tsx`
-  - `app/admin/leads/new/page.tsx`
-  - `app/admin/leads/[id]/page.tsx`
-  - `app/admin/leads/dashboard/page.tsx`
-  - `app/admin/leads/export/route.ts`
-  - `app/teacher/assessments/page.tsx`
-  - `app/admin/layout.tsx`
-  - `app/teacher/layout.tsx`
-  - `tests/leads.test.ts`
-  - `docs/tasks/TASK-20260528-resource-followup-crm-plan.md`
-- Risk impact (if any): Medium. This release adds new CRM tables and routes, but it keeps billing, package, receipt, attendance, payroll, contract, and OpenClaw workflows unchanged. Student conversion only creates a Student and optional scheduling ticket after an admin action.
-- Verification:
-  - `npx prisma generate`
-  - `npx tsx --test tests/leads.test.ts`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-05-28-r154`.
-
----
-
-## 2026-05-27-r153
-
-- Release ID: `2026-05-27-r153`
-- Date/Time (Asia/Shanghai): `2026-05-27`
-- Deployment status: `READY`
-- Scope: add a manager quality reflection history dashboard showing previous feedback, checklist completion rate, per-item completion, and an incomplete-only filter.
-- Key files:
-  - `app/admin/manager/quality/page.tsx`
-  - `lib/manager-quality-workspace.ts`
-  - `lib/manager-reflection-summary.ts`
-  - `tests/manager-quality-workspace.test.ts`
-  - `docs/tasks/TASK-20260527-manager-quality-history-dashboard.md`
-- Risk impact (if any): Low. The dashboard reads existing manager reflection entries from `AppSetting` and does not change storage shape, approvals, scheduling, feedback submission, billing, payroll, or OpenClaw behavior.
-- Verification:
-  - `npx tsx --test tests/manager-quality-workspace.test.ts`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-05-27-r153`.
-
----
-
-## 2026-05-27-r152
-
-- Release ID: `2026-05-27-r152`
-- Date/Time (Asia/Shanghai): `2026-05-27`
-- Deployment status: `READY`
-- Scope: extend tutor payment profiles from PayNow-only to support bank-transfer collection details and export those bank fields for finance payout work.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260527093000_add_teacher_bank_payment_profile/migration.sql`
-  - `lib/teacher-payment-profile.ts`
-  - `app/admin/_components/TeacherCreateForm.tsx`
-  - `app/admin/teachers/page.tsx`
-  - `app/admin/teachers/[id]/page.tsx`
-  - `app/teacher/payment-details/page.tsx`
-  - `app/admin/reports/teacher-payroll/export/route.ts`
-  - `app/api/exports/tutor-cost-cutoff/route.ts`
-  - `app/api/exports/expense-claims/route.ts`
-  - `tests/teacher-payment-profile.test.ts`
-  - `docs/tasks/TASK-20260527-tutor-bank-payment-profile.md`
-- Risk impact (if any): Low to medium. Finance exports now include full bank account details in addition to full PayNow values, so generated files remain sensitive payout data. Amount calculations and approval workflows are unchanged.
-- Verification:
-  - `npx prisma generate`
-  - `npx tsx --test tests/teacher-payment-profile.test.ts tests/tutor-cost-cutoff.test.ts tests/expense-claims.test.ts`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-05-27-r152`.
-
----
-
-## 2026-05-27-r151
-
-- Release ID: `2026-05-27-r151`
-- Date/Time (Asia/Shanghai): `2026-05-27`
-- Deployment status: `READY`
-- Scope: add stable tutor serial numbers and PayNow payment profiles, with finance export columns for tutor payroll and expense-claim reimbursements.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260527090000_add_teacher_payment_profile/migration.sql`
-  - `lib/teacher-payment-profile.ts`
-  - `app/admin/teachers/page.tsx`
-  - `app/admin/teachers/[id]/page.tsx`
-  - `app/admin/_components/TeacherCreateForm.tsx`
-  - `app/teacher/payment-details/page.tsx`
-  - `app/admin/reports/teacher-payroll/export/route.ts`
-  - `app/api/exports/tutor-cost-cutoff/route.ts`
-  - `app/api/exports/expense-claims/route.ts`
-  - `tests/teacher-payment-profile.test.ts`
-  - `docs/tasks/TASK-20260527-tutor-code-paynow-profile.md`
-- Risk impact (if any): Low to medium. The migration backfills existing teachers with deterministic `T###` codes and exports full PayNow values for finance payout files. Payroll, tutor-cost, and expense amounts remain unchanged.
-- Verification:
-  - `npx prisma generate`
-  - `npx tsx --test tests/teacher-payment-profile.test.ts`
-  - `npx tsx --test tests/tutor-cost-cutoff.test.ts tests/expense-claims.test.ts tests/teacher-payment-profile.test.ts`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-05-27-r151`.
-
----
-
-## 2026-05-19-r150
-
-- Release ID: `2026-05-19-r150`
-- Date/Time (Asia/Shanghai): `2026-05-19`
-- Deployment status: `READY`
-- Scope: allow a manually expired New Oriental online partner package with forfeited remaining minutes to be settled by the full purchased package minutes.
-- Key files:
-  - `lib/partner-settlement.ts`
-  - `app/admin/reports/partner-settlement/page.tsx`
-  - `tests/partner-settlement.test.ts`
-  - `docs/tasks/TASK-20260519-xdf-online-partial-closeout.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low to medium. The new settlement candidate branch only applies to `ONLINE_PACKAGE_END` packages after the package status is `EXPIRED`; active incomplete packages still do not become settlement candidates. It does not change attendance deduction, scheduling, direct-billing invoices, receipts, payroll, or OpenClaw.
-- Verification:
-  - read-only production data check for è‹é—»ç†¹ before changes: one New Oriental online package, 900 total minutes, 810 deducted minutes, 90 remaining minutes, no future sessions, no existing settlements
-  - `npx tsx --test tests/partner-settlement.test.ts`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-05-19-r150`.
-
----
-
-## 2026-05-17-r149
-
-- Release ID: `2026-05-17-r149`
-- Date/Time (Asia/Shanghai): `2026-05-17`
-- Deployment status: `READY`
-- Scope: allow renewal-contract creation to reuse complete parent information from a voided first-purchase intake contract.
-- Key files:
-  - `lib/student-contract.ts`
-  - `tests/student-contract-renewal-invoice.test.ts`
-  - `docs/tasks/TASK-20260517-renewal-parent-info-from-void-contract.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. The change only expands the statuses searched for reusable parent information to include voided contracts; incomplete parent information is still rejected by the existing parser. It does not change invoice creation, receipt handling, package balances, scheduling, or attendance.
-- Verification:
-  - `npx tsx --test tests/student-contract-renewal-invoice.test.ts`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-05-17-r149`.
-
----
-
-## 2026-05-16-r148
-
-- Release ID: `2026-05-16-r148`
-- Date/Time (Asia/Shanghai): `2026-05-16`
-- Deployment status: `READY`
-- Scope: allow renewal contracts on legacy direct-billing packages with multiple historical invoices to sign normally.
-- Key files:
-  - `lib/student-contract.ts`
-  - `tests/student-contract-renewal-invoice.test.ts`
-  - `docs/tasks/TASK-20260516-renewal-contract-historical-invoices.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low to medium. Renewal contracts now ignore unrelated historical package invoices when deciding whether signing can continue. First-purchase contracts still keep the existing multi-invoice ambiguity guard, so the system still avoids auto-linking the wrong old invoice for new purchase flows.
-- Verification:
-  - `npx tsx --test tests/student-contract-renewal-invoice.test.ts`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-05-16-r148`.
-
----
-
-## 2026-05-15-r147
-
-- Release ID: `2026-05-15-r147`
-- Date/Time (Asia/Shanghai): `2026-05-15`
-- Deployment status: `READY`
-- Scope: expose transport billing and related finance document links in the admin sidebar for manager/admin users.
-- Key files:
-  - `app/admin/layout.tsx`
-  - `docs/tasks/TASK-20260515-admin-sidebar-transport-billing.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. Navigation-only change for admin/manager sidebar visibility. It does not change transport invoice creation, receipts, payment records, attendance, package balances, payroll, scheduling, or permissions.
-- Verification:
-  - `npm run build`
-- Rollback point: previous production commit before `2026-05-15-r147`.
-
----
-
-## 2026-05-15-r146
-
-- Release ID: `2026-05-15-r146`
-- Date/Time (Asia/Shanghai): `2026-05-15`
-- Deployment status: `READY`
-- Scope: add a finance transport reimbursement billing desk for parent invoices generated from held lessons.
-- Key files:
-  - `lib/transport-billing.ts`
-  - `app/admin/finance/transport-billing/page.tsx`
-  - `app/admin/layout.tsx`
-  - `app/admin/finance/workbench/page.tsx`
-  - `app/admin/page.tsx`
-  - `docs/tasks/TASK-20260515-transport-reimbursement-billing.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low to medium. This adds a separate finance workflow and stores transport billing flags in AppSetting. It reuses existing parent invoice creation only after finance explicitly marks billable sessions and clicks create invoice. It does not change lesson scheduling, attendance deduction, package balances, teacher expense claims, payroll, partner settlement, receipts, or OpenClaw.
-- Verification:
-  - real-data read check for `2026-03`: 45 students and 394 held lesson rows available for review
-  - `npm run build`
-- Rollback point: previous production commit before `2026-05-15-r146`.
-
----
-
-## 2026-05-15-r145
-
-- Release ID: `2026-05-15-r145`
-- Date/Time (Asia/Shanghai): `2026-05-15`
-- Deployment status: `READY`
-- Scope: stop treating academically confirmed historical orphan rollback reversals as active ledger-integrity alerts.
-- Key files:
-  - `scripts/reconciliation/daily-ledger-integrity.ts`
-  - `docs/tasks/TASK-20260515-ledger-integrity-confirmed-exceptions.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low to medium. This changes alert classification only: confirmed historical exceptions no longer appear as active red ledger mismatch alerts. It does not alter package transactions, attendance, balances, invoices, receipts, payroll, scheduling, or OpenClaw.
-- Verification:
-  - `npx tsx scripts/reconciliation/daily-ledger-integrity.ts`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-05-15-r145`.
-
----
-
-## 2026-05-13-r144
-
-- Release ID: `2026-05-13-r144`
-- Date/Time (Asia/Shanghai): `2026-05-13`
-- Deployment status: `READY`
-- Scope: tighten Manager Quality Desk printing so the Lead Desk printout is a one-page schedule only.
-- Key files:
-  - `app/admin/manager/quality/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. Print CSS and print-only markup only. It does not change schedule data, manager reflection data, reminders, attendance, payroll, billing, invoices, receipts, or package balances.
-- Verification:
-  - `npx tsc --noEmit`
-  - `npm run build`
-  - Playwright generated the local Lead Desk PDF as 1 page
-  - PDF text check confirmed the printout includes Lead Desk schedule and excludes ledger alert, Todo Center links, reflection log, and quality snapshot
-- Rollback point: previous production commit before `2026-05-13-r144`.
-
----
-
-## 2026-05-13-r143
-
-- Release ID: `2026-05-13-r143`
-- Date/Time (Asia/Shanghai): `2026-05-13`
-- Deployment status: `READY`
-- Scope: add a manager quality workspace for Jasmine/manager users with printable Lead Desk schedule, daily workflow reflection log, and quality/KPI snapshots.
-- Key files:
-  - `lib/manager-quality-workspace.ts`
-  - `app/admin/manager/quality/page.tsx`
-  - `app/admin/manager/quality/_components/ManagerQualityPrintButton.tsx`
-  - `app/admin/layout.tsx`
-  - `docs/tasks/TASK-20260513-manager-quality-desk.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low to medium. This adds a manager-only page and an AppSetting-backed daily reflection log. It does not send reminders, emails, OpenClaw messages, change scheduling, attendance deduction, payroll, billing, invoices, receipts, or report assignment workflows.
-- Verification:
-  - `npx tsc --noEmit`
-  - `npm run build`
-  - local authenticated HTTP check for `/admin/manager/quality?date=2026-05-13` returned `200`
-  - Playwright confirmed Jasmine can see the left sidebar entry, Lead Desk rows, quality snapshot, and reflection form
-  - Playwright submitted a local reflection log successfully; local QA entry and temporary auth session were removed afterwards
-- Rollback point: previous production commit before `2026-05-13-r143`.
-
----
-
-## 2026-05-13-r142
-
-- Release ID: `2026-05-13-r142`
-- Date/Time (Asia/Shanghai): `2026-05-13`
-- Deployment status: `READY`
-- Scope: add package-balance guardrails so academic/admin users can find balance drift and risky rollback or adjustment records before package deductions fail.
-- Key files:
-  - `lib/package-balance-audit.ts`
-  - `app/admin/reports/package-balance-audit/page.tsx`
-  - `app/admin/packages/[id]/ledger/page.tsx`
-  - `app/api/admin/packages/[id]/ledger/txns/[txnId]/route.ts`
-  - `app/admin/layout.tsx`
-  - `app/admin/manager/quality/page.tsx`
-  - `lib/manager-quality-workspace.ts`
-  - `docs/tasks/TASK-20260513-package-balance-audit-guardrails.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Medium. Package ledger edit endpoints now re-sync current remaining balance from ledger totals after manual ledger changes. This reduces balance drift but should be watched on abnormal package correction workflows.
-- Verification:
-  - `npm run build`
-- Rollback point: previous production commit before `2026-05-13-r142`.
-
----
-
-## 2026-05-12-r141
-
-- Release ID: `2026-05-12-r141`
-- Date/Time (Asia/Shanghai): `2026-05-12`
-- Deployment status: `READY`
-- Scope: add a read-only finance/admin Excel report for weekly or monthly individual student utility.
-- Key files:
-  - `lib/individual-student-utility-report.ts`
-  - `app/admin/finance/individual-student-utility/page.tsx`
-  - `app/api/exports/individual-student-utility/route.ts`
-  - `app/admin/layout.tsx`
-  - `docs/tasks/TASK-20260512-individual-student-utility-report.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This is a read-only attendance/session/package export and navigation entry. It does not change reminders, OpenClaw, package deduction, scheduling, invoices, receipts, payroll, or approval workflows.
-- Verification:
-  - real-data helper check for `2026-04`: 20 students, 227 lessons, 399.25 deducted hours
-  - `npx tsc --noEmit`
-  - `npm run build`
-  - local authenticated HTTP check for page and Excel export returned `200`
-  - exported workbook opened with `Student Summary` and `Utility Detail` sheets
-- Rollback point: previous production commit before `2026-05-12-r141`.
-
----
-
-## 2026-05-09-r140
-
-- Release ID: `2026-05-09-r140`
-- Date/Time (Asia/Shanghai): `2026-05-09`
-- Deployment status: `READY`
-- Scope: add the tutor cost export to admin and finance left navigation and allow FINANCE role access.
-- Key files:
-  - `app/admin/layout.tsx`
-  - `docs/tasks/TASK-20260509-finance-tutor-cost-sidebar-entry.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. Navigation and route access only for an existing read-only finance export page. It does not change export calculations, payroll writes, approvals, scheduling, attendance, billing, package balances, or expense claims.
-- Verification:
-  - `npx tsc --noEmit`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-05-09-r140`.
-
----
-
-## 2026-05-09-r139
-
-- Release ID: `2026-05-09-r139`
-- Date/Time (Asia/Shanghai): `2026-05-09`
-- Deployment status: `READY`
-- Scope: add a finance self-service Excel export for tutor cost from the 15th to month-end.
-- Key files:
-  - `lib/teacher-payroll.ts`
-  - `app/admin/finance/tutor-cost-export/page.tsx`
-  - `app/api/exports/tutor-cost-cutoff/route.ts`
-  - `app/admin/finance/workbench/page.tsx`
-  - `tests/tutor-cost-cutoff.test.ts`
-  - `docs/tasks/TASK-20260509-finance-tutor-cost-cutoff-export.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low to medium. This is a read-only finance export based on existing payroll completion and teacher-rate logic. It does not create, edit, approve, or pay payroll records, and it does not change scheduling, attendance, package balances, invoices, receipts, or expense claims.
-- Verification:
-  - `npx tsx --test tests/tutor-cost-cutoff.test.ts`
-  - `npx tsc --noEmit`
-  - local route compiled via `/admin/finance/tutor-cost-export`
-- Rollback point: previous production commit before `2026-05-09-r139`.
-
----
-
-## 2026-05-08-r138
-
-- Release ID: `2026-05-08-r138`
-- Date/Time (Asia/Shanghai): `2026-05-08`
-- Deployment status: `READY`
-- Scope: improve shared mobile usability for admin and teacher workspaces.
-- Key files:
-  - `app/responsive-layout.css`
-  - `docs/tasks/TASK-20260508-mobile-usability-global-pass.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low to medium. This is a CSS-only responsive pass for small screens; it does not change business logic, data writes, permissions, billing, attendance, scheduling, or finance calculations.
-- Verification:
-  - `npm run build`
-- Rollback point: previous production commit before `2026-05-08-r138`.
-
----
-
-## 2026-05-08-r137
-
-- Release ID: `2026-05-08-r137`
-- Date/Time (Asia/Shanghai): `2026-05-08`
-- Deployment status: `READY`
-- Scope: move the teacher notice admin entry higher in the left navigation so admins and finance users can find it immediately.
-- Key files:
-  - `app/admin/layout.tsx`
-  - `docs/tasks/TASK-20260508-teacher-notice-nav-placement.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. Navigation placement only. It does not change notice data, scheduling, attendance, payroll, expense claims, billing, packages, student data, or OpenClaw.
-- Verification:
-  - `npm run build`
-- Rollback point: previous production commit before `2026-05-08-r137`.
-
----
-
-## 2026-05-08-r136
-
-- Release ID: `2026-05-08-r136`
-- Date/Time (Asia/Shanghai): `2026-05-08`
-- Deployment status: `READY`
-- Scope: upgrade teacher notices into a manageable notice center with admin publishing, categories, expiry dates, required acknowledgement, and read/unread tracking.
-- Key files:
-  - `app/admin/teacher-notices/page.tsx`
-  - `app/admin/layout.tsx`
-  - `app/teacher/page.tsx`
-  - `app/teacher/notices/page.tsx`
-  - `lib/teacher-notices.ts`
-  - `tests/teacher-notices.test.ts`
-  - `docs/tasks/TASK-20260508-teacher-notice-center-admin.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low to medium. This adds admin publishing and notice acknowledgement workflow only. It does not change scheduling, attendance, payroll calculation, expense-claim submission, invoices, receipts, package balances, student data, or OpenClaw.
-- Verification:
-  - `npx tsx --test tests/teacher-notices.test.ts`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-05-08-r136`.
-
----
-
-## 2026-05-08-r135
-
-- Release ID: `2026-05-08-r135`
-- Date/Time (Asia/Shanghai): `2026-05-08`
-- Deployment status: `READY`
-- Scope: add teacher-facing notices so the company-name update can be shown inside the SGT Manage teacher portal.
-- Key files:
-  - `app/teacher/page.tsx`
-  - `app/teacher/layout.tsx`
-  - `app/teacher/notices/page.tsx`
-  - `app/teacher/TeacherNoticeCardClient.tsx`
-  - `app/api/teacher/notices/read/route.ts`
-  - `lib/teacher-notices.ts`
-  - `tests/teacher-notices.test.ts`
-  - `docs/tasks/TASK-20260508-teacher-company-name-notice.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This adds a teacher portal notice and read tracking only. It does not change scheduling, attendance, payroll calculation, expense-claim submission, invoices, receipts, package balances, student data, or OpenClaw.
-- Verification:
-  - confirmed no existing `teacher_notices_v1` or `teacher_notice_reads_v1` AppSetting rows would be overwritten
-  - `npx tsx --test tests/teacher-notices.test.ts`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-05-08-r135`.
-
----
-
-## 2026-05-08-r134
-
-- Release ID: `2026-05-08-r134`
-- Date/Time (Asia/Shanghai): `2026-05-08`
-- Deployment status: `READY`
-- Scope: fix package-ledger PDF export minute formatting so negative 90-minute deductions display as `-1h 30m` instead of `-2h 30m`.
-- Key files:
-  - `app/api/exports/package-ledger/[id]/route.ts`
-  - `app/admin/packages/[id]/ledger/page.tsx`
-  - `lib/package-ledger-format.ts`
-  - `tests/package-ledger-format.test.ts`
-  - `docs/tasks/TASK-20260508-package-ledger-pdf-negative-minutes.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This changes display formatting only for package-ledger hour values. It does not edit package transactions, balances, attendance, scheduling, billing, settlements, payroll, expense claims, or OpenClaw.
-- Verification:
-  - queried the real Dong Xinyi AEIS package ledger and confirmed each deduction is stored as `-90` minutes while balances decrease by 1h30m
-  - extracted the uploaded PDF and confirmed the visible delta text was inconsistent with the running balance
-  - `npx tsx --test tests/package-ledger-format.test.ts`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-05-08-r134`.
-
----
-
-## 2026-05-08-r133
-
-- Release ID: `2026-05-08-r133`
-- Date/Time (Asia/Shanghai): `2026-05-08`
-- Deployment status: `READY`
-- Scope: update exported finance/legal document company name to GT Educational Institute Pte. Ltd. and switch sealed partner exports to the GT education seal.
-- Key files:
-  - `app/api/exports/parent-invoice/[id]/route.ts`
-  - `app/api/exports/parent-receipt/[id]/route.ts`
-  - `app/api/exports/partner-invoice/[id]/route.ts`
-  - `app/api/exports/partner-receipt/[id]/route.ts`
-  - `app/api/exports/partner-invoice-detail/[id]/route.ts`
-  - `app/api/exports/parent-statement/[id]/route.ts`
-  - `app/api/exports/student-detail/[id]/route.ts`
-  - `app/api/exports/student-schedule/[id]/route.ts`
-  - `app/api/exports/package-ledger/[id]/route.ts`
-  - `app/admin/enrollments/export/pdf/route.ts`
-  - `lib/student-contract-template.ts`
-  - `docs/tasks/TASK-20260508-company-name-and-seal-update.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This changes displayed company/legal name and seal image only. It does not change invoice numbers, receipt numbers, totals, approvals, payment status, billing records, package deduction, scheduling, attendance, payroll, settlement, expense claims, or OpenClaw.
-- Verification:
-  - confirmed uploaded invoice and receipt templates already show `GT Educational Institute Pte. Ltd.` in visible cells
-  - scanned app/lib exports so the old company name no longer appears in system document generation code
-  - confirmed sealed partner invoice/detail exports now reference `public/gt_edu_seal.png`
-  - `npx tsc --noEmit`
-  - `npx next build`
-- Rollback point: previous production commit before `2026-05-08-r133`.
-
----
-
-## 2026-05-08-r132
-
-- Release ID: `2026-05-08-r132`
-- Date/Time (Asia/Shanghai): `2026-05-08`
-- Deployment status: `READY`
-- Scope: add payment status, period filters, and Excel export to the finance document center.
-- Key files:
-  - `app/admin/finance/documents/page.tsx`
-  - `app/api/exports/finance-documents/route.ts`
-  - `lib/finance-documents.ts`
-  - `tests/finance-documents.test.ts`
-  - `docs/tasks/TASK-20260508-finance-documents-payment-status-export.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low to medium. This changes finance document visibility and export reporting only. It does not create, approve, reject, mark paid, archive, or delete invoices/receipts, and does not change student billing, package deduction, scheduling, attendance, contracts, partner settlement, payroll, expense claims, or OpenClaw.
-- Verification:
-  - queried real invoice rows with the new status logic: 25 invoices total; paid 15, partial 1, unpaid 8, rejected 1
-  - `npx tsx --test tests/finance-documents.test.ts`
-  - `npx tsc --noEmit`
-  - `npx next build`
-- Rollback point: previous production commit before `2026-05-08-r132`.
-
----
-
-## 2026-05-07-r131
-
-- Release ID: `2026-05-07-r131`
-- Date/Time (Asia/Shanghai): `2026-05-07`
-- Deployment status: `READY`
-- Scope: add an all-paid expense-claims view that includes both active and archived paid claims.
-- Key files:
-  - `app/admin/expense-claims/page.tsx`
-  - `app/api/exports/expense-claims/route.ts`
-  - `lib/expense-claims.ts`
-  - `tests/expense-claims.test.ts`
-  - `docs/tasks/TASK-20260507-expense-claims-all-paid-archive-view.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This changes finance expense-claim filtering and CSV export only. It does not change claim approval, payment marking, attachment storage, payroll, student billing, package deduction, scheduling, attendance, contracts, partner settlement, or OpenClaw.
-- Verification:
-  - queried real paid expense claims: 41 active, 1 archived, 42 total
-  - `npx tsx --test tests/expense-claims.test.ts`
-  - `npx tsc --noEmit`
-  - `npx next build`
-- Rollback point: previous production commit before `2026-05-07-r131`.
-
----
-
-## 2026-04-29-r130
-
-- Release ID: `2026-04-29-r130`
-- Date/Time (Asia/Shanghai): `2026-04-29`
-- Deployment status: `READY`
-- Scope: clarify quick-schedule student time conflicts so existing-session room labels are not mistaken for selected-room occupancy.
-- Key files:
-  - `app/admin/students/[id]/page.tsx`
-  - `app/api/admin/students/[id]/quick-appointment/route.ts`
-  - `lib/quick-schedule-messages.ts`
-  - `tests/quick-schedule-messages.test.ts`
-  - `docs/tasks/TASK-20260429-quick-schedule-student-conflict-room-wording.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This changes quick-schedule conflict wording only. It does not change room selection, room conflict detection, teacher availability, scheduling writes, attendance, package deduction, billing, contracts, payroll, settlement, or OpenClaw.
-- Verification:
-  - checked the reported real window: `2026-05-14 17:30-19:00`, Orchard Plaza `Room 3` has no overlapping session
-  - confirmed the shown `Room 1` row is an existing overlapping student session at `18:00-19:30`, not selected-room occupancy
-  - `npx tsx --test tests/quick-schedule-messages.test.ts tests/quick-schedule-execution.test.ts tests/availability-conflict.test.ts`
-  - `npx tsc --noEmit`
-  - `npx next build`
-- Rollback point: previous production commit before `2026-04-29-r130`.
-
----
-
-## 2026-04-25-r129
-
-- Release ID: `2026-04-25-r129`
-- Date/Time (Asia/Shanghai): `2026-04-25`
-- Deployment status: `READY`
-- Scope: make Todo Center academic-management lane switching instant and align lane counts with visible alert rows.
-- Key files:
-  - `app/admin/todos/page.tsx`
-  - `app/admin/todos/AcademicManagementAlertsClient.tsx`
-  - `docs/tasks/TASK-20260425-todo-academic-alert-filter-counts.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This changes the Todo Center academic-management alert UI only. It does not change OpenClaw, student records, package settlement, scheduling, attendance, package deduction, partner settlement, contracts, payroll, or finance approval logic.
-- Verification:
-  - confirmed the old section mixed active-student counts with alert-row counts and capped alert rows at 20
-  - scanned Todo Center for remaining `todoHref` lane links; only pagination and lazy conflict-load links remain
-  - `npx tsx --test tests/academic-management.test.ts tests/parent-feedback-quality.test.ts`
-  - `npx tsc --noEmit`
-  - `npx next build`
-- Rollback point: previous production commit before `2026-04-25-r129`.
-
----
-
-## 2026-04-25-r128
-
-- Release ID: `2026-04-25-r128`
-- Date/Time (Asia/Shanghai): `2026-04-25`
-- Deployment status: `READY`
-- Scope: correct academic management lane logic so own/partner grouping follows the student type, not the package settlement mode.
-- Key files:
-  - `lib/academic-management.ts`
-  - `tests/academic-management.test.ts`
-  - `app/admin/todos/page.tsx`
-  - `app/admin/reports/academic-management/page.tsx`
-  - `docs/tasks/TASK-20260425-academic-management-student-type-lanes.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This changes academic management filtering and warning labels only. It does not change package settlement mode, student type records, OpenClaw, scheduling, attendance, package deduction, partner settlement, contracts, payroll, or finance approval logic.
-- Verification:
-  - queried active-package students by the corrected student-type rule: 17 own, 29 partner, 4 unclassified
-  - confirmed the 4 warning rows are students with missing student type: å¼ ç£Š, lily, é‚µæ¥šç„¶, æŽä¸œæ’
-  - `npx tsx --test tests/academic-management.test.ts tests/parent-feedback-quality.test.ts`
-  - `npx tsc --noEmit`
-  - `npx next build`
-- Rollback point: previous production commit before `2026-04-25-r128`.
-
----
-
-## 2026-04-25-r127
-
-- Release ID: `2026-04-25-r127`
-- Date/Time (Asia/Shanghai): `2026-04-25`
-- Deployment status: `READY`
-- Scope: split academic management views between own/direct students and partner students.
-- Key files:
-  - `lib/academic-management.ts`
-  - `tests/academic-management.test.ts`
-  - `app/admin/todos/page.tsx`
-  - `app/admin/reports/academic-management/page.tsx`
-  - `docs/tasks/TASK-20260425-academic-management-own-vs-partner.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low to medium. This adds filtering and labels to academic management views only. It does not change package settlement mode, student type records, OpenClaw, scheduling, attendance, package deduction, partner settlement, contracts, payroll, or finance approval logic.
-- Verification:
-  - queried production data: 77 students, 51 active hour packages with remaining balance, 19 direct/own active packages, 32 partner active packages
-  - confirmed student types include `åˆä½œæ–¹å­¦ç”Ÿ`, `è‡ªå·±å­¦ç”Ÿ-æ–°ç”Ÿ`, `è‡ªå·±å­¦ç”Ÿ-ç•™å­¦+è¯¾ç¨‹`, and legacy `ç›´å®¢å­¦ç”Ÿ`
-  - `npx tsx --test tests/academic-management.test.ts tests/parent-feedback-quality.test.ts`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-04-25-r127`.
-
-## 2026-04-25-r126
-
-- Release ID: `2026-04-25-r126`
-- Date/Time (Asia/Shanghai): `2026-04-25`
-- Deployment status: `READY`
-- Scope: improve the non-OpenClaw academic management workflow with service-plan presets, profile completeness, feedback quality checks, Todo Center alert expansion, and a monthly academic management report.
-- Key files:
-  - `lib/academic-management.ts`
-  - `lib/parent-feedback-quality.ts`
-  - `tests/parent-feedback-quality.test.ts`
-  - `app/admin/students/[id]/page.tsx`
-  - `app/admin/students/[id]/_components/StudentEditClient.tsx`
-  - `app/admin/todos/page.tsx`
-  - `app/admin/feedbacks/page.tsx`
-  - `app/admin/reports/academic-management/page.tsx`
-  - `app/admin/layout.tsx`
-  - `docs/tasks/TASK-20260425-academic-management-followups.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Medium. This adds read-only reporting and visible quality/completeness signals, plus changes the student service-plan input from free text to presets. It does not change OpenClaw, scheduling creation, attendance, package deduction, payroll, or finance approval logic.
-- Verification:
-  - queried production data: 77 students, 67 active hour packages, 64 active-package students, 39 active-package students without a session in the next 14 days
-  - confirmed current academic management profile data is still empty before operators classify students
-  - `npx tsx --test tests/parent-feedback-quality.test.ts`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-04-25-r126`.
-
-## 2026-04-25-r125
-
-- Release ID: `2026-04-25-r125`
-- Date/Time (Asia/Shanghai): `2026-04-25`
-- Deployment status: `READY`
-- Scope: add student academic management fields, student-detail profile display, Todo Center alerts for active-package students without upcoming lessons, and a documentation-only OpenClaw reminder plan.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260425143000_add_student_academic_management_fields/migration.sql`
-  - `app/admin/students/[id]/page.tsx`
-  - `app/admin/students/[id]/_components/StudentEditClient.tsx`
-  - `app/admin/todos/page.tsx`
-  - `app/api/admin/students/route.ts`
-  - `app/api/admin/students/[id]/route.ts`
-  - `docs/OpenClaw-å­¦ä¸šç®¡ç†æé†’æ–¹æ¡ˆ-æš‚å­˜.md`
-  - `docs/tasks/TASK-20260425-student-academic-management-reminders.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Medium. This adds nullable student profile columns and a Todo Center read path. It does not change OpenClaw runtime, scheduling creation, attendance, package deduction, payroll, or finance approval logic.
-- Verification:
-  - queried production data: 77 students, 50 active-package students, 28 active-package students without a lesson in the next 14 days
-  - confirmed current academic management fields are empty until operators populate them
-  - confirmed the existing parent-facing feedback template already has five required sections and missing-section validation
-  - `npx prisma generate`
-  - `npx prisma migrate deploy`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-04-25-r125`.
-
-## 2026-04-25-r124
-
-- Release ID: `2026-04-25-r124`
-- Date/Time (Asia/Shanghai): `2026-04-25`
-- Deployment status: `READY`
-- Scope: add a parent-readable WeChat copy format for admin teacher-feedback forwarding while keeping the existing internal record copy.
-- Key files:
-  - `lib/feedback-forward-text.ts`
-  - `app/admin/feedbacks/page.tsx`
-  - `docs/tasks/TASK-20260425-admin-feedback-wechat-copy.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This only changes copied text and preview on the admin feedback forwarding page; it does not change teacher feedback submission, forwarded status, attendance, payroll, homework storage, or database schema.
-- Verification:
-  - tested WeChat text generation against real recent structured parent-facing feedback
-  - tested fallback formatting against old unstructured feedback
-  - verified the admin feedback page now shows a WeChat preview and separate WeChat/internal copy buttons
-  - `npm run build`
-- Rollback point: previous production commit before `2026-04-25-r124`.
-
-## 2026-04-25-r123
-
-- Release ID: `2026-04-25-r123`
-- Date/Time (Asia/Shanghai): `2026-04-25`
-- Deployment status: `READY`
-- Scope: replace the parent-facing teacher feedback editable template with five separate answer boxes, external bilingual prompts, examples, and an automatic parent-facing preview.
-- Key files:
-  - `lib/parent-feedback-format.ts`
-  - `app/teacher/sessions/[id]/TeacherFeedbackClient.tsx`
-  - `app/teacher/sessions/[id]/page.tsx`
-  - `app/api/teacher/sessions/[id]/feedback/route.ts`
-  - `docs/SOP-è€å¸ˆç«¯æ“ä½œæµç¨‹å›¾æ–‡-20260425.md`
-  - `docs/assets/teacher-sop-20260425/04-parent-feedback-form.png`
-  - `docs/tasks/TASK-20260425-teacher-feedback-section-inputs.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Medium. This changes the teacher feedback writing UI and submit payload, but stores the assembled result in the same existing fields and does not change attendance, payroll, forwarding queues, homework, or database schema.
-- Verification:
-  - tested helper parsing for old Chinese headings, bilingual headings, and unstructured legacy feedback
-  - tested empty section values return all five missing labels
-  - verified the real teacher feedback page renders five separate answer boxes and a preview
-  - refreshed the SOP feedback-form screenshot
-  - `npm run build`
-- Rollback point: previous production commit before `2026-04-25-r123`.
-
-## 2026-04-25-r122
-
-- Release ID: `2026-04-25-r122`
-- Date/Time (Asia/Shanghai): `2026-04-25`
-- Deployment status: `READY`
-- Scope: make the parent-facing teacher feedback template bilingual, with English/Chinese section headings and English/Chinese hints for every required section.
-- Key files:
-  - `lib/parent-feedback-format.ts`
-  - `app/teacher/sessions/[id]/page.tsx`
-  - `docs/SOP-è€å¸ˆç«¯æ“ä½œæµç¨‹å›¾æ–‡-20260425.md`
-  - `docs/assets/teacher-sop-20260425/04-parent-feedback-form.png`
-  - `docs/tasks/TASK-20260425-teacher-feedback-bilingual-prompts.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low to medium. This changes teacher-facing template wording and validation labels, while keeping the existing feedback storage fields, attendance logic, payroll eligibility, forwarding queues, and database schema unchanged.
-- Verification:
-  - tested empty bilingual template returns all five missing sections
-  - tested English-filled and Chinese-filled feedback both pass section validation
-  - verified the real teacher feedback page renders the bilingual template
-  - refreshed the SOP feedback-form screenshot
-  - `npm run build`
-- Rollback point: previous production commit before `2026-04-25-r122`.
-
-## 2026-04-25-r121
-
-- Release ID: `2026-04-25-r121`
-- Date/Time (Asia/Shanghai): `2026-04-25`
-- Deployment status: `READY`
-- Scope: make teacher after-class feedback submit as a parent-facing progress note with required sections for lesson focus, current finding, class evidence, next plan, and parent note.
-- Key files:
-  - `lib/parent-feedback-format.ts`
-  - `app/teacher/sessions/[id]/TeacherFeedbackClient.tsx`
-  - `app/teacher/sessions/[id]/page.tsx`
-  - `app/api/teacher/sessions/[id]/feedback/route.ts`
-  - `docs/tasks/TASK-20260425-parent-facing-teacher-feedback.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Medium. This changes teacher feedback submission requirements and the text copied by admins to parents, but keeps the existing database fields and does not change attendance, payroll, overdue queue, or forwarding status logic.
-- Verification:
-  - inspected recent real `SessionFeedback` rows and confirmed many entries are teacher-log style
-  - added shared client/server validation for the five parent-facing sections
-  - tested complete and incomplete parent-facing feedback samples through the shared formatter
-  - `npm run build`
-- Rollback point: previous production commit before `2026-04-25-r121`.
-
-## 2026-04-25-r120
-
-- Release ID: `2026-04-25-r120`
-- Date/Time (Asia/Shanghai): `2026-04-25`
-- Deployment status: `READY`
-- Scope: sweep logged-in admin mobile layouts so common grid/flex containers no longer force page-level horizontal scrolling, and let the teacher payroll work area collapse to one column on phones.
-- Key files:
-  - `app/responsive-layout.css`
-  - `app/admin/reports/teacher-payroll/page.tsx`
-  - `docs/tasks/TASK-20260425-admin-mobile-post-login-layout-sweep.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low to medium. This is UI-only and mobile-focused, but it touches the shared logged-in responsive layout. It does not change student, scheduling, finance, payroll, approval, or attachment data logic.
-- Verification:
-  - queried real admin, student, package, teacher, and ticket records for representative logged-in routes
-  - local Playwright mobile viewport `390x844`
-  - verified 17 logged-in admin routes have `overflowX=0` and no oversized sticky/fixed panels
-  - verified the mobile admin menu opens with `overflowX=0`
-  - `npm run build`
-- Rollback point: previous production commit before `2026-04-25-r120`.
-
-## 2026-04-25-r119
-
-- Release ID: `2026-04-25-r119`
-- Date/Time (Asia/Shanghai): `2026-04-25`
-- Deployment status: `READY`
-- Scope: fix the mobile student detail page so the large student workbench no longer stays sticky and covers the screen; keep only a compact horizontal shortcut row sticky on phones.
-- Key files:
-  - `app/admin/_components/WorkbenchStickyGuardClient.tsx`
-  - `app/admin/students/[id]/page.tsx`
-  - `docs/tasks/TASK-20260425-student-mobile-sticky-workbench-fix.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This is UI-only and only changes sticky guard presentation. It does not change student records, scheduling, attendance, package, contract, or finance behavior.
-- Verification:
-  - `npm run build`
-  - local Playwright mobile viewport `390x844` on real student `çŽ‹è‰ºæ™¨`
-  - verified `#student-workbench-bar` becomes `position: static` with `data-workbench-sticky-guard="downgraded"`
-  - verified the generated phone shortcut row is `56px` high with horizontal scrolling
-  - verified scrolling leaves the large workbench behind while page content remains visible below the compact sticky row
-- Rollback point: previous production commit before `2026-04-25-r119`.
-
-## 2026-04-24-r112
-
-- Release ID: `2026-04-24-r112`
-- Date/Time (Asia/Shanghai): `2026-04-24`
-- Deployment status: `READY`
-- Scope: let only `zhao hongwei` delete mistaken parent-intake links from the student list, and only when the link has never been used to create a student, package, or contract.
-- Key files:
-  - `lib/student-parent-intake.ts`
-  - `app/admin/students/page.tsx`
-  - `docs/tasks/TASK-20260424-owner-delete-unused-parent-intake-links.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This adds a tightly scoped delete action for mistaken intake links only. Submitted or already-used links remain preserved in history and cannot be deleted.
-- Verification:
-  - `npm run build`
-  - verify only `zhaohongwei0880@gmail.com` sees `Delete link / åˆ é™¤é“¾æŽ¥`
-  - verify an unused `LINK_SENT` intake can be deleted
-  - verify submitted or contract-ready intakes do not show delete and cannot be deleted through the server action
-  - verify used parent-intake links now live under `Used link history / å·²ä½¿ç”¨é“¾æŽ¥åŽ†å²` instead of occupying the main active list
-- Rollback point: previous production commit before `2026-04-24-r112`.
-
-## 2026-04-24-r111
-
-- Release ID: `2026-04-24-r111`
-- Date/Time (Asia/Shanghai): `2026-04-24`
-- Deployment status: `READY`
-- Scope: stop invoice-number compaction after draft deletion so only month-end tail holes can be reused naturally, and add visible deleted-draft history for parent and partner billing pages.
-- Key files:
-  - `lib/global-invoice-sequence.ts`
-  - `lib/student-parent-billing.ts`
-  - `lib/partner-billing.ts`
-  - `app/admin/packages/[id]/billing/page.tsx`
-  - `app/admin/packages/[id]/contract/page.tsx`
-  - `app/admin/reports/partner-settlement/billing/page.tsx`
-  - `app/api/admin/packages/route.ts`
-  - `docs/tasks/TASK-20260424-invoice-delete-tail-gap-and-history.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low to medium. Invoice numbering behavior changes for draft deletion only. Existing issued/remaining invoice numbers are preserved instead of being compacted, and deleted draft numbers are now kept in visible history.
-- Verification:
-  - `npm run build`
-  - confirm deleting a middle draft leaves the gap and does not renumber later invoices
-  - confirm deleting the current tail draft lets the next new invoice reuse that tail slot naturally
-  - confirm package billing, contract workspace, and partner billing show deleted draft invoice history
-- Rollback point: previous production commit before `2026-04-24-r111`.
-
-## 2026-04-24-r103
-
-- Release ID: `2026-04-24-r103`
-- Date/Time (Asia/Shanghai): `2026-04-24`
-- Deployment status: `READY`
-- Scope: move the heavy student-contract workspace out of package billing into its own package contract page, and leave a lighter contract summary/entry point inside billing.
-- Key files:
-  - `app/admin/packages/[id]/billing/page.tsx`
-  - `app/admin/packages/[id]/contract/page.tsx`
-  - `docs/tasks/TASK-20260424-package-contract-workspace-page.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low to medium. This changes admin navigation and where contract actions live, but does not change contract state rules, invoice creation, signed PDFs, or partner-settlement exclusions.
-- Verification:
-  - `npm run build`
-  - verify package billing now shows a compact contract summary with `Open contract workspace`
-  - verify `/admin/packages/[id]/contract` contains parent-link, draft, sign-link, replacement, and void-history actions
-- Rollback point: previous production commit before `2026-04-24-r103`.
-
-## 2026-04-24-r102
-
-- Release ID: `2026-04-24-r102`
-- Date/Time (Asia/Shanghai): `2026-04-24`
-- Deployment status: `READY`
-- Scope: fix the public handwritten-signature pad so a parent who draws and immediately clicks submit no longer gets bounced back as if no signature was provided.
-- Key files:
-  - `app/contract/_components/ContractSignaturePad.tsx`
-  - `docs/tasks/TASK-20260424-contract-signature-pad-submit-sync.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This only changes how the client-side sign pad syncs its hidden signature payload during drawing; it does not change contract wording, signed PDF generation, invoice creation, or package balance rules.
-- Verification:
-  - `npm run build`
-  - verify drawing a signature and immediately clicking `Sign contract` now submits successfully instead of returning `Please draw the handwritten signature`
-  - verify clearing the signature still empties the hidden signature payload
-- Rollback point: previous production commit before `2026-04-24-r102`.
-
-## 2026-04-23-r93
-
-- Release ID: `2026-04-23-r93`
-- Date/Time (Asia/Shanghai): `2026-04-23`
-- Deployment status: `READY`
-- Scope: let finance/ops delete disposable void contract drafts while moving all void contracts into collapsed history so old void rows no longer clutter or block the package billing contract workspace.
-- Key files:
-  - `lib/student-contract.ts`
-  - `app/admin/packages/[id]/billing/page.tsx`
-  - `docs/tasks/TASK-20260423-contract-void-draft-delete-and-history.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This change only affects contract cleanup and display. Signed or invoiced void contracts remain preserved as history, and renewal contracts follow the same safe-delete rule.
-- Verification:
-  - `npm run build`
-  - create a direct-billing contract draft, void it, then delete it and confirm the package returns to the normal create-contract state
-  - confirm `VOID` contracts that were signed or invoiced stay in collapsed history and do not show a delete action
-- Rollback point: previous production commit before `2026-04-23-r93`.
-
-## 2026-04-23-r92
-
-- Release ID: `2026-04-23-r92`
-- Date/Time (Asia/Shanghai): `2026-04-23`
-- Deployment status: `READY`
-- Scope: unify direct-billing student-type semantics so the new parent-intake flow reuses the existing `è‡ªå·±å­¦ç”Ÿ-*` taxonomy instead of creating a separate `ç›´å®¢å­¦ç”Ÿ` branch, while direct-billing exports continue to recognize both names.
-- Key files:
-  - `lib/student-type-semantics.ts`
-  - `lib/student-parent-intake.ts`
-  - `app/api/exports/student-detail/[id]/route.ts`
-  - `app/api/exports/student-schedule/[id]/route.ts`
-  - `app/api/exports/package-ledger/[id]/route.ts`
-  - `docs/tasks/TASK-20260423-student-type-direct-billing-alias.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This change does not alter contract, invoice, receipt, package, or scheduling rules. It only normalizes which student type new direct-billing intake students receive and keeps export branding logic consistent across old and new labels.
-- Verification:
-  - query current student types and confirm direct-billing labels were split across `ç›´å®¢å­¦ç”Ÿ` and `è‡ªå·±å­¦ç”Ÿ-*`
-  - create a fresh parent-intake submission and confirm the new student now lands on `è‡ªå·±å­¦ç”Ÿ-æ–°ç”Ÿ`
-  - `npm run build`
-  - verify student detail, student schedule, and package ledger exports now treat both `è‡ªå·±å­¦ç”Ÿ-*` and `ç›´å®¢å­¦ç”Ÿ` as direct-billing student types
-- Rollback point: previous production commit before `2026-04-23-r92`.
-
-## 2026-04-23-r91
-
-- Release ID: `2026-04-23-r91`
-- Date/Time (Asia/Shanghai): `2026-04-23`
-- Deployment status: `READY`
-- Scope: rework the direct-billing student contract flow so first purchases can start from a parent intake link before a student exists, renewals skip intake, and signed contracts automatically create the matching invoice draft.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260423154500_student_contract_flow_rework/migration.sql`
-  - `prisma/migrations/20260423181500_add_student_parent_intakes/migration.sql`
-  - `lib/student-contract.ts`
-  - `lib/student-parent-intake.ts`
-  - `lib/student-contract-template.ts`
-  - `app/admin/students/page.tsx`
-  - `app/admin/packages/[id]/billing/page.tsx`
-  - `app/admin/students/[id]/page.tsx`
-  - `app/student-intake/[token]/page.tsx`
-  - `app/contract-intake/[token]/page.tsx`
-  - `app/contract/[token]/page.tsx`
-  - `app/api/exports/student-contract/[id]/route.ts`
-  - `docs/tasks/TASK-20260423-student-contract-intake-renewal-auto-invoice.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Medium. This release adds a new pre-student parent-intake path, changes student-contract status progression, adds renewal-mode branching, and auto-creates invoice drafts after signing. It does not change partner-settlement package handling, receipt rules, scheduling gates, or finance-gate rules.
-- Verification:
-  - `npx prisma generate`
-  - `npx prisma migrate deploy`
-  - `npm run build`
-  - local new-student QA confirmed `intake link -> parent submit -> student created -> first package setup -> ready to sign -> signed -> invoice created`
-  - local renewal QA confirmed `renewal draft reuses parent info -> ready to sign -> signed -> invoice created`
-  - verify first-purchase signing auto-created invoice `RGT-202604-0017`
-  - verify renewal signing auto-created invoice `RGT-202604-0018`
-  - verify renewal package finance gate moved to `INVOICE_PENDING_MANAGER`
-  - verify QA cleanup removed the temporary test students, intakes, packages, contracts, approvals, and generated invoice drafts afterwards
-- Rollback point: previous production commit before `2026-04-23-r91`.
-
-## 2026-04-23-r90
-
-- Release ID: `2026-04-23-r90`
-- Date/Time (Asia/Shanghai): `2026-04-23`
-- Deployment status: `READY`
-- Scope: fix contradictory contract UI on partner-settlement packages so exempt packages no longer show student-contract creation entry points.
-- Key files:
-  - `app/admin/packages/[id]/billing/page.tsx`
-  - `app/admin/students/[id]/page.tsx`
-  - `docs/tasks/TASK-20260423-partner-package-contract-ui-guard.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This is a UI consistency fix only. It does not change settlement mode, finance-gate status, partner billing logic, contract records, or any scheduling and finance workflow.
-- Verification:
-  - `npm run build`
-  - confirm partner-settlement packages no longer show `Create contract draft` or `Create from package billing`
-  - confirm the same pages now explain that partner-settlement packages stay outside the student contract workflow
-- Rollback point: previous production commit before `2026-04-23-r90`.
-
-## 2026-04-23-r89
-
-- Release ID: `2026-04-23-r89`
-- Date/Time (Asia/Shanghai): `2026-04-23`
-- Deployment status: `READY`
-- Scope: fix the new student contract PDF layout so long bilingual header text and summary values no longer overlap in downloaded contracts.
-- Key files:
-  - `lib/student-contract-pdf.ts`
-  - `docs/tasks/TASK-20260423-student-contract-pdf-overlap-fix.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This is a layout-only follow-up for the student contract PDF. It does not change contract statuses, contract tokens, signing rules, file storage, package billing logic, invoice gates, or any scheduling workflow.
-- Verification:
-  - `npm run build`
-  - generate a real student contract PDF and confirm the header title no longer collides with the company lines
-  - confirm long student/course/package summary values no longer overlap inside the summary box
-- Rollback point: previous production commit before `2026-04-23-r89`.
-
-## 2026-04-23-r88
-
-- Release ID: `2026-04-23-r88`
-- Date/Time (Asia/Shanghai): `2026-04-23`
-- Deployment status: `READY`
-- Scope: add the first student-contract workflow for direct-billing packages, covering admin draft creation, parent intake, formal signing, and signed PDF export.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260423113000_add_student_contracts_phase1/migration.sql`
-  - `lib/business-file-storage.ts`
-  - `lib/student-contract-template.ts`
-  - `lib/student-contract-pdf.ts`
-  - `lib/student-contract.ts`
-  - `app/contract/_components/ContractSignaturePad.tsx`
-  - `app/contract-intake/[token]/page.tsx`
-  - `app/contract/[token]/page.tsx`
-  - `app/api/exports/student-contract/[id]/route.ts`
-  - `app/admin/packages/[id]/billing/page.tsx`
-  - `app/admin/students/[id]/page.tsx`
-  - `docs/tasks/TASK-20260423-student-contract-phase-1.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Medium. This release adds new public token flows, new Prisma tables, and contract PDF generation/storage. It does not change partner-settlement flows, invoice/receipt logic, scheduling logic, or existing package balances.
-- Verification:
-  - `npx prisma generate`
-  - `npx prisma migrate deploy`
-  - `npm run build`
-  - library-level contract flow QA now passes through `create draft -> intake submit -> sign -> signed PDF saved`
-  - browser QA now passes through `package billing -> intake link -> sign page -> signed success -> signed PDF download`
-  - QA evidence captured in `tmp/qa-student-contract-flow-real-sign/`
-- Rollback point: previous production commit before `2026-04-23-r88`.
-
-## 2026-04-23-r87
-
-- Release ID: `2026-04-23-r87`
-- Date/Time (Asia/Shanghai): `2026-04-23`
-- Deployment status: `READY`
-- Scope: fix the parent statement PDF header so the bilingual statement title no longer overlaps the company name and generated-date lines when the title wraps.
-- Key files:
-  - `app/api/exports/parent-statement/[id]/route.ts`
-  - `docs/tasks/TASK-20260423-parent-statement-header-overlap-fix.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This changes only header layout in the parent statement PDF export. It does not affect statement totals, package status logic, invoice/receipt data, numbering, or any scheduling and finance workflows.
-- Verification:
-  - `npm run build`
-  - export a parent statement PDF and confirm the top-right header block no longer overlaps
-- Rollback point: previous production commit before `2026-04-23-r87`.
-
-## 2026-04-21-r86
-
-- Release ID: `2026-04-21-r86`
-- Date/Time (Asia/Shanghai): `2026-04-21`
-- Deployment status: `READY`
-- Scope: turn the direct-billing package invoice gate into a real hard scheduling gate by removing the remaining finance-gate bypass paths from scheduling entry points.
-- Key files:
-  - `app/api/admin/enrollments/route.ts`
-  - `app/api/admin/classes/[id]/sessions/route.ts`
-  - `app/api/admin/classes/[id]/sessions/generate-weekly/route.ts`
-  - `app/api/admin/classes/[id]/sessions/reschedule/route.ts`
-  - `app/api/admin/booking-links/[id]/requests/[requestId]/approve/route.ts`
-  - `app/api/admin/teachers/[id]/generate-sessions/route.ts`
-  - `app/api/admin/students/[id]/quick-appointment/route.ts`
-  - `app/api/admin/ops/execute/route.ts`
-  - `app/admin/students/[id]/page.tsx`
-  - `app/admin/classes/[id]/sessions/page.tsx`
-  - `app/admin/packages/[id]/billing/page.tsx`
-  - `docs/tasks/TASK-20260421-direct-billing-invoice-gate-phase-3-hard-block.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Medium to high. This release removes the remaining soft-bypass path for `PACKAGE_FINANCE_GATE_BLOCKED`, so direct-billing chargeable packages that have not passed manager invoice approval will now be blocked consistently across scheduling APIs. Partner-settlement packages remain excluded, receipt is still not the first scheduling gate, and super admins still retain unrelated availability/admin powers but no longer bypass the finance gate itself.
-- Verification:
-  - `npm run build`
-  - `npm run test:backend`
-  - confirm no remaining runtime code paths bypass `PACKAGE_FINANCE_GATE_BLOCKED`
-  - post-deploy: smoke-test quick schedule, enrollments, class session create/generate/reschedule, booking approval, teacher generate sessions, and ops execute against a pending direct-billing package
-- Rollback point: previous production commit before `2026-04-21-r86`.
-
-## 2026-04-21-r85
-
-- Release ID: `2026-04-21-r85`
-- Date/Time (Asia/Shanghai): `2026-04-21`
-- Deployment status: `READY`
-- Scope: ship Phase 1 and Phase 2 of the direct-billing package invoice gate so new direct-billing chargeable packages auto-create invoice drafts, enter manager approval, and soft-block scheduling flows until approval is complete.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260421183000_add_package_invoice_gate_phase1/migration.sql`
-  - `lib/package-finance-gate.ts`
-  - `lib/scheduling-package.ts`
-  - `app/api/admin/packages/route.ts`
-  - `app/api/admin/students/[id]/quick-appointment/route.ts`
-  - `app/api/admin/enrollments/route.ts`
-  - `app/api/admin/classes/[id]/sessions/route.ts`
-  - `app/api/admin/classes/[id]/sessions/generate-weekly/route.ts`
-  - `app/api/admin/classes/[id]/sessions/reschedule/route.ts`
-  - `app/api/admin/booking-links/[id]/requests/[requestId]/approve/route.ts`
-  - `app/api/admin/teachers/[id]/generate-sessions/route.ts`
-  - `app/api/admin/ops/execute/route.ts`
-  - `app/admin/packages/PackageCreateFormClient.tsx`
-  - `app/admin/packages/page.tsx`
-  - `app/admin/packages/[id]/billing/page.tsx`
-  - `app/admin/students/[id]/page.tsx`
-  - `app/admin/finance/workbench/page.tsx`
-  - `app/admin/approvals/page.tsx`
-  - `app/admin/classes/[id]/ClassEnrollmentsClient.tsx`
-  - `app/admin/classes/[id]/sessions/page.tsx`
-  - `app/admin/enrollments/page.tsx`
-  - `docs/tasks/TASK-20260421-direct-billing-invoice-gate-phase-1-and-2-release.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Medium. This release adds a new scheduling gate for direct-billing chargeable packages and touches multiple scheduling entry points. The main guardrails are that partner-settlement packages remain excluded, receipt is still not the first scheduling gate, and strict super admins can still bypass `PACKAGE_FINANCE_GATE_BLOCKED` during the soft-block phase. Migration order matters because the new code depends on the new `CoursePackage` finance-gate columns and `PackageInvoiceApproval` table.
-- Verification:
-  - `npx prisma migrate deploy` using the direct database URL, then verify the new `CoursePackage.financeGate*` columns and `PackageInvoiceApproval` table exist
-  - `npm run build`
-  - real-flow QA:
-    - create a new direct-billing chargeable package
-    - confirm invoice draft and `PackageInvoiceApproval` are auto-created
-    - confirm package starts at `INVOICE_PENDING_MANAGER`
-    - confirm scheduling decision returns `PACKAGE_FINANCE_GATE_BLOCKED` before manager approval
-    - approve with a configured manager approver and confirm package becomes `SCHEDULABLE`
-    - confirm partner-settlement package remains `EXEMPT`
-  - UI QA artifacts captured under `tmp/qa-package-gate/`
-- Rollback point: previous production commit before `2026-04-21-r85`.
-
-## 2026-04-21-r84
-
-- Release ID: `2026-04-21-r84`
-- Date/Time (Asia/Shanghai): `2026-04-21`
-- Deployment status: `READY`
-- Scope: add a finance reconciliation workbook that lists every package created since SGT Manage went live and joins package, invoice, receipt, and payment-proof data for finance matching.
-- Key files:
-  - `lib/package-finance-reconciliation.ts`
-  - `app/api/exports/package-finance-reconciliation/route.ts`
-  - `app/admin/finance/workbench/page.tsx`
-  - `app/admin/finance/student-package-invoices/page.tsx`
-  - `docs/tasks/TASK-20260421-package-finance-reconciliation-report.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This is a read-only reporting export plus finance page links. It does not change package balances, package deduction, invoice numbering, receipt approval, or any scheduling workflow. The main caution is interpretation of historical mismatches, so the workbook exposes amount-basis source and exception rows instead of trying to silently normalize old data.
-- Verification:
-  - `npm run build`
-  - confirm `/api/exports/package-finance-reconciliation` is present in the compiled route list
-  - confirm finance workbench and student package invoice pages expose direct download links for the workbook
-  - server-side follow-up after deploy: verify the workbook downloads and contains populated master / invoice / receipt-proof / exception sheets when production data exists
-- Rollback point: previous production commit before `2026-04-21-r84`.
-
-## 2026-04-17-r83
-
-- Release ID: `2026-04-17-r83`
-- Date/Time (Asia/Shanghai): `2026-04-17`
-- Deployment status: `READY`
-- Scope: tighten shared time-input sync and make quick-schedule conflict copy prioritize the student's own existing session before generic teacher/room blockers.
-- Key files:
-  - `app/_components/BlurTimeInput.tsx`
-  - `app/admin/students/[id]/page.tsx`
-  - `app/api/admin/students/[id]/quick-appointment/route.ts`
-  - `app/api/admin/ops/execute/route.ts`
-  - `lib/session-conflict.ts`
-  - `tests/session-conflict.test.ts`
-  - `docs/tasks/TASK-20260417-time-input-sync-and-quick-schedule-conflict-followup.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low to medium. This change touches a shared time input and shared quick-schedule conflict messaging paths, but it does not alter teacher-availability rules, room-occupancy rules, package validation, repeat scheduling writes, or the database-level duplicate-session guard.
-- Verification:
-  - `npx tsx --test tests/session-conflict.test.ts tests/availability-conflict.test.ts tests/admin-teacher-availability.test.ts tests/quick-schedule-execution.test.ts`
-  - `npm run build`
-  - data check still confirms Coco + Jasmine `2026-04-27 17:30-19:00` already exists in the database, so the new conflict copy now points ops at the real reason first
-- Rollback point: previous production commit before `2026-04-17-r83`.
-
-## 2026-04-17-r82
-
-- Release ID: `2026-04-17-r82`
-- Date/Time (Asia/Shanghai): `2026-04-17`
-- Deployment status: `READY`
-- Scope: harden the quick schedule modal so `Find Available Teachers / æŸ¥æ‰¾å¯ç”¨è€å¸ˆ` always refreshes the candidate snapshot instead of depending on a manual page reload.
-- Key files:
-  - `app/admin/_components/QuickScheduleModal.tsx`
-  - `docs/tasks/TASK-20260417-quick-schedule-refresh-followup.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This is a quick-schedule UI refresh follow-up. The Coco + Jasmine investigation showed the target `2026-04-27 17:30-19:00` lesson already existed in the database, so this release does not change scheduling rules; it only forces the modal to refresh server-rendered candidate results after the user asks for a new lookup.
-- Verification:
-  - `npm run build`
-  - data check confirms Coco + Jasmine `2026-04-27 17:30-19:00` already exists in the database
-  - browser check confirms `Find Available Teachers / æŸ¥æ‰¾å¯ç”¨è€å¸ˆ` now refreshes the candidate snapshot without needing a full page refresh
-- Rollback point: previous production commit before `2026-04-17-r82`.
-
-## 2026-04-17-r81
-
-- Release ID: `2026-04-17-r81`
-- Date/Time (Asia/Shanghai): `2026-04-17`
-- Deployment status: `READY`
-- Scope: fix the shared scroll interception rule so student-detail month paging and other same-path query+hash links can navigate normally instead of being trapped as pure anchor jumps.
-- Key files:
-  - `app/_components/ScrollManager.tsx`
-  - `app/admin/students/[id]/page.tsx`
-  - `docs/tasks/TASK-20260417-scroll-manager-query-hash-navigation-followup.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This is still a narrow navigation-layer fix. Pure same-page hash jumps keep working, but links that also change the query string now navigate normally so the server-rendered content can update. No scheduling logic, package logic, or approval logic changed.
-- Verification:
-  - `npm run build`
-  - production browser check confirms student detail `Prev Month / ä¸Šæœˆ` and `Next Month / ä¸‹æœˆ` now visibly change the rendered month while staying on `#calendar-tools`
-  - verify pure same-page hash jumps still scroll correctly
-- Rollback point: previous production commit before `2026-04-17-r81`.
-
-## 2026-04-17-r80
-
-- Release ID: `2026-04-17-r80`
-- Date/Time (Asia/Shanghai): `2026-04-17`
-- Deployment status: `READY`
-- Scope: fix the student-detail scheduling calendar month pager so prev/next month visibly reloads the correct month instead of only changing the URL.
-- Key files:
-  - `app/admin/students/[id]/page.tsx`
-  - `app/admin/students/[id]/_components/StudentCalendarMonthPagerClient.tsx`
-  - `docs/tasks/TASK-20260417-student-calendar-month-pager-hard-refresh.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This is a narrow student-detail calendar navigation fix. The month calculation on the server was already correct; the change only forces the month pager to perform a full navigation so the visible calendar content stays aligned with the URL. No scheduling logic, package logic, or calendar data rules changed.
-- Verification:
-  - `npm run build`
-  - browser check confirms `Prev Month / ä¸Šæœˆ` and `Next Month / ä¸‹æœˆ` now visibly change the rendered month while staying on `#calendar-tools`
-- Rollback point: previous production commit before `2026-04-17-r80`.
-
-## 2026-04-17-r79
-
-- Release ID: `2026-04-17-r79`
-- Date/Time (Asia/Shanghai): `2026-04-17`
-- Deployment status: `READY`
-- Scope: keep quick schedule and the schedule calendar prominent on student detail while surfacing remaining lesson hours earlier.
-- Key files:
-  - `app/admin/students/[id]/page.tsx`
-  - `docs/tasks/TASK-20260417-student-workbench-scheduling-priority-and-remaining-hours.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This is still student-detail UI-only. The page now keeps the most-used scheduling tools prominent and shows remaining lesson hours earlier, but no package math, scheduling rules, routing behavior, or workflow logic changed.
-- Verification:
-  - `npm run build`
-  - production browser check confirms student detail keeps quick schedule and calendar prominent, surfaces remaining lesson hours earlier, and still preserves the recommended-first-action pattern
-- Rollback point: previous production commit before `2026-04-17-r79`.
-
-## 2026-04-17-r78
-
-- Release ID: `2026-04-17-r78`
-- Date/Time (Asia/Shanghai): `2026-04-17`
-- Deployment status: `READY`
-- Scope: make the student detail workbench clearly recommend the next action, keep quick schedule and calendar prominent, surface remaining lesson hours earlier, and group the remaining links into lighter sections.
-- Key files:
-  - `app/admin/students/[id]/page.tsx`
-  - `docs/tasks/TASK-20260417-student-workbench-recommendation-and-grouping.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This is still student-detail UI-only. The page now chooses a recommended first action based on current state, keeps quick schedule and calendar prominent, surfaces remaining lesson hours earlier, and groups the remaining links more clearly, but all destinations and workflow logic stay the same.
-- Verification:
-  - `npm run build`
-  - production browser check confirms student detail now highlights one recommended first action, keeps quick schedule and calendar prominent, surfaces remaining lesson hours earlier, groups secondary links, and keeps the sticky shortcut row as a separate jump layer
-- Rollback point: previous production commit before `2026-04-17-r78`.
-
-## 2026-04-16-r77
-
-- Release ID: `2026-04-16-r77`
-- Date/Time (Asia/Shanghai): `2026-04-16`
-- Deployment status: `READY`
-- Scope: simplify the student detail workbench block so it no longer reads like a second dense dashboard under the new sticky shortcut row.
-- Key files:
-  - `app/admin/students/[id]/page.tsx`
-  - `docs/tasks/TASK-20260416-student-workbench-density-reset.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This is UI-only on the student detail page. The student workbench now emphasizes a few primary actions and lighter secondary links, but all destinations, anchors, and workflow logic stay the same.
-- Verification:
-  - `npm run build`
-  - production browser check confirms the student detail workbench no longer shows the old equal-weight card wall and still works with the compact sticky shortcut row above it
-- Rollback point: previous production commit before `2026-04-16-r77`.
-
-## 2026-04-16-r76
-
-- Release ID: `2026-04-16-r76`
-- Date/Time (Asia/Shanghai): `2026-04-16`
-- Deployment status: `READY`
-- Scope: clean up compact sticky shortcut labels so dense workbenches stop leaking count fragments into the new lightweight navigation row.
-- Key files:
-  - `app/admin/_components/WorkbenchStickyGuardClient.tsx`
-  - `docs/tasks/TASK-20260416-admin-compact-sticky-label-cleanup.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This is still UI-only. The shortcut generator now prefers the bold primary heading inside each source link, which keeps labels clean without changing workflow rules, queue behavior, approvals, or routing.
-- Verification:
-  - `npm run build`
-  - production browser check confirms expense claims now shows clean compact labels without count fragments, while student detail and ticket center keep the same lighter row with `More / æ›´å¤š`
-  - confirm expense-claims split-view detail pane remains sticky
-- Rollback point: previous production commit before `2026-04-16-r76`.
-
-## 2026-04-16-r75
-
-- Release ID: `2026-04-16-r75`
-- Date/Time (Asia/Shanghai): `2026-04-16`
-- Deployment status: `READY`
-- Scope: slim the generated admin sticky shortcut strips so they feel like lightweight navigation instead of dense mini workbenches.
-- Key files:
-  - `app/admin/_components/WorkbenchStickyGuardClient.tsx`
-  - `docs/tasks/TASK-20260416-admin-compact-sticky-density-reduction.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This is still UI-only. The compact sticky row now shows only the first few links inline, moves the rest into `More / æ›´å¤š`, and strips noisy count-heavy labels. No workflow rules, approval logic, routing behavior, or queue logic changed.
-- Verification:
-  - `npm run build`
-  - production browser check confirms student detail, ticket center, and expense claims now show the lighter compact sticky row with at most 3 inline links plus `More / æ›´å¤š`
-  - confirm expense-claims split-view detail pane remains sticky
-- Rollback point: previous production commit before `2026-04-16-r75`.
-
-## 2026-04-16-r74
-
-- Release ID: `2026-04-16-r74`
-- Date/Time (Asia/Shanghai): `2026-04-16`
-- Deployment status: `READY`
-- Scope: turn the downgraded oversized admin work maps into compact sticky shortcut strips instead of removing sticky access entirely.
-- Key files:
-  - `app/admin/_components/WorkbenchStickyGuardClient.tsx`
-  - `docs/tasks/TASK-20260416-admin-compact-sticky-shortcuts.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This is still UI-only. The guard now generates a compact sticky shortcut row from existing page links while the original large work map stays in normal flow. No workflow rules, queue rules, or routing logic changed.
-- Verification:
-  - `npm run build`
-  - production-build browser check confirms student detail, ticket center, expense claims, and receipts approvals now keep a thin sticky shortcut row after the large work map is downgraded
-  - confirm the expense-claims split-view detail pane remains sticky
-- Rollback point: previous production commit before `2026-04-16-r74`.
-
-## 2026-04-16-r73
-
-- Release ID: `2026-04-16-r73`
-- Date/Time (Asia/Shanghai): `2026-04-16`
-- Deployment status: `READY`
-- Scope: add an admin-layout sticky guard so oversized work-map bars stop covering the content below them.
-- Key files:
-  - `app/admin/layout.tsx`
-  - `app/admin/_components/WorkbenchStickyGuardClient.tsx`
-  - `docs/tasks/TASK-20260416-admin-sticky-workmap-guard.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This is a UI-only layout guard that downgrades large sticky work-map panels to normal flow blocks while leaving smaller sticky detail panes and table headers alone. No approval, ticket, scheduling, attendance, package, or finance rules changed.
-- Verification:
-  - `npm run build`
-  - production-build browser check confirms the large work-map bar no longer sticks on the main affected admin pages, including student detail, expense claims, receipts approvals, todos, tickets, partner settlement, teachers, classes, finance workbench, and attendance detail
-  - confirm split-view right detail panes still stay sticky where they are intentionally narrow
-- Rollback point: previous production commit before `2026-04-16-r73`.
-
-## 2026-04-16-r72
-
-- Release ID: `2026-04-16-r72`
-- Date/Time (Asia/Shanghai): `2026-04-16`
-- Deployment status: `READY`
-- Scope: fix the approval inbox narrow-width overflow found during the next real admin QA sweep.
-- Key files:
-  - `app/admin/approvals/page.tsx`
-  - `docs/tasks/TASK-20260416-admin-approval-inbox-narrow-width-followup.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This is a UI-only responsive follow-up that tightens the approval inbox table/grid widths so the page fits with the admin sidebar visible. No approval routing, counts, lanes, or business logic changed.
-- Verification:
-  - `npm run build`
-  - verify `/admin/approvals?focus=manager` no longer overflows horizontally around a `1024px` viewport width
-  - verify the neighboring high-frequency workbenches (`expense-claims`, `receipts-approvals`, `todos`, `tickets`) still remain overflow-free at the same width
-- Rollback point: previous production commit before `2026-04-16-r72`.
-
-## 2026-04-16-r71
-
-- Release ID: `2026-04-16-r71`
-- Date/Time (Asia/Shanghai): `2026-04-16`
-- Deployment status: `READY`
-- Scope: fix the two real admin work-map anchor issues found during post-ship QA on partner settlement and conflicts.
-- Key files:
-  - `app/admin/reports/partner-settlement/page.tsx`
-  - `app/admin/conflicts/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260416-admin-ux-phase-3a-anchor-followup.md`
-- Risk impact (if any): Low. This is a narrow UI-only follow-up that only adjusts anchor targets and scroll offsets after QA. No settlement rules, conflict rules, or scheduling logic changed.
-- Verification:
-  - `npm run build`
-  - verify `Partner Settlement / åˆä½œæ–¹ç»“ç®—ä¸­å¿ƒ` work-map jump to `Action queue / å¾…å¤„ç†é˜Ÿåˆ—` no longer lands under the sticky header
-  - verify `Conflict Center / å†²çªå¤„ç†ä¸­å¿ƒ` work-map jump to `Conflict cards / å†²çªå¡ç‰‡` still lands on a valid target even when the selected range currently has zero conflicts
-- Rollback point: previous production commit before `2026-04-16-r71`.
-
-## 2026-04-16-r70
-
-- Release ID: `2026-04-16-r70`
-- Date/Time (Asia/Shanghai): `2026-04-16`
-- Deployment status: `READY`
-- Scope: finish the next admin UX consistency pass on packages, partner settlement, teacher payroll, and conflicts with better remembered context, clearer banners, and more consistent status signals.
-- Key files:
-  - `app/admin/packages/page.tsx`
-  - `app/admin/reports/partner-settlement/page.tsx`
-  - `app/admin/reports/teacher-payroll/page.tsx`
-  - `app/admin/conflicts/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260416-admin-ux-patterns-phase-3.md`
-- Risk impact (if any): Low to medium. This release is still UI-only, but it expands remembered desk behavior and shared feedback/state components into more finance-heavy pages. The main watchpoints are making sure reset links clear remembered filters cleanly and that payroll/settlement status displays still mirror the same underlying workflow state as before.
-- Verification:
-  - `npm run build`
-  - packages should keep scroll position, show clearer risk/status chips, and use shared next-step banners for resumed filters, post-action focus, and empty states
-  - partner settlement should resume the last workbench view more clearly, keep scroll position, and show shared banners for schema issues, action outcomes, selected-item empty states, and empty pending-record queues
-  - teacher payroll should resume its last desk filters only on normal return, clear properly through the default-desk link, and show shared action banners plus unified workflow chips in both queue and table views
-  - conflicts should remember the last date/filter range on normal return, clear properly through the explicit reset link, preserve scroll position, and show shared chips/banners for conflict tags and empty-range states
-- Rollback point: previous production commit before `2026-04-16-r70`.
-
-## 2026-04-16-r69
-
-- Release ID: `2026-04-16-r69`
-- Date/Time (Asia/Shanghai): `2026-04-16`
-- Deployment status: `READY`
-- Scope: add the second layer of admin UX consistency improvements for remembered desks, shared status chips, clearer form sections, and steadier split workbenches.
-- Key files:
-  - `app/admin/_components/TeacherFilterForm.tsx`
-  - `app/admin/_components/WorkbenchFormSection.tsx`
-  - `app/admin/_components/WorkbenchSplitView.tsx`
-  - `app/admin/_components/WorkbenchStatusChip.tsx`
-  - `app/admin/_components/workbenchStyles.ts`
-  - `app/admin/approvals/page.tsx`
-  - `app/admin/classes/page.tsx`
-  - `app/admin/expense-claims/page.tsx`
-  - `app/admin/receipts-approvals/page.tsx`
-  - `app/admin/students/page.tsx`
-  - `app/admin/teachers/page.tsx`
-  - `app/admin/tickets/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260416-admin-ux-patterns-phase-2.md`
-- Risk impact (if any): Low to medium. This release is still UI-only, but it expands shared admin UX helpers and remembered desk behavior across multiple high-frequency pages. The main watchpoint is making sure filter memory feels helpful, not sticky, when users intentionally clear back to the default desk.
-- Verification:
-  - `npm run build`
-  - ticket, teacher, and class desks should resume remembered filters only when returning normally, and should clear cleanly with the explicit default-desk links
-  - approvals, tickets, and receipts should show clearer shared status chips instead of mixed ad-hoc badges
-  - expense claims review and finance sections should keep a steadier split-pane layout without changing workflow behavior
-  - students list should now remember scroll position like other high-frequency desks
-- Rollback point: previous production commit before `2026-04-16-r69`.
-
-## 2026-04-16-r68
-
-- Release ID: `2026-04-16-r68`
-- Date/Time (Asia/Shanghai): `2026-04-16`
-- Deployment status: `READY`
-- Scope: finish the current admin workbench UI consistency pass and fix same-page anchor scrolling inside the admin scroll container.
-- Key files:
-  - `app/_components/ScrollManager.tsx`
-  - `app/admin/_components/WorkbenchActionBanner.tsx`
-  - `app/admin/_components/WorkbenchScrollMemoryClient.tsx`
-  - `app/admin/_components/workbenchStyles.ts`
-  - `app/admin/approvals/page.tsx`
-  - `app/admin/todos/page.tsx`
-  - `app/admin/tickets/page.tsx`
-  - `app/admin/expense-claims/page.tsx`
-  - `app/admin/feedbacks/page.tsx`
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260416-admin-workbench-ui-consistency-and-anchor-scroll.md`
-- Risk impact (if any): Low to medium. This release is a broad admin UI/interaction polish pass across high-frequency pages. It does not change business rules, but it does touch shared navigation behavior and queue-page continuity, so the main watchpoint is making sure same-path stateful navigation still preserves context while same-page anchor jumps now correctly move the admin scroll container.
-- Verification:
-  - `npm run build`
-  - local browser QA on `/admin/approvals`, `/admin/todos`, `/admin/tickets`, `/admin/expense-claims`, `/admin/feedbacks`, and `/admin/receipts-approvals`
-  - shared workbench result banners should now explain success/failure/next-step outcomes more consistently on the main queue pages
-  - the tested pages should not show obvious narrow-width horizontal overflow in the local QA pass
-  - clicking work-map anchor links should now move to the target section inside the admin `.app-main` scroll container
-  - target sections should not hide under the sticky workbench bar after anchor navigation
-- Rollback point: previous production commit before `2026-04-16-r68`.
-
-## 2026-04-16-r67
-
-- Release ID: `2026-04-16-r67`
-- Date/Time (Asia/Shanghai): `2026-04-16`
-- Deployment status: `READY`
-- Scope: unify the teacher after-class feedback late-deadline logic and make the late rule visible on the teacher session pages.
-- Key files:
-  - `lib/feedback-timing.ts`
-  - `app/api/teacher/sessions/[id]/feedback/route.ts`
-  - `app/teacher/sessions/[id]/TeacherFeedbackClient.tsx`
-  - `app/teacher/sessions/[id]/page.tsx`
-  - `app/teacher/sessions/page.tsx`
-  - `lib/signin-alerts.ts`
-  - `app/admin/alerts/page.tsx`
-  - `app/admin/feedbacks/page.tsx`
-  - `app/api/admin/feedbacks/bulk-forward-overdue/route.ts`
-  - `app/api/admin/feedbacks/proxy-draft/route.ts`
-  - `tests/feedback-timing.test.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260416-feedback-deadline-clarity.md`
-- Risk impact (if any): Low. This release does not change the business rule itself; feedback still becomes late only 12 hours after class end. The change centralizes that rule into one helper and makes the same deadline clearer across teacher pages, teacher submit responses, admin alerts, and admin feedback handling.
-- Verification:
-  - `npx tsx --test tests/feedback-timing.test.ts`
-  - `npx tsx --test tests/billing-optimistic-lock.test.ts`
-  - `npm run build`
-  - teacher session detail should explicitly show when late starts instead of only saying â€œoverdueâ€
-  - teacher feedback submit success should say whether the save is still on time or already late
-  - teacher session list, admin alerts, and admin feedback overdue workbench should still follow the same 12-hour deadline
-- Rollback point: previous production commit before `2026-04-16-r67`.
-
-## 2026-04-15-r66
-
-- Release ID: `2026-04-15-r66`
-- Date/Time (Asia/Shanghai): `2026-04-15`
-- Deployment status: `READY`
-- Scope: polish the approval and receipt UX after the finance-only receipt approval change.
-- Key files:
-  - `app/admin/approvals/page.tsx`
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260415-approval-receipt-ux-polish.md`
-- Risk impact (if any): Low. This is a UI/copy cleanup plus removal of no-longer-used receipt manager approval page actions. Teacher payroll manager approval, partner settlement manager approval, expense approval, receipt finance approval, receipt creation, export gates, and super-admin correction behavior stay unchanged.
-- Verification:
-  - `npm run build`
-  - `npx tsx --test tests/billing-optimistic-lock.test.ts`
-  - narrow Approval Inbox rows should stack more cleanly instead of forcing a table-like horizontal layout
-  - receipt detail should explain legacy manager entries as audit history only
-  - super-admin correction copy should refer to the selected parent receipt instead of implying every selected receipt is already approved
-  - receipt manager approve/reject page actions should no longer be present in the receipt approval page
-- Rollback point: previous production commit before `2026-04-15-r66`.
-
-## 2026-04-15-r65
-
-- Release ID: `2026-04-15-r65`
-- Date/Time (Asia/Shanghai): `2026-04-15`
-- Deployment status: `READY`
-- Scope: simplify parent and partner receipt approval so generated receipts require finance approval only, while keeping unrelated manager-approval workflows unchanged.
-- Key files:
-  - `lib/receipt-approval-policy.ts`
-  - `lib/approval-inbox.ts`
-  - `lib/global-invoice-sequence.ts`
-  - `app/admin/receipts-approvals/page.tsx`
-  - `app/admin/receipts-approvals/history/export/route.ts`
-  - `app/admin/finance/workbench/page.tsx`
-  - `app/admin/packages/[id]/billing/page.tsx`
-  - `app/admin/reports/partner-settlement/billing/page.tsx`
-  - `app/api/exports/parent-receipt/[id]/route.ts`
-  - `app/api/exports/partner-receipt/[id]/route.ts`
-  - `app/api/exports/parent-statement/[id]/route.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260415-receipt-finance-only-approval.md`
-- Risk impact (if any): Medium-low. This intentionally changes only the receipt approval policy from manager+finance to finance-only. It does not change teacher payroll manager approval, partner settlement approval, expense approval, receipt creation, payment proof linking, invoice math, package balance math, or super-admin correction rules.
-- Verification:
-  - `npm run build`
-  - receipt reminders should still appear in Approval Inbox, but only under `Finance approval / è´¢åŠ¡å®¡æ‰¹`
-  - receipt manager approve/reject controls should no longer appear in the receipt approval center
-  - finance should be able to approve a parent or partner receipt without prior manager approval
-  - formal parent and partner receipt PDF exports should unlock after finance approval
-  - finance workbench, package billing, parent statement, partner billing, and receipt history export should classify receipts using finance-only approval status
-- Rollback point: previous production commit before `2026-04-15-r65`.
-
-## 2026-04-15-r64
-
-- Release ID: `2026-04-15-r64`
-- Date/Time (Asia/Shanghai): `2026-04-15`
-- Deployment status: `READY`
-- Scope: add teacher payroll approval reminders into the unified Approval Inbox so management and finance can see payroll items that need their action.
-- Key files:
-  - `lib/teacher-payroll.ts`
-  - `lib/approval-inbox.ts`
-  - `app/admin/approvals/page.tsx`
-  - `app/admin/reports/teacher-payroll/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260415-approval-inbox-teacher-payroll.md`
-- Risk impact (if any): Low. This release only adds teacher payroll records to the existing approval reminder aggregation and adds a return banner from payroll back to the inbox. It does not change teacher payroll calculation, manager approval rules, finance confirmation rules, finance rejection rules, or payout logic.
-- Verification:
-  - `npm run build`
-  - teacher payroll records that are teacher-confirmed but not manager-approved should appear in the manager approval lane
-  - teacher payroll records that are manager-approved but not finance-confirmed or not paid should appear in the finance approval lane
-  - Approval Inbox should show `Teacher payroll / è€å¸ˆå·¥èµ„` rows with payroll totals when available
-  - opening a teacher payroll reminder should focus the teacher payroll page and show a return banner back to Approval Inbox
-- Rollback point: previous production commit before `2026-04-15-r64`.
-
-## 2026-04-15-r63
-
-- Release ID: `2026-04-15-r63`
-- Date/Time (Asia/Shanghai): `2026-04-15`
-- Deployment status: `READY`
-- Scope: ship the next UX-continuity batch by extending Todo Center return paths into ticket and attendance flows, standardizing source-return banners, tightening student-detail first-screen weight, improving queue empty states, and stabilizing remaining two-column workbench layouts.
-- Key files:
-  - `app/admin/_components/WorkflowSourceBanner.tsx`
-  - `app/admin/todos/page.tsx`
-  - `app/admin/tickets/[id]/page.tsx`
-  - `app/admin/sessions/[id]/attendance/page.tsx`
-  - `app/admin/students/[id]/page.tsx`
-  - `app/admin/receipts-approvals/page.tsx`
-  - `app/admin/expense-claims/page.tsx`
-  - `app/admin/packages/[id]/billing/page.tsx`
-  - `docs/UX-REVIEW-20260414.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260415-ux-batch7-todo-continuity-status-empty-states.md`
-- Risk impact (if any): Low. This release changes navigation continuity, status wording, empty-state guidance, first-screen grouping, and layout sizing only. It does not change approval rules, receipt math, attendance deduction rules, ticket status permissions, scheduling logic, or student/package data.
-- Verification:
-  - `npm run build`
-  - Todo Center attendance and ticket links should carry a visible return path back to the original todo section
-  - ticket detail and attendance pages should show a `From Todo Center / æ¥è‡ªå¾…åŠžä¸­å¿ƒ` banner when opened from Todo Center
-  - source banners for approval, receipt, package, and student-list workflows should use the same layout pattern
-  - student detail should put next actions first and keep the profile snapshot collapsed until needed
-  - package billing and todo empty states should explain what is empty and where to go next
-  - expense claim split queues should keep their right-side detail panels aligned to their own content height
-- Rollback point: previous production commit before `2026-04-15-r63`.
-
-## 2026-04-14-r62
-
-- Release ID: `2026-04-14-r62`
-- Date/Time (Asia/Shanghai): `2026-04-14`
-- Deployment status: `READY`
-- Scope: extend the workflow-continuity UX batch by preserving â€œwhere you came fromâ€ between Students, Student Detail, Coordination, Receipt Queue, and Package Billing, while also tightening Package Billing into a more compact first-screen workspace with action-first receipt states.
-- Key files:
-  - `app/admin/students/AdminStudentsClient.tsx`
-  - `app/admin/students/[id]/page.tsx`
-  - `app/admin/receipts-approvals/page.tsx`
-  - `app/admin/packages/[id]/billing/page.tsx`
-  - `docs/UX-REVIEW-20260414.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260414-ux-batch6-workflow-continuity-and-package-billing.md`
-- Risk impact (if any): Low. This release only changes navigation continuity, first-screen information grouping, and action-first status wording on existing admin pages. It does not change billing rules, receipt approval rules, student data, or scheduling behavior.
-- Verification:
-  - `npm run build`
-  - student links opened from the list should carry a return path into student detail and coordination
-  - package billing opened from receipt approvals should show a visible return path back to the same receipt queue
-  - package billing first screen should show summary context first and keep create-invoice behind an expandable section
-  - package receipt progress and approval states should read more action-first
-- Rollback point: previous production commit before `2026-04-14-r62`.
-
-## 2026-04-14-r61
-
-- Release ID: `2026-04-14-r61`
-- Date/Time (Asia/Shanghai): `2026-04-14`
-- Deployment status: `READY`
-- Scope: hotfix the expense-claims dual-queue layout so the selected detail panels keep their own content height instead of stretching to match a long left queue.
-- Key files:
-  - `app/admin/expense-claims/page.tsx`
-  - `docs/UX-REVIEW-20260414.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260414-expense-queue-panel-height-hotfix.md`
-- Risk impact (if any): Low. This release only changes the grid alignment and selected-panel sizing inside Expense Claims. It does not change approval rules, queue data, payment logic, or navigation flow.
-- Verification:
-  - `npm run build`
-  - submitted review queue should no longer stretch the selected panel to the same height when the left list is long
-  - finance queue should no longer stretch the selected payout group panel to the same height when the left list is long
-- Rollback point: previous production commit before `2026-04-14-r61`.
-
-## 2026-04-14-r60
-
-- Release ID: `2026-04-14-r60`
-- Date/Time (Asia/Shanghai): `2026-04-14`
-- Deployment status: `READY`
-- Scope: extend the tighter queue-workbench pattern into Approval Inbox and Expense Claims by compressing approval-row scan density, making expense review and finance groups easier to compare, and adding previous/next navigation inside the selected expense panels.
-- Key files:
-  - `app/admin/approvals/page.tsx`
-  - `app/admin/expense-claims/page.tsx`
-  - `docs/UX-REVIEW-20260414.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260414-ux-batch5-approval-and-expense-density-navigation.md`
-- Risk impact (if any): Low. This release only changes approval-list density, queue-navigation affordances, and selected-panel guidance on existing approval pages. It does not change expense approval rules, payment rules, or receipt logic.
-- Verification:
-  - `npm run build`
-  - approval inbox rows should read more compactly without losing key metadata
-  - expense review should show previous/next navigation for submitted claims
-  - finance queue should show previous/next navigation for approved-unpaid groups
-- Rollback point: previous production commit before `2026-04-14-r60`.
-
-## 2026-04-14-r59
-
-- Release ID: `2026-04-14-r59`
-- Date/Time (Asia/Shanghai): `2026-04-14`
-- Deployment status: `READY`
-- Scope: tighten the receipt-approval workbench one more step by compressing queue cards into faster-scan metadata rows and turning the detail drawer into a clearer processing cockpit with queue position plus previous/next navigation.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/UX-REVIEW-20260414.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260414-ux-batch4-receipt-queue-density-and-drawer-navigation.md`
-- Risk impact (if any): Low. This release only changes layout density, summary duplication, and intra-queue navigation inside the existing receipt approval workbench. It does not change receipt approvals, payment-proof repair rules, billing math, or audit behavior.
-- Verification:
-  - `npm run build`
-  - receipt queue cards should show a shorter inline metadata row instead of three stacked detail lines
-  - selected receipt drawer should show queue position and explicit previous/next navigation
-  - receipt detail should no longer repeat the same receipt/type/invoice summary in multiple stacked blocks
-- Rollback point: previous production commit before `2026-04-14-r59`.
-
-## 2026-04-14-r58
-
-- Release ID: `2026-04-14-r58`
-- Date/Time (Asia/Shanghai): `2026-04-14`
-- Deployment status: `READY`
-- Scope: ship the third UX-efficiency batch by making approval and queue status language more action-first, keeping a visible â€œfrom Approval Inboxâ€ return path inside receipt approvals and expense claims, and preserving that source workflow when users keep moving through the linked review actions.
-- Key files:
-  - `app/admin/approvals/page.tsx`
-  - `app/admin/receipts-approvals/page.tsx`
-  - `app/admin/expense-claims/page.tsx`
-  - `lib/approval-inbox.ts`
-  - `docs/UX-REVIEW-20260414.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260414-ux-batch3-approval-language-and-return-paths.md`
-- Risk impact (if any): Low. This release only changes navigation continuity, status wording, and workflow context banners on existing approval-driven admin pages. It does not change receipt approval rules, expense approval permissions, billing math, or data mutation rules.
-- Verification:
-  - `npm run build`
-  - opening an item from `/admin/approvals` should carry `source=approvals` into receipt approvals or expense claims
-  - receipt approvals and expense claims should show a visible â€œFrom Approval Inboxâ€ return banner when entered from that workflow
-  - pending statuses should read as action-oriented next steps instead of only passive state labels
-- Rollback point: previous production commit before `2026-04-14-r58`.
-
-## 2026-04-14-r57
-
-- Release ID: `2026-04-14-r57`
-- Date/Time (Asia/Shanghai): `2026-04-14`
-- Deployment status: `READY`
-- Scope: ship the second UX-efficiency batch by tightening the receipt-approval queue into a clearer processing workbench, pushing expense-approval config below the live queues, and finally making the dedicated student coordination page behave like a true light-shell workspace instead of still carrying the rest of the long student detail flow.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `app/admin/expense-claims/page.tsx`
-  - `app/admin/students/[id]/page.tsx`
-  - `docs/UX-REVIEW-20260414.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260414-ux-batch2-receipts-expense-coordination.md`
-- Risk impact (if any): Low. This release only changes layout emphasis, information density, and workspace shell behavior on existing admin pages. It does not change receipt math, approval rules, expense-claim decisions, student data, scheduling logic, or package behavior.
-- Verification:
-  - `npm run build`
-  - receipt approvals should show a stronger current-work-focus strip and queue-display controls with visible counts
-  - expense claims should keep approval config below the live queues instead of taking first-screen space
-  - `/admin/students/[id]/coordination` should no longer render the long calendar, packages, attendance, quick-schedule, and edit sections underneath the coordination workspace
-- Rollback point: previous production commit before `2026-04-14-r57`.
-
-## 2026-04-14-r56
-
-- Release ID: `2026-04-14-r56`
-- Date/Time (Asia/Shanghai): `2026-04-14`
-- Deployment status: `READY`
-- Scope: start the first UX-efficiency batch from the 2026-04-14 review by compressing the admin dashboard first screen, turning approval inbox into a denser action-oriented review list, and making student-list dataset scope plus restored-filter state much harder to misread.
-- Key files:
-  - `app/admin/page.tsx`
-  - `app/admin/approvals/page.tsx`
-  - `app/admin/students/page.tsx`
-  - `docs/UX-REVIEW-20260414.md`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260414-ux-batch1-dashboard-approvals-students.md`
-- Risk impact (if any): Low. This release only changes presentation density, layout emphasis, current-scope messaging, and navigation affordances on existing admin pages. It does not change approval rules, receipt math, billing state, scheduling logic, student data, or package behavior.
-- Verification:
-  - `npm run build`
-  - admin dashboard should show a tighter first screen with priority work and compact operational metrics
-  - approval inbox should show filter counts and a denser review list instead of only large action cards
-  - student list should clearly show current dataset scope and warn users when the system restored a previous desk or filter context
-- Rollback point: previous production commit before `2026-04-14-r56`.
-
-## 2026-04-14-r55
-
-- Release ID: `2026-04-14-r55`
-- Date/Time (Asia/Shanghai): `2026-04-14`
-- Deployment status: `READY`
-- Scope: stop the approval-inbox filter chips and item links from using full-page anchor navigation, so switching filters inside `/admin/approvals` no longer hard-refreshes the shared left sidebar.
-- Key files:
-  - `app/admin/approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260414-approval-inbox-client-navigation.md`
-- Risk impact (if any): Low. This release only swaps approval-inbox links from full-document anchors to Next.js client navigation inside the existing admin layout. It does not change approval data, counts, filters, receipt logic, expense logic, or sidebar contents.
-- Verification:
-  - `npm run build`
-  - switching between `/admin/approvals` filters should no longer hard-refresh the left admin sidebar
-  - opening approval items from the inbox should use the same client-side navigation behavior where applicable
-- Rollback point: previous production commit before `2026-04-14-r55`.
-
-## 2026-04-14-r54
-
-- Release ID: `2026-04-14-r54`
-- Date/Time (Asia/Shanghai): `2026-04-14`
-- Deployment status: `READY`
-- Scope: add a first unified `Approval Inbox / å®¡æ‰¹æé†’ä¸­å¿ƒ` that consolidates pending parent receipt, partner receipt, and expense-claim approvals into one admin page, while also surfacing the same pending counts in the sidebar and admin home summary cards.
-- Key files:
-  - `lib/approval-inbox.ts`
-  - `app/admin/approvals/page.tsx`
-  - `app/admin/layout.tsx`
-  - `app/admin/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260414-approval-inbox-v1.md`
-- Risk impact (if any): Low. This release adds a read-only cross-workspace approval summary and new navigation entry points for manager, finance, and super-admin users. It does not change the underlying approval rules, approval order, receipt math, expense-claim decisions, billing data, scheduling, sessions, or package behavior.
-- Verification:
-  - `npm run build`
-  - `/admin/approvals` should show pending parent receipt, partner receipt, and expense-claim items relevant to the current user
-  - sidebar navigation should expose `Approval Inbox / å®¡æ‰¹æé†’` with a live pending count for admin and finance users
-  - admin home summary should show the new pending-approvals card and link into `/admin/approvals`
-- Rollback point: previous production commit before `2026-04-14-r54`.
-
-## 2026-04-14-r53
-
-- Release ID: `2026-04-14-r53`
-- Date/Time (Asia/Shanghai): `2026-04-14`
-- Deployment status: `READY`
-- Scope: allow strict super-admin `zhao hongwei` to directly correct approved parent receipts in place from the receipt detail drawer without forcing a revoke-and-redo loop, while preserving existing approvals and writing every change into the audit log.
-- Key files:
-  - `lib/student-parent-billing.ts`
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260414-super-admin-direct-parent-receipt-correction.md`
-- Risk impact (if any): Medium. This release intentionally lets one strict super-admin edit approved parent receipt fields in place and keep prior approvals valid. The scope is limited to parent receipts, still writes audit logs, and still blocks cumulative amountReceived from exceeding the linked invoice total.
-- Verification:
-  - `npm run build`
-  - only `zhao hongwei` should see the direct correction form on parent receipt details
-  - direct correction should allow updating receipt date, received from, paid by, amount, gst, total, amount received, and note
-  - existing approvals should remain intact after a direct correction
-  - direct correction should still reject amountReceived values that would push the linked invoice above its total
-- Rollback point: previous production commit before `2026-04-14-r53`.
-
-## 2026-04-14-r52
-
-- Release ID: `2026-04-14-r52`
-- Date/Time (Asia/Shanghai): `2026-04-14`
-- Deployment status: `READY`
-- Scope: let finance backfill or correct amounts on existing parent payment-proof records inline, and require a final click-through confirmation when a new receipt amount diverges from the invoice remaining balance or the selected proof amount.
-- Key files:
-  - `lib/student-parent-billing.ts`
-  - `app/admin/receipts-approvals/page.tsx`
-  - `app/admin/receipts-approvals/_components/ConfirmCreateReceiptButton.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260414-parent-proof-amount-backfill-and-confirmation.md`
-- Risk impact (if any): Low. This release adds finance-side metadata editing for existing parent payment proofs and a submit-time confirmation guard for create-receipt mismatches. It does not change invoice math, receipt numbering, payment-record uniqueness, approval decisions, partner billing, scheduling, sessions, or package behavior.
-- Verification:
-  - `npm run build`
-  - existing payment-proof rows should allow finance to save or update a proof amount inline
-  - create-receipt submit should pop a confirmation when amount received is above or below invoice remaining balance
-  - create-receipt submit should also pop a confirmation when amount received differs from the selected proof amount
-- Rollback point: previous production commit before `2026-04-14-r52`.
-
-## 2026-04-13-r51
-
-- Release ID: `2026-04-13-r51`
-- Date/Time (Asia/Shanghai): `2026-04-13`
-- Deployment status: `READY`
-- Scope: add an optional amount field to parent payment-proof records so finance can compare selected proof amounts against invoice remaining balance and entered receipt amounts with real data instead of guesswork.
-- Key files:
-  - `lib/student-parent-billing.ts`
-  - `app/admin/receipts-approvals/page.tsx`
-  - `app/admin/receipts-approvals/_components/ReceiptAmountReceivedField.tsx`
-  - `app/admin/packages/[id]/billing/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260413-parent-payment-proof-amount.md`
-- Risk impact (if any): Low. This release adds an optional payment-proof amount field for parent billing and uses it for finance-side comparison hints only. It does not change receipt numbering, remaining-balance caps, payment-record uniqueness, approval logic, statement math, partner billing, scheduling, sessions, or package behavior.
-- Verification:
-  - `npm run build`
-  - payment-proof upload and replacement should allow entering an optional amount
-  - existing payment-record tables and selectors should show stored proof amounts when available
-  - receipt create form should compare entered amount against both invoice remaining balance and selected proof amount when that proof amount exists
-- Rollback point: previous production commit before `2026-04-13-r51`.
-
-## 2026-04-13-r50
-
-- Release ID: `2026-04-13-r50`
-- Date/Time (Asia/Shanghai): `2026-04-13`
-- Deployment status: `READY`
-- Scope: finish the next round of finance-side parent partial-receipt improvements by adding a dedicated partial-receipt follow-up queue in finance workbench, a downloadable invoice receipt progress CSV, stronger create-form amount warnings, and more automatic next-receipt shortcuts that carry the only unlinked proof when it is unambiguous.
-- Key files:
-  - `app/admin/finance/workbench/page.tsx`
-  - `app/admin/packages/[id]/billing/page.tsx`
-  - `app/admin/receipts-approvals/page.tsx`
-  - `app/admin/receipts-approvals/_components/ReceiptAmountReceivedField.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260413-parent-partial-receipt-finance-polish.md`
-- Risk impact (if any): Low. This release improves finance-facing queueing, export, shortcut, and warning UX around parent partial receipts. It does not change receipt numbering rules, amount-validation caps, payment-record uniqueness, approval decisions, statement math, partner billing, scheduling, sessions, or package behavior.
-- Verification:
-  - `npm run build`
-  - finance workbench should expose a dedicated partial-receipt follow-up queue sorted by due date and remaining amount
-  - finance workbench should export an invoice receipt progress CSV for the current filtered dataset
-  - package billing should carry the only unlinked payment proof into next-receipt shortcuts when that recommendation is unambiguous
-  - receipt create form should show live warnings when amount received is above or below the invoice remaining balance
-- Rollback point: previous production commit before `2026-04-13-r50`.
-
-## 2026-04-13-r49
-
-- Release ID: `2026-04-13-r49`
-- Date/Time (Asia/Shanghai): `2026-04-13`
-- Deployment status: `READY`
-- Scope: make parent partial-receipt follow-up actions more explicit by exposing the exact next receipt number in package billing and receipt-approval detail shortcuts, so finance can jump straight into `RC2`, `RC3`, and later receipts instead of guessing from a generic "next receipt" label.
-- Key files:
-  - `app/admin/packages/[id]/billing/page.tsx`
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260413-parent-next-receipt-shortcuts.md`
-- Risk impact (if any): Low. This release only changes finance-facing shortcut labels and navigation hints for follow-up parent receipts. It does not change receipt numbering rules, amount validation, proof-link uniqueness, approvals, statement math, partner billing, scheduling, sessions, or package behavior.
-- Verification:
-  - `npm run build`
-  - package billing invoice rows with remaining balance should show `Create RC2` / `Create RC3` style actions plus the full next receipt number
-  - receipt-approval package workspace next-step helper should expose the same explicit `RC2` / `RC3` label when a next receipt is recommended
-  - selected parent receipt details should show a dedicated next partial-receipt card that opens the create step with the same invoice only, without reusing the current linked payment proof
-- Rollback point: previous production commit before `2026-04-13-r49`.
-
-## 2026-04-13-r48
-
-- Release ID: `2026-04-13-r48`
-- Date/Time (Asia/Shanghai): `2026-04-13`
-- Deployment status: `READY`
-- Scope: add automated parent partial-receipt backend coverage and fix the leftover receipt-number validator so `-RC2`, `-RC3`, and later receipts are accepted by the store layer instead of being blocked by the old single-receipt regex.
-- Key files:
-  - `lib/student-parent-billing.ts`
-  - `tests/billing-optimistic-lock.test.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260413-parent-partial-receipt-tests-and-validator-fix.md`
-- Risk impact (if any): Medium. This release changes backend receipt-number validation for parent receipts and adds automated coverage around multi-receipt edge cases. It does not change partner billing, finance approvals, statement math, package deduction logic, scheduling, sessions, or package behavior.
-- Verification:
-  - `npx tsx --test tests/billing-optimistic-lock.test.ts`
-  - `npm run test:backend`
-  - `npm run build`
-  - the backend should now accept `InvoiceNo-RC2`, `InvoiceNo-RC3`, and later parent receipt numbers
-  - tests should cover numbering progression, valid second partial receipt creation, over-receipt blocking, and duplicate payment-record rejection
-- Rollback point: previous production commit before `2026-04-13-r48`.
-
-## 2026-04-13-r47
-
-- Release ID: `2026-04-13-r47`
-- Date/Time (Asia/Shanghai): `2026-04-13`
-- Deployment status: `READY`
-- Scope: streamline the next parent receipt creation flow by surfacing a recommended next-receipt card, carrying the next receipt number into invoice pickers, and auto-selecting the most usable unlinked payment proof when possible.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260413-parent-next-receipt-helper.md`
-- Risk impact (if any): Low. This release only improves finance-side guidance and default selections inside the create-receipt workspace. It does not change receipt numbering rules, amount validation, approvals, statement math, package deduction logic, partner billing, scheduling, sessions, or package behavior.
-- Verification:
-  - `npm run build`
-  - package finance workspace should show a recommended next-receipt card with invoice no., next receipt no., remaining amount, and suggested proof
-  - when only one usable unlinked payment record exists, it should auto-select and explain why
-  - `Create the next receipt` package helper should open the create step with the recommended invoice and proof already carried in the URL
-  - invoice pickers in the create flow should show the next receipt number alongside remaining amount
-- Rollback point: previous production commit before `2026-04-13-r47`.
-
-## 2026-04-13-r46
-
-- Release ID: `2026-04-13-r46`
-- Date/Time (Asia/Shanghai): `2026-04-13`
-- Deployment status: `READY`
-- Scope: make parent partial-receipt progress easier for finance to read by surfacing invoice-level receipt totals, remaining balance, and next-step context in package billing, statement export, and receipt-history export.
-- Key files:
-  - `app/admin/packages/[id]/billing/page.tsx`
-  - `app/api/exports/parent-statement/[id]/route.ts`
-  - `app/admin/receipts-approvals/history/export/route.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260413-parent-partial-receipt-visibility.md`
-- Risk impact (if any): Low. This release only improves finance-facing visibility for invoice receipt progress and remaining balance; it does not change parent receipt numbering, approval rules, payment-record linking, package deduction logic, partner billing, scheduling, sessions, or package behavior.
-- Verification:
-  - `npm run build`
-  - package billing should show each invoice's receipt count, created/approved/pending amounts, and remaining amount
-  - each receipt row in package billing should show the linked invoice's overall receipt progress
-  - statement PDF should include an invoice receipt breakdown section so finance can see partial receipt progress per invoice
-  - receipt history CSV should export invoice total, receipt count, receipted amount, pending amount, and remaining amount for parent receipts
-- Rollback point: previous production commit before `2026-04-13-r46`.
-
-## 2026-04-13-r45
-
-- Release ID: `2026-04-13-r45`
-- Date/Time (Asia/Shanghai): `2026-04-13`
-- Deployment status: `READY`
-- Scope: support multiple parent receipts on the same invoice for partial payments, keep the first receipt number as `-RC`, continue later receipts as `-RC2`, `-RC3`, and make finance pages show remaining receiptable amount instead of blocking after the first receipt.
-- Key files:
-  - `lib/student-parent-billing.ts`
-  - `app/admin/receipts-approvals/page.tsx`
-  - `app/admin/finance/workbench/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260413-parent-partial-multi-receipt.md`
-- Risk impact (if any): Medium. This release changes parent receipt numbering, invoice-to-receipt linking rules, finance workbench status interpretation, and create-receipt defaults for partial payments. It intentionally does not change partner billing, package deduction logic, scheduling, sessions, packages, or finance approvals themselves.
-- Verification:
-  - `npm run build`
-  - a parent invoice with one approved partial receipt should still remain selectable in `/admin/receipts-approvals` while it has remaining receiptable amount
-  - the next auto-generated receipt number should be `InvoiceNo-RC2`, `InvoiceNo-RC3`, etc., while the first receipt stays `InvoiceNo-RC`
-  - create-receipt defaults should show `already receipted` and `remaining to receipt`, and should default the new receipt amount to the remaining amount
-  - finance workbench should show `Partially Receipted / éƒ¨åˆ†å·²å¼€æ”¶æ®` instead of treating the invoice as fully finished after the first approved partial receipt
-  - over-receipting should be blocked, while valid partial receipts should no longer be flagged as a mismatch by default
-- Rollback point: previous production commit before `2026-04-13-r45`.
-
-## 2026-04-12-r44
-
-- Release ID: `2026-04-12-r44`
-- Date/Time (Asia/Shanghai): `2026-04-12`
-- Deployment status: `READY`
-- Scope: add an obvious close/return action inside the dedicated student coordination workspace so ops can leave the workspace without getting stuck on that page.
-- Key files:
-  - `app/admin/students/[id]/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260412-student-coordination-close-button.md`
-- Risk impact (if any): Low. This release only adjusts student-detail coordination navigation labels and destinations; it does not change coordination tickets, helper generation, parent availability, quick scheduling, sessions, packages, deductions, or finance logic.
-- Verification:
-  - `npm run build`
-  - the student-detail workbench should show `Close coordination workspace / å…³é—­æŽ’è¯¾åè°ƒå·¥ä½œå°` instead of another open-link when already inside `/admin/students/[id]/coordination`
-  - the dedicated coordination page header should also expose the same close action back to the main student detail page
-  - closing the workspace should return to `/admin/students/[id]` without affecting any coordination state
-- Rollback point: previous production commit before `2026-04-12-r44`.
-
-## 2026-04-12-r43
-
-- Release ID: `2026-04-12-r43`
-- Date/Time (Asia/Shanghai): `2026-04-12`
-- Deployment status: `READY`
-- Scope: move the student-detail scheduling-coordination workspace out of the already crowded profile page into its own dedicated student coordination page, while leaving the coordination logic itself unchanged.
-- Key files:
-  - `app/admin/students/[id]/page.tsx`
-  - `app/admin/students/[id]/coordination/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260412-student-detail-coordination-dedicated-page.md`
-- Risk impact (if any): Low to medium. This release changes student-detail navigation and where coordination actions live, but it does not change ticket logic, parent-time matching, quick scheduling rules, teacher availability, sessions, packages, deductions, or finance behavior.
-- Verification:
-  - `npm run build`
-  - `/admin/students/[id]` should now show a concise coordination summary card instead of the full coordination workspace
-  - the new `/admin/students/[id]/coordination` page should load the full existing coordination workspace
-  - student-detail coordination buttons, helper forms, and ticket back-links should now open or return to the dedicated coordination page
-  - the rest of student detail should remain usable without the large coordination block in the middle of the page
-- Rollback point: previous production commit before `2026-04-12-r43`.
-
-## 2026-04-12-r42
-
-- Release ID: `2026-04-12-r42`
-- Date/Time (Asia/Shanghai): `2026-04-12`
-- Deployment status: `READY`
-- Scope: rebalance calendar-mode coordination candidates so the first helper slots cover more of the parent's selected dates instead of letting earlier dates consume the whole shortlist.
-- Key files:
-  - `lib/scheduling-coordination.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260412-coordination-calendar-date-coverage.md`
-- Risk impact (if any): Low. This release does not change teacher availability, parent payload matching rules, ticket lifecycle, or scheduling storage; it only changes how already-matched calendar-date slots are prioritized before the helper trims them to a short list.
-- Verification:
-  - `npm run build`
-  - for calendar-mode parent submissions with several selected dates, the first helper shortlist should try to surface at least one option from each requested date before repeating earlier dates
-  - the underlying matching rules should stay the same, so dates with no matching teacher availability should still be absent
-  - the existing example ticket `20260409-004` should now surface `2026-04-11`, `2026-04-13`, `2026-04-19`, and `2026-04-20` inside the first five generated options instead of concentrating mostly on the earliest two dates
-- Rollback point: previous production commit before `2026-04-12-r42`.
-
-## 2026-04-12-r41
-
-- Release ID: `2026-04-12-r41`
-- Date/Time (Asia/Shanghai): `2026-04-12`
-- Deployment status: `READY`
-- Scope: make scheduling-coordination helper status stop claiming a confirmed ticket is ready to schedule after the parent re-submits availability, and generate candidate slots by searching the parent-submitted availability window before filtering.
-- Key files:
-  - `lib/scheduling-coordination.ts`
-  - `app/availability/[token]/page.tsx`
-  - `app/admin/students/[id]/page.tsx`
-  - `app/admin/tickets/[id]/page.tsx`
-  - `app/admin/todos/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260412-coordination-manual-review-and-parent-window-match.md`
-- Risk impact (if any): Medium. This release changes scheduling-coordination helper interpretation and candidate-slot generation, but it keeps the existing parent-availability payload, ticket lifecycle, teacher availability storage, quick scheduling, sessions, packages, deductions, and finance logic unchanged.
-- Verification:
-  - `npm run build`
-  - a coordination ticket that was already `Confirmed` and then receives a new parent submission should show `Manual review needed / éœ€äººå·¥å¤æ ¸` instead of `Ready to schedule / å¯ç›´æŽ¥æŽ’è¯¾`
-  - student detail, ticket detail, and todo follow-up cards should agree on that manual-review phase
-  - generated helper slots should search within the parent-submitted availability window first instead of only slicing a small teacher-slot list and filtering afterwards
-  - suggested duration should prefer the coordination ticket's own `durationMin` when present, and only fall back to existing session samples or `45`
-- Rollback point: previous production commit before `2026-04-12-r41`.
-
-## 2026-04-11-r40
-
-- Release ID: `2026-04-11-r40`
-- Date/Time (Asia/Shanghai): `2026-04-11`
-- Deployment status: `READY`
-- Scope: let one valid parent-availability link show all active coordination courses for the same student on one page, while keeping each course on its own ticket, submission, and matching lane.
-- Key files:
-  - `app/availability/[token]/page.tsx`
-  - `app/admin/students/[id]/page.tsx`
-  - `app/api/tickets/intake/[token]/route.ts`
-  - `lib/scheduling-coordination.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260411-parent-availability-multi-course-same-page.md`
-- Risk impact (if any): Medium. This release keeps the existing schema and one-ticket-per-course storage model, but it changes how coordination tickets are reused and displayed by making the student page and public parent form course-aware instead of always following only the first open coordination ticket.
-- Verification:
-  - `npm run build`
-  - opening any valid `/availability/[token]` link for a student with multiple active coordination requests should show one card per course on the same page
-  - each course card should submit independently without overwriting another course's payload
-  - student detail should let ops switch helper focus between open coordination tickets and create a new coordination ticket only for courses that are not already being tracked
-  - intake should reuse an open coordination ticket only when the incoming course matches the existing course lane; a different course should not be forced into the first open ticket
-- Rollback point: previous production commit before `2026-04-11-r40`.
-
-## 2026-04-11-r39
-
-- Release ID: `2026-04-11-r39`
-- Date/Time (Asia/Shanghai): `2026-04-11`
-- Deployment status: `READY`
-- Scope: let the parent-availability calendar-date mode accept multiple time ranges on the same day, while keeping the original weekly template and data shape intact.
-- Key files:
-  - `app/availability/[token]/ParentAvailabilityFormFields.tsx`
-  - `lib/parent-availability.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260411-parent-availability-multi-range-per-date.md`
-- Risk impact (if any): Low to medium. This release only expands the exact-date parent-availability input so one selected day can carry multiple time ranges; it keeps the existing weekly template mode, database schema, scheduling slot matching model, quick scheduling, sessions, packages, deductions, and finance logic unchanged.
-- Verification:
-  - `npm run build`
-  - `/availability/[token]` calendar-date mode should let families add up to three time ranges to one selected date
-  - the submitted payload should continue using the existing flat `dateSelections[]` structure, with repeated dates allowed for multiple ranges
-  - admin summaries should group one date's multiple time ranges into a readable combined line
-- Rollback point: previous production commit before `2026-04-11-r39`.
-
-## 2026-04-11-r38
-
-- Release ID: `2026-04-11-r38`
-- Date/Time (Asia/Shanghai): `2026-04-11`
-- Deployment status: `READY`
-- Scope: add a second parent-availability input mode so families can either fill a weekly repeating template or pick specific upcoming dates and times in a calendar-style view.
-- Key files:
-  - `app/availability/[token]/page.tsx`
-  - `app/availability/[token]/ParentAvailabilityFormFields.tsx`
-  - `lib/parent-availability.ts`
-  - `lib/scheduling-coordination.ts`
-  - `app/admin/tickets/[id]/page.tsx`
-  - `app/admin/students/[id]/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260411-parent-availability-calendar-mode.md`
-- Risk impact (if any): Medium. This release expands the parent-availability payload and matching rules to support specific date picks, but it keeps the existing weekly template mode intact and does not change teacher availability storage, quick scheduling, sessions, packages, deductions, or finance logic.
-- Verification:
-  - `npm run build`
-  - `/availability/[token]` should let families choose between weekly template mode and calendar-date mode
-  - weekly submissions should continue storing and matching the current weekday plus time-range structure
-  - calendar submissions should store specific date plus time selections and show them in ticket/student detail summaries
-  - scheduling-coordination preview matching should respect the submitted mode without missing later exact-date selections
-- Rollback point: previous production commit before `2026-04-11-r38`.
-
-## 2026-04-11-r37
-
-- Release ID: `2026-04-11-r37`
-- Date/Time (Asia/Shanghai): `2026-04-11`
-- Deployment status: `READY`
-- Scope: restore a clear completion-note prompt in ticket-center status actions so operators are asked for the note before a ticket is marked completed, without bouncing the page to the top.
-- Key files:
-  - `app/admin/_components/TicketStatusSubmitButton.tsx`
-  - `app/admin/tickets/page.tsx`
-  - `app/admin/tickets/[id]/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260411-ticket-complete-note-prompt.md`
-- Risk impact (if any): Low. This release only changes the completion-note prompt UX before status submission; it keeps the existing server-side completion-note requirement and does not change ticket rules, permissions, scheduling, sessions, packages, deductions, or finance logic.
-- Verification:
-  - `npm run build`
-  - choosing `Completed` without a note from ticket-center list should show a prompt before submission
-  - choosing `Completed` without a note from ticket detail should show the same prompt before submission
-  - cancelling or leaving the prompt empty should not submit the form or jump to the top of the page
-- Rollback point: previous production commit before `2026-04-11-r37`.
-
-## 2026-04-11-r36
-
-- Release ID: `2026-04-11-r36`
-- Date/Time (Asia/Shanghai): `2026-04-11`
-- Deployment status: `READY`
-- Scope: keep ticket-center operators in context by returning list actions to the current ticket area and detail actions to the section they just edited instead of bouncing the page back to the top.
-- Key files:
-  - `app/admin/tickets/page.tsx`
-  - `app/admin/tickets/[id]/page.tsx`
-  - `app/admin/tickets/archived/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260411-ticket-center-scroll-position.md`
-- Risk impact (if any): Low. This release only changes post-action return anchors in ticket-center surfaces; it does not change ticket permissions, status rules, archive/delete eligibility, intake behavior, scheduling, sessions, packages, deductions, or finance logic.
-- Verification:
-  - `npm run build`
-  - saving an open ticket status from `/admin/tickets` should return to the same ticket row instead of the top of the page
-  - archiving or deleting a closed ticket from ticket-center lists should return to the ticket list section instead of the top summary area
-  - saving status, editing fields, or using scheduling-coordination quick actions in ticket detail should return to the same section instead of the page top
-- Rollback point: previous production commit before `2026-04-11-r36`.
-
-## 2026-04-11-r35
-
-- Release ID: `2026-04-11-r35`
-- Date/Time (Asia/Shanghai): `2026-04-11`
-- Deployment status: `READY`
-- Scope: let Zhao Hongwei permanently delete already-closed tickets from the ticket center while keeping the existing archive-first flow for everyone else.
-- Key files:
-  - `app/admin/tickets/page.tsx`
-  - `app/admin/tickets/[id]/page.tsx`
-  - `app/admin/tickets/archived/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260411-ticket-center-zhao-hongwei-hard-delete.md`
-- Risk impact (if any): Medium. This release adds an irreversible delete path for one strict super admin, but only for completed, cancelled, or archived tickets; it does not change open-ticket handling, status transitions, intake links, scheduling, sessions, packages, deductions, or finance flows.
-- Verification:
-  - `npm run build`
-  - Zhao Hongwei should see `Delete permanently / æ°¸ä¹…åˆ é™¤` on completed, cancelled, or archived tickets in ticket center surfaces
-  - non-Zhao users should not see or be able to use the permanent delete path
-  - open tickets should still reject permanent delete attempts
-- Rollback point: previous production commit before `2026-04-11-r35`.
-
-## 2026-04-11-r34
-
-- Release ID: `2026-04-11-r34`
-- Date/Time (Asia/Shanghai): `2026-04-11`
-- Deployment status: `READY`
-- Scope: keep scheduling-coordination ticket reuse consistent by making the intake success state clearly say when the current open coordination ticket was reused instead of implying a new one was created.
-- Key files:
-  - `app/tickets/intake/IntakeForm.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260411-scheduling-coordination-ticket-reuse.md`
-- Risk impact (if any): Low. This release only corrects reuse messaging in the coordination intake success state; it does not change how the active coordination ticket is selected, how parent links are generated, or any scheduling, session, package, deduction, or finance behavior.
-- Verification:
-  - `npm run build`
-  - when intake reuses an existing open scheduling-coordination ticket, the success banner should clearly say the current ticket was reused
-  - if that reused ticket still has an active parent-availability link, the green success card should say the current ticket was reused instead of saying a new ticket was created
-  - new scheduling-coordination tickets should keep the existing "ticket created" success wording
-- Rollback point: previous production commit before `2026-04-11-r34`.
-
-## 2026-04-11-r33
-
-- Release ID: `2026-04-11-r33`
-- Date/Time (Asia/Shanghai): `2026-04-11`
-- Deployment status: `READY`
-- Scope: let ops push scheduling-coordination progress directly from the student coordination page, while also writing clearer follow-up notes into the linked coordination ticket summary.
-- Key files:
-  - `lib/scheduling-coordination.ts`
-  - `app/admin/tickets/[id]/page.tsx`
-  - `app/admin/students/[id]/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260411-scheduling-coordination-student-action-sync.md`
-- Risk impact (if any): Low. This release only adds clearer scheduling-coordination progress actions and summary updates; it does not change quick scheduling rules, teacher exception replies, sessions, packages, deductions, or finance flows.
-- Verification:
-  - `npx tsc --noEmit` passed
-  - `npm run build` passed
-  - ticket detail quick actions now update both status and coordination summary wording
-  - student coordination helper cards now let ops mark options sent, mark alternatives sent, or move the item into teacher exception follow-up without leaving the student page
-  - these student-page actions return to the same coordination section instead of dropping the operator out of context
-- Rollback point: previous production commit before `2026-04-11-r33`.
-
-## 2026-04-11-r32
-
-- Release ID: `2026-04-11-r32`
-- Date/Time (Asia/Shanghai): `2026-04-11`
-- Deployment status: `READY`
-- Scope: continue scheduling-coordination auto-progress so a parent availability submission now immediately re-evaluates current teacher availability and updates the linked coordination ticket to a more accurate ops follow-up state.
-- Key files:
-  - `lib/scheduling-coordination.ts`
-  - `app/availability/[token]/page.tsx`
-  - `app/admin/tickets/[id]/page.tsx`
-  - `app/admin/students/[id]/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260411-scheduling-coordination-auto-phase-advance.md`
-- Risk impact (if any): Low to medium. This release only changes scheduling-coordination ticket follow-up updates after a parent availability submission; it does not change quick scheduling, teacher exception reply logic, sessions, packages, deductions, or finance flows.
-- Verification:
-  - `npx tsc --noEmit` passed
-  - parent availability submission now checks current teacher-availability-backed slot matches before writing back to the linked coordination ticket
-  - matching submissions now move the ticket into an ops-review state with "matching slots ready" guidance
-  - no-match submissions now move the ticket into an ops-review state with "review alternatives first / ask teacher exception if needed" guidance
-- Rollback point: previous production commit before `2026-04-11-r32`.
-
-## 2026-04-11-r31
-
-- Release ID: `2026-04-11-r31`
-- Date/Time (Asia/Shanghai): `2026-04-11`
-- Deployment status: `READY`
-- Scope: simplify partner invoice line descriptions so they show only the student name in newly created online settlement invoices and in exported partner invoice PDFs.
-- Key files:
-  - `app/admin/reports/partner-settlement/billing/page.tsx`
-  - `app/api/exports/partner-invoice/[id]/route.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
-- Risk impact (if any): Low. This release only changes partner invoice description text; it does not change receipt generation, invoice totals, settlement selection, approval rules, or deduction logic.
-- Verification:
-  - `npm run build` passed
-  - newly created online partner invoices now store each settlement line description as the student name only
-  - exported partner invoice PDFs now show only the student name even when older stored line descriptions still contain the legacy `Package settlement - student - course - dates` format
-- Rollback point: previous production commit before `2026-04-11-r31`.
-
-## 2026-04-11-r30
-
-- Release ID: `2026-04-11-r30`
-- Date/Time (Asia/Shanghai): `2026-04-11`
-- Deployment status: `READY`
-- Scope: force the narrow-screen receipt drawer backdrop to keep the same dark overlay color during hover, active, and focus states so the page no longer flashes the global purple link tint when finance clicks outside the drawer.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
-- Risk impact (if any): Low. This hotfix only strengthens backdrop style overrides for the receipt drawer overlay; it does not change receipt approval behavior, package finance actions, invoice behavior, settlement logic, or deductions.
-- Verification:
-  - `npm run build` passed
-  - narrow-screen receipt drawer backdrop keeps the same dark overlay during hover, click, and focus instead of flashing the global purple link/button tint
-  - clicking outside the drawer still closes back to the current queue or history list state
-- Rollback point: previous production commit before `2026-04-11-r30`.
-
-## 2026-04-11-r29
-
-- Release ID: `2026-04-11-r29`
-- Date/Time (Asia/Shanghai): `2026-04-11`
-- Deployment status: `READY`
-- Scope: neutralize the narrow-screen receipt detail backdrop so clicking or hovering outside the drawer no longer shows the global purple link/button tint.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
-- Risk impact (if any): Low. This hotfix only resets inherited link styles on the receipt drawer backdrop; it does not change receipt approval behavior, package finance actions, invoice behavior, settlement logic, or deductions.
-- Verification:
-  - `npm run build` passed
-  - narrow-screen receipt drawer backdrop no longer shows the inherited purple button/link styling when finance clicks or hovers outside the drawer
-  - the drawer still closes back to the current list state when finance clicks outside it
-- Rollback point: previous production commit before `2026-04-11-r29`.
-
-## 2026-04-10-r28
-
-- Release ID: `2026-04-10-r28`
-- Date/Time (Asia/Shanghai): `2026-04-10`
-- Deployment status: `READY`
-- Scope: make selected receipt details easier to identify by surfacing receipt amount and invoice total near the top of the approval detail panel.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
-- Risk impact (if any): Low. This release only adds amount summary display inside receipt details; it does not change receipt approval rules, package finance actions, invoice behavior, settlement logic, or deductions.
-- Verification:
-  - `npm run build` passed
-  - selected receipt details now show `Receipt amount / æ”¶æ®é‡‘é¢` and `Invoice total / å‘ç¥¨æ€»é¢` near the top
-  - the detail summary should clearly indicate whether the receipt amount matches the invoice total
-- Rollback point: previous production commit before `2026-04-10-r28`.
-
-## 2026-04-10-r27
-
-- Release ID: `2026-04-10-r27`
-- Date/Time (Asia/Shanghai): `2026-04-10`
-- Deployment status: `READY`
-- Scope: tighten the narrow-screen receipt detail overlay so it opens only after an explicit row click and behaves like a contained drawer instead of covering nearly the full screen.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
-- Risk impact (if any): Low. This hotfix only adjusts when the narrow-screen receipt overlay appears and how large it is; it does not change receipt approval rules, package finance actions, invoice behavior, settlement logic, or deductions.
-- Verification:
-  - `npm run build` passed
-  - narrow receipt queue/history screens do not show the overlay until finance explicitly opens a receipt row
-  - the narrow-screen overlay now renders as a smaller right-side drawer with visible page margins instead of occupying almost the whole screen
-  - wide screens keep the existing two-column queue-plus-detail layout
-- Rollback point: previous production commit before `2026-04-10-r27`.
-
-## 2026-04-10-r26
-
-- Release ID: `2026-04-10-r26`
-- Date/Time (Asia/Shanghai): `2026-04-10`
-- Deployment status: `READY`
-- Scope: keep receipt queue and receipt history usable on narrower screens by turning the selected receipt detail panel into a dismissible overlay instead of a long stacked second column.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
-- Risk impact (if any): Low. This release only changes narrow-screen presentation for receipt details; it does not change receipt approval rules, package finance actions, invoice behavior, settlement logic, or deductions.
-- Verification:
-  - `npm run build` passed
-  - on narrow screens, selecting a receipt from `Receipt Queue / æ”¶æ®å®¡æ‰¹é˜Ÿåˆ—` or `Receipt History / æ”¶æ®åŽ†å²` now opens the detail panel as an overlay instead of stacking it below the queue
-  - the overlay includes a direct `Back to list / è¿”å›žåˆ—è¡¨` action and tapping outside it closes back to the current filtered list
-  - on wide screens, the existing two-column queue-plus-detail layout remains unchanged
-- Rollback point: previous production commit before `2026-04-10-r26`.
-
-## 2026-04-10-r25
-
-- Release ID: `2026-04-10-r25`
-- Date/Time (Asia/Shanghai): `2026-04-10`
-- Deployment status: `READY`
-- Scope: make the finance student-package invoice page remember recently used packages so repeated invoice work does not require a fresh search every time.
-- Key files:
-  - `app/admin/finance/student-package-invoices/_components/PackageSelectAutoSubmit.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
-- Risk impact (if any): Low. This release only adds local recent-package shortcuts on the finance invoice page; it does not change invoice issuance, receipt approvals, package balance math, settlement logic, or deduction behavior.
-- Verification:
-  - `npm run build` passed
-  - `/admin/finance/student-package-invoices` now remembers recent package selections in the browser and shows quick reopen chips
-  - selecting a recent package chip updates the picker without auto-submitting the form
-  - finance still must click `Load package summary / åŠ è½½è¯¾åŒ…æ‘˜è¦` before invoice totals and preview refresh
-- Rollback point: previous production commit before `2026-04-10-r25`.
-
-## 2026-04-10-r17
-
-- Release ID: `2026-04-10-r17`
-- Date/Time (Asia/Shanghai): `2026-04-10`
-- Deployment status: `READY`
-- Scope: make the finance receipt queue easier to move through and make receipt history easier to narrow without changing any billing or approval rules.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
-- Risk impact (if any): Low. This release only adds navigation and filtering helpers on the finance receipt screens; it does not change invoice creation, receipt creation, approval rules, package balances, settlement logic, or deductions.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
-  - `https://sgtmanage.com/admin/login` must return `200`
-  - `Next best item / ä¸‹ä¸€æ¡æœ€è¯¥å¤„ç†` should show a direct `Open next item / æ‰“å¼€ä¸‹ä¸€æ¡` action
-  - `/admin/receipts-approvals/history` should support `All history / å…¨éƒ¨åŽ†å²`, `Receipts only / åªçœ‹æ”¶æ®`, and `Actions only / åªçœ‹åŠ¨ä½œ`
-  - `/admin/receipts-approvals/history` should let finance narrow `Recent Finance Actions / æœ€è¿‘è´¢åŠ¡åŠ¨ä½œ` by action type
-- Rollback point: previous production commit before `2026-04-10-r17`.
-
-## 2026-04-10-r16
-
-- Release ID: `2026-04-10-r16`
-- Date/Time (Asia/Shanghai): `2026-04-10`
-- Deployment status: `READY`
-- Scope: keep the finance receipt workspace from auto-jumping back to the top when switching the top receipt mode tabs.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
-- Risk impact (if any): Low. This release only changes scroll behavior for the top receipt mode tabs; it does not change invoice creation, receipt creation, approval rules, package balances, settlement logic, or deductions.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
-  - `https://sgtmanage.com/admin/login` must return `200`
-  - top receipt mode tabs should keep using client navigation without a full page reload
-  - left finance sidebar should keep its current scroll position when switching between `Receipt Queue`, `Package Workspace`, `Proof Repair`, and `Receipt History`
-  - main finance receipt content should keep its current page scroll position instead of jumping back to the top on each top-tab switch
-  - finance sidebar should keep `Receipt Queue / æ”¶æ®å®¡æ‰¹é˜Ÿåˆ—` highlighted when the queue is reopened from top workflow tabs or finance dashboard links
-- Rollback point: previous production commit before `2026-04-10-r16`.
-
-## 2026-04-10-r15
-
-- Release ID: `2026-04-10-r15`
-- Date/Time (Asia/Shanghai): `2026-04-10`
-- Deployment status: `LIVE` after deploy completion
-- Scope: stop the finance receipt top mode tabs from doing full page reloads so the left sidebar scroll state stays put while switching between finance receipt sub-pages.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
-- Risk impact (if any): Low. This release only changes navigation behavior for the top receipt mode tabs; it does not change invoice creation, receipt creation, approval rules, package balances, settlement logic, or deductions.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
-  - `https://sgtmanage.com/admin/login` must return `200`
-  - top receipt mode tabs should switch screens through client navigation instead of full page reload
-  - left finance sidebar should keep its current scroll position when switching between `Receipt Queue`, `Package Workspace`, `Proof Repair`, and `Receipt History`
-- Rollback point: previous production commit before `2026-04-10-r15`.
-
-## 2026-04-10-r14
-
-- Release ID: `2026-04-10-r14`
-- Date/Time (Asia/Shanghai): `2026-04-10`
-- Deployment status: `LIVE` after deploy completion
-- Scope: make finance history lookup and proof repair triage more direct without changing any receipt or billing rules.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
-- Risk impact (if any): Low. This release only improves receipt-history search and repair-page grouping; it does not change invoice creation, receipt creation, approval rules, package balances, settlement logic, or deductions.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
-  - `https://sgtmanage.com/admin/login` must return `200`
-  - `Receipt History / æ”¶æ®åŽ†å²` should support searching completed receipts and recent finance actions by student, course, receipt no., invoice no., or uploader
-  - `Proof Repair / å‡­è¯ä¿®å¤` should show separate quick-triage groups for `Missing payment record / ç¼ºä»˜æ¬¾è®°å½•` and `Missing file on linked proof / å·²å…³è”ä½†ç¼ºæ–‡ä»¶`
-- Rollback point: previous production commit before `2026-04-10-r14`.
-
-## 2026-04-10-r13
-
-- Release ID: `2026-04-10-r13`
-- Date/Time (Asia/Shanghai): `2026-04-10`
-- Deployment status: `LIVE` after deploy completion
-- Scope: make the split finance receipt flows easier to operate by surfacing the next best queue item and turning the package workspace into a clearer step-by-step handoff.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
-- Risk impact (if any): Low. This release only improves finance guidance and flow framing; it does not change invoice creation, receipt creation, approval rules, package balances, settlement logic, or deductions.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
-  - `https://sgtmanage.com/admin/login` must return `200`
-  - receipt queue screens should show a `Next best item / ä¸‹ä¸€æ¡æœ€è¯¥å¤„ç†` card above the queue controls whenever there is an actionable row
-  - the card should explain whether the next item is blocked by missing proof, missing file, prior rejection, or only needs a quick amount/detail check
-  - package workspace should show `Step 1 Upload`, `Step 2 Check Records`, and `Step 3 Create Receipt` cards with clear done/current/next states
-- Rollback point: previous production commit before `2026-04-10-r13`.
-
-## 2026-04-10-r12
-
-- Release ID: `2026-04-10-r12`
-- Date/Time (Asia/Shanghai): `2026-04-10`
-- Deployment status: `LIVE` after deploy completion
-- Scope: clarify teacher-side and admin-side availability wording so everyone can clearly see that date slots are the real schedulable source and weekly templates are only generation helpers.
-- Key files:
-  - `app/teacher/availability/page.tsx`
-  - `app/teacher/availability/TeacherAvailabilityClient.tsx`
-  - `app/admin/teachers/[id]/availability/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260410-availability-wording-clarity.md`
-- Risk impact (if any): Low. This release changes wording only; it does not change scheduling behavior, availability storage, finance logic, or permissions.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
-  - `https://sgtmanage.com/admin/login` must return `200`
-  - teacher availability page should explain that date slots saved there are the real schedulable source
-  - admin teacher availability page should explain that weekly templates only generate month date slots
-- Rollback point: previous production commit before `2026-04-10-r12`.
-
-## 2026-04-09-r11
-
-- Release ID: `2026-04-09-r11`
-- Date/Time (Asia/Shanghai): `2026-04-09`
-- Deployment status: `LIVE` after deploy completion
-- Scope: stop all real scheduling flows from falling back to weekly availability templates so only date-based availability can authorize scheduling, rescheduling, teacher replacement, appointment creation, and booking candidate generation.
-- Key files:
-  - `lib/teacher-scheduling-availability.ts`
-  - `app/admin/students/[id]/page.tsx`
-  - `app/admin/schedule/page.tsx`
-  - `app/admin/classes/[id]/sessions/page.tsx`
-  - `app/admin/teachers/[id]/availability/AdminTeacherAvailabilityClient.tsx`
-  - `app/admin/teachers/[id]/availability/page.tsx`
-  - `app/api/admin/students/[id]/quick-appointment/route.ts`
-  - `app/api/admin/classes/[id]/sessions/route.ts`
-  - `app/api/admin/classes/[id]/sessions/generate-weekly/route.ts`
-  - `app/api/admin/classes/[id]/sessions/reschedule/route.ts`
-  - `app/api/admin/classes/[id]/sessions/replace-teacher/route.ts`
-  - `app/api/admin/students/[id]/sessions/replace-teacher/route.ts`
-  - `app/api/admin/sessions/[id]/replace-teacher/route.ts`
-  - `app/api/admin/appointments/route.ts`
-  - `app/api/admin/appointments/[id]/replace-teacher/route.ts`
-  - `app/api/admin/ops/execute/route.ts`
-  - `app/api/admin/booking-links/candidates/route.ts`
-  - `lib/booking.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260409-date-only-scheduling-availability.md`
-- Risk impact (if any): Medium-low. This release intentionally tightens scheduling eligibility across multiple admin entry points and booking candidate generation; weekly templates still exist, but only as a helper to generate month date slots.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
-  - `https://sgtmanage.com/admin/login` must return `200`
-  - admin teacher availability page should explain that only date slots are used for real scheduling
-  - quick schedule should reject dates that have no date availability even if the teacher has a matching weekly template
-  - booking candidate generation should only consider date availability rows inside the requested range
-- Rollback point: previous production commit before `2026-04-09-r11`.
-
-## 2026-04-09-r10
-
-- Release ID: `2026-04-09-r10`
-- Date/Time (Asia/Shanghai): `2026-04-09`
-- Deployment status: `LIVE` after deploy completion
-- Scope: clarify teacher availability inheritance so monthly availability cells no longer look unavailable when scheduling is still correctly falling back to the teacher's weekly template.
-- Key files:
-  - `app/admin/_components/QuickScheduleModal.tsx`
-  - `app/admin/students/[id]/page.tsx`
-  - `app/admin/teachers/[id]/availability/AdminTeacherAvailabilityClient.tsx`
-  - `app/admin/teachers/[id]/availability/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260409-availability-weekly-fallback-clarity.md`
-- Risk impact (if any): Low. This release does not change the actual scheduling eligibility rules; it only makes the existing date-vs-weekly availability source much clearer in admin UI so ops do not mistake inherited weekly availability for forced scheduling.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
-  - `https://sgtmanage.com/admin/login` must return `200`
-  - admin teacher availability month cells with no date override but matching weekly template should show `ä»æŒ‰æ¯å‘¨æ¨¡æ¿å¯æŽ’`
-  - quick schedule candidate status should show whether a teacher is available via `æŒ‰æ¯å‘¨æ¨¡æ¿å¯æŽ’` or `æŒ‰æ—¥æœŸæ—¶æ®µå¯æŽ’`
-- Rollback point: previous production commit before `2026-04-09-r10`.
-
-## 2026-04-09-r08
-
-- Release ID: `2026-04-09-r08`
-- Date/Time (Asia/Shanghai): `2026-04-09`
-- Deployment status: `LIVE` after deploy completion
-- Scope: make the scheduling coordination console more actionable by showing availability-backed results directly against the latest parent submission, including matching slots when the family's submitted times already fit current teacher availability and nearest alternatives when they do not.
-- Key files:
-  - `app/admin/students/[id]/page.tsx`
-  - `app/admin/tickets/[id]/page.tsx`
-  - `lib/scheduling-coordination.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260409-scheduling-coordination-availability-match-console.md`
-- Risk impact (if any): Low. This release only enriches the scheduling-coordination operator console and candidate-slot filtering against parent-submitted availability; it does not change ticket tokens, quick schedule execution, session creation, attendance, packages, or finance logic.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
-  - `https://sgtmanage.com/admin/login` must return `200`
-  - admin ticket detail for a submitted scheduling coordination item should show `availability å‘½ä¸­ç»“æžœ / Availability-backed result`
-  - if parent-submitted times already fit teacher availability, ticket detail should show matching slot cards with `Copy Message`
-  - if there are no matches, ticket detail should show nearest alternative slot cards with `Copy Alternative`
-  - student detail scheduling coordination card should continue to show only slots that fit the submitted parent availability
-- Rollback point: previous production commit before `2026-04-09-r08`.
-
-## 2026-04-09-r09
-
-- Release ID: `2026-04-09-r09`
-- Date/Time (Asia/Shanghai): `2026-04-09`
-- Deployment status: `LIVE` after deploy completion
-- Scope: make scheduling coordination feel more like a true operator state flow by adding a derived coordination phase, clearer next-step guidance, and one-click ticket progression for â€œoptions sentâ€ and â€œteacher exception neededâ€.
-- Key files:
-  - `app/admin/students/[id]/page.tsx`
-  - `app/admin/tickets/[id]/page.tsx`
-  - `app/admin/todos/page.tsx`
-  - `lib/scheduling-coordination.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260409-scheduling-coordination-phase-flow-and-quick-progress-actions.md`
-- Risk impact (if any): Low. This release only improves scheduling-coordination operator guidance, derived phase display, and ticket quick actions; it does not change tokens, parent form storage, quick schedule execution, session creation, attendance, package logic, or finance behavior.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = dea110a`
-  - `https://sgtmanage.com/admin/login` returned `200`
-  - live admin `/admin/tickets/[id]` for `èµµæµ‹è¯•` coordination item showed the new `Coordination phase / åè°ƒé˜¶æ®µ` summary
-  - matching availability results exposed `Mark options sent / æ ‡è®°å·²å‘å€™é€‰æ—¶é—´`
-  - live student detail scheduling coordination card for `èµµæµ‹è¯•` showed the new coordination controls and summary actions
-  - `Todo Center` phase text was not re-verified against a live due item during this release because no current coordination reminder row was available to click in production
-- Rollback point: previous production commit before `2026-04-09-r09`.
-
-## 2026-04-09-r07
-
-- Release ID: `2026-04-09-r07`
-- Date/Time (Asia/Shanghai): `2026-04-09`
-- Deployment status: `LIVE` after deploy completion
-- Scope: turn scheduling coordination into a more usable operator console by adding parent-form link controls, structured latest-submission summaries, and direct parent-message copy actions from both the ticket detail page and the student detail coordination card.
-- Key files:
-  - `app/admin/_components/CopyTextButton.tsx`
-  - `app/admin/students/[id]/page.tsx`
-  - `app/admin/tickets/[id]/page.tsx`
-  - `lib/parent-availability.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260409-scheduling-coordination-console-and-parent-message-actions.md`
-- Risk impact (if any): Low. This release only improves scheduling-coordination presentation, copy/share actions, and parent-link regeneration around existing ticket/token flows; it does not change session creation, quick schedule core logic, attendance, package balances, or finance behavior.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
-  - `https://sgtmanage.com/admin/login` must return `200`
-  - admin ticket detail should show a richer `Scheduling Coordination Console` with copy-link, copy-message, regenerate-link, and latest-parent-submission summary
-  - student detail scheduling coordination card should show the same parent-link actions and structured latest parent submission details
-  - suggested slot cards should expose `Copy Message` actions so ops can send suggested times to parents without rewriting them
-- Rollback point: previous production commit before `2026-04-09-r07`.
-
-## 2026-04-09-r06
-
-- Release ID: `2026-04-09-r06`
-- Date/Time (Asia/Shanghai): `2026-04-09`
-- Deployment status: `LIVE` after deploy completion
-- Scope: polish the external coordination touchpoints so Emily gets a clearer parent-link handoff panel after ticket submit and families see a simpler, more mobile-friendly availability form that explains the process more clearly.
-- Key files:
-  - `app/tickets/intake/IntakeForm.tsx`
-  - `app/availability/[token]/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260409-parent-availability-touchpoint-polish.md`
-- Risk impact (if any): Low. This release only changes the intake success UI and the public parent-availability form presentation; it does not change token generation, ticket creation, parent submission storage, scheduling logic, or finance flows.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
-  - `https://sgtmanage.com/admin/login` must return `200`
-  - Emily intake success state should show clearer copy/share guidance after creating a scheduling coordination ticket
-  - parent `/availability/[token]` should load the new guidance blocks and the friendlier input layout
-- Rollback point: previous production commit before `2026-04-09-r06`.
-
-## 2026-04-09-r05
-
-- Release ID: `2026-04-09-r05`
-- Date/Time (Asia/Shanghai): `2026-04-09`
-- Deployment status: `LIVE` after deploy completion
-- Scope: fix the Emily intake success payload so generated parent availability links use the real production origin instead of an internal `localhost` host when running behind the server proxy.
-- Key files:
-  - `app/api/tickets/intake/[token]/route.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This release only fixes the absolute origin used for the returned parent form link; it does not change ticket creation, parent form storage, scheduling logic, or finance flows.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
-  - `https://sgtmanage.com/admin/login` must return `200`
-  - creating a scheduling coordination ticket through the external intake link should now return a parent link under `https://sgtmanage.com/availability/...`
-  - real `èµµæµ‹è¯•` intake QA should confirm the returned `parentAvailabilityUrl` no longer uses `localhost`
-- Rollback point: previous production commit before `2026-04-09-r05`.
-
-## 2026-04-09-r04
-
-- Release ID: `2026-04-09-r04`
-- Date/Time (Asia/Shanghai): `2026-04-09`
-- Deployment status: `LIVE` after deploy completion
-- Scope: let external intake operators create `Scheduling Coordination / æŽ’è¯¾åè°ƒ` tickets and immediately get a temporary parent availability link so families can submit lesson-time preferences without logging into the back office.
-- Key files:
-  - `app/api/tickets/intake/[token]/route.ts`
-  - `app/tickets/intake/IntakeForm.tsx`
-  - `app/tickets/intake/[token]/page.tsx`
-  - `app/availability/[token]/page.tsx`
-  - `app/admin/students/[id]/page.tsx`
-  - `app/admin/tickets/[id]/page.tsx`
-  - `app/admin/todos/page.tsx`
-  - `lib/parent-availability.ts`
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260409181306_add_parent_availability_requests/migration.sql`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260409-parent-availability-link-for-intake-scheduling-coordination.md`
-- Risk impact (if any): Low to medium. This release adds a new lightweight link-token table and new public form route, but it does not change session creation, quick schedule core logic, attendance, package math, or finance flows.
-- Verification:
-  - `npm run prisma:generate` passed
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
-  - `https://sgtmanage.com/admin/login` must return `200`
-  - Emily-style ticket intake should allow `Scheduling Coordination / æŽ’è¯¾åè°ƒ` with a confirmed student and show a copyable parent availability link after submit
-  - parent `/availability/[token]` should accept structured weekday/time submissions and show a success state without implying the lesson is already scheduled
-  - submitted parent availability should appear on the linked admin ticket, student detail scheduling card, and `Todo Center`
-- Rollback point: previous production commit before `2026-04-09-r04`.
-
-## 2026-04-08-r07
-
-- Release ID: `2026-04-08-r07`
-- Date/Time (Asia/Shanghai): `2026-04-08`
-- Deployment status: `LIVE` after deploy completion
-- Scope: change online partner settlement from package-snapshot batching to purchase-batch settlement so each `PURCHASE` tranche can be billed independently, reverted back into queue, and exported with clear start/end dates.
-- Key files:
-  - `app/admin/reports/partner-settlement/page.tsx`
-  - `app/admin/reports/partner-settlement/billing/page.tsx`
-  - `app/api/exports/partner-invoice/[id]/route.ts`
-  - `lib/partner-settlement.ts`
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260408170000_partner_settlement_purchase_batches/migration.sql`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260408-partner-settlement-online-purchase-batch-pass.md`
-- Risk impact (if any): Medium. This release changes online partner-settlement data shape and billing workflow, but only for `ONLINE_PACKAGE_END`; offline monthly settlement remains unchanged.
-- Verification:
-  - `npm run prisma:generate` passed
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
-  - `https://sgtmanage.com/admin/login` must return `200`
-  - admin `/admin/reports/partner-settlement` should show online rows by purchase batch, each with purchase date, start date, and end date
-  - admin `/admin/reports/partner-settlement/billing?mode=ONLINE_PACKAGE_END...` should invoice only the selected settlement items instead of bundling all pending online rows
-  - reverting an online settlement should return that tranche to the queue instead of deleting it
-  - partner invoice export should show `Course Start / Course End` when the selected online settlement items provide a date window
-- Rollback point: previous production commit before `2026-04-08-r07`.
-
-## 2026-04-08-r06
-
-- Release ID: `2026-04-08-r06`
-- Date/Time (Asia/Shanghai): `2026-04-08`
-- Deployment status: `LIVE` after deploy completion
-- Scope: replace the teacher-lead month board with a weekly calendar board and expand each day's sessions directly inside the day cell.
-- Key files:
-  - `app/teacher/lead/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260408-teacher-lead-week-calendar-expanded-days.md`
-- Risk impact (if any): Low. This release only changes the teacher-lead schedule presentation; it does not change ACL rules, filter semantics, schedule data, finance logic, or admin permissions.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
-  - `https://sgtmanage.com/admin/login` must return `200`
-  - teacher `/teacher/lead` should show a one-week calendar with each day expanded directly
-- Rollback point: previous production commit before `2026-04-08-r06`.
-
-## 2026-04-08-r05
-
-- Release ID: `2026-04-08-r05`
-- Date/Time (Asia/Shanghai): `2026-04-08`
-- Deployment status: `LIVE` after deploy completion
-- Scope: replace the teacher-column lead board with a month-calendar primary view so teacher leads can scan the whole month and then inspect the selected day below.
-- Key files:
-  - `app/teacher/lead/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260408-teacher-lead-month-calendar-board.md`
-- Risk impact (if any): Low. This release only changes the teacher-lead schedule presentation; it does not change ACL rules, filter semantics, schedule data, finance logic, or admin permissions.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
-  - `https://sgtmanage.com/admin/login` must return `200`
-  - teacher `/teacher/lead` should show a month calendar as the main board and a selected-day details section below
-- Rollback point: previous production commit before `2026-04-08-r05`.
-
-## 2026-04-08-r03
-
-- Release ID: `2026-04-08-r03`
-- Date/Time (Asia/Shanghai): `2026-04-08`
-- Deployment status: `LIVE` after deploy completion
-- Scope: make the new `Teacher Lead / è€å¸ˆä¸»ç®¡` page more visual by turning the all-teachers daily schedule into a calendar-like hourly day board while keeping the detailed table as a secondary expandable section.
-- Key files:
-  - `app/teacher/lead/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260408-teacher-lead-visual-day-board.md`
-- Risk impact (if any): Low. This release only changes teacher-lead page presentation; it does not change ACL rules, filters, schedule data, finance logic, or any admin permissions.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
-  - `https://sgtmanage.com/admin/login` must return `200`
-  - teacher `/teacher/lead` should show `Visual day board / æ—¥åŽ†æ¿è§†å›¾` with hourly schedule cards and an expandable detailed table below
-- Rollback point: previous production commit before `2026-04-08-r03`.
-
-## 2026-04-08-r02
-
-- Release ID: `2026-04-08-r02`
-- Date/Time (Asia/Shanghai): `2026-04-08`
-- Deployment status: `LIVE` after deploy completion
-- Scope: add the first `Teacher Lead / è€å¸ˆä¸»ç®¡` role pass as an additive teacher-side ACL so selected teachers can open a lead desk and review the all-teachers daily schedule without gaining admin-finance or system-control access.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260408093000_add_teacher_lead_acl/migration.sql`
-  - `lib/auth.ts`
-  - `app/api/admin/manager/teacher-leads/route.ts`
-  - `app/api/admin/manager/teacher-leads/[id]/route.ts`
-  - `app/admin/manager/users/page.tsx`
-  - `app/admin/manager/users/_components/TeacherLeadEmailAddClient.tsx`
-  - `app/admin/manager/users/_components/TeacherLeadEmailRemoveClient.tsx`
-  - `app/teacher/layout.tsx`
-  - `app/teacher/lead/page.tsx`
-  - `docs/tasks/TASK-20260408-teacher-lead-v1.md`
-- Risk impact (if any): Low to medium. This release adds a new ACL table and a new teacher-side route, but keeps permissions narrow: teacher leads can only see the new lead desk and do not inherit admin finance, setup, or user-management privileges.
-- Verification:
-  - `npm run prisma:generate` passed
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
-  - `https://sgtmanage.com/admin/login` must return `200`
-  - owner-manager edit mode should show `Teacher Lead Access List / è€å¸ˆä¸»ç®¡åå•ç»´æŠ¤`
-  - teacher accounts on that ACL should see `Lead Desk / ä¸»ç®¡å·¥ä½œå°` and reach `/teacher/lead`
-- Rollback point: previous production commit before `2026-04-08-r02`.
-
-## 2026-04-08-r01
-
-- Release ID: `2026-04-08-r01`
-- Date/Time (Asia/Shanghai): `2026-04-08`
-- Deployment status: `LIVE` after deploy completion
-- Scope: align the teacher-side final-report writing form with the parent-facing PDF so teachers write in the same narrative order and wording families will later read.
-- Key files:
-  - `app/teacher/final-reports/[id]/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260408-final-report-teacher-form-parent-pdf-alignment-pass.md`
-- Risk impact (if any): Low. This release only changes teacher-side field labels, order, and explanatory copy; it does not change report storage, submission rules, PDF data sources, delivery/share logic, or any finance/attendance/package behavior.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
-  - `https://sgtmanage.com/admin/login` must return `200`
-  - teacher `/teacher/final-reports/[id]` should show the parent-facing note and the softer family-facing section titles
-- Rollback point: previous production commit before `2026-04-08-r01`.
-
-## 2026-04-07-r09
-
-- Release ID: `2026-04-07-r09`
-- Date/Time (Asia/Shanghai): `2026-04-07`
-- Deployment status: `LIVE` after deploy completion
-- Scope: tighten the parent-facing `Final Report` PDF rules so draft reports no longer appear as formal family handoffs and empty final-level placeholders no longer print into the PDF.
-- Key files:
-  - `app/api/admin/final-reports/[id]/pdf/route.ts`
-  - `app/admin/reports/final/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260407-final-report-pdf-submission-gate-and-empty-level-pass.md`
-- Risk impact (if any): Low. This release only changes PDF availability and empty-state rendering for final reports; it does not change teacher drafting, report data storage, delivery/share flows, or any finance/attendance/package logic.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
-  - `https://sgtmanage.com/admin/login` must return `200`
-  - admin final-report rows should show `Download PDF` only for `SUBMITTED` or `FORWARDED` reports
-  - reports without `Final level / æœ€ç»ˆæ°´å¹³` should no longer print the `Added by teacher / ç”±è€å¸ˆå¡«å†™` placeholder in the PDF
-- Rollback point: previous production commit before `2026-04-07-r09`.
-
-## 2026-04-06-r12
-
-- Release ID: `2026-04-06-r12`
-- Date/Time (Asia/Shanghai): `2026-04-06`
-- Deployment status: `LIVE` after deploy completion
-- Scope: tune only the admin sidebar group colors so `Today / Core Workflows / Finance & Review / Setup & Control / Reports` are easier to distinguish while keeping the sidebar simple.
-- Key files:
-  - `app/admin/AdminSidebarNavClient.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260406-admin-sidebar-color-tuning-pass.md`
-- Risk impact (if any): Low. This release only adjusts sidebar color tokens; it does not change routes, permissions, queue logic, or any business workflow.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
-  - `https://sgtmanage.com/admin/login` must return `200`
-  - admin sidebar groups should remain simple while `Core Workflows` reads more clearly via color separation alone
-- Rollback point: previous production commit before `2026-04-06-r12`.
-
-## 2026-04-06-r11
-
-- Release ID: `2026-04-06-r11`
-- Date/Time (Asia/Shanghai): `2026-04-06`
-- Deployment status: `LIVE` after deploy completion
-- Scope: simplify the `Core Workflows / æ ¸å¿ƒæµç¨‹` sidebar pass by removing the extra item-level copy while keeping the stronger group color distinction and simpler section summary.
-- Key files:
-  - `app/admin/layout.tsx`
-  - `app/admin/AdminSidebarNavClient.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260406-admin-core-workflows-simplify-followup.md`
-- Risk impact (if any): Low. This release only trims sidebar copy and emphasis styling; it does not change routes, permissions, queue logic, or any student/finance/teaching workflow.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
-  - `https://sgtmanage.com/admin/login` must return `200`
-  - admin sidebar should keep the stronger group colors while `Core Workflows / æ ¸å¿ƒæµç¨‹` returns to a simpler label-first list
-- Rollback point: previous production commit before `2026-04-06-r11`.
-
-## 2026-04-06-r10
-
-- Release ID: `2026-04-06-r10`
-- Date/Time (Asia/Shanghai): `2026-04-06`
-- Deployment status: `LIVE` after deploy completion
-- Scope: make `Core Workflows / æ ¸å¿ƒæµç¨‹` read more clearly as the main operator zone by adding task-oriented descriptions, stronger primary-item emphasis, and a more distinct group style.
-- Key files:
-  - `app/admin/layout.tsx`
-  - `app/admin/AdminSidebarNavClient.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260406-admin-core-workflows-clarity-pass.md`
-- Risk impact (if any): Low. This release only changes admin sidebar copy, emphasis, and grouping presentation; it does not change routes, permissions, queue logic, or any business workflow.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
-  - `https://sgtmanage.com/admin/login` must return `200`
-  - admin sidebar should show clearer descriptions and stronger emphasis for `Students / Enrollments / Packages / Ticket Center` under `Core Workflows / æ ¸å¿ƒæµç¨‹`
-- Rollback point: previous production commit before `2026-04-06-r10`.
-
-## 2026-04-04-r09
-
-- Release ID: `2026-04-04-r09`
-- Date/Time (Asia/Shanghai): `2026-04-04`
-- Deployment status: `LIVE` after deploy completion
-- Scope: regroup `SOP One Pager / SOPä¸€é¡µçº¸` into `Core Workflows / æ ¸å¿ƒæµç¨‹`, move `Undeducted Completed / å·²å®Œæˆæœªå‡æ‰£` into `Reports / æŠ¥è¡¨`, and strengthen admin sidebar group hierarchy so each section is easier to scan.
-- Key files:
-  - `app/admin/layout.tsx`
-  - `app/admin/AdminSidebarNavClient.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260404-admin-sidebar-regroup-and-visual-pass.md`
-- Risk impact (if any): Low. This release only changes admin sidebar grouping and visual emphasis; it does not change permissions, routes, queue logic, reporting calculations, or any business workflow.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
-  - `https://sgtmanage.com/admin/login` must return `200`
-  - admin sidebar should show `SOP One Pager / SOPä¸€é¡µçº¸` under `Core Workflows / æ ¸å¿ƒæµç¨‹`
-  - admin sidebar should show `Undeducted Completed / å·²å®Œæˆæœªå‡æ‰£` under `Reports / æŠ¥è¡¨`
-- Rollback point: previous production commit before `2026-04-04-r09`.
-
-## 2026-04-04-r08
-
-- Release ID: `2026-04-04-r08`
-- Date/Time (Asia/Shanghai): `2026-04-04`
-- Deployment status: `LIVE` after deploy completion
-- Scope: move `Monthly Schedule / æœˆè¯¾è¡¨æ€»è§ˆ` from the admin `Reports` sidebar group into `Today / ä»Šå¤©` so operators can reach the month schedule from the day-first workspace cluster.
-- Key files:
-  - `app/admin/layout.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260404-admin-nav-monthly-schedule-to-today.md`
-- Risk impact (if any): Low. This release only changes admin sidebar grouping and link placement; it does not change schedule data, report logic, permissions, or any finance/teaching workflows.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
-  - `https://sgtmanage.com/admin/login` must return `200`
-  - admin sidebar should show `Monthly Schedule / æœˆè¯¾è¡¨æ€»è§ˆ` under `Today / ä»Šå¤©`, no longer under `Reports / æŠ¥è¡¨`
-- Rollback point: previous production commit before `2026-04-04-r08`.
-
-## 2026-04-04-r07
-
-- Release ID: `2026-04-04-r07`
-- Date/Time (Asia/Shanghai): `2026-04-04`
-- Deployment status: `LIVE` after deploy completion
-- Scope: fix the packages workbench "Back to default workbench" shortcuts so they actually clear remembered filters instead of reloading the same remembered package state.
-- Key files:
-  - `app/admin/packages/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260404-packages-default-workbench-clearfix.md`
-- Risk impact (if any): Low. This release only changes package workbench reset links to use the explicit remembered-filter clear path; it does not change package filtering rules, billing, ledger, top-up, or package edit/delete logic.
-- Verification:
-  - `npm run build` passed
-  - targeted QA reproduced the bug on production: `/admin/packages` resumed remembered `paid=unpaid`, and the banner shortcut still pointed to bare `/admin/packages`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = a4568df`
-  - `https://sgtmanage.com/admin/login` returned `200`
-  - post-deploy QA confirmed `Back to default workbench` now lands on `?clearFilters=1`, hides the resumed-filters banner, and resets `Payment / ä»˜æ¬¾` from remembered `unpaid` back to `All / å…¨éƒ¨`
-- Rollback point: previous production commit before `2026-04-04-r07`.
-
-## 2026-04-04-r06
-
-- Release ID: `2026-04-04-r06`
-- Date/Time (Asia/Shanghai): `2026-04-04`
-- Deployment status: `LIVE` after deploy completion
-- Scope: hotfix the remaining student-detail `edit-student` id collision so explicit edit focus returns target the real edit details block.
-- Key files:
-  - `app/admin/students/[id]/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260404-student-detail-edit-id-collision-hotfix.md`
-- Risk impact (if any): Low. This release only removes an id collision in the student-detail edit section; it does not change student save/delete behavior or any scheduling, attendance, package, billing, or reporting logic.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = 5967863`
-  - `https://sgtmanage.com/admin/login` returned `200`
-  - targeted live QA confirmed `focus=edit-student#edit-student` now hits a single `DETAILS` target and leaves it open (`editCount = 1`, `editOpen = true`)
-- Rollback point: previous production commit before `2026-04-04-r06`.
-
-## 2026-04-04-r05
-
-- Release ID: `2026-04-04-r05`
-- Date/Time (Asia/Shanghai): `2026-04-04`
-- Deployment status: `LIVE` after deploy completion
-- Scope: hotfix the remaining student-detail explicit-focus gap so `Edit Student / ç¼–è¾‘å­¦ç”Ÿ` stays open when operators return with `focus=edit-student`.
-- Key files:
-  - `app/admin/students/[id]/_components/StudentEditClient.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260404-student-detail-edit-open-hotfix.md`
-- Risk impact (if any): Low. This release only stabilizes the client-side open state for the edit-student details block; it does not change student save/delete behavior or any scheduling, attendance, package, billing, or reporting logic.
-- Verification:
-  - `npm run build` passed
-  - `npm run build` passed
-  - post-deploy startup check confirmed `local / origin / server = 9c86c41`
-  - `https://sgtmanage.com/admin/login` returned `200`
-  - follow-up QA found a remaining DOM id collision on `edit-student`, so `r05` should be treated as a partial hotfix only
-- Rollback point: previous production commit before `2026-04-04-r05` (`ea9779d`).
-
-## 2026-04-04-r04
-
-- Release ID: `2026-04-04-r04`
-- Date/Time (Asia/Shanghai): `2026-04-04`
-- Deployment status: `LIVE` after deploy completion
-- Scope: refine student-detail first-render section state so explicit focus returns open packages, enrollments, quick schedule, and edit flows in the right work area without waiting for client-side recovery.
-- Key files:
-  - `app/admin/students/[id]/page.tsx`
-  - `app/admin/students/[id]/_components/StudentEditClient.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260404-student-detail-focus-open-pass.md`
-- Risk impact (if any): Low. This release only improves student-detail first-render section state and return targeting; it does not change scheduling, attendance, package, billing, or student data rules.
-- Verification:
-  - `npm run build` passed
-  - post-deploy startup check confirmed `local / origin / server = 64040e5`
-  - `https://sgtmanage.com/admin/login` returned `200`
-  - operator click-through should confirm explicit `focus` returns open `Packages / Enrollments / Quick Schedule / Edit Student` on first render
-- Rollback point: previous production commit before `2026-04-04-r04` (`28a62bd`).
-
-## 2026-04-04-r03
-
-- Release ID: `2026-04-04-r03`
-- Date/Time (Asia/Shanghai): `2026-04-04`
-- Deployment status: `LIVE` after deploy completion
-- Scope: reopen the correct student-detail workbench section from hash-driven returns so packages, attendance, and edit flows stay usable after refreshes and same-page redirects.
-- Key files:
-  - `app/admin/students/[id]/page.tsx`
-  - `app/admin/students/[id]/_components/studentDetailHash.ts`
-  - `app/admin/students/[id]/_components/StudentDetailHashStateClient.tsx`
-  - `app/admin/_components/StudentAttendanceFilterForm.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260404-student-detail-section-open-state-pass.md`
-- Risk impact (if any): Low. This release only improves student-detail section reopening and hash return behavior; it does not change scheduling, attendance, package, billing, or student data rules.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = b3ce26b`
-  - `https://sgtmanage.com/admin/login` returned `200`
-  - the shared student-detail hash restore layer now reopens matching `<details>` blocks for hash-driven returns; targeted operator click-through should confirm `Packages / Attendance / Edit Student` stay reopened in live use
-- Rollback point: previous production commit before `2026-04-04-r03`.
-
-## 2026-04-04-r02
-
-- Release ID: `2026-04-04-r02`
-- Date/Time (Asia/Shanghai): `2026-04-04`
-- Deployment status: `LIVE` after deploy completion
-- Scope: keep the student-detail calendar section expanded when switching months so the planning workbench stays open after `Prev Month / Next Month`.
-- Key files:
-  - `app/admin/students/[id]/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260404-student-detail-calendar-open-hotfix.md`
-- Risk impact (if any): Low. This release only preserves calendar view state on the student-detail page; it does not change quick scheduling, attendance, deduction, package, or billing logic.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = 29b623a`
-  - production `https://sgtmanage.com/admin/login` returned `200`
-  - the hotfix now carries `calendarOpen=1` on student-detail month navigation so server render keeps `Planning tools & calendar` expanded across month switches; browser click-through should be confirmed in the next operator pass
-- Rollback point: previous production commit before `2026-04-04-r02`.
-
-## 2026-04-04-r01
-
-- Release ID: `2026-04-04-r01`
-- Date/Time (Asia/Shanghai): `2026-04-04`
-- Deployment status: `LIVE` after deploy completion
-- Scope: keep the admin student detail page anchored to the current section after same-page actions and refreshes so operations do not get dropped back at the top of the workbench.
-- Key files:
-  - `app/admin/students/[id]/page.tsx`
-  - `app/admin/students/[id]/_components/studentDetailHash.ts`
-  - `app/admin/students/[id]/_components/SessionCancelRestoreClient.tsx`
-  - `app/admin/students/[id]/_components/SessionReplaceTeacherClient.tsx`
-  - `app/admin/students/[id]/_components/StudentEditClient.tsx`
-  - `app/admin/_components/QuickScheduleModal.tsx`
-  - `app/admin/_components/StudentAttendanceFilterForm.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260404-student-detail-section-return-fix.md`
-- Risk impact (if any): Low. This release only changes student-detail navigation and same-page section return behavior; it does not change student data, scheduling, attendance, deduction, package, or billing business logic.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = 14d5980` and `https://sgtmanage.com/admin/login` returned `200`
-  - post-deploy `curl -I https://sgtmanage.com/admin/login` returned `200`
-  - targeted student-detail validation confirmed the fix covers calendar navigation, quick-schedule links, attendance filter routing, and same-page refresh helpers for edit / cancel / replace-teacher flows
-- Rollback point: previous production commit before `2026-04-04-r01`.
-
-## 2026-04-03-r27
-
-- Release ID: `2026-04-03-r27`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: add an `Archive / å½’æ¡£` layer to Midterm Reports and Final Reports so completed or exempt report records can leave the active desks without losing audit history.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260404004000_add_report_archive_metadata/migration.sql`
-  - `lib/final-report.ts`
-  - `lib/midterm-report.ts`
-  - `app/admin/reports/final/page.tsx`
-  - `app/admin/reports/midterm/page.tsx`
-  - `app/teacher/final-reports/page.tsx`
-  - `app/teacher/final-reports/[id]/page.tsx`
-  - `app/teacher/midterm-reports/page.tsx`
-  - `app/teacher/midterm-reports/[id]/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-report-archive-phase-1.md`
-- Risk impact (if any): Medium-low. This ship adds report archive metadata and new admin-only archive/restore transitions, but it does not change report submission content, parent delivery/share logic, finance flows, attendance/package math, or existing exempt semantics.
-- Verification:
-  - `npm run prisma:generate` passed
-  - `npm run build` passed
-  - deploy-time `npx prisma migrate deploy` is expected through the existing server deploy flow
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returns `200`
-  - production read-only QA must confirm admin `Final Report Center` and `Midterm Report Center` show `Archived`, and teacher report lists continue hiding archived items
-- Rollback point: previous production commit before `2026-04-03-r27`.
-
-## 2026-04-03-r26
-
-- Release ID: `2026-04-03-r26`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: add an `EXEMPT / æ— éœ€æŠ¥å‘Š` path to Midterm Reports so operations can remove no-report midpoint tasks from both the admin and teacher queues without assigning or keeping teacher work open.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260404000500_add_midterm_report_exempt_status/migration.sql`
-  - `lib/midterm-report.ts`
-  - `app/admin/reports/midterm/page.tsx`
-  - `app/teacher/midterm-reports/page.tsx`
-  - `app/teacher/midterm-reports/[id]/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-midterm-report-exempt-phase-1.md`
-- Risk impact (if any): Medium-low. This ship adds a Prisma enum/schema migration and new admin-only status transitions on Midterm Reports, but it does not change final reports, package progress math, attendance, finance flows, teacher submission rules for non-exempt reports, or existing forwarded-lock behavior.
-- Verification:
-  - `npm run prisma:generate` passed
-  - `npm run build` passed
-  - deploy-time `npx prisma migrate deploy` is expected through the existing server deploy flow
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returns `200`
-  - production read-only QA must confirm admins can see `Exempt` in `/admin/reports/midterm`, candidate rows expose `Mark exempt`, and teacher `/teacher/midterm-reports` excludes exempt items
-- Rollback point: previous production commit before `2026-04-03-r26`.
-
-## 2026-04-03-r25
-
-- Release ID: `2026-04-03-r25`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: add an `EXEMPT / æ— éœ€æŠ¥å‘Š` path to Final Reports so operations can remove no-report packages from the final-report queue without pushing work to teachers first.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260403235500_add_final_report_exempt_status/migration.sql`
-  - `lib/final-report.ts`
-  - `app/admin/reports/final/page.tsx`
-  - `app/teacher/final-reports/page.tsx`
-  - `app/teacher/final-reports/[id]/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-final-report-exempt-phase-1.md`
-- Risk impact (if any): Medium-low. This ship adds a Prisma enum/schema migration and new admin-only status transitions on Final Reports, but it does not change midterm reports, package completion math, attendance, finance flows, or teacher submission rules for non-exempt reports.
-- Verification:
-  - `npm run prisma:generate` passed
-  - `npm run build` passed
-  - deploy-time `npx prisma migrate deploy` is expected through the existing server deploy flow
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returns `200`
-  - production read-only QA must confirm admins can see `Exempt` in `/admin/reports/final`, candidate rows expose `Mark exempt`, and exempted reports disappear from `/teacher/final-reports`
-- Rollback point: previous production commit before `2026-04-03-r25`.
-
-## 2026-04-03-r18
-
-- Release ID: `2026-04-03-r18`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: fix the admin packages workbench so explicitly clearing payment/course/search filters no longer gets overridden by remembered filters, and the `Clear` action truly resets the desk.
-- Key files:
-  - `app/admin/packages/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-packages-filter-clear-fix.md`
-- Risk impact (if any): Low. This ship only fixes filter-state parsing on the packages workbench; package creation, editing, top-up, billing, ledger, remembered-flow cards, and package business logic remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returns `200`
-  - production read-only QA must confirm `paid=unpaid -> all` can return to `All Payment Status` and `clearFilters=1` no longer shows resumed remembered filters
-- Rollback point: previous production commit before `2026-04-03-r18`.
-
-## 2026-04-03-r17
-
-- Release ID: `2026-04-03-r17`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: move the student package month-end balance report off the invoice workbench into its own finance page so reporting and invoice issuance stay separate.
-- Key files:
-  - `app/admin/finance/student-package-balances/page.tsx`
-  - `app/admin/finance/student-package-invoices/page.tsx`
-  - `app/admin/layout.tsx`
-  - `app/admin/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-student-package-balance-report-separate-page.md`
-- Risk impact (if any): Low. This ship only moves the existing read-only month-end balance report UI into its own finance route and adds navigation links; report math, CSV export behavior, package ledger basis logic, invoice issuance, receipts, approvals, and finance permissions remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returns `200`
-  - production read-only QA must confirm `/admin/finance/student-package-balances` renders the report and `/admin/finance/student-package-invoices` now shows only the jump card
-- Rollback point: previous production commit before `2026-04-03-r17`.
-
-## 2026-04-03-r16
-
-- Release ID: `2026-04-03-r16`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: make the month-end balance reportâ€™s amount-basis source easier to scan by turning the source labels into color-coded badges and adding a small on-page legend.
-- Key files:
-  - `app/admin/finance/student-package-invoices/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-student-package-month-end-balance-badges.md`
-- Risk impact (if any): Low. This is a student-billing presentation-only pass; the report calculation, export route, package ledger writes, billing flow, and finance approval behavior remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returns `200`
-- Rollback point: previous production commit before `2026-04-03-r16`.
-
-## 2026-04-03-r15
-
-- Release ID: `2026-04-03-r15`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: upgrade the student-billing month-end balance report to use purchase-ledger amount history when available, while keeping safe fallbacks for older packages without amount deltas.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260403173000_add_package_txn_delta_amount/migration.sql`
-  - `app/api/admin/packages/route.ts`
-  - `app/api/admin/packages/[id]/top-up/route.ts`
-  - `app/api/admin/packages/[id]/route.ts`
-  - `app/api/admin/packages/[id]/ledger/txns/[txnId]/route.ts`
-  - `app/admin/packages/[id]/ledger/page.tsx`
-  - `app/admin/packages/[id]/ledger/PackageLedgerEditTxnClient.tsx`
-  - `lib/student-package-month-end-balance.ts`
-  - `app/api/exports/student-package-month-end-balance/route.ts`
-  - `app/admin/finance/student-package-invoices/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-student-package-month-end-balance-ledger-basis.md`
-- Risk impact (if any): Medium. This ship includes a Prisma schema migration plus `PURCHASE` write-path updates for packages and top-ups, but it does not change deduction behavior, package remaining-minute math, billing approvals, or finance workflow rules. Old packages still fall back safely when purchase amount history is incomplete.
-- Verification:
-  - `npm run prisma:generate` passed
-  - `npm run build` passed
-  - deploy-time `npx prisma migrate deploy` is expected through the existing server deploy flow
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returns `200`
-- Rollback point: previous production commit before `2026-04-03-r15`.
-
-## 2026-04-03-r14
-
-- Release ID: `2026-04-03-r14`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: add an inline preview table and summary cards to the new student-billing month-end balance report so finance can inspect the report before exporting CSV.
-- Key files:
-  - `app/admin/finance/student-package-invoices/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-student-package-month-end-balance-preview.md`
-- Risk impact (if any): Low. This ship only adds a read-only preview on the same month-end balance basis already used by the export; package deductions, receipts, invoices, approvals, and the CSV calculation path remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - page-level verification confirmed the month-end report block now renders summary cards plus the first 12 rows inline while keeping the same export link
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returned `200`
-- Rollback point: previous production commit before `2026-04-03-r14`.
-
-## 2026-04-03-r13
-
-- Release ID: `2026-04-03-r13`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: add a read-only month-end balance export under student billing so finance can export remaining package balance in hours and estimated amount as of a selected month end.
-- Key files:
-  - `app/admin/finance/student-package-invoices/page.tsx`
-  - `app/api/exports/student-package-month-end-balance/route.ts`
-  - `lib/student-package-month-end-balance.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-student-package-month-end-balance-report.md`
-- Risk impact (if any): Low to medium. This ship is read-only and does not change any package, billing, receipt, or approval logic, but version 1 amount is a management estimate based on receipt totals up to month end or fallback package paid amount, not an audit-grade historical price ledger.
-- Verification:
-  - `npm run build` passed
-  - local logged-in QA on `http://127.0.0.1:3322/admin/finance/student-package-invoices?balanceMonth=2026-03` confirmed the new month-end report block renders in student billing
-  - local export QA on `http://127.0.0.1:3322/api/exports/student-package-month-end-balance?month=2026-03` returned `200` and generated CSV headers plus package rows
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returned `200`
-- Rollback point: previous production commit before `2026-04-03-r13`.
-
-## 2026-04-03-r11
-
-- Release ID: `2026-04-03-r11`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: continue the teacher-side UI clarity pass on the teacher card, midterm reports, and payroll desk so not-linked/empty states and primary actions read consistently across the portal.
-- Key files:
-  - `app/teacher/card/page.tsx`
-  - `app/teacher/midterm-reports/page.tsx`
-  - `app/teacher/midterm-reports/[id]/page.tsx`
-  - `app/teacher/payroll/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-teacher-card-midterm-payroll-clarity-pass.md`
-- Risk impact (if any): Low. This ship only changes empty-state presentation, action emphasis, and next-step guidance on four existing teacher pages; no teacher intro save logic, card export logic, report save/submit behavior, report locking rules, payroll calculations, payroll confirmation rules, or payout workflow changed.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returned `200`
-  - logged-in live QA confirmed production shows the new teacher-card guidance, midterm empty-state/action hierarchy, and payroll clear/error-state improvements on the same routes
-- Rollback point: previous production commit before `2026-04-03-r11`.
-
-## 2026-04-03-r10
-
-- Release ID: `2026-04-03-r10`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: continue the teacher-side UI clarity pass on expense claims and sign-in alerts so empty states explain the next step and the main action is easier to spot.
-- Key files:
-  - `app/teacher/expense-claims/page.tsx`
-  - `app/teacher/alerts/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-teacher-expense-and-alerts-clarity-pass.md`
-- Risk impact (if any): Low. This ship only changes button emphasis, empty-state guidance, and next-step navigation on two existing teacher workbench pages; no expense submit/resubmit/withdraw rules, attachment logic, alert sync, quick-mark behavior, attendance handling, or feedback-overdue detection changed.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returned `200`
-  - logged-in live QA confirmed production shows the new expense empty-state/filter hierarchy and the new alerts empty-state/action hierarchy on the same routes
-- Rollback point: previous production commit before `2026-04-03-r10`.
-
-## 2026-04-03-r09
-
-- Release ID: `2026-04-03-r09`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Run the next teacher-side clarity pass on the student feedback desk and ticket board so empty states explain the next step and primary actions stand out more clearly.
-- Key files:
-  - `app/teacher/student-feedbacks/page.tsx`
-  - `app/teacher/tickets/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-teacher-feedbacks-and-tickets-clarity-pass.md`
-- Risk impact (if any): Low. This ship only changes empty-state presentation, filter/button emphasis, and next-step guidance on two existing teacher workbench pages; no feedback timeline logic, unread-marking behavior, handoff-risk filters, ticket proof-file behavior, ticket completion rules, or ticket status transitions changed.
-- Verification:
-  - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returned `200`
-- Rollback point: previous production commit before `2026-04-03-r09`.
-
-## 2026-04-03-r08
-
-- Release ID: `2026-04-03-r08`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Run the next UI clarity pass on admin feedbacks, packages, and partner settlement so button hierarchy is easier to scan and empty states explain the next logical action.
-- Key files:
-  - `app/admin/feedbacks/page.tsx`
-  - `app/admin/packages/page.tsx`
-  - `app/admin/reports/partner-settlement/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-admin-button-hierarchy-and-empty-states-pass-2.md`
-- Risk impact (if any): Low. This ship only changes button emphasis and empty-state guidance on three existing admin workbench pages; no feedback forwarding logic, proxy-draft behavior, package CRUD/top-up logic, settlement calculations, settlement creation rules, invoice history logic, or revert semantics changed.
-- Verification:
-  - `npm run build` passed
-  - logged-in local QA on `http://127.0.0.1:3336` confirmed:
-    - `/admin/feedbacks?status=pending&studentId=missing-student` renders the new empty-state guidance and the stronger filter apply/clear hierarchy
-    - `/admin/packages?q=__nomatch__` renders the new filtered-empty-state guidance plus the stronger filter apply/clear hierarchy
-    - `/admin/reports/partner-settlement?month=1999-01` renders the new empty-state guidance, and `/admin/reports/partner-settlement` still renders the stronger primary/danger action hierarchy
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returned `200`
-  - logged-in live QA confirmed production shows the same new empty-state guidance and button hierarchy on the same three pages
-- Rollback point: previous production commit before `2026-04-03-r08`.
-
-## 2026-04-03-r07
-
-- Release ID: `2026-04-03-r07`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Improve button hierarchy and empty-state guidance on teacher payroll, expense claims, and receipt approvals so users can tell the next safe action faster without changing any workflow logic.
-- Key files:
-  - `app/teacher/payroll/page.tsx`
-  - `app/admin/expense-claims/page.tsx`
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-button-hierarchy-and-empty-states.md`
-- Risk impact (if any): Low. This ship only changes button emphasis and empty-state guidance on three existing workbench pages; no payroll calculations, payroll confirmation rules, expense approval logic, receipt approval order, payout behavior, or attachment business rules changed.
-- Verification:
-  - `npm run build` passed
-  - logged-in local QA on `http://127.0.0.1:3335` confirmed:
-    - `/teacher/payroll?month=2099-01&scope=all` renders the new payroll-not-available empty state with direct dashboard and expense-claims links
-    - `/admin/expense-claims?status=SUBMITTED&month=1999-01` renders the new empty-queue guidance and `/admin/expense-claims` still renders the updated primary/danger action hierarchy
-    - `/admin/receipts-approvals?month=1999-01` renders the new empty-queue and no-selection guidance, and `/admin/receipts-approvals` still renders the updated primary/secondary/danger action hierarchy
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returned `200`
-  - logged-in live QA confirmed production shows the same new empty-state guidance and button hierarchy on the same three pages
-- Rollback point: previous production commit before `2026-04-03-r07`.
-
-## 2026-04-03-r06
-
-- Release ID: `2026-04-03-r06`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Run a fourth admin copy-clarity pass on the teacher payroll desk, the student package invoice workbench, and the attachment health desk so finance-facing labels and guidance read more naturally without changing any workflow logic.
-- Key files:
-  - `app/admin/reports/teacher-payroll/page.tsx`
-  - `app/admin/finance/student-package-invoices/page.tsx`
-  - `app/admin/recovery/uploads/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-admin-copy-clarity-pass-4.md`
-- Risk impact (if any): Low. This ship only rewrites visible copy on three existing admin workbench pages; no payroll calculations, payout permissions, invoice creation rules, attachment recovery behavior, or file-routing logic changed.
-- Verification:
-  - `npm run build` passed
-  - logged-in local QA on `http://127.0.0.1:3334` confirmed:
-    - `/admin/reports/teacher-payroll` renders the new workflow-state, explainer, and payout-group wording
-    - `/admin/finance/student-package-invoices` renders the new workbench title, preview explanation, form labels, and invoice-table headings
-    - `/admin/recovery/uploads` renders the new attachment-health hero, shortcut, restore, and table copy
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returned `200`
-  - logged-in live QA confirmed production shows the same new copy on the same three pages
-- Rollback point: previous production commit before `2026-04-03-r06`.
-
-## 2026-04-03-r05
-
-- Release ID: `2026-04-03-r05`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Run the third admin copy-clarity pass on the admin ticket center, finance workbench, and teacher payroll detail page so high-traffic bilingual labels read more naturally without changing any workflow logic.
-- Key files:
-  - `app/admin/tickets/page.tsx`
-  - `app/admin/finance/workbench/page.tsx`
-  - `app/admin/reports/teacher-payroll/[teacherId]/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-admin-copy-clarity-pass-3.md`
-- Risk impact (if any): Low. This ship only rewrites UI copy and a redundant table header on three existing admin pages; no ticket workflow rules, finance workbench routing or reminder behavior, payroll math, completion rules, or approval logic changed.
-- Verification:
-  - `npm run build` passed
-  - logged-in local QA on `http://127.0.0.1:3333` confirmed:
-    - `/admin/tickets` renders the new management-focus, intake-link, queue, and completion-note wording
-    - `/admin/finance/workbench` renders the new search/filter, reminder-preview, and reminder-detail wording
-    - `/admin/reports/teacher-payroll/[teacherId]` renders the new back-link, scope, anomaly-filter, and payroll-period wording
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returned `200`
-  - logged-in live QA confirmed production:
-    - `/admin/tickets` shows the new ticket-center wording on banners, intake links, and action fields
-    - `/admin/finance/workbench` shows the new finance search/filter labels and reminder-detail wording
-    - `/admin/reports/teacher-payroll/[teacherId]` shows the new payroll-detail scope/filter copy and the corrected combo-summary header row
-- Rollback point: previous production commit before `2026-04-03-r05`.
-
-## 2026-04-03-r04
-
-- Release ID: `2026-04-03-r04`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Run the second bilingual copy-clarity pass on teacher tickets, admin teacher payroll, and partner settlement billing so high-traffic labels read more naturally without changing any workflow logic.
-- Key files:
-  - `app/teacher/tickets/page.tsx`
-  - `app/admin/reports/teacher-payroll/page.tsx`
-  - `app/admin/reports/partner-settlement/billing/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-admin-copy-clarity-pass-2.md`
-- Risk impact (if any): Low. This ship only rewrites UI copy on three existing workbench pages; no ticket write rules, payroll math or approval behavior, partner billing flows, invoice/receipt actions, or storage logic changed.
-- Verification:
-  - `npm run build` passed
-  - logged-in local QA on `http://127.0.0.1:3332` confirmed:
-    - `/teacher/tickets` renders the new ticket search, status-filter, proof-file, and completion-note copy
-    - `/admin/reports/teacher-payroll` renders the new scope labels, jump links, queue wording, and summary-card copy
-    - `/admin/reports/partner-settlement/billing?mode=ONLINE_PACKAGE_END&month=2026-03&tab=payments` renders the new payment/receipt/billing wording
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on `313f3ba` and `https://sgtmanage.com/admin/login` returned `200`
-  - logged-in live QA confirmed production:
-    - `/teacher/tickets` shows `Search ticket no., student, or teacher` and `All statuses`
-    - `/admin/reports/teacher-payroll` shows the new payroll-period, queue, and jump-link copy
-    - `/admin/reports/partner-settlement/billing` shows the new payment-record, receipt, and export wording
-- Rollback point: previous production commit before `2026-04-03-r04`.
-
-## 2026-04-02-r15
-
-- Release ID: `2026-04-02-r15`
-- Date/Time (Asia/Shanghai): `2026-04-02`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Remember the last admin packages filter set so operators can reopen the same package workbench context without rebuilding it.
-- Key files:
-  - `app/admin/packages/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260402-packages-filter-memory.md`
-- Risk impact (if any): Low. This ship only remembers and restores the package workbench filters on first open when no explicit URL params are provided; no package edit rules, top-up math, billing logic, ledger logic, or focus-return behavior changed.
-- Verification:
-  - `npm run build` passed
-  - fresh local logged-in QA on `http://127.0.0.1:3318` confirmed:
-    - `/admin/packages` restores `q=èµµ&paid=unpaid&warn=alert` from cookie when the page is opened without URL params
-    - the resumed-filter banner renders on the plain workbench-open path
-    - the resumed-filter banner does not appear on `packageFlow=deleted` return pages, while the delete flow card still renders
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returned `200`
-  - logged-in live QA confirmed production `/admin/packages` restores the remembered filter set and still suppresses the resume banner on package-flow return pages
-- Rollback point: previous production commit before `2026-04-02-r15`.
-
-## 2026-04-02-r14
-
-- Release ID: `2026-04-02-r14`
-- Date/Time (Asia/Shanghai): `2026-04-02`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Remember the last admin partner-settlement month/history/panel view so operators can reopen the same workbench context without rebuilding it.
-- Key files:
-  - `app/admin/reports/partner-settlement/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260402-partner-settlement-view-memory.md`
-- Risk impact (if any): Low. This ship only remembers and restores the partner-settlement workbench view on first open when no explicit URL params are provided; no settlement math, settlement creation rules, invoice generation, revert semantics, or approval behavior changed.
-- Verification:
-  - `npm run build` passed
-  - fresh local logged-in QA on `http://127.0.0.1:3317` confirmed:
-    - `/admin/reports/partner-settlement` restores `month=2026-03&history=receipt-created&panel=history` from cookie when the page is opened without URL params
-    - `/admin/reports/partner-settlement` restores `month=2026-03&panel=setup` and now opens the setup disclosure when resumed
-    - the resumed-view banner renders on the plain queue-open path and does not appear on `settlementFlow=rate-updated` return pages
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returned `200`
-  - logged-in live QA confirmed production `/admin/reports/partner-settlement` restores the remembered month/history/panel view and still suppresses the resume banner on settlement-flow return pages
-- Rollback point: previous production commit before `2026-04-02-r14`.
-
-## 2026-04-02-r13
-
-- Release ID: `2026-04-02-r13`
-- Date/Time (Asia/Shanghai): `2026-04-02`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Remember the last admin feedback queue and student scope so operators can reopen the same feedback desk context without rebuilding it.
-- Key files:
-  - `app/admin/feedbacks/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260402-feedbacks-queue-memory.md`
-- Risk impact (if any): Low. This ship only remembers and restores the admin feedback desk queue/student scope on first open when no explicit URL params are provided; no feedback write rules, forward-mark rules, proxy-draft behavior, teacher workflows, or focus-return logic changed.
-- Verification:
-  - `npm run build` passed
-  - fresh local logged-in QA on `http://127.0.0.1:3316` confirmed:
-    - `/admin/feedbacks` restores `status=pending` from cookie when the page is opened without URL params
-    - `/admin/feedbacks` restores `status=pending&studentId=b54eae8f-461f-4aae-9a22-8ec7a1033c8a` from cookie when the page is opened without URL params
-    - the resumed queue banner renders only on the plain queue-open path and does not appear on `feedbackFlow=forwarded` return pages
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returned `200`
-  - logged-in live QA confirmed production `/admin/feedbacks` restores the remembered queue/student scope when opened without explicit URL params and still suppresses the resume banner on feedback-flow return pages
-- Rollback point: previous production commit before `2026-04-02-r13`.
-
-## 2026-04-02-r12
-
-- Release ID: `2026-04-02-r12`
-- Date/Time (Asia/Shanghai): `2026-04-02`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Remember the last queue/filter state on admin receipt approvals and expense claims so operators can reopen the same working dataset without rebuilding it.
-- Key files:
-  - `app/admin/_components/RememberedWorkbenchQueryClient.tsx`
-  - `app/admin/receipts-approvals/page.tsx`
-  - `app/admin/expense-claims/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260402-finance-queue-memory.md`
-- Risk impact (if any): Low. This ship only remembers and restores queue/filter context on finance workbench pages; no approval order, selected-item logic, receipt creation rules, expense approval rules, payout logic, or attachment business logic changed.
-- Verification:
-  - `npm run build` passed
-  - fresh local logged-in QA on `http://127.0.0.1:3315` confirmed:
-    - receipts approvals restores `queueFilter=FILE_ISSUE&queueBucket=OPEN` from cookie when the page is opened without URL params
-    - expense claims restores `approvedUnpaidOnly=1&currency=SGD` from cookie when the page is opened without URL params
-    - both pages show an explicit â€œresumed last queue/filterâ€ hint plus a direct return-to-default link
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on `0ff6b71` and `https://sgtmanage.com/admin/login` returned `200`
-  - logged-in live QA confirmed receipts approvals restores `queueFilter=FILE_ISSUE&queueBucket=OPEN` from cookie on production when the page is opened without URL params
-  - logged-in live QA confirmed expense claims restores `approvedUnpaidOnly=1&currency=SGD` from cookie on production when the page is opened without URL params
-- Rollback point: previous production commit before `2026-04-02-r12`.
-
-## 2026-04-02-r11
-
-- Release ID: `2026-04-02-r11`
-- Date/Time (Asia/Shanghai): `2026-04-02`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Extend the same context-return and next-step shortcut pattern to the admin partner settlement workspace so rate edits and settlement creation / revert actions keep operators oriented.
-- Key files:
-  - `app/admin/reports/partner-settlement/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260402-partner-settlement-context-return.md`
-- Risk impact (if any): Low. This ship only changes post-action navigation, focus anchors, and flow-card guidance on the admin partner settlement page; no settlement rate values, online/offline settlement creation rules, revert semantics, billing rules, or payout calculations changed.
-- Verification:
-  - `npm run build` passed
-  - fresh local logged-in QA on `http://127.0.0.1:3315` confirmed:
-    - `online-created` flow shows `Online settlement record created.` plus `Open billing workspace / Open next online item`
-    - `offline-created` flow shows `Offline settlement record created.` plus `Open billing workspace / Open next offline item`
-    - `settlement-reverted` flow shows `Settlement record reverted.` plus `Back to online queue / Back to offline queue`
-    - `rate-updated` flow shows `Settlement rates updated.` plus `Jump to setup / Back to live queue`
-    - `focusType=online` and `focusType=offline` both land on stable highlighted queue rows with `partner-online-*` / `partner-offline-*` anchors
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on `294e118` and `https://sgtmanage.com/admin/login` returned `200`
-  - logged-in live QA confirmed the same `online-created`, `offline-created`, `settlement-reverted`, and `rate-updated` flow cards render on production for `month=2026-04`
-  - logged-in live QA confirmed both `partner-online-*` and `partner-offline-*` focus-row anchors render on production and still expose `Create online settlement / Create offline settlement`
-- Rollback point: previous production commit before `2026-04-02-r11`.
-
-## 2026-04-02-r10
-
-- Release ID: `2026-04-02-r10`
-- Date/Time (Asia/Shanghai): `2026-04-02`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Extend the same context-return pattern to the admin packages workbench so package edit, top-up, and delete actions keep operators oriented.
-- Key files:
-  - `app/admin/packages/page.tsx`
-  - `app/admin/_components/PackageEditModal.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260402-packages-context-return.md`
-- Risk impact (if any): Low. This ship only changes post-action navigation, highlight anchors, and next-step shortcuts on the admin packages page; no package edit rules, top-up math, delete behavior, billing logic, or ledger logic changed.
-- Verification:
-  - `npm run build` passed
-  - fresh local logged-in QA on `http://127.0.0.1:3314` confirmed:
-    - `edited` flow shows `Package changes saved.` plus `Jump to this package / Open billing / Open ledger`
-    - `topup` flow shows `Top-up saved.` plus `Jump to updated balance / Open billing / Open ledger`
-    - `deleted` flow shows `Package deleted.` plus `Open next visible package`
-  - source verification confirmed package rows now render stable `package-row-*` anchors and focus styling when return params are present
-- Rollback point: previous production commit before `2026-04-02-r10`.
-
-## 2026-04-02-r09
-
-- Release ID: `2026-04-02-r09`
-- Date/Time (Asia/Shanghai): `2026-04-02`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Add context-return and focus highlighting to the admin feedback desk so forwarded and proxy-draft actions keep operators oriented.
-- Key files:
-  - `app/admin/feedbacks/page.tsx`
-  - `app/admin/feedbacks/MarkForwardedFormClient.tsx`
-  - `app/admin/feedbacks/ProxyDraftFormClient.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260402-feedbacks-context-return.md`
-- Risk impact (if any): Low. This ship only changes post-action navigation, card highlighting, and focus anchors on the admin feedback desk; no feedback write rules, forward-mark rules, proxy-draft persistence, or teacher workflows changed.
-- Verification:
-  - `npm run build` passed
-  - fresh local logged-in QA on `http://127.0.0.1:3313` confirmed the forwarded flow card appears with `Open next pending item`
-  - fresh local logged-in QA confirmed forwarded/proxy return URLs keep the expected queue-return links when the focused item is not visible
-  - source verification confirmed stable anchors now render for feedback cards and overdue-session cards
-- Rollback point: previous production commit before `2026-04-02-r09`.
-
-## 2026-04-02-r08
-
-- Release ID: `2026-04-02-r08`
-- Date/Time (Asia/Shanghai): `2026-04-02`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Add one more finance follow-up layer so repair-return cards can jump directly to approval or payment areas when the selected item is ready.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `app/admin/expense-claims/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260402-finance-next-action-shortcuts.md`
-- Risk impact (if any): Low. This ship only adds anchor shortcuts and conditional next-step links around existing finance return cards; no approval order, payout batching logic, receipt creation rule, or attachment business logic changed.
-- Verification:
-  - `npm run build` passed
-  - fresh local logged-in QA on `http://127.0.0.1:3313` confirmed receipt approvals still shows the unresolved-state safety links (`Open fix tools again`, `Stay on this receipt`) when the selected receipt is not ready yet
-  - fresh local logged-in QA on `http://127.0.0.1:3313` confirmed expense claims still shows `Back to selected claim` and `Open all attachment issues` for unresolved repair-return states
-  - source verification confirmed the resolved-state paths now include direct anchors to `#receipt-primary-actions`, `#expense-review-actions`, and `#expense-payment-details`
-- Rollback point: previous production commit before `2026-04-02-r08`.
-
-## 2026-04-02-r07
-
-- Release ID: `2026-04-02-r07`
-- Date/Time (Asia/Shanghai): `2026-04-02`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Finish the second finance repair-loop pass so receipt proof repairs and expense-claim attachment cleanup return to a clearer ready-to-review state.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `app/admin/expense-claims/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260402-finance-repair-loop-phase-2.md`
-- Risk impact (if any): Low. This ship only changes finance repair-result messaging and return-path presentation; no approval order, payout batching, receipt creation rule, attachment storage rule, or business workflow transition changed.
-- Verification:
-  - `npm run build` passed
-  - fresh local logged-in QA on `http://127.0.0.1:3311` confirmed receipt approvals now shows the localized proof-repair success label plus the new repair follow-up state card after returning to the selected receipt
-  - fresh local logged-in QA on `http://127.0.0.1:3311` confirmed expense claims now shows the repair-loop card with `Back to selected claim` and `Open all attachment issues` when return-context params are present
-- Rollback point: previous production commit before `2026-04-02-r07`.
-
-## 2026-04-02-r06
-
-- Release ID: `2026-04-02-r06`
-- Date/Time (Asia/Shanghai): `2026-04-02`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Tighten finance repair-loop navigation, restore remembered student queues on first paint, and add clearer teacher session status summaries.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `app/admin/students/page.tsx`
-  - `app/admin/students/AdminStudentsClient.tsx`
-  - `app/teacher/sessions/[id]/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260402-repair-loop-and-queue-resume.md`
-- Risk impact (if any): Low. This ship only adjusts navigation return paths, remembered-view presentation, and teacher page summaries; no approval order, receipt creation rules, student data rules, attendance submission logic, or feedback submission logic changed.
-- Verification:
-  - `npm run build` passed
-  - local logged-in QA confirmed admin students restores the remembered queue on first render and shows the new resume banner / `Switch to today queue` escape hatch when no explicit `view` is provided
-  - local logged-in QA confirmed admin receipt approvals package workspace now carries `nextHref` through upload/delete/create repair flows and keeps the selected receipt return path visible
-  - local logged-in QA confirmed teacher session detail now shows `Attendance status / Feedback status / Next action` summary cards while preserving the existing `Step 1 / Step 2` guidance
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the release branch and `https://sgtmanage.com/admin/login` returned `200`
-- Rollback point: previous production commit before `2026-04-02-r06`.
-
-## 2026-04-02-r05
-
-- Release ID: `2026-04-02-r05`
-- Date/Time (Asia/Shanghai): `2026-04-02`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Shorten the finance attachment-repair path on admin expense claims and receipt approvals without changing approval logic.
-- Key files:
-  - `app/admin/expense-claims/page.tsx`
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260402-finance-attachment-repair-path.md`
-- Risk impact (if any): Low. This ship adds stronger repair-entry cards and shortcut links around existing attachment-issue states, but does not change approval order, queue data, payment rules, receipt creation, or expense-claim workflow logic.
-- Verification:
-  - `npm run build` passed
-  - admin expense claims now shows an explicit `Attachment repair path / é™„ä»¶ä¿®å¤è·¯å¾„` card whenever the selected review item is missing its file
-  - admin expense claims finance payout groups now expose direct repair/history shortcuts when any claim in the selected batch has attachment issues
-  - admin receipt approvals now shows an explicit `Proof repair path / å‡­è¯ä¿®å¤è·¯å¾„` card above the receipt detail area whenever proof is missing or the linked file is gone
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the release branch and `https://sgtmanage.com/admin/login` returned `200`
-- Rollback point: previous production commit before `2026-04-02-r05`.
-
-## 2026-04-02-r04
-
-- Release ID: `2026-04-02-r04`
-- Date/Time (Asia/Shanghai): `2026-04-02`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Add targeted admin/teacher UX follow-ups plus a shared local business-file-storage layer for expense claims, payment proofs, shared docs local fallback, and ticket attachments.
-- Key files:
-  - `lib/business-file-storage.ts`
-  - `lib/expense-claim-files.ts`
-  - `lib/shared-doc-files.ts`
-  - `app/admin/expense-claims/page.tsx`
-  - `app/admin/receipts-approvals/page.tsx`
-  - `app/admin/reports/partner-settlement/billing/page.tsx`
-  - `app/admin/students/page.tsx`
-  - `app/admin/students/AdminStudentsClient.tsx`
-  - `app/admin/tickets/[id]/page.tsx`
-  - `app/admin/tickets/archived/page.tsx`
-  - `app/api/admin/expense-claims/route.ts`
-  - `app/api/admin/parent-payment-records/[id]/file/route.ts`
-  - `app/api/expense-claims/[id]/receipt/route.ts`
-  - `app/api/shared-docs/[id]/file/route.ts`
-  - `app/api/teacher/expense-claims/route.ts`
-  - `app/api/teacher/expense-claims/resubmit/route.ts`
-  - `app/api/tickets/upload/[token]/route.ts`
-  - `app/api/tickets/files/[filename]/route.ts`
-  - `app/teacher/expense-claims/page.tsx`
-  - `app/teacher/sessions/[id]/page.tsx`
-  - `app/teacher/tickets/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260402-storage-helper-and-ux-followups.md`
-- Risk impact (if any): Medium-low. This ship touches multiple file-open/upload paths, but keeps the same routes, DB fields, approval rules, ticket flows, and expense-claim business logic; live attachment smoke checks were completed before release closeout.
-- Verification:
-  - `npm run build` passed
-  - `npm run audit:upload-integrity` was run locally; high missing counts were confirmed as local-environment file-disk mismatch, not a regression in the new helper
-  - helper smoke check passed for `expense_claim / payment_proof / partner_payment_proof / shared_docs_local / tickets` store-read-delete cycle
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the release branch and `https://sgtmanage.com/admin/login` returned `200`
-  - logged-in live QA confirmed:
-    - `/api/expense-claims/[id]/receipt` returns `200`
-    - `/api/admin/parent-payment-records/[id]/file` returns `200`
-    - `/uploads/partner-payment-proofs/*` sample links return `200`
-    - `/api/shared-docs/[id]/file` triggers the expected file download flow
-    - `/api/tickets/files/[filename]` returns `200`
-  - targeted UI checks confirmed:
-    - admin expense claims and receipt approvals expose attachment-issue triage more clearly
-    - admin students page can recover from empty `today` queues and remembers the last queue when no explicit `view` is set
-    - teacher session detail now guides teachers to attendance first, feedback second without changing submission rules
-- Rollback point: previous production commit before `2026-04-02-r04`.
-
-## 2026-04-02-r03
-
-- Release ID: `2026-04-02-r03`
-- Date/Time (Asia/Shanghai): `2026-04-02`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Turn the admin workspace into a lighter task-first workbench across navigation, homepage, todo center, students, approvals, packages, and feedback flows.
-- Key files:
-  - `app/admin/AdminSidebarNavClient.tsx`
-  - `app/admin/_components/workbenchStyles.ts`
-  - `app/admin/layout.tsx`
-  - `app/admin/page.tsx`
-  - `app/admin/todos/page.tsx`
-  - `app/admin/students/page.tsx`
-  - `app/admin/students/AdminStudentsClient.tsx`
-  - `app/admin/students/[id]/page.tsx`
-  - `app/admin/receipts-approvals/page.tsx`
-  - `app/admin/expense-claims/page.tsx`
-  - `app/admin/packages/page.tsx`
-  - `app/admin/feedbacks/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260402-admin-workbench-ux-rollout.md`
-- Risk impact (if any): Medium-low. This ship changes admin navigation and high-frequency page presentation across many screens, but does not change routes, permissions, approval order, or underlying business logic.
-- Verification:
-  - `npm run build` passed
-  - admin sidebar now groups work by task area instead of one long always-open menu
-  - admin homepage now opens as a task-first workbench instead of a setup-first landing page
-  - todo center, students, receipts, expense claims, packages, and feedback pages now lead with current context and next actions before long forms/tables
-- Rollback point: previous production commit before `2026-04-02-r03`.
-
-## 2026-03-31-r3
-
-- Release ID: `2026-03-31-r3`
-- Date/Time (Asia/Shanghai): `2026-03-31`
-- Scope: Extend teacher session visibility window and normalize availability date handling to business timezone across teacher/admin views.
-- Key files:
-  - `app/teacher/sessions/page.tsx`
-  - `app/teacher/availability/page.tsx`
-  - `app/api/teacher/availability/_lib.ts`
-  - `app/api/teacher/availability/slots/route.ts`
-  - `app/api/teacher/availability/clear-day/route.ts`
-  - `app/api/admin/teachers/[id]/availability/route.ts`
-  - `app/api/admin/teachers/[id]/availability/date/route.ts`
-  - `app/api/admin/teachers/[id]/availability/generate-month/route.ts`
-  - `app/admin/teachers/[id]/calendar/page.tsx`
-- Risk impact (if any): Low-to-medium. Changes how date-only availability rows are queried/rendered, but does not change scheduling rules or slot durations.
-- Verification:
-  - `npm run build` passed.
-  - production probe confirmed Yunfeng still has `46` April sessions and `57` April date-availability rows; the issue was display logic, not missing data.
-- Rollback point: Previous production commit before `2026-03-31-r3`.
-
-## 2026-03-22-r1
-
-- Release ID: `2026-03-22-r1`
-- Date/Time (Asia/Shanghai): `2026-03-22`
-- Scope: Time display unification (business timezone format), finance/receipt flow continuity, layout and route stability checks.
-- Key files:
-  - `lib/date-only.ts`
-  - `app/admin/layout.tsx`
-  - `app/admin/receipts-approvals/page.tsx`
-  - `app/admin/finance/workbench/page.tsx`
-  - `app/admin/finance/student-package-invoices/page.tsx`
-- Risk impact (if any): Finance role route/menu is intentionally restricted by role policy; non-finance admin menu differs by design.
-- Verification:
-  - `npm run build` passed.
-  - `https://sgtmanage.com/admin/login` returns `200`.
-  - PM2 process `tuition-scheduler` online.
-- Rollback point: Remote git commit baseline before patch rollout (`56a91b1`) or previous deployment archive.
-
-## 2026-03-22-r2
-
-- Release ID: `2026-03-22-r2`
-- Date/Time (Asia/Shanghai): `2026-03-22`
-- Scope: Add release doc gate in deploy flow (process-only safeguard).
-- Key files:
-  - `ops/server/scripts/verify_release_docs.sh`
-  - `ops/server/scripts/deploy_app.sh`
-  - `.github/workflows/deploy-server.yml`
-  - `ops/server/.deploy.env.example`
-- Risk impact (if any): Deploy can be blocked if release docs are not updated in the deploy commit.
-- Verification:
-  - `bash -n ops/server/scripts/verify_release_docs.sh`
-  - `bash -n ops/server/scripts/deploy_app.sh`
-- Rollback point: Revert r2 process files if emergency rollback is needed.
-
-## 2026-03-22-r3
-
-- Release ID: `2026-03-22-r3`
-- Date/Time (Asia/Shanghai): `2026-03-22`
-- Scope: Add server handoff baseline + one-command server operations for new chat windows.
-- Key files:
-  - `docs/SERVER-HANDOFF.md`
-  - `ops/server/server-handoff.env.example`
-  - `ops/server/scripts/quick_check.sh`
-  - `ops/server/scripts/quick_deploy.sh`
-  - `docs/NEW-CHAT-COMMANDS.md`
-  - `docs/CODEX-æ–°å¯¹è¯å¼€åœºç™½.txt`
-- Risk impact (if any): Process-only change; no runtime/business logic impact.
-- Verification:
-  - `bash -n ops/server/scripts/quick_check.sh`
-  - `bash -n ops/server/scripts/quick_deploy.sh`
-  - script files are executable
-- Rollback point: Revert r3 process files only.
-
-## 2026-03-22-r4
-
-- Release ID: `2026-03-22-r4`
-- Date/Time (Asia/Shanghai): `2026-03-22`
-- Scope: High-risk ops hardening (docs + dangerous script confirmation gate).
-- Key files:
-  - `docs/HIGH-RISK-AREAS.md`
-  - `docs/è¿ç»´æ‰‹å†Œ.md`
-  - `docs/GitHub-Actionséƒ¨ç½²è¯´æ˜Ž.md`
-  - `docs/CODEX-ç”Ÿäº§å‘å¸ƒæŒ‡æŒ¥æ¨¡æ¿.md`
-  - `docs/è‡ªæœ‰æœåŠ¡å™¨éƒ¨ç½²æŒ‡å—.md`
-  - `docs/SERVER-HANDOFF.md`
-  - `ops/server/scripts/sync_local_db_to_neon.sh`
-- Risk impact (if any): Process/script guard only; no business logic change.
-- Verification:
-  - `bash -n ops/server/scripts/sync_local_db_to_neon.sh`
-  - docs now explicitly warn against localhost DB and stale-branch deploy risks.
-- Rollback point: Revert r4 doc/script guard files.
-
-## 2026-03-22-r5
-
-- Release ID: `2026-03-22-r5`
-- Date/Time (Asia/Shanghai): `2026-03-22`
-- Scope: Build hotfix to restore missing date helper exports required by finance pages.
-- Key files:
-  - `lib/date-only.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260322-context-control.md`
-- Risk impact (if any): Low; utility exports only, no business rule change.
-- Verification:
-  - remote build passes after export fix
-  - `/admin/login` health check returns `200`
-- Rollback point: Previous commit `7598093`.
-
-## 2026-03-22-r6
-
-- Release ID: `2026-03-22-r6`
-- Date/Time (Asia/Shanghai): `2026-03-22`
-- Scope: Fix quick deploy/check script default path resolution.
-- Key files:
-  - `ops/server/scripts/quick_check.sh`
-  - `ops/server/scripts/quick_deploy.sh`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260322-context-control.md`
-- Risk impact (if any): Process-only; no runtime business logic change.
-- Verification:
-  - `bash ops/server/scripts/quick_deploy.sh ...` can find and execute `quick_check.sh`
-- Rollback point: `39e9967`.
-
-## 2026-03-22-r7
-
-- Release ID: `2026-03-22-r7`
-- Date/Time (Asia/Shanghai): `2026-03-22`
-- Scope: Release board state alignment after latest successful deploy.
-- Key files:
-  - `docs/RELEASE-BOARD.md`
-  - `docs/CHANGELOG-LIVE.md`
-- Risk impact (if any): None (documentation-only alignment).
-- Verification:
-  - `RELEASE-BOARD` remote commit updated to `d00be8e`
-- Rollback point: `d00be8e` (runtime unchanged).
-
-## 2026-03-22-r8
-
-- Release ID: `2026-03-22-r8`
-- Date/Time (Asia/Shanghai): `2026-03-22`
-- Scope: Add one-click new chat startup verification script and entry docs.
-- Key files:
-  - `ops/server/scripts/new_chat_startup_check.sh`
-  - `docs/SERVER-HANDOFF.md`
-  - `docs/NEW-CHAT-COMMANDS.md`
-  - `docs/tasks/TASK-20260322-startup-check-rollout.md`
-- Risk impact (if any): Process-only; no business logic/runtime behavior change.
-- Verification:
-  - `bash ops/server/scripts/new_chat_startup_check.sh`
-  - local/origin/server commit alignment is printed
-  - `/admin/login` returns `200`
-- Rollback point: `e215176`.
-
-## 2026-03-23-r1
-
-- Release ID: `2026-03-23-r1`
-- Date/Time (Asia/Shanghai): `2026-03-23`
-- Scope: Upload access recovery + recovery scanner key compatibility.
-- Key files:
-  - `app/admin/recovery/uploads/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260323-upload-access-recovery.md`
-- Risk impact (if any): Low. No billing/approval business rule change; recovery page now scans both legacy/new billing keys.
-- Verification:
-  - restart `pm2` process `tuition-scheduler` on server
-  - `https://sgtmanage.com/uploads/payment-proofs/3e124342-fb43-415a-b15e-810f5ff23c68/1774269713216_6b67ed17.jpg` returns `200`
-  - sample upload URLs under `/uploads/tickets/*` return `200`
-  - `npm run build` passed
-- Rollback point: commit before `2026-03-23-r1` deploy (`072686a`).
-
-## 2026-03-23-r2
-
-- Release ID: `2026-03-23-r2`
-- Date/Time (Asia/Shanghai): `2026-03-23`
-- Scope: Ledger integrity detail report clarity upgrade (reason + evidence + action columns in CSV).
-- Key files:
-  - `scripts/reconciliation/daily-ledger-integrity.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260323-ledger-report-clarity.md`
-- Risk impact (if any): Low; reporting/output schema enhancement only, no deduction business logic changes.
-- Verification:
-  - `npm run audit:ledger-integrity`
-  - generated detail CSV includes columns `reasonCode/rootCauseCN/rootCauseEN/suggestedActionCN/suggestedActionEN`
-- Rollback point: previous deploy commit `7ab2e5f`.
-
-## 2026-03-23-r3
-
-- Release ID: `2026-03-23-r3`
-- Date/Time (Asia/Shanghai): `2026-03-23`
-- Scope: Package ledger note readability upgrade for both legacy/manual reconcile notes and abnormal txn notes.
-- Key files:
-  - `lib/package-ledger-note.ts`
-  - `app/admin/packages/[id]/ledger/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260323-ledger-note-readable.md`
-- Risk impact (if any): Low. Display/wording enhancement only; no minutes delta, posting rule, or deduction logic change.
-- Verification:
-  - `npm run build` passed
-  - ledger page shows readable multi-line notes instead of raw `reason=...;actual=...;expected=...;diff=...` for legacy manual reconcile entries
-- Rollback point: previous deploy commit `8a29fc9`.
-
-## 2026-03-23-r4
-
-- Release ID: `2026-03-23-r4`
-- Date/Time (Asia/Shanghai): `2026-03-23`
-- Scope: Add user-facing helper hint in package ledger edit area to explain readable note behavior after save.
-- Key files:
-  - `app/admin/packages/[id]/ledger/PackageLedgerEditTxnClient.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260323-ledger-note-readable.md`
-- Risk impact (if any): Very low. UI helper text only; no API/data/ledger arithmetic change.
-- Verification:
-  - `npm run build` passed
-  - edit area shows hint: "ä¿å­˜åŽå°†è‡ªåŠ¨æŒ‰å¯è¯»æ¨¡æ¿å±•ç¤ºå¤‡æ³¨ï¼ˆåŽ†å²æŠ€æœ¯å¤‡æ³¨ä¹Ÿä¼šè‡ªåŠ¨è½¬ä¸ºæ˜“è¯»è¯´æ˜Žï¼‰"
-- Rollback point: previous deploy commit `be377a2`.
-
-## 2026-03-26-r1
-
-- Release ID: `2026-03-26-r1`
-- Date/Time (Asia/Shanghai): `2026-03-26`
-- Deployment status: `LIVE` (included in the currently deployed production branch lineage)
-- Scope: Align group package selection across enrollment preview, enrollment submit, attendance package ordering, and student package balance preview; prefer `GROUP_MINUTES` and keep `GROUP_COUNT` fallback for legacy group classes.
-- Key files:
-  - `lib/package-mode.ts`
-  - `app/api/admin/classes/[id]/enrollment-preview/route.ts`
-  - `app/api/admin/enrollments/route.ts`
-  - `app/api/admin/students/[id]/package-balance-preview/route.ts`
-  - `app/admin/sessions/[id]/attendance/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260326-group-package-alignment.md`
-- Risk impact (if any): Medium-low. Affects group-class package matching/preview behavior only; 1-on-1 package logic remains unchanged. Main risk is inconsistent legacy `GROUP_COUNT` expectations if downstream pages assume minute-based checks.
-- Verification:
-  - `npm run build` passed
-  - group-class enrollment preview and submit use the same preferred package rule
-  - attendance page package ordering prefers `GROUP_MINUTES`, then falls back to legacy `GROUP_COUNT`
-  - package balance preview no longer treats legacy `GROUP_COUNT` as minute-based duration check
-- Rollback point: previous commit before alignment patch (`6536928` baseline before next deploy commit).
-
-## 2026-03-26-r3
-
-- Release ID: `2026-03-26-r3`
-- Date/Time (Asia/Shanghai): `2026-03-26`
-- Scope: Backend integrity hardening for scheduling, package top-up, expense claim state transitions, and teacher availability cleanup/guard rails.
-- Key files:
-  - `app/api/admin/students/[id]/quick-appointment/route.ts`
-  - `app/api/admin/ops/execute/route.ts`
-  - `app/api/admin/classes/[id]/sessions/generate-weekly/route.ts`
-  - `app/api/admin/teachers/[id]/generate-sessions/route.ts`
-  - `app/api/admin/packages/[id]/top-up/route.ts`
-  - `app/api/admin/teachers/[id]/availability/date/route.ts`
-  - `app/api/admin/teachers/[id]/availability/weekly/route.ts`
-  - `app/api/teacher/availability/slots/route.ts`
-  - `app/api/teacher/availability/bulk/route.ts`
-  - `app/api/teacher/availability/undo/route.ts`
-  - `lib/expense-claims.ts`
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260326183000_add_session_unique_schedule_guard/migration.sql`
-  - `prisma/migrations/20260326195000_add_availability_unique_guards/migration.sql`
-  - `scripts/report-availability-integrity.ts`
-  - `scripts/clean-availability-integrity.ts`
-  - `docs/tasks/TASK-20260326-backend-integrity-hardening.md`
-- Risk impact (if any): Medium. Duplicate writes are now blocked at DB/app layers, availability creation now rejects overlaps, and historical availability data was normalized by merging overlapping ranges. Normal scheduling rules are unchanged, but repeated submits now fail fast instead of silently duplicating.
-- Verification:
-  - `npm run test:backend` passed (`16/16`)
-  - `npm run build` passed
-  - `npm run audit:availability-integrity` reports zero duplicate/overlap groups
-  - `npx prisma migrate deploy` applied `20260326183000_add_session_unique_schedule_guard` and `20260326195000_add_availability_unique_guards`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirms local/origin/server align on the live branch head
-  - release-doc closeout follow-up was completed on the same live branch lineage
-- Rollback point: previous production commit before backend-integrity deploy (`98f1b9d` lineage baseline).
-
-## 2026-03-26-r2
-
-- Release ID: `2026-03-26-r2`
-- Date/Time (Asia/Shanghai): `2026-03-26`
-- Deployment status: `LIVE` (included in the currently deployed production branch lineage)
-- Scope: Fix todo-center deduction status so waived assessment attendance is not shown as pending deduction.
-- Key files:
-  - `app/admin/todos/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260326-waived-attendance-todo-fix.md`
-- Risk impact (if any): Low. Todo/dashboard display logic only; no attendance write path or package ledger arithmetic change.
-- Verification:
-  - `npm run build` passed
-  - attendance rows with `waiveDeduction=true` are excluded from todo pending-deduction count
-  - waived assessment lessons show "æ— éœ€å‡æ‰£" instead of "å¾…å‡æ‰£"
-- Rollback point: previous commit before todo waived-deduction fix (`dcac9fe`).
-
-## 2026-03-26-doc-status
-
-- Release ID: `2026-03-26-doc-status`
-- Date/Time (Asia/Shanghai): `2026-03-26`
-- Deployment status: `LIVE`
-- Scope: Align release documents with the actual server commit and current deploy state after startup-check verification.
-- Key files:
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260326-live-status-alignment.md`
-- Risk impact (if any): None. Documentation/process alignment only; no business logic or runtime behavior change.
-- Verification:
-  - `bash ops/server/scripts/new_chat_startup_check.sh`
-  - local/origin/server are aligned
-  - `2026-03-26-r1/r2` are now marked live after deploy completion
-- Rollback point: previous docs-only release alignment commit.
-
-## 2026-03-27-r1
-
-- Release ID: `2026-03-27-r1`
-- Date/Time (Asia/Shanghai): `2026-03-27`
-- Deployment status: `LIVE` (included in the currently deployed production branch lineage)
-- Scope: Add optimistic-lock retry protection for `partner/parent billing` JSON stores and related approval flows, plus regression coverage for concurrent-write preservation.
-- Key files:
-  - `lib/app-setting-lock.ts`
-  - `lib/partner-billing.ts`
-  - `lib/student-parent-billing.ts`
-  - `lib/partner-settlement-approval.ts`
-  - `lib/partner-receipt-approval.ts`
-  - `lib/parent-receipt-approval.ts`
-  - `tests/app-setting-lock.test.ts`
-  - `tests/billing-optimistic-lock.test.ts`
-  - `docs/tasks/TASK-20260327-billing-optimistic-lock.md`
-- Risk impact (if any): Medium. Existing data model and UI flow stay unchanged, but concurrent billing/approval writes now retry against latest `AppSetting.updatedAt` and may fail explicitly instead of silently overwriting another operator's changes.
-- Verification:
-  - `npm run test:backend` passed (`22/22`)
-  - `npm run build` passed
-  - parent invoice creation test preserves a concurrent invoice after retry
-  - partner settlement reject test replays correctly after optimistic-lock conflict
-- Rollback point: previous production commit before `2026-03-27-r1` deploy (`c3800f0`).
-
-## 2026-03-29-r1
-
-- Release ID: `2026-03-29-r1`
-- Date/Time (Asia/Shanghai): `2026-03-29`
-- Deployment status: `LIVE`
-- Scope: Fix receipt/settlement approval state loading after the `AppSetting` optimistic-lock rollout so existing JSON approval rows are read correctly instead of being treated as empty.
-- Key files:
-  - `lib/parent-receipt-approval.ts`
-  - `lib/partner-receipt-approval.ts`
-  - `lib/partner-settlement-approval.ts`
-  - `tests/billing-optimistic-lock.test.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260329-receipt-approval-json-read-fix.md`
-- Risk impact (if any): Medium. No approval rules or routes changed, but approval JSON rows now hydrate from stored arrays correctly, which restores manager/finance status visibility and prevents approval flows from acting like prior approvals are missing.
-- Verification:
-  - `npm run test:backend` passed (`23/23`)
-  - `npm run build` passed
-  - parent receipt approval map regression test confirms stored JSON approvals are read back with normalized approver emails
-- Rollback point: previous production commit before `2026-03-29-r1` hotfix (`2ce03bd`).
-
-## 2026-03-29-r2
-
-- Release ID: `2026-03-29-r2`
-- Date/Time (Asia/Shanghai): `2026-03-29`
-- Deployment status: `LIVE`
-- Scope: Add a guardrail around the `AppSetting` optimistic-lock helper so callers treat `sanitize` input as already-parsed JSON, plus regression coverage for that contract.
-- Key files:
-  - `lib/app-setting-lock.ts`
-  - `tests/app-setting-lock.test.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260329-app-setting-sanitize-guard.md`
-- Risk impact (if any): Low. Runtime business logic is unchanged; this only documents the helper contract and adds a test to catch future regressions in JSON-store callers.
-- Verification:
-  - `npm run test:backend` passed (`24/24`)
-- Rollback point: previous production commit before `2026-03-29-r2` (`06c6fc7`).
-
-## 2026-03-30-r1
-
-- Release ID: `2026-03-30-r1`
-- Date/Time (Asia/Shanghai): `2026-03-30`
-- Deployment status: `LIVE`
-- Scope: Prevent duplicate expense-claim submissions from repeated taps and clean up the duplicated Ahmar transport claims created on `2026-03-30`.
-- Key files:
-  - `lib/expense-claims.ts`
-  - `app/teacher/expense-claims/page.tsx`
-  - `app/admin/expense-claims/page.tsx`
-  - `app/_components/ExpenseClaimForm.tsx`
-  - `app/_components/ExpenseClaimSubmitButton.tsx`
-  - `tests/expense-claims.test.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260330-expense-claim-duplicate-guard.md`
-- Risk impact (if any): Medium. Normal expense submission flow is unchanged, but exact duplicate claims within a short window now resolve to "already submitted" instead of writing more rows.
-- Verification:
-  - `npm run test:backend` passed (`25/25`)
-  - `npm run build` passed
-  - Ahmar duplicate `2026-03-29` transport claims were reduced to a single retained submission
-- Rollback point: previous production commit before `2026-03-30-r1` (`157ea31`).
-
-## 2026-03-30-r2
-
-- Release ID: `2026-03-30-r2`
-- Date/Time (Asia/Shanghai): `2026-03-30`
-- Deployment status: `LIVE`
-- Scope: Route admin parent payment proof open/preview through a controlled record-id endpoint in receipt approvals.
-- Key files:
-  - `app/api/admin/parent-payment-records/[id]/file/route.ts`
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260330-parent-payment-proof-route.md`
-- Risk impact (if any): Low. No parent billing storage, upload, receipt creation, or approval rules changed; only the admin file open/preview path for parent payment proof records now resolves via a controlled route.
-- Verification:
-  - `npm run build` passed
-  - admin receipt approvals now opens parent payment proof files via `/api/admin/parent-payment-records/[id]/file`
-  - existing valid payment-proof files remain reachable through the controlled route
-- Rollback point: previous production commit before `2026-03-30-r2`.
-
-## 2026-03-30-r3
-
-- Release ID: `2026-03-30-r3`
-- Date/Time (Asia/Shanghai): `2026-03-30 15:44 CST`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Allow teachers to correct rejected expense claims and resubmit the same claim back into the approval queue.
-- Key files:
-  - `lib/expense-claims.ts`
-  - `app/teacher/expense-claims/page.tsx`
-  - `tests/expense-claims.test.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260330-expense-claim-resubmit.md`
-- Risk impact (if any): Low-to-medium. Only rejected claims gain a resubmit path; approval, payment, and archive rules stay unchanged. Teachers can now reopen a rejected claim by correcting fields and optionally replacing the attachment.
-- Verification:
-  - `npm run test:backend` passed (`27/27`)
-  - `npm run build` passed
-  - rejected claims return to `SUBMITTED` after resubmit
-  - non-rejected claims are blocked from using the resubmit path
-- Rollback point: previous production commit before `2026-03-30-r3`.
-- Release closeout: production branch/doc alignment confirmed on follow-up docs commit `f28a145`.
-
-## 2026-03-30-r4
-
-- Release ID: `2026-03-30-r4`
-- Date/Time (Asia/Shanghai): `2026-03-30`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Improve teacher expense-claim receipt/status UX with bilingual human-readable labels and explicit attachment-health feedback.
-- Key files:
-  - `app/teacher/expense-claims/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260330-expense-claim-ux-copy.md`
-- Risk impact (if any): Low. Teacher-facing wording and attachment-health indicators only; approval, payment, and archive logic are unchanged.
-- Verification:
-  - `npm run build` passed
-  - expense-claim statuses render as bilingual human-readable labels
-  - missing attachments show explicit bilingual warning text
-  - rejected claims show a clearer bilingual next-step card for resubmission
-- Rollback point: previous production commit before `2026-03-30-r4`.
-
-## 2026-03-30-r5
-
-- Release ID: `2026-03-30-r5`
-- Date/Time (Asia/Shanghai): `2026-03-30`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Reduce clutter on the admin receipt approval page with clearer queue wording, stronger focus on the selected receipt, and secondary tools moved into `More actions / æ›´å¤šæ“ä½œ`.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260330-receipt-approval-ux-polish.md`
-- Risk impact (if any): Low. Review/approval business rules, permissions, and finance workflows are unchanged; this release only changes interaction emphasis and bilingual copy on the receipt approval page.
-- Verification:
-  - `npm run build` passed
-  - queue rows show bilingual human-readable status labels
-  - selected receipt panel highlights the current item and main review action
-  - fix/revoke/package-billing links moved under `More actions / æ›´å¤šæ“ä½œ`
-- Rollback point: previous production commit before `2026-03-30-r5`.
-
-## 2026-03-30-r6
-
-- Release ID: `2026-03-30-r6`
-- Date/Time (Asia/Shanghai): `2026-03-30 16:23 CST`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Smooth receipt approval handling with next-item auto-advance, standardized bilingual reject reasons, and a lightweight timeline for the selected receipt.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260330-receipt-approval-flow-smoothing.md`
-- Risk impact (if any): Low. Approval sequencing, permission rules, and receipt/billing data flow remain unchanged; this release only improves interaction flow and bilingual guidance on the receipt approval page.
-- Verification:
-  - `npm run build` passed
-  - approve/reject actions carry forward to the next queue item
-  - reject actions use standardized bilingual reasons plus optional detail
-  - selected receipt panel shows a lightweight bilingual timeline
-- Rollback point: previous production commit before `2026-03-30-r6`.
-
-## 2026-03-30-r7
-
-- Release ID: `2026-03-30-r7`
-- Date/Time (Asia/Shanghai): `2026-03-30`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Make the receipt approval queue feel more like a worklist with task-first ordering, clearer success feedback, and action-oriented risk guidance.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260330-receipt-approval-worklist-polish.md`
-- Risk impact (if any): Low. This release only adjusts queue ordering and bilingual review-page messaging; approval sequence, permissions, and billing data flow remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - pending risky items sort ahead of completed items in the review queue
-  - success banner explains the action result and next-item jump in bilingual wording
-  - risk box includes explicit bilingual recommended next steps
-- Rollback point: previous production commit before `2026-03-30-r7`.
-
-## 2026-03-30-r8
-
-- Release ID: `2026-03-30-r8`
-- Date/Time (Asia/Shanghai): `2026-03-30`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Further reduce receipt approval cognitive load by de-emphasizing completed rows, adding queue risk badges, and clarifying current role focus.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260330-receipt-approval-role-focus-polish.md`
-- Risk impact (if any): Low. This release only adjusts review-page presentation and queue labeling; approval order, permissions, and billing data flow stay unchanged.
-- Verification:
-  - `npm run build` passed
-  - completed rows render with lower visual priority in the queue
-  - queue rows show bilingual risk badges such as missing proof / file missing / ready
-  - selected receipt panel shows current role focus in bilingual wording
-- Rollback point: previous production commit before `2026-03-30-r8`.
-
-## 2026-03-30-r9
-
-- Release ID: `2026-03-30-r9`
-- Date/Time (Asia/Shanghai): `2026-03-30`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Reshape the receipt approval queue into clearer work buckets: my next actions, other open items, and completed history.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260330-receipt-approval-bucketed-queue.md`
-- Risk impact (if any): Low. This release only changes review-page grouping and emphasis; approval order, permissions, and finance data flow stay unchanged.
-- Verification:
-  - `npm run build` passed
-  - queue renders separate bilingual sections for my next actions, other open items, and completed history
-  - completed items no longer visually compete with open work
-  - selected receipt behavior and review actions remain unchanged
-- Rollback point: previous production commit before `2026-03-30-r9`.
-
-## 2026-03-30-r10
-
-- Release ID: `2026-03-30-r10`
-- Date/Time (Asia/Shanghai): `2026-03-30`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Add queue bucket summaries, one-click focus filters, and a collapsed completed-history section on the receipt approval page.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260330-receipt-approval-focus-filters.md`
-- Risk impact (if any): Low. This release only changes queue focus controls and history visibility; approval order, permissions, and finance data flow stay unchanged.
-- Verification:
-  - `npm run build` passed
-  - queue header shows bilingual counts for my actions, other open items, and completed history
-  - operators can switch to focused views such as only my actions or only completed history
-  - completed history is collapsed by default unless the history-only view is selected
-- Rollback point: previous production commit before `2026-03-30-r10`.
-
-## 2026-03-30-r11
-
-- Release ID: `2026-03-30-r11`
-- Date/Time (Asia/Shanghai): `2026-03-30`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Add queue-level fix shortcuts for risky parent receipts and tighten queue priority so missing proof/file issues rise above generic review work.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260330-receipt-approval-fix-shortcuts.md`
-- Risk impact (if any): Low. This release only changes queue shortcuts and ordering emphasis; approval order, permissions, and finance data flow stay unchanged.
-- Verification:
-  - `npm run build` passed
-  - parent rows with rejected/missing-proof/file-missing states show a bilingual fix shortcut in the queue
-  - missing proof and missing file issues sort ahead of generic review items
-  - selected receipt actions and approval rules remain unchanged
-- Rollback point: previous production commit before `2026-03-30-r11`.
-
-## 2026-03-30-r12
-
-- Release ID: `2026-03-30-r12`
-- Date/Time (Asia/Shanghai): `2026-03-30`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Align receipt approval queue and detail-panel risk signals, remove duplicated bilingual copy, and keep `Only my actions` from auto-selecting unrelated open work when the bucket is empty.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260330-receipt-approval-qa-followups.md`
-- Risk impact (if any): Low. This release only fixes approval-page guidance and selection behavior; approval rules, permissions, and finance data flow remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - selected receipt risk panel now matches queue-level file-missing and missing-proof signals
-  - duplicated bilingual labels no longer render twice in the queue and detail panel
-  - `Only my actions / åªçœ‹æˆ‘å¾…å¤„ç†çš„` no longer defaults to another bucket when there are no mine items
-- Rollback point: previous production commit before `2026-03-30-r12`.
-
-## 2026-03-30-r13
-
-- Release ID: `2026-03-30-r13`
-- Date/Time (Asia/Shanghai): `2026-03-30`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Remove the remaining duplicated bilingual labels in the selected receipt detail and action area on the receipt approval page.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260330-receipt-approval-copy-cleanup.md`
-- Risk impact (if any): Low. This release only cleans up operator-facing bilingual copy in the selected receipt panel; approval rules, permissions, and finance data flow remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - timeline, manager/finance action headers, receipt file card, and more-actions labels render once in bilingual mode
-  - revoke input/button labels no longer duplicate the same bilingual copy twice
-- Rollback point: previous production commit before `2026-03-30-r13`.
-
-## 2026-03-30-r14
-
-- Release ID: `2026-03-30-r14`
-- Date/Time (Asia/Shanghai): `2026-03-30`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Add clearer batch-style review actions, stronger risk tiers, and a fix-flow return cue on the receipt approval page.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260330-receipt-approval-batch-flow-and-risk-tiers.md`
-- Risk impact (if any): Low. This release only refines operator guidance and action wording on the approval page; approval rules, permissions, and finance data flow remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - primary review buttons now read `Approve & next / æ‰¹å‡†å¹¶ä¸‹ä¸€æ¡` and `Reject & next / é©³å›žå¹¶ä¸‹ä¸€æ¡` when another queue item is available
-  - queue rows now distinguish `Blocker / é˜»å¡ž`, `Needs check / éœ€è¦æ ¸å¯¹`, and `Ready / å¯å¤„ç†`
-  - finance fix flows show a bilingual return cue back to the selected receipt review item
-- Rollback point: previous production commit before `2026-03-30-r14`.
-
-## 2026-03-30-r15
-
-- Release ID: `2026-03-30-r15`
-- Date/Time (Asia/Shanghai): `2026-03-30`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Hotfix the teacher expense-claim submit button so browser-side validation no longer leaves the UI stuck on `Submitting...`.
-- Key files:
-  - `app/_components/ExpenseClaimSubmitButton.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260330-expense-submit-validation-hotfix.md`
-- Risk impact (if any): Low. This release only changes client-side pending behavior for expense-claim submission buttons; expense validation rules, submit flow, and duplicate protection remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - expense-claim submit button only switches to `Submitting... / æäº¤ä¸­...` after browser validity checks pass
-  - missing required fields or files no longer leave the button stuck in a disabled pending state
-- Rollback point: previous production commit before `2026-03-30-r15`.
-
-## 2026-03-30-r16
-
-- Release ID: `2026-03-30-r16`
-- Date/Time (Asia/Shanghai): `2026-03-30`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Clarify teacher expense-claim form requirements with bilingual pre-submit guidance and field-level hints.
-- Key files:
-  - `app/_components/ExpenseClaimForm.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260330-expense-form-guidance.md`
-- Risk impact (if any): Low. This release only improves form copy and hint text; expense validation rules, submit flow, and approval logic remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - teacher expense form now shows a bilingual `Before you submit / æäº¤å‰è¯·æ£€æŸ¥` checklist
-  - transport, attachment, and purpose fields now include clearer bilingual helper text
-- Rollback point: previous production commit before `2026-03-30-r16`.
-
-## 2026-03-30-r17
-
-- Release ID: `2026-03-30-r17`
-- Date/Time (Asia/Shanghai): `2026-03-30`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Move expense-claim submit and resubmit flows off volatile Next Server Actions onto stable multipart POST routes for teacher and admin entry points.
-- Key files:
-  - `app/api/teacher/expense-claims/route.ts`
-  - `app/api/teacher/expense-claims/resubmit/route.ts`
-  - `app/api/admin/expense-claims/route.ts`
-  - `app/teacher/expense-claims/page.tsx`
-  - `app/admin/expense-claims/page.tsx`
-  - `app/_components/ExpenseClaimForm.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260330-expense-submit-route-stability.md`
-- Risk impact (if any): Medium-low. This release keeps the same validation, duplicate guard, and approval behavior, but switches submit transport for teacher/admin expense forms to stable route handlers so already-open pages are less likely to fail across deploys.
-- Verification:
-  - `npm run build` passed
-  - teacher new submit now posts to `/api/teacher/expense-claims`
-  - teacher rejected-claim resubmit now posts to `/api/teacher/expense-claims/resubmit`
-  - admin self-submit now posts to `/api/admin/expense-claims`
-- Rollback point: previous production commit before `2026-03-30-r17`.
-
-## 2026-03-31-r01
-
-- Release ID: `2026-03-31-r01`
-- Date/Time (Asia/Shanghai): `2026-03-31`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Fix teacher/admin expense submit buttons so mobile browsers do not get stuck on `Submitting...` before the browser sends the real multipart POST.
-- Key files:
-  - `app/_components/ExpenseClaimSubmitButton.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260331-expense-submit-button-timing.md`
-- Risk impact (if any): Low. This release only delays the pending-state UI flip by one tick so native form submission can start first; expense validation, duplicate-submit handling, and approval/payment logic stay unchanged.
-- Verification:
-  - `npm run build` passed
-  - reproduced locally that disabling a submit button inside its click handler can prevent the browser from sending the form request
-  - expense submit button now enters `Submitting... / æäº¤ä¸­...` after the browser has a chance to dispatch the native submit
-- Rollback point: previous production commit before `2026-03-31-r01`.
-
-## 2026-03-31-r02
-
-- Release ID: `2026-03-31-r02`
-- Date/Time (Asia/Shanghai): `2026-03-31`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Let teachers withdraw their own submitted expense claims before review instead of needing hard delete.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260331095000_add_expense_claim_withdrawn_status/migration.sql`
-  - `lib/expense-claims.ts`
-  - `app/api/teacher/expense-claims/withdraw/route.ts`
-  - `app/teacher/expense-claims/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260331-expense-claim-withdraw.md`
-- Risk impact (if any): Medium-low. This adds a new `WITHDRAWN` status and a teacher-only withdraw path for `SUBMITTED` claims; approval, rejection, payment, and archive logic for all existing statuses stay unchanged.
-- Verification:
-  - `npm run build` passed
-  - teachers now see `Withdraw claim / æ’¤å›žæŠ¥é”€å•` on their own submitted claims
-  - only `SUBMITTED` claims can be withdrawn
-- Rollback point: previous production commit before `2026-03-31-r02`.
-
-## 2026-03-31-r03
-
-- Release ID: `2026-03-31-r03`
-- Date/Time (Asia/Shanghai): `2026-03-31`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Hide withdrawn expense claims from the default teacher list while keeping them available through the status filter.
-- Key files:
-  - `app/teacher/expense-claims/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260331-expense-claim-default-hide-withdrawn.md`
-- Risk impact (if any): Low. This release only changes the default teacher list view for expense claims; withdraw, submit, approval, payment, and archive behavior stay unchanged.
-- Verification:
-  - `npm run build` passed
-  - `All active claims / å…¨éƒ¨æœ‰æ•ˆæŠ¥é”€å•` now excludes `WITHDRAWN` by default
-  - teachers can still review withdrawn claims by explicitly selecting `WITHDRAWN`
-- Rollback point: previous production commit before `2026-03-31-r03`.
-
-## 2026-03-31-r04
-
-- Release ID: `2026-03-31-r04`
-- Date/Time (Asia/Shanghai): `2026-03-31`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Add uploads backup/audit/disk-monitoring ops toolkit for safer file retention and earlier storage alerts.
-- Key files:
-  - `scripts/audit-upload-integrity.ts`
-  - `ops/server/scripts/run_upload_integrity_with_alert.sh`
-  - `ops/server/scripts/setup_upload_integrity_cron.sh`
-  - `ops/server/scripts/check-disk-usage.sh`
-  - `ops/server/scripts/setup_disk_usage_cron.sh`
-  - `ops/server/scripts/report-large-dirs.sh`
-  - `ops/server/scripts/backup_uploads_to_object_storage.sh`
-  - `ops/server/scripts/setup_uploads_backup_cron.sh`
-  - `package.json`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260331-upload-ops-toolkit.md`
-- Risk impact (if any): Low. This release adds server-side audit/backup/monitoring tooling only; no upload business logic, approval flow, or file path format changed.
-- Verification:
-  - `npm run audit:upload-integrity` passed and wrote reports under `ops/reports/`
-  - `bash ops/server/scripts/check-disk-usage.sh` passed
-  - `bash ops/server/scripts/report-large-dirs.sh` passed
-  - `npm run build` passed
-- Rollback point: previous production commit before `2026-03-31-r04`.
-
-## 2026-03-31-r05
-
-- Release ID: `2026-03-31-r05`
-- Date/Time (Asia/Shanghai): `2026-03-31`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Hotfix object-storage upload path for ops backup archives by avoiding multipart upload on the current S3-compatible endpoint.
-- Key files:
-  - `ops/server/scripts/upload_object_storage_s3.sh`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260331-upload-object-storage-hotfix.md`
-- Risk impact (if any): Low. This release only changes the ops backup upload method for archive files; runtime upload flows, file paths, and business features stay unchanged.
-- Verification:
-  - `bash -n ops/server/scripts/upload_object_storage_s3.sh` passed
-  - upload backup archive can be written to the configured object-storage bucket without the previous multipart `MissingContentLength` error
-- Rollback point: previous production commit before `2026-03-31-r05`.
-
-## 2026-03-31-r06
-
-- Release ID: `2026-03-31-r06`
-- Date/Time (Asia/Shanghai): `2026-03-31`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Fix admin student list counters so the `Full List / å®Œæ•´åˆ—è¡¨` card shows the true total student count instead of the current filtered view count.
-- Key files:
-  - `app/admin/students/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260331-student-full-list-count-fix.md`
-- Risk impact (if any): Low. This only corrects display counters and pagination math labels on the admin students page; no student data, filters, or mutation behavior changed.
-- Verification:
-  - `npm run build` passed
-  - production total student count verified as `73`
-  - `Full List / å®Œæ•´åˆ—è¡¨` now uses the real total instead of the active view count
-- Rollback point: previous production commit before `2026-03-31-r06`.
-
-## 2026-03-31-r07
-
-- Release ID: `2026-03-31-r07`
-- Date/Time (Asia/Shanghai): `2026-03-31`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Reorganize the partner settlement page so daily work focuses on pending actions first, while billing history and settlement setup are moved into lower-priority collapsed sections.
-- Key files:
-  - `app/admin/reports/partner-settlement/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260331-partner-settlement-ux-reorder.md`
-- Risk impact (if any): Low. This only changes layout, section ordering, and action-oriented bilingual copy on the partner settlement page; settlement logic, permissions, rates, and billing actions stay unchanged.
-- Verification:
-  - `npm run build` passed
-  - pending work queue now appears before history and setup sections
-  - rate settings and package mode config are collapsed into `Settlement setup / ç»“ç®—é…ç½®`
-- Rollback point: previous production commit before `2026-03-31-r07`.
-
-## 2026-03-31-r08
-
-- Release ID: `2026-03-31-r08`
-- Date/Time (Asia/Shanghai): `2026-03-31`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Add a selected-item focus panel, integrity workbench entry points, and billing-history filters to the partner settlement page.
-- Key files:
-  - `app/admin/reports/partner-settlement/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260331-partner-settlement-focus-panel.md`
-- Risk impact (if any): Low. This only changes page navigation, focus helpers, and history filtering on the partner settlement page; settlement calculations, invoice creation, permissions, and data mutations remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - partner settlement page shows a sticky `Selected item / å½“å‰å¤„ç†é¡¹` card
-  - queue tables provide `Focus / èšç„¦` actions
-  - billing history supports `All history / å…¨éƒ¨åŽ†å²`, `Invoice only / ä»…å·²å¼€ç¥¨`, and `Receipt created / ä»…å·²å¼€æ”¶æ®`
-- Rollback point: previous production commit before `2026-03-31-r08`.
-
-## 2026-03-31-r09
-
-- Release ID: `2026-03-31-r09`
-- Date/Time (Asia/Shanghai): `2026-03-31`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Make the partner settlement focus panel more action-oriented and add warning-type summary cards inside the integrity workbench.
-- Key files:
-  - `app/admin/reports/partner-settlement/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260331-partner-settlement-action-focus.md`
-- Risk impact (if any): Low. This only adjusts UI copy and warning summaries on the partner settlement page; no settlement rules, calculations, permissions, or actions changed.
-- Verification:
-  - `npm run build` passed
-  - selected-item primary actions now read like direct next steps
-  - integrity workbench shows grouped counts for missing-feedback and status-excluded warning rows
-- Rollback point: previous production commit before `2026-03-31-r09`.
-
-## 2026-03-31-r10
-
-- Release ID: `2026-03-31-r10`
-- Date/Time (Asia/Shanghai): `2026-03-31`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Make the partner settlement focus panel actionable and add direct warning-type review shortcuts in the integrity workbench.
-- Key files:
-  - `app/admin/reports/partner-settlement/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260331-partner-settlement-direct-actions.md`
-- Risk impact (if any): Low. This only changes partner settlement page interaction flow and shortcut links; settlement calculations, permissions, settlement creation rules, invoice behavior, and revert behavior remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - selected-item panel can directly submit online/offline settlement creation when the user is allowed to act
-  - integrity workbench summary cards can jump straight to the first matching warning row
-- Rollback point: previous production commit before `2026-03-31-r10`.
-
-## 2026-03-31-r11
-
-- Release ID: `2026-03-31-r11`
-- Date/Time (Asia/Shanghai): `2026-03-31`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Make `Open history / æ‰“å¼€åŽ†å²` on the partner settlement overview actually expand the billing history section.
-- Key files:
-  - `app/admin/reports/partner-settlement/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260331-partner-settlement-history-open.md`
-- Risk impact (if any): Low. This only adjusts a history-panel open state on the partner settlement page; settlement logic, queues, permissions, and calculations remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - clicking `Open history / æ‰“å¼€åŽ†å²` now lands on an expanded billing-history section
-- Rollback point: previous production commit before `2026-03-31-r11`.
-
-## 2026-03-31-r12
-
-- Release ID: `2026-03-31-r12`
-- Date/Time (Asia/Shanghai): `2026-03-31`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Fix the partner settlement integrity-workbench Todo Center shortcut so it points to the real admin todo route.
-- Key files:
-  - `app/admin/reports/partner-settlement/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260331-partner-settlement-todo-link-fix.md`
-- Risk impact (if any): Low. This only fixes a broken navigation link from the integrity workbench; settlement logic, warnings, billing flows, and permissions remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - `Open todo center / æ‰“å¼€å¾…åŠžä¸­å¿ƒ` now targets `/admin/todos`
-- Rollback point: previous production commit before `2026-03-31-r12`.
-
-## 2026-04-01-r01
-
-- Release ID: `2026-04-01-r01`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Rework the admin expense-claim approval page into a focused review queue with a selected-claim panel and next-step review actions.
-- Key files:
-  - `app/admin/expense-claims/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-expense-claim-review-flow.md`
-- Risk impact (if any): Low. This changes review-page layout and action wording on the admin expense-claim page only; approval, rejection, payment, archive, and export rules remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - submitted claims now appear in a dedicated review queue
-  - the selected-claim panel supports `Approve & next / æ‰¹å‡†å¹¶ä¸‹ä¸€æ¡` and `Reject & next / é©³å›žå¹¶ä¸‹ä¸€æ¡`
-  - the full claim list remains available in a collapsed history/details section
-- Rollback point: previous production commit before `2026-04-01-r01`.
-
-## 2026-04-01-r02
-
-- Release ID: `2026-04-01-r02`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Reduce admin expense-claim review-page noise by demoting reminders and self-submit tools, and stop the collapsed history list from preloading missing receipt thumbnails.
-- Key files:
-  - `app/admin/expense-claims/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-expense-claim-review-noise-reduction.md`
-- Risk impact (if any): Low. This only changes admin expense-claim page presentation and image-loading behavior in the collapsed history list; approval, rejection, payment, and archive logic remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - follow-up reminders now appear in a collapsed summary block below the main review queue
-  - the self-submit form moved to a lower-priority collapsed section
-  - the collapsed history list no longer preloads receipt thumbnails that could spam 404 console errors
-- Rollback point: previous production commit before `2026-04-01-r02`.
-
-## 2026-04-01-r03
-
-- Release ID: `2026-04-01-r03`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Add a finance-focused payout queue and selected-payout workflow to the admin expense-claim page.
-- Key files:
-  - `app/admin/expense-claims/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-expense-claim-finance-flow.md`
-- Risk impact (if any): Low. This only reorganizes the admin expense-claim payment workflow and button flow for finance users; approval, rejection, payment persistence, archive behavior, and export rules remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - approved unpaid claims now appear in a dedicated finance queue
-  - the selected payout panel keeps payment method, payment reference, batch month, and remarks together
-  - finance users can use `Mark paid & next / æ ‡è®°å·²ä»˜æ¬¾å¹¶ä¸‹ä¸€æ¡` to move through the queue
-- Rollback point: previous production commit before `2026-04-01-r03`.
-
-## 2026-04-01-r04
-
-- Release ID: `2026-04-01-r04`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Add a grouped batch-payout flow for finance on the admin expense-claim page.
-- Key files:
-  - `app/admin/expense-claims/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-expense-claim-finance-batch-payout.md`
-- Risk impact (if any): Low. This changes finance-side page workflow only; the system still records payment claim-by-claim using the existing payment logic, audit trail, and archive rules.
-- Verification:
-  - `npm run build` passed
-  - approved unpaid claims now group by submitter and currency
-  - finance can select multiple claims in one group and submit shared payment details once
-  - the page still preserves the existing single-claim payment behavior in the full history section
-- Rollback point: previous production commit before `2026-04-01-r04`.
-
-## 2026-04-01-r05
-
-- Release ID: `2026-04-01-r05`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Clarify quick filters versus advanced filters on the admin expense-claim page.
-- Key files:
-  - `app/admin/expense-claims/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-expense-claim-filter-clarity.md`
-- Risk impact (if any): Low. This only changes filter presentation and explanatory copy on the admin expense-claim page; claim review, finance batch payout, export behavior, and archive rules remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - quick work filters now sit above the main queues and clearly state they affect the queues, history list, and CSV export together
-  - advanced filters now live in a dedicated details block with matching explanatory copy
-- Rollback point: previous production commit before `2026-04-01-r05`.
-
-## 2026-04-01-r06
-
-- Release ID: `2026-04-01-r06`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Make the receipt-approval finance queue easier to use on normal-width screens by converting the unified queue from a wide table into a compact worklist.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-receipt-approval-finance-queue-narrowing.md`
-- Risk impact (if any): Low. This changes receipt-approval queue presentation only; finance approval, manager approval, reject reasons, redo flow, and receipt creation rules remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - unified receipt queue now renders as compact cards instead of a 9-column table
-  - the queue keeps only receipt number, party, amount, status, and risk at list level
-  - normal-width screens no longer require horizontal scrolling to understand the finance queue
-- Rollback point: previous production commit before `2026-04-01-r06`.
-
-## 2026-04-01-r07
-
-- Release ID: `2026-04-01-r07`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Clarify package-level finance mode versus the global receipt queue on the receipt-approval page.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-receipt-approval-package-mode-clarity.md`
-- Risk impact (if any): Low. This only changes page context and presentation while working inside one package; receipt approval, reject, redo, receipt creation, and payment-record rules remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - selecting a package now shows a dedicated package-workspace context card with clear back-to-queue actions
-  - the package finance workspace stays open by default once a package is selected
-  - the global receipt queue is still available but is visually downgraded to a secondary section while package mode is active
-- Rollback point: previous production commit before `2026-04-01-r07`.
-
-## 2026-04-01-r08
-
-- Release ID: `2026-04-01-r08`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Rework the admin sign-in alert page into a session-card workbench so teaching staff can scan the warning board without misreading mixed rows.
-- Key files:
-  - `app/admin/alerts/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-admin-signin-alert-workbench.md`
-- Risk impact (if any): Low. This changes admin alert presentation only; alert sync, thresholds, attendance logic, feedback logic, and session actions remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - the admin page now groups alert rows by session card instead of showing one wide mixed table
-  - quick-focus filters separate urgent, attendance-only, and feedback-only queues
-  - feedback overdue timing is now displayed from the actual post-class feedback due time instead of the sign-in threshold time
-- Rollback point: previous production commit before `2026-04-01-r08`.
-
-## 2026-04-01-r09
-
-- Release ID: `2026-04-01-r09`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Make the sign-in alert summary follow the current quick-focus filter.
-- Key files:
-  - `app/admin/alerts/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-admin-signin-alert-focus-summary.md`
-- Risk impact (if any): Low. This only changes the alert summary counts shown at the top of the page; sync rules, thresholds, card layout, and action links remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - when switching to `Urgent first`, `Attendance only`, or `Feedback only`, the top summary now matches the filtered queue instead of keeping the full-page totals
-- Rollback point: previous production commit before `2026-04-01-r09`.
-
-## 2026-04-01-r10
-
-- Release ID: `2026-04-01-r10`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Reduce confusion in the admin package-create flow by turning the large modal into a guided step-by-step form with a live summary card.
-- Key files:
-  - `app/admin/packages/PackageCreateFormClient.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-package-create-flow-clarity.md`
-- Risk impact (if any): Low. This changes package-create presentation only; package validation, package creation API behavior, settlement mode rules, and package ledger writes remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - package creation now guides staff through four steps instead of one long form
-  - a live summary card keeps student, course, balance, validity, payment, and settlement mode visible while filling the form
-  - advanced sharing and note fields are moved into a secondary advanced section
-- Rollback point: previous production commit before `2026-04-01-r10`.
-
-## 2026-04-01-r11
-
-- Release ID: `2026-04-01-r11`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Fine-tune the admin package-create flow so the default type matches common usage and staff get stronger balance reminders while creating packages.
-- Key files:
-  - `app/admin/packages/PackageCreateFormClient.tsx`
-  - `app/admin/packages/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-package-create-defaults-and-reminders.md`
-- Risk impact (if any): Low. This changes package-create defaults and reminders only; package validation, package creation API behavior, settlement mode rules, and package ledger writes remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - the default create type now starts from `HOURS / è¯¾æ—¶åŒ…`
-  - common minute presets are available for quick entry
-  - selecting a student now shows active-package and same-course reminders before creation
-- Rollback point: previous production commit before `2026-04-01-r11`.
-
-## 2026-04-01-r12
-
-- Release ID: `2026-04-01-r12`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Add smarter course-based defaults and stronger duplicate-package warnings to the admin package-create flow.
-- Key files:
-  - `app/admin/packages/PackageCreateFormClient.tsx`
-  - `app/admin/packages/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-package-create-smart-defaults.md`
-- Risk impact (if any): Low. This changes package-create suggestions and warnings only; package validation, package creation API behavior, settlement mode rules, and package ledger writes remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - selecting a course now auto-suggests the most common minute balance used for that course
-  - step 4 now shows a yellow warning when the same student already has active packages for the same course
-  - manual minute edits still work and are not overwritten after staff starts typing
-- Rollback point: previous production commit before `2026-04-01-r12`.
-
-## 2026-04-01-r13
-
-- Release ID: `2026-04-01-r13`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Align package-create minute presets and fallback suggestions with the teaching-office's real package patterns.
-- Key files:
-  - `app/admin/packages/PackageCreateFormClient.tsx`
-  - `app/admin/packages/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-package-create-minute-patterns.md`
-- Risk impact (if any): Low. This only changes create-form defaults and preset chips; package creation API behavior, validation rules, settlement mode rules, and ledger writes remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - normal package creation now shows 10h / 20h / 40h / 100h presets
-  - New Oriental partner students now show 45-minute lesson presets (6 / 8 / 10 / 20 / 40 lessons)
-  - course-based minute suggestions still work, and manual minute edits are not overwritten
-- Rollback point: previous production commit before `2026-04-01-r13`.
-
-## 2026-04-01-r14
-
-- Release ID: `2026-04-01-r14`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Make package creation default to ACTIVE and reduce mistakes in the package edit and top-up flow.
-- Key files:
-  - `app/admin/packages/PackageCreateFormClient.tsx`
-  - `app/admin/_components/PackageEditModal.tsx`
-  - `app/admin/packages/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-package-edit-topup-clarity.md`
-- Risk impact (if any): Low. This changes admin package-create/edit presentation and defaults only; package creation API behavior, top-up API behavior, settlement mode rules, and ledger writes remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - new packages now default to `ACTIVE`
-  - edit and top-up now appear as separate focused flows inside the package modal
-  - top-up now shows before/after balance summary and realistic quick presets for regular and New Oriental package patterns
-- Rollback point: previous production commit before `2026-04-01-r14`.
-
-## 2026-04-01-r15
-
-- Release ID: `2026-04-01-r15`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Reduce remaining package edit noise by hiding less-common fields and adding a stronger human confirmation in top-up.
-- Key files:
-  - `app/admin/_components/PackageEditModal.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-package-edit-topup-followup-polish.md`
-- Risk impact (if any): Low. This only changes the admin package modal presentation; package update API behavior, top-up API behavior, settlement mode rules, and ledger writes remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - edit mode now keeps less-common fields inside a collapsed advanced block
-  - paid-only fields in edit mode only expand when staff explicitly mark the package as paid
-  - top-up now shows a clearer human confirmation sentence before submit
-- Rollback point: previous production commit before `2026-04-01-r15`.
-
-## 2026-04-01-r16
-
-- Release ID: `2026-04-01-r16`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Add a clear package context card to the edit and top-up modal so staff can always see which student and course they are working on.
-- Key files:
-  - `app/admin/_components/PackageEditModal.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-package-edit-context-card.md`
-- Risk impact (if any): Low. This only changes package modal presentation; package update API behavior, top-up API behavior, settlement mode rules, and ledger writes remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - the package modal now shows a top context card with student, course, source, status, remaining balance, and total balance
-  - switching between `Edit package / ç¼–è¾‘è¯¾åŒ…` and `Top-up / å¢žè´­` keeps the current package context visible at the top
-- Rollback point: previous production commit before `2026-04-01-r16`.
-
-## 2026-04-01-r17
-
-- Release ID: `2026-04-01-r17`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Make the package modal switch more clearly between edit and top-up by moving the active form directly under the package context card.
-- Key files:
-  - `app/admin/_components/PackageEditModal.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-package-edit-topup-mode-layout.md`
-- Risk impact (if any): Low. This only changes admin package modal presentation; package update API behavior, top-up API behavior, settlement mode rules, and ledger writes remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - switching to `Top-up / å¢žè´­` now brings the top-up form immediately under the fixed package context card
-  - the always-visible divider between edit and top-up content is removed, so staff no longer feel like they are still inside the edit form when they switch modes
-- Rollback point: previous production commit before `2026-04-01-r17`.
-
-## 2026-04-01-r18
-
-- Release ID: `2026-04-01-r18`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Replace hard-to-scan shared student and shared course multi-selects with searchable add/remove pickers in package create and edit flows.
-- Key files:
-  - `app/admin/_components/SearchableMultiSelect.tsx`
-  - `app/admin/packages/PackageCreateFormClient.tsx`
-  - `app/admin/_components/PackageEditModal.tsx`
-  - `app/admin/packages/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-package-shared-selector-search.md`
-- Risk impact (if any): Low. This only changes the admin package create/edit presentation; package creation API behavior, package update API behavior, top-up API behavior, settlement mode rules, and ledger writes remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - shared students and shared courses can now be searched and added as tags instead of using long native multi-select lists
-  - the current student and current course are excluded from their own sharing pickers to reduce accidental self-selection
-  - shared student results now show source and active-package context to reduce misclicks when names are similar
-- Rollback point: previous production commit before `2026-04-01-r18`.
-
-## 2026-04-01-r19
-
-- Release ID: `2026-04-01-r19`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Add selected-sharing summaries and same-course warnings to package create/edit so teaching staff can see sharing scope before saving.
-- Key files:
-  - `app/admin/packages/PackageCreateFormClient.tsx`
-  - `app/admin/_components/PackageEditModal.tsx`
-  - `app/admin/packages/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-package-sharing-warning-summary.md`
-- Risk impact (if any): Low. This only adds package form guidance; package creation API behavior, package update API behavior, top-up API behavior, settlement mode rules, overlap checks, and ledger writes remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - package create and package edit now show selected shared-student and shared-course counts with quick name previews
-  - when selected shared students already have an active package for the same course, the form shows a yellow warning before staff save
-- Rollback point: previous production commit before `2026-04-01-r19`.
-
-## 2026-04-01-r20
-
-- Release ID: `2026-04-01-r20`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Turn teacher payroll into a more focused workbench with a role-based work queue and anomaly filters on the detail page.
-- Key files:
-  - `app/admin/reports/teacher-payroll/page.tsx`
-  - `app/admin/reports/teacher-payroll/[teacherId]/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-teacher-payroll-work-queue.md`
-- Risk impact (if any): Low. This changes payroll page structure and filtering only; payroll calculation logic, send flow, approval rules, finance payout rules, and audit logging remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - payroll overview now shows a role-aware `My work queue / æˆ‘çš„å¾…å¤„ç†` and a `Selected payroll / å½“å‰å¤„ç†è€å¸ˆ` action panel
-  - teacher payroll detail now supports quick anomaly filters for pending rows, fallback-rate rows, and cancelled-but-charged rows
-- Rollback point: previous production commit before `2026-04-01-r20`.
-
-## 2026-04-01-r21
-
-- Release ID: `2026-04-01-r21`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Add finance batch payout, exception summaries, and approval timeline guidance to the teacher payroll workflow.
-- Key files:
-  - `app/admin/reports/teacher-payroll/page.tsx`
-  - `app/admin/reports/teacher-payroll/[teacherId]/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-teacher-payroll-batch-and-summary.md`
-- Risk impact (if any): Low. This only changes teacher payroll page workflow and summary presentation; payroll calculation logic, send flow, approval rules, finance payout rules, and audit logging remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - finance can batch-mark multiple finance-ready teachers as paid from the payroll work queue
-  - the selected payroll panel now highlights pending sessions, fallback-rate combos, cancelled-but-charged sessions, and approval history
-  - teacher payroll detail now opens with exception summary cards before the combo/session tables
-- Rollback point: previous production commit before `2026-04-01-r21`.
-
-## 2026-04-01-r22
-
-- Release ID: `2026-04-01-r22`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Clarify teacher payroll status on the teacher side, add anomaly-summary deep links, and surface finance-ready currency grouping for payroll payout.
-- Key files:
-  - `app/teacher/payroll/page.tsx`
-  - `app/admin/reports/teacher-payroll/page.tsx`
-  - `app/admin/reports/teacher-payroll/[teacherId]/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-teacher-payroll-status-followup.md`
-- Risk impact (if any): Low. This changes payroll page guidance, status wording, and navigation only; payroll calculation logic, send flow, approval rules, finance payout rules, and audit logging remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - teacher payroll now shows a bilingual current-status card with sent, teacher-confirmed, manager-approved, finance-confirmed, and paid milestones
-  - payroll detail anomaly summary cards now deep-link into the matching filtered rows
-  - finance-ready payroll queue now shows a currency grouping summary before batch payout
-- Rollback point: previous production commit before `2026-04-01-r22`.
-
-## 2026-04-01-r23
-
-- Release ID: `2026-04-01-r23`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Add clearer current-owner and next-step guidance to the teacher payroll self-service page.
-- Key files:
-  - `app/teacher/payroll/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-teacher-payroll-owner-guidance.md`
-- Risk impact (if any): Low. Teacher-side wording and status guidance only; payroll calculation logic, send flow, approval rules, finance payout rules, and audit logging remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - teacher payroll status card now shows the current owner and the next expected step in bilingual wording
-  - manager/finance waiting states now explicitly name the next handling side instead of only showing a status label
-- Rollback point: previous production commit before `2026-04-01-r23`.
-
-## 2026-04-01-r24
-
-- Release ID: `2026-04-01-r24`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Make teacher payroll more action-oriented for teachers and add cleaner finance grouping context for payout.
-- Key files:
-  - `app/teacher/payroll/page.tsx`
-  - `app/admin/reports/teacher-payroll/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-teacher-payroll-action-clarity.md`
-- Risk impact (if any): Low. Teacher-side guidance and finance queue grouping only; payroll calculation logic, send flow, approval rules, finance payout rules, and audit logging remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - teacher payroll now shows a stronger action-needed banner plus a visual timeline for send/confirm/approve/payout milestones
-  - finance-ready payroll queue now breaks currency groups into clean vs issue-carrying teachers before batch payout
-- Rollback point: previous production commit before `2026-04-01-r24`.
-
-## 2026-04-01-r25
-
-- Release ID: `2026-04-01-r25`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: First-round teacher portal cleanup with a today-first dashboard, grouped teacher navigation, and teacher-side language switching.
-- Key files:
-  - `app/api/teacher/language/route.ts`
-  - `app/teacher/TeacherLanguageSelectorClient.tsx`
-  - `app/teacher/layout.tsx`
-  - `app/teacher/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-teacher-portal-first-pass.md`
-- Risk impact (if any): Low. This changes teacher-side layout, navigation, and language selection only; teacher auth, attendance, feedback, availability, payroll, and expense-claim business rules remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - teacher portal now groups navigation into `Today / My Work / Schedule / Finance`
-  - teacher homepage now opens with a task-oriented dashboard instead of a flat menu-style page
-  - teachers can switch `ä¸­æ–‡ / English / Bilingual` from the teacher layout without needing admin-side pages
-- Rollback point: previous production commit before `2026-04-01-r25`.
-
-## 2026-04-01-r26
-
-- Release ID: `2026-04-01-r26`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Unify the first-screen look and task framing across high-frequency teacher pages.
-- Key files:
-  - `app/teacher/_components/TeacherWorkspaceHero.tsx`
-  - `app/teacher/sessions/page.tsx`
-  - `app/teacher/availability/page.tsx`
-  - `app/teacher/expense-claims/page.tsx`
-  - `app/teacher/payroll/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-teacher-portal-high-frequency-pages.md`
-- Risk impact (if any): Low. This changes teacher-side page framing, summary cards, and quick-entry presentation only; attendance, availability, expense-claim, and payroll business logic remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - teacher sessions now opens with a unified teacher workspace hero and summary cards for today, next 30 days, pending feedback, and overdue feedback
-  - teacher availability now opens with the same workspace shell plus clear summaries for covered days, ranges, next 7 days, and undo state
-  - teacher expense claims and teacher payroll now use the same teacher-first page framing and top summary cards as the new dashboard
-- Rollback point: previous production commit before `2026-04-01-r26`.
-
-## 2026-04-01-r27
-
-- Release ID: `2026-04-01-r27`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Extend the refreshed teacher workspace framing to alerts, student feedbacks, and tickets.
-- Key files:
-  - `app/teacher/alerts/page.tsx`
-  - `app/teacher/student-feedbacks/page.tsx`
-  - `app/teacher/tickets/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-teacher-portal-supporting-pages.md`
-- Risk impact (if any): Low. This is a teacher-side presentation and navigation pass only; alert sync rules, feedback read/write logic, ticket transitions, proof links, and completion actions remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - teacher alerts now opens with the same teacher workspace hero and summary-card framing as the refreshed dashboard and high-frequency pages
-  - teacher student feedbacks now starts with clear handoff-focused summaries and a dedicated filter section instead of dropping teachers directly into a long list
-  - teacher tickets now opens with the same task-oriented framing plus open/urgent/missing-proof summaries before the board table
-- Rollback point: previous production commit before `2026-04-01-r27`.
-
-## 2026-04-01-r28
-
-- Release ID: `2026-04-01-r28`
-- Date/Time (Asia/Shanghai): `2026-04-01`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Extend the refreshed teacher workspace framing to teacher card and midterm report pages.
-- Key files:
-  - `app/teacher/card/page.tsx`
-  - `app/teacher/midterm-reports/page.tsx`
-  - `app/teacher/midterm-reports/[id]/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260401-teacher-portal-card-and-midterm.md`
-- Risk impact (if any): Low. This is a teacher-side presentation pass only; intro editing, midterm report save/submit behavior, report locking, and PDF export logic remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - teacher card now starts with the same teacher workspace hero and summary cards before intro editing and PDF export
-  - teacher midterm report list now starts with the same workspace hero and summary cards before the task table
-  - teacher midterm report detail now starts with a clearer context hero and report summary cards before the form body
-- Rollback point: previous production commit before `2026-04-01-r28`.
-
-## 2026-04-02-r01
-
-- Release ID: `2026-04-02-r01`
-- Date/Time (Asia/Shanghai): `2026-04-02`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Reduce first-screen density on the teacher expense-claims and teacher payroll pages.
-- Key files:
-  - `app/teacher/expense-claims/page.tsx`
-  - `app/teacher/payroll/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260402-teacher-finance-density-followup.md`
-- Risk impact (if any): Low. This is a teacher-side presentation pass only; expense-claim submission, resubmission, withdrawal, payroll confirmation, payroll calculation, and approval workflow logic remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - teacher expense claims now starts with action-first cards, keeps new-claim creation in a lighter secondary section, and hides the full claim table inside a history disclosure unless filters are active
-  - teacher payroll now focuses first on current action/status, removes repeated status blocks, and keeps detailed calculation tables behind a collapsible section
-- Rollback point: previous production commit before `2026-04-02-r01`.
-
-## 2026-04-02-r02
-
-- Release ID: `2026-04-02-r02`
-- Date/Time (Asia/Shanghai): `2026-04-02`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Collapse low-priority teacher sidebar groups and page guides to reduce bilingual-mode density.
-- Key files:
-  - `app/teacher/layout.tsx`
-  - `app/teacher/TeacherSidebarNavClient.tsx`
-  - `app/teacher/_components/TeacherWorkspaceHero.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260402-teacher-sidebar-collapse-followup.md`
-- Risk impact (if any): Low. This is a teacher-side navigation and presentation pass only; no teacher auth, attendance, availability, payroll, expense-claim, or report business rules changed.
-- Verification:
-  - `npm run build` passed
-  - teacher sidebar groups now collapse by section and auto-open the active area
-  - teacher page guides now sit behind `Quick guide / å¿«é€Ÿè¯´æ˜Ž`, reducing first-screen text density in bilingual mode
-- Rollback point: previous production commit before `2026-04-02-r02`.
-
-## 2026-04-02-r16
-
-- Release ID: `2026-04-02-r16`
-- Date/Time (Asia/Shanghai): `2026-04-02`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Expand remembered student-desk context so the admin students workbench restores the last queue plus lightweight filters when reopened without explicit URL params.
-- Key files:
-  - `app/admin/students/page.tsx`
-  - `app/admin/students/AdminStudentsClient.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260402-students-desk-memory.md`
-- Risk impact (if any): Low. This is a student-workbench context and presentation change only; student creation, deletion, filtering semantics, pagination semantics, and student profile/business data logic remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - fresh local logged-in QA on `http://127.0.0.1:3319` confirmed `/admin/students` restores the remembered queue plus `q / sourceChannelId / studentTypeId / pageSize` when opened without explicit URL params
-  - the resumed-desk banner appears only on the plain reopen path and stays suppressed when explicit `view` or `q` params are present
-- Rollback point: previous production commit before `2026-04-02-r16`.
-
-## 2026-04-02-r17
-
-- Release ID: `2026-04-02-r17`
-- Date/Time (Asia/Shanghai): `2026-04-02`
-- Deployment status: `LIVE` after deploy completion
-- Scope: Add remembered todo-desk context plus first-screen next-step shortcuts to the admin Todo Center.
-- Key files:
-  - `app/admin/todos/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260402-todos-desk-memory-and-shortcuts.md`
-- Risk impact (if any): Low. This is a todo-workbench context and presentation change only; attendance task calculation, reminder confirmation, conflict audit, deduction repair, and renewal-alert business logic remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - fresh local logged-in QA on `http://127.0.0.1:3320` confirmed `/admin/todos` reopens with the remembered desk context and shows the resumed-desk banner plus next-step shortcut bar when no explicit URL params are present
-  - explicit `warnDays` / `pastDays` URL params still suppress the resumed-desk banner so one-off deep links keep priority over remembered state
-- Rollback point: previous production commit before `2026-04-02-r17`.
-
-## 2026-04-02-r18
-
-- Release ID: `2026-04-02-r18`
-- Date/Time (Asia/Shanghai): `2026-04-02`
-- Deployment status: `LIVE` after deploy completion
-- Scope: turn the existing upload recovery page into an attachment-health workbench and unify finance anomaly entry points toward it.
-- Key files:
-  - `app/admin/recovery/uploads/page.tsx`
-  - `app/admin/layout.tsx`
-  - `app/admin/receipts-approvals/page.tsx`
-  - `app/admin/expense-claims/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260402-attachment-health-desk.md`
-- Risk impact (if any): Low. This is an admin navigation, access, and presentation pass only; attachment storage rules, recovery/backfill matching, receipt approval logic, expense approval logic, and ticket workflow logic remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - fresh local logged-in QA on `http://127.0.0.1:3321` confirmed `/admin/recovery/uploads` renders the new `Attachment Health Desk` workbench, source-filter reopen still works, and both receipts/expense pages expose the new desk entry
-  - finance access to `/admin/recovery/uploads` was added through the admin layout allowlist rather than a new auth model
-- Rollback point: previous production commit before `2026-04-02-r18`.
-
-## 2026-04-02-r19
-
-- Release ID: `2026-04-02-r19`
-- Date/Time (Asia/Shanghai): `2026-04-02`
-- Deployment status: `LIVE` after deploy completion
-- Scope: add a sticky action bar plus section return links to the admin student detail page.
-- Key files:
-  - `app/admin/students/[id]/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260402-student-detail-action-bar.md`
-- Risk impact (if any): Low. This is a student-detail presentation and navigation pass only; student edit logic, quick-schedule submission logic, attendance filter logic, package/billing logic, and session action logic remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - fresh local logged-in QA on `http://127.0.0.1:3322` confirmed the student detail page renders the new `Student workbench`, exposes `Back to action bar`, and includes the new `#enrollments`, `#quick-schedule`, and `#edit-student` anchors
-- Rollback point: previous production commit before `2026-04-02-r19`.
-
-## 2026-04-02-r20
-
-- Release ID: `2026-04-02-r20`
-- Date/Time (Asia/Shanghai): `2026-04-02`
-- Deployment status: `LIVE` after deploy completion
-- Scope: add reusable templates plus quick date-copy actions to teacher availability.
-- Key files:
-  - `app/teacher/availability/TeacherAvailabilityClient.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260402-teacher-availability-templates-and-copy.md`
-- Risk impact (if any): Low. This is a teacher-side availability interaction pass only; availability overlap rules, clear-day rules, undo rules, and slot save/delete APIs remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - fresh local logged-in QA on `http://127.0.0.1:3323` confirmed `/teacher/availability` renders `Common templates`, `Quick Copy by Date`, `Copy +1d`, and `Copy +7d`
-- Rollback point: previous production commit before `2026-04-02-r20`.
-
-## 2026-04-02-r21
-
-- Release ID: `2026-04-02-r21`
-- Date/Time (Asia/Shanghai): `2026-04-02`
-- Deployment status: `LIVE` after deploy completion
-- Scope: add clearer completion-state guidance to the teacher session-detail page so attendance completion flows into feedback and saved feedback feels finished.
-- Key files:
-  - `app/teacher/sessions/[id]/page.tsx`
-  - `app/teacher/sessions/[id]/TeacherAttendanceClient.tsx`
-  - `app/teacher/sessions/[id]/TeacherFeedbackClient.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260402-teacher-session-completion-guidance.md`
-- Risk impact (if any): Low. This is a teacher-side session guidance and presentation pass only; attendance save logic, feedback submit logic, routing, and permissions remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - fresh local logged-in QA on `http://127.0.0.1:3324` confirmed `/teacher/sessions/ee0a433a-3b5c-4ab3-94fc-38e0a95faf7a` renders `Completion state`, preserves the existing status summary cards, and shows the new attendance/feedback completion guidance copy
-- Rollback point: previous production commit before `2026-04-02-r21`.
-
-## 2026-04-03-r01
-
-- Release ID: `2026-04-03-r01`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: trim repeated first-screen copy on teacher payroll so the page says the workflow once instead of repeating the same status in multiple summary blocks.
-- Key files:
-  - `app/teacher/payroll/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-teacher-payroll-density-trim.md`
-- Risk impact (if any): Low. This is a teacher-side payroll presentation pass only; payroll calculation, confirmation, approval, payout, and finance-return logic remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - fresh local logged-in QA on `http://127.0.0.1:3325/teacher/payroll` confirmed the page still loads correctly for the current empty-state teacher account
-  - current local and production teacher account state is `Admin has not sent this month's payroll yet`, so this release was verified against the empty-state shell plus build output rather than a live sent-payroll record
-- Rollback point: previous production commit before `2026-04-03-r01`.
-
-## 2026-04-03-r02
-
-- Release ID: `2026-04-03-r02`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: hotfix duplicated bilingual labels on teacher payroll where some strings were manually written as bilingual text before passing through the bilingual helper.
-- Key files:
-  - `app/teacher/payroll/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-teacher-payroll-bilingual-duplication-hotfix.md`
-- Risk impact (if any): Low. This is a teacher-side payroll copy hotfix only; payroll calculation, confirmation, approval, payout, and finance-return logic remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - local source audit confirmed duplicated labels such as `What happens next`, `Current owner`, `Timeline`, stage pills, and owner labels now use normal `t(lang, en, zh)` strings instead of pre-built bilingual text
-  - the current local and production teacher account still lands on the payroll empty state for this month, so this release was verified through source-path cleanup plus build output rather than a live sent-payroll record
-- Rollback point: previous production commit before `2026-04-03-r02`.
-
-## 2026-04-03-r03
-
-- Release ID: `2026-04-03-r03`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: make a first admin-side copy-clarity pass on high-frequency workbench pages to reduce slash-heavy or mixed-language labels.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `app/admin/reports/partner-settlement/page.tsx`
-  - `app/admin/students/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-admin-copy-clarity-pass-1.md`
-- Risk impact (if any): Low. This is an admin-side copy cleanup only; receipt queue behavior, settlement/invoice behavior, and student-search behavior remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - targeted copy audit confirmed the updated wording for receipt file-issue links, partner-settlement invoice grouping/status labels, and the student search placeholder
-- Rollback point: previous production commit before `2026-04-03-r03`.
-
-## 2026-04-03-r12
-
-- Release ID: `2026-04-03-r12`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: tighten shared mobile layout containment and remove the remaining narrow-screen overflow on teacher payroll / expense workbenches and the admin receipt-approval workflow.
-- Key files:
-  - `app/layout.tsx`
-  - `app/responsive-layout.css`
-  - `app/teacher/_components/TeacherWorkspaceHero.tsx`
-  - `app/teacher/payroll/page.tsx`
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-mobile-shell-and-form-overflow-pass.md`
-- Risk impact (if any): Low. This is a responsive UI containment pass only; payroll logic, receipt approval logic, payment-record handling, receipt creation logic, and remembered queue behavior remain unchanged.
-- Verification:
-  - `npm run build` passed
-  - local mobile-width QA on `http://127.0.0.1:3330/teacher/payroll` confirmed stacked hero actions, stacked payroll filters, and `scrollWidth === clientWidth`
-  - local mobile-width QA on `http://127.0.0.1:3330/teacher/expense-claims` confirmed no horizontal overflow on the shared teacher workbench shell
-  - local mobile-width QA on `http://127.0.0.1:3330/admin/receipts-approvals` confirmed the quick package selector and receipt finance forms no longer overflow, and `scrollWidth === clientWidth`
-- Rollback point: previous production commit before `2026-04-03-r12`.
-
-## 2026-04-03-r19
-
-- Release ID: `2026-04-03-r19`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: audit and fix the remaining remembered-workbench pages so explicit blank filter submissions and reset links no longer revive stale remembered queue state.
-- Key files:
-  - `app/admin/students/page.tsx`
-  - `app/admin/feedbacks/page.tsx`
-  - `app/admin/expense-claims/page.tsx`
-  - `app/admin/receipts-approvals/page.tsx`
-  - `app/admin/reports/partner-settlement/page.tsx`
-  - `app/admin/todos/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-remembered-filter-blank-param-audit.md`
-- Risk impact (if any): Low. This only changes remembered-filter resume rules and default reset links on workbench pages; no package, receipt, expense, settlement, todo, or student business logic changes.
-- Verification:
-  - `npm run build` passed
-  - production read-only QA confirmed explicit reset routes now bypass remembered state on `packages`, `students`, `expense-claims`, `receipts-approvals`, `partner-settlement`, and `todos`
-  - production read-only QA confirmed explicit blank query submissions such as `paid=` on packages and `q=` on packages no longer resurrect the previous remembered value
-  - post-deploy startup check confirmed `local / origin / server = bd33bef`
-  - release docs were synced in a follow-up docs-only commit so the release gate stays aligned with production
-- Rollback point: previous production commit before `2026-04-03-r19`.
-
-## 2026-04-03-r20
-
-- Release ID: `2026-04-03-r20`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: add a dedicated `Final Reports / ç»“è¯¾æŠ¥å‘Š` workflow with a new DB model, teacher-side fill flow, and admin-side assign/forward center for completed `HOURS` packages.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260403202000_add_final_reports/migration.sql`
-  - `lib/final-report.ts`
-  - `app/teacher/final-reports/page.tsx`
-  - `app/teacher/final-reports/[id]/page.tsx`
-  - `app/teacher/layout.tsx`
-  - `app/admin/reports/final/page.tsx`
-  - `app/admin/layout.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-final-reports-phase-1-and-2.md`
-- Risk impact (if any): Medium. This release adds a new Prisma enum/table and new teacher/admin routes, but it does not change midterm-report logic, attendance/deduction logic, package balances, or finance logic.
-- Verification:
-  - `npm run prisma:generate` passed
-  - `npm run build` passed
-  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
-  - production read-only QA confirmed the new teacher and admin final-report pages render and the navigation entries are visible
-  - release task record was synced in a follow-up docs pass so handoff docs stay aligned with the deployed state
-  - final docs sync pass bundled changelog / release board / task in one commit for the release gate
-- Rollback point: previous production commit before `2026-04-03-r20`.
-
-## 2026-04-03-r21
-
-- Release ID: `2026-04-03-r21`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: complete the first final-report workflow with admin PDF export and a clearer forwarded-to-parent action.
-- Key files:
-  - `app/api/admin/final-reports/[id]/pdf/route.ts`
-  - `app/admin/reports/final/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-final-reports-pdf-and-forwarded-flow.md`
-- Risk impact (if any): Low. This release improves final-report export and admin UI wording only; no assignment rules, teacher submission rules, schema, attendance logic, or finance logic changed.
-- Verification:
-  - `npm run build` passed
-  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
-  - production read-only QA confirmed `/admin/reports/final` shows `Download PDF` and the forwarded action text now reads as a parent-facing handoff
-  - production read-only QA confirmed `/api/admin/final-reports/[id]/pdf` returns `200` with `application/pdf`
-- Rollback point: previous production commit before `2026-04-03-r21`.
-
-## 2026-04-03-r22
-
-- Release ID: `2026-04-03-r22`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: add final-report parent-delivery records, admin share-link controls, and a public read-only final-report page, while upgrading the printable PDF into a more formal delivery version.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260403223000_add_final_report_delivery_and_share/migration.sql`
-  - `lib/final-report.ts`
-  - `app/admin/reports/final/page.tsx`
-  - `app/api/admin/final-reports/[id]/pdf/route.ts`
-  - `app/final-report/[id]/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-final-reports-phase-3a-and-3b.md`
-- Risk impact (if any): Medium. This release adds new `FinalReport` metadata columns plus a public token-gated share page, but it does not change midterm-report logic, teacher fill rules, assignment rules, attendance logic, package balances, or finance logic.
-- Verification:
-  - `npm run prisma:generate` passed
-  - `npm run build` passed
-  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
-  - production read-only QA confirmed `/admin/reports/final` shows delivery actions and parent share-link controls
-  - production read-only QA confirmed `/api/admin/final-reports/[id]/pdf` returns `200` with `application/pdf`
-  - production read-only QA confirmed a tokenized `/final-report/[id]?token=...` page renders as a parent-safe read-only report
-- Rollback point: previous production commit before `2026-04-03-r22`.
-
-## 2026-04-03-r23
-
-- Release ID: `2026-04-03-r23`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: add expiry windows to final-report parent share links so operations can issue links with controlled validity and the public page can reject expired tokens cleanly.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260403225500_add_final_report_share_expiry/migration.sql`
-  - `lib/final-report.ts`
-  - `app/admin/reports/final/page.tsx`
-  - `app/final-report/[id]/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-final-report-share-expiry.md`
-- Risk impact (if any): Low. This release only refines share-link validity windows and the public read-only guard page; it does not change teacher report content, delivery records, attendance logic, package balances, or finance logic.
-- Verification:
-  - `npm run prisma:generate` passed
-  - `npm run build` passed
-  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
-  - production read-only QA confirmed `/admin/reports/final` shows share-duration choices and expiry labels
-  - production read-only QA confirmed `/final-report/[id]?token=invalid` still rejects invalid or expired links with the unavailable message
-- Rollback point: previous production commit before `2026-04-03-r23`.
-
-## 2026-04-03-r24
-
-- Release ID: `2026-04-03-r24`
-- Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `LIVE` after deploy completion
-- Scope: add basic share-link access audit for final reports so operations can see whether a parent read-only link has been opened and when it was last viewed.
-- Key files:
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260403232000_add_final_report_share_audit/migration.sql`
-  - `app/final-report/[id]/page.tsx`
-  - `app/admin/reports/final/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260403-final-report-share-audit.md`
-- Risk impact (if any): Low. This release only records read-only share-page access metadata and surfaces that metadata on the admin workbench; it does not change report content, delivery rules, attendance logic, package balances, or finance logic.
-- Verification:
-  - `npm run prisma:generate` passed
-  - `npm run build` passed
-  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
-  - production read-only QA confirmed `/admin/reports/final` shows share audit text when a link exists
-  - production read-only QA confirmed the public share page still renders and now increments share-view metadata
-- Rollback point: previous production commit before `2026-04-03-r24`.
-
-## 2026-04-06-r01
-
-- Release ID: `2026-04-06-r01`
-- Date/Time (Asia/Shanghai): `2026-04-06`
-- Deployment status: `LIVE` after deploy completion
-- Scope: add a batch CSV export for the teacher payroll workbench so finance can export all teacher salary slips for the current payroll month and current table filters in one file.
-- Key files:
-  - `app/admin/reports/teacher-payroll/page.tsx`
-  - `app/admin/reports/teacher-payroll/export/route.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260406-teacher-payroll-csv-export.md`
-- Risk impact (if any): Low. This release only adds a read-only CSV export and a workbench link; it does not change payroll calculation, payroll workflow states, teacher confirmations, approvals, or payout logic.
-- Verification:
-  - `npm run build` passed
-  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
-  - production read-only QA confirmed `/admin/reports/teacher-payroll` shows `Export CSV`
-  - production read-only QA confirmed `/admin/reports/teacher-payroll/export?...` returns `200` with `text/csv`
-- Rollback point: previous production commit before `2026-04-06-r01`.
-
-## 2026-04-06-r02
-
-- Release ID: `2026-04-06-r02`
-- Date/Time (Asia/Shanghai): `2026-04-06`
-- Deployment status: `LIVE` after deploy completion
-- Scope: let admins permanently delete shared documents and make shared-document categories show up as clearer folder groupings.
-- Key files:
-  - `app/admin/shared-docs/page.tsx`
-  - `lib/shared-doc-files.ts`
-  - `lib/shared-doc-storage.ts`
-  - `lib/shared-docs.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260406-shared-doc-delete-and-folder-groups.md`
-- Risk impact (if any): Medium-low. This release adds a real delete path for shared documents and changes new upload paths to include category folders; it does not change shared-doc permissions, teacher/admin workflows outside the shared-doc page, or any finance, attendance, payroll, or reporting logic.
-- Verification:
-  - `npm run build` passed
-  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
-  - production UI check confirmed `/admin/shared-docs` now shows grouped category sections with folder hints
-  - production UI check confirmed each shared-document row now exposes `Delete / åˆ é™¤`
-- Rollback point: previous production commit before `2026-04-06-r02`.
-
-## 2026-04-07-r01
-
-- Release ID: `2026-04-07-r01`
-- Date/Time (Asia/Shanghai): `2026-04-07`
-- Deployment status: `LIVE` after deploy completion
-- Scope: fix shared-package midterm/final report assignment so each student on a shared `HOURS` package gets an independent report candidate, assignment, and exempt path instead of being collapsed into the primary package owner.
-- Key files:
-  - `lib/midterm-report.ts`
-  - `lib/final-report.ts`
-  - `app/admin/reports/midterm/page.tsx`
-  - `app/admin/reports/final/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260407-shared-package-report-candidate-fix.md`
-- Risk impact (if any): Medium-low. This release changes report-candidate generation and assign/exempt targeting for shared `HOURS` packages, but it does not change report content fields, attendance deduction logic, package balance logic, payroll logic, finance workflows, or report PDF/share behavior.
-- Verification:
-  - `npm run build` passed
-  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
-  - production read-only QA should confirm `/admin/reports/midterm` and `/admin/reports/final` now show separate candidate rows for shared-package students when they each have qualifying attendance under the same package
-- Rollback point: previous production commit before `2026-04-07-r01`.
-
-## 2026-04-07-r02
-
-- Release ID: `2026-04-07-r02`
-- Date/Time (Asia/Shanghai): `2026-04-07`
-- Deployment status: `LIVE` after deploy completion
-- Scope: re-layout the final-report PDF into a compact single-page landscape handoff so normal-length reports fit on one page instead of spilling into multi-page output.
-- Key files:
-  - `app/api/admin/final-reports/[id]/pdf/route.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260407-final-report-pdf-single-page-layout.md`
-- Risk impact (if any): Low. This release only changes PDF presentation density and page layout; it does not change final-report content, assignment rules, delivery/share logic, attendance logic, package balances, or finance logic.
-- Verification:
-  - `npm run build` passed
-  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
-  - admin PDF download route should continue returning `200 application/pdf` with the updated single-page landscape layout
-- Rollback point: previous production commit before `2026-04-07-r02`.
-
-## 2026-04-07-r03
-
-- Release ID: `2026-04-07-r03`
-- Date/Time (Asia/Shanghai): `2026-04-07`
-- Deployment status: `LIVE` after deploy completion
-- Scope: simplify the final-report PDF into a more parent-facing handoff by removing internal delivery/admin sections and hiding empty blocks so the one-page layout emphasizes progress, outcome, and next steps.
-- Key files:
-  - `app/api/admin/final-reports/[id]/pdf/route.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260407-final-report-pdf-parent-facing-pass.md`
-- Risk impact (if any): Low. This release only changes the parent-facing PDF presentation and hides internal/admin-only sections from the printable handoff; it does not change final-report data, assignment rules, delivery/share logic, attendance logic, package balances, or finance logic.
-- Verification:
-  - `npm run build` passed
-  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
-  - admin PDF download route should continue returning `200 application/pdf` with the simplified parent-facing layout
-- Rollback point: previous production commit before `2026-04-07-r03`.
-
-## 2026-04-07-r04
-
-- Release ID: `2026-04-07-r04`
-- Date/Time (Asia/Shanghai): `2026-04-07`
-- Deployment status: `LIVE` after deploy completion
-- Scope: reshape the final-report PDF into a more renewal-oriented family handoff so the top summary frames the student's progress and recommended continuation path more clearly.
-- Key files:
-  - `app/api/admin/final-reports/[id]/pdf/route.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260407-final-report-pdf-renewal-guidance-pass.md`
-- Risk impact (if any): Low. This release only changes parent-facing PDF wording and section emphasis; it does not change final-report data, assignment rules, delivery/share logic, attendance logic, package balances, or finance logic.
-- Verification:
-  - `npm run build` passed
-  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
-  - admin PDF download route should continue returning `200 application/pdf` with the updated continuation-focused layout
-- Rollback point: previous production commit before `2026-04-07-r04`.
-
-## 2026-04-07-r05
-
-- Release ID: `2026-04-07-r05`
-- Date/Time (Asia/Shanghai): `2026-04-07`
-- Deployment status: `LIVE` after deploy completion
-- Scope: soften the final-report PDF again so it reads as a parent-friendly growth reflection, focusing on progress, current gaps, and next-stage learning focus instead of explicit renewal guidance.
-- Key files:
-  - `app/api/admin/final-reports/[id]/pdf/route.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260407-final-report-pdf-gentle-parent-feedback-pass.md`
-- Risk impact (if any): Low. This release only changes parent-facing PDF wording and section labels; it does not change final-report data, assignment rules, delivery/share logic, attendance logic, package balances, or finance logic.
-- Verification:
-  - `npm run build` passed
-  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
-  - admin PDF download route should continue returning `200 application/pdf` with the gentler parent-feedback framing
-- Rollback point: previous production commit before `2026-04-07-r05`.
-
-## 2026-04-07-r06
-
-- Release ID: `2026-04-07-r06`
-- Date/Time (Asia/Shanghai): `2026-04-07`
-- Deployment status: `LIVE` after deploy completion
-- Scope: further soften the parent-facing final-report PDF so the section titles and summary row read more like teacher observations to family instead of system labels.
-- Key files:
-  - `app/api/admin/final-reports/[id]/pdf/route.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260407-final-report-pdf-teacher-letter-tone-pass.md`
-- Risk impact (if any): Low. This release only changes parent-facing PDF labels and summary wording; it does not change final-report data, assignment rules, delivery/share logic, attendance logic, package balances, or finance logic.
-- Verification:
-  - `npm run build` passed
-  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
-  - admin PDF download route should continue returning `200 application/pdf` with the softer teacher-to-family tone
-- Rollback point: previous production commit before `2026-04-07-r06`.
-
-## 2026-04-07-r07
-
-- Release ID: `2026-04-07-r07`
-- Date/Time (Asia/Shanghai): `2026-04-07`
-- Deployment status: `LIVE` after deploy completion
-- Scope: remove large empty blocks from the parent-facing final-report PDF by making the lower content cards reflow based on how many filled sections are actually present.
-- Key files:
-  - `app/api/admin/final-reports/[id]/pdf/route.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260407-final-report-pdf-auto-grid-pass.md`
-- Risk impact (if any): Low. This release only changes printable card layout density; it does not change final-report data, wording intent, assignment rules, delivery/share logic, attendance logic, package balances, or finance logic.
-- Verification:
-  - `npm run build` passed
-  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
-  - admin PDF download route should continue returning `200 application/pdf` with the adaptive lower-card layout
-- Rollback point: previous production commit before `2026-04-07-r07`.
-
-## 2026-04-07-r08
-
-- Release ID: `2026-04-07-r08`
-- Date/Time (Asia/Shanghai): `2026-04-07`
-- Deployment status: `LIVE` after deploy completion
-- Scope: remove the remaining duplicate feel in the parent-facing final-report PDF by hiding the extra `Next learning focus` body card whenever the teacher already wrote `Areas to keep strengthening`.
-- Key files:
-  - `app/api/admin/final-reports/[id]/pdf/route.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260407-final-report-pdf-body-dedup-pass.md`
-- Risk impact (if any): Low. This release only changes printable section visibility; it does not change final-report data, summary wording, assignment rules, delivery/share logic, attendance logic, package balances, or finance logic.
-- Verification:
-  - `npm run build` passed
-  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
-  - admin PDF download route should continue returning `200 application/pdf` with fewer repeated body sections
-- Rollback point: previous production commit before `2026-04-07-r08`.
-
-## 2026-04-08-r08
-
-- Release ID: `2026-04-08-r08`
-- Date/Time (Asia/Shanghai): `2026-04-08`
-- Deployment status: `LIVE` after deploy completion
-- Scope: add split purchase-batch entry for partner package create/top-up flows so æ–°ä¸œæ–¹ package sales can be recorded as separate `PURCHASE` tranches like `6h + 30h` instead of one merged balance.
-- Key files:
-  - `app/api/admin/packages/route.ts`
-  - `app/api/admin/packages/[id]/top-up/route.ts`
-  - `app/admin/packages/PackageCreateFormClient.tsx`
-  - `app/admin/_components/PackageEditModal.tsx`
-  - `app/admin/_components/PurchaseBatchEditor.tsx`
-  - `lib/package-purchase-batches.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260408-partner-package-split-batch-entry.md`
-- Risk impact (if any): Medium-low. This release changes how new HOURS package purchases/top-ups can be recorded into multiple `PURCHASE` txns, but it does not change deduction math, package balance totals, student billing, parent billing, or offline monthly settlement logic.
-- Verification:
-  - `npm run build` passed
-  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
-  - package create and top-up APIs now accept split purchase batches and preserve tranche order for later partner settlement FIFO
-- Rollback point: previous production commit before `2026-04-08-r08`.
-
-## 2026-04-08-r09
-
-- Release ID: `2026-04-08-r09`
-- Date/Time (Asia/Shanghai): `2026-04-08`
-- Deployment status: `LIVE` after deploy completion
-- Scope: switch æ–°ä¸œæ–¹ purchase-batch entry from raw minute/hour wording to lesson-based entry so ops can record split sales in `6 / 8 / 10 / 20 / 40 lessons` terms while the backend still stores 45-minute tranches.
-- Key files:
-  - `app/admin/_components/PurchaseBatchEditor.tsx`
-  - `app/admin/packages/PackageCreateFormClient.tsx`
-  - `app/admin/_components/PackageEditModal.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260408-xdf-purchase-batch-lessons-ui.md`
-- Risk impact (if any): Low. This release only changes the admin create/top-up entry UI for æ–°ä¸œæ–¹ split purchase batches; it does not change the stored FIFO settlement logic, package balances, deduction math, or invoice rules.
-- Verification:
-  - `npm run build` passed
-  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
-  - æ–°ä¸œæ–¹ split-batch entry now shows lessons-based rows and quick-add chips while still saving 45-minute batch totals underneath
-- Rollback point: previous production commit before `2026-04-08-r09`.
-
-## 2026-04-09-r01
-
-- Release ID: `2026-04-09-r01`
-- Date/Time (Asia/Shanghai): `2026-04-09`
-- Deployment status: `LIVE` after deploy completion
-- Scope: add scheduling coordination tickets on student detail pages so ops can track parent scheduling follow-up, generate candidate slots from trusted teacher availability, and check whether a parent special-time request is inside or outside submitted availability before going back to the teacher.
-- Key files:
-  - `app/admin/students/[id]/page.tsx`
-  - `app/admin/tickets/[id]/page.tsx`
-  - `app/admin/todos/page.tsx`
-  - `app/api/tickets/intake/[token]/route.ts`
-  - `app/tickets/intake/IntakeForm.tsx`
-  - `lib/tickets.ts`
-  - `lib/scheduling-coordination.ts`
-  - `prisma/schema.prisma`
-  - `prisma/migrations/20260409100000_add_ticket_student_and_scheduling_coordination/migration.sql`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260409-scheduling-coordination-phase-1-and-2.md`
-- Risk impact (if any): Medium-low. This release adds a nullable `Ticket.studentId`, a new scheduling-coordination ticket type, student-detail coordination helpers, and todo reminders, but it does not change actual session creation, availability rules, booking links, attendance, package balances, or finance logic.
-- Verification:
-  - `npm run prisma:generate` passed
-  - `npm run build` passed
-  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
-  - student detail now shows a `Scheduling coordination / æŽ’è¯¾åè°ƒ` card with ticket summary, availability-based candidate slot generation, and special-time availability matching
-- Rollback point: previous production commit before `2026-04-09-r01`.
-
-## 2026-04-09-r02
-
-- Release ID: `2026-04-09-r02`
-- Date/Time (Asia/Shanghai): `2026-04-09`
-- Deployment status: `LIVE` after deploy completion
-- Scope: add a teacher-side `Scheduling Exceptions / æŽ’è¯¾ä¾‹å¤–ç¡®è®¤` page so teachers only respond to coordination tickets that already sit outside their submitted availability, instead of being pulled into everyday scheduling back-and-forth.
-- Key files:
-  - `app/teacher/scheduling-exceptions/page.tsx`
-  - `app/teacher/layout.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260409-scheduling-coordination-teacher-exception-page.md`
-- Risk impact (if any): Low. This release adds a teacher-facing view and lightweight ticket status updates for scheduling exceptions, but it does not change teacher availability rules, actual session creation, booking links, attendance, package balances, or finance logic.
-- Verification:
-  - `npm run build` passed
-  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
-  - teacher portal now includes `Scheduling Exceptions / æŽ’è¯¾ä¾‹å¤–ç¡®è®¤`, and the page only lists scheduling coordination tickets in `Waiting Teacher` or `Exception`
-- Rollback point: previous production commit before `2026-04-09-r02`.
-
-## 2026-04-09-r03
-
-- Release ID: `2026-04-09-r03`
-- Date/Time (Asia/Shanghai): `2026-04-09`
-- Deployment status: `LIVE` after deploy completion
-- Scope: make student-detail scheduling coordination much more direct by turning generated slots and availability-backed alternatives into action cards that can jump straight into `Quick Schedule` with the same suggested time and preferred teacher already carried over.
-- Key files:
-  - `app/admin/students/[id]/page.tsx`
-  - `app/admin/_components/QuickScheduleModal.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260409-scheduling-coordination-slot-cards-and-quick-schedule-bridge.md`
-- Risk impact (if any): Low. This release only changes student-detail coordination helper presentation and how suggested slots prefill `Quick Schedule`; it does not change teacher availability rules, actual session creation APIs, booking links, attendance, package balances, or finance logic.
-- Verification:
-  - `npm run build` passed
-  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
-  - generated coordination slots, matched special-time results, and alternative slots now render as action cards with direct `Use in Quick Schedule` entry points
-- Rollback point: previous production commit before `2026-04-09-r03`.
-
-## 2026-04-10-r18
-
-- Release ID: `2026-04-10-r18`
-- Date/Time (Asia/Shanghai): `2026-04-10`
-- Deployment status: `READY`
-- Scope: make the finance receipt workspace flow more continuous by clarifying post-approval next steps, expanding history filters, compressing repair-card actions, and showing fuller package-workspace progress.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
-- Risk impact (if any): Low. This release only changes finance receipt workspace presentation, navigation feedback, and search/filter controls; it does not change invoice creation, receipt approval rules, package balance math, settlement logic, or deduction behavior.
-- Verification:
-  - `npm run build` passed
-  - approve/reject actions now either land on the next receipt with a clear `Now reviewing the next item / çŽ°åœ¨å·²åˆ‡åˆ°ä¸‹ä¸€æ¡` banner or return to the default queue with a `This queue section is clear for now / å½“å‰è¿™ä¸€ç»„å·²ç»æ¸…å®Œäº†` banner when that lane is exhausted
-  - `Receipt History / æ”¶æ®åŽ†å²` now filters from one form across focus, party side, month, and action type
-  - partner-side finance actions now appear in `Recent Finance Actions / æœ€è¿‘è´¢åŠ¡æ“ä½œ` when the history view is switched to `Partner only / åªçœ‹åˆä½œæ–¹`
-  - `Proof Repair / å‡­è¯ä¿®å¤` queue cards now keep one primary fix action visible and move secondary links into `More actions / æ›´å¤šæ“ä½œ`
-  - the package workspace now shows a fourth `Step 4 Approval Queue / æ­¥éª¤4 è¿›å…¥å®¡æ‰¹` card plus summary chips for usable proofs, created receipts, waiting approval, and completed receipts
-- Rollback point: previous production commit before `2026-04-10-r18`.
-
-## 2026-04-10-r19
-
-- Release ID: `2026-04-10-r19`
-- Date/Time (Asia/Shanghai): `2026-04-10`
-- Deployment status: `READY`
-- Scope: let finance export the filtered receipt history as CSV and make the package finance workspace explicitly tell the user what step to do next.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `app/admin/receipts-approvals/history/export/route.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
-- Risk impact (if any): Low. This release adds a read-only CSV export and another finance guidance panel; it does not change invoice creation, receipt approvals, package balances, settlement logic, or deduction behavior.
-- Verification:
-  - `npm run build` passed
-  - `Receipt History / æ”¶æ®åŽ†å²` now exposes `Export CSV / å¯¼å‡ºCSV`, and the export follows the active history filters for focus, side, month, action type, and keyword
-  - partner-side history actions are included in the CSV when the history view is filtered to `Partner only / åªçœ‹åˆä½œæ–¹`
-  - the package workspace now shows a `Suggested next step / å»ºè®®ä¸‹ä¸€æ­¥` panel that points finance directly to upload, create receipt, approval queue, or back to the global queue depending on current package state
-- Rollback point: previous production commit before `2026-04-10-r19`.
-
-## 2026-04-10-r20
-
-- Release ID: `2026-04-10-r20`
-- Date/Time (Asia/Shanghai): `2026-04-10`
-- Deployment status: `READY`
-- Scope: make the package finance workspace easier to open when finance is dealing with a large number of student packages.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
-- Risk impact (if any): Low. This release only changes how finance finds and opens package workspaces; it does not change invoice creation, receipt approvals, package balance math, settlement logic, or deduction behavior.
-- Verification:
-  - `npm run build` passed
-  - the package workspace opener now includes a keyword search input for student, course, invoice no., receipt no., or package ID
-  - the same opener now shows a priority package list with direct `Open package / æ‰“å¼€è¯¾åŒ…` actions, sorted so the most urgent finance packages float first
-  - the quick-select dropdown now follows the same filtered search results instead of forcing finance to scan the entire package list
-- Rollback point: previous production commit before `2026-04-10-r20`.
-
-## 2026-04-10-r21
-
-- Release ID: `2026-04-10-r21`
-- Date/Time (Asia/Shanghai): `2026-04-10`
-- Deployment status: `READY`
-- Scope: help finance reopen the same few student packages quickly without searching from scratch each time.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `app/admin/receipts-approvals/_components/PackageWorkspaceRecentPackagesClient.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
-- Risk impact (if any): Low. This release only remembers recent package openings in the browser and adds faster reopen links in the package workspace; it does not change invoice creation, receipt approvals, package balance math, settlement logic, or deduction behavior.
-- Verification:
-  - `npm run build` passed
-  - opening a package from the package workspace search, dropdown, or priority list now records it into `Recently opened packages / æœ€è¿‘æ‰“å¼€çš„è¯¾åŒ…`
-  - the recent-package list appears inside the package workspace with direct reopen actions and a clear button
-  - reloading the page keeps the recent-package list because the memory stays in browser local storage, not in billing data
-- Rollback point: previous production commit before `2026-04-10-r21`.
-
-## 2026-04-10-r22
-
-- Release ID: `2026-04-10-r22`
-- Date/Time (Asia/Shanghai): `2026-04-10`
-- Deployment status: `READY`
-- Scope: stop the package workspace search from reloading the whole page and give finance a clear confirm flow for opening packages.
-- Key files:
-  - `app/admin/receipts-approvals/page.tsx`
-  - `app/admin/receipts-approvals/_components/PackageWorkspacePickerClient.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
-- Risk impact (if any): Low. This release moves package searching into a client-side picker and keeps recent-package shortcuts in browser storage; it does not change invoice creation, receipt approvals, package balance math, settlement logic, or deduction behavior.
-- Verification:
-  - `npm run build` passed
-  - package search now filters locally with `Search / æœç´¢` and `Clear / æ¸…é™¤` buttons instead of reloading the page
-  - pressing Enter inside the package search input now applies the local filter instead of submitting a full page request
-  - only `Open Finance Operations / æ‰“å¼€è´¢åŠ¡æ“ä½œ`, `Open package / æ‰“å¼€è¯¾åŒ…`, or `Open again / é‡æ–°æ‰“å¼€` navigates into a package
-- Rollback point: previous production commit before `2026-04-10-r22`.
-
-## 2026-04-10-r23
-
-- Release ID: `2026-04-10-r23`
-- Date/Time (Asia/Shanghai): `2026-04-10`
-- Deployment status: `READY`
-- Scope: make the finance package picker denser so the search area and recent shortcuts take less vertical space.
-- Key files:
-  - `app/admin/receipts-approvals/_components/PackageWorkspacePickerClient.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
-- Risk impact (if any): Low. This release only tightens the layout of the client-side package picker; it does not change invoice creation, receipt approvals, package balance math, settlement logic, or deduction behavior.
-- Verification:
-  - `npm run build` passed
-  - the recent-package list now shows fewer, tighter rows with shorter metadata
-  - priority and search-result package cards now use a denser row layout and occupy less page height
-  - clearing search also resets the quick-select field back to the current package
-- Rollback point: previous production commit before `2026-04-10-r23`.
-
-## 2026-04-10-r24
-
-- Release ID: `2026-04-10-r24`
-- Date/Time (Asia/Shanghai): `2026-04-10`
-- Deployment status: `READY`
-- Scope: make the finance student-package invoice page easier to use when the package list is crowded.
-- Key files:
-  - `app/admin/finance/student-package-invoices/page.tsx`
-  - `app/admin/finance/student-package-invoices/_components/PackageSelectAutoSubmit.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
-- Risk impact (if any): Low. This release only improves package finding on the finance invoice page; it does not change invoice issuance, receipt approvals, package balance math, settlement logic, or deduction behavior.
-- Verification:
-  - `npm run build` passed
-  - the finance invoice package picker now supports local search by student, course, or package ID
-  - the picker no longer auto-submits on every change, so finance can search first and then click `Load package summary / åŠ è½½è¯¾åŒ…æ‘˜è¦`
-  - the page still loads package totals and invoice preview only after the chosen package is submitted
-- Rollback point: previous production commit before `2026-04-10-r24`.
-
-## 2026-04-10-r01
-
-- Release ID: `2026-04-10-r01`
-- Date/Time (Asia/Shanghai): `2026-04-10`
-- Deployment status: `READY`
-- Scope: add a separate parent package Statement of Account PDF and clarify that formal receipt PDFs only unlock after full manager and finance approval.
-- Key files:
-  - `app/api/exports/parent-statement/[id]/route.ts`
-  - `app/admin/packages/[id]/billing/page.tsx`
-  - `app/admin/finance/student-package-invoices/page.tsx`
-  - `app/admin/receipts-approvals/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
-- Risk impact (if any): Low. This release adds a read-only finance PDF and clearer export copy, but it does not change invoice creation, receipt approvals, package balances, settlement, or deduction logic.
-- Verification:
-  - `npm run build` passed
-  - finance invoice workbench now exposes `Statement of Account PDF` for a selected package
-  - package billing now exposes the same statement export and clearer receipt export wording
-  - receipt PDF export still requires full manager and finance approval
-  - statement PDF now has a more formal finance-style title block, summary strip, and transaction-table hierarchy
-  - finance invoice preview and latest-invoice table now show the invoice creator on-page without changing PDF output or billing logic
-  - latest invoices now prefer `Name (email)` for creator display when the matching user exists, so finance does not need to decode raw email addresses
-  - package billing now uses the same `Name (email)` creator display in the invoice `By` column, so finance sees consistent creator labels across both invoice pages
-  - receipt approvals no longer mislabel linked proofs as `file missing` when finance is reviewing the global queue without a specific `packageId`; file health now checks the queue row's actual linked payment record
-  - receipt work is now split into clearer finance entry pages: the default page is a focused `Receipt Queue`, while `Package Workspace`, `Proof Repair`, and `Receipt History` each get their own dedicated route and sidebar entry without changing upload, receipt creation, or approval logic
-  - `Proof Repair` now defaults to a more practical blocker view that shows rejected receipts and other repair-needed rows, instead of looking empty when there are no literal file-missing items
-  - the `All / å…¨éƒ¨` chip inside `Proof Repair` now truly expands back to the full repair-page queue instead of silently reapplying the default blocker filter
-  - `Receipt History` now hides the conflicting bucket-switch row and only keeps history-appropriate controls, so the top page mode no longer fights with the lower queue toggles
-  - `Receipt History` now sends `Back to default queue / å›žåˆ°é»˜è®¤é˜Ÿåˆ—` to the actual receipt queue route instead of reloading the history page with `clearQueue=1`, so finance can truly jump back into active approval work
-  - finance sidebar and receipt-page `Receipt Queue / æ”¶æ®å®¡æ‰¹é˜Ÿåˆ—` links now open the real default approval queue with `clearQueue=1`, so clicking the queue entry no longer re-enters remembered `Receipt History`
-  - the top receipt-mode tab `Receipt Queue / æ”¶æ®å®¡æ‰¹é˜Ÿåˆ—` now uses the same default-queue reset target instead of carrying `queueBucket=HISTORY`, so switching out of `Receipt History` finally returns to the live approval queue
-- Rollback point: previous production commit before `2026-04-10-r01`.
-
-## 2026-04-11-r34
-
-- Release ID: `2026-04-11-r34`
-- Date/Time (Asia/Shanghai): `2026-04-11`
-- Deployment status: `READY`
-- Scope: make scheduling-coordination copy bilingual and make duplicate open coordination tickets visible on the student and ticket views.
-- Key files:
-  - `app/admin/students/[id]/page.tsx`
-  - `app/admin/tickets/[id]/page.tsx`
-  - `app/admin/tickets/page.tsx`
-  - `app/admin/tickets/archived/page.tsx`
-  - `app/teacher/tickets/page.tsx`
-  - `app/availability/[token]/page.tsx`
-  - `lib/scheduling-coordination.ts`
-  - `lib/parent-availability.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260411-scheduling-coordination-multi-ticket-and-bilingual-copy.md`
-- Risk impact (if any): Low. This release only changes scheduling-coordination wording and visibility around duplicate open tickets; it does not change package, finance, receipt, invoice, attendance, or actual lesson-placement logic.
-- Verification:
-  - `npm run build` passed
-  - student detail now warns when more than one open scheduling-coordination ticket exists and shows which ticket is currently driving the coordination card
-  - the student coordination card now explains that it picks the ticket with the earliest follow-up due date, then the newest created time
-  - scheduling-coordination system copy now renders in bilingual form on the student detail page, ticket detail page, admin ticket list, archived tickets list, and teacher ticket list
-  - parent-availability summaries now store bilingual field labels for future submissions
-- Rollback point: previous production commit before `2026-04-11-r34`.
-
-## 2026-04-11-r35
-
-- Release ID: `2026-04-11-r35`
-- Date/Time (Asia/Shanghai): `2026-04-11`
-- Deployment status: `READY`
-- Scope: reuse existing scheduling-coordination tickets instead of creating duplicates for the same student.
-- Key files:
-  - `app/admin/students/[id]/page.tsx`
-  - `app/api/tickets/intake/[token]/route.ts`
-  - `app/tickets/intake/IntakeForm.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260411-scheduling-coordination-ticket-reuse.md`
-- Risk impact (if any): Low. This release only changes how scheduling-coordination ticket creation is routed when an open ticket already exists for the same student; it does not change scheduling placement, finance, package, receipt, invoice, or attendance logic.
-- Verification:
-  - `npm run build` passed
-  - student detail now shows `Open active ticket / æ‰“å¼€å½“å‰å·¥å•` and a reuse note instead of encouraging a second open coordination ticket
-  - student detail server action now redirects back with a bilingual reuse message when an open coordination ticket already exists
-  - intake API now returns the existing open coordination ticket for the same student instead of creating another scheduling-coordination ticket
-  - intake form now shows a bilingual reuse success message and preserves the existing parent-availability link when applicable
-- Rollback point: previous production commit before `2026-04-11-r35`.
-## 2026-04-24-r94
-
-- Scope: auto-add direct-billing renewal hours to the package when the renewal contract is signed, and downgrade old direct top-up into a clearly marked special/manual path.
-- Key files:
-  - `lib/student-contract.ts`
-  - `app/admin/_components/PackageEditModal.tsx`
-  - `app/admin/packages/[id]/billing/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260424-direct-billing-renewal-auto-topup.md`
-- Risk impact (if any): Medium. This release changes the direct-billing renewal completion flow by adding package minutes after signature. It avoids double top-up by writing and checking a renewal-contract package transaction marker before applying minutes.
-- Verification:
-  - `npm run build` passed
-  - temporary direct-billing renewal QA confirmed package minutes moved from `600 -> 900`
-  - the same QA confirmed one invoice draft was created and one `PURCHASE` package txn carried the renewal marker note
-  - temporary QA student/package/contract/invoice data was deleted after verification
-
-## 2026-04-24-r95
-
-- Scope: polish the student-contract UX so ops see clearer business-stage states, the student page exposes the contract workspace directly, parent pages are lighter, and archived contract history no longer crowds the active workspace.
-- Key files:
-  - `lib/student-contract.ts`
-  - `app/admin/students/[id]/page.tsx`
-  - `app/admin/packages/[id]/billing/page.tsx`
-  - `app/contract-intake/[token]/page.tsx`
-  - `app/contract/[token]/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260424-student-contract-ux-polish.md`
-- Risk impact (if any): Low to medium. This release changes contract display and action framing, but does not change signing rules, invoice math, package balances, partner exclusion rules, or receipt logic.
-- Verification:
-  - `npm run build` passed
-  - local QA student detail showed `Open contract workspace / æ‰“å¼€åˆåŒå·¥ä½œåŒº` and the new business next-step copy for intake-stage contracts
-  - local QA intake page showed `Parent profile confirmation / å®¶é•¿èµ„æ–™ç¡®è®¤`
-  - local QA sign page showed `Agreement preview / æ­£å¼åˆåŒé¢„è§ˆ`
-  - local QA sign-stage billing page showed `Waiting for signature`
-  - temporary QA student/package/contract/auth-session data was deleted after verification
-
-## 2026-04-24-r96
-
-- Scope: resync package invoice-gate state when ops edit package settlement mode, so direct-billing packages do not keep stale partner-settlement gate copy.
-- Key files:
-  - `app/api/admin/packages/[id]/route.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260424-package-settlement-mode-gate-resync.md`
-- Risk impact (if any): Low. This release only recalculates package invoice-gate display state during package edits; it does not change receipt rules, invoice math, partner settlement math, or scheduling logic.
-- Verification:
-  - `npm run build` passed
-  - verified `èµµæµ‹è¯•` package now shows `settlementMode = null`
-  - verified the same package now stores `financeGateReason = Package is exempt from direct-billing invoice gate.`
-
-## 2026-04-24-r97
-
-- Scope: fix signed student-contract signature visibility so future contracts require a handwritten signature image and legacy signed contracts no longer show a blank signature area.
-- Key files:
-  - `lib/student-contract.ts`
-  - `lib/student-contract-pdf.ts`
-  - `app/contract/[token]/page.tsx`
-  - `app/api/exports/student-contract/[id]/route.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260424-student-contract-signature-visibility-fix.md`
-- Risk impact (if any): Low to medium. This release tightens future signature submission requirements and changes how legacy signed PDFs are served when no stored signature image exists, but does not change invoice creation math, package balances, or contract snapshot content.
-- Verification:
-  - `npm run build` passed
-  - QA script confirmed sign attempts without handwritten signature now fail with `Handwritten signature is required`
-  - generated and rendered a compatibility PDF for an existing signed contract with `signatureImagePath = null`
-  - verified the legacy signature block is no longer blank
-
-## 2026-04-24-r98
-
-- Scope: clarify the signed-contract correction path in package billing so ops understand that signed or invoiced contracts no longer expose `Void`, and that the old invoice draft should be stopped before creating a replacement version.
-- Key files:
-  - `app/admin/packages/[id]/billing/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260424-student-contract-billing-copy-and-action-simplify.md`
-- Risk impact (if any): Low. This release only changes billing-page guidance and action wording for signed/invoiced contracts; it does not change contract state rules, invoice math, package balances, or partner logic.
-- Verification:
-  - `npm run build` passed
-  - verified signed/invoiced contract block now explains the old invoice must be stopped before replacement
-  - verified terminal contract warning now explicitly says `Void` is no longer available after signing
-
-## 2026-04-24-r99
-
-- Scope: let ops delete an old unsigned receipt-free invoice draft from a signed contract, detach that old invoice from the contract history, and immediately create a replacement contract version that reuses the previous parent profile.
-- Key files:
-  - `lib/student-contract.ts`
-  - `app/admin/packages/[id]/billing/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260424-student-contract-invoice-delete-replacement-flow.md`
-- Risk impact (if any): Medium. This release changes the correction flow after a signed contract has auto-created an invoice draft, but does not change receipt rules, partner settlement logic, or signed PDF generation.
-- Verification:
-  - `npm run build` passed
-  - temporary QA confirmed deleting the linked invoice draft cleared the contract invoice linkage and moved the contract back to signed history
-  - temporary QA confirmed replacement contract creation now produced a new `CONTRACT_DRAFT` and reused the previous parent profile
-
-## 2026-04-24-r100
-
-- Scope: simplify the student-contract billing workspace by removing duplicated signed-result copy and collapsing â€œsave draftâ€ plus â€œgenerate/refresh sign linkâ€ into one main action.
-- Key files:
-  - `app/admin/packages/[id]/billing/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This release only changes billing-page copy and action flow around contract draft preparation; it does not change contract status rules, signed PDF behavior, invoice creation, or partner exclusions.
-- Verification:
-  - `npm run build` passed
-  - verified contract-draft block now uses one button to save business fields and generate the latest sign link
-  - verified the signed-result block no longer repeats bilingual invoice and approval labels
-  - release-doc bundle finalized with matching task note
-
-## 2026-04-24-r101
-
-- Scope: make the public contract sign page immediately show a successful submission state after the parent signs, instead of quietly refreshing back into the same page.
-- Key files:
-  - `app/contract/[token]/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260424-contract-sign-success-feedback.md`
-- Risk impact (if any): Low. This release only changes the sign-page refresh and success feedback flow; it does not change contract snapshot content, invoice creation rules, or package balances.
-- Verification:
-  - `npm run build` passed
-  - verified sign submit now revalidates the public contract route before redirecting back
-  - verified the sign page now shows a green `Signature submitted successfully` message after submit
-
-## 2026-04-24-r104
-
-- Scope: make parent address optional across the new-student intake flow and the contract parent-profile intake flow, while keeping parent-profile reuse and contract generation working when no address is provided.
-- Key files:
-  - `app/contract-intake/[token]/page.tsx`
-  - `app/student-intake/[token]/page.tsx`
-  - `lib/student-parent-intake.ts`
-  - `lib/student-contract.ts`
-  - `lib/student-contract-template.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260424-parent-address-optional-intake.md`
-- Risk impact (if any): Low. This release only relaxes address validation and hides the address line in generated contracts when no address is provided; it does not change contract signing rules, invoice creation, package balances, or partner exclusions.
-- Verification:
-  - `npm run build` passed
-  - verified both `/student-intake/[token]` and `/contract-intake/[token]` no longer require address
-  - verified backend intake submission succeeds without address
-  - verified generated contract snapshots omit the address row when no address is present
-
-## 2026-04-24-r105
-
-- Scope: stop collapsing partner invoice PDFs after the first 10 selected settlement lines and instead render every chosen line item across paginated pages.
-- Key files:
-  - `app/api/exports/partner-invoice/[id]/route.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260424-partner-invoice-full-line-pagination.md`
-- Risk impact (if any): Low to medium. This release only changes partner invoice PDF layout and pagination; it does not change invoice totals, settlement selection, approval rules, or receipt behavior.
-- Verification:
-  - `npm run build` passed
-  - verified partner invoice export no longer truncates to 10 rows
-  - verified continuation pages repeat invoice/table headers and show full multiline descriptions
-  - verified the old `... and N more items` summary is no longer rendered
-
-## 2026-04-24-r106
-
-- Scope: fix the partner invoice PDF follow-up layout so subtotal and remittance notes flow immediately after the last rendered rows instead of being pinned to the bottom of a mostly empty last page.
-- Key files:
-  - `app/api/exports/partner-invoice/[id]/route.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260424-partner-invoice-final-page-layout-followup.md`
-- Risk impact (if any): Low. This release only adjusts the final-page layout after partner invoice pagination; it does not change line selection, invoice totals, approvals, or receipt logic.
-- Verification:
-  - `npm run build` passed
-  - verified totals block now starts below the last rendered row instead of being bottom-anchored
-  - verified remittance notes are no longer clipped off the page on the last summary page
-
-## 2026-04-24-r107
-
-- Scope: move the optional partner invoice seal so it sits beside the subtotal summary block instead of staying pinned near the lower page edge.
-- Key files:
-  - `app/api/exports/partner-invoice/[id]/route.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260424-partner-invoice-seal-near-subtotal.md`
-- Risk impact (if any): Low. This release only repositions the optional seal image on partner invoice PDFs; it does not change invoice data, pagination, totals, approvals, or receipt behavior.
-- Verification:
-  - `npm run build` passed
-  - verified the seal now renders next to the subtotal block on the final page
-  - verified the subtotal values remain readable with the seal present
-
-## 2026-04-24-r108
-
-- Scope: tighten the partner invoice seal placement again so the seal visibly overlaps the subtotal summary area instead of merely sitting somewhere lower on the same page.
-- Key files:
-  - `app/api/exports/partner-invoice/[id]/route.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260424-partner-invoice-seal-subtotal-overlap-followup.md`
-- Risk impact (if any): Low. This release only adjusts the optional seal placement on partner invoice PDFs; it does not change invoice rows, totals, approvals, or receipt behavior.
-- Verification:
-  - `npm run build` passed
-  - verified the seal now sits directly against the subtotal block
-  - verified subtotal / GST / amount due stay readable after the stronger seal placement
-
-## 2026-04-24-r109
-
-- Scope: compact the partner invoice final page so line items fill more of the page before totals, and keep the optional seal/remittance block grouped correctly around the subtotal area.
-- Key files:
-  - `app/api/exports/partner-invoice/[id]/route.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260424-partner-invoice-final-page-compaction-and-seal-anchor.md`
-- Risk impact (if any): Low. This release only adjusts partner invoice PDF pagination and final-page positioning for totals, remittance notes, and the optional seal; it does not change invoice data, totals, approvals, or receipts.
-- Verification:
-  - `npm run build` passed
-  - verified line items continue lower on the page before the final totals block
-  - verified the optional seal stays attached to the subtotal area
-  - verified remittance notes start below the grouped totals/seal block
-
-## 2026-04-24-r110
-
-- Scope: move first-purchase setup out of the student detail page and into a dedicated admin page, leaving the student page with a prominent CTA instead of the full embedded form.
-- Key files:
-  - `app/admin/students/[id]/page.tsx`
-  - `app/admin/students/[id]/first-purchase/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260424-student-first-purchase-dedicated-page.md`
-- Risk impact (if any): Low. This release only changes the admin UX for first-purchase setup; it does not change contract signing rules, invoice generation logic, or package balances.
-- Verification:
-  - `npm run build` passed
-  - verified the student detail page now shows a prominent first-purchase CTA instead of the full embedded setup form
-  - verified the new `/admin/students/[id]/first-purchase` page renders the setup fields once without repeated wording
-  - verified successful submit redirects to the package contract workspace
-- 2026-04-24: Added `/admin/finance/documents` and `/admin/finance/deleted-invoices` so finance can open full parent/partner invoice and receipt PDFs and trace deleted draft invoice history from one place, with direct links from finance workbench, package billing, package contract, and partner settlement billing.
-
-## 2026-04-24-r112
-
-- Scope: expose the new finance document center and deleted draft history pages in the finance-role allowlist and admin sidebar so logged-in finance users can actually open them without being bounced away.
-- Key files:
-  - `app/admin/layout.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260424-finance-document-center-nav-and-allowlist.md`
-- Risk impact (if any): Low. This release only updates admin navigation and finance route access rules for already-shipped pages; it does not change invoice data, receipt approvals, or export rendering.
-- Verification:
-  - `npm run build` passed
-  - verified `/admin/finance/documents` and `/admin/finance/deleted-invoices` appear in finance navigation
-  - verified finance-role allowlist now includes both paths
-
-## 2026-04-24-r113
-
-- Scope: move the `Start first purchase setup / å¼€å§‹é¦–è´­å»ºæ¡£` card to the very top of student detail content so ops can see the CTA immediately without scrolling past planning and enrollment sections.
-- Key files:
-  - `app/admin/students/[id]/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260424-student-detail-first-purchase-cta-top.md`
-- Risk impact (if any): Low. This release only repositions an existing student-detail CTA card; it does not change intake, contract, package, or billing logic.
-- Verification:
-  - `npm run build` passed
-  - verified the first-purchase card renders before summary cards and the sticky student workbench
-  - verified the old mid-page duplicate card is removed
-  - verified the dedicated first-purchase page no longer repeats bilingual field labels such as `Course / è¯¾ç¨‹ / è¯¾ç¨‹ / Course`
-
-## 2026-04-24-r114
-
-- Scope: fix the first-purchase setup server action so a successful create-and-redirect no longer gets swallowed into a visible `NEXT_REDIRECT` error banner.
-- Key files:
-  - `app/admin/students/[id]/first-purchase/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260424-first-purchase-redirect-error-fix.md`
-- Risk impact (if any): Low. This release only fixes redirect handling after a successful first-purchase create; it does not change intake eligibility rules, package creation payloads, or contract generation logic.
-- Verification:
-  - `npm run build` passed
-  - verified successful first-purchase submit can rethrow the native Next.js redirect instead of rendering `NEXT_REDIRECT`
-  - verified real failures still redirect back to the first-purchase page with a normal error message
-
-## 2026-04-24-r115
-
-- Scope: give student contract PDF downloads a business-friendly filename for both admin and parent downloads instead of a technical package-type filename.
-- Key files:
-  - `app/api/exports/student-contract/[id]/route.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260424-student-contract-download-filename.md`
-- Risk impact (if any): Low. This release only changes the PDF download filename and content-disposition headers; it does not change contract content, signing logic, invoice generation, or permissions.
-- Verification:
-  - `npm run build` passed
-  - verified contract downloads now use `å­¦ç”Ÿå_è¯¾ç¨‹å_é¦–è´­/ç»­è´¹åˆåŒ_å·²ç­¾/è‰ç¨¿_æ—¥æœŸ.pdf`
-  - verified the same filename logic is used for admin and parent token-based downloads
-
-## 2026-04-24-r116
-
-- Scope: fix stored signed student-contract downloads so already-saved PDFs also use the new business-friendly filename instead of falling back to an old technical name.
-- Key files:
-  - `app/api/exports/student-contract/[id]/route.ts`
-  - `lib/business-file-storage.ts`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260424-stored-student-contract-download-filename-fix.md`
-- Risk impact (if any): Low. This release only fixes the content-disposition filename for stored signed contract PDFs and aligns inline/download headers; it does not change contract content, signing, invoice generation, or access control.
-- Verification:
-  - `npm run build` passed
-  - verified the stored signed-contract response now passes the business filename instead of the ASCII fallback
-  - verified inline and attachment responses share the same UTF-8 filename logic
-
-## 2026-04-24-r117
-
-- Scope: show `Create renewal contract / åˆ›å»ºç»­è´¹åˆåŒ` inside the package contract workspace after a first-purchase contract is already signed, so ops can start the next renewal without leaving the current package page.
-- Key files:
-  - `app/admin/packages/[id]/contract/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260424-package-contract-renewal-cta-after-first-purchase.md`
-- Risk impact (if any): Low. This release only adds a missing renewal CTA in the terminal first-purchase contract view; it does not change replacement flows, signing, invoice creation, or partner-package behavior.
-- Verification:
-  - `npm run build` passed
-  - verified a signed first-purchase contract view can now show `Create renewal contract / åˆ›å»ºç»­è´¹åˆåŒ`
-  - verified the replacement-contract action still remains available for correction cases
-
-
-## 2026-04-24-r118
-
-- Scope: fix renewal contract availability so a signed first-purchase contract on the current package can provide the reusable parent info needed for renewal.
-- Key files:
-  - `lib/student-contract.ts`
-  - `app/admin/packages/[id]/contract/page.tsx`
-  - `docs/CHANGELOG-LIVE.md`
-  - `docs/RELEASE-BOARD.md`
-  - `docs/tasks/TASK-20260424-renewal-parent-info-current-package-fix.md`
-- Risk impact (if any): Low. This release only changes how renewal parent-profile reuse is detected; it does not change signing, invoice creation, or partner-package logic.
-- Verification:
-  - `npm run build` passed
-  - verified a signed first-purchase contract on the same package now qualifies for `Create renewal contract / åˆ›å»ºç»­è´¹åˆåŒ`
-  - verified renewal draft creation now reuses parent info from the current package when needed
+YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éí×¾ùã´èµ©hºÚn¶X§zÍHÈÒS‘ÑSÑÈU‘B‚•\Èš[H\ÈHÚ[™ÛHÛÝ\˜ÙHÙˆ]›ÜˆÚ]Ú[™ÙY[ˆ›ÙXÝ[Û‹‚‚ˆÈÈ[žH[\]B‚‹H™[X\ÙHQ‚‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJN‚‹H\Þ[Y[Ý]\Î‚‹HØÛÜN‚‹HÙ^Hš[\Î‚‹Hš\ÚÈ[\XÝ
+Yˆ[žJN‚‹H™\šYšXØ][ÛŽ‚‹H›Û˜XÚÈÚ[‚‚‹KKB‚ˆÈÈŒ‹LËLM\ŒL‚‚‹H™[X\ÙHQˆŒ‹LËLM\ŒL˜‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLM‹H\Þ[Y[Ý]\Îˆ‘TT‘Q‹HØÛÜNˆ[YÛˆ[\ÞYYK[Z[šX\ÝY[ØÚY[[™ÈÚ]HÙXˆÛÜšÙ›ÝÎˆÜ[š[™ÈHÝY[\È™XY[Û›KQRSˆ\™XÝØÚY[[™ÈÜ™X]\ÈÙ\ÜÚ[ÛœÈÚ]Ý]HXÚÙ][™HÛÛÜ™[˜][ÛˆXÚÙ]™\]Z\™\È[ˆ^XÚ]ÛÝ\œÙH[™ÛÛÜ™[˜][Ûˆ™X\ÛÛ‹‚‹HÙ^Hš[\Î‚ˆH\Ø\KÛZ[šX\ÜÝY™‹Ùš\œÝ\ØÚY[[™ËÜ›Ý]KØˆH\Ø\KÛZ[šX\ÜÝY™‹ÜÝY[ËÖÜÝY[YKÜØÚY[[™ËÜ›Ý]KØˆHX‹ÛZ[šX\Yš\œÝ\ØÚY[[™ËØˆHX‹ÛZ[šX\]XÚÙ][™]Ë\Ù\ÜÚ[Û‹ØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹Yš\œÝ\ØÚY[[™ËÊ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\ÝY[\ØÚY[[™ËÊ˜ˆHØÜš\ËØØ[˜Ù[[YØXÞK[Z[šX\X]]Ë\ØÚY[[™Ë]XÚÙ]ËØ‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][H[™\ÛÛ]YÈ[\ÞYYK[Z[šX\ØÚY[[™Ëˆ^\Ý[™ÈÙXˆØÚY[[™Ë\ÜÛÛˆÚ[™Ù\ËXÚØYÙHYXÝ[Û‹][™[˜ÙKš[˜[˜ÙH[™\™[š\ÚXš[]H\™H[˜Ú[™ÙYˆ\™XÝØÚY[[™ÈÙY\ÈH^\Ý[™ÈXÚØYÙKš[˜[˜ÙKYØ]K]X[YšXØ][Û‹]˜Z[Xš[]KÛÛ™›XÝÚYÛ™Y\™]šY]È[™˜[œØXÝ[ÛˆÚXÚÜËˆÛÛÜ™[˜][ÛˆÜ™X][Ûˆ\ÈÙ\šX[^™Y[™Y\XØ]YžHÝY[[™ÛÝ\œÙK‚‹H]HÛÜœ™XÝ[ÛŽˆš]™HYØXÞH]]ËXÜ™X]Y™YY[™›ØXÚÙ]È
+ŒŒÌMLXŒŒÌLËLŒŒÌLËLØŒŒÌLËLØŒŒÌLËL˜
+HÙ\™HX\šÙYØ[˜Ù[YÙ\[˜\˜Ú]™Y›Üˆ˜XÙXXš[]K[™XXÚ™XÙZ]™Y[ˆ]Y]›ÝËˆ›ÈÙ\ÜÚ[Ûˆ™\Ý[ÜˆÛÛ\][Ûˆ[Y\Ý[\^\ÝYÛˆ[žHÙˆ[K‚‹H™\šYšXØ][ÛŽˆ\TØÜš\ˆ˜XÚÙ[™\ÝËL›ØÝ\ÙYZ[šX\ØÚY[[™È\ÝË[Z[šX\˜]˜TØÜš\Þ[^HŽ\YÙHZ[šX\™[X\ÙH]Y][™H[NLË\YÙH›ÙXÝ[ÛˆZ[\ÜËˆH™X[™XY[Û›HZ\ÞHÛÜšÜÜXÙHÚXÚÈ™]\›™YÛ™HÛÝ\œÙKNH]X[YšYYXXÚ\œË›Ý\ˆØ[\\Ù\È[™Lˆ\ÛÛZ[™ÈÙ\ÜÚ[ÛœÈÚ[HHÜ[ˆ[\ÞYYK[Z[šX\ØÚY[[™ÈXÚÙ]ÛÝ[™[XZ[™YOˆ‚‹H›Û˜XÚÈÚ[ˆÝ\œ™[›ÙXÝ[Ûˆ[[YHL™
+Œ‹LËLM\ŒLX
+K‚‚‹KKB‚ˆÈÈŒ‹LËLM\ŒLB‚‹H™[X\ÙHQˆŒ‹LËLM\ŒLX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLM‹H\Þ[Y[Ý]\ÎˆU‘X][[YHÛÛ[Z]L™‹HØÛÜNˆÙY\Û™ÈÜ™Y]›ÝH[X™\œÈÛˆÛ™Hš]Y[™H[ˆHˆXY\ˆÛÈ^HØ[››ÝÝ™\›\HÜšYÚ[˜[Z[›ÚXÙH›ÝË‚‹HÙ^Hš[\Î‚ˆH\Ø\KÙ^ÜËÜ\™\‹XÜ™Y][›ÝKÖÚYKÜ›Ý]KØ‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝÈ[™\ÛÛ]YÈH™]ÈÜ™Y]›ÝHˆXY\‹ˆ›È]X˜\ÙKÛÜšÙ›ÝË[[Ý[\›Z\ÜÚ[Û‹[›ÚXÙK™XÙZ\ÜˆÙ][Y[™Z]š[ÜˆÚ[™Ù\Ë‚‹H™\šYšXØ][ÛŽˆ\TØÜš\[ˆ˜XÚÙ[™\ÝÈ[™H[NLË\YÙH›ÙXÝ[ÛˆZ[\ÜËˆ›ÙXÝ[Ûˆ\Þ[Y[\ÈX[HÚ]LˆÛ›[™K™\›È™\Ý\È[™ØYZ[‹ÛÙÚ[˜™]\›š[™ÈŒˆH[X™\˜][HÛ™Ù\‹][‹\›ÙXÝ[Ûˆ[[È[X™\ˆ™[XZ[™YÛˆÛ™H[™H[ˆH]™H‹Ú]›ÈÝ™\›\YØZ[œÝHÜšYÚ[˜[[›ÚXÙH›ÝÎÈH[[ÈÜ™Y]›ÝK[™H[™[\Ü˜\žH]]Ù\ÜÚ[ÛˆÙ\™HÛX[™Y˜XÚÈÈ™\›Ë‚‹H›Û˜XÚÈÚ[ˆ˜MÌ™˜
+Œ‹LËLM\ŒL
+K‚‚‹KKB‚ˆÈÈŒ‹LËLM\ŒL‚‹H™[X\ÙHQˆŒ‹LËLM\ŒL‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLM‹H\Þ[Y[Ý]\ÎˆU‘X][[YHÛÛ[Z]˜MÌ™˜‹HØÛÜNˆY[ˆ\ÛÛ]YÜ™Y]›ÝHYÙ\ˆ›Üˆ\™\ˆ[›ÚXÙ\Ë[˜ÛY[™È\X[[™HÜ™Y]Ë[™\[™[˜XÚÚ[™È[X™\œË˜YÚ\ÜÝYKÝ›ÚYÛÛ›ÛËY\ÝY[™]\Ü^H[™Hš[X›Hˆ[šÙYÈHÜšYÚ[˜[[›ÚXÙK‚‹HÙ^Hš[\Î‚ˆHš\ÛXKÜØÚ[XKœš\ÛXXˆHš\ÛXKÛZYÜ˜][ÛœËÌŒŒÌMNØYÜ\™\—ØÜ™Y]Û›Ý\ËÛZYÜ˜][Û‹œÜ[ˆHX‹Ü\™\‹XÜ™Y][›Ý\ËØˆHX‹Ü\™\‹Xš[[™ËØˆH\ØYZ[‹Ü™\ÜËÜ\™\‹\Ù][Y[Øš[[™ËÜYÙKÞˆH\Ø\KÙ^ÜËÜ\™\‹XÜ™Y][›ÝKÖÚYKÜ›Ý]KØˆH\ÝËÜ\™\‹XÜ™Y][›Ý\Ë\ÝØˆH\ÝËÜ\™\‹XÜ™Y][›ÝK[ZYÜ˜][Û‹\ØY™]K\ÝØˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌM\\™\‹XÜ™Y][›Ý\Ë›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][H[™\ÛÛ]YÈ\™\ˆš[[™ËˆHZYÜ˜][ÛˆÜ™X]\ÈÛ›HÜ™Y]›ÝX[™Ü™Y]›ÝS[™XÈ]Ù\È›Ý[\ˆ^\Ý[™È[›ÚXÙH”ÓÓ‹™XÙZ\ËÙ][Y[ËÝY[ËXÚØYÙ\Ë\ÜÛÛœË][™[˜ÙHÜˆ^\›Ûˆ˜YÈÈ›ÝÚ[™ÙHY\ÝYÝ[ËˆÛ›H\ÜÝYY›Û‹]›ÚY›Ý\È™YXÙHH\Ü^YY™]ˆ^\Ý[™È[›ÚXÙ\ÈÚ][žHÜ™Y]›ÝH\ÝÜžHØ[››Ý™H[]Y[™^\Ý[™È™XÙZ\È™[XZ[ˆ[˜Ú[™ÙY›Üˆš[˜[˜ÙH™]šY]Ë‚‹H™\šYšXØ][ÛŽˆš\ÛXH˜[Y][Ûˆ[™Ù[™\˜][Û‹\TØÜš\[ˆ˜XÚÙ[™\ÝËZYÜ˜][Û‹\ØY™]H\ÜÙ\[ÛœËH[NLË\YÙH›ÙXÝ[ÛˆZ[[™Ú]Y™ˆKXÚXÚØ\ÜËˆH™]ÈÜšY[[Ø\ÙH\ÈÛÝ™\™Y\È[ˆÑÑÌ\X[Ü™Y]YØZ[œÝ‘ÕLŒŒ‹LNXˆ›ÙXÝ[Ûˆ\ÈLHÛÛ\]YZYÜ˜][ÛœËLˆ\ÈÛ›[™HÚ]™\›È™\Ý\ËØYZ[‹ÛÙÚ[˜™]\›œÈŒ[™ÜÝY\ÞH›ÝXÝYÛÝ[È[™š[[™È”ÓÓˆ\Ú\ÈX]ÚH™KY\ÞH˜\Ù[[™KˆÓÔØ\\™H˜YÈÙ\™HÛX[™Y˜XÚÈÈ™\›ÈÜ™Y]›Ý\È[™™\›È[™\Ë‚‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[Ûˆ[[YHŒ
+Œ‹LËLM\ŒX
+NÈ\ÞYY™X]\™HÛÛ[Z]\È˜MÌ™˜‚‚‹KKB‚ˆÈÈŒ‹LËLM\ŒB‚‹H™[X\ÙHQˆŒ‹LËLM\ŒX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLM‹H\Þ[Y[Ý]\ÎˆU‘X][[YHÛÛ[Z]Œ‹HØÛÜNˆY™™\™[X]H[š]™\œÚ]K\ÝYÙHØ\™H[È[š]™\œÚ]HXØY[ZXÈX[˜YÙ[Y[ÜÝÜ˜YX]H™\\˜][Ûˆ[™[\›œÚ\Ù[\Þ[Y[Ý\ÜÚ]›ÙÜ˜[[YK\ÜXÚYšXÈØÛÜ\È[™ÝÛ™\ˆ›Û\ËH[š]™\œÚ]H›Ùš[KXØY[ZXÈÜÚ][Û‹Y[\ÝY[ÛÛœÙ[[™Ü˜[[\ˆ\™[\™\Ü[YÚXš[]K‚‹HÙ^Hš[\Î‚ˆHš\ÛXKÜØÚ[XKœš\ÛXXˆHš\ÛXKÛZYÜ˜][ÛœËÌŒŒÌMLLÌØYØØ\™WÝ[š]™\œÚ]WÜ›Ùš[\ËÛZYÜ˜][Û‹œÜ[ˆHX‹ØØ\™K]˜[Y][Û‹ØˆHX‹ØØ\™K[X[˜YÙ[Y[ØˆH\ØYZ[‹ØØ\™KÜYÙKÞˆH\ØYZ[‹ØØ\™KÖÚYKÜYÙKÞˆH\ØYZ[‹ØØ\™K×ØÛÛ\Û™[ËÐØ\™T›ÙÜ˜[TÙ]\šY[ËÞˆH\ÝËØØ\™K][š]™\œÚ]KXÛÛ™šYË\ÝØˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌMXØ\™K][š]™\œÚ]KYY™™\™[X][Û‹›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][H[™\ÛÛ]YÈÐT‘HÛÛ™šYÝ\˜][Û‹ˆHZYÜ˜][ÛˆYÈÛ™H[[H˜[YKÛ™HÛÛœÙ[[[H[™Û™H[š]™\œÚ]K\›Ùš[HX›NÈ›È^\Ý[™È›Ú™XÝÜˆ›ÝXÝYXXÚ[™ËÙš[˜[˜ÙHX›H\È\]Yˆ›Ý™K][š]™\œÚ]H›ÙÜ˜[[YHY˜][È™[XZ[ˆž]KY›Ü‹Xž]H\]Z]˜[[[ˆ\ÝËˆ^\Ý[™È[š]™\œÚ]H›Ú™XÝÈ™]Z[ˆX\›Y\ˆÙ[XÝYØÛÜ\È[™ÚÝÈ[H\È™]Z[™Y[[HX[˜YÙ\ˆ™]šY]ÜÈ[Kˆ[š]™\œÚ]H\™[\™\Ü[YÚXš[]H\È›ØÚÙY[[Y[\ÝY[ÛÛœÙ[[™]X\ÝÛ™H]]Üš^™YÙXÝ[Ûˆ\™H™XÛÜ™Y‚‹H™\šYšXØ][ÛŽˆš\ÛXH˜[Y][Ûˆ[™Ù[™\˜][Û‹\TØÜš\[Œ˜XÚÙ[™\ÝÈ[™H[NLË\YÙH›ÙXÝ[ÛˆZ[\ÜËˆ›ÙXÝ[Ûˆ\ÈLÛÛ\]YZYÜ˜][ÛœË[˜ÛY[™ÈH™]È[š]™\œÚ]K\›Ùš[HX›H[™ÜÝÜ˜YX]H[[H˜[YKˆLˆ\ÈÛ›[™HÚ]™\›È™\Ý\È[™ØYZ[‹ÛÙÚ[˜™]\›œÈŒˆ]][XØ]Y›ÙXÝ[Ûˆœ›ÝÜÙ\ˆÚXÚÜÈ\ÜÙY›ÙÜ˜[[YHÝÚ]Ú[™È›Üˆ[š]™HØ\™H›ÙÜ˜[[Y\Ë™]Z[™Y\ØÛÜH\Ü^HÛˆH^\Ý[™È•TÈ˜Y[š]™\œÚ]K\›Ùš[HØ]™KÛÛœÙ[›ØÚÚ[™È™Y›Ü™H]]Üš^˜][Û‹\™[\™\Ü[YÚXš[]HY\ˆ[Z]Y]]Üš^˜][Û‹[™\ÚÝÜÛ[Øš[H^[Ý]Ú]Ý]Üš^›Û[Ý™\™›ÝËˆH[\Ü˜\žHÝY[›Ú™XÝ›Ùš[KXÝ]š]KÙ\ÜÚ[Ûˆ[™™YH\ÜÛØÚX]Y]Y]›ÝÜÈÙ\™H™[[Ý™YÚ]™\›È™\ÚYYKˆ›ÝXÝY˜\Ù[[™\È™]\›™YÈHÝY[ËÎXÚØYÙ\ËKNHÙ\ÜÚ[ÛœËKÌLH][™[˜ÙH›ÝÜËÍ\™\ˆÙ][Y[È[™‹ÌÌKÌÌØ\™H[™ØYÙ[Y[ËÜ[œËØXÝ]š]Y\ËÝ\ÚÜËØ]XÚY[ÎÈHÛÈ™X[›Ú™XÝÈ[™Z\ˆÙ[XÝYØÛÜ\È™[XZ[™Y[˜Ú[™ÙY‚‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[Ûˆ[[YHØ™Œ
+Œ‹LËLM\Œ
+NÈ\ÞYY[[YHÛÛ[Z]\ÈŒ‚‚‹KKB‚ˆÈÈŒ‹LËLM\Œ‚‹H™[X\ÙHQˆŒ‹LËLM\Œ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLM‹H\Þ[Y[Ý]\ÎˆU‘X][[YHÛÛ[Z]Ø™Œ‹HØÛÜNˆYš]˜]H]šY[˜ÙH]XÚY[È[™ÝXÝ\™YØÚÛÛXÛÛ[][šXØ][ÛˆÛÝ\˜Ù\ÈÈH\ÛÛ]Y[XØ\™HÛÜšÜÜXÙKÚ]›Ú™XÝ\ØÛÜYXØÙ\ÜËXÝ]š]KÝ\ÚÈ[šÜË\˜Ú]™KÜ™\ÝÜ™H[™]Y]\ÝÜžK‚‹HÙ^Hš[\Î‚ˆHš\ÛXKÜØÚ[XKœš\ÛXXˆHš\ÛXKÛZYÜ˜][ÛœËÌŒŒÌMLØYØØ\™WÙ]šY[˜ÙWØ]XÚY[ËÛZYÜ˜][Û‹œÜ[ˆHX‹ØØ\™KY]šY[˜ÙKYš[\ËØˆHX‹ØØ\™K[X[˜YÙ[Y[ØˆHX‹ØØ\™K]˜[Y][Û‹ØˆH\ØYZ[‹ØØ\™KÖÚYKÜYÙKÞˆH\ØYZ[‹ØØ\™K×ØÛÛ\Û™[ËÐØ\™P]XÚY[\ØY\‹ÞˆH\Ø\KØYZ[‹ØØ\™KÙ[™ØYÙ[Y[ËÖÚYKØ]XÚY[ËÜ›Ý]KØˆH\Ø\KØYZ[‹ØØ\™KØ]XÚY[ËÖÚYKÙš[KÜ›Ý]KØˆH\ÝËØØ\™KY]šY[˜ÙK\ÝØˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌMXØ\™KY]šY[˜ÙKX]XÚY[Ë›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][H[™\ÛÛ]YÈÐT‘Kˆš[\È\™HÝÜ™Y[™\ˆHš]˜]HÌËÛØØ[ÐT‘H][™]™\žHÝÛ›ØY™XÚXÚÜÈØ\™K\›Ú™XÝXØÙ\ÜËˆHZYÜ˜][ÛˆÛ›HYÈÛ™H[[H[™Û™HX›NÈ]Ù\È›Ý[\ˆÝY[ËÙ\ÜÚ[ÛœË][™[˜ÙKXÚØYÙ\Ë\™\ˆÙ][Y[^\›Û[›ÚXÙ\Ë™XÙZ\ÈÜˆš[˜[˜ÙHÙ][™ÜËˆ\™[[]™\žH™[XZ[œÈ\ØX›YÈT‘S•YX[œÈ[YÚX›H›ÜˆH]\ˆ™]šY]ÙY™\Ü›Ý[[YYX][Hš\ÚX›K‚‹H™\šYšXØ][ÛŽˆš\ÛXH˜[Y][Û‹\TØÜš\[LÈ˜XÚÙ[™\ÝÈ[™H[NLË\YÙH›ÙXÝ[ÛˆZ[\ÜËˆ›ÙXÝ[Û‹[[ÙH^]ÜšYÚ\ÙYH[\Ü˜\žHÝY[Ü›Ú™XÝÈ\ØYHØÚÛÛY[XZ[š[K[šÈ]ÈHØÚÛÛ\]KÜ[‹ÙÝÛ›ØY]\˜Ú]™H][™™\ÝÜ™H]ˆ›ÙXÝ[Ûˆ\Þ[Y[›Ý[™[LÈZYÜ˜][ÛœÈÝ\œ™[LˆÛ›[™HÚ]™\›È™\Ý\È[™ØYZ[‹ÛÙÚ[˜™]\›š[™ÈŒˆHÙXÛÛ™[\Ü˜\žH›Ú™XÝÛˆÙÝX[˜YÙK˜ÛÛX\ØYY[™\ÝYHØÚÛÛY[XZ[š[NÈ[˜]][XØ]YXØÙ\ÜÈ™]\›™YX]]Üš^™YXØÙ\ÜÈ™]\›™YHš]˜]HÚYÛ™YÌ˜[™HÚYÛ™YØš™XÝ™]\›™YHÜšYÚ[˜[ÛÛ[ˆH[\Ü˜\žHÝY[Ù\ÜÚ[Û‹›Ú™XÝ]XÚY[]Y]›ÝÜÈ[™ÌÈØš™XÝÈÙ\™HÛX[™YÈ™\›Ëˆ™Y›Ü™KØY\ˆÛÝ[È™[XZ[™YÝY[ËÎXÚØYÙ\ËKMHÙ\ÜÚ[ÛœËKÌLH][™[˜ÙH›ÝÜËÍ\™\ˆÙ][Y[È[™KÌÌKÌÌØ\™H[™ØYÙ[Y[ËÜ[œËØXÝ]š]Y\ËÝ\ÚÜËØ]XÚY[Ë‚‹H›Û˜XÚÈÚ[ˆÝ\œ™[›ÙXÝ[Ûˆ[[YHNLŒY˜
+Œ‹LËLLË\Œ˜
+NÈ[[YYX]HÚ]\™[YYLÎMX\ÈH™\\™YŒ‹LËLM\ŒØ\™[Ù\šXÙK\›ÙÜ™\ÜÈÛÝ\˜ÙK‚‚‹KKB‚ˆÈÈŒ‹LËLM\ŒÂ‚‹H™[X\ÙHQˆŒ‹LËLM\ŒØ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLM‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆYH˜]]™H\™[Ù\šXÙK\›ÙÜ™\ÜÈÙ[\ˆ›Üˆ[ÝY[ËÚ]\Ë]ÙYZÈ\ÜÛÛ‹Ù™YY˜XÚËÜ™\]Y\ÝÝ[[X\šY\Ë™\ÜÛœÚX›H\œÛÛ‹™^Ý\\™[]š\ÚX›HXÝ[Ûˆ][\Ë[™H[šYšYY[Y[[™HÙˆ\ÜÛÛœË™YY˜XÚË™\]Y\ÝË[™›Ü›X[HX›\ÚY[XØ\™H\]\Ë‚‹HÙ^Hš[\Î‚ˆH\Ø\KÛZ[šX\ÜÝY[ËÖÜÝY[YKÜÙ\šXÙK\›ÙÜ™\ÜËÜ›Ý]KØˆHX‹ÛZ[šX\\\™[\Ù\šXÙK\›ÙÜ™\ÜËØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜ›ÙÜ™\ÜËÊ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÚÛYKÊ˜ˆH\ÝËÛZ[šX\\\™[\Ù\šXÙK\›ÙÜ™\ÜË\ÝØˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌM[Z[šX\\\™[\Ù\šXÙK\›ÙÜ™\ÜË›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][H™XY\ÚYH[™š]˜XÞK\Ù[œÚ]]™H\™[^\šY[˜ÙKˆH[™Ú[™\]Z\™\È\™[™\Ü\›Z\ÜÚ[Û‹™\ÜXÝÈØÚY[H[™™YY˜XÚÈ\›Z\ÜÚ[ÛœË™XYÈÛ›H\™[]š\ÚX›HXÚÙ]Ë[™^ÜÙ\È[XØ\™HXÝ]š]Y\ÈÛ›HÚ[ˆX›\ÚYÈ\™[Ëˆ]Ù\È›ÝY]X˜\ÙHX›\ÈÜˆ[žHÜš]H]ˆ[Ý\œ™[ÝY[È]™HH[Ù\šXÙH\H[™\™Y›Ü™H[\Ü˜\š[H™XÙZ]™HÜ™[˜\žKXÛÝ\œÙHÛÜ™[™ÈÚ]Ý]Ú[™Ú[™ÈÝÜ™Y]NÈX[˜YÙ[Y[]\ÝÛ\ÜÚYžH[H™Y›Ü™H™[Z[™ÈÛˆ\K\ÜXÚYšXÈY\ÜØYÚ[™Ë‚‹H™\šYšXØ][ÛŽˆH^\Ý[™È˜XÚÙ[™\ÝÈ\ÈH™]È›ÙÜ™\ÜÈ\ÝÈ[™™]Z[™YØ[[™\ˆ\ÝÈ\ÜÎÈ\TØÜš\[˜]]™K[Z[šX\˜]˜TØÜš\Þ[^HË\YÙH™[X\ÙH]Y][ˆ]][XØ]Y™XY[Û›H™X[Y]H[™Ú[ÚXÚË[™H[NLË\YÙH›ÙXÝ[ÛˆZ[\ÜËˆH™X[Y]HØ[™]\›™YŒÈÛ™HXÝ]™HØ\™H[™ØYÙ[Y[Ý\œ™[H\È™\›È\™[\X›\ÚYXÝ]š]Y\È[™™\›È\™[]š\ÚX›HXÝ[Ûˆ\ÚÜËˆ\ÚXØ[\Û™HÛÛ™š\›X][Ûˆ™[XZ[œÈ›ÜˆH™^^\šY[˜ÙH™\œÚ[Û‹‚‹H›Û˜XÚÈÚ[ˆŒ‹LËLLË\Œ˜
+NLŒY˜
+K‚‚‹KKB‚ˆÈÈŒ‹LËLLË\Œ‚‚‹H™[X\ÙHQˆŒ‹LËLLË\Œ˜‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLLØ‹H\Þ[Y[Ý]\ÎˆU‘X][[YHÛÛ[Z]NLŒY˜‹HØÛÜNˆYH˜]]™K[Z[šX\š\ÝX[ØÚY[[™ÈØ[[™\ˆÚ][ÛÝÙYZËÙ^HšY]ÜËXXÚ\‹ØØ[\\ËØÛÝ\œÙKÜÝY[š[\œËZ[HÛÛÜ™[˜][Ûˆ[™Ý™\›\[™XØ]ÜœËXXÚ\ˆœ™YHÛÝË[™]KÝ[YH[™Ù™ˆ[ÈH^\Ý[™È[\ÝY[ØÚY[[™ÈÛÜšÙ›ÝË‚‹HÙ^Hš[\Î‚ˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[KØØ[[™\‹Ü›Ý]KØˆHX‹ÛZ[šX\\ÝY™‹\ØÚY[KXØ[[™\‹ØˆHš\ÛXKÜØÚ[XKœš\ÛXXˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\ØÚY[KÊ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹Yš\œÝ\ØÚY[[™ËÜÝY™‹Yš\œÝ\ØÚY[[™ËšœØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹XÛÛÜ™[˜][Û‹Y]Z[ÜÝY™‹XÛÛÜ™[˜][Û‹Y]Z[šœØˆH\ÝËÛZ[šX\\ÝY™‹\ØÚY[KXØ[[™\‹\ÝØˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌLË[Z[šX\]š\ÝX[\ØÚY[[™ËXØ[[™\‹›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][H™XY\ÚYH[™˜]šYØ][ÛˆÚ[™ÙKˆHØ[[™\ˆYÈH˜[™ÙH]Y\žH[™Ü\˜][Û˜[Ý™\›\[™XØ]ÜœÈ]Ù\È›ÝYHØÚY[[™ÈÜš]H]ˆš\ÛXH™[][Û’›Ú[œØ\È[˜X›YÛÈ\È]Y\žHØ[ˆØY™\ÝY™[][ÛœÈ[ˆÛ™H]X˜\ÙH]Y\žNÈÝ\ˆš\ÛXHØ[ÈÙY\Z\ˆ^\Ý[™ÈÝ˜]YÞKˆ›Ü›X[ØÚY[[™È™[XZ[œÈQRS‹[Û›H[™ÛÛ[Y\È›ÝYÚH^\Ý[™ÈÚYÛ™Y™]šY]È[™ÙXÛÛ™ÛÛ™š\›X][Û‹ˆÔÈØ[ˆÛÛÜ™[˜]H]›ÝÜš]HÙ\ÜÚ[ÛœÎÈXXÚ\œÈ™[XZ[ˆÛÛœÝ˜Z[™YÈZ\ˆÝÛˆØÚY[K‚‹H™\šYšXØ][ÛŽˆH^\Ý[™È˜XÚÙ[™\ÝÈ[™™]ÈØ[[™\ˆ\ÝÈ\ÜÎÈ\TØÜš\˜]˜TØÜš\Þ[^H‹\YÙH™[X\ÙH]Y]H‹Y^H™X[Y]H™XY[™H[NLË\YÙH›ÙXÝ[ÛˆZ[\ÜËˆ™X[]H™]\›™Yš\ÚX›H\ÜÛÛœÈXÜ›ÜÜÈHXXÚ\œÈY\ˆY[™ÈÛ™H[HØ[˜Ù[Y\ÜÛÛ‹[™›ÙXÙYLœ™YHÛÝÈ›ÜˆHÙ[XÝYXXÚ\‹ˆÚ[™ÛK\]Y\žH™[][ÛˆØY[™È™YXÙYHØØ[‹Y^H™XYœ›ÛHX›Ý]MˆÙXÛÛ™ÈÈ‹ÙXÛÛ™Ëˆ›ÙXÝ[Ûˆ[\›Ý™Yœ›ÛHŒ‹ÙXÛÛ™ÈÈKŽNÙXÛÛ™È›Üˆˆ^\È[™™]\›™YÈ^\È[ˆÙXÛÛ™ÎÈLˆ\ÈÛ›[™HÚ]™\›È™\Ý\ËLˆZYÜ˜][ÛœÈ\™HÝ\œ™[X[\ÈŒ[™Û™H™[Z[™\ˆÜ›Ûˆ™[XZ[œËˆ\ÚXØ[\Û™Hš\ÝX[ÛÛ™š\›X][Ûˆ™[XZ[œÈ›ÜˆH™^^\šY[˜ÙH™\œÚ[Û‹‚‹H›Û˜XÚÈÚ[ˆŒ‹LËLLË\ŒX
+ÍŒÎ
+K‚‚‹KKB‚ˆÈÈŒ‹LËLLË\ŒB‚‹H™[X\ÙHQˆŒ‹LËLLË\ŒX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLLØ‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆYHÛÛ\]H\™[ÙÛÝ]›ÝÈÈH]][XØ]YZ[šX\ÝY[YÙK[˜ÛY[™ÈÛÛ™š\›X][Û‹Ù\™\‹\Ù\ÜÚ[Ûˆ[˜[Y][Û‹ØØ[ÝY[ÜÙ\ÜÚ[ÛˆÛX[\[™™]\›ˆÈH\™[ÙÚ[ˆYÙK‚‹HÙ^Hš[\Î‚ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY[ËÜÝY[ËšœØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY[ËÜÝY[ËÞ[ˆHØÜš\ËØ]Y][Z[šX\\™[X\ÙKØˆH\ÝËÛZ[šX\[ÙÚ[‹Y[žK\ÝØˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌLË[Z[šX\\\™[[ÙÛÝ]›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝÈ[™ÛY[\ÚYH[YÜ˜][ÛˆÛ›KˆH^\Ý[™È\™[ÙÛÝ][™Ú[\È™]\ÙYÚ]Ý]˜XÚÙ[™Ú[™Ù\Ëˆ\™[ÙÛÝ]ÛX\œÈÛ›HH\™[Ù\ÜÚ[Ûˆ[™Ù[XÝYÝY[È[ˆ[\ÞYYHÙ\ÜÚ[ÛˆÛˆHØ[YHÙPÚ]XØÛÝ[\È›Ý[]Y‚‹H™\šYšXØ][ÛŽˆ[˜]]™K[Z[šX\˜]˜TØÜš\Þ[^ÚXÚÜËN›ØÝ\ÙY\ÝËH‹\YÙH™[X\ÙH]Y]\TØÜš\[™H[NL‹\YÙH›ÙXÝ[ÛˆZ[\ÜËˆHÙÛÝ]Y›ÝÈ\Ý^XÝ]\ÈHÛÛ™š\›X][Ûˆ][™™\šYšY\ÈÙ\™\ˆÙÛÝ]\™[\Ù\ÜÚ[ÛˆÛX[\Ù[XÝY\ÝY[ÛX[\\™[\Ü[™][[Û‹[™ÙÚ[‹\YÙH™[][˜Ú[ˆÜ™\‹ˆ\ÚXØ[\Û™HÛÛ™š\›X][Ûˆ™[XZ[œÈ›ÜˆH™^^\šY[˜ÙH™\œÚ[Û‹‚‹H›Û˜XÚÈÚ[ˆŒ‹LËLLË\Œ
+Œ™˜Y˜Ø
+K‚‚‹KKB‚ˆÈÈŒ‹LËLLË\Œ‚‹H™[X\ÙHQˆŒ‹LËLLË\Œ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLLØ‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆ™[[Ý™HH[\ÞYYK\Ü[ÝÚ]Úœ›ÛHH]][XØ]Y\™[ÝY[YÙHÛÈH\™[^\šY[˜ÙHÝ^\È[\™[H\™[Y˜XÚ[™ÈY\ˆÙÚ[‹‚‹HÙ^Hš[\Î‚ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY[ËÜÝY[ËšœØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY[ËÜÝY[ËÞ[ˆHØÜš\ËØ]Y][Z[šX\\™[X\ÙKØˆH\ÝËÛZ[šX\[ÙÚ[‹Y[žK\ÝØˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌLË[Z[šX\X]][XØ]Y\\™[\\š]K›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝÈ[™ÛY[\ÚYHÛ›Kˆ[\ÞYYHÙÚ[ˆ™[XZ[œÈ]˜Z[X›Hœ›ÛHH[˜]][XØ]YÙÚ[ˆØÜ™Y[‹[™H[\ÞYYHÛÜšØ™[˜ÚÝ[[ÝÜÈ™]\›š[™ÈÈH\™[Ü[ˆ]][XØ][ÛˆT\ËÚÙ[œËš[™[™ÜË\›Z\ÜÚ[ÛœË[™\Ú[™\ÜÈ]H\™H[˜Ú[™ÙY‚‹H™\šYšXØ][ÛŽˆ[˜]]™K[Z[šX\˜]˜TØÜš\Þ[^ÚXÚÜËMÈ›ØÝ\ÙY\ÝËH‹\YÙH™[X\ÙH]Y]\TØÜš\[™H[NL‹\YÙH›ÙXÝ[ÛˆZ[\ÜËˆH™[X\ÙH]Y]›ÝÈ˜Z[ÈYˆ]][XØ]Y\™[YÙ\ÈÛÛZ[ˆ[\ÞYYKY[žHÛÜ™[™ÈÜˆ[\ÞYYK[ÙÚ[ˆ˜]šYØ][ÛŽÈÙPÚ]]•ÛÛÈ™XÛÛ\[YHXÚØYÙH[™ÛÛ™š\›YYH[\ÞYYK]Ë\\™[›Ý\›™^HÝ[Ü[œÈÛÜœ™XÝK‚‹H›Û˜XÚÈÚ[ˆŒ‹LËLLË\ŒØ
+LÍL™X
+K‚‚‹KKB‚ˆÈÈŒ‹LËLLË\ŒÂ‚‹H™[X\ÙHQˆŒ‹LËLLË\ŒØ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLLØ‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆÙ\\˜]H\™[[™[\ÞYYHÙÚ[ˆ›Ý\›™^\Ë™[[Ý™H[š]][Ûˆš[™[™Èœ›ÛHHš\œÝ\ØÜ™Y[ˆY\˜\˜ÚK™[Y[X™\ˆH\Ý]\ÙYÜ[[™™]Z[ˆÝË\š[Üš]HÝÚ]Ú[™È›ÜˆX[\›ÛHÙPÚ]\Ù\œË‚‹HÙ^Hš[\Î‚ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[Ø\šœØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[Ø\ÞÜØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÛÙÚ[‹Ê˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹[ÙÚ[‹Ê˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY[ËÊ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹ZÛYKÊ˜ˆHØÜš\ËØ]Y][Z[šX\\™[X\ÙKØˆH\ÝËÛZ[šX\[ÙÚ[‹Y[žK\ÝØˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌLË[Z[šX\[ÙÚ[‹\Ü[\Ù\\˜][Û‹›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝÈ[™ÛY[\ÚYHÛ›Kˆ]][XØ][Ûˆ[™Ú[Ë\›Z\ÜÚ[ÛœËÚÙ[œË[š]][ÛœË[™š[™[™ÜÈ\™H[˜Ú[™ÙYˆHXZ[ˆ™[XZ[š[™Èš\ÚÈ\ÈÝÜ™Y\Ù\ÜÚ[Ûˆ™Z]š[ÜˆÛˆH\ÚXØ[ÙPÚ]]šXÙNÈX[\›ÛH\Ù\œÈ™]Z[ˆ^XÚ]Ü[ÝÚ]Ú\ÈY\ˆÙÚ[‹‚‹H™\šYšXØ][ÛŽˆ[Z[šX\˜]˜TØÜš\Þ[^ÚXÚÜËMÈ›ØÝ\ÙY\ÝËH‹\YÙH™[X\ÙH]Y]\TØÜš\[™H[NL‹\YÙH›ÙXÝ[ÛˆZ[\ÜËˆÙPÚ]]•ÛÛÈÛˆ[ˆTÛ™HL‹ÌLÈÚ[][]ÜˆÛÛ™š\›\ÈH\™[Yš\œÝY\˜\˜ÚKÙ\\˜]H[\ÞYYHYÙK[™ÛË]Ø^HÜ[˜]šYØ][Ûˆ™[™\ˆÚ]Ý]Ý™\›\‚‹H›Û˜XÚÈÚ[ˆŒ‹LËLLË\Œ˜
+MLM˜X
+K‚‚‹KKB‚ˆÈÈŒ‹LËLLË\Œ‚‚‹H™[X\ÙHQˆŒ‹LËLLË\Œ˜‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLLØ‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆXZÙHHÚ\™YYZ[ˆÛÜšÜÜXÙH]H[™[›ÛÝÈHÝ\œ™[ÛY[\ÚYH›Ý]HÛÈX]š[™È[Ø\™H›ÈÛ™Ù\ˆX]™\È[Ø\™HÈ9aj9¢f9ë¨XÝXÚÈX›Ý™H[œ™[]YYÙ\Ë‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹Û^[Ý]ÞˆH\ØYZ[‹×ØÛÛ\Û™[ËÐYZ[•ÛÜšÜÜXÙPÛÛ^ÛY[ÞˆH\ØYZ[‹×ØÛÛ\Û™[ËØYZ[•ÛÜšÜÜXÙPÛÛ^ØˆH\ÝËØYZ[‹]ÛÜšÜÜXÙKXÛÛ^\ÝØˆHXÚØYÙKšœÛÛ˜ˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌLËXYZ[‹]ÛÜšÜÜXÙKXÛÛ^[˜]šYØ][Û‹›YˆHØÜËùaj9¢f9ë¨y.&¹b¨yìîùîçù .ù/dú)á9b$‹LŒŒÌLË›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝÈ[™\Ü^K[Û›KˆHÚ[™ÙH[Ý™\È^\Ý[™È]KÚ[Ù[XÝ[Ûˆ[ÈHÛY[›Ý]KX]Ø\™HÛÛ\Û™[ˆ]Ù\È›ÝÚ[™ÙH\›Z\ÜÚ[ÛœË˜]šYØ][Ûˆ\Ý[˜][ÛœËØÚ[X\ËÝY[]KØ\™H™XÛÜ™ËØÚY[[™Ë][™[˜ÙKXÚØYÙ\Ë\™\ˆÙ][Y[^\›Û[›ÚXÙ\Ë™XÙZ\ËÜˆš[˜[˜ÙHÙ][™ÜË‚‹H™\šYšXØ][ÛŽˆ\TØÜš\\ÜÙ\ÎÈ[H˜XÚÙ[™\ÝÈ\ÜÎÈH[NL‹\YÙH›ÙXÝ[ÛˆZ[\ÜÙ\ËˆH›ÙXÝ[Û‹[[ÙH^]ÜšYÚ›ÝÈÚ]Û™H[\Ü˜\žHYZ[ˆÙ\ÜÚ[Ûˆ™\šYšY\È[Ø\™HOˆÝY[ÛÝ\˜Ù\ÈOˆ[Ø\™XÚ]Ý]YÙH™Yœ™\ÚˆHÜ]HÚ[™Ù\ÈÈYZ[ˆÛÜšÜÜXÙHÈ9ë¨yä!¹méy/g9cìÛˆÝY[ÛÝ\˜Ù\ËÛÛZ[œÈ›È[Ø\™HX™[\™K[™™\ÝÜ™\È[Ø\™HÛˆ™]\›‹ˆ[\Ü˜\žHPHÙ\ÜÚ[ÛœÈÙ\™HÛX[™YÈ™\›Ë‚‹H›Û˜XÚÈÚ[ˆŒ‹LËLLË\ŒXØÝ[Y[][Û‹X[YÛ™YXYM˜Y™M˜
+›ÙXÝ[Ûˆ[[YHXMMLÙLX
+K‚‹H›ÙXÝ[ÛˆÛÛ[Z]ˆMLM˜MY˜ÍŒYŒLMÎLÍØLNMÎLXÎY˜ÍX‚‹H\Þ[Y[™\Ý[ˆ˜XÚÝ\Z][Û‹\ØÚY[\—ÌŒ‹LËLL×ÌNL‹™[\ÛÛ\]YÈLˆZYÜ˜][ÛœÈ™[XZ[ˆÝ\œ™[Ú]›Û™H\YYÈHNL‹\YÙHÙ\™\ˆZ[\ÜÙYÈLˆ\ÈÛ›[™HÚ]™\›È™\Ý\ÎÈØYZ[‹ÛÙÚ[˜™]\›œÈŒˆ]][XØ]Y›ÙXÝ[Ûˆ^]ÜšYÚYØZ[ˆ\ÜÙY[Ø\™HOˆÝY[ÛÝ\˜Ù\ÈOˆ[Ø\™X[™H[\Ü˜\žHÙ\ÜÚ[ÛˆÛÝ[™]\›™YÈ™\›ËˆXÚØYÙ\Ë][™[˜ÙHÝ[ËXÚØYÙH˜[œØXÝ[ÛœË\™\ˆÙ][Y[Ë›ÝXÝYš[˜[˜ÙK\Ù][™È\Ú\Ë[™^\Ý[™ÈØ\™HÛÝ[È™[XZ[™Y[˜Ú[™ÙYˆÙ\ÜÚ[ÛˆÛÝ[Ú[™ÙYœ›ÛHNMHÈNLH™XØ]\ÙH]˜HÙ\\˜][H\ÙYH]Y]Y[]WÜØY™XÛÜšÙ›ÝÈ›Ý\ˆ[Y\È™]ÙY[ˆNNŒŒˆ[™NNŒNÈH›Ý\ˆ]Y]›ÝÜÈ^XÝHXØÛÝ[›ÜˆHY™™\™[˜ÙH[™\™H[œ™[]YÈ\È\Ü^K[Û›H™[X\ÙK‚‚‹KKB‚ˆÈÈŒ‹LËLLË\ŒB‚‹H™[X\ÙHQˆŒ‹LËLLË\ŒX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLLØ‹H\Þ[Y[Ý]\ÎˆU‘X‹HØÛÜNˆXZÙHÚ\™YXÚØYÙ\È]˜Z[X›HÈ]™\žH[šÙYÝY[Ú[H\ÛÛ][™ÈÛ™K]Ë[Û™H\ÜÛÛœË™YY˜XÚË[™™[Z[™\œÈžHHÙ\ÜÚ[Û‰ÜÈXÝX[ÝY[‚‹HÙ^Hš[\Î‚ˆHX‹ÜÙ\ÜÚ[Û‹\ÝY[ËØˆHX‹ÛZ[šX\Yš\œÝ\ØÚY[[™ËØˆHX‹ÛZ[šX\XÛÝ\œÙK\™[Z[™\‹XÛÝ™\˜YÙKØˆHX‹ÛZ[šX\Y™YY˜XÚË[›ÝYšXØ][Û‹ØˆH\Ø\KÛZ[šX\ÜÝY[ËÖÜÝY[YKÊ˜ˆH\Ø\KÛZ[šX\Ù™YY˜XÚÜËÖÙ™YY˜XÚÒYKÜ›Ý]KØˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[[™ËXÛÛÜ™[˜][Û‹ÖÝXÚÙ]YKÜ›Ý]KØˆH\ÝËÛZ[šX\Yš\œÝ\ØÚY[[™Ë\ÝØˆH\ÝËÛZ[šX\Y™YY˜XÚË[›ÝYšXØ][Û‹\ÝØˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌLË[Z[šX\\Ú\™Y\XÚØYÙK\ÝY[\ØÛÜKYš^›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][H[™ÛÜœ™XÝ]™KˆH™[X\ÙH˜\œ›ÝÜÈ\™[]š\ÚX›H\ÜÛÛ‹™YY˜XÚË[™™[Z[™\ˆ™XYÈ›ÜˆØ\XÚ]K[Û™HÛ\ÜÙ\ÈÈHXÝX[Ù\ÜÚ[ÛˆÝY[Ú[Hœ›ØY[š[™È[\›˜[ØÚY[[™Ë\XÚØYÙH[YÚXš[]HÈ[˜ÛYH^XÚ]HÚ\™YXÚØYÙ\Ëˆ]Ù\È›Ý™]Üš]H]HÜˆÚ[™ÙHXÚØYÙH˜[[˜Ù\ËYÙ\ˆYXÝ[ÛœËš[˜[˜ÙHØ]\Ë][™[˜ÙK^\›Û[›ÚXÙ\Ë™XÙZ\ËÜˆš[˜[˜ÚX[YØÝ[Y[XØÙ\ÜË‚‹H™\šYšXØ][ÛŽˆ\TØÜš\Œˆ›ØÝ\ÙY\ÝËH‹\YÙHZ[šX\™[X\ÙH]Y][™H[NL‹\YÙH›ÙXÝ[ÛˆZ[\ÜËˆ™XY[Û›H™X[Y]HÚXÚÜÈÚÝÈZ\ÞH™XYHÚ]HÚ\™YXÚØYÙK›È™\™\]Z\Ú]H›ØÚÙ\‹ÛÜœ™XÝH]šX]Y]\™H\ÜÛÛœË[™™\›È›Ü™ZYÛˆ^XÚ]ÝY[ÎÈÝZ\È\È™XYH›Üˆ™[™]Ø[Ú]™\›È]\™H\ÜÛÛœÈ[œÝXYÙˆ[š\š][™ÈZ\ÞIÜÈØÚY[K‚‹H›Û˜XÚÈÚ[ˆŒ‹LËLLË\ŒØÝ[Y[][Û‹X[YÛ™YXYY™™ŒØX
+›ÙXÝ[Ûˆ[[YHØXNXØ™
+K‚‹H›ÙXÝ[ÛˆÛÛ[Z]ˆXMMLÙLLYYŽMLŽ˜ÍÍNYYYŒÍÙÙX‚‹H\Þ[Y[™\Ý[ˆ™[X\ÙKYØÈØ]H[™HNL‹\YÙHÙ\™\ˆZ[\ÜÙYÈLˆZYÜ˜][ÛœÈ™[XZ[ˆÝ\œ™[Ú]›Û™H\YYÈLˆ\ÈÛ›[™HÚ]™\›È™\Ý\ÎÈØYZ[‹ÛÙÚ[˜™]\›œÈŒˆ]][XØ]Y›ÙXÝ[ÛˆZ[šX\THÚXÚÜÈ™]\›ˆZ\ÞH\È™XYHÚ]Lyl#ù¥íŒMyb!ºd§È0­È9aly.ªú+ï¹c!y..ùki¹å'ûï&¹ã¢ùf"y«á{ï"ÝZ\ûï"X[™ÝZ\È\È™XYH›Üˆ™[™]Ø[Ú]Lyl#ù¥íŒMyb!ºd§È0­È9.#ˆ9ã¢úd¬9¯¡;ï"Z\Þ{ï"H9alyå*È™Z]\ˆ\ÈH™\™\]Z\Ú]H›ØÚÙ\‹‚‚‹KKB‚ˆÈÈŒ‹LËLLË\Œ‚‹H™[X\ÙHQˆŒ‹LËLLË\Œ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLLØ‹H\Þ[Y[Ý]\ÎˆU‘X‹HØÛÜNˆ™\Z\ˆH[XØ\™H]Z[\YÙHÙ\™\ˆXÝ[Ûˆ›Ý[™\žH\ØÛÝ™\™YÚ[H›ÙXÚ[™ÈHÜ\˜]ÜˆÓÔYH›ØÝ\ÙY™YÜ™\ÜÚ[ÛˆÝX\™[™X›\ÚHÛÛ\]HŒ\YÙH[XØ\™H˜Z[š[™ÈÓÔÚ]™X[[››Ý]YÞ\Ý[HØÜ™Y[œÚÝË‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹ØØ\™KÖÚYKÜYÙKÞˆH\ÝËØØ\™K\Ù\™\‹XXÝ[Û‹\ØY™]K\ÝØˆHXÚØYÙKšœÛÛ˜ˆHØÜËÔÓÔy¥fyb¨Kyaj9¢f9ë¨yméy/g9cì9k£9¥m9¤ãy/g9­`yê"Ëygîz+«yâbLŒŒÌLËš[ˆHØÜËØ\ÜÙ]ËÜÛÜy¥fyb¨Kyaj9¢f9ë¨yméy/g9cì9k£9¥m9¤ãy/gLŒŒÌLËØ[››Ý]YÊ˜ˆHØÜËùaj9¢f9ë¨y.&¹b¨yìîùîçù .ù/dú)á9b$‹LŒŒÌLË›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌLËY[XØ\™KXXÝ[Û‹\ØY™]KX[™\ÛÜ›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝÈ[™\ÛÛ]YˆH[[YHÚ[™ÙHÛ›H[Ý™\ÈHØ\™HXÝ[Ûˆ™Y\™XÝÙ\œ›Üˆ[\ˆÝ]ÚYHHYÙHÛÛ\Û™[ÛÈ™^šœÈØ[ˆÙ\šX[^™HXXÚÙ\™\ˆXÝ[Û‹ˆ]Ù\È›ÝÚ[™ÙHØÚ[X\Ë\›Z\ÜÚ[ÛœËÙ\šXÙH˜[Y][Û‹YÙH^[Ý]ØÚY[[™Ë][™[˜ÙKXÚØYÙ\Ë\™\ˆÙ][Y[^\›Û[›ÚXÙ\Ë™XÙZ\ËÜˆ^\Ý[™Èš[˜[˜ÙH]K‚‹H™\šYšXØ][ÛŽˆ\TØÜš\ˆ˜XÚÙ[™\ÝË[™H[NL‹\YÙH›ÙXÝ[ÛˆZ[\ÜËˆH›ÙXÝ[Û‹[[ÙH^]ÜšYÚ›ÝÈ\ÙYH[\Ü˜\žHÝY[[™Ø\™H›Ú™XÝÈÝX›Z]Ý]\ÈXÝ]˜][Û‹ÛÛ™šYÝ\˜][ÛˆØ]™KÝYÙH[‹QÒ\š\ÚÈ\™[\Ý[[X\žH\]K]]ÛX]XÈ[šÙY\ÚÈÜ™X][Û‹[™Ó‘HÛÛ\][Ûˆ]šY[˜ÙNÈ\œÚ\ÝY˜[Y\ÈX]ÚY^XÝ][ÛœËˆÛX[\Ø\È™\šYšYY]™\›È[\Ü˜\žHÝY[ËÙ\ÜÚ[ÛœË[™ØYÙ[Y[Ë[œËXÝ]š]Y\Ë[™\ÚÜËˆHÓÔ™[™\œÈ\ÈŒM[™ØØ\HYÙ\È
+‹ŒÌÈPŠNÈš\ÝX[ÛÛXÝ\ÚY]™]šY]È[™Ù^K]^^˜XÝ[Ûˆ\ÜË‚‹H›Û˜XÚÈÚ[ˆÙXˆ›ÙXÝ[ÛˆÛÛ[Z]˜MLNXÈ[[YYX]HÚ]\™[ÌÙŽXXÛÛZ[œÈÛ›HH[™XYK\™\\™Y˜]]™K[Z[šX\ÛÝ\˜ÙH™Yœ™\ÚÛˆÜÙˆŒŒÎ‚‹H›ÙXÝ[ÛˆÛÛ[Z]ˆØXNXØ™MMX™™MŒÙL˜Î˜N˜ŒØÍLMYMLÍ‚‹H\Þ[Y[™\Ý[ˆ˜XÚÝ\Z][Û‹\ØÚY[\—ÌŒ‹LËLL×ÌNLÍK™[\ÛÛ\]YÈLˆZYÜ˜][ÛœÈ\™HÝ\œ™[ÈHNL‹\YÙH›ÙXÝ[ÛˆZ[\ÜÙYÈLˆ\ÈÛ›[™HÚ]™\›È™\Ý\ÎÈØYZ[‹ÛÙÚ[˜™]\›œÈŒÈ[˜]][XØ]YØYZ[‹ØØ\™X™Y\™XÝÈÈÙÚ[ŽÈ™KÜÜÝXXÚ[™ËXÚØYÙK\™\‹\Ù][Y[[™›ÝXÝYYš[˜[˜ÙH˜\Ù[[™\ÈX]Ú^XÝNÈ[›Ý\ˆ[XØ\™H\Ú[™\ÜÈX›\È™[XZ[ˆ[\K‚‚‹KKB‚ˆÈÈŒ‹LËLLË\ŒŒÎB‚‹H™[X\ÙHQˆŒ‹LËLLË\ŒŒÎX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLLØ‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆ™Yœ™\ÚH˜]]™HZ[šX\š\ÝX[[™ÝXYÙH\›Ý[™HÙ™šXÚX[›ÜÜËÑÕPHÙÛË™[[Ý™H[\›˜[›ÛÝ]\Ý[HÛÜK[™™\Z\ˆ[™YHÝY™ˆÙX\˜Ú^\šY[˜Ù\ÈÛÈ\[™ËÙ^X›Ø\™ÛÛ™š\›X][Û‹^XÚ]]Y\žKÛX\š[™Ë[™Ý™\›\[™È™\]Y\ÝÈ™Z]™HÛÛœÚ\Ý[K‚‹HÙ^Hš[\Î‚ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[Ø\ÜÙ]ËØ›ÜÜË[ÙÛËœ™ØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[Ø\šœÛÛ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[Ø\ÞÜØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÊŠ‹Ê‹žÝÞ[ÞÜËœßXˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[Ô‘PQQK›YˆHØÜš\ËØ]Y][Z[šX\\™[X\ÙKØˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌLË[Z[šX\]ZK\ÙX\˜ÚXœ˜[™\™Yœ™\Ú›YˆHØÜËùl#ùê"ùn£ù.#¹k­ºeoùêëùaj9ê"ù¢f9ë¨z)á9b$‹LŒŒÌK›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝÈ[™ÛY[\ÚYHÛ›Kˆ\È™[X\ÙHÙ\È›ÝÚ[™ÙHT\Ë\›Z\ÜÚ[ÛœËØÚY[\Ë][™[˜ÙKXÚØYÙ\Ëš[˜[˜ÙK›ÝYšXØ][ÛœË]X˜\ÙHØÚ[XKÜˆÙ\™\ˆ\Ú[™\ÜÈÙÚXËˆHXZ[ˆ™[XZ[š[™Èš\ÚÈ\Èš\ÝX[Ú[\˜XÝ[Ûˆ˜\šX[˜ÙHÛˆ\ÚXØ[ÙPÚ]]šXÙ\ÎÈ[\ÞYYH]HÛÝ[›Ý™H™[ØYY\š[™ÈÛ™H]•ÛÛÈ\ÜÈ™XØ]\ÙHH^\Ý[™È™[[ÝH™\]Y\Ý[YYÝ]ÛÈ^\šY[˜ÙK]™\œÚ[ÛˆÙX\˜Ú™YÜ™\ÜÚ[Ûˆ™[XZ[œÈ™\]Z\™Y™Y›Ü™H\ØY‚‹H™\šYšXØ][ÛŽˆ[Z[šX\˜]˜TØÜš\Þ[^[™”ÓÓˆ\œÚ[™È\ÜÎÈH‹\YÙH™[X\ÙH]Y]\ÜÙ\ÈÚ]\Q›ÙXÝ[ÛˆËÙÛË[Ü˜[™ÙH˜]šYØ][Û‹Ý[™\™ÙX\˜ÚÛÛ›ÛËÝ[K\™\]Y\Ý›ÝXÝ[Û‹[ØÚÈÙÚ[ˆÙ™‹T“ÚXÚÚ[™ÈÛ‹ÛÝ\˜ÙHX\ÈÙ™‹[™™\›È\œ›ÜœÎÈLH›ØÝ\ÙYØÚY[[™ËÝXXÚ\ˆ\ÝË\TØÜš\H[NL‹\YÙH›ÙXÝ[ÛˆZ[Y™ˆÚXÚÜË[™ÙPÚ]]•ÛÛÈÛÛ\[][ÛˆÚ]\œ›ÜœËÌØ\›š[™ÜÈ\ÜËˆÙÚ[ˆš\ÝX[[œÜXÝ[ÛˆÛÛ™š\›\ÈHÙ™šXÚX[ÙÛÈ[™Ü˜[™ÙKØÚ\˜ÛØ[ÙÜ˜^H[]H™[™\ˆÛÜœ™XÝK‚‹H›Û˜XÚÈÚ[ˆŒ‹LËLLË\ŒŒÎ
+˜MLNX
+K‚‚‹KKB‚ˆÈÈŒ‹LËLLË\ŒŒÎ‚‹H™[X\ÙHQˆŒ‹LËLLË\ŒŒÎ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLLØ‹H\Þ[Y[Ý]\ÎˆU‘X‹HØÛÜNˆYH\ÛÛ]Y[\›˜[[XØ\™HÛÜšÜÜXÙH›ÜˆÙ[XÝX›HÝY[ËÙ\šXÙHØÛÜK™\ÜÛœÚXš[]HX[KÝYÙH[œË]šY[˜ÙKX˜\ÙY\]\Ëš\ÚÈÛÛ›ÛË[™\ÚÜÈÚ]Ý]Ú[™Ú[™ÈXXÚ[™ÈÜˆš[˜[˜ÙHÛÜšÙ›ÝÜË‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹ØØ\™KÊ˜ˆHX‹ØØ\™KXXØÙ\ÜËØˆHX‹ØØ\™K[X[˜YÙ[Y[ØˆHX‹ØØ\™K]˜[Y][Û‹ØˆHš\ÛXKÛZYÜ˜][ÛœËÌŒŒÌLÌMŒØYØØ\™WÛX[˜YÙ[Y[ØÛÜ™KÛZYÜ˜][Û‹œÜ[ˆH\ÝËØØ\™K]˜[Y][Û‹\ÝØˆH\ÝËØØ\™K[ZYÜ˜][Û‹\ØY™]K\ÝØˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌLËY[XØ\™KXÛÜ™K]ÛÜšÜÜXÙK›YˆHØÜËùaj9¢f9ë¨y.&¹b¨yìîùîçù .ù/dú)á9b$‹LŒŒÌLË›YˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][H[™\ÛÛ]YˆHZYÜ˜][ÛˆYÈÛ›HÐT‘H[[\ËÛÜšÜÜXÙHXØÙ\ÜËš]™H™]ÈØ\™HX›\Ë›Ü™ZYÛˆÙ^\Ë[™[™^\ËˆHØ\™HÙ\šXÙH™]™\ˆÜš]\ÈXÚØYÙ\ËXÚØYÙH˜[œØXÝ[ÛœËÙ\ÜÚ[ÛœË][™[˜ÙK\™\ˆÙ][Y[^\›Û[›ÚXÙ\Ë™XÙZ\ËÜˆ\Ú[™\ÜÈXØÛÝ[Ëˆ\™[X›XØ][Ûˆ[™]]ÛX]XÈ[Ý\ÝY[XÝ]˜][Ûˆ\™H›Ý[˜ÛYY‚‹H™\šYšXØ][ÛŽˆš\ÛXH˜[Y]K\TØÜš\H˜XÚÙ[™™YÜ™\ÜÚ[ÛœËZYÜ˜][Ûˆ›Û‹Z[\Ú[Ûˆ\ÜÙ\[ÛœËY™ˆÚXÚÜË^XÝ[›š[™ËYØÝ[Y[Þ[˜Ë[™ÛÈ[NL‹\YÙH›ÙXÝ[ÛˆZ[È\ÜËˆ™XY[Û›H›ÙXÝ[Ûˆ˜\Ù[[™H™XÛÜ™ÈÝY[ËÎXÚØYÙ\ËNMHÙ\ÜÚ[ÛœËMÌ][™[˜Ù\ËÍ\™\ˆÙ][Y[ËXÚØYÙKÛYÙ\ˆZ[]H[™[[Ý[Ý[Ë\È\Ú\ÈÙˆ›ÝXÝYš[[™Ë™XÙZ\^\›Û\X›\Ú[™\Ú[™\ÜÈXØÛÝ[ÈÙ][™ÜËˆH™]ÈZYÜ˜][Ûˆ\ÈÛÛ™š\›YY[™[™È™Y›Ü™H\ÞK‚‹H›Û˜XÚÈÚ[ˆ›ÙXÝ[ÛˆÛÛ[Z]ÙX˜˜˜ÍŽYMŒÍÙX™LYÙLØ™ÍXX™Í˜™Y›Ü™HŒ‹LËLLË\ŒŒÎ‚‚‹KKB‚ˆÈÈŒ‹LËLLË\ŒŒÍÂ‚‹H™[X\ÙHQˆŒ‹LËLLË\ŒŒÍØ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLLØ‹H\Þ[Y[Ý]\ÎˆU‘X‹HØÛÜNˆYH›ÛK\ÜXÚYšXÈXXÚ\ˆ[Øš[HÛÜšØ™[˜ÚÈH˜]]™HZ[šX\Ú]]\™H]˜Z[Xš[]HXZ[[˜[˜ÙKX]™KÜ™\ØÚY[H[žK\œÛÛ˜[^[œÙHÝX›Z\ÜÚ[Û‹ÜÝ]\Ë[™[ÛHXXÚ[™È\ÝÜžKÚ[H™\Ù\š[™ÈH^\Ý[™ÈÝÛ‹\ØÚY[K][™[˜ÙK[™™YY˜XÚÈÛÜšÙ›ÝË‚‹HÙ^Hš[\Î‚ˆH\Ø\KÛZ[šX\ÜÝY™‹ÝXXÚ\‹Ê˜ˆHX‹ÛZ[šX\]XXÚ\‹]ÛÜšØ™[˜ÚØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹]XXÚ\‹J˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹ZÛYKÊ˜ˆH\ÝËÛZ[šX\]XXÚ\‹]ÛÜšØ™[˜Ú\ÝØˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌLË[Z[šX\]XXÚ\‹[[Øš[K]ÛÜšØ™[˜Ú›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][H[™ÛÛœÝ˜Z[™YˆXXÚ\ˆ[™Ú[È™\]Z\™HHPPÒTˆÝY™ˆÙ\ÜÚ[ÛˆÚ]H[šÙYXXÚ\ˆ›Ùš[Kˆ]˜Z[Xš[]HÜš]\È\™H[Z]YÈHXXÚ\‰ÜÈÝÛˆ™^Ì^\ÎÈX]™KÜ™\ØÚY[H™[XZ[œÈHXÚÙ][™™]™\ˆÚ[™Ù\ÈHÙ\ÜÚ[Ûˆ\™XÝNÈ^[œÙ\È™[XZ[ˆHXXÚ\‰ÜÈÝÛˆÛZ[\È[™™\Ù\™H^\Ý[™Èš[K\XØ]K]Y]\›Ý˜[[™^[Y[[\ÎÈ\ÝÜžH\È™XY[Û›H[™^ÛY\È^\›Û[[Ý[Ë‚‹H™\šYšXØ][ÛŽˆŽ›ØÝ\ÙYXXÚ\‹ÜØÚY[[™ËØÛÛ™›XÝØ]]Û›ÝYšXØ][Ûˆ\ÝË\TØÜš\[Z[šX\˜]˜TØÜš\Þ[^H‹\YÙH™[X\ÙH]Y]^XÝ[›š[™ËYØÝ[Y[Þ[˜ËY™ˆÚXÚÜË™XY[Û›H™X[Y]H™XÛÛ˜Ú[X][Û‹[™ØØ[Ü›ÙXÝ[ÛˆNLK\YÙHZ[È\ÜËˆ›ÙXÝ[Ûˆ\ÞYY]˜ÌYNY˜Ú]LHZYÜ˜][ÛœÈÝ\œ™[LˆÛ›[™KX[Œ[™Û™H™[Z[™\ˆÜ›Û‹ˆQRSˆÙ]ÈÈ[™[˜]][XØ]YØ[\œÈÙ]Hœ›ÛH[›Ý\ˆXXÚ\‹[Û›H™XY[™Ú[ËÚ[HH^\Ý[™ÈQRSˆÝY™‹\ØÚY[H[™Ú[™[XZ[œÈŒˆ›ÈXXÚ\ˆÙ\ÜÚ[ÛˆÜˆ\Ú[™\ÜÈÜš]HØ\ÈÜ™X]Y™XØ]\ÙHXÝ]™HXXÚ\ˆZ[šX\š[™[™ÜÈ™[XZ[ˆ‚‹H›Û˜XÚÈÚ[ˆŒ‹LËLLË\ŒŒÍ˜‚‚‹KKB‚ˆÈÈŒ‹LËLLË\ŒŒÍ‚‚‹H™[X\ÙHQˆŒ‹LËLLË\ŒŒÍ˜‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLLØ‹H\Þ[Y[Ý]\ÎˆU‘X‹HØÛÜNˆÚ[™ÙHHÝY™‹[Z[šX\ØÚY[[™ÈÙ[\ˆœ›ÛHH™\ÝšXÝYK\ÝY[][[Ûˆ\Ý[È[ˆ[\ÝY[ØÚY[[™È[žKÚ[H™]Z[š[™ÈHHÝY[È\È[ˆÜ\˜][Û˜[][[Ûˆš[\ˆ˜]\ˆ[ˆ[ˆ[YÚXš[]H[K‚‹HÙ^Hš[\Î‚ˆHX‹ÛZ[šX\Yš\œÝ\ØÚY[[™ËØˆH\Ø\KÛZ[šX\ÜÝY™‹Ùš\œÝ\ØÚY[[™ËÜ›Ý]KØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹Yš\œÝ\ØÚY[[™ËÊ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹ZÛYKÊ˜ˆH\ÝËÛZ[šX\Yš\œÝ\ØÚY[[™Ë\ÝØˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌLË[Z[šX\X[\ÝY[\ØÚY[[™Ë›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][H[™ÛÛœÝ˜Z[™Yˆ[ÝY[È™XÛÛYHš\ÚX›H[™Ø[ˆ[\ˆÛÛÜ™[˜][Û‹[˜ÛY[™ÈÝY[ÈÚ]^\Ý[™È]\™H\ÜÛÛœÈÜˆZ\ÜÚ[™ÈXÚØYÙ\Ëˆš[˜[Ù\ÜÚ[ÛˆÜš]\ÈÝ[™\]Z\™HQRSˆ\›Z\ÜÚ[Ûˆ[™H[˜Ú[™ÙYXÚØYÙKš[˜[˜ÙHØ]K]X[YšXØ][Û‹]˜Z[Xš[]KÛÛ™›XÝ\XØ]K™]šY]Ë]ÚÙ[‹ÙXÛÛ™XÛÛ™š\›X][Û‹[™˜[œØXÝ[ÛˆÚXÚÜËˆÜ™X][™ÈHÛÛÜ™[˜][ÛˆXÚÙ]Ù\È›Ýž\\ÜÈØÚY[[™È™\™\]Z\Ú]\Ë‚‹H™\šYšXØ][ÛŽˆŽ›ØÝ\ÙYØÚY[[™ËØÛÛ™›XÝØ]]Û›ÝYšXØ][Ûˆ\ÝË\TØÜš\Z[šX\˜]˜TØÜš\Þ[^HŒ‹\YÙH™[X\ÙH]Y]^XÝ[›š[™ËYØÝ[Y[Þ[˜ËY™ˆÚXÚÜË[™ØØ[Ü›ÙXÝ[ÛˆNË\YÙHZ[È\ÜËˆ›ÙXÝ[Ûˆ\ÞYY]˜LŒXØÚ]LHZYÜ˜][ÛœÈÝ\œ™[LˆÛ›[™KX[Œ[™^XÝHÛ™H™[Z[™\ˆÜ›Û‹ˆ]][XØ]YQRSˆÑU™\ÜÈÝ[H][[Û‹MHš\œÝÍ™[™]Ø[ÎHØÚY[Yˆ™XYKˆ™\]Z\š[™È™\™\]Z\Ú]\Ë™]\ØX›HXÚÙ]Ë[™Ø[”ØÚY[O]YXÈHØÚY[YØÛÜH™]\›œÈ[ˆ^\Ý[™È]\™KXÛÝ\œÙHÝY[[™[˜]][XØ]YÑU™]\›œÈKˆ›È›ÙXÝ[ÛˆXÚÙ]ÜˆÙ\ÜÚ[ÛˆØ\ÈÜ™X]Y\š[™È™\šYšXØ][Û‹‚‹H›Û˜XÚÈÚ[ˆŒ‹LËLLË\ŒŒÍX‚‚‹KKB‚ˆÈÈŒ‹LËLLË\ŒŒÍB‚‹H™[X\ÙHQˆŒ‹LËLLË\ŒŒÍX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLLØ‹H\Þ[Y[Ý]\ÎˆU‘X‹HØÛÜNˆYHÛÛ\]HÝY™‹[Z[šX\ØÚY[[™ÈÙ[\ˆ›ÜˆÝY[ÈÚÈ]™H\ØX›HXÝ]™HXÚØYÙ\È]›È]\™H\ÜÛÛœË\Ý[™ÝZ\Úš\œÝØÚY[[™Èœ›ÛH™[™]Ø[ØÚY[[™Ë™\Z\ˆH9£¤º+ïº) y¬`˜XÚÙ]XØ]YÛÜžHØ\[™[ÝÈ[ˆQRSˆÈÜ™X]HÛ™HÜˆKLLˆÙYZÛH\ÜÛÛœÈ›ÝYÚH^\Ý[™È™]šY]ËØÛÛ™š\›X][Ûˆ[™Ú[™K‚‹HÙ^Hš[\Î‚ˆHX‹ÛZ[šX\Yš\œÝ\ØÚY[[™ËØˆHX‹ÛZ[šX\]XÚÙ][™]Ë\Ù\ÜÚ[Û‹ØˆHX‹ÛZ[šX\\ØÚY[[™ËXÛÛÜ™[˜][Û‹X›Ø\™ØˆH\Ø\KÛZ[šX\ÜÝY™‹Ùš\œÝ\ØÚY[[™ËÜ›Ý]KØˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[[™ËXÛÛÜ™[˜][Û‹ÖÝXÚÙ]YKÛ™]Ë\Ù\ÜÚ[Û‹Ü›Ý]KØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹Yš\œÝ\ØÚY[[™ËÊ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹ZÛYKÊ˜ˆH\ÝËÛZ[šX\Yš\œÝ\ØÚY[[™Ë\ÝØˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌLË[Z[šX\Yš\œÝ\ØÚY[[™ËXÙ[\‹›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYÚ]ÛÛœÝ˜Z[™Yˆ\È™[X\ÙHÜ™X]\È™X[Û\ÜÙ\Ë[œ›ÛY[ËÙ\ÜÚ[ÛœËXÚÙ]ÛÛ\][Ûˆ™XÛÜ™Ë[™]Y]ÙÜÈÛ›HY\ˆQRSˆ™]šY]È[™ÙXÛÛ™ÛÛ™š\›X][Û‹ˆÔÈØ[ˆš[™ÝY[È[™Ü™X]KÜ™]\ÙHHØÚY[[™ÈXÚÙ]]Ø[››ÝÜš]H\ÜÛÛœËˆ^\Ý[™ÈXÚØYÙHš[˜[˜ÙHØ]\Ë˜[[˜ÙHÚXÚÜËXXÚ\ˆ]X[YšXØ][Û‹Ø]˜Z[Xš[]KÝY[ÝXXÚ\‹Ü›ÛÛHÛÛ™›XÝÚXÚÜË\XØ]H›ÝXÝ[Û‹Ù\šX[^˜X›H˜[œØXÝ[ÛœË™\]Y\Ý›ÝYšXØ][ÛœË[™ÛÝ\œÙH™[Z[™\ˆÜ›Ûˆ™[XZ[ˆ]]Üš]]]™K‚‹H™\šYšXØ][ÛŽˆÈ›ØÝ\ÙYØÚY[[™ËØ]]Û›ÝYšXØ][Ûˆ™YÜ™\ÜÚ[Ûˆ\ÝË\TØÜš\Z[šX\˜]˜TØÜš\Þ[^™[X\ÙH]Y]Ú]ŒˆÛÛ\]HYÙ\Ë^XÝ[›š[™ËYØÝ[Y[Þ[˜ËY™ˆÚXÚÜË[™ØØ[Ü›ÙXÝ[ÛˆNË\YÙHZ[È\ÜËˆ›ÙXÝ[Ûˆ\ÞYY]XLYØŽÚ]LHZYÜ˜][ÛœÈÝ\œ™[LˆÛ›[™KX[Œ[™^XÝHÛ™H™[Z[™\ˆÜ›Û‹ˆ]][XØ]YQRSˆÑU™]\›œÈŒÚ]Ý[Kš\œÝK™[™]Ø[Œ™XYH›ØÚÙYKÛ™H™]\›™Y›ÝÈ›Üˆ[Z]LX[™Ø[”ØÚY[O]YXÈHØ[YH[™Ú[Ú]Ý]HÝY™ˆÚÙ[ˆ™]\›œÈKˆ›È›ÙXÝ[ÛˆXÚÙ]ÜˆÙ\ÜÚ[ÛˆØ\ÈÜ™X]Y\š[™È™\šYšXØ][Û‹‚‹H›Û˜XÚÈÚ[ˆŒ‹LËLL‹\ŒŒÍ‚‚‹KKB‚ˆÈÈŒ‹LËLL‹\ŒŒÍ‚‹H™[X\ÙHQˆŒ‹LËLL‹\ŒŒÍ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLL˜‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆ\™[ˆH˜]]™HZ[šX\›ÜˆÙPÚ]™]šY]ÈžH\ØX›[™È˜XÚÙY[ØÚÈÙÚ[‹[›š[™ÈH™\šYšYY˜\ÙHXœ˜\žK\ØX›[™ÈÛÝ\˜ÙK[X\\ØYY[™ÈH™\X]X›H™[X\ÙH]Y][™›ÙXÚ[™ÈHš]˜XÞKÜ™]šY]Ù\‹Ý\ØYÜÝX›Z\ÜÚ[ÛˆÚXÚÛ\Ý›Üˆ™\œÚ[ÛˆKŒŒ‚‹HÙ^Hš[\Î‚ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[Ý][ËØÛÛ™šYËšœØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[Ü›Ú™XÝ˜ÛÛ™šYËšœÛÛ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[Ô‘PQQK›YˆHØÜš\ËØ]Y][Z[šX\\™[X\ÙKØˆHØÜËùl#ùê"ùn£ù«hùo#ùcäyn ùaá¹i!ù.#¹k¨y¨.9®!yceKLŒŒÌL‹›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌL‹[Z[šX\\™[X\ÙK\™XY[™\ÜË›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÚ[™Ù\ÈZ[šX\XÚØYÚ[™ËÜ™]šY]ÈY˜][È[™ØÝ[Y[][ÛˆÛ›Kˆ›ÙXÝ[ÛˆTK\™[ÜÝY™ˆ]][XØ][Û‹\Ú[™\ÜÈ›Ý]\Ë]X˜\ÙK›ÝYšXØ][Ûˆ[]™\žK[™Ù\™\ˆ[[YH\™H[˜Ú[™ÙYˆ]™[Ü\œÈ]\Ý^XÚ]HXZÙH[žH[\Ü˜\žHØØ[[ØÚÈÚ[™ÙH[™™\ÝÜ™H]™Y›Ü™H\ØY‚‹Hš]˜XÞH[ZÙNˆÛÛXÝÝÛ™\‹[XZ[Û™K[™™YÚ\Ý\™YY™\ÜÈ\™HÛÛ™š\›YYˆHÝÛ™\‰ÜÈ[š]X[[™Yš[š]K\™][[Ûˆ™Y™\™[˜ÙH\È™XÛÜ™Y]\È›Ý\›Ý™Y\ÈÝX›Z]YÛÜ™[™È™XØ]\ÙHÛÙH™]šY]È›Ý[™›È[š]™\œØ[\ÚXØ[Yš[KÙš[˜[˜ÙKØ]Y]\™Y[]H]ÈZ[š[][K[™XÙ\ÜØ\žH\Ú[™\ÜËÝ\ØY\š[ÙÈ[™XØÛÝ[[™Ë\™XÛÜ™Û\ÜÚYšXØ][Ûˆ™[XZ[ˆ™[X\ÙHØ]\Ë‚‹H™\šYšXØ][ÛŽˆ]]ÛX]Y™[X\ÙH]Y]\ÜÙ\ÈÚ]\QÛÜœ™XÝŒHÛÛ\]HYÙ\Ë˜\ÙHXœ˜\žHËŒMKŒ‹›ÙXÝ[ÛˆÈTKT“ÚXÚÚ[™ÈÛ‹ÛÝ\˜ÙHX\ÈÙ™‹[ØÚÈÙÚ[ˆÙ™‹[™™\›È\œ›ÜœËˆZ[šX\˜]˜TØÜš\Ò”ÓÓˆÞ[^\TØÜš\Y™ˆÚXÚÜË^XÝ[›š[™ËYØÝ[Y[Þ[˜Ë[™H[N‹\YÙH›ÙXÝ[ÛˆZ[[ÛÈ\ÜËˆ^\šY[˜ÙK]™\œÚ[Ûˆ\™[ÜÝY™ˆ™YÜ™\ÜÚ[Ûˆ™[XZ[œÈY\ˆ\ØY‚‹H›Û˜XÚÈÚ[ˆŒ‹LËLL‹\ŒŒÌØ‚‚‹KKB‚ˆÈÈŒ‹LËLL‹\ŒŒÌÂ‚‹H™[X\ÙHQˆŒ‹LËLL‹\ŒŒÌØ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLL˜‹H\Þ[Y[Ý]\ÎˆU‘X‹HØÛÜNˆ›ÝYžH\™[ÈÚ[ˆHXXÚ\ˆš\œÝX›\Ú\ÈY\‹XÛ\ÜÈ™YY˜XÚÈœ›ÛHZ]\ˆ\ÚÝÜÜˆÝY™ˆZ[šX\Ú][ˆ[™\[™[\™[]]Üš^˜][ÛˆXÝ[Ûˆ[™^XÚ]ÛÛœÙ[Z[[XØÛÝ[[™È\Ü]HÚ\š[™ÈHÙ™šXÚX[Ù\šXÙKXÛÛ\][Ûˆ[\]HÚ][›ÚXÙ\Ë‚‹HÙ^Hš[\Î‚ˆHX‹ÛZ[šX\Y™YY˜XÚË[›ÝYšXØ][Û‹ØˆHX‹ÝÙXÚ][Z[šX\\Ù\šXÙK\ÝXœØÜš\[Û‹ØˆHX‹ÛZ[šX\\ÝXœØÜš\[Û‹XÛÛ™šYËØˆHX‹ÛZ[šX\\™[Z[™\‹X][[Û‹ØˆH\Ø\KÝXXÚ\‹ÜÙ\ÜÚ[ÛœËÖÚYKÙ™YY˜XÚËÜ›Ý]KØˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[KÖÜÙ\ÜÚ[Û’YKÙ™YY˜XÚËÜ›Ý]KØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÚÛYKÚÛYKšœØˆHØÜš\ËÜÙ[™[Z[šX\\Ù\šXÙK[›ÝYšXØ][ÛœËØˆH\ÝËÝÙXÚ][Z[šX\\ÝXœØÜš\[Û‹\ÝØˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌL‹[Z[šX\Y™YY˜XÚË\X›\ÚY[›ÝYšXØ][Û‹›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][H[™ÛÛœÝ˜Z[™YˆÛ›HHš\œÝ™YY˜XÚÈX›XØ][Ûˆ]Y]Y\ÈHY\ÜØYÙNÈY]ÈÈ›Ý›ÝYžHYØZ[‹ˆÝY[™\ÛÛ][ÛˆÛÝ™\œÈ\™XÝÛ™K]Ë[Û™K[™[œ›ÛYÛ\ÜÈÝY[ËÚ[H\™[[]™\žH™[XZ[œÈ\›Z\ÜÚ[Û‹H[™ÛÛœÙ[YØ]Yˆ[›ÚXÙH[™™YY˜XÚÈÚ\™HÛ™HÙ™šXÚX[[\]HQ]ÙY\Ù\\˜]HÛÛœÙ[Z[[XÚÙ]Ë™]™[[™È[›ÚXÙH]]Üš^˜][Ûˆœ›ÛHÚ[[H[˜X›[™È™YY˜XÚÈ[]™\žK‚‹H™\šYšXØ][ÛŽˆÙ™šXÚX[Ø]YÛÜžH[™Ù^]ÛÜ™T\ÈÙ\™HÚXÚÙYÈ›ÈYXØ]Y™YY˜XÚÈ[\]H^\ÝÈ[™\XØ]HY][ÛˆÙˆ9§#yb¨yk£9¢$:`&¹çéXØ\È™Z™XÝY\È[™XYHYYˆ\TØÜš\š[™HX\[™ËÜÝY[\™\ÛÛ][Û‹ØÛÛœÙ[Z[[\ÝËZ[šX\[™Ú[Þ[^Y™ˆÚXÚË[™ØØ[Ü›ÙXÝ[ÛˆN‹\YÙHZ[È\ÜÙYˆ›ÙXÝ[Ûˆ\ÞYY]YÙÎMXÚ]LHZYÜ˜][ÛœÈÝ\œ™[LˆÛ›[™KX[ŒÛ™HÜ›Û‹[™ÎÛÛ™šYÝ\™Y[šY\ÈXÜ›ÜÜÈÜ›Ý\ÈÚ^™YË‹‹[™Kˆ™Y›Ü™H]]Üš^˜][Ûˆ\™HØ\È›ÈX\›š[™È]Y]Üˆ™YY˜XÚÈÝ]›Þ›ÝËˆY\ˆ^XÚ]X\›š[™ÈÛÛœÙ[Û™HX\šÙY™YY˜XÚÈ\ÝÙ[\ÈÑS•Ú]ÛÛœÙ[Ü›Ý\X\›š[™Ø›È™]žKÙ˜Z[\™K[™›È[›ÚXÙKXÛÛœÙ[\ÙNÈš[ÈÛÛ™š\›YYHÙPÚ]Ø\™\œš]™Y[™\Ü^YY›Ü›X[K‚‹H›Û˜XÚÈÚ[ˆŒ‹LËLL‹\ŒŒÌ˜‚‚‹KKB‚ˆÈÈŒ‹LËLL‹\ŒŒÌ‚‚‹H™[X\ÙHQˆŒ‹LËLL‹\ŒŒÌ˜‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLL˜‹H\Þ[Y[Ý]\ÎˆU‘X‹HØÛÜNˆÜ]™\]Y\Ý[œZY[›ÚXÙK[™™XÙZ\ÝXœØÜš\[Ûˆ]]Üš^˜][Ûˆ[È›Ý\ˆ^XÚ]Û™K][\]HXÝ[ÛœÈY\ˆ™X[\Û™H]šY[˜ÙHÚÝÙYÙPÚ]™]\›™YÛ›HHš\œÝ[\]Hœ›ÛHXXÚÛË][\]HÜ›Ý\‚‹HÙ^Hš[\Î‚ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÚÛYKÚÛYKšœØˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌL‹[Z[šX\\™\]Y\ÝYš[˜[˜ÙK[›ÝYšXØ][ÛœË›YˆHØÜËùl#ùê"ùn£ù.#¹k­ºeoùêëùaj9ê"ù¢f9ë¨z)á9b$‹LŒŒÌK›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ[]™\žK[\]HQË˜XÚÙ[™ÛÛœÙ[]Y]]Y]YZ[™Ëš[˜[˜ÙKÜ™\]Y\ÝÜš]\Ë[™Ü›Ûˆ™Z]š[Üˆ\™H[˜Ú[™ÙYˆH\™[›ÝÈXZÙ\ÈÛ™HÛX\ˆÛXÚÈ\ˆÙ\šXÙH[\]HÛÈHÙPÚ]™\Ý[\È[˜[XšYÝ[Ý\Ë‚‹H™\šYšXØ][ÛŽˆ›ÙXÝ[ÛˆÛÛœÙ[]Y]š\œÝÚÝÙY™\]Y\Ý[™[›ÚXÙHXØÙ\Ú[Hš[˜[˜ÙH[™™XÙZ\Ù\™HXœÙ[œ›ÛHÜ›Ý\YØ[˜XÚÜËˆY\ˆHÜ]RKH\Ý\™[™XÛÜ™Y™\]Y\Ý[œZYK[›ÚXÙH‹[™™XÙZ\HXØÙ\Y][Ý\ËˆZ[šX\Þ[^Y™ˆÚXÚË[™ØØ[Ü›ÙXÝ[ÛˆN‹\YÙHZ[È\ÜÙYÈ›ÙXÝ[Ûˆ\ÞYY]Œ™LÙ˜Ú]LHZYÜ˜][ÛœÈÝ\œ™[Û™HÜ›Û‹LˆÛ›[™K[™X[Œˆ›Ý\ˆÛX\›HX\šÙY\ÝÝ]›Þ›ÝÜÈ[ˆÙ[ÝXØÙ\ÜÙ[H›ÝYÚH›ÙXÝ[ÛˆÙ[™\ˆÚ]ÑS•™]žH˜Z[\™H[™ÚÚ\ÈÛÈ[œ™[]Y›ËXÛÛœÙ[›ÝÜÈ™[XZ[™YØZ][™Ëˆš[ÈÝ\YYÛ™HØÜ™Y[œÚÝÈÛÛ™š\›Z[™È[›Ý\ˆÙPÚ]Ù\šXÙH›ÝYšXØ][ÛœÈ™[™\™YÚ]H^XÝY™\]Y\ÝXY[™K[›ÚXÙKÝY[[[Ý[XØÛÝ[[™]HšY[Ë‚‹H›Û˜XÚÈÚ[ˆŒ‹LËLL‹\ŒŒÌX‚‚‹KKB‚ˆÈÈŒ‹LËLL‹\ŒŒÌB‚‹H™[X\ÙHQˆŒ‹LËLL‹\ŒŒÌX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLL˜‹H\Þ[Y[Ý]\ÎˆU‘X‹HØÛÜNˆÛÛ\]HÙ™šXÚX[ÙPÚ]ÝXœØÜš\[Ûˆ›ÝYšXØ][ÛœÈ›Üˆ\™[]š\ÚX›H™\]Y\ÝÝ]\ÈÚ[™Ù\Ë[œZY[›ÚXÙ\Ë\ÜÝYY[›ÚXÙ\Ë[™š[˜[˜ÙKX\›Ý™Y™XÙZ\ÎÈYÜ›Ý\Y\™[ÛÛœÙ[XÝ[ÛœË›Ý[™Y[]™\žK[™Ú\™YÝY™ˆÛÛœÙ[X][[Ûˆ[Ûš]Üš[™Ë‚‹HÙ^Hš[\Î‚ˆHX‹ÝÙXÚ][Z[šX\\Ù\šXÙK\ÝXœØÜš\[Û‹ØˆHØÜš\ËÜÙ[™[Z[šX\\Ù\šXÙK[›ÝYšXØ][ÛœËØˆHX‹ÜÝY[\\™[Xš[[™ËØˆHX‹Ü\™[\™XÙZ\X\›Ý˜[ØˆHX‹ÛZ[šX\\™[Z[™\‹X][[Û‹ØˆH\Ø\KØYZ[‹ÛÜËÜ\™[\™\]Y\ÝËÖÚYKÜ›Ý]KØˆH\Ø\KÛZ[šX\ÜÝY™‹Ü\™[\™\]Y\ÝËÖÚYKÜ›Ý]KØˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[KÖÜÙ\ÜÚ[Û’YKÊ˜ˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[[™ËXÛÛÜ™[˜][Û‹ÖÝXÚÙ]YKÊ˜ˆHÜËÜÙ\™\‹ÜØÜš\ËÜÙ]\ÛZ[šX\ØÛÝ\œÙWÜ™[Z[™\—ØÜ›Û‹œÚˆH\ÝËÝÙXÚ][Z[šX\\ÝXœØÜš\[Û‹\ÝØˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌL‹[Z[šX\\™\]Y\ÝYš[˜[˜ÙK[›ÝYšXØ][ÛœË›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][H[™ÛÛœÝ˜Z[™Yˆ\Ú[™\ÜÈ]™[ÈÛ›H[œ]Y]YH™\ÝYY™›Ü›ÝYšXØ][ÛœÈ›ÜˆXÝ]™H[šÙY\™[ÈÚ]X]Ú[™È\›Z\ÜÚ[ÛœËˆ[]™\žH™\]Z\™\È[\ÙYÛÛœÙ[›ÜˆH^XÝÙ™šXÚX[[\]KÛZ[\È›ÝÜÈ™Y›Ü™HÙ[™[™Ë™]šY\È˜[œÚY[˜Z[\™\È][ÜÝ™YH[Y\Ë[™ÚÚ\ÈÝ[H›ÝÜÈY\ˆÙ]™[ˆ^\Ëˆ™XÙZ\Y\ÜØYÙ\È™\]Z\™HÛÛ\]Yš[˜[˜ÙH\›Ý˜[ˆ›ÈØÚ[XHÜˆ^\Ý[™È\Ú[™\ÜÈÜš]H[HÚ[™Ù\Ë‚‹H™\šYšXØ][ÛŽˆ\TØÜš\Ú^ÙPÚ]X\[™ËÜ][ÝH\ÝËZYÚš[[™ËØ\›Ý˜[™YÜ™\ÜÚ[Ûˆ\ÝËZ[šX\Þ[^Ü›ÛˆÚ[Þ[^Y™ˆÚXÚË[™H[N‹\YÙHZ[\ÜÙYØØ[H[™[ˆ›ÙXÝ[Û‹ˆ›ÙXÝ[Ûˆ\ÞYY]ŒŽÎNYÈ[[YH™\ÜÈËÍÈ[\]\È[™\™[TH™\ÜÈÛÛ™šYÝ\™YÜ›Ý\ÈÙˆÈÛÝ\œÙKˆ™\]Y\ÝÙš[˜[˜ÙK[™ˆØÝ[Y[[\]\ËˆQRSˆÝY™ˆTH™]\›œÈŒÚ]ÛÈÝ\œ™[™\]Y\Ý›ÝYšXØ][ÛœÈ]ØZ][™ÈÛÛœÙ[ˆ^XÝHÛ™HÜ›Ûˆ\È[œÝ[YÈ]È]]ÛX]XÈÙ\šXÙH[ˆØØ[›™Y‹ÛÜœ™XÝHYˆØZ][™È›ÜˆÛÛœÙ[[™™XÛÜ™Y™\›ÈÙ[™Ë™]šY\Ë˜Z[\™\ËÜˆÚÚ\ËˆLˆ\ÈÛ›[™H[™ØYZ[‹ÛÙÚ[˜™]\›œÈŒˆ™X[\\™[]]Üš^˜][Ûˆ[™ÛÛ›ÛY\Ü^H\ÝÈ™[XZ[ˆH^\›˜[›ÛÝË]\‚‹H›Û˜XÚÈÚ[ˆŒ‹LËLL‹\ŒŒÌ‚‚‹KKB‚ˆÈÈŒ‹LËLL‹\ŒŒÌ‚‹H™[X\ÙHQˆŒ‹LËLL‹\ŒŒÌ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLL˜‹H\Þ[Y[Ý]\ÎˆU‘X‹HØÛÜNˆÚÝÈ˜[Z[K\Ú\™YÛÝ\œÙK\™[Z[™\ˆ][ÝH[™™^]™YK[\ÜÛÛˆÛÝ™\˜YÙHÈ\™[ËYH˜]\˜[™X]]Üš^˜][ÛˆXÝ[ÛˆÛˆHØÚY[K[™^ÜÙHYH™[Z[™\œÈÚ]Ý]ÛÛœÙ[ÈYZ[ˆ[™\›Z]YÝY™ˆ[Øš[H\Ù\œË‚‹HÙ^Hš[\Î‚ˆHX‹ÝÙXÚ][Z[šX\\ÝXœØÜš\[Û‹ØˆHX‹ÛZ[šX\XÛÝ\œÙK\™[Z[™\‹XÛÝ™\˜YÙKØˆHX‹ÛZ[šX\\™[Z[™\‹X][[Û‹ØˆH\Ø\KÛZ[šX\ÜÝXœØÜš\[ÛœËÚ[[Ü›Ý]KØˆH\Ø\KÛZ[šX\ÜÝY™‹Ü™[Z[™\‹X][[Û‹Ü›Ý]KØˆH\Ø\KØYZ[‹ÛZ[šX\[›ÝYšXØ][ÛœËÜ›Ý]KØˆH\ØYZ[‹ÛZ[šX\[›ÝYšXØ][ÛœËÓZ[šX\›ÝYšXØ][ÛœÐÛY[ÞˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÚÛYKÊ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜØÚY[KÊ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\™[Z[™\‹X][[Û‹Ê˜ˆH\ÝËÝÙXÚ][Z[šX\\ÝXœØÜš\[Û‹\ÝØˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌL‹[Z[šX\\™[Z[™\‹XÛÝ™\˜YÙKX[™X][[Û‹›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝÈÈYY][H[™™XYY›ØÝ\ÙYˆ][ÝH[™ÛÝ™\˜YÙH\™H\š]™Yœ›ÛH^\Ý[™ÈÛÛœÙ[]Y]ËÝXØÙ\ÜÙ[Ù[™Ë[šÙYÝY[Ë[™]\™HÙ\ÜÚ[ÛœËˆH™]ÈÝY™ˆ\Ý\È™XY[Û›H[™™\ÝšXÝYÈQRS‹ÔËÜˆXÝ]™HÔË]ÛÜšÜÜXÙH\Ù\œËˆÙ[™[™ËØÚY[[™ËXÚØYÙK][™[˜ÙKš[˜[˜ÙKXÚÙ][™^\›ÛÜš]\È\™H[˜Ú[™ÙY‚‹H™\šYšXØ][ÛŽˆ\TØÜš\›Ý\ˆ][ÝKÛX\[™È\ÝËZ[šX\˜]˜TØÜš\Ò”ÓÓˆÞ[^Y™ˆÚXÚË[™[›ÙXÝ[ÛˆZ[\ÜÙYˆ›ÙXÝ[Ûˆ\ÞYY]Ù™˜LŒÚ]LHZYÜ˜][ÛœÈÝ\œ™[[™NˆYÙ\ÈZ[ˆ\™[[™\›Z]Y\ÝY™ˆ›ÙXÝ[ÛˆT\È›Ý™]\›ˆŒÈH\Ý\™[™\ÜÈXØÙ\YÛÛœÝ[YY]˜Z[X›H[™H\ÝÙ\ÜÚ[Ûˆ\ÈÑS•ÈÝY™ˆ][[ÛˆÝ[\ÈˆLˆ\ÈÛ›[™KØYZ[‹ÛÙÚ[˜™]\›œÈŒ[™^XÝHÛ™H™[Z[™\ˆÜ›Ûˆ™[XZ[œÈ[œÝ[Y‚‹H›Û˜XÚÈÚ[ˆŒ‹LËLL‹\ŒŒŽX‚‚‹KKB‚ˆÈÈŒ‹LËLL‹\ŒŒŽB‚‹H™[X\ÙHQˆŒ‹LËLL‹\ŒŒŽX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLL˜‹H\Þ[Y[Ý]\ÎˆU‘X‹HØÛÜNˆ™XÛÝ™\ˆ]]ÛX]XÈÛÝ\œÙH™[Z[™\œÈÚ[ˆ\ÞHÛX[\™[[Ý™\ÈH[˜XÚÙYÜ›ÛˆÙÈ\™XÝÜžK‚‹HÙ^Hš[\Î‚ˆHÜËÜÙ\™\‹ÜØÜš\ËÜÙ]\ÛZ[šX\ØÛÝ\œÙWÜ™[Z[™\—ØÜ›Û‹œÚˆHÜËÜÙ\™\‹ÜØÜš\ËÙ\ÞWØ\œÚˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌL‹[Z[šX\\™[Z[™\‹XÜ›Û‹[ÙË\™XÛÝ™\žK›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆHÜ›ÛˆÜ™X]\È]ÈÙÈ\™XÝÜžH™Y›Ü™H™Y\™XÝ[Ûˆ[™\ÈY[\Ý[H™Z[œÝ[YY\ˆ\ÞKˆ™[Z[™\ˆ[Z[™ËÛÛœÙ[X\[™Ë™]šY\Ë[™\Ú[™\ÜÈ]H\™H[˜Ú[™ÙY‚‹H™\šYšXØ][ÛŽˆÚ[Þ[^[™Y™ˆÚXÚÜÈ\ÜÙYÈ›ÙXÝ[Ûˆ\ÞYY]ŽŒ˜ÈLˆ\ÈÛ›[™H[™ØYZ[‹ÛÙÚ[˜™]\›œÈŒˆ\Þ[Y[™Z[œÝ[Y^XÝHÛ™H™[Z[™\ˆÜ›Ûˆ[™™XÜ™X]YÜËÛÙÜØˆÚ]Ý]HX[X[]Y]YHÜˆÙ[™\ˆØ[HLŽŒLÜ›ÛˆØØ[›™YLÈÙ\ÜÚ[ÛœË]Y]YY^XÝHHYXØ]Y\Ý™[Z[™\‹Ù[]ÝXØÙ\ÜÙ[H]LŽŒLŒ[™\œÚ\ÝYÑS•Ú]›È™]žK˜Z[\™KÜˆÚÚ\‚‹H›Û˜XÚÈÚ[ˆŒ‹LËLL‹\ŒŒŽ‚‚‹KKB‚ˆÈÈŒ‹LËLL‹\ŒŒŽ‚‹H™[X\ÙHQˆŒ‹LËLL‹\ŒŒŽ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLL˜‹H\Þ[Y[Ý]\ÎˆU‘X‹HØÛÜNˆ[™H™YHYÚ][X]HÛ™K][YHÛÝ\œÙH[\]\È[ÈÛ™H\™[]]Üš^˜][ÛˆXÝ[Ûˆ[™ÛÛœÝ[YHZ\ˆ][Ý\È[™\[™[HXÜ›ÜÜÈ]\™H\ÜÛÛœË‚‹HÙ^Hš[\Î‚ˆHX‹ÛZ[šX\\ÝXœØÜš\[Û‹XÛÛ™šYËØˆHX‹ÝÙXÚ][Z[šX\\ÝXœØÜš\[Û‹ØˆHØÜš\ËÜ]Y]YK[Z[šX\XÛÝ\œÙK\™[Z[™\œËØˆHØÜš\ËÜÙ[™[Z[šX\XÛÝ\œÙK\™[Z[™\œËØˆHÜËÜÙ\™\‹ÜØÜš\ËÙ\ÞWØ\œÚˆH\ÝËÝÙXÚ][Z[šX\\ÝXœØÜš\[Û‹\ÝØˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌL‹]™YK][\]KXÛÝ\œÙK\™[Z[™\‹X[™K›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][H[™ÛÛœÝ˜Z[™Yˆ™YHÙ™šXÚX[ÛÝ\œÙH[\]\È\™H™\]Y\ÝYÙÙ]\‹]XXÚXØÙ\Y][ÝH\ÈÛÝ[Y[™ÛÛœÝ[YYÙ\\˜][Kˆ^\Ý[™ÈZÝ\ˆ[Z[™ËÝ[K]Ú[™ÝË™]žK[™Y\XØ][Ûˆ[\È™[XZ[ˆ[˜Ú[™ÙY‚‹H™\šYšXØ][ÛŽˆ^XÝÙPÚ]šY[È™]ÚYœ›ÛHHXØÛÝ[È™YHX\[™È\ÝË\TØÜš\Ú[Þ[^Y™ˆÚXÚË[™[Z[\ÜÙYÈ›ÙXÝ[Ûˆ\ÞYY]NMXÈ[[YH™\ÜÈÈÛÛ™šYÝ\™YÛÝ\œÙH[\]\Ë›Ú[X™[9o 9d+ù§*¹§iHÈ:" º+ï¹£ä:a¤˜Û™HÜ›Ûˆ[žKLˆÛ›[™K[™ØYZ[‹ÛÙÚ[˜Œˆ™X[\Û™H™]šY]È™]\›™YXØÙ\›Üˆ[™YH[\]HQÎÈY\ˆHX\›Y\ˆÛ[ÚÙHÙ[™H\Ý\™[\ÈÈXØÝ[][]YÛÝ\œÙK[Y\ÜØYÙH][Ý\È]˜Z[X›K‚‹H›Û˜XÚÈÚ[ˆŒ‹LËLL‹\ŒŒØ‚‚‹KKB‚ˆÈÈŒ‹LËLL‹\ŒŒÂ‚‹H™[X\ÙHQˆŒ‹LËLL‹\ŒŒØ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLL˜‹H\Þ[Y[Ý]\ÎˆU‘X‹HØÛÜNˆ]]ÛX]XØ[H]Y]YH[™Ù[™™\šYšYYZÝ\ˆÙPÚ]ÛÝ\œÙH™[Z[™\œÈÚ]\›Z[˜[\Ý]HY\XØ][Û‹ÛÛœÙ[\][ÝHØ][™Ë›Ý[™Y™]šY\Ë[™Hš]™K[Z[]HÙ\™\ˆÜ›Û‹‚‹HÙ^Hš[\Î‚ˆHX‹ÛZ[šX\[›ÝYšXØ][ÛœËØˆHX‹ÝÙXÚ][Z[šX\\ÝXœØÜš\[Û‹ØˆHØÜš\ËÜ]Y]YK[Z[šX\XÛÝ\œÙK\™[Z[™\œËØˆHØÜš\ËÜÙ[™[Z[šX\XÛÝ\œÙK\™[Z[™\œËØˆHÜËÜÙ\™\‹ÜØÜš\ËÜÙ]\ÛZ[šX\ØÛÝ\œÙWÜ™[Z[™\—ØÜ›Û‹œÚˆH\ÝËÝÙXÚ][Z[šX\\ÝXœØÜš\[Û‹\ÝØˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌL‹[Z[šX\X]]ÛX]XËXÛÝ\œÙK\™[Z[™\œË›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][H[™ÛÛœÝ˜Z[™YˆÛ›HYHZÝ\ˆ™[Z[™\œÈÚ]™XÛÜ™Y[\ÙYÛÛœÙ[Ø[ˆØ[ÙPÚ]ˆÙ[ÜÚÚ\Y™XÛÜ™È\™H›Ý™\Ù]Ý[H™[Z[™\œÈ\™HÚÚ\Y[™‹ZÝ\ˆ]]ÛX][Ûˆ™[XZ[œÈ\ØX›Y‚‹H™\šYšXØ][ÛŽˆØØ[[š]\ÝË\TØÜš\Ú[Þ[^Y™ˆÚXÚË[™[Z[\ÜÙYÈ›ÙXÝ[Ûˆ\ÞYY]ØXØLLØÈLˆ\ÈÛ›[™H[™ØYZ[‹ÛÙÚ[˜™]\›œÈŒÈX[X[]Y]YHØØ[›™YLHÙ\ÜÚ[ÛœÈ[™]Y]YYÙ[™\ˆØØ[›™YÜÙ[[™Hš]™K[Z[]HÜ›Ûˆ\È[œÝ[Y^XÝHÛ˜ÙK‚‹H›Û˜XÚÈÚ[ˆŒ‹LËLL‹\ŒŒ˜‚‚‹KKB‚ˆÈÈŒ‹LËLL‹\ŒŒ‚‚‹H™[X\ÙHQˆŒ‹LËLL‹\ŒŒ˜‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLL˜‹H\Þ[Y[Ý]\ÎˆU‘X‹HØÛÜNˆÛÛ™šYÝ\™HHÙ™šXÚX[ÛÝ\œÙK\™[Z[™\ˆÝXœØÜš\[Ûˆ[\]K™\Ù\™H[š]™H[\]H˜\šXX›\ÈXÜ›ÜÜÈ›ÙXÝ[Ûˆ\Þ\Ë[™XZÙH\Þ[Y[™]ÚH™\]Y\ÝYœ˜[˜Ú^XÚ]K‚‹HÙ^Hš[\Î‚ˆHÜËÜÙ\™\‹ÜØÜš\ËÙ\ÞWØ\œÚˆHÜËÜÙ\™\‹ÜØÜš\ËÜ]ZXÚ×Ù\ÞKœÚˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌL‹[Z[šX\XÛÝ\œÙK][\]KXÛÛ™šYÝ\˜][Û‹›YˆHØÜËùl#ùê"ùn£ù.#¹k­ºeoùêëùaj9ê"ù¢f9ë¨z)á9b$‹LŒŒÌK›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆH\™[ÛÝ\œÙK\™[Z[™\ˆÛÛœÙ[[žH™XÛÛY\È]˜Z[X›HÚ[ˆH[[YH˜\šXX›H\È™\Ù[]›ÈÝ]›Ý[™ÙPÚ]Ù[™\ˆ\È[˜X›Y[™HÝ\ˆ›Ý\ˆ™[Z[™\ˆÜ›Ý\È™[XZ[ˆY[‹ˆH\ÞH™]ÚÚ[™ÙHÛ›HXZÙ\ÈH™\]Y\ÝYœ˜[˜Ú™Yˆ^XÚ]‚‹H™\šYšXØ][ÛŽˆÚ[[™ÛÛ™šYÝ\˜][ÛˆÚXÚÜÈ\ÜÙYÈ›ÙXÝ[Ûˆ\ÞYY]NYYŽMÈ[[YH™\ÜÈKÍH[\]\ÈÛÛ™šYÝ\™YÚ]ÛÝ\œÙH[˜X›Y[™HÝ\ˆÜ›Ý\ÈY[ŽÈLˆ\ÈÛ›[™H[™ØYZ[‹ÛÙÚ[˜™]\›œÈŒˆ›ÛÝË]\\ÞKY™]Ú\™[š[™È\ÈÛÛ[Z]YØØ[H]]ØZ]ÈÚ]XˆÛÛ›™XÝ]š]H™Y›Ü™HÛÝ\˜ÙHÞ[˜Ú›Ûš^˜][Û‹‚‹H›Û˜XÚÈÚ[ˆŒ‹LËLLK\ŒŒX‚‚‹KKB‚ˆÈÈŒ‹LËLLK\ŒŒB‚‹H™[X\ÙHQˆŒ‹LËLLK\ŒŒX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLLX‹H\Þ[Y[Ý]\ÎˆU‘X‹HØÛÜNˆ™YÚ[ˆHÙXÛÛ™ÝY™‹[Z[šX\\ÙHÚ]Û™K\Ù\ÜÚ[ÛˆØØ][ÛˆÚ[™Ù\Ë]ÛZXÈ‹LLˆÙYZÈØÚY[[™ËXXÚ\‹[ÜšYÚ[˜]Y™\ØÚY[HXÚÙ]Ë[™ÝXœØÜš\[Û‹[Y\ÜØYÙHÛÛ™šYÝ\˜][Û‹ØÛÛœÙ[™XY[™\ÜË‚‹HÙ^Hš[\Î‚ˆHX‹ÛZ[šX\\Ù\ÜÚ[Û‹[ØØ][Û‹XÚ[™ÙKØˆHX‹ÛZ[šX\\Ù\ÜÚ[Û‹\ØÚY[[™ËØˆHX‹ÛZ[šX\\ÝXœØÜš\[Û‹XÛÛ™šYËØˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[KÖÜÙ\ÜÚ[Û’YKÊ˜ˆH\Ø\KÛZ[šX\ÜÝXœØÜš\[ÛœËÚ[[Ü›Ý]KØˆH\Ø\KØYZ[‹ÛZ[šX\[›ÝYšXØ][ÛœËÜ›Ý]KØˆH\ØYZ[‹ÛZ[šX\[›ÝYšXØ][ÛœËÓZ[šX\›ÝYšXØ][ÛœÐÛY[ÞˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\Ù\ÜÚ[Û‹Y]Z[Ê˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÚÛYKÊ˜ˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌLK[Z[šX\\\ÙK]ÛË[Ü\˜][ÛœË›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYÚ]ÛÛœÝ˜Z[™YˆØØ][ÛˆÚ[™ÙHÜ™X]\ÈHØ[YKXÛÝ\œÙKÜØ[YK\ÝY[œ˜[˜ÚÛ\ÜÈ[™[Ý™\ÈÛ›HHÙ[XÝY]\™HÙ\ÜÚ[Û‹™\Ù\š[™ÈHÜšYÚ[˜[Û\ÜÈ[™]™\žHÝ\ˆÙ\ÜÚ[Û‹ˆÙ\šY\ÈØÚY[[™È\ÈQRS‹[Û›KØ\Y]LˆÙYZÜË[™[[Ü‹[›Ý[™ÈY\ˆ\‹]ÙYZÈXÚØYÙH[™ÛÛ™›XÝÚXÚÜËˆXXÚ\ˆ™\]Y\ÝÈÜ™X]HÜˆ\]H[\›˜[9¥.z+ï¹ê"ù¥íºeíXÚÙ]È]™]™\ˆÚ[™ÙHHÙ\ÜÚ[Ûˆ\™XÝKˆÝXœØÜš\[ÛˆÛÛ›ÛÈ™[XZ[ˆY[ˆœ›ÛH\™[È[[[\]HQÈ\™HÛÛ™šYÝ\™YÈ\È™[X\ÙH™XÛÜ™ÈÛÛœÙ[]Ù\È›ÝÛZ[HÝ]›Ý[™ÙPÚ][]™\žH\È[˜X›Y‚‹H™\šYšXØ][ÛŽ‚ˆH\TØÜš\Z[šX\˜]˜TØÜš\ÕÖSY™‹[™[™^šœÈZ[ÚXÚÜÂˆH™X[Y]H›Ë]Üš]HØØ][Ûˆ[™ÛË]ÙYZÈÙ\šY\È™]šY]ÜÈÚ]ÚYÛ™Y]ÚÙ[ˆ[\\ˆ™Z™XÝ[Û‚ˆH›Ý]K[]™[[˜]][XØ]YK˜[Y™]šY]ÈŒ[˜[Y\HK[™[˜Ú[™ÙYÛ\ÜËÔÙ\ÜÚ[Û‹ÕXÚÙ]Û˜\ÚÝÂˆHXXÚ\‹[ÝÛ™Y]\™HÙ\ÜÚ[Ûˆ™\]Y\ÝÑUŒ[™[˜[Y\ÝY[ÔÕKÛ›Ë]Üš]BˆH\™[ÝXœØÜš\[ÛˆÛÛ™šYÝ\˜][ÛˆÑUŒÚ][š]™HÝ\œ™[HZ\ÜÚ[™È[\]HQÈÛÜœ™XÝH™\ÜYˆH›ÙXÝ[Ûˆ\Þ[Y[]ÛÛ[Z]ŒLMØ˜LˆÛ›[™KØYZ[‹ÛÙÚ[˜ŒˆH›ÙXÝ[Ûˆ˜[YØØ][Û‹ÜÙ\šY\È™]šY]ÜÈŒ[˜[Y\Y\ÈKXXÚ\ˆ[™\™[\›Z\ÜÚ[ÛˆÚXÚÜÈ\ÜÙY[™›È™]ÈÛÜšÙ›ÝÈ]Y]Üš]\ÈÙ\™HÜ™X]YžH\Ý[™Â‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LËLLK\ŒŒX‚‚‹KKB‚ˆÈÈŒ‹LËLLK\ŒŒ‚‹H™[X\ÙHQˆŒ‹LËLLK\ŒŒ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLLX‹H\Þ[Y[Ý]\ÎˆU‘X‹HØÛÜNˆÛÛ\]HHš\œÝ[Øš[HXØY[ZXË[Ü\˜][ÛœÈÙ]ˆ[šÈØÚY[[™ÈXÚÙ]ÈÈ]\™H\ÜÛÛœË[™HX]™KØØ[˜Ù[][ÛˆÚ][ˆ^XÚ]Ú\™ÙHXÚ\Ú[Û‹™\XÙHHXXÚ\ˆ›ÜˆÛ™H]\™H\ÜÛÛ‹[™Ü™X]HHš\œÝÛ™K[Û‹[Û™H\ÜÛÛˆ\™XÝHœ›ÛH[ˆÜ[ˆØÚY[[™ÈXÚÙ]Ú[ˆ›È\ÜÛÛˆ[˜ÚÜˆ^\ÝË‚‹HÙ^Hš[\Î‚ˆHX‹ÛZ[šX\\Ù\ÜÚ[Û‹XØ[˜Ù[][Û‹ØˆHX‹ÛZ[šX\\Ù\ÜÚ[Û‹]XXÚ\‹\™\XÙ[Y[ØˆHX‹ÛZ[šX\]XÚÙ][™]Ë\Ù\ÜÚ[Û‹ØˆHX‹ÛZ[šX\\Ù\ÜÚ[Û‹\ØÚY[[™ËØˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[KÖÜÙ\ÜÚ[Û’YKÊ˜ˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[[™ËXÛÛÜ™[˜][Û‹ÖÝXÚÙ]YKÊ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\Ù\ÜÚ[Û‹Y]Z[Ê˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹XÛÛÜ™[˜][Û‹Y]Z[Ê˜ˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌLK[Z[šX\[[Øš[KXXØY[ZXËXXÝ[ÛœË›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYÚ]ÛÛœÝ˜Z[™Yˆ™]ÈÜš]\È\™HQRS‹[Û›K]\™K\Ù\ÜÚ[Û‹[Û›KÚYÛ™Y\™]šY]ËXÛÛ™š\›YY˜[œØXÝ[Û˜[H™]˜[Y]Y[™]Y]YˆØ[˜Ù[][ÛˆØ[››Ý›ØÙYYY\ˆ][™[˜ÙKÙYXÝ[Ûˆ™XÛÜ™È^\ÝÈÚ\™ÙH[™›ËXÚ\™ÙH\™H^XÚ]ˆXXÚ\ˆ™\XÙ[Y[Y™™XÝÈÛ™HÙ\ÜÚ[ÛˆÛ›KˆXÚÙ][ÜšYÚ[˜]Yš\œÝØÚY[[™È™\]Z\™\È[ˆXÝ]™HXÚØYÙKH]X[YšYY[™]˜Z[X›HXXÚ\‹›ÈÝY[ÝXXÚ\‹Ü›ÛÛHÛÛ™›XÝ[™[ˆ^XÝ[š\]YHÝY[[˜[YHX]ÚÚ[ˆHYØXÞHXÚÙ]XÚÜÈÝY[Y‚‹H™\šYšXØ][ÛŽ‚ˆH\TØÜš\Z[šX\˜]˜TØÜš\ÖSÛÛ\]Xš[]KY™‹[™[™^šœÈZ[ÚXÚÜÂˆH™X[Y]H™XY[Û›HØ[˜Ù[][Ûˆ™]šY]ÜÈ›ÜˆÚ\™ÙH[™›ËXÚ\™ÙH]ÂˆH™X[Y]H™XY[Û›HXXÚ\ˆ™\XÙ[Y[™]šY]È[™ÚYÛ™Y]ÚÙ[ˆ[\\ˆ™Z™XÝ[Û‚ˆH™X[Y]H™XY[Û›Hš\œÝ\ØÚY[[™È™]šY]È›ÜˆXÚÙ]ŒŒÌKLX[˜ÛY[™È[š\]YHYØXÞHÝY[X]Ú[™ÂˆH›Ý]K[]™[\H™Z™XÝ[ÛˆÚXÚÜÈÚ][˜Ú[™ÙYÙ\ÜÚ[Û‹][™[˜ÙKXÚØYÙK[™XÚÙ]]BˆH›ÙXÝ[Ûˆ\Þ[Y[]ÛÛ[Z]LNXLˆÛ›[™KØYZ[‹ÛÙÚ[˜ŒˆH›ÙXÝ[Ûˆ]][XØ]Y™]šY]ÜÈ™]\›ˆŒ›Üˆš\œÝØÚY[[™ËX]™KØØ[˜Ù[][Û‹[™Û™K\Ù\ÜÚ[ÛˆXXÚ\ˆ™\XÙ[Y[È[˜]][XØ]YXØÙ\ÜÈ™]\›œÈH[™[˜[Y\HÚÙ[œÈ™]\›ˆBˆH›ÙXÝ[Ûˆ™\šYšXØ][ÛˆØÝ[Y[][ÛˆÞ[˜Ú›Ûš^™YY\ˆH]™HÚXÚÜÂ‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LËLLK\ŒŒ‚‚‹KKB‚ˆÈÈŒ‹LËLLK\ŒŒŒÂ‚‹H™[X\ÙHQˆŒ‹LËLLK\ŒŒŒØ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLLX‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆYHYXØ]Y™YY[™›Ø›Ø\™š[\‹ØÛÝ[[™[ÝÈ\›Z]Y[Øš[HÝY™ˆÈ\ÜÚYÛˆØÚY[[™ÈXÚÙ]ÈÈ˜\ÛZ[™K]˜K[Z[KÜˆ[˜\ÜÚYÛ™Yœ›ÛHH]Z[ÛÜšÙ›ÝË‚‹HÙ^Hš[\Î‚ˆHX‹ÛZ[šX\\ØÚY[[™ËXÛÛÜ™[˜][Û‹X›Ø\™ØˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[[™ËXÛÛÜ™[˜][Û‹Ê˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹XÛÛÜ™[˜][Û‹ÜÝY™‹XÛÛÜ™[˜][Û‹šœØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹XÛÛÜ™[˜][Û‹Y]Z[Ê˜ˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌLK[Z[šX\\ØÚY[[™Ë[ÝÛ™\‹X\ÜÚYÛ›Y[›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝÈÈYY][Kˆ\ÈÚ[™Ù\ÈÛ›HXÚÙ]ÝÛ™\‹ÛÛÜ™[˜][ÛˆÝ]\ËÚ\ÝÜžK™^XÝ[Û‹[™YH]H›ÝYÚH^\Ý[™È\›Z\ÜÚ[Ûˆ[™˜[œÚ][ÛˆÚXÚÜËˆÛ\ˆZ[šX\ÛY[È]ÛZ]ÝÛ™\ˆ™\Ù\™HH^\Ý[™ÈÝÛ™\‹ˆÙ\ÜÚ[Û‹XÚØYÙK][™[˜ÙKš[˜[˜ÙK^\›Û[™ÛÛ\][Ûˆ™Z]š[Üˆ\™H[˜Ú[™ÙY‚‹H™\šYšXØ][ÛŽ‚ˆH›ÙXÝ[Û‹Y]H™YY[™›ØÛÝ[\ÈÂˆHÝÛ™\ˆÜ[Ûˆ[™[˜[Y[ÝÛ™\ˆ™Z™XÝ[ÛˆÚXÚÜÂˆH[˜[YÝÛ™\ˆUÒX]™\ÈH™X[XÚÙ][˜Ú[™ÙYˆH\TØÜš\Z[šX\˜]˜TØÜš\[Z[[™Y™ˆÚXÚÜÂ‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LËLLK\ŒŒŒØ‚‚‹KKB‚ˆÈÈŒ‹LËLLK\ŒŒŒ‚‚‹H™[X\ÙHQˆŒ‹LËLLK\ŒŒŒ˜‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLLX‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆ[YÛˆHÝY™‹[Z[šX\ØÚY[[™È›Ø\™Ú]HÙXˆXÚÙ]Ù[\ˆžH[˜ÛY[™È[Ú^XÝ]™HØÚY[[™Ë\™[]YXÚÙ]\\È[œÝXYÙˆÛ›HH^XÝ9£¤º+ï¹ccú, Ø\K‚‹HÙ^Hš[\Î‚ˆHX‹ÛZ[šX\\ØÚY[[™ËXÛÛÜ™[˜][Û‹X›Ø\™ØˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[[™ËXÛÛÜ™[˜][Û‹Ê˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹ZÛYKÜÝY™‹ZÛYKÞ[ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹XÛÛÜ™[˜][Û‹Ê˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹XÛÛÜ™[˜][Û‹Y]Z[ÜÝY™‹XÛÛÜ™[˜][Û‹Y]Z[Þ[ˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌLK[Z[šX\\ØÚY[[™ËX›Ø\™\ØÛÜK›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝÈÈYY][Kˆ\Èœ›ØY[œÈ™XYÝ\]HØÛÜHÈ^\Ý[™ÈÜ[ˆXÚÙ]ÈÙˆ9£¤º+ï¹ccú, Ø9¥.z+ï¹ê"ù¥íºeí9¥¬9£¤º+ï˜:(iz+ï¹b¨:+ï˜9.-9¥í¹cå¹­¢	º+íù`aú+ï¹ê"Ø[™9¥.y."º+ïº  yn"ˆ\›Z\ÜÚ[ÛœËÝ]K]˜[œÚ][Ûˆ˜[Y][Û‹]Y][™ËÙ\ÜÚ[ÛˆÜš]\Ë[™XÚÙ]ÛÛ\][Ûˆ[\È\™H[˜Ú[™ÙY‚‹H™\šYšXØ][ÛŽ‚ˆH›ÙXÝ[Û‹Y]HØ]YÛÜžH™XÛÛ˜Ú[X][Û‚ˆH]][XØ]Y›Ø\™ÛÝ[Ú[™ÙYœ›ÛHH^XÝÛÛÜ™[˜][ÛˆXÚÙ]ÈLÈÜ[ˆØÚY[[™Ë\™[]YXÚÙ]ÂˆH\‹]\HÛÝ[™\šYšXØ][Û‚ˆH\TØÜš\Z[šX\Þ[^Ò”ÓÓ‹[™[Z[‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LËLLK\ŒŒŒ˜‚‚‹KKB‚ˆÈÈŒ‹LËLLK\ŒŒŒB‚‹H™[X\ÙHQˆŒ‹LËLLK\ŒŒŒX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLLX‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆYHYXØ]YÝY™‹[Z[šX\ØÚY[[™ËXÛÛÜ™[˜][Ûˆ›Ø\™Ú]Ü[‹ÛÝ™\™YHÛÝ[Ëš[\œËÙX\˜Ú]Z[XØÙ\ÜËÛÛ[][šXØ][Ûˆ\ÝÜžH\]\Ë[™›ÛÝË]\X[˜YÙ[Y[‚‹HÙ^Hš[\Î‚ˆHX‹ÛZ[šX\\ØÚY[[™ËXÛÛÜ™[˜][Û‹X›Ø\™ØˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[[™ËXÛÛÜ™[˜][Û‹Ê˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹ZÛYKÊ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹XÛÛÜ™[˜][Û‹Ê˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹XÛÛÜ™[˜][Û‹Y]Z[Ê˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[Ø\šœÛÛ˜ˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌLK[Z[šX\XÛÛÜ™[˜][Û‹X›Ø\™›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][KˆQRS‹ÔË[™XÝ]™HÔË]ÛÜšÜÜXÙHÝY™ˆØ[ˆ\]HÜ[ˆØÚY[[™ËXÛÛÜ™[˜][ÛˆXÚÙ]Ý]\ËÛÛ[][šXØ][Ûˆ\ÝÜžK™^XÝ[Û‹[™YH]Hœ›ÛHHZ[šX\ˆXXÚ\œÈ[™Ý\ˆÝY™ˆØ[››ÝXØÙ\ÜÈH›Ø\™ˆXÚÙ]ÛÛ\][Ûˆ™[XZ[œÈYYÈHÝX\™Y[Øš[HØÚY[[™ÈÛÜšÙ›ÝÎÈ\È›Ø\™Ø[››Ý\™XÝHÛÛ\]HHXÚÙ]ÜˆÜš]HÙ\ÜÚ[ÛœË‚‹H™\šYšXØ][ÛŽ‚ˆHQRS‹ÐÔËÝXXÚ\‹ÐÔË]ÛÜšÜÜXÙH\›Z\ÜÚ[ÛˆÚXÚÜÂˆH]][XØ]Y™X[Y]H›Ø\™[™]Z[ÑUÚXÚÜÂˆH[˜[YUÒ™Z™XÝ[ÛˆÚ][˜Ú[™ÙYXÚÙ]™\šYšXØ][Û‚ˆH[˜]][XØ]YHÚXÚÂˆHZ[šX\˜]˜TØÜš\Ò”ÓÓˆÚXÚÜÂˆHœØÈK[›Ñ[Z]ˆHœH[ˆZ[‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LËLLK\ŒŒŒX‚‚‹KKB‚ˆÈÈŒ‹LËLLK\ŒŒŒ‚‹H™[X\ÙHQˆŒ‹LËLLK\ŒŒŒ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLLX‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆ][ˆQRSˆ^XÚ]HÛÛ\]HX]Ú[™ÈÜ[ˆØÚY[[™ËXÛÛÜ™[˜][ÛˆXÚÙ]È[ˆHØ[YH˜[œØXÝ[Ûˆ\ÈHÝXØÙ\ÜÙ[Z[šX\\ÜÛÛˆÜ™X]KÜ™\ØÚY[HÜ\˜][Û‹‚‹HÙ^Hš[\Î‚ˆHX‹ÛZ[šX\\Ù\ÜÚ[Û‹\ØÚY[[™ËØˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[KÖÜÙ\ÜÚ[Û’YKÛX[˜YÙKÜ›Ý]KØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\Ù\ÜÚ[Û‹Y]Z[Ê˜ˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌLK[Z[šX\\ØÚY[[™Ë]XÚÙ]XÛÜÝ\™K›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][KˆXÚÙ]ÛÛ\][Ûˆ\ÈÜ[Û˜[[™Y˜][ÈÈ›ÈÙ[XÝ[Û‹ˆÛ›HÜ[ˆØÚY[[™ËXÛÛÜ™[˜][ÛˆXÚÙ]È›ÜˆHØ[YH\ÜÛÛˆÝY[È[™X]Ú[™ÈÛÝ\œÙH™]\›™YžHHÚYÛ™Y™]šY]ÈØ[ˆ™HÙ[XÝYÈ[YÚXš[]H\ÈÚXÚÙYYØZ[ˆ[œÚYHHÙ\ÜÚ[ÛˆÜš]H˜[œØXÝ[Û‹ˆ›ÈXXÚ\‹›ÛÛKØ[\\ËXÚØYÙHYÙ\‹][™[˜ÙHYXÝ[Û‹š[[™Ë™XÙZ\^\›ÛÜˆÜ[Û]È™Z]š[ÜˆÚ[™Ù\Ë‚‹H™\šYšXØ][ÛŽ‚ˆH\TØÜš\[™Z[šX\˜]˜TØÜš\Þ[^ÚXÚÜÂˆH™]šY]Ë]ÚÙ[ˆ[YÚX›K]XÚÙ]š[™[™È[™[œ™]šY]ÙY]XÚÙ]™Z™XÝ[ÛˆÚXÚÜÂˆH™XY[Û›H™X[Y]HØÚY[[™È™]šY]ÂˆH›Ë\Ù[XÝ[Û‹Û›Ë]Üš]H›Ý]HÛ[ÚÙHÚXÚÂˆHœH[ˆZ[‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LËLLK\ŒŒŒ‚‚‹KKB‚ˆÈÈŒ‹LËLLK\ŒŒNB‚‹H™[X\ÙHQˆŒ‹LËLLK\ŒŒNX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLLX‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆ[ÝÈ]˜H[™X[˜YÙ[Y[QRSˆXØÛÝ[ÈÈÜ™X]HHØ[YKXÛ\ÜÈ\ÜÛÛˆÜˆ™\ØÚY[HÛ™H]\™H\ÜÛÛˆœ›ÛHHÝY™ˆZ[šX\Y\ˆHÚYÛ™YÛÛ™›XÝXÚXÚÈ™]šY]Ë‚‹HÙ^Hš[\Î‚ˆHX‹ÛZ[šX\\Ù\ÜÚ[Û‹\ØÚY[[™ËØˆHX‹ÛZ[šX\\ÝY™‹\Ù\ÜÚ[Û‹ØˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[KÖÜÙ\ÜÚ[Û’YKÛX[˜YÙKÜ›Ý]KØˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[KÖÜÙ\ÜÚ[Û’YKÜ›Ý]KØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\Ù\ÜÚ[Û‹Y]Z[Ê˜ˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌLK[Z[šX\\ØÚY[[™Ë]Üš]\Ë›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYÚˆ\ÈYÈ›ÙXÝ[ÛˆÙ\ÜÚ[ÛˆÜš]\Èœ›ÛHH˜]]™HZ[šX\™\ÝšXÝYÈQRSˆÝY™ˆ[™ÈÛ™H\ÜÛÛˆ\ˆÛÛ™š\›YYÜ\˜][Û‹ˆ]™]˜[Y]\ÈÝY[XXÚ\‹›ÛÛK]˜Z[Xš[]KXÚØYÙK\XØ]K][™[˜ÙK[ØÚË[™]\™K][YH[\È[[YYX][H™Y›Ü™HÜš][™Ëˆš[[™Ë][™[˜ÙHYXÝ[Û‹XÚØYÙHYÙ\ˆ]]][Û‹^\›Û[™Ü[Û]È\™H[˜Ú[™ÙY‚‹H™\šYšXØ][ÛŽ‚ˆHQRS‹ÐÔËÕPPÒTˆ\›Z\ÜÚ[ÛˆÚXÚÜÂˆHÚYÛ™Y™]šY]ÈÚÙ[ˆ[™[\\ˆÚXÚÜÂˆH™XY[Û›H™X[Y]H™\ØÚY[H™]šY]È›ÝYÚHÝY™ˆ›Ý]BˆH\K]Ú]Ý]\™]šY]È™Z™XÝ[ÛˆÚXÚÂˆHZ[šX\˜]˜TØÜš\[™Y™™XÝYÖSÚXÚÜÂˆHœØÈK[›Ñ[Z]ˆHœH[ˆZ[‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LËLLK\ŒŒNX‚‚‹KKB‚ˆÈÈŒ‹LËLLK\ŒŒN‚‹H™[X\ÙHQˆŒ‹LËLLK\ŒŒN‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLLX‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆYH›ÛKX]Ø\™HÝY™ˆZ[šX\\ÜÛÛˆ]Z[[™H[Øš[HØÚY[[™ËXÛÛÜ™[˜][ÛˆÛÛ[][šXØ][ÛˆÛÜ]Ü™X]\ÈÜˆ™]\Ù\ÈH^\Ý[™ÈXÚÙ]ÛÜšÙ›ÝË‚‹HÙ^Hš[\Î‚ˆHX‹ÛZ[šX\\ÝY™‹\Ù\ÜÚ[Û‹ØˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[KÖÜÙ\ÜÚ[Û’YKÜ›Ý]KØˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[KÖÜÙ\ÜÚ[Û’YKØÛÛÜ™[˜][Û‹Ü›Ý]KØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\Ù\ÜÚ[Û‹Y]Z[Ê˜ˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌLK[Z[šX\\ØÚY[[™ËXÛÛÜ™[˜][Û‹›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][KˆYZ[‹ÐÔÈÝY™ˆØ[ˆ›ÝÈÜ™X]HÜˆ\]HØÚY[[™ËXÛÛÜ™[˜][ÛˆXÚÙ]È[™\[™[\›˜[ÛÛ[][šXØ][Ûˆ™XÛÜ™Èœ›ÛHH\ÜÛÛˆ]Z[ˆXXÚ\œÈ™[XZ[ˆ™\ÝšXÝYÈZ\ˆ\ÜÚYÛ™Y\ÜÛÛˆ[™È›Ý™XÙZ]™HÛÛÜ™[˜][Û‹]Üš]HXØÙ\ÜËˆ\È™[X\ÙHÙ\È›ÝÚ[™ÙH\ÜÛÛˆ[Y\ËØÚY[[™È^XÝ][Û‹][™[˜ÙHYXÝ[Û‹XÚØYÙH˜[[˜Ù\Ëš[˜[˜ÙK™XÙZ\Ë^\›ÛÜˆÜ[Û]Ë‚‹H™\šYšXØ][ÛŽ‚ˆH›ÛKXØ\Xš[]H[š]Û[ÚÙHÚXÚÜÂˆH™XY[Û›H›ÙXÝ[Û‹Y]H\ÜÛÛ‹Y]Z[ÚXÚÂˆH]][XØ]YYZ[ˆÝY™ˆ]Z[ØÛÛÜ™[˜][ÛˆÑU›Ý]HÛ[ÚÙHÚXÚÂˆHZ[šX\˜]˜TØÜš\”ÓÓ‹[™Y™™XÝYÖSÚXÚÜÂˆHœØÈK[›Ñ[Z]ˆHœH[ˆZ[‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LËLLK\ŒŒN‚‚‹KKB‚ˆÈÈŒ‹LËLLK\ŒŒMÂ‚‹H™[X\ÙHQˆŒ‹LËLLK\ŒŒMØ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLLX‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆ[Ý™H\™[\™\]Y\Ýš\ÚXš[]K[\›˜[[ZÙH›Ý\ËÛÛ[][šXØ][ÛˆÛÝ\˜ÙK\ÜÚ\ÝYY[žHY[]K[™\™[Y˜XÚ[™ÈÛÛ\][Ûˆ™\Ý[œ›ÛH[\Ü˜\žHXÚÙ]^ÛÛ™[[ÛœÈ[È›Ü›X[XÚÙ]šY[Ë‚‹HÙ^Hš[\Î‚ˆHš\ÛXKÜØÚ[XKœš\ÛXXˆHš\ÛXKÛZYÜ˜][ÛœËÌŒŒÌLLLÌØYÜ\™[Ü™\]Y\ÝÝš\ÚXš[]WÙšY[ËÛZYÜ˜][Û‹œÜ[ˆHX‹ÛZ[šX\\\™[\™\]Y\ÝËØˆH\Ø\KÛZ[šX\ÜÝY™‹Ü\™[\™\]Y\ÝËÊ˜ˆH\Ø\KÛZ[šX\ÜÝY[ËÖÜÝY[YKÜ™\]Y\ÝËÜ›Ý]KØˆH\Ø\KÛZ[šX\Ü™\]Y\ÝËÖÝXÚÙ]YKÜ›Ý]KØˆH\Ø\KØYZ[‹ÛÜËÜ\™[\™\]Y\ÝËÖÚYKÜ›Ý]KØˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌLK\\™[\™\]Y\ÝY›Ü›X[YšY[Ë›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][KˆHZYÜ˜][ÛˆX\šÜÈ^\Ý[™È9k­ºeoùl#ùê"ùn£ØXÚÙ]È\™[]š\ÚX›H[™˜XÚÙš[ÈÝXÝ\™Y˜[Y\ÈÚ\™HZ\ˆYØXÞHYÙÙYÝ[[X\žHÛÛZ[œÈ[KˆTH™XYÈ™]Z[ˆHYØXÞH˜[˜XÚËÚ[HØÚY[[™Ë][™[˜ÙKXÚØYÙH˜[[˜ÙKš[˜[˜ÙK™XÙZ\^\›Û[™›Ü›X[XÚÙ]›ÝÜÈ\™H[˜Ú[™ÙY‚‹H™\šYšXØ][ÛŽ‚ˆHœš\ÛXHÙ[™\˜]XˆHœØÈK[›Ñ[Z]ˆHZ[šX\˜]˜TØÜš\[™”ÓÓˆ\œÙHÚXÚÜÂˆHœH[ˆZ[ˆH›ÙXÝ[ÛˆZYÜ˜][Û‹X[[™™\œÚ[Û‹X[YÛ›Y[ÚXÚÜÂ‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LËLLK\ŒŒMØ‚‚‹KKB‚ˆÈÈŒ‹LËLL\ŒŒM‚‚‹H™[X\ÙHQˆŒ‹LËLL\ŒŒM˜‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLL‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆ™\Ù\™HÙPÚ]Z[šX\Ü™Y[X[ÈÚ[ˆH›ÙXÝ[Ûˆ\ÞHØÜš\™]Üš]\È™[˜‚‹HÙ^Hš[\Î‚ˆHÜËÜÙ\™\‹ÜØÜš\ËÙ\ÞWØ\œÚˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌLY\ÞK\™\Ù\™K[Z[šX\XÜ™Y[X[Ë›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\ÈÚ[™Ù\È\ÞK][YH[š\›Û›Y[™[™\š[™ÈÛ›Kˆ]™]™[È]\™H\Þ\Èœ›ÛH›Ü[™ÈÑPÒUÓRS’PTÐTQ[™ÑPÒUÓRS’PTÔÑPÔ‘UY\ˆ^H\™HÛÛ™šYÝ\™Y[ˆÜËÜÙ\™\‹Ë™\ÞK™[˜‚‹H™\šYšXØ][ÛŽ‚ˆH™[X\ÙHØÈØ]BˆH›ÙXÝ[Ûˆ™[˜ÛÛZ[œÈHZ[šX\˜\šXX›H˜[Y\ÈY\ˆ\ÞHÚ]Ý]š[[™ÈÙXÜ™]˜[Y\ÂˆHØYZ[‹ÛÙÚ[˜X[ÚXÚÂˆHZ[šX\[˜]][XØ]Y[™Ú[ÈÝ[™]\›ˆ[˜]]Üš^™Y‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LËLL\ŒŒM˜‚‚‹KKB‚ˆÈÈŒ‹LËLL\ŒŒMB‚‹H™[X\ÙHQˆŒ‹LËLL\ŒŒMX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLL‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆ™\]Z\™HH\™[]š\ÚX›HÛÛ\][Ûˆ™\Ý[™Y›Ü™HÝY™‹ØYZ[ˆØ[ˆX\šÈ\™[™\]Y\ÝÈ\ÈÛÛ\]Y[™ÚÝÈ]™\Ý[[ˆH\™[Z[šX\™\]Y\Ý]Z[‚‹HÙ^Hš[\Î‚ˆHX‹ÛZ[šX\\\™[\™\]Y\ÝËØˆH\Ø\KÛZ[šX\ÜÝY™‹Ü\™[\™\]Y\ÝËÖÚYKÜ›Ý]KØˆH\Ø\KØYZ[‹ÛÜËÜ\™[\™\]Y\ÝËÖÚYKÜ›Ý]KØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\™\]Y\ÝY]Z[Ê˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜ™\]Y\ÝY]Z[Ê˜ˆH\ØYZ[‹Û[Øš[KÜ\™[\™\]Y\ÝËÔ\™[™\]Y\ÝÓ[Øš[PÛY[ÞˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌL\\™[\™\]Y\ÝXÛÛ\][Û‹\™\Ý[\™\]Z\™Y›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][KˆÛÛ\][™ÈH\™[™\]Y\Ý›ÝÈ™\]Z\™\ÈÝY™‹ØYZ[ˆÈÜš]HH\™[Y˜XÚ[™È™\Ý[ˆ\È™YXÙ\È˜YÝYHÛÜÝ\™\Ë]ÝY™ˆ™YYÈ[™\œÝ[™H™\Ý[\Èš\ÚX›HÈ\™[Ë‚‹H™\šYšXØ][ÛŽ‚ˆHœØÈK[›Ñ[Z]ˆHZ[šX\”ÈÞ[^[™”ÓÓˆ\œÙHÚXÚÜÂˆH\™[ÜÝY™ˆ™\]Y\ÝY]Z[ÖSÛÛ\^Y^™\ÜÚ[ÛˆØØ[‚ˆHœH[ˆZ[‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LËLL\ŒŒMX‚‚‹KKB‚ˆÈÈŒ‹LËLL\ŒŒM‚‹H™[X\ÙHQˆŒ‹LËLL\ŒŒM‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLL‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆØ[š]^™HÝY™‹X\ÜÚ\ÝY\™[™\]Y\Ýš\ÚXš[]HÛÈ\™[Z[šX\šY]ÜÈÛ›H™XÙZ]™HH\™[Y˜XÚ[™ÈÝ[[X\žHÚ[HÝY™‹ØYZ[ˆšY]ÜÈØ[ˆÝ[ÙYH[\›˜[ÜšYÚ[˜[›Ý\È[™ÛÛ[][šXØ][ÛˆÛÝ\˜ÙK‚‹HÙ^Hš[\Î‚ˆHX‹ÛZ[šX\\\™[\™\]Y\ÝËØˆH\Ø\KÛZ[šX\ÜÝY™‹Ü\™[\™\]Y\ÝËÊ˜ˆH\Ø\KØYZ[‹ÛÜËÜ\™[\™\]Y\ÝËÊ˜ˆH\Ø\KÛZ[šX\ÜÝY[ËÖÜÝY[YKÜ™\]Y\ÝËÜ›Ý]KØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜ™\]Y\ÝY]Z[Ê˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\™\]Y\ÝY]Z[Ê˜ˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌL[Z[šX\\ÝY™‹X\ÜÚ\ÝY\™\]Y\Ý]š\ÚXš[]K›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][Kˆ\ÈÚ[™Ù\ÈHÈ›Ú™XÝ[Ûˆ›Üˆ\™[\™\]Y\ÝXÚÙ]Ëˆ][[[Û˜[HY\ÈÝY™‹X\ÜÚ\ÝY[\›˜[ÜšYÚ[˜[›Ý\È[™ØÜ™Y[œÚÝÈœ›ÛH\™[Z[šX\™\ÜÛœÙ\ÈÚ[H™\Ù\š[™È[H›ÜˆÝY™‹ØYZ[ˆ™\ÜÛœÙ\Ë‚‹H™\šYšXØ][ÛŽ‚ˆHZ[šX\”ÈÞ[^[™”ÓÓˆ\œÙHÚXÚÜÂˆH\™[ÜÝY™ˆ™\]Y\ÝY]Z[ÖSÛÛ\^Y^™\ÜÚ[ÛˆØØ[‚ˆHœØÈK[›Ñ[Z]ˆHœH[ˆZ[‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LËLL\ŒŒM‚‚‹KKB‚ˆÈÈŒ‹LËLL\ŒŒLÂ‚‹H™[X\ÙHQˆŒ‹LËLL\ŒŒLØ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLL‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆš^ÝY[[ÛHØÚY[Hˆ^ÜÈÛÈ\ÜÛÛœÈÚ]H\‹\Ù\ÜÚ[Ûˆ™\XÙ[Y[XXÚ\ˆÚÝÈH™\XÙ[Y[XXÚ\ˆ[œÝXYÙˆHÛ\ÜÈY˜][XXÚ\‹‚‹HÙ^Hš[\Î‚ˆH\Ø\KÙ^ÜËÜÝY[\ØÚY[KÖÚYKÜ›Ý]KØˆHX‹ÜÝY[\ØÚY[KY^ÜØˆH\ÝËÜÝY[\ØÚY[KY^Ü\ÝØˆHXÚØYÙKšœÛÛ˜ˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌL\ÝY[\ØÚY[KY^Ü]XXÚ\‹[Ý™\œšYK›YˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\ÈÚ[™Ù\ÈÛ›HH™XY\ÚYHÝY[ØÚY[HˆXXÚ\ˆX™[ˆØÚY[[™ÈÜš]\ËXXÚ\ˆ™\XÙ[Y[\ÝÜžK][™[˜ÙHYXÝ[Û‹XÚØYÙH˜[[˜Ù\Ë^\›Ûš[[™Ë\™\ˆÙ][Y[Z[šX\[™Ü[Û]È™Z]š[Üˆ\™H[˜Ú[™ÙY‚‹H™\šYšXØ][ÛŽ‚ˆH™XY[Û›HˆÚXÚÈÛÛ™š\›YYHŒ‹LËLLˆ9ã¢úd¬9¯¡\ÜÛÛˆ\ÈÛ\ÜÈXXÚ\ˆ˜\ÛZ[™KÙ\ÜÚ[ÛˆXXÚ\ˆ›ÙK[™Y™™XÝ]™HXXÚ\ˆ›ÙBˆHœH[ˆ\Ý˜˜XÚÙ[™ˆHœØÈK[›Ñ[Z]‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LËLL\ŒŒLØ‚‚‹KKB‚ˆÈÈŒ‹LËLL\ŒŒL‚‚‹H™[X\ÙHQˆŒ‹LËLL\ŒŒL˜‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLL‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆYÝY™ˆZ[šX\\ÜÚ\ÝY\™[\™\]Y\ÝÜ™X][ÛˆÛÈ[Z[K\Ý[HÜ\˜]ÜœÈØ[ˆ\›ˆÙPÚ]Ü›Ý\Y\ÜØYÙ\È[È^\Ý[™ÈXÚÙ]X˜\ÙY\™[™\]Y\ÝË‚‹HÙ^Hš[\Î‚ˆH\Ø\KÛZ[šX\ÜÝY™‹Ü\™[\™\]Y\ÝËÜ›Ý]KØˆH\Ø\KÛZ[šX\ÜÝY™‹Ü\™[\™\]Y\ÝËÖÚYKØ]XÚY[ËÜ›Ý]KØˆH\Ø\KÛZ[šX\ÜÝY™‹ÜÝY[ËÜ›Ý]KØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\™\]Y\Ý[™]ËÊ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹ZÛYKÊ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\™\]Y\ÝËÊ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[Ý][ËØ\KšœØˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌL[Z[šX\\ÝY™‹X\ÜÚ\ÝY\\™[\™\]Y\Ý›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][Kˆ\ÈYÈH™]ÈÝY™‹X]][XØ]YXÚÙ]Ü™X][Ûˆ]›Üˆ\™[™\]Y\ÝËˆ]™]\Ù\È^\Ý[™È\™[™\]Y\ÝÝÛ™\œÚ\ÜÝ]\È[\È[™ÝÜ™\ÈØÜ™Y[œÚÝÈ\ÈXÚÙ]š[\ÎÈ]Ù\È›ÝÚ[™ÙHXÚØYÙHYXÝ[Û‹ØÚY[[™ÈÜš]\Ëš[˜[˜ÙK^\›ÛÜˆ\™[š[™[™Ë‚‹H™\šYšXØ][ÛŽ‚ˆHZ[šX\”ÈÞ[^[™”ÓÓˆ\œÙHÚXÚÜÂˆHÝY™ˆÖSÛÛ\^Y^™\ÜÚ[ÛˆØØ[‚ˆHœØÈK[›Ñ[Z]ˆHœH[ˆZ[‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LËLL\ŒŒL˜‚‚‹KKB‚ˆÈÈŒ‹LËLL\ŒŒLB‚‹H™[X\ÙHQˆŒ‹LËLL\ŒŒLX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLL‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆYXXÚ\ˆ[Øš[H][™[˜ÙHX\šÚ[™ÈÈHÝY™ˆZ[šX\ÛÝ\œÙH]Z[YÙK‚‹HÙ^Hš[\Î‚ˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[KÖÜÙ\ÜÚ[Û’YKØ][™[˜ÙKÜ›Ý]KØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\Ù\ÜÚ[Û‹Y]Z[Ê˜ˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌL[Z[šX\\ÝY™‹X][™[˜ÙK›YˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][Kˆ\ÈYÈH™]ÈZ[šX\Üš]H]È][™[˜ÙX\Ú[™ÈHØ[YHXXÚ\‹ÜÙ\ÜÚ[Ûˆ\›Z\ÜÚ[Ûˆ[H\ÈH^\Ý[™ÈXXÚ\ˆÜ[[™™\Ù\š[™ÈYXÝ[Û‹ÜXÚØYÙHšY[ÈÛˆ\]\Ëˆ]Ù\È›ÝYXÝXÚØYÙ\Ë™\ØÚY[H\ÜÛÛœËÚ[™ÙHš[[™Ë^\›Û\™\ˆÙ][Y[ÜˆÜ[Û]È™Z]š[Ü‹‚‹H™\šYšXØ][ÛŽ‚ˆHZ[šX\”ÈÞ[^[™”ÓÓˆ\œÙHÚXÚÜÂˆHÝY™ˆÖSÛÛ\^Y^™\ÜÚ[ÛˆØØ[‚ˆHœØÈK[›Ñ[Z]ˆHœH[ˆZ[‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LËLL\ŒŒLX‚‚‹KKB‚ˆÈÈŒ‹LËLL\ŒŒL‚‹H™[X\ÙHQˆŒ‹LËLL\ŒŒL‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLL‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆš^˜]]™HZ[šX\ÝY™‹\YÙH›[šÈ™[™\š[™ÈžH™[[Ýš[™ÈÛÛ\^ÖS^™\ÜÚ[ÛœÈœ›ÛHÝY™ˆYÙ\Ë[Ýš[™È\Ü^H˜[˜XÚÜÈ[ÈYÙH˜]˜TØÜš\]K[™XZÚ[™ÈHÝY™ˆÛYHYÙH™\Ú[Y[ÈÛÝÈZ[šX\TH™\]Y\ÝË‚‹HÙ^Hš[\Î‚ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹ZÛYKÊ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\ØÚY[KÊ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\™\]Y\ÝËÊ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\™\]Y\ÝY]Z[Ê˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\Ù\ÜÚ[Û‹Y]Z[Ê˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[Ý][ËØ\KšœØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[Ø\šœÛÛ˜ˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌL[Z[šX\\ÝY™‹]Þ[\™[™\‹Yš^›YˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\ÈÚ[™Ù\ÈÛ›H˜]]™HZ[šX\™\Ù[][Ûˆš[™[™È[™™\]Y\Ý[Y[Ý]™Z]š[Üˆ›ÜˆÝY™ˆYÙ\Ëˆ˜XÚÙ[™›Ý]\Ë]][XØ][Û‹ØÚY[H™XY[™Ë™\]Y\Ý\]\Ë™YY˜XÚÈÜš]\ËØÚY[[™Ë][™[˜ÙHYXÝ[Û‹XÚØYÙHYÙ\‹š[[™Ë^\›Û[™Ü[Û]È™Z]š[Üˆ\™H[˜Ú[™ÙY‚‹H™\šYšXØ][ÛŽ‚ˆHÝY™ˆÖSÛÛ\^Y^™\ÜÚ[ÛˆØØ[‚ˆHZ[šX\”ÈÞ[^[™”ÓÓˆ\œÙHÚXÚÜÂˆHÝY™ˆÛYH™[XZ[œÈ™[™\˜X›HÚ[ˆÜ[Û˜[ÛÝ[T\È[YHÝ]‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LËLL\ŒŒL‚‚‹KKB‚ˆÈÈŒ‹LËLL\ŒŒB‚‹H™[X\ÙHQˆŒ‹LËLL\ŒŒX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLL‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆYÝY™ˆZ[šX\ÛÝ\œÙH]Z[™YY˜XÚÈÝX›Z\ÜÚ[ÛˆÛÈXXÚ\œÈØ[ˆÝX›Z]Üˆ\]H\™[Y˜XÚ[™ÈY\‹XÛ\ÜÈ™YY˜XÚÈœ›ÛHH˜]]™HZ[šX\‚‹HÙ^Hš[\Î‚ˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[KÖÜÙ\ÜÚ[Û’YKÙ™YY˜XÚËÜ›Ý]KØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[Ø\šœÛÛ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\ØÚY[KÊ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\Ù\ÜÚ[Û‹Y]Z[Ê˜ˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌL[Z[šX\\ÝY™‹Y™YY˜XÚË›YˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][Kˆ\ÈYÈH™]ÈXXÚ\‹Y˜XÚ[™ÈZ[šX\Üš]H]ÈÙ\ÜÚ[Û‘™YY˜XÚØ™]\Ú[™ÈHØ[YHš]™K\ÙXÝ[Ûˆ\™[Y˜XÚ[™È™YY˜XÚÈ[\È[™Ù\™\‹\ÚYHXXÚ\‹ÜÙ\ÜÚ[Ûˆ\›Z\ÜÚ[ÛˆÚXÚÜÈ\ÈH^\Ý[™ÈXXÚ\ˆÜ[ˆØÚY[[™Ë][™[˜ÙHYXÝ[Û‹XÚØYÙHYÙ\‹š[[™Ë^\›Û\™\ˆÙ][Y[˜[œÜÜš[[™Ë\Ú[™\ÜÈXØÛÝ[Ë[™Ü[Û]È™Z]š[Üˆ\™H[˜Ú[™ÙY‚‹H™\šYšXØ][ÛŽ‚ˆHZ[šX\”ÈÞ[^[™”ÓÓˆ\œÙHÚXÚÜÂˆHœØÈK[›Ñ[Z]ˆHÝY™ˆ™YY˜XÚÈ›Ý]H[˜ÛYY[ˆ™^›ÙXÝ[ÛˆZ[ˆHÜÝY\ÞH[˜]]Üš^™Y›Ý]HÛ[ÚÙHÚXÚÂˆHœH[ˆZ[‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LËLL\ŒŒX‚‚‹KKB‚ˆÈÈŒ‹LËLL\ŒŒ‚‹H™[X\ÙHQˆŒ‹LËLL\ŒŒ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLL‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆYHÝY™ˆZ[šX\Z[HØÚY[HšY]ÈÛÈÜËÛX[˜YÙ[Y[Ø[ˆÙYH[Ø[YKY^H\ÜÛÛœÈ[™XXÚ\œÈØ[ˆÙYHZ\ˆÝÛˆ\ÜÛÛœËÚ]™\]Y\Ý\Hš[\š[™È›ÜˆØÚY[[™ÈÛÛÜ™[˜][Û‹‚‹HÙ^Hš[\Î‚ˆHX‹ÛZ[šX\\ÝY™‹\ØÚY[KØˆH\Ø\KÛZ[šX\ÜÝY™‹ÜØÚY[KÜ›Ý]KØˆH\Ø\KÛZ[šX\ÜÝY™‹Ü\™[\™\]Y\ÝËÜ›Ý]KØˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹ZÛYKÊ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\ØÚY[KÊ˜ˆHZ[šX\Ø›ÜÜËXXØY[ZXË\\™[ÜYÙ\ËÜÝY™‹\™\]Y\ÝËÊ˜ˆHØÜËÝ\ÚÜËÕTÒËLŒŒÌL[Z[šX\\ÝY™‹\ØÚY[K›YˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝÈÈYY][Kˆ\ÈYÈ™XY\ÚYHÝY™ˆZ[šX\ØÚY[HXØÙ\ÜÈ[™\Hš[\š[™È›ÜˆZ[šX\™\]Y\Ý]Y]Y\ËˆXXÚ\ˆXØÛÝ[È\™H›Ü˜ÙYÈZ\ˆ[šÙYXXÚ\ˆØÚY[KˆØÚY[[™ÈÜš]\Ë][™[˜ÙHYXÝ[Û‹XÚØYÙHYÙ\‹™XÙZ\Ë^\›Û\™\ˆÙ][Y[˜[œÜÜš[[™Ë\Ú[™\ÜÈXØÛÝ[Ë[™Ü[Û]È™Z]š[Üˆ\™H[˜Ú[™ÙY‚‹H™\šYšXØ][ÛŽ‚ˆHZ[šX\”ÈÞ[^[™”ÓÓˆ\œÙHÚXÚÜÂˆHœØÈK[›Ñ[Z]ˆHÝY™ˆØÚY[HTHÛ[ÚÙHÚXÚÈ›Üˆ[˜]]Üš^™YXØÙ\ÜËYZ[‹Ø[ØÚY[HXØÙ\ÜË[™XXÚ\‹[Û›HØÚY[HØÛÜ[™ÂˆHœH[ˆZ[‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LËLL\ŒŒ‚‚‹KKB‚ˆÈÈŒ‹LËLL\ŒŒÂ‚‹H™[X\ÙHQˆŒ‹LËLL\ŒŒØ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LËLL‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆÚ\H˜]]™HZ[šX\˜XÚÙ[™›Ý[™][Ûˆ›Üˆ\™[XØÙ\ÜËÝY™ˆ[Øš[H™\]Y\Ý[™[™Ë›ÝYšXØ][Ûˆ]Y]YZ[™Ë[™›ÙXÝ[Û‹YÛXZ[ˆZ[šX\ÛÛ™šYÝ\˜][Û‹‚‹HÙ^Hš[\Î‚ˆHš\ÛXKÜØÚ[XKœš\ÛXXˆHš\ÛXKÛZYÜ˜][ÛœËÌŒŒÌLLLØYÜ\™[ÜÜ[ÛZYÜ˜][Û‹œÜ[ˆHš\õÛ¾xîÚ$z{-®éÜj×HÈ9oêú`'ú+í9¦#˜™YXÚ[™Èš\œÝ\ØÜ™Y[ˆ^[œÚ]H[ˆš[[™ÝX[[ÙB‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LL‹\Œ˜‚‚ˆÈÈŒ‹LL‹\ŒM‚‚‹H™[X\ÙHQˆŒ‹LL‹\ŒM˜‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LL˜‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆ^[™™[Y[X™\™YÝY[Y\ÚÈÛÛ^ÛÈHYZ[ˆÝY[ÈÛÜšØ™[˜Ú™\ÝÜ™\ÈH\Ý]Y]YH\ÈYÚÙZYÚš[\œÈÚ[ˆ™[Ü[™YÚ]Ý]^XÚ]T“\˜[\Ë‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹ÜÝY[ËÜYÙKÞˆH\ØYZ[‹ÜÝY[ËÐYZ[”ÝY[ÐÛY[ÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ‹\ÝY[ËY\ÚË[Y[[ÜžK›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È\ÈHÝY[]ÛÜšØ™[˜ÚÛÛ^[™™\Ù[][ÛˆÚ[™ÙHÛ›NÈÝY[Ü™X][Û‹[][Û‹š[\š[™ÈÙ[X[XÜËYÚ[˜][ÛˆÙ[X[XÜË[™ÝY[›Ùš[KØ\Ú[™\ÜÈ]HÙÚXÈ™[XZ[ˆ[˜Ú[™ÙY‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHœ™\ÚØØ[ÙÙÙYZ[ˆPHÛˆ‹ËÌLËŒŒŒNŒÌÌNXÛÛ™š\›YYØYZ[‹ÜÝY[Ø™\ÝÜ™\ÈH™[Y[X™\™Y]Y]YH\ÈHÈÛÝ\˜ÙPÚ[›™[YÈÝY[\RYÈYÙTÚ^™XÚ[ˆÜ[™YÚ]Ý]^XÚ]T“\˜[\ÂˆHH™\Ý[YYY\ÚÈ˜[›™\ˆ\X\œÈÛ›HÛˆHZ[ˆ™[Ü[ˆ][™Ý^\ÈÝ\™\ÜÙYÚ[ˆ^XÚ]šY]ØÜˆX\˜[\È\™H™\Ù[‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LL‹\ŒM˜‚‚ˆÈÈŒ‹LL‹\ŒMÂ‚‹H™[X\ÙHQˆŒ‹LL‹\ŒMØ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LL˜‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆY™[Y[X™\™YÙËY\ÚÈÛÛ^\Èš\œÝ\ØÜ™Y[ˆ™^\Ý\ÚÜÝ]ÈÈHYZ[ˆÙÈÙ[\‹‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹ÝÙÜËÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ‹]ÙÜËY\ÚË[Y[[ÜžKX[™\ÚÜÝ]Ë›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È\ÈHÙË]ÛÜšØ™[˜ÚÛÛ^[™™\Ù[][ÛˆÚ[™ÙHÛ›NÈ][™[˜ÙH\ÚÈØ[Ý[][Û‹™[Z[™\ˆÛÛ™š\›X][Û‹ÛÛ™›XÝ]Y]YXÝ[Ûˆ™\Z\‹[™™[™]Ø[X[\\Ú[™\ÜÈÙÚXÈ™[XZ[ˆ[˜Ú[™ÙY‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHœ™\ÚØØ[ÙÙÙYZ[ˆPHÛˆ‹ËÌLËŒŒŒNŒÌÌŒÛÛ™š\›YYØYZ[‹ÝÙÜØ™[Ü[œÈÚ]H™[Y[X™\™Y\ÚÈÛÛ^[™ÚÝÜÈH™\Ý[YYY\ÚÈ˜[›™\ˆ\È™^\Ý\ÚÜÝ]˜\ˆÚ[ˆ›È^XÚ]T“\˜[\È\™H™\Ù[ˆH^XÚ]Ø\›‘^\ØÈ\Ý^\ØT“\˜[\ÈÝ[Ý\™\ÜÈH™\Ý[YYY\ÚÈ˜[›™\ˆÛÈÛ™K[Ù™ˆY\[šÜÈÙY\š[Üš]HÝ™\ˆ™[Y[X™\™YÝ]B‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LL‹\ŒMØ‚‚ˆÈÈŒ‹LL‹\ŒN‚‹H™[X\ÙHQˆŒ‹LL‹\ŒN‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LL˜‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆ\›ˆH^\Ý[™È\ØY™XÛÝ™\žHYÙH[È[ˆ]XÚY[ZX[ÛÜšØ™[˜Ú[™[šYžHš[˜[˜ÙH[›ÛX[H[žHÚ[ÈÝØ\™]‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹Ü™XÛÝ™\žKÝ\ØYËÜYÙKÞˆH\ØYZ[‹Û^[Ý]ÞˆH\ØYZ[‹Ü™XÙZ\ËX\›Ý˜[ËÜYÙKÞˆH\ØYZ[‹Ù^[œÙKXÛZ[\ËÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ‹X]XÚY[ZX[Y\ÚË›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È\È[ˆYZ[ˆ˜]šYØ][Û‹XØÙ\ÜË[™™\Ù[][Ûˆ\ÜÈÛ›NÈ]XÚY[ÝÜ˜YÙH[\Ë™XÛÝ™\žKØ˜XÚÙš[X]Ú[™Ë™XÙZ\\›Ý˜[ÙÚXË^[œÙH\›Ý˜[ÙÚXË[™XÚÙ]ÛÜšÙ›ÝÈÙÚXÈ™[XZ[ˆ[˜Ú[™ÙY‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHœ™\ÚØØ[ÙÙÙYZ[ˆPHÛˆ‹ËÌLËŒŒŒNŒÌÌŒXÛÛ™š\›YYØYZ[‹Ü™XÛÝ™\žKÝ\ØYØ™[™\œÈH™]È]XÚY[X[\ÚØÛÜšØ™[˜ÚÛÝ\˜ÙKYš[\ˆ™[Ü[ˆÝ[ÛÜšÜË[™›Ý™XÙZ\ËÙ^[œÙHYÙ\È^ÜÙHH™]È\ÚÈ[žBˆHš[˜[˜ÙHXØÙ\ÜÈÈØYZ[‹Ü™XÛÝ™\žKÝ\ØYØØ\ÈYY›ÝYÚHYZ[ˆ^[Ý][ÝÛ\Ý˜]\ˆ[ˆH™]È]][Ù[‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LL‹\ŒN‚‚ˆÈÈŒ‹LL‹\ŒNB‚‹H™[X\ÙHQˆŒ‹LL‹\ŒNX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LL˜‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆYHÝXÚÞHXÝ[Ûˆ˜\ˆ\ÈÙXÝ[Ûˆ™]\›ˆ[šÜÈÈHYZ[ˆÝY[]Z[YÙK‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹ÜÝY[ËÖÚYKÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ‹\ÝY[Y]Z[XXÝ[Û‹X˜\‹›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È\ÈHÝY[Y]Z[™\Ù[][Ûˆ[™˜]šYØ][Ûˆ\ÜÈÛ›NÈÝY[Y]ÙÚXË]ZXÚË\ØÚY[HÝX›Z\ÜÚ[ÛˆÙÚXË][™[˜ÙHš[\ˆÙÚXËXÚØYÙKØš[[™ÈÙÚXË[™Ù\ÜÚ[ÛˆXÝ[ÛˆÙÚXÈ™[XZ[ˆ[˜Ú[™ÙY‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHœ™\ÚØØ[ÙÙÙYZ[ˆPHÛˆ‹ËÌLËŒŒŒNŒÌÌŒ˜ÛÛ™š\›YYHÝY[]Z[YÙH™[™\œÈH™]ÈÝY[ÛÜšØ™[˜Ú^ÜÙ\È˜XÚÈÈXÝ[Ûˆ˜\˜[™[˜ÛY\ÈH™]ÈÙ[œ›ÛY[ØÜ]ZXÚË\ØÚY[X[™ÙY]\ÝY[[˜ÚÜœÂ‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LL‹\ŒNX‚‚ˆÈÈŒ‹LL‹\ŒŒ‚‹H™[X\ÙHQˆŒ‹LL‹\ŒŒ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LL˜‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆY™]\ØX›H[\]\È\È]ZXÚÈ]KXÛÜHXÝ[ÛœÈÈXXÚ\ˆ]˜Z[Xš[]K‚‹HÙ^Hš[\Î‚ˆH\ÝXXÚ\‹Ø]˜Z[Xš[]KÕXXÚ\]˜Z[Xš[]PÛY[ÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ‹]XXÚ\‹X]˜Z[Xš[]K][\]\ËX[™XÛÜK›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È\ÈHXXÚ\‹\ÚYH]˜Z[Xš[]H[\˜XÝ[Ûˆ\ÜÈÛ›NÈ]˜Z[Xš[]HÝ™\›\[\ËÛX\‹Y^H[\Ë[™È[\Ë[™ÛÝØ]™KÙ[]HT\È™[XZ[ˆ[˜Ú[™ÙY‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHœ™\ÚØØ[ÙÙÙYZ[ˆPHÛˆ‹ËÌLËŒŒŒNŒÌÌŒØÛÛ™š\›YYÝXXÚ\‹Ø]˜Z[Xš[]X™[™\œÈÛÛ[[Ûˆ[\]\Ø]ZXÚÈÛÜHžH]XÛÜH
+ÌY[™ÛÜH
+ÍÙ‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LL‹\ŒŒ‚‚ˆÈÈŒ‹LL‹\ŒŒB‚‹H™[X\ÙHQˆŒ‹LL‹\ŒŒX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LL˜‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆYÛX\™\ˆÛÛ\][Û‹\Ý]HÝZY[˜ÙHÈHXXÚ\ˆÙ\ÜÚ[Û‹Y]Z[YÙHÛÈ][™[˜ÙHÛÛ\][Ûˆ›ÝÜÈ[È™YY˜XÚÈ[™Ø]™Y™YY˜XÚÈ™Y[Èš[š\ÚY‚‹HÙ^Hš[\Î‚ˆH\ÝXXÚ\‹ÜÙ\ÜÚ[ÛœËÖÚYKÜYÙKÞˆH\ÝXXÚ\‹ÜÙ\ÜÚ[ÛœËÖÚYKÕXXÚ\][™[˜ÙPÛY[ÞˆH\ÝXXÚ\‹ÜÙ\ÜÚ[ÛœËÖÚYKÕXXÚ\‘™YY˜XÚÐÛY[ÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ‹]XXÚ\‹\Ù\ÜÚ[Û‹XÛÛ\][Û‹YÝZY[˜ÙK›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È\ÈHXXÚ\‹\ÚYHÙ\ÜÚ[ÛˆÝZY[˜ÙH[™™\Ù[][Ûˆ\ÜÈÛ›NÈ][™[˜ÙHØ]™HÙÚXË™YY˜XÚÈÝX›Z]ÙÚXË›Ý][™Ë[™\›Z\ÜÚ[ÛœÈ™[XZ[ˆ[˜Ú[™ÙY‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHœ™\ÚØØ[ÙÙÙYZ[ˆPHÛˆ‹ËÌLËŒŒŒNŒÌÌÛÛ™š\›YYÝXXÚ\‹ÜÙ\ÜÚ[ÛœËÙYLMÌØKLØXËMXŒËNM˜ËLÎLNMY˜YØX™[™\œÈÛÛ\][ÛˆÝ]X™\Ù\™\ÈH^\Ý[™ÈÝ]\ÈÝ[[X\žHØ\™Ë[™ÚÝÜÈH™]È][™[˜ÙKÙ™YY˜XÚÈÛÛ\][ÛˆÝZY[˜ÙHÛÜB‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LL‹\ŒŒX‚‚ˆÈÈŒ‹LLË\ŒB‚‹H™[X\ÙHQˆŒ‹LLË\ŒX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLØ‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆš[H™\X]Yš\œÝ\ØÜ™Y[ˆÛÜHÛˆXXÚ\ˆ^\›ÛÛÈHYÙHØ^\ÈHÛÜšÙ›ÝÈÛ˜ÙH[œÝXYÙˆ™\X][™ÈHØ[YHÝ]\È[ˆ][\HÝ[[X\žH›ØÚÜË‚‹HÙ^Hš[\Î‚ˆH\ÝXXÚ\‹Ü^\›ÛÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒË]XXÚ\‹\^\›ÛY[œÚ]K]š[K›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È\ÈHXXÚ\‹\ÚYH^\›Û™\Ù[][Ûˆ\ÜÈÛ›NÈ^\›ÛØ[Ý[][Û‹ÛÛ™š\›X][Û‹\›Ý˜[^[Ý][™š[˜[˜ÙK\™]\›ˆÙÚXÈ™[XZ[ˆ[˜Ú[™ÙY‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHœ™\ÚØØ[ÙÙÙYZ[ˆPHÛˆ‹ËÌLËŒŒŒNŒÌÌKÝXXÚ\‹Ü^\›ÛÛÛ™š\›YYHYÙHÝ[ØYÈÛÜœ™XÝH›ÜˆHÝ\œ™[[\K\Ý]HXXÚ\ˆXØÛÝ[ˆHÝ\œ™[ØØ[[™›ÙXÝ[ÛˆXXÚ\ˆXØÛÝ[Ý]H\ÈYZ[ˆ\È›ÝÙ[\È[Û	ÜÈ^\›ÛY]ÛÈ\È™[X\ÙHØ\È™\šYšYYYØZ[œÝH[\K\Ý]HÚ[\ÈZ[Ý]]˜]\ˆ[ˆH]™HÙ[\^\›Û™XÛÜ™‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLË\ŒX‚‚ˆÈÈŒ‹LLË\Œ‚‚‹H™[X\ÙHQˆŒ‹LLË\Œ˜‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLØ‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆÝš^\XØ]Yš[[™ÝX[X™[ÈÛˆXXÚ\ˆ^\›ÛÚ\™HÛÛYHÝš[™ÜÈÙ\™HX[X[HÜš][ˆ\Èš[[™ÝX[^™Y›Ü™H\ÜÚ[™È›ÝYÚHš[[™ÝX[[\‹‚‹HÙ^Hš[\Î‚ˆH\ÝXXÚ\‹Ü^\›ÛÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒË]XXÚ\‹\^\›ÛXš[[™ÝX[Y\XØ][Û‹ZÝš^›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È\ÈHXXÚ\‹\ÚYH^\›ÛÛÜHÝš^Û›NÈ^\›ÛØ[Ý[][Û‹ÛÛ™š\›X][Û‹\›Ý˜[^[Ý][™š[˜[˜ÙK\™]\›ˆÙÚXÈ™[XZ[ˆ[˜Ú[™ÙY‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHØØ[ÛÝ\˜ÙH]Y]ÛÛ™š\›YY\XØ]YX™[ÈÝXÚ\ÈÚ]\[œÈ™^Ý\œ™[ÝÛ™\˜[Y[[™XÝYÙH[Ë[™ÝÛ™\ˆX™[È›ÝÈ\ÙH›Ü›X[
+[™Ë[‹š
+XÝš[™ÜÈ[œÝXYÙˆ™KXZ[š[[™ÝX[^ˆHHÝ\œ™[ØØ[[™›ÙXÝ[ÛˆXXÚ\ˆXØÛÝ[Ý[[™ÈÛˆH^\›Û[\HÝ]H›Üˆ\È[ÛÛÈ\È™[X\ÙHØ\È™\šYšYY›ÝYÚÛÝ\˜ÙK\]ÛX[\\ÈZ[Ý]]˜]\ˆ[ˆH]™HÙ[\^\›Û™XÛÜ™‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLË\Œ˜‚‚ˆÈÈŒ‹LLË\ŒÂ‚‹H™[X\ÙHQˆŒ‹LLË\ŒØ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLØ‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆXZÙHHš\œÝYZ[‹\ÚYHÛÜKXÛ\š]H\ÜÈÛˆYÚYœ™\]Y[˜ÞHÛÜšØ™[˜ÚYÙ\ÈÈ™YXÙHÛ\ÚZX]žHÜˆZ^Y[[™ÝXYÙHX™[Ë‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹Ü™XÙZ\ËX\›Ý˜[ËÜYÙKÞˆH\ØYZ[‹Ü™\ÜËÜ\™\‹\Ù][Y[ÜYÙKÞˆH\ØYZ[‹ÜÝY[ËÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒËXYZ[‹XÛÜKXÛ\š]K\\ÜËLK›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È\È[ˆYZ[‹\ÚYHÛÜHÛX[\Û›NÈ™XÙZ\]Y]YH™Z]š[Ü‹Ù][Y[Ú[›ÚXÙH™Z]š[Ü‹[™ÝY[\ÙX\˜Ú™Z]š[Üˆ™[XZ[ˆ[˜Ú[™ÙY‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆH\™Ù]YÛÜH]Y]ÛÛ™š\›YYH\]YÛÜ™[™È›Üˆ™XÙZ\š[KZ\ÜÝYH[šÜË\™\‹\Ù][Y[[›ÚXÙHÜ›Ý\[™ËÜÝ]\ÈX™[Ë[™HÝY[ÙX\˜ÚXÙZÛ\‚‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLË\ŒØ‚‚ˆÈÈŒ‹LLË\ŒL‚‚‹H™[X\ÙHQˆŒ‹LLË\ŒL˜‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLØ‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆYÚ[ˆÚ\™Y[Øš[H^[Ý]ÛÛZ[›Y[[™™[[Ý™HH™[XZ[š[™È˜\œ›ÝË\ØÜ™Y[ˆÝ™\™›ÝÈÛˆXXÚ\ˆ^\›ÛÈ^[œÙHÛÜšØ™[˜Ú\È[™HYZ[ˆ™XÙZ\X\›Ý˜[ÛÜšÙ›ÝË‚‹HÙ^Hš[\Î‚ˆH\Û^[Ý]ÞˆH\Ü™\ÜÛœÚ]™K[^[Ý]˜ÜÜØˆH\ÝXXÚ\‹×ØÛÛ\Û™[ËÕXXÚ\•ÛÜšÜÜXÙR\›ËÞˆH\ÝXXÚ\‹Ü^\›ÛÜYÙKÞˆH\ØYZ[‹Ü™XÙZ\ËX\›Ý˜[ËÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒË[[Øš[K\Ú[X[™Y›Ü›K[Ý™\™›ÝË\\ÜË›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È\ÈH™\ÜÛœÚ]™HRHÛÛZ[›Y[\ÜÈÛ›NÈ^\›ÛÙÚXË™XÙZ\\›Ý˜[ÙÚXË^[Y[\™XÛÜ™[™[™Ë™XÙZ\Ü™X][ÛˆÙÚXË[™™[Y[X™\™Y]Y]YH™Z]š[Üˆ™[XZ[ˆ[˜Ú[™ÙY‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHØØ[[Øš[K]ÚYPHÛˆ‹ËÌLËŒŒŒNŒÌÌÌÝXXÚ\‹Ü^\›ÛÛÛ™š\›YYÝXÚÙY\›ÈXÝ[ÛœËÝXÚÙY^\›Ûš[\œË[™ØÜ›ÛÚYOOHÛY[ÚYˆHØØ[[Øš[K]ÚYPHÛˆ‹ËÌLËŒŒŒNŒÌÌÌÝXXÚ\‹Ù^[œÙKXÛZ[\ØÛÛ™š\›YY›ÈÜš^›Û[Ý™\™›ÝÈÛˆHÚ\™YXXÚ\ˆÛÜšØ™[˜ÚÚ[ˆHØØ[[Øš[K]ÚYPHÛˆ‹ËÌLËŒŒŒNŒÌÌÌØYZ[‹Ü™XÙZ\ËX\›Ý˜[ØÛÛ™š\›YYH]ZXÚÈXÚØYÙHÙ[XÝÜˆ[™™XÙZ\š[˜[˜ÙH›Ü›\È›ÈÛ™Ù\ˆÝ™\™›ÝË[™ØÜ›ÛÚYOOHÛY[ÚY‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLË\ŒL˜‚‚ˆÈÈŒ‹LLË\ŒNB‚‹H™[X\ÙHQˆŒ‹LLË\ŒNX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLØ‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆ]Y][™š^H™[XZ[š[™È™[Y[X™\™Y]ÛÜšØ™[˜ÚYÙ\ÈÛÈ^XÚ]›[šÈš[\ˆÝX›Z\ÜÚ[ÛœÈ[™™\Ù][šÜÈ›ÈÛ™Ù\ˆ™]š]™HÝ[H™[Y[X™\™Y]Y]YHÝ]K‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹ÜÝY[ËÜYÙKÞˆH\ØYZ[‹Ù™YY˜XÚÜËÜYÙKÞˆH\ØYZ[‹Ù^[œÙKXÛZ[\ËÜYÙKÞˆH\ØYZ[‹Ü™XÙZ\ËX\›Ý˜[ËÜYÙKÞˆH\ØYZ[‹Ü™\ÜËÜ\™\‹\Ù][Y[ÜYÙKÞˆH\ØYZ[‹ÝÙÜËÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒË\™[Y[X™\™YYš[\‹X›[šË\\˜[KX]Y]›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\ÈÛ›HÚ[™Ù\È™[Y[X™\™YYš[\ˆ™\Ý[YH[\È[™Y˜][™\Ù][šÜÈÛˆÛÜšØ™[˜ÚYÙ\ÎÈ›ÈXÚØYÙK™XÙZ\^[œÙKÙ][Y[ÙËÜˆÝY[\Ú[™\ÜÈÙÚXÈÚ[™Ù\Ë‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆH›ÙXÝ[Ûˆ™XY[Û›HPHÛÛ™š\›YY^XÚ]™\Ù]›Ý]\È›ÝÈž\\ÜÈ™[Y[X™\™YÝ]HÛˆXÚØYÙ\ØÝY[Ø^[œÙKXÛZ[\Ø™XÙZ\ËX\›Ý˜[Ø\™\‹\Ù][Y[[™ÙÜØˆH›ÙXÝ[Ûˆ™XY[Û›HPHÛÛ™š\›YY^XÚ]›[šÈ]Y\žHÝX›Z\ÜÚ[ÛœÈÝXÚ\ÈZYXÛˆXÚØYÙ\È[™OXÛˆXÚØYÙ\È›ÈÛ™Ù\ˆ™\Ý\œ™XÝH™]š[Ý\È™[Y[X™\™Y˜[YBˆHÜÝY\ÞHÝ\\ÚXÚÈÛÛ™š\›YYØØ[ÈÜšYÚ[ˆÈÙ\™\ˆH™ÌØ™Y˜ˆH™[X\ÙHØÜÈÙ\™HÞ[˜ÙY[ˆH›ÛÝË]\ØÜË[Û›HÛÛ[Z]ÛÈH™[X\ÙHØ]HÝ^\È[YÛ™YÚ]›ÙXÝ[Û‚‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLË\ŒNX‚‚ˆÈÈŒ‹LLË\ŒŒ‚‹H™[X\ÙHQˆŒ‹LLË\ŒŒ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLØ‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆYHYXØ]Yš[˜[™\ÜÈÈ9îäú+ï¹¢©ydb˜ÛÜšÙ›ÝÈÚ]H™]Èˆ[Ù[XXÚ\‹\ÚYHš[›ÝË[™YZ[‹\ÚYH\ÜÚYÛ‹Ù›ÜØ\™Ù[\ˆ›ÜˆÛÛ\]YÕT”ØXÚØYÙ\Ë‚‹HÙ^Hš[\Î‚ˆHš\ÛXKÜØÚ[XKœš\ÛXXˆHš\ÛXKÛZYÜ˜][ÛœËÌŒŒÌŒŒØYÙš[˜[Ü™\ÜËÛZYÜ˜][Û‹œÜ[ˆHX‹Ùš[˜[\™\ÜØˆH\ÝXXÚ\‹Ùš[˜[\™\ÜËÜYÙKÞˆH\ÝXXÚ\‹Ùš[˜[\™\ÜËÖÚYKÜYÙKÞˆH\ÝXXÚ\‹Û^[Ý]ÞˆH\ØYZ[‹Ü™\ÜËÙš[˜[ÜYÙKÞˆH\ØYZ[‹Û^[Ý]ÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒËYš[˜[\™\ÜË\\ÙKLKX[™L‹›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][Kˆ\È™[X\ÙHYÈH™]Èš\ÛXH[[KÝX›H[™™]ÈXXÚ\‹ØYZ[ˆ›Ý]\Ë]]Ù\È›ÝÚ[™ÙHZY\›K\™\ÜÙÚXË][™[˜ÙKÙYXÝ[ÛˆÙÚXËXÚØYÙH˜[[˜Ù\ËÜˆš[˜[˜ÙHÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆš\ÛXN™Ù[™\˜]X\ÜÙYˆHœH[ˆZ[\ÜÙYˆHÜÝY\ÞHÝ\\ÚXÚÈÛÛ™š\›YYH™]È™[X\ÙHÛÛ[Z]\È[YÛ™YÛˆØØ[ÈÜšYÚ[ˆÈÙ\™\‚ˆH›ÙXÝ[Ûˆ™XY[Û›HPHÛÛ™š\›YYH™]ÈXXÚ\ˆ[™YZ[ˆš[˜[\™\ÜYÙ\È™[™\ˆ[™H˜]šYØ][Ûˆ[šY\È\™Hš\ÚX›BˆH™[X\ÙH\ÚÈ™XÛÜ™Ø\ÈÞ[˜ÙY[ˆH›ÛÝË]\ØÜÈ\ÜÈÛÈ[™Ù™ˆØÜÈÝ^H[YÛ™YÚ]H\ÞYYÝ]BˆHš[˜[ØÜÈÞ[˜È\ÜÈ[™YÚ[™Ù[ÙÈÈ™[X\ÙH›Ø\™È\ÚÈ[ˆÛ™HÛÛ[Z]›ÜˆH™[X\ÙHØ]B‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLË\ŒŒ‚‚ˆÈÈŒ‹LLË\ŒŒB‚‹H™[X\ÙHQˆŒ‹LLË\ŒŒX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLØ‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆÛÛ\]HHš\œÝš[˜[\™\ÜÛÜšÙ›ÝÈÚ]YZ[ˆˆ^Ü[™HÛX\™\ˆ›ÜØ\™Y]Ë\\™[XÝ[Û‹‚‹HÙ^Hš[\Î‚ˆH\Ø\KØYZ[‹Ùš[˜[\™\ÜËÖÚYKÜ‹Ü›Ý]KØˆH\ØYZ[‹Ü™\ÜËÙš[˜[ÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒËYš[˜[\™\ÜË\‹X[™Y›ÜØ\™YY›ÝË›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙH[\›Ý™\Èš[˜[\™\Ü^Ü[™YZ[ˆRHÛÜ™[™ÈÛ›NÈ›È\ÜÚYÛ›Y[[\ËXXÚ\ˆÝX›Z\ÜÚ[Ûˆ[\ËØÚ[XK][™[˜ÙHÙÚXËÜˆš[˜[˜ÙHÙÚXÈÚ[™ÙY‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHÜÝY\ÞHÝ\\ÚXÚÈÛÛ™š\›YYH™]È™[X\ÙHÛÛ[Z]\È[YÛ™YÛˆØØ[ÈÜšYÚ[ˆÈÙ\™\‚ˆH›ÙXÝ[Ûˆ™XY[Û›HPHÛÛ™š\›YYØYZ[‹Ü™\ÜËÙš[˜[ÚÝÜÈÝÛ›ØY˜[™H›ÜØ\™YXÝ[Ûˆ^›ÝÈ™XYÈ\ÈH\™[Y˜XÚ[™È[™Ù™‚ˆH›ÙXÝ[Ûˆ™XY[Û›HPHÛÛ™š\›YYØ\KØYZ[‹Ùš[˜[\™\ÜËÖÚYKÜ˜™]\›œÈŒÚ]\XØ][Û‹Ü˜‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLË\ŒŒX‚‚ˆÈÈŒ‹LLË\ŒŒ‚‚‹H™[X\ÙHQˆŒ‹LLË\ŒŒ˜‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLØ‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆYš[˜[\™\Ü\™[Y[]™\žH™XÛÜ™ËYZ[ˆÚ\™K[[šÈÛÛ›ÛË[™HX›XÈ™XY[Û›Hš[˜[\™\ÜYÙKÚ[H\Ü˜Y[™ÈHš[X›Hˆ[ÈH[Ü™H›Ü›X[[]™\žH™\œÚ[Û‹‚‹HÙ^Hš[\Î‚ˆHš\ÛXKÜØÚ[XKœš\ÛXXˆHš\ÛXKÛZYÜ˜][ÛœËÌŒŒÌŒŒÌØYÙš[˜[Ü™\ÜÙ[]™\žWØ[™ÜÚ\™KÛZYÜ˜][Û‹œÜ[ˆHX‹Ùš[˜[\™\ÜØˆH\ØYZ[‹Ü™\ÜËÙš[˜[ÜYÙKÞˆH\Ø\KØYZ[‹Ùš[˜[\™\ÜËÖÚYKÜ‹Ü›Ý]KØˆH\Ùš[˜[\™\ÜÖÚYKÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒËYš[˜[\™\ÜË\\ÙKLØKX[™LØ‹›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][Kˆ\È™[X\ÙHYÈ™]Èš[˜[™\ÜY]Y]HÛÛ[[œÈ\ÈHX›XÈÚÙ[‹YØ]YÚ\™HYÙK]]Ù\È›ÝÚ[™ÙHZY\›K\™\ÜÙÚXËXXÚ\ˆš[[\Ë\ÜÚYÛ›Y[[\Ë][™[˜ÙHÙÚXËXÚØYÙH˜[[˜Ù\ËÜˆš[˜[˜ÙHÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆš\ÛXN™Ù[™\˜]X\ÜÙYˆHœH[ˆZ[\ÜÙYˆHÜÝY\ÞHÝ\\ÚXÚÈÛÛ™š\›YYH™]È™[X\ÙHÛÛ[Z]\È[YÛ™YÛˆØØ[ÈÜšYÚ[ˆÈÙ\™\‚ˆH›ÙXÝ[Ûˆ™XY[Û›HPHÛÛ™š\›YYØYZ[‹Ü™\ÜËÙš[˜[ÚÝÜÈ[]™\žHXÝ[ÛœÈ[™\™[Ú\™K[[šÈÛÛ›ÛÂˆH›ÙXÝ[Ûˆ™XY[Û›HPHÛÛ™š\›YYØ\KØYZ[‹Ùš[˜[\™\ÜËÖÚYKÜ˜™]\›œÈŒÚ]\XØ][Û‹Ü˜ˆH›ÙXÝ[Ûˆ™XY[Û›HPHÛÛ™š\›YYHÚÙ[š^™YÙš[˜[\™\ÜÖÚYOÝÚÙ[K‹‹˜YÙH™[™\œÈ\ÈH\™[\ØY™H™XY[Û›H™\Ü‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLË\ŒŒ˜‚‚ˆÈÈŒ‹LLË\ŒŒÂ‚‹H™[X\ÙHQˆŒ‹LLË\ŒŒØ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLØ‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆY^\žHÚ[™ÝÜÈÈš[˜[\™\Ü\™[Ú\™H[šÜÈÛÈÜ\˜][ÛœÈØ[ˆ\ÜÝYH[šÜÈÚ]ÛÛ›ÛY˜[Y]H[™HX›XÈYÙHØ[ˆ™Z™XÝ^\™YÚÙ[œÈÛX[›K‚‹HÙ^Hš[\Î‚ˆHš\ÛXKÜØÚ[XKœš\ÛXXˆHš\ÛXKÛZYÜ˜][ÛœËÌŒŒÌŒMLØYÙš[˜[Ü™\ÜÜÚ\™WÙ^\žKÛZYÜ˜][Û‹œÜ[ˆHX‹Ùš[˜[\™\ÜØˆH\ØYZ[‹Ü™\ÜËÙš[˜[ÜYÙKÞˆH\Ùš[˜[\™\ÜÖÚYKÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒËYš[˜[\™\Ü\Ú\™KY^\žK›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›H™Yš[™\ÈÚ\™K[[šÈ˜[Y]HÚ[™ÝÜÈ[™HX›XÈ™XY[Û›HÝX\™YÙNÈ]Ù\È›ÝÚ[™ÙHXXÚ\ˆ™\ÜÛÛ[[]™\žH™XÛÜ™Ë][™[˜ÙHÙÚXËXÚØYÙH˜[[˜Ù\ËÜˆš[˜[˜ÙHÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆš\ÛXN™Ù[™\˜]X\ÜÙYˆHœH[ˆZ[\ÜÙYˆHÜÝY\ÞHÝ\\ÚXÚÈÛÛ™š\›YYH™]È™[X\ÙHÛÛ[Z]\È[YÛ™YÛˆØØ[ÈÜšYÚ[ˆÈÙ\™\‚ˆH›ÙXÝ[Ûˆ™XY[Û›HPHÛÛ™š\›YYØYZ[‹Ü™\ÜËÙš[˜[ÚÝÜÈÚ\™KY\˜][ÛˆÚÚXÙ\È[™^\žHX™[ÂˆH›ÙXÝ[Ûˆ™XY[Û›HPHÛÛ™š\›YYÙš[˜[\™\ÜÖÚYOÝÚÙ[Z[˜[YÝ[™Z™XÝÈ[˜[YÜˆ^\™Y[šÜÈÚ]H[˜]˜Z[X›HY\ÜØYÙB‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLË\ŒŒØ‚‚ˆÈÈŒ‹LLË\Œ‚‹H™[X\ÙHQˆŒ‹LLË\Œ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLØ‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆY˜\ÚXÈÚ\™K[[šÈXØÙ\ÜÈ]Y]›Üˆš[˜[™\ÜÈÛÈÜ\˜][ÛœÈØ[ˆÙYHÚ]\ˆH\™[™XY[Û›H[šÈ\È™Y[ˆÜ[™Y[™Ú[ˆ]Ø\È\ÝšY]ÙY‚‹HÙ^Hš[\Î‚ˆHš\ÛXKÜØÚ[XKœš\ÛXXˆHš\ÛXKÛZYÜ˜][ÛœËÌŒŒÌŒÌŒØYÙš[˜[Ü™\ÜÜÚ\™WØ]Y]ÛZYÜ˜][Û‹œÜ[ˆH\Ùš[˜[\™\ÜÖÚYKÜYÙKÞˆH\ØYZ[‹Ü™\ÜËÙš[˜[ÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒËYš[˜[\™\Ü\Ú\™KX]Y]›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›H™XÛÜ™È™XY[Û›HÚ\™K\YÙHXØÙ\ÜÈY]Y]H[™Ý\™˜XÙ\È]Y]Y]HÛˆHYZ[ˆÛÜšØ™[˜ÚÈ]Ù\È›ÝÚ[™ÙH™\ÜÛÛ[[]™\žH[\Ë][™[˜ÙHÙÚXËXÚØYÙH˜[[˜Ù\ËÜˆš[˜[˜ÙHÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆš\ÛXN™Ù[™\˜]X\ÜÙYˆHœH[ˆZ[\ÜÙYˆHÜÝY\ÞHÝ\\ÚXÚÈÛÛ™š\›YYH™]È™[X\ÙHÛÛ[Z]\È[YÛ™YÛˆØØ[ÈÜšYÚ[ˆÈÙ\™\‚ˆH›ÙXÝ[Ûˆ™XY[Û›HPHÛÛ™š\›YYØYZ[‹Ü™\ÜËÙš[˜[ÚÝÜÈÚ\™H]Y]^Ú[ˆH[šÈ^\ÝÂˆH›ÙXÝ[Ûˆ™XY[Û›HPHÛÛ™š\›YYHX›XÈÚ\™HYÙHÝ[™[™\œÈ[™›ÝÈ[˜Ü™[Y[ÈÚ\™K]šY]ÈY]Y]B‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLË\Œ‚‚ˆÈÈŒ‹LL‹\ŒB‚‹H™[X\ÙHQˆŒ‹LL‹\ŒX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LL˜‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆYH˜]ÚÔÕˆ^Ü›ÜˆHXXÚ\ˆ^\›ÛÛÜšØ™[˜ÚÛÈš[˜[˜ÙHØ[ˆ^Ü[XXÚ\ˆØ[\žHÛ\È›ÜˆHÝ\œ™[^\›Û[Û[™Ý\œ™[X›Hš[\œÈ[ˆÛ™Hš[K‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹Ü™\ÜËÝXXÚ\‹\^\›ÛÜYÙKÞˆH\ØYZ[‹Ü™\ÜËÝXXÚ\‹\^\›ÛÙ^ÜÜ›Ý]KØˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ‹]XXÚ\‹\^\›ÛXÜÝ‹Y^Ü›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›HYÈH™XY[Û›HÔÕˆ^Ü[™HÛÜšØ™[˜Ú[šÎÈ]Ù\È›ÝÚ[™ÙH^\›ÛØ[Ý[][Û‹^\›ÛÛÜšÙ›ÝÈÝ]\ËXXÚ\ˆÛÛ™š\›X][ÛœË\›Ý˜[ËÜˆ^[Ý]ÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHÜÝY\ÞHÝ\\ÚXÚÈÛÛ™š\›YYH™]È™[X\ÙHÛÛ[Z]\È[YÛ™YÛˆØØ[ÈÜšYÚ[ˆÈÙ\™\‚ˆH›ÙXÝ[Ûˆ™XY[Û›HPHÛÛ™š\›YYØYZ[‹Ü™\ÜËÝXXÚ\‹\^\›ÛÚÝÜÈ^ÜÔÕ˜ˆH›ÙXÝ[Ûˆ™XY[Û›HPHÛÛ™š\›YYØYZ[‹Ü™\ÜËÝXXÚ\‹\^\›ÛÙ^ÜË‹‹˜™]\›œÈŒÚ]^ØÜÝ˜‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LL‹\ŒX‚‚ˆÈÈŒ‹LL‹\Œ‚‚‹H™[X\ÙHQˆŒ‹LL‹\Œ˜‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LL˜‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆ]YZ[œÈ\›X[™[H[]HÚ\™YØÝ[Y[È[™XZÙHÚ\™YYØÝ[Y[Ø]YÛÜšY\ÈÚÝÈ\\ÈÛX\™\ˆ›Û\ˆÜ›Ý\[™ÜË‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹ÜÚ\™YYØÜËÜYÙKÞˆHX‹ÜÚ\™YYØËYš[\ËØˆHX‹ÜÚ\™YYØË\ÝÜ˜YÙKØˆHX‹ÜÚ\™YYØÜËØˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ‹\Ú\™YYØËY[]KX[™Y›Û\‹YÜ›Ý\Ë›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][K[ÝËˆ\È™[X\ÙHYÈH™X[[]H]›ÜˆÚ\™YØÝ[Y[È[™Ú[™Ù\È™]È\ØY]ÈÈ[˜ÛYHØ]YÛÜžH›Û\œÎÈ]Ù\È›ÝÚ[™ÙHÚ\™YYØÈ\›Z\ÜÚ[ÛœËXXÚ\‹ØYZ[ˆÛÜšÙ›ÝÜÈÝ]ÚYHHÚ\™YYØÈYÙKÜˆ[žHš[˜[˜ÙK][™[˜ÙK^\›ÛÜˆ™\Ü[™ÈÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHÜÝY\ÞHÝ\\ÚXÚÈÛÛ™š\›YYH™]È™[X\ÙHÛÛ[Z]\È[YÛ™YÛˆØØ[ÈÜšYÚ[ˆÈÙ\™\‚ˆH›ÙXÝ[ÛˆRHÚXÚÈÛÛ™š\›YYØYZ[‹ÜÚ\™YYØÜØ›ÝÈÚÝÜÈÜ›Ý\YØ]YÛÜžHÙXÝ[ÛœÈÚ]›Û\ˆ[ÂˆH›ÙXÝ[ÛˆRHÚXÚÈÛÛ™š\›YYXXÚÚ\™YYØÝ[Y[›ÝÈ›ÝÈ^ÜÙ\È[]HÈ9b(:fi‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LL‹\Œ˜‚‚ˆÈÈŒ‹LLË\ŒB‚‹H™[X\ÙHQˆŒ‹LLË\ŒX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLØ‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆš^Ú\™Y\XÚØYÙHZY\›KÙš[˜[™\Ü\ÜÚYÛ›Y[ÛÈXXÚÝY[ÛˆHÚ\™YÕT”ØXÚØYÙHÙ]È[ˆ[™\[™[™\ÜØ[™Y]K\ÜÚYÛ›Y[[™^[\][œÝXYÙˆ™Z[™ÈÛÛ\ÙY[ÈHš[X\žHXÚØYÙHÝÛ™\‹‚‹HÙ^Hš[\Î‚ˆHX‹ÛZY\›K\™\ÜØˆHX‹Ùš[˜[\™\ÜØˆH\ØYZ[‹Ü™\ÜËÛZY\›KÜYÙKÞˆH\ØYZ[‹Ü™\ÜËÙš[˜[ÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒË\Ú\™Y\XÚØYÙK\™\ÜXØ[™Y]KYš^›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][K[ÝËˆ\È™[X\ÙHÚ[™Ù\È™\ÜXØ[™Y]HÙ[™\˜][Ûˆ[™\ÜÚYÛ‹Ù^[\\™Ù][™È›ÜˆÚ\™YÕT”ØXÚØYÙ\Ë]]Ù\È›ÝÚ[™ÙH™\ÜÛÛ[šY[Ë][™[˜ÙHYXÝ[ÛˆÙÚXËXÚØYÙH˜[[˜ÙHÙÚXË^\›ÛÙÚXËš[˜[˜ÙHÛÜšÙ›ÝÜËÜˆ™\Ü‹ÜÚ\™H™Z]š[Ü‹‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHÜÝY\ÞHÝ\\ÚXÚÈÛÛ™š\›YYH™]È™[X\ÙHÛÛ[Z]\È[YÛ™YÛˆØØ[ÈÜšYÚ[ˆÈÙ\™\‚ˆH›ÙXÝ[Ûˆ™XY[Û›HPHÚÝ[ÛÛ™š\›HØYZ[‹Ü™\ÜËÛZY\›X[™ØYZ[‹Ü™\ÜËÙš[˜[›ÝÈÚÝÈÙ\\˜]HØ[™Y]H›ÝÜÈ›ÜˆÚ\™Y\XÚØYÙHÝY[ÈÚ[ˆ^HXXÚ]™H]X[YžZ[™È][™[˜ÙH[™\ˆHØ[YHXÚØYÙB‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLË\ŒX‚‚ˆÈÈŒ‹LLË\Œ‚‚‹H™[X\ÙHQˆŒ‹LLË\Œ˜‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLØ‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆ™K[^[Ý]Hš[˜[\™\Üˆ[ÈHÛÛ\XÝÚ[™ÛK\YÙH[™ØØ\H[™Ù™ˆÛÈ›Ü›X[[[™Ý™\ÜÈš]ÛˆÛ™HYÙH[œÝXYÙˆÜ[[™È[È][K\YÙHÝ]]‚‹HÙ^Hš[\Î‚ˆH\Ø\KØYZ[‹Ùš[˜[\™\ÜËÖÚYKÜ‹Ü›Ý]KØˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒËYš[˜[\™\Ü\‹\Ú[™ÛK\YÙK[^[Ý]›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›HÚ[™Ù\Èˆ™\Ù[][Ûˆ[œÚ]H[™YÙH^[Ý]È]Ù\È›ÝÚ[™ÙHš[˜[\™\ÜÛÛ[\ÜÚYÛ›Y[[\Ë[]™\žKÜÚ\™HÙÚXË][™[˜ÙHÙÚXËXÚØYÙH˜[[˜Ù\ËÜˆš[˜[˜ÙHÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHÜÝY\ÞHÝ\\ÚXÚÈÛÛ™š\›YYH™]È™[X\ÙHÛÛ[Z]\È[YÛ™YÛˆØØ[ÈÜšYÚ[ˆÈÙ\™\‚ˆHYZ[ˆˆÝÛ›ØY›Ý]HÚÝ[ÛÛ[YH™]\›š[™ÈŒ\XØ][Û‹Ü˜Ú]H\]YÚ[™ÛK\YÙH[™ØØ\H^[Ý]‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLË\Œ˜‚‚ˆÈÈŒ‹LLË\ŒÂ‚‹H™[X\ÙHQˆŒ‹LLË\ŒØ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLØ‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆÚ[\YžHHš[˜[\™\Üˆ[ÈH[Ü™H\™[Y˜XÚ[™È[™Ù™ˆžH™[[Ýš[™È[\›˜[[]™\žKØYZ[ˆÙXÝ[ÛœÈ[™Y[™È[\H›ØÚÜÈÛÈHÛ™K\YÙH^[Ý][\\Ú^™\È›ÙÜ™\ÜËÝ]ÛÛYK[™™^Ý\Ë‚‹HÙ^Hš[\Î‚ˆH\Ø\KØYZ[‹Ùš[˜[\™\ÜËÖÚYKÜ‹Ü›Ý]KØˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒËYš[˜[\™\Ü\‹\\™[Y˜XÚ[™Ë\\ÜË›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›HÚ[™Ù\ÈH\™[Y˜XÚ[™Èˆ™\Ù[][Ûˆ[™Y\È[\›˜[ØYZ[‹[Û›HÙXÝ[ÛœÈœ›ÛHHš[X›H[™Ù™ŽÈ]Ù\È›ÝÚ[™ÙHš[˜[\™\Ü]K\ÜÚYÛ›Y[[\Ë[]™\žKÜÚ\™HÙÚXË][™[˜ÙHÙÚXËXÚØYÙH˜[[˜Ù\ËÜˆš[˜[˜ÙHÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHÜÝY\ÞHÝ\\ÚXÚÈÛÛ™š\›YYH™]È™[X\ÙHÛÛ[Z]\È[YÛ™YÛˆØØ[ÈÜšYÚ[ˆÈÙ\™\‚ˆHYZ[ˆˆÝÛ›ØY›Ý]HÚÝ[ÛÛ[YH™]\›š[™ÈŒ\XØ][Û‹Ü˜Ú]HÚ[\YšYY\™[Y˜XÚ[™È^[Ý]‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLË\ŒØ‚‚ˆÈÈŒ‹LLË\Œ‚‹H™[X\ÙHQˆŒ‹LLË\Œ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLØ‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆ™\Ú\HHš[˜[\™\Üˆ[ÈH[Ü™H™[™]Ø[[ÜšY[Y˜[Z[H[™Ù™ˆÛÈHÜÝ[[X\žHœ˜[Y\ÈHÝY[	ÜÈ›ÙÜ™\ÜÈ[™™XÛÛ[Y[™YÛÛ[X][Ûˆ][Ü™HÛX\›K‚‹HÙ^Hš[\Î‚ˆH\Ø\KØYZ[‹Ùš[˜[\™\ÜËÖÚYKÜ‹Ü›Ý]KØˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒËYš[˜[\™\Ü\‹\™[™]Ø[YÝZY[˜ÙK\\ÜË›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›HÚ[™Ù\È\™[Y˜XÚ[™ÈˆÛÜ™[™È[™ÙXÝ[Ûˆ[\\Ú\ÎÈ]Ù\È›ÝÚ[™ÙHš[˜[\™\Ü]K\ÜÚYÛ›Y[[\Ë[]™\žKÜÚ\™HÙÚXË][™[˜ÙHÙÚXËXÚØYÙH˜[[˜Ù\ËÜˆš[˜[˜ÙHÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHÜÝY\ÞHÝ\\ÚXÚÈÛÛ™š\›YYH™]È™[X\ÙHÛÛ[Z]\È[YÛ™YÛˆØØ[ÈÜšYÚ[ˆÈÙ\™\‚ˆHYZ[ˆˆÝÛ›ØY›Ý]HÚÝ[ÛÛ[YH™]\›š[™ÈŒ\XØ][Û‹Ü˜Ú]H\]YÛÛ[X][Û‹Y›ØÝ\ÙY^[Ý]‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLË\Œ‚‚ˆÈÈŒ‹LLË\ŒB‚‹H™[X\ÙHQˆŒ‹LLË\ŒX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLØ‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆÛÙ[ˆHš[˜[\™\ÜˆYØZ[ˆÛÈ]™XYÈ\ÈH\™[YœšY[™HÜ›ÝÝ™Y›XÝ[Û‹›ØÝ\Ú[™ÈÛˆ›ÙÜ™\ÜËÝ\œ™[Ø\Ë[™™^\ÝYÙHX\›š[™È›ØÝ\È[œÝXYÙˆ^XÚ]™[™]Ø[ÝZY[˜ÙK‚‹HÙ^Hš[\Î‚ˆH\Ø\KØYZ[‹Ùš[˜[\™\ÜËÖÚYKÜ‹Ü›Ý]KØˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒËYš[˜[\™\Ü\‹YÙ[K\\™[Y™YY˜XÚË\\ÜË›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›HÚ[™Ù\È\™[Y˜XÚ[™ÈˆÛÜ™[™È[™ÙXÝ[ÛˆX™[ÎÈ]Ù\È›ÝÚ[™ÙHš[˜[\™\Ü]K\ÜÚYÛ›Y[[\Ë[]™\žKÜÚ\™HÙÚXË][™[˜ÙHÙÚXËXÚØYÙH˜[[˜Ù\ËÜˆš[˜[˜ÙHÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHÜÝY\ÞHÝ\\ÚXÚÈÛÛ™š\›YYH™]È™[X\ÙHÛÛ[Z]\È[YÛ™YÛˆØØ[ÈÜšYÚ[ˆÈÙ\™\‚ˆHYZ[ˆˆÝÛ›ØY›Ý]HÚÝ[ÛÛ[YH™]\›š[™ÈŒ\XØ][Û‹Ü˜Ú]HÙ[\ˆ\™[Y™YY˜XÚÈœ˜[Z[™Â‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLË\ŒX‚‚ˆÈÈŒ‹LLË\Œ‚‚‹H™[X\ÙHQˆŒ‹LLË\Œ˜‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLØ‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆ\\ˆÛÙ[ˆH\™[Y˜XÚ[™Èš[˜[\™\ÜˆÛÈHÙXÝ[Ûˆ]\È[™Ý[[X\žH›ÝÈ™XY[Ü™HZÙHXXÚ\ˆØœÙ\˜][ÛœÈÈ˜[Z[H[œÝXYÙˆÞ\Ý[HX™[Ë‚‹HÙ^Hš[\Î‚ˆH\Ø\KØYZ[‹Ùš[˜[\™\ÜËÖÚYKÜ‹Ü›Ý]KØˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒËYš[˜[\™\Ü\‹]XXÚ\‹[]\‹]Û™K\\ÜË›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›HÚ[™Ù\È\™[Y˜XÚ[™ÈˆX™[È[™Ý[[X\žHÛÜ™[™ÎÈ]Ù\È›ÝÚ[™ÙHš[˜[\™\Ü]K\ÜÚYÛ›Y[[\Ë[]™\žKÜÚ\™HÙÚXË][™[˜ÙHÙÚXËXÚØYÙH˜[[˜Ù\ËÜˆš[˜[˜ÙHÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHÜÝY\ÞHÝ\\ÚXÚÈÛÛ™š\›YYH™]È™[X\ÙHÛÛ[Z]\È[YÛ™YÛˆØØ[ÈÜšYÚ[ˆÈÙ\™\‚ˆHYZ[ˆˆÝÛ›ØY›Ý]HÚÝ[ÛÛ[YH™]\›š[™ÈŒ\XØ][Û‹Ü˜Ú]HÛÙ\ˆXXÚ\‹]ËY˜[Z[HÛ™B‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLË\Œ˜‚‚ˆÈÈŒ‹LLË\ŒÂ‚‹H™[X\ÙHQˆŒ‹LLË\ŒØ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLØ‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆ™[[Ý™H\™ÙH[\H›ØÚÜÈœ›ÛHH\™[Y˜XÚ[™Èš[˜[\™\ÜˆžHXZÚ[™ÈHÝÙ\ˆÛÛ[Ø\™È™Y›ÝÈ˜\ÙYÛˆÝÈX[žHš[YÙXÝ[ÛœÈ\™HXÝX[H™\Ù[‚‹HÙ^Hš[\Î‚ˆH\Ø\KØYZ[‹Ùš[˜[\™\ÜËÖÚYKÜ‹Ü›Ý]KØˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒËYš[˜[\™\Ü\‹X]]ËYÜšY\\ÜË›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›HÚ[™Ù\Èš[X›HØ\™^[Ý][œÚ]NÈ]Ù\È›ÝÚ[™ÙHš[˜[\™\Ü]KÛÜ™[™È[[\ÜÚYÛ›Y[[\Ë[]™\žKÜÚ\™HÙÚXË][™[˜ÙHÙÚXËXÚØYÙH˜[[˜Ù\ËÜˆš[˜[˜ÙHÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHÜÝY\ÞHÝ\\ÚXÚÈÛÛ™š\›YYH™]È™[X\ÙHÛÛ[Z]\È[YÛ™YÛˆØØ[ÈÜšYÚ[ˆÈÙ\™\‚ˆHYZ[ˆˆÝÛ›ØY›Ý]HÚÝ[ÛÛ[YH™]\›š[™ÈŒ\XØ][Û‹Ü˜Ú]HY\]™HÝÙ\‹XØ\™^[Ý]‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLË\ŒØ‚‚ˆÈÈŒ‹LLË\Œ‚‹H™[X\ÙHQˆŒ‹LLË\Œ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLØ‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆ™[[Ý™HH™[XZ[š[™È\XØ]H™Y[[ˆH\™[Y˜XÚ[™Èš[˜[\™\ÜˆžHY[™ÈH^˜H™^X\›š[™È›ØÝ\Ø›ÙHØ\™Ú[™]™\ˆHXXÚ\ˆ[™XYHÜ›ÝH\™X\ÈÈÙY\Ý™[™Ý[š[™Ø‚‹HÙ^Hš[\Î‚ˆH\Ø\KØYZ[‹Ùš[˜[\™\ÜËÖÚYKÜ‹Ü›Ý]KØˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒËYš[˜[\™\Ü\‹X›ÙKYY\\\ÜË›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›HÚ[™Ù\Èš[X›HÙXÝ[Ûˆš\ÚXš[]NÈ]Ù\È›ÝÚ[™ÙHš[˜[\™\Ü]KÝ[[X\žHÛÜ™[™Ë\ÜÚYÛ›Y[[\Ë[]™\žKÜÚ\™HÙÚXË][™[˜ÙHÙÚXËXÚØYÙH˜[[˜Ù\ËÜˆš[˜[˜ÙHÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHÜÝY\ÞHÝ\\ÚXÚÈÛÛ™š\›YYH™]È™[X\ÙHÛÛ[Z]\È[YÛ™YÛˆØØ[ÈÜšYÚ[ˆÈÙ\™\‚ˆHYZ[ˆˆÝÛ›ØY›Ý]HÚÝ[ÛÛ[YH™]\›š[™ÈŒ\XØ][Û‹Ü˜Ú]™]Ù\ˆ™\X]Y›ÙHÙXÝ[ÛœÂ‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLË\Œ‚‚ˆÈÈŒ‹LL\Œ‚‹H™[X\ÙHQˆŒ‹LL\Œ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LL‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆYÜ]\˜Ú\ÙKX˜]Ú[žH›Üˆ\™\ˆXÚØYÙHÜ™X]KÝÜ]\›ÝÜÈÛÈ9¥¬9.'9¥®HXÚØYÙHØ[\ÈØ[ˆ™H™XÛÜ™Y\ÈÙ\\˜]HTÒTÑX˜[˜Ú\ÈZÙHš
+ÈÌ[œÝXYÙˆÛ™HY\™ÙY˜[[˜ÙK‚‹HÙ^Hš[\Î‚ˆH\Ø\KØYZ[‹ÜXÚØYÙ\ËÜ›Ý]KØˆH\Ø\KØYZ[‹ÜXÚØYÙ\ËÖÚYKÝÜ]\Ü›Ý]KØˆH\ØYZ[‹ÜXÚØYÙ\ËÔXÚØYÙPÜ™X]Q›Ü›PÛY[ÞˆH\ØYZ[‹×ØÛÛ\Û™[ËÔXÚØYÙQY][Ù[ÞˆH\ØYZ[‹×ØÛÛ\Û™[ËÔ\˜Ú\ÙP˜]ÚY]Ü‹ÞˆHX‹ÜXÚØYÙK\\˜Ú\ÙKX˜]Ú\ËØˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ\\™\‹\XÚØYÙK\Ü]X˜]ÚY[žK›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][K[ÝËˆ\È™[X\ÙHÚ[™Ù\ÈÝÈ™]ÈÕT”ÈXÚØYÙH\˜Ú\Ù\ËÝÜ]\ÈØ[ˆ™H™XÛÜ™Y[È][\HTÒTÑXœË]]Ù\È›ÝÚ[™ÙHYXÝ[ÛˆX]XÚØYÙH˜[[˜ÙHÝ[ËÝY[š[[™Ë\™[š[[™ËÜˆÙ™›[™H[ÛHÙ][Y[ÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHÜÝY\ÞHÝ\\ÚXÚÈÛÛ™š\›YYH™]È™[X\ÙHÛÛ[Z]\È[YÛ™YÛˆØØ[ÈÜšYÚ[ˆÈÙ\™\‚ˆHXÚØYÙHÜ™X]H[™Ü]\T\È›ÝÈXØÙ\Ü]\˜Ú\ÙH˜]Ú\È[™™\Ù\™H˜[˜ÚHÜ™\ˆ›Üˆ]\ˆ\™\ˆÙ][Y[’Q“Â‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LL\Œ‚‚ˆÈÈŒ‹LL\ŒB‚‹H™[X\ÙHQˆŒ‹LL\ŒX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LL‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆÝÚ]Ú9¥¬9.'9¥®H\˜Ú\ÙKX˜]Ú[žHœ›ÛH˜]ÈZ[]KÚÝ\ˆÛÜ™[™ÈÈ\ÜÛÛ‹X˜\ÙY[žHÛÈÜÈØ[ˆ™XÛÜ™Ü]Ø[\È[ˆˆÈÈLÈŒÈ\ÜÛÛœØ\›\ÈÚ[HH˜XÚÙ[™Ý[ÝÜ™\ÈK[Z[]H˜[˜Ú\Ë‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹×ØÛÛ\Û™[ËÔ\˜Ú\ÙP˜]ÚY]Ü‹ÞˆH\ØYZ[‹ÜXÚØYÙ\ËÔXÚØYÙPÜ™X]Q›Ü›PÛY[ÞˆH\ØYZ[‹×ØÛÛ\Û™[ËÔXÚØYÙQY][Ù[ÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ^‹\\˜Ú\ÙKX˜]Ú[\ÜÛÛœË]ZK›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›HÚ[™Ù\ÈHYZ[ˆÜ™X]KÝÜ]\[žHRH›Üˆ9¥¬9.'9¥®HÜ]\˜Ú\ÙH˜]Ú\ÎÈ]Ù\È›ÝÚ[™ÙHHÝÜ™Y’Q“ÈÙ][Y[ÙÚXËXÚØYÙH˜[[˜Ù\ËYXÝ[ÛˆX]Üˆ[›ÚXÙH[\Ë‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHÜÝY\ÞHÝ\\ÚXÚÈÛÛ™š\›YYH™]È™[X\ÙHÛÛ[Z]\È[YÛ™YÛˆØØ[ÈÜšYÚ[ˆÈÙ\™\‚ˆH9¥¬9.'9¥®HÜ]X˜]Ú[žH›ÝÈÚÝÜÈ\ÜÛÛœËX˜\ÙY›ÝÜÈ[™]ZXÚËXYÚ\ÈÚ[HÝ[Ø]š[™ÈK[Z[]H˜]ÚÝ[È[™\›™X]‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LL\ŒX‚‚ˆÈÈŒ‹LLK\ŒB‚‹H™[X\ÙHQˆŒ‹LLK\ŒX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLX‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆYØÚY[[™ÈÛÛÜ™[˜][ÛˆXÚÙ]ÈÛˆÝY[]Z[YÙ\ÈÛÈÜÈØ[ˆ˜XÚÈ\™[ØÚY[[™È›ÛÝË]\Ù[™\˜]HØ[™Y]HÛÝÈœ›ÛH\ÝYXXÚ\ˆ]˜Z[Xš[]K[™ÚXÚÈÚ]\ˆH\™[ÜXÚX[][YH™\]Y\Ý\È[œÚYHÜˆÝ]ÚYHÝX›Z]Y]˜Z[Xš[]H™Y›Ü™HÛÚ[™È˜XÚÈÈHXXÚ\‹‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹ÜÝY[ËÖÚYKÜYÙKÞˆH\ØYZ[‹ÝXÚÙ]ËÖÚYKÜYÙKÞˆH\ØYZ[‹ÝÙÜËÜYÙKÞˆH\Ø\KÝXÚÙ]ËÚ[ZÙKÖÝÚÙ[—KÜ›Ý]KØˆH\ÝXÚÙ]ËÚ[ZÙKÒ[ZÙQ›Ü›KÞˆHX‹ÝXÚÙ]ËØˆHX‹ÜØÚY[[™ËXÛÛÜ™[˜][Û‹ØˆHš\ÛXKÜØÚ[XKœš\ÛXXˆHš\ÛXKÛZYÜ˜][ÛœËÌŒŒLLØYÝXÚÙ]ÜÝY[Ø[™ÜØÚY[[™×ØÛÛÜ™[˜][Û‹ÛZYÜ˜][Û‹œÜ[ˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒK\ØÚY[[™ËXÛÛÜ™[˜][Û‹\\ÙKLKX[™L‹›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][K[ÝËˆ\È™[X\ÙHYÈH[X›HXÚÙ]œÝY[YH™]ÈØÚY[[™ËXÛÛÜ™[˜][ÛˆXÚÙ]\KÝY[Y]Z[ÛÛÜ™[˜][Ûˆ[\œË[™ÙÈ™[Z[™\œË]]Ù\È›ÝÚ[™ÙHXÝX[Ù\ÜÚ[ÛˆÜ™X][Û‹]˜Z[Xš[]H[\Ë›ÛÚÚ[™È[šÜË][™[˜ÙKXÚØYÙH˜[[˜Ù\ËÜˆš[˜[˜ÙHÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆš\ÛXN™Ù[™\˜]X\ÜÙYˆHœH[ˆZ[\ÜÙYˆHÜÝY\ÞHÝ\\ÚXÚÈÛÛ™š\›YYH™]È™[X\ÙHÛÛ[Z]\È[YÛ™YÛˆØØ[ÈÜšYÚ[ˆÈÙ\™\‚ˆHÝY[]Z[›ÝÈÚÝÜÈHØÚY[[™ÈÛÛÜ™[˜][ÛˆÈ9£¤º+ï¹ccú, ØØ\™Ú]XÚÙ]Ý[[X\žK]˜Z[Xš[]KX˜\ÙYØ[™Y]HÛÝÙ[™\˜][Û‹[™ÜXÚX[][YH]˜Z[Xš[]HX]Ú[™Â‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLK\ŒX‚‚ˆÈÈŒ‹LLK\Œ‚‚‹H™[X\ÙHQˆŒ‹LLK\Œ˜‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLX‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆYHXXÚ\‹\ÚYHØÚY[[™È^Ù\[ÛœÈÈ9£¤º+ï¹/¢ùi%¹èkº+©YÙHÛÈXXÚ\œÈÛ›H™\ÜÛ™ÈÛÛÜ™[˜][ÛˆXÚÙ]È][™XYHÚ]Ý]ÚYHZ\ˆÝX›Z]Y]˜Z[Xš[]K[œÝXYÙˆ™Z[™È[Y[È]™\žY^HØÚY[[™È˜XÚËX[™Y›Ü‚‹HÙ^Hš[\Î‚ˆH\ÝXXÚ\‹ÜØÚY[[™ËY^Ù\[ÛœËÜYÙKÞˆH\ÝXXÚ\‹Û^[Ý]ÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒK\ØÚY[[™ËXÛÛÜ™[˜][Û‹]XXÚ\‹Y^Ù\[Û‹\YÙK›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHYÈHXXÚ\‹Y˜XÚ[™ÈšY]È[™YÚÙZYÚXÚÙ]Ý]\È\]\È›ÜˆØÚY[[™È^Ù\[ÛœË]]Ù\È›ÝÚ[™ÙHXXÚ\ˆ]˜Z[Xš[]H[\ËXÝX[Ù\ÜÚ[ÛˆÜ™X][Û‹›ÛÚÚ[™È[šÜË][™[˜ÙKXÚØYÙH˜[[˜Ù\ËÜˆš[˜[˜ÙHÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHÜÝY\ÞHÝ\\ÚXÚÈÛÛ™š\›YYH™]È™[X\ÙHÛÛ[Z]\È[YÛ™YÛˆØØ[ÈÜšYÚ[ˆÈÙ\™\‚ˆHXXÚ\ˆÜ[›ÝÈ[˜ÛY\ÈØÚY[[™È^Ù\[ÛœÈÈ9£¤º+ï¹/¢ùi%¹èkº+©[™HYÙHÛ›H\ÝÈØÚY[[™ÈÛÛÜ™[˜][ÛˆXÚÙ]È[ˆØZ][™ÈXXÚ\˜Üˆ^Ù\[Û˜‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLK\Œ˜‚‚ˆÈÈŒ‹LLK\ŒÂ‚‹H™[X\ÙHQˆŒ‹LLK\ŒØ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLX‹H\Þ[Y[Ý]\ÎˆU‘XY\ˆ\ÞHÛÛ\][Û‚‹HØÛÜNˆXZÙHÝY[Y]Z[ØÚY[[™ÈÛÛÜ™[˜][Ûˆ]XÚ[Ü™H\™XÝžH\›š[™ÈÙ[™\˜]YÛÝÈ[™]˜Z[Xš[]KX˜XÚÙY[\›˜]]™\È[ÈXÝ[ÛˆØ\™È]Ø[ˆ[\Ý˜ZYÚ[È]ZXÚÈØÚY[XÚ]HØ[YHÝYÙÙ\ÝY[YH[™™Y™\œ™YXXÚ\ˆ[™XYHØ\œšYYÝ™\‹‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹ÜÝY[ËÖÚYKÜYÙKÞˆH\ØYZ[‹×ØÛÛ\Û™[ËÔ]ZXÚÔØÚY[S[Ù[ÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒK\ØÚY[[™ËXÛÛÜ™[˜][Û‹\ÛÝXØ\™ËX[™\]ZXÚË\ØÚY[KXœšYÙK›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›HÚ[™Ù\ÈÝY[Y]Z[ÛÛÜ™[˜][Ûˆ[\ˆ™\Ù[][Ûˆ[™ÝÈÝYÙÙ\ÝYÛÝÈ™Yš[]ZXÚÈØÚY[XÈ]Ù\È›ÝÚ[™ÙHXXÚ\ˆ]˜Z[Xš[]H[\ËXÝX[Ù\ÜÚ[ÛˆÜ™X][ÛˆT\Ë›ÛÚÚ[™È[šÜË][™[˜ÙKXÚØYÙH˜[[˜Ù\ËÜˆš[˜[˜ÙHÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHÜÝY\ÞHÝ\\ÚXÚÈÛÛ™š\›YYH™]È™[X\ÙHÛÛ[Z]\È[YÛ™YÛˆØØ[ÈÜšYÚ[ˆÈÙ\™\‚ˆHÙ[™\˜]YÛÛÜ™[˜][ÛˆÛÝËX]ÚYÜXÚX[][YH™\Ý[Ë[™[\›˜]]™HÛÝÈ›ÝÈ™[™\ˆ\ÈXÝ[ÛˆØ\™ÈÚ]\™XÝ\ÙH[ˆ]ZXÚÈØÚY[X[žHÚ[Â‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLK\ŒØ‚‚ˆÈÈŒ‹LLL\ŒN‚‹H™[X\ÙHQˆŒ‹LLL\ŒN‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLL‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆXZÙHHš[˜[˜ÙH™XÙZ\ÛÜšÜÜXÙH›ÝÈ[Ü™HÛÛ[[Ý\ÈžHÛ\šYžZ[™ÈÜÝX\›Ý˜[™^Ý\Ë^[™[™È\ÝÜžHš[\œËÛÛ\™\ÜÚ[™È™\Z\‹XØ\™XÝ[ÛœË[™ÚÝÚ[™È[\ˆXÚØYÙK]ÛÜšÜÜXÙH›ÙÜ™\ÜË‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹Ü™XÙZ\ËX\›Ý˜[ËÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒL\\™[\Ý][Y[[Ù‹XXØÛÝ[X[™\™XÙZ\Y^ÜXÛ\š]K›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›HÚ[™Ù\Èš[˜[˜ÙH™XÙZ\ÛÜšÜÜXÙH™\Ù[][Û‹˜]šYØ][Ûˆ™YY˜XÚË[™ÙX\˜ÚÙš[\ˆÛÛ›ÛÎÈ]Ù\È›ÝÚ[™ÙH[›ÚXÙHÜ™X][Û‹™XÙZ\\›Ý˜[[\ËXÚØYÙH˜[[˜ÙHX]Ù][Y[ÙÚXËÜˆYXÝ[Ûˆ™Z]š[Ü‹‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆH\›Ý™KÜ™Z™XÝXÝ[ÛœÈ›ÝÈZ]\ˆ[™ÛˆH™^™XÙZ\Ú]HÛX\ˆ›ÝÈ™]šY]Ú[™ÈH™^][HÈ9ã¬9g*9mì¹b!ùb,9."ù. 9§hX˜[›™\ˆÜˆ™]\›ˆÈHY˜][]Y]YHÚ]H\È]Y]YHÙXÝ[Ûˆ\ÈÛX\ˆ›Üˆ›ÝÈÈ9odùbcz/æy. 9îá9mì¹îãù®!yk£9.¡˜˜[›™\ˆÚ[ˆ][™H\È^]\ÝYˆH™XÙZ\\ÝÜžHÈ9¥-¹£k¹c¡¹cì˜›ÝÈš[\œÈœ›ÛHÛ™H›Ü›HXÜ›ÜÜÈ›ØÝ\Ë\HÚYK[Û[™XÝ[Ûˆ\BˆH\™\‹\ÚYHš[˜[˜ÙHXÝ[ÛœÈ›ÝÈ\X\ˆ[ˆ™XÙ[š[˜[˜ÙHXÝ[ÛœÈÈ9§ :/äz-(¹b¨y¤ãy/gÚ[ˆH\ÝÜžHšY]È\ÈÝÚ]ÚYÈ\™\ˆÛ›HÈ9cê¹ç"ùd"9/g9¥®XˆH›ÛÙˆ™\Z\ˆÈ9aëz+ày/ë¹i#X]Y]YHØ\™È›ÝÈÙY\Û™Hš[X\žHš^XÝ[Ûˆš\ÚX›H[™[Ý™HÙXÛÛ™\žH[šÜÈ[È[Ü™HXÝ[ÛœÈÈ9¦í9i&¹¤ãy/gˆHHXÚØYÙHÛÜšÜÜXÙH›ÝÈÚÝÜÈH›Ý\Ý\\›Ý˜[]Y]YHÈ9«izj©:/æùaiyk¨y¢nXØ\™\ÈÝ[[X\žHÚ\È›Üˆ\ØX›H›ÛÙœËÜ™X]Y™XÙZ\ËØZ][™È\›Ý˜[[™ÛÛ\]Y™XÙZ\Â‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLL\ŒN‚‚ˆÈÈŒ‹LLL\ŒNB‚‹H™[X\ÙHQˆŒ‹LLL\ŒNX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLL‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆ]š[˜[˜ÙH^ÜHš[\™Y™XÙZ\\ÝÜžH\ÈÔÕˆ[™XZÙHHXÚØYÙHš[˜[˜ÙHÛÜšÜÜXÙH^XÚ]H[H\Ù\ˆÚ]Ý\ÈÈ™^‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹Ü™XÙZ\ËX\›Ý˜[ËÜYÙKÞˆH\ØYZ[‹Ü™XÙZ\ËX\›Ý˜[ËÚ\ÝÜžKÙ^ÜÜ›Ý]KØˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒL\\™[\Ý][Y[[Ù‹XXØÛÝ[X[™\™XÙZ\Y^ÜXÛ\š]K›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHYÈH™XY[Û›HÔÕˆ^Ü[™[›Ý\ˆš[˜[˜ÙHÝZY[˜ÙH[™[È]Ù\È›ÝÚ[™ÙH[›ÚXÙHÜ™X][Û‹™XÙZ\\›Ý˜[ËXÚØYÙH˜[[˜Ù\ËÙ][Y[ÙÚXËÜˆYXÝ[Ûˆ™Z]š[Ü‹‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆH™XÙZ\\ÝÜžHÈ9¥-¹£k¹c¡¹cì˜›ÝÈ^ÜÙ\È^ÜÔÕˆÈ9kï9aîÔÕ˜[™H^Ü›ÛÝÜÈHXÝ]™H\ÝÜžHš[\œÈ›Üˆ›ØÝ\ËÚYK[ÛXÝ[Ûˆ\K[™Ù^]ÛÜ™ˆH\™\‹\ÚYH\ÝÜžHXÝ[ÛœÈ\™H[˜ÛYY[ˆHÔÕˆÚ[ˆH\ÝÜžHšY]È\Èš[\™YÈ\™\ˆÛ›HÈ9cê¹ç"ùd"9/g9¥®XˆHHXÚØYÙHÛÜšÜÜXÙH›ÝÈÚÝÜÈHÝYÙÙ\ÝY™^Ý\È9nîº+«¹."ù. 9«iX[™[]Ú[Èš[˜[˜ÙH\™XÝHÈ\ØYÜ™X]H™XÙZ\\›Ý˜[]Y]YKÜˆ˜XÚÈÈHÛØ˜[]Y]YH\[™[™ÈÛˆÝ\œ™[XÚØYÙHÝ]B‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLL\ŒNX‚‚ˆÈÈŒ‹LLL\ŒŒ‚‹H™[X\ÙHQˆŒ‹LLL\ŒŒ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLL‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆXZÙHHXÚØYÙHš[˜[˜ÙHÛÜšÜÜXÙHX\ÚY\ˆÈÜ[ˆÚ[ˆš[˜[˜ÙH\ÈX[[™ÈÚ]H\™ÙH[X™\ˆÙˆÝY[XÚØYÙ\Ë‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹Ü™XÙZ\ËX\›Ý˜[ËÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒL\\™[\Ý][Y[[Ù‹XXØÛÝ[X[™\™XÙZ\Y^ÜXÛ\š]K›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›HÚ[™Ù\ÈÝÈš[˜[˜ÙHš[™È[™Ü[œÈXÚØYÙHÛÜšÜÜXÙ\ÎÈ]Ù\È›ÝÚ[™ÙH[›ÚXÙHÜ™X][Û‹™XÙZ\\›Ý˜[ËXÚØYÙH˜[[˜ÙHX]Ù][Y[ÙÚXËÜˆYXÝ[Ûˆ™Z]š[Ü‹‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHHXÚØYÙHÛÜšÜÜXÙHÜ[™\ˆ›ÝÈ[˜ÛY\ÈHÙ^]ÛÜ™ÙX\˜Ú[œ]›ÜˆÝY[ÛÝ\œÙK[›ÚXÙH›Ë‹™XÙZ\›Ë‹ÜˆXÚØYÙHQˆHHØ[YHÜ[™\ˆ›ÝÈÚÝÜÈHš[Üš]HXÚØYÙH\ÝÚ]\™XÝÜ[ˆXÚØYÙHÈ9¢dùo :+ï¹c!XXÝ[ÛœËÛÜYÛÈH[ÜÝ\™Ù[š[˜[˜ÙHXÚØYÙ\È›Ø]š\œÝˆHH]ZXÚË\Ù[XÝ›ÜÝÛˆ›ÝÈ›ÛÝÜÈHØ[YHš[\™YÙX\˜Ú™\Ý[È[œÝXYÙˆ›Ü˜Ú[™Èš[˜[˜ÙHÈØØ[ˆH[\™HXÚØYÙH\Ý‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLL\ŒŒ‚‚ˆÈÈŒ‹LLL\ŒŒB‚‹H™[X\ÙHQˆŒ‹LLL\ŒŒX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLL‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆ[š[˜[˜ÙH™[Ü[ˆHØ[YH™]ÈÝY[XÚØYÙ\È]ZXÚÛHÚ]Ý]ÙX\˜Ú[™Èœ›ÛHØÜ˜]ÚXXÚ[YK‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹Ü™XÙZ\ËX\›Ý˜[ËÜYÙKÞˆH\ØYZ[‹Ü™XÙZ\ËX\›Ý˜[Ë×ØÛÛ\Û™[ËÔXÚØYÙUÛÜšÜÜXÙT™XÙ[XÚØYÙ\ÐÛY[ÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒL\\™[\Ý][Y[[Ù‹XXØÛÝ[X[™\™XÙZ\Y^ÜXÛ\š]K›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›H™[Y[X™\œÈ™XÙ[XÚØYÙHÜ[š[™ÜÈ[ˆHœ›ÝÜÙ\ˆ[™YÈ˜\Ý\ˆ™[Ü[ˆ[šÜÈ[ˆHXÚØYÙHÛÜšÜÜXÙNÈ]Ù\È›ÝÚ[™ÙH[›ÚXÙHÜ™X][Û‹™XÙZ\\›Ý˜[ËXÚØYÙH˜[[˜ÙHX]Ù][Y[ÙÚXËÜˆYXÝ[Ûˆ™Z]š[Ü‹‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHÜ[š[™ÈHXÚØYÙHœ›ÛHHXÚØYÙHÛÜšÜÜXÙHÙX\˜Ú›ÜÝÛ‹Üˆš[Üš]H\Ý›ÝÈ™XÛÜ™È][È™XÙ[HÜ[™YXÚØYÙ\ÈÈ9§ :/äy¢dùo 9æ¡:+ï¹c!XˆHH™XÙ[\XÚØYÙH\Ý\X\œÈ[œÚYHHXÚØYÙHÛÜšÜÜXÙHÚ]\™XÝ™[Ü[ˆXÝ[ÛœÈ[™HÛX\ˆ]Û‚ˆH™[ØY[™ÈHYÙHÙY\ÈH™XÙ[\XÚØYÙH\Ý™XØ]\ÙHHY[[ÜžHÝ^\È[ˆœ›ÝÜÙ\ˆØØ[ÝÜ˜YÙK›Ý[ˆš[[™È]B‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLL\ŒŒX‚‚ˆÈÈŒ‹LLL\ŒŒ‚‚‹H™[X\ÙHQˆŒ‹LLL\ŒŒ˜‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLL‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆÝÜHXÚØYÙHÛÜšÜÜXÙHÙX\˜Úœ›ÛH™[ØY[™ÈHÚÛHYÙH[™Ú]™Hš[˜[˜ÙHHÛX\ˆÛÛ™š\›H›ÝÈ›ÜˆÜ[š[™ÈXÚØYÙ\Ë‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹Ü™XÙZ\ËX\›Ý˜[ËÜYÙKÞˆH\ØYZ[‹Ü™XÙZ\ËX\›Ý˜[Ë×ØÛÛ\Û™[ËÔXÚØYÙUÛÜšÜÜXÙTXÚÙ\ÛY[ÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒL\\™[\Ý][Y[[Ù‹XXØÛÝ[X[™\™XÙZ\Y^ÜXÛ\š]K›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙH[Ý™\ÈXÚØYÙHÙX\˜Ú[™È[ÈHÛY[\ÚYHXÚÙ\ˆ[™ÙY\È™XÙ[\XÚØYÙHÚÜÝ]È[ˆœ›ÝÜÙ\ˆÝÜ˜YÙNÈ]Ù\È›ÝÚ[™ÙH[›ÚXÙHÜ™X][Û‹™XÙZ\\›Ý˜[ËXÚØYÙH˜[[˜ÙHX]Ù][Y[ÙÚXËÜˆYXÝ[Ûˆ™Z]š[Ü‹‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHXÚØYÙHÙX\˜Ú›ÝÈš[\œÈØØ[HÚ]ÙX\˜ÚÈ9¤'9í(˜[™ÛX\ˆÈ9®!zfi]ÛœÈ[œÝXYÙˆ™[ØY[™ÈHYÙBˆH™\ÜÚ[™È[\ˆ[œÚYHHXÚØYÙHÙX\˜Ú[œ]›ÝÈ\Y\ÈHØØ[š[\ˆ[œÝXYÙˆÝX›Z][™ÈH[YÙH™\]Y\ÝˆHÛ›HÜ[ˆš[˜[˜ÙHÜ\˜][ÛœÈÈ9¢dùo :-(¹b¨y¤ãy/gÜ[ˆXÚØYÙHÈ9¢dùo :+ï¹c!XÜˆÜ[ˆYØZ[ˆÈ:aãy¥¬9¢dùo ˜]šYØ]\È[ÈHXÚØYÙB‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLL\ŒŒ˜‚‚ˆÈÈŒ‹LLL\ŒŒÂ‚‹H™[X\ÙHQˆŒ‹LLL\ŒŒØ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLL‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆXZÙHHš[˜[˜ÙHXÚØYÙHXÚÙ\ˆ[œÙ\ˆÛÈHÙX\˜Ú\™XH[™™XÙ[ÚÜÝ]ÈZÙH\ÜÈ™\XØ[ÜXÙK‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹Ü™XÙZ\ËX\›Ý˜[Ë×ØÛÛ\Û™[ËÔXÚØYÙUÛÜšÜÜXÙTXÚÙ\ÛY[ÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒL\\™[\Ý][Y[[Ù‹XXØÛÝ[X[™\™XÙZ\Y^ÜXÛ\š]K›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›HYÚ[œÈH^[Ý]ÙˆHÛY[\ÚYHXÚØYÙHXÚÙ\ŽÈ]Ù\È›ÝÚ[™ÙH[›ÚXÙHÜ™X][Û‹™XÙZ\\›Ý˜[ËXÚØYÙH˜[[˜ÙHX]Ù][Y[ÙÚXËÜˆYXÝ[Ûˆ™Z]š[Ü‹‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHH™XÙ[\XÚØYÙH\Ý›ÝÈÚÝÜÈ™]Ù\‹YÚ\ˆ›ÝÜÈÚ]ÚÜ\ˆY]Y]BˆHš[Üš]H[™ÙX\˜Ú\™\Ý[XÚØYÙHØ\™È›ÝÈ\ÙHH[œÙ\ˆ›ÝÈ^[Ý][™ØØÝ\H\ÜÈYÙHZYÚˆHÛX\š[™ÈÙX\˜Ú[ÛÈ™\Ù]ÈH]ZXÚË\Ù[XÝšY[˜XÚÈÈHÝ\œ™[XÚØYÙB‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLL\ŒŒØ‚‚ˆÈÈŒ‹LLL\Œ‚‹H™[X\ÙHQˆŒ‹LLL\Œ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLL‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆXZÙHHš[˜[˜ÙHÝY[\XÚØYÙH[›ÚXÙHYÙHX\ÚY\ˆÈ\ÙHÚ[ˆHXÚØYÙH\Ý\ÈÜ›ÝÙY‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹Ùš[˜[˜ÙKÜÝY[\XÚØYÙKZ[›ÚXÙ\ËÜYÙKÞˆH\ØYZ[‹Ùš[˜[˜ÙKÜÝY[\XÚØYÙKZ[›ÚXÙ\Ë×ØÛÛ\Û™[ËÔXÚØYÙTÙ[XÝ]]ÔÝX›Z]ÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒL\\™[\Ý][Y[[Ù‹XXØÛÝ[X[™\™XÙZ\Y^ÜXÛ\š]K›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›H[\›Ý™\ÈXÚØYÙHš[™[™ÈÛˆHš[˜[˜ÙH[›ÚXÙHYÙNÈ]Ù\È›ÝÚ[™ÙH[›ÚXÙH\ÜÝX[˜ÙK™XÙZ\\›Ý˜[ËXÚØYÙH˜[[˜ÙHX]Ù][Y[ÙÚXËÜˆYXÝ[Ûˆ™Z]š[Ü‹‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHHš[˜[˜ÙH[›ÚXÙHXÚØYÙHXÚÙ\ˆ›ÝÈÝ\ÜÈØØ[ÙX\˜ÚžHÝY[ÛÝ\œÙKÜˆXÚØYÙHQˆHHXÚÙ\ˆ›ÈÛ™Ù\ˆ]]Ë\ÝX›Z]ÈÛˆ]™\žHÚ[™ÙKÛÈš[˜[˜ÙHØ[ˆÙX\˜Úš\œÝ[™[ˆÛXÚÈØYXÚØYÙHÝ[[X\žHÈ9b¨:/oz+ï¹c!y¤f:) XˆHHYÙHÝ[ØYÈXÚØYÙHÝ[È[™[›ÚXÙH™]šY]ÈÛ›HY\ˆHÚÜÙ[ˆXÚØYÙH\ÈÝX›Z]Y‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLL\Œ‚‚ˆÈÈŒ‹LLL\ŒB‚‹H™[X\ÙHQˆŒ‹LLL\ŒX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLL‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆYHÙ\\˜]H\™[XÚØYÙHÝ][Y[ÙˆXØÛÝ[ˆ[™Û\šYžH]›Ü›X[™XÙZ\œÈÛ›H[›ØÚÈY\ˆ[X[˜YÙ\ˆ[™š[˜[˜ÙH\›Ý˜[‚‹HÙ^Hš[\Î‚ˆH\Ø\KÙ^ÜËÜ\™[\Ý][Y[ÖÚYKÜ›Ý]KØˆH\ØYZ[‹ÜXÚØYÙ\ËÖÚYKØš[[™ËÜYÙKÞˆH\ØYZ[‹Ùš[˜[˜ÙKÜÝY[\XÚØYÙKZ[›ÚXÙ\ËÜYÙKÞˆH\ØYZ[‹Ü™XÙZ\ËX\›Ý˜[ËÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒL\\™[\Ý][Y[[Ù‹XXØÛÝ[X[™\™XÙZ\Y^ÜXÛ\š]K›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHYÈH™XY[Û›Hš[˜[˜ÙHˆ[™ÛX\™\ˆ^ÜÛÜK]]Ù\È›ÝÚ[™ÙH[›ÚXÙHÜ™X][Û‹™XÙZ\\›Ý˜[ËXÚØYÙH˜[[˜Ù\ËÙ][Y[ÜˆYXÝ[ÛˆÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHš[˜[˜ÙH[›ÚXÙHÛÜšØ™[˜Ú›ÝÈ^ÜÙ\ÈÝ][Y[ÙˆXØÛÝ[˜›ÜˆHÙ[XÝYXÚØYÙBˆHXÚØYÙHš[[™È›ÝÈ^ÜÙ\ÈHØ[YHÝ][Y[^Ü[™ÛX\™\ˆ™XÙZ\^ÜÛÜ™[™ÂˆH™XÙZ\ˆ^ÜÝ[™\]Z\™\È[X[˜YÙ\ˆ[™š[˜[˜ÙH\›Ý˜[ˆHÝ][Y[ˆ›ÝÈ\ÈH[Ü™H›Ü›X[š[˜[˜ÙK\Ý[H]H›ØÚËÝ[[X\žHÝš\[™˜[œØXÝ[Û‹]X›HY\˜\˜ÚBˆHš[˜[˜ÙH[›ÚXÙH™]šY]È[™]\ÝZ[›ÚXÙHX›H›ÝÈÚÝÈH[›ÚXÙHÜ™X]ÜˆÛ‹\YÙHÚ]Ý]Ú[™Ú[™ÈˆÝ]]Üˆš[[™ÈÙÚXÂˆH]\Ý[›ÚXÙ\È›ÝÈ™Y™\ˆ˜[YH
+[XZ[
+X›ÜˆÜ™X]Üˆ\Ü^HÚ[ˆHX]Ú[™È\Ù\ˆ^\ÝËÛÈš[˜[˜ÙHÙ\È›Ý™YYÈXÛÙH˜]È[XZ[Y™\ÜÙ\ÂˆHXÚØYÙHš[[™È›ÝÈ\Ù\ÈHØ[YH˜[YH
+[XZ[
+XÜ™X]Üˆ\Ü^H[ˆH[›ÚXÙHžXÛÛ[[‹ÛÈš[˜[˜ÙHÙY\ÈÛÛœÚ\Ý[Ü™X]ÜˆX™[ÈXÜ›ÜÜÈ›Ý[›ÚXÙHYÙ\ÂˆH™XÙZ\\›Ý˜[È›ÈÛ™Ù\ˆZ\ÛX™[[šÙY›ÛÙœÈ\Èš[HZ\ÜÚ[™ØÚ[ˆš[˜[˜ÙH\È™]šY]Ú[™ÈHÛØ˜[]Y]YHÚ]Ý]HÜXÚYšXÈXÚØYÙRYÈš[HX[›ÝÈÚXÚÜÈH]Y]YH›ÝÉÜÈXÝX[[šÙY^[Y[™XÛÜ™ˆH™XÙZ\ÛÜšÈ\È›ÝÈÜ][ÈÛX\™\ˆš[˜[˜ÙH[žHYÙ\ÎˆHY˜][YÙH\ÈH›ØÝ\ÙY™XÙZ\]Y]YXÚ[HXÚØYÙHÛÜšÜÜXÙX›ÛÙˆ™\Z\˜[™™XÙZ\\ÝÜžXXXÚÙ]Z\ˆÝÛˆYXØ]Y›Ý]H[™ÚYX˜\ˆ[žHÚ]Ý]Ú[™Ú[™È\ØY™XÙZ\Ü™X][Û‹Üˆ\›Ý˜[ÙÚXÂˆH›ÛÙˆ™\Z\˜›ÝÈY˜][ÈÈH[Ü™H˜XÝXØ[›ØÚÙ\ˆšY]È]ÚÝÜÈ™Z™XÝY™XÙZ\È[™Ý\ˆ™\Z\‹[™YYY›ÝÜË[œÝXYÙˆÛÚÚ[™È[\HÚ[ˆ\™H\™H›È]\˜[š[K[Z\ÜÚ[™È][\ÂˆHH[È9aj:`êÚ\[œÚYH›ÛÙˆ™\Z\˜›ÝÈ[H^[™È˜XÚÈÈH[™\Z\‹\YÙH]Y]YH[œÝXYÙˆÚ[[H™X\Z[™ÈHY˜][›ØÚÙ\ˆš[\‚ˆH™XÙZ\\ÝÜžX›ÝÈY\ÈHÛÛ™›XÝ[™ÈXÚÙ]\ÝÚ]Ú›ÝÈ[™Û›HÙY\È\ÝÜžKX\›ÜšX]HÛÛ›ÛËÛÈHÜYÙH[ÙH›ÈÛ™Ù\ˆšYÚÈÚ]HÝÙ\ˆ]Y]YHÙÙÛ\ÂˆH™XÙZ\\ÝÜžX›ÝÈÙ[™È˜XÚÈÈY˜][]Y]YHÈ9fç¹b,:næ:+©:f'ùb%ØÈHXÝX[™XÙZ\]Y]YH›Ý]H[œÝXYÙˆ™[ØY[™ÈH\ÝÜžHYÙHÚ]ÛX\”]Y]YOLXÛÈš[˜[˜ÙHØ[ˆ[H[\˜XÚÈ[ÈXÝ]™H\›Ý˜[ÛÜšÂˆHš[˜[˜ÙHÚYX˜\ˆ[™™XÙZ\\YÙH™XÙZ\]Y]YHÈ9¥-¹£k¹k¨y¢nzf'ùb%Ø[šÜÈ›ÝÈÜ[ˆH™X[Y˜][\›Ý˜[]Y]YHÚ]ÛX\”]Y]YOLXÛÈÛXÚÚ[™ÈH]Y]YH[žH›ÈÛ™Ù\ˆ™KY[\œÈ™[Y[X™\™Y™XÙZ\\ÝÜžXˆHHÜ™XÙZ\[[ÙHXˆ™XÙZ\]Y]YHÈ9¥-¹£k¹k¨y¢nzf'ùb%Ø›ÝÈ\Ù\ÈHØ[YHY˜][\]Y]YH™\Ù]\™Ù][œÝXYÙˆØ\œžZ[™È]Y]YPXÚÙ]RTÕÔ–XÛÈÝÚ]Ú[™ÈÝ]Ùˆ™XÙZ\\ÝÜžXš[˜[H™]\›œÈÈH]™H\›Ý˜[]Y]YB‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLL\ŒX‚‚ˆÈÈŒ‹LLLK\ŒÍ‚‹H™[X\ÙHQˆŒ‹LLLK\ŒÍ‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLLX‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆXZÙHØÚY[[™ËXÛÛÜ™[˜][ÛˆÛÜHš[[™ÝX[[™XZÙH\XØ]HÜ[ˆÛÛÜ™[˜][ÛˆXÚÙ]Èš\ÚX›HÛˆHÝY[[™XÚÙ]šY]ÜË‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹ÜÝY[ËÖÚYKÜYÙKÞˆH\ØYZ[‹ÝXÚÙ]ËÖÚYKÜYÙKÞˆH\ØYZ[‹ÝXÚÙ]ËÜYÙKÞˆH\ØYZ[‹ÝXÚÙ]ËØ\˜Ú]™YÜYÙKÞˆH\ÝXXÚ\‹ÝXÚÙ]ËÜYÙKÞˆH\Ø]˜Z[Xš[]KÖÝÚÙ[—KÜYÙKÞˆHX‹ÜØÚY[[™ËXÛÛÜ™[˜][Û‹ØˆHX‹Ü\™[X]˜Z[Xš[]KØˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒLK\ØÚY[[™ËXÛÛÜ™[˜][Û‹[][K]XÚÙ]X[™Xš[[™ÝX[XÛÜK›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›HÚ[™Ù\ÈØÚY[[™ËXÛÛÜ™[˜][ÛˆÛÜ™[™È[™š\ÚXš[]H\›Ý[™\XØ]HÜ[ˆXÚÙ]ÎÈ]Ù\È›ÝÚ[™ÙHXÚØYÙKš[˜[˜ÙK™XÙZ\[›ÚXÙK][™[˜ÙKÜˆXÝX[\ÜÛÛ‹\XÙ[Y[ÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHÝY[]Z[›ÝÈØ\›œÈÚ[ˆ[Ü™H[ˆÛ™HÜ[ˆØÚY[[™ËXÛÛÜ™[˜][ÛˆXÚÙ]^\ÝÈ[™ÚÝÜÈÚXÚXÚÙ]\ÈÝ\œ™[Hš]š[™ÈHÛÛÜ™[˜][ÛˆØ\™ˆHHÝY[ÛÛÜ™[˜][ÛˆØ\™›ÝÈ^Z[œÈ]]XÚÜÈHXÚÙ]Ú]HX\›Y\Ý›ÛÝË]\YH]K[ˆH™]Ù\ÝÜ™X]Y[YBˆHØÚY[[™ËXÛÛÜ™[˜][ÛˆÞ\Ý[HÛÜH›ÝÈ™[™\œÈ[ˆš[[™ÝX[›Ü›HÛˆHÝY[]Z[YÙKXÚÙ]]Z[YÙKYZ[ˆXÚÙ]\Ý\˜Ú]™YXÚÙ]È\Ý[™XXÚ\ˆXÚÙ]\ÝˆH\™[X]˜Z[Xš[]HÝ[[X\šY\È›ÝÈÝÜ™Hš[[™ÝX[šY[X™[È›Üˆ]\™HÝX›Z\ÜÚ[ÛœÂ‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLLK\ŒÍ‚‚ˆÈÈŒ‹LLLK\ŒÍB‚‹H™[X\ÙHQˆŒ‹LLLK\ŒÍX‹H]KÕ[YH
+\ÚXKÔÚ[™ÚZJNˆŒ‹LLLX‹H\Þ[Y[Ý]\Îˆ‘PQX‹HØÛÜNˆ™]\ÙH^\Ý[™ÈØÚY[[™ËXÛÛÜ™[˜][ÛˆXÚÙ]È[œÝXYÙˆÜ™X][™È\XØ]\È›ÜˆHØ[YHÝY[‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹ÜÝY[ËÖÚYKÜYÙKÞˆH\Ø\KÝXÚÙ]ËÚ[ZÙKÖÝÚÙ[—KÜ›Ý]KØˆH\ÝXÚÙ]ËÚ[ZÙKÒ[ZÙQ›Ü›KÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒLK\ØÚY[[™ËXÛÛÜ™[˜][Û‹]XÚÙ]\™]\ÙK›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›HÚ[™Ù\ÈÝÈØÚY[[™ËXÛÛÜ™[˜][ÛˆXÚÙ]Ü™X][Ûˆ\È›Ý]YÚ[ˆ[ˆÜ[ˆXÚÙ][™XYH^\ÝÈ›ÜˆHØ[YHÝY[È]Ù\È›ÝÚ[™ÙHØÚY[[™ÈXÙ[Y[š[˜[˜ÙKXÚØYÙK™XÙZ\[›ÚXÙKÜˆ][™[˜ÙHÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHÝY[]Z[›ÝÈÚÝÜÈÜ[ˆXÝ]™HXÚÙ]È9¢dùo 9odùbcyméyceX[™H™]\ÙH›ÝH[œÝXYÙˆ[˜ÛÝ\˜YÚ[™ÈHÙXÛÛ™Ü[ˆÛÛÜ™[˜][ÛˆXÚÙ]ˆHÝY[]Z[Ù\™\ˆXÝ[Ûˆ›ÝÈ™Y\™XÝÈ˜XÚÈÚ]Hš[[™ÝX[™]\ÙHY\ÜØYÙHÚ[ˆ[ˆÜ[ˆÛÛÜ™[˜][ÛˆXÚÙ][™XYH^\ÝÂˆH[ZÙHTH›ÝÈ™]\›œÈH^\Ý[™ÈÜ[ˆÛÛÜ™[˜][ÛˆXÚÙ]›ÜˆHØ[YHÝY[[œÝXYÙˆÜ™X][™È[›Ý\ˆØÚY[[™ËXÛÛÜ™[˜][ÛˆXÚÙ]ˆH[ZÙH›Ü›H›ÝÈÚÝÜÈHš[[™ÝX[™]\ÙHÝXØÙ\ÜÈY\ÜØYÙH[™™\Ù\™\ÈH^\Ý[™È\™[X]˜Z[Xš[]H[šÈÚ[ˆ\XØX›B‹H›Û˜XÚÈÚ[ˆ™]š[Ý\È›ÙXÝ[ÛˆÛÛ[Z]™Y›Ü™HŒ‹LLLK\ŒÍX‚ˆÈÈŒ‹LL\ŽM‚‹HØÛÜNˆ]]ËXY\™XÝXš[[™È™[™]Ø[Ý\œÈÈHXÚØYÙHÚ[ˆH™[™]Ø[ÛÛ˜XÝ\ÈÚYÛ™Y[™ÝÛ™Ü˜YHÛ\™XÝÜ]\[ÈHÛX\›HX\šÙYÜXÚX[ÛX[X[]‚‹HÙ^Hš[\Î‚ˆHX‹ÜÝY[XÛÛ˜XÝØˆH\ØYZ[‹×ØÛÛ\Û™[ËÔXÚØYÙQY][Ù[ÞˆH\ØYZ[‹ÜXÚØYÙ\ËÖÚYKØš[[™ËÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒY\™XÝXš[[™Ë\™[™]Ø[X]]Ë]Ü\›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][Kˆ\È™[X\ÙHÚ[™Ù\ÈH\™XÝXš[[™È™[™]Ø[ÛÛ\][Ûˆ›ÝÈžHY[™ÈXÚØYÙHZ[]\ÈY\ˆÚYÛ˜]\™Kˆ]]›ÚYÈÝX›HÜ]\žHÜš][™È[™ÚXÚÚ[™ÈH™[™]Ø[XÛÛ˜XÝXÚØYÙH˜[œØXÝ[ÛˆX\šÙ\ˆ™Y›Ü™H\Z[™ÈZ[]\Ë‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆH[\Ü˜\žH\™XÝXš[[™È™[™]Ø[PHÛÛ™š\›YYXÚØYÙHZ[]\È[Ý™Yœ›ÛHŒOˆLˆHHØ[YHPHÛÛ™š\›YYÛ™H[›ÚXÙH˜YØ\ÈÜ™X]Y[™Û™HTÒTÑXXÚØYÙHˆØ\œšYYH™[™]Ø[X\šÙ\ˆ›ÝBˆH[\Ü˜\žHPHÝY[ÜXÚØYÙKØÛÛ˜XÝÚ[›ÚXÙH]HØ\È[]YY\ˆ™\šYšXØ][Û‚‚ˆÈÈŒ‹LL\ŽMB‚‹HØÛÜNˆÛ\ÚHÝY[XÛÛ˜XÝVÛÈÜÈÙYHÛX\™\ˆ\Ú[™\ÜË\ÝYÙHÝ]\ËHÝY[YÙH^ÜÙ\ÈHÛÛ˜XÝÛÜšÜÜXÙH\™XÝK\™[YÙ\È\™HYÚ\‹[™\˜Ú]™YÛÛ˜XÝ\ÝÜžH›ÈÛ™Ù\ˆÜ›ÝÙÈHXÝ]™HÛÜšÜÜXÙK‚‹HÙ^Hš[\Î‚ˆHX‹ÜÝY[XÛÛ˜XÝØˆH\ØYZ[‹ÜÝY[ËÖÚYKÜYÙKÞˆH\ØYZ[‹ÜXÚØYÙ\ËÖÚYKØš[[™ËÜYÙKÞˆH\ØÛÛ˜XÝZ[ZÙKÖÝÚÙ[—KÜYÙKÞˆH\ØÛÛ˜XÝÖÝÚÙ[—KÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ\ÝY[XÛÛ˜XÝ]^\Û\Ú›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝÈÈYY][Kˆ\È™[X\ÙHÚ[™Ù\ÈÛÛ˜XÝ\Ü^H[™XÝ[Ûˆœ˜[Z[™Ë]Ù\È›ÝÚ[™ÙHÚYÛš[™È[\Ë[›ÚXÙHX]XÚØYÙH˜[[˜Ù\Ë\™\ˆ^Û\Ú[Ûˆ[\ËÜˆ™XÙZ\ÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHØØ[PHÝY[]Z[ÚÝÙYÜ[ˆÛÛ˜XÝÛÜšÜÜXÙHÈ9¢dùo 9d"9d#9méy/g9c.˜[™H™]È\Ú[™\ÜÈ™^\Ý\ÛÜH›Üˆ[ZÙK\ÝYÙHÛÛ˜XÝÂˆHØØ[PH[ZÙHYÙHÚÝÙY\™[›Ùš[HÛÛ™š\›X][ÛˆÈ9k­ºeoú-a9¥¦yèkº+©ˆHØØ[PHÚYÛˆYÙHÚÝÙYYÜ™Y[Y[™]šY]ÈÈ9«hùo#ùd"9d#:h¡:)âˆHØØ[PHÚYÛ‹\ÝYÙHš[[™ÈYÙHÚÝÙYØZ][™È›ÜˆÚYÛ˜]\™XˆH[\Ü˜\žHPHÝY[ÜXÚØYÙKØÛÛ˜XÝØ]]\Ù\ÜÚ[Ûˆ]HØ\È[]YY\ˆ™\šYšXØ][Û‚‚ˆÈÈŒ‹LL\ŽM‚‚‹HØÛÜNˆ™\Þ[˜ÈXÚØYÙH[›ÚXÙKYØ]HÝ]HÚ[ˆÜÈY]XÚØYÙHÙ][Y[[ÙKÛÈ\™XÝXš[[™ÈXÚØYÙ\ÈÈ›ÝÙY\Ý[H\™\‹\Ù][Y[Ø]HÛÜK‚‹HÙ^Hš[\Î‚ˆH\Ø\KØYZ[‹ÜXÚØYÙ\ËÖÚYKÜ›Ý]KØˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ\XÚØYÙK\Ù][Y[[[ÙKYØ]K\™\Þ[˜Ë›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›H™XØ[Ý[]\ÈXÚØYÙH[›ÚXÙKYØ]H\Ü^HÝ]H\š[™ÈXÚØYÙHY]ÎÈ]Ù\È›ÝÚ[™ÙH™XÙZ\[\Ë[›ÚXÙHX]\™\ˆÙ][Y[X]ÜˆØÚY[[™ÈÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆH™\šYšYY:-my­bú+åXXÚØYÙH›ÝÈÚÝÜÈÙ][Y[[ÙHH[ˆH™\šYšYYHØ[YHXÚØYÙH›ÝÈÝÜ™\Èš[˜[˜ÙQØ]T™X\ÛÛˆHXÚØYÙH\È^[\œ›ÛH\™XÝXš[[™È[›ÚXÙHØ]K˜‚ˆÈÈŒ‹LL\ŽMÂ‚‹HØÛÜNˆš^ÚYÛ™YÝY[XÛÛ˜XÝÚYÛ˜]\™Hš\ÚXš[]HÛÈ]\™HÛÛ˜XÝÈ™\]Z\™HH[™Üš][ˆÚYÛ˜]\™H[XYÙH[™YØXÞHÚYÛ™YÛÛ˜XÝÈ›ÈÛ™Ù\ˆÚÝÈH›[šÈÚYÛ˜]\™H\™XK‚‹HÙ^Hš[\Î‚ˆHX‹ÜÝY[XÛÛ˜XÝØˆHX‹ÜÝY[XÛÛ˜XÝ\‹ØˆH\ØÛÛ˜XÝÖÝÚÙ[—KÜYÙKÞˆH\Ø\KÙ^ÜËÜÝY[XÛÛ˜XÝÖÚYKÜ›Ý]KØˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ\ÝY[XÛÛ˜XÝ\ÚYÛ˜]\™K]š\ÚXš[]KYš^›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝÈÈYY][Kˆ\È™[X\ÙHYÚ[œÈ]\™HÚYÛ˜]\™HÝX›Z\ÜÚ[Ûˆ™\]Z\™[Y[È[™Ú[™Ù\ÈÝÈYØXÞHÚYÛ™YœÈ\™HÙ\™YÚ[ˆ›ÈÝÜ™YÚYÛ˜]\™H[XYÙH^\ÝË]Ù\È›ÝÚ[™ÙH[›ÚXÙHÜ™X][ÛˆX]XÚØYÙH˜[[˜Ù\ËÜˆÛÛ˜XÝÛ˜\ÚÝÛÛ[‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆHPHØÜš\ÛÛ™š\›YYÚYÛˆ][\ÈÚ]Ý][™Üš][ˆÚYÛ˜]\™H›ÝÈ˜Z[Ú][™Üš][ˆÚYÛ˜]\™H\È™\]Z\™YˆHÙ[™\˜]Y[™™[™\™YHÛÛ\]Xš[]Hˆ›Üˆ[ˆ^\Ý[™ÈÚYÛ™YÛÛ˜XÝÚ]ÚYÛ˜]\™R[XYÙT]H[ˆH™\šYšYYHYØXÞHÚYÛ˜]\™H›ØÚÈ\È›ÈÛ™Ù\ˆ›[šÂ‚ˆÈÈŒ‹LL\ŽN‚‹HØÛÜNˆÛ\šYžHHÚYÛ™YXÛÛ˜XÝÛÜœ™XÝ[Ûˆ][ˆXÚØYÙHš[[™ÈÛÈÜÈ[™\œÝ[™]ÚYÛ™YÜˆ[›ÚXÙYÛÛ˜XÝÈ›ÈÛ™Ù\ˆ^ÜÙH›ÚY[™]HÛ[›ÚXÙH˜YÚÝ[™HÝÜY™Y›Ü™HÜ™X][™ÈH™\XÙ[Y[™\œÚ[Û‹‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹ÜXÚØYÙ\ËÖÚYKØš[[™ËÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ\ÝY[XÛÛ˜XÝXš[[™ËXÛÜKX[™XXÝ[Û‹\Ú[\YžK›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›HÚ[™Ù\Èš[[™Ë\YÙHÝZY[˜ÙH[™XÝ[ÛˆÛÜ™[™È›ÜˆÚYÛ™YÚ[›ÚXÙYÛÛ˜XÝÎÈ]Ù\È›ÝÚ[™ÙHÛÛ˜XÝÝ]H[\Ë[›ÚXÙHX]XÚØYÙH˜[[˜Ù\ËÜˆ\™\ˆÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆH™\šYšYYÚYÛ™YÚ[›ÚXÙYÛÛ˜XÝ›ØÚÈ›ÝÈ^Z[œÈHÛ[›ÚXÙH]\Ý™HÝÜY™Y›Ü™H™\XÙ[Y[ˆH™\šYšYY\›Z[˜[ÛÛ˜XÝØ\›š[™È›ÝÈ^XÚ]HØ^\È›ÚY\È›ÈÛ™Ù\ˆ]˜Z[X›HY\ˆÚYÛš[™Â‚ˆÈÈŒ‹LL\ŽNB‚‹HØÛÜNˆ]ÜÈ[]H[ˆÛ[œÚYÛ™Y™XÙZ\Yœ™YH[›ÚXÙH˜Yœ›ÛHHÚYÛ™YÛÛ˜XÝ]XÚ]Û[›ÚXÙHœ›ÛHHÛÛ˜XÝ\ÝÜžK[™[[YYX][HÜ™X]HH™\XÙ[Y[ÛÛ˜XÝ™\œÚ[Ûˆ]™]\Ù\ÈH™]š[Ý\È\™[›Ùš[K‚‹HÙ^Hš[\Î‚ˆHX‹ÜÝY[XÛÛ˜XÝØˆH\ØYZ[‹ÜXÚØYÙ\ËÖÚYKØš[[™ËÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ\ÝY[XÛÛ˜XÝZ[›ÚXÙKY[]K\™\XÙ[Y[Y›ÝË›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆYY][Kˆ\È™[X\ÙHÚ[™Ù\ÈHÛÜœ™XÝ[Ûˆ›ÝÈY\ˆHÚYÛ™YÛÛ˜XÝ\È]]ËXÜ™X]Y[ˆ[›ÚXÙH˜Y]Ù\È›ÝÚ[™ÙH™XÙZ\[\Ë\™\ˆÙ][Y[ÙÚXËÜˆÚYÛ™YˆÙ[™\˜][Û‹‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆH[\Ü˜\žHPHÛÛ™š\›YY[][™ÈH[šÙY[›ÚXÙH˜YÛX\™YHÛÛ˜XÝ[›ÚXÙH[šØYÙH[™[Ý™YHÛÛ˜XÝ˜XÚÈÈÚYÛ™Y\ÝÜžBˆH[\Ü˜\žHPHÛÛ™š\›YY™\XÙ[Y[ÛÛ˜XÝÜ™X][Ûˆ›ÝÈ›ÙXÙYH™]ÈÓÓ•PÕÑQ•[™™]\ÙYH™]š[Ý\È\™[›Ùš[B‚ˆÈÈŒ‹LL\ŒL‚‹HØÛÜNˆÚ[\YžHHÝY[XÛÛ˜XÝš[[™ÈÛÜšÜÜXÙHžH™[[Ýš[™È\XØ]YÚYÛ™Y\™\Ý[ÛÜH[™ÛÛ\Ú[™È8 'Ø]™H˜Y8 'H\È8 'Ù[™\˜]KÜ™Yœ™\ÚÚYÛˆ[šø 'H[ÈÛ™HXZ[ˆXÝ[Û‹‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹ÜXÚØYÙ\ËÖÚYKØš[[™ËÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›HÚ[™Ù\Èš[[™Ë\YÙHÛÜH[™XÝ[Ûˆ›ÝÈ\›Ý[™ÛÛ˜XÝ˜Y™\\˜][ÛŽÈ]Ù\È›ÝÚ[™ÙHÛÛ˜XÝÝ]\È[\ËÚYÛ™Yˆ™Z]š[Ü‹[›ÚXÙHÜ™X][Û‹Üˆ\™\ˆ^Û\Ú[ÛœË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆH™\šYšYYÛÛ˜XÝY˜Y›ØÚÈ›ÝÈ\Ù\ÈÛ™H]ÛˆÈØ]™H\Ú[™\ÜÈšY[È[™Ù[™\˜]HH]\ÝÚYÛˆ[šÂˆH™\šYšYYHÚYÛ™Y\™\Ý[›ØÚÈ›ÈÛ™Ù\ˆ™\X]Èš[[™ÝX[[›ÚXÙH[™\›Ý˜[X™[ÂˆH™[X\ÙKYØÈ[™Hš[˜[^™YÚ]X]Ú[™È\ÚÈ›ÝB‚ˆÈÈŒ‹LL\ŒLB‚‹HØÛÜNˆXZÙHHX›XÈÛÛ˜XÝÚYÛˆYÙH[[YYX][HÚÝÈHÝXØÙ\ÜÙ[ÝX›Z\ÜÚ[ÛˆÝ]HY\ˆH\™[ÚYÛœË[œÝXYÙˆ]ZY]H™Yœ™\Ú[™È˜XÚÈ[ÈHØ[YHYÙK‚‹HÙ^Hš[\Î‚ˆH\ØÛÛ˜XÝÖÝÚÙ[—KÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒXÛÛ˜XÝ\ÚYÛ‹\ÝXØÙ\ÜËY™YY˜XÚË›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›HÚ[™Ù\ÈHÚYÛ‹\YÙH™Yœ™\Ú[™ÝXØÙ\ÜÈ™YY˜XÚÈ›ÝÎÈ]Ù\È›ÝÚ[™ÙHÛÛ˜XÝÛ˜\ÚÝÛÛ[[›ÚXÙHÜ™X][Ûˆ[\ËÜˆXÚØYÙH˜[[˜Ù\Ë‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆH™\šYšYYÚYÛˆÝX›Z]›ÝÈ™]˜[Y]\ÈHX›XÈÛÛ˜XÝ›Ý]H™Y›Ü™H™Y\™XÝ[™È˜XÚÂˆH™\šYšYYHÚYÛˆYÙH›ÝÈÚÝÜÈHÜ™Y[ˆÚYÛ˜]\™HÝX›Z]YÝXØÙ\ÜÙ[XY\ÜØYÙHY\ˆÝX›Z]‚ˆÈÈŒ‹LL\ŒL‚‹HØÛÜNˆXZÙH\™[Y™\ÜÈÜ[Û˜[XÜ›ÜÜÈH™]Ë\ÝY[[ZÙH›ÝÈ[™HÛÛ˜XÝ\™[\›Ùš[H[ZÙH›ÝËÚ[HÙY\[™È\™[\›Ùš[H™]\ÙH[™ÛÛ˜XÝÙ[™\˜][ÛˆÛÜšÚ[™ÈÚ[ˆ›ÈY™\ÜÈ\È›ÝšYY‚‹HÙ^Hš[\Î‚ˆH\ØÛÛ˜XÝZ[ZÙKÖÝÚÙ[—KÜYÙKÞˆH\ÜÝY[Z[ZÙKÖÝÚÙ[—KÜYÙKÞˆHX‹ÜÝY[\\™[Z[ZÙKØˆHX‹ÜÝY[XÛÛ˜XÝØˆHX‹ÜÝY[XÛÛ˜XÝ][\]KØˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ\\™[XY™\ÜË[Ü[Û˜[Z[ZÙK›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›H™[^\ÈY™\ÜÈ˜[Y][Ûˆ[™Y\ÈHY™\ÜÈ[™H[ˆÙ[™\˜]YÛÛ˜XÝÈÚ[ˆ›ÈY™\ÜÈ\È›ÝšYYÈ]Ù\È›ÝÚ[™ÙHÛÛ˜XÝÚYÛš[™È[\Ë[›ÚXÙHÜ™X][Û‹XÚØYÙH˜[[˜Ù\ËÜˆ\™\ˆ^Û\Ú[ÛœË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆH™\šYšYY›ÝÜÝY[Z[ZÙKÖÝÚÙ[—X[™ØÛÛ˜XÝZ[ZÙKÖÝÚÙ[—X›ÈÛ™Ù\ˆ™\]Z\™HY™\ÜÂˆH™\šYšYY˜XÚÙ[™[ZÙHÝX›Z\ÜÚ[ÛˆÝXØÙYYÈÚ]Ý]Y™\ÜÂˆH™\šYšYYÙ[™\˜]YÛÛ˜XÝÛ˜\ÚÝÈÛZ]HY™\ÜÈ›ÝÈÚ[ˆ›ÈY™\ÜÈ\È™\Ù[‚ˆÈÈŒ‹LL\ŒLB‚‹HØÛÜNˆÝÜÛÛ\Ú[™È\™\ˆ[›ÚXÙHœÈY\ˆHš\œÝLÙ[XÝYÙ][Y[[™\È[™[œÝXY™[™\ˆ]™\žHÚÜÙ[ˆ[™H][HXÜ›ÜÜÈYÚ[˜]YYÙ\Ë‚‹HÙ^Hš[\Î‚ˆH\Ø\KÙ^ÜËÜ\™\‹Z[›ÚXÙKÖÚYKÜ›Ý]KØˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ\\™\‹Z[›ÚXÙKY[[[™K\YÚ[˜][Û‹›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝÈÈYY][Kˆ\È™[X\ÙHÛ›HÚ[™Ù\È\™\ˆ[›ÚXÙHˆ^[Ý][™YÚ[˜][ÛŽÈ]Ù\È›ÝÚ[™ÙH[›ÚXÙHÝ[ËÙ][Y[Ù[XÝ[Û‹\›Ý˜[[\ËÜˆ™XÙZ\™Z]š[Ü‹‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆH™\šYšYY\™\ˆ[›ÚXÙH^Ü›ÈÛ™Ù\ˆ[˜Ø]\ÈÈL›ÝÜÂˆH™\šYšYYÛÛ[X][ÛˆYÙ\È™\X][›ÚXÙKÝX›HXY\œÈ[™ÚÝÈ[][[[™H\ØÜš\[ÛœÂˆH™\šYšYYHÛ‹‹ˆ[™ˆ[Ü™H][\ØÝ[[X\žH\È›ÈÛ™Ù\ˆ™[™\™Y‚ˆÈÈŒ‹LL\ŒL‚‚‹HØÛÜNˆš^H\™\ˆ[›ÚXÙHˆ›ÛÝË]\^[Ý]ÛÈÝXÝ[[™™[Z][˜ÙH›Ý\È›ÝÈ[[YYX][HY\ˆH\Ý™[™\™Y›ÝÜÈ[œÝXYÙˆ™Z[™È[›™YÈH›ÝÛHÙˆH[ÜÝH[\H\ÝYÙK‚‹HÙ^Hš[\Î‚ˆH\Ø\KÙ^ÜËÜ\™\‹Z[›ÚXÙKÖÚYKÜ›Ý]KØˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ\\™\‹Z[›ÚXÙKYš[˜[\YÙK[^[Ý]Y›ÛÝÝ\›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›HY\ÝÈHš[˜[\YÙH^[Ý]Y\ˆ\™\ˆ[›ÚXÙHYÚ[˜][ÛŽÈ]Ù\È›ÝÚ[™ÙH[™HÙ[XÝ[Û‹[›ÚXÙHÝ[Ë\›Ý˜[ËÜˆ™XÙZ\ÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆH™\šYšYYÝ[È›ØÚÈ›ÝÈÝ\È™[ÝÈH\Ý™[™\™Y›ÝÈ[œÝXYÙˆ™Z[™È›ÝÛKX[˜ÚÜ™YˆH™\šYšYY™[Z][˜ÙH›Ý\È\™H›ÈÛ™Ù\ˆÛ\YÙ™ˆHYÙHÛˆH\ÝÝ[[X\žHYÙB‚ˆÈÈŒ‹LL\ŒLÂ‚‹HØÛÜNˆ[Ý™HHÜ[Û˜[\™\ˆ[›ÚXÙHÙX[ÛÈ]Ú]È™\ÚYHHÝXÝ[Ý[[X\žH›ØÚÈ[œÝXYÙˆÝ^Z[™È[›™Y™X\ˆHÝÙ\ˆYÙHYÙK‚‹HÙ^Hš[\Î‚ˆH\Ø\KÙ^ÜËÜ\™\‹Z[›ÚXÙKÖÚYKÜ›Ý]KØˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ\\™\‹Z[›ÚXÙK\ÙX[[™X\‹\ÝXÝ[›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›H™\ÜÚ][ÛœÈHÜ[Û˜[ÙX[[XYÙHÛˆ\™\ˆ[›ÚXÙHœÎÈ]Ù\È›ÝÚ[™ÙH[›ÚXÙH]KYÚ[˜][Û‹Ý[Ë\›Ý˜[ËÜˆ™XÙZ\™Z]š[Ü‹‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆH™\šYšYYHÙX[›ÝÈ™[™\œÈ™^ÈHÝXÝ[›ØÚÈÛˆHš[˜[YÙBˆH™\šYšYYHÝXÝ[˜[Y\È™[XZ[ˆ™XYX›HÚ]HÙX[™\Ù[‚ˆÈÈŒ‹LL\ŒL‚‹HØÛÜNˆYÚ[ˆH\™\ˆ[›ÚXÙHÙX[XÙ[Y[YØZ[ˆÛÈHÙX[š\ÚX›HÝ™\›\ÈHÝXÝ[Ý[[X\žH\™XH[œÝXYÙˆY\™[HÚ][™ÈÛÛY]Ú\™HÝÙ\ˆÛˆHØ[YHYÙK‚‹HÙ^Hš[\Î‚ˆH\Ø\KÙ^ÜËÜ\™\‹Z[›ÚXÙKÖÚYKÜ›Ý]KØˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ\\™\‹Z[›ÚXÙK\ÙX[\ÝXÝ[[Ý™\›\Y›ÛÝÝ\›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›HY\ÝÈHÜ[Û˜[ÙX[XÙ[Y[Ûˆ\™\ˆ[›ÚXÙHœÎÈ]Ù\È›ÝÚ[™ÙH[›ÚXÙH›ÝÜËÝ[Ë\›Ý˜[ËÜˆ™XÙZ\™Z]š[Ü‹‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆH™\šYšYYHÙX[›ÝÈÚ]È\™XÝHYØZ[œÝHÝXÝ[›ØÚÂˆH™\šYšYYÝXÝ[ÈÔÕÈ[[Ý[YHÝ^H™XYX›HY\ˆHÝ›Û™Ù\ˆÙX[XÙ[Y[‚ˆÈÈŒ‹LL\ŒLB‚‹HØÛÜNˆÛÛ\XÝH\™\ˆ[›ÚXÙHš[˜[YÙHÛÈ[™H][\Èš[[Ü™HÙˆHYÙH™Y›Ü™HÝ[Ë[™ÙY\HÜ[Û˜[ÙX[Ü™[Z][˜ÙH›ØÚÈÜ›Ý\YÛÜœ™XÝH\›Ý[™HÝXÝ[\™XK‚‹HÙ^Hš[\Î‚ˆH\Ø\KÙ^ÜËÜ\™\‹Z[›ÚXÙKÖÚYKÜ›Ý]KØˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ\\™\‹Z[›ÚXÙKYš[˜[\YÙKXÛÛ\XÝ[Û‹X[™\ÙX[X[˜ÚÜ‹›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›HY\ÝÈ\™\ˆ[›ÚXÙHˆYÚ[˜][Ûˆ[™š[˜[\YÙHÜÚ][Ûš[™È›ÜˆÝ[Ë™[Z][˜ÙH›Ý\Ë[™HÜ[Û˜[ÙX[È]Ù\È›ÝÚ[™ÙH[›ÚXÙH]KÝ[Ë\›Ý˜[ËÜˆ™XÙZ\Ë‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆH™\šYšYY[™H][\ÈÛÛ[YHÝÙ\ˆÛˆHYÙH™Y›Ü™HHš[˜[Ý[È›ØÚÂˆH™\šYšYYHÜ[Û˜[ÙX[Ý^\È]XÚYÈHÝXÝ[\™XBˆH™\šYšYY™[Z][˜ÙH›Ý\ÈÝ\™[ÝÈHÜ›Ý\YÝ[ËÜÙX[›ØÚÂ‚ˆÈÈŒ‹LL\ŒLL‚‹HØÛÜNˆ[Ý™Hš\œÝ\\˜Ú\ÙHÙ]\Ý]ÙˆHÝY[]Z[YÙH[™[ÈHYXØ]YYZ[ˆYÙKX]š[™ÈHÝY[YÙHÚ]H›ÛZ[™[ÕH[œÝXYÙˆH[[X™YY›Ü›K‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹ÜÝY[ËÖÚYKÜYÙKÞˆH\ØYZ[‹ÜÝY[ËÖÚYKÙš\œÝ\\˜Ú\ÙKÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ\ÝY[Yš\œÝ\\˜Ú\ÙKYYXØ]Y\YÙK›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›HÚ[™Ù\ÈHYZ[ˆV›Üˆš\œÝ\\˜Ú\ÙHÙ]\È]Ù\È›ÝÚ[™ÙHÛÛ˜XÝÚYÛš[™È[\Ë[›ÚXÙHÙ[™\˜][ÛˆÙÚXËÜˆXÚØYÙH˜[[˜Ù\Ë‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆH™\šYšYYHÝY[]Z[YÙH›ÝÈÚÝÜÈH›ÛZ[™[š\œÝ\\˜Ú\ÙHÕH[œÝXYÙˆH[[X™YYÙ]\›Ü›BˆH™\šYšYYH™]ÈØYZ[‹ÜÝY[ËÖÚYKÙš\œÝ\\˜Ú\ÙXYÙH™[™\œÈHÙ]\šY[ÈÛ˜ÙHÚ]Ý]™\X]YÛÜ™[™ÂˆH™\šYšYYÝXØÙ\ÜÙ[ÝX›Z]™Y\™XÝÈÈHXÚØYÙHÛÛ˜XÝÛÜšÜÜXÙB‹HŒ‹LLˆYYØYZ[‹Ùš[˜[˜ÙKÙØÝ[Y[Ø[™ØYZ[‹Ùš[˜[˜ÙKÙ[]YZ[›ÚXÙ\ØÛÈš[˜[˜ÙHØ[ˆÜ[ˆ[\™[Ü\™\ˆ[›ÚXÙH[™™XÙZ\œÈ[™˜XÙH[]Y˜Y[›ÚXÙH\ÝÜžHœ›ÛHÛ™HXÙKÚ]\™XÝ[šÜÈœ›ÛHš[˜[˜ÙHÛÜšØ™[˜ÚXÚØYÙHš[[™ËXÚØYÙHÛÛ˜XÝ[™\™\ˆÙ][Y[š[[™Ë‚‚ˆÈÈŒ‹LL\ŒLL‚‚‹HØÛÜNˆ^ÜÙHH™]Èš[˜[˜ÙHØÝ[Y[Ù[\ˆ[™[]Y˜Y\ÝÜžHYÙ\È[ˆHš[˜[˜ÙK\›ÛH[ÝÛ\Ý[™YZ[ˆÚYX˜\ˆÛÈÙÙÙYZ[ˆš[˜[˜ÙH\Ù\œÈØ[ˆXÝX[HÜ[ˆ[HÚ]Ý]™Z[™È›Ý[˜ÙY]Ø^K‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹Û^[Ý]ÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒYš[˜[˜ÙKYØÝ[Y[XÙ[\‹[˜]‹X[™X[ÝÛ\Ý›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›H\]\ÈYZ[ˆ˜]šYØ][Ûˆ[™š[˜[˜ÙH›Ý]HXØÙ\ÜÈ[\È›Üˆ[™XYK\Ú\YYÙ\ÎÈ]Ù\È›ÝÚ[™ÙH[›ÚXÙH]K™XÙZ\\›Ý˜[ËÜˆ^Ü™[™\š[™Ë‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆH™\šYšYYØYZ[‹Ùš[˜[˜ÙKÙØÝ[Y[Ø[™ØYZ[‹Ùš[˜[˜ÙKÙ[]YZ[›ÚXÙ\Ø\X\ˆ[ˆš[˜[˜ÙH˜]šYØ][Û‚ˆH™\šYšYYš[˜[˜ÙK\›ÛH[ÝÛ\Ý›ÝÈ[˜ÛY\È›Ý]Â‚ˆÈÈŒ‹LL\ŒLLÂ‚‹HØÛÜNˆ[Ý™HHÝ\š\œÝ\˜Ú\ÙHÙ]\È9o 9iâúi¥º-+ynî¹¨hØØ\™ÈH™\žHÜÙˆÝY[]Z[ÛÛ[ÛÈÜÈØ[ˆÙYHHÕH[[YYX][HÚ]Ý]ØÜ›Û[™È\Ý[›š[™È[™[œ›ÛY[ÙXÝ[ÛœË‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹ÜÝY[ËÖÚYKÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ\ÝY[Y]Z[Yš\œÝ\\˜Ú\ÙKXÝK]Ü›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›H™\ÜÚ][ÛœÈ[ˆ^\Ý[™ÈÝY[Y]Z[ÕHØ\™È]Ù\È›ÝÚ[™ÙH[ZÙKÛÛ˜XÝXÚØYÙKÜˆš[[™ÈÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆH™\šYšYYHš\œÝ\\˜Ú\ÙHØ\™™[™\œÈ™Y›Ü™HÝ[[X\žHØ\™È[™HÝXÚÞHÝY[ÛÜšØ™[˜ÚˆH™\šYšYYHÛZY\YÙH\XØ]HØ\™\È™[[Ý™YˆH™\šYšYYHYXØ]Yš\œÝ\\˜Ú\ÙHYÙH›ÈÛ™Ù\ˆ™\X]Èš[[™ÝX[šY[X™[ÈÝXÚ\ÈÛÝ\œÙHÈ:+ï¹ê"ÈÈ:+ï¹ê"ÈÈÛÝ\œÙX‚ˆÈÈŒ‹LL\ŒLM‚‹HØÛÜNˆš^Hš\œÝ\\˜Ú\ÙHÙ]\Ù\™\ˆXÝ[ÛˆÛÈHÝXØÙ\ÜÙ[Ü™X]KX[™\™Y\™XÝ›ÈÛ™Ù\ˆÙ]ÈÝØ[ÝÙY[ÈHš\ÚX›H‘VÔ‘QT‘PÕ\œ›Üˆ˜[›™\‹‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹ÜÝY[ËÖÚYKÙš\œÝ\\˜Ú\ÙKÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒYš\œÝ\\˜Ú\ÙK\™Y\™XÝY\œ›Ü‹Yš^›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›Hš^\È™Y\™XÝ[™[™ÈY\ˆHÝXØÙ\ÜÙ[š\œÝ\\˜Ú\ÙHÜ™X]NÈ]Ù\È›ÝÚ[™ÙH[ZÙH[YÚXš[]H[\ËXÚØYÙHÜ™X][Ûˆ^[ØYËÜˆÛÛ˜XÝÙ[™\˜][ÛˆÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆH™\šYšYYÝXØÙ\ÜÙ[š\œÝ\\˜Ú\ÙHÝX›Z]Ø[ˆ™]›ÝÈH˜]]™H™^šœÈ™Y\™XÝ[œÝXYÙˆ™[™\š[™È‘VÔ‘QT‘PÕˆH™\šYšYY™X[˜Z[\™\ÈÝ[™Y\™XÝ˜XÚÈÈHš\œÝ\\˜Ú\ÙHYÙHÚ]H›Ü›X[\œ›ÜˆY\ÜØYÙB‚ˆÈÈŒ‹LL\ŒLMB‚‹HØÛÜNˆÚ]™HÝY[ÛÛ˜XÝˆÝÛ›ØYÈH\Ú[™\ÜËYœšY[™Hš[[˜[YH›Üˆ›ÝYZ[ˆ[™\™[ÝÛ›ØYÈ[œÝXYÙˆHXÚšXØ[XÚØYÙK]\Hš[[˜[YK‚‹HÙ^Hš[\Î‚ˆH\Ø\KÙ^ÜËÜÝY[XÛÛ˜XÝÖÚYKÜ›Ý]KØˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ\ÝY[XÛÛ˜XÝYÝÛ›ØYYš[[˜[YK›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›HÚ[™Ù\ÈHˆÝÛ›ØYš[[˜[YH[™ÛÛ[Y\ÜÜÚ][ÛˆXY\œÎÈ]Ù\È›ÝÚ[™ÙHÛÛ˜XÝÛÛ[ÚYÛš[™ÈÙÚXË[›ÚXÙHÙ[™\˜][Û‹Üˆ\›Z\ÜÚ[ÛœË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆH™\šYšYYÛÛ˜XÝÝÛ›ØYÈ›ÝÈ\ÙH9ki¹å'ùd#Wú+ï¹ê"ùd#Wúi¥º-+Kùîëz-.yd"9d#ùmì¹ëo‹ú#byê/×ù¥éy§'Ëœ˜ˆH™\šYšYYHØ[YHš[[˜[YHÙÚXÈ\È\ÙY›ÜˆYZ[ˆ[™\™[ÚÙ[‹X˜\ÙYÝÛ›ØYÂ‚ˆÈÈŒ‹LL\ŒLM‚‚‹HØÛÜNˆš^ÝÜ™YÚYÛ™YÝY[XÛÛ˜XÝÝÛ›ØYÈÛÈ[™XYK\Ø]™YœÈ[ÛÈ\ÙHH™]È\Ú[™\ÜËYœšY[™Hš[[˜[YH[œÝXYÙˆ˜[[™È˜XÚÈÈ[ˆÛXÚšXØ[˜[YK‚‹HÙ^Hš[\Î‚ˆH\Ø\KÙ^ÜËÜÝY[XÛÛ˜XÝÖÚYKÜ›Ý]KØˆHX‹Ø\Ú[™\ÜËYš[K\ÝÜ˜YÙKØˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ\ÝÜ™Y\ÝY[XÛÛ˜XÝYÝÛ›ØYYš[[˜[YKYš^›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›Hš^\ÈHÛÛ[Y\ÜÜÚ][Ûˆš[[˜[YH›ÜˆÝÜ™YÚYÛ™YÛÛ˜XÝœÈ[™[YÛœÈ[›[™KÙÝÛ›ØYXY\œÎÈ]Ù\È›ÝÚ[™ÙHÛÛ˜XÝÛÛ[ÚYÛš[™Ë[›ÚXÙHÙ[™\˜][Û‹ÜˆXØÙ\ÜÈÛÛ›Û‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆH™\šYšYYHÝÜ™YÚYÛ™YXÛÛ˜XÝ™\ÜÛœÙH›ÝÈ\ÜÙ\ÈH\Ú[™\ÜÈš[[˜[YH[œÝXYÙˆHTÐÒRH˜[˜XÚÂˆH™\šYšYY[›[™H[™]XÚY[™\ÜÛœÙ\ÈÚ\™HHØ[YHU‹Nš[[˜[YHÙÚXÂ‚ˆÈÈŒ‹LL\ŒLMÂ‚‹HØÛÜNˆÚÝÈÜ™X]H™[™]Ø[ÛÛ˜XÝÈ9b&ùnî¹îëz-.yd"9d#[œÚYHHXÚØYÙHÛÛ˜XÝÛÜšÜÜXÙHY\ˆHš\œÝ\\˜Ú\ÙHÛÛ˜XÝ\È[™XYHÚYÛ™YÛÈÜÈØ[ˆÝ\H™^™[™]Ø[Ú]Ý]X]š[™ÈHÝ\œ™[XÚØYÙHYÙK‚‹HÙ^Hš[\Î‚ˆH\ØYZ[‹ÜXÚØYÙ\ËÖÚYKØÛÛ˜XÝÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ\XÚØYÙKXÛÛ˜XÝ\™[™]Ø[XÝKXY\‹Yš\œÝ\\˜Ú\ÙK›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›HYÈHZ\ÜÚ[™È™[™]Ø[ÕH[ˆH\›Z[˜[š\œÝ\\˜Ú\ÙHÛÛ˜XÝšY]ÎÈ]Ù\È›ÝÚ[™ÙH™\XÙ[Y[›ÝÜËÚYÛš[™Ë[›ÚXÙHÜ™X][Û‹Üˆ\™\‹\XÚØYÙH™Z]š[Ü‹‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆH™\šYšYYHÚYÛ™Yš\œÝ\\˜Ú\ÙHÛÛ˜XÝšY]ÈØ[ˆ›ÝÈÚÝÈÜ™X]H™[™]Ø[ÛÛ˜XÝÈ9b&ùnî¹îëz-.yd"9d#ˆH™\šYšYYH™\XÙ[Y[XÛÛ˜XÝXÝ[ÛˆÝ[™[XZ[œÈ]˜Z[X›H›ÜˆÛÜœ™XÝ[ÛˆØ\Ù\Â‚‚ˆÈÈŒ‹LL\ŒLN‚‹HØÛÜNˆš^™[™]Ø[ÛÛ˜XÝ]˜Z[Xš[]HÛÈHÚYÛ™Yš\œÝ\\˜Ú\ÙHÛÛ˜XÝÛˆHÝ\œ™[XÚØYÙHØ[ˆ›ÝšYHH™]\ØX›H\™[[™›È™YYY›Üˆ™[™]Ø[‚‹HÙ^Hš[\Î‚ˆHX‹ÜÝY[XÛÛ˜XÝØˆH\ØYZ[‹ÜXÚØYÙ\ËÖÚYKØÛÛ˜XÝÜYÙKÞˆHØÜËÐÒS‘ÑSÑËSU‘K›YˆHØÜËÔ‘SPTÑKP“ÐT‘›YˆHØÜËÝ\ÚÜËÕTÒËLŒŒ\™[™]Ø[\\™[Z[™›ËXÝ\œ™[\XÚØYÙKYš^›Y‹Hš\ÚÈ[\XÝ
+Yˆ[žJNˆÝËˆ\È™[X\ÙHÛ›HÚ[™Ù\ÈÝÈ™[™]Ø[\™[\›Ùš[H™]\ÙH\È]XÝYÈ]Ù\È›ÝÚ[™ÙHÚYÛš[™Ë[›ÚXÙHÜ™X][Û‹Üˆ\™\‹\XÚØYÙHÙÚXË‚‹H™\šYšXØ][ÛŽ‚ˆHœH[ˆZ[\ÜÙYˆH™\šYšYYHÚYÛ™Yš\œÝ\\˜Ú\ÙHÛÛ˜XÝÛˆHØ[YHXÚØYÙH›ÝÈ]X[YšY\È›ÜˆÜ™X]H™[™]Ø[ÛÛ˜XÝÈ9b&ùnî¹îëz-.yd"9d#ˆH™\šYšYY™[™]Ø[˜YÜ™X][Ûˆ›ÝÈ™]\Ù\È\™[[™›Èœ›ÛHHÝ\œ™[XÚØYÙHÚ[ˆ™YYY

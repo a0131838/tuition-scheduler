@@ -113,7 +113,12 @@ assert(staffScheduleMarkup.includes("全部老师") || staffScheduleScript.inclu
 assert(staffScheduleScript.includes("requestSeq") && staffScheduleScript.includes("searchTimer"), "staff schedule search must keep debounce and stale-request protection");
 assert(staffScheduleScript.includes("staff-first-scheduling") && staffScheduleScript.includes("preferredDate") === false, "calendar scheduling must enter the existing first-scheduling flow");
 assert(read("pages/staff-first-scheduling/staff-first-scheduling.js").includes("preferredDate"), "first scheduling must preserve the calendar date");
-assert(read("pages/staff-coordination-detail/staff-coordination-detail.js").includes("newScheduleDate = options.date"), "new-session form must receive the calendar date");
+const firstSchedulingOpenCandidate = firstSchedulingJs.slice(firstSchedulingJs.indexOf("openCandidate(e)"));
+assert(firstSchedulingJs.includes("staff-student-scheduling") && firstSchedulingOpenCandidate.includes("studentSchedulingUrl"), "student selection must open the read-only scheduling workspace");
+assert(!firstSchedulingOpenCandidate.includes("requestStaff("), "student selection must not create a ticket or write business data");
+const studentSchedulingJs = read("pages/staff-student-scheduling/staff-student-scheduling.js");
+assert(studentSchedulingJs.includes('intent: "coordination"') && studentSchedulingJs.includes("coordinationSummary: summary"), "coordination tickets must require an explicit reason");
+assert(studentSchedulingJs.includes("本次直接排课不会创建工单"), "direct scheduling must state and preserve the no-ticket path");
 
 const parentHomeMarkup = read("pages/home/home.wxml");
 const parentHomeScript = read("pages/home/home.js");
