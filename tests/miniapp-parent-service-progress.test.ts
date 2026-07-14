@@ -1,0 +1,74 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import test from "node:test";
+import {
+  compactParentProgressText,
+  parentProgressTimelineItem,
+  parentServicePlanCopy,
+  parentServiceWeekRange,
+  sortParentProgressTimeline,
+} from "../lib/miniapp-parent-service-progress";
+
+test("parent service progress uses the Singapore Monday-to-Sunday week", () => {
+  const range = parentServiceWeekRange(new Date("2026-07-14T04:00:00.000Z"));
+  assert.equal(range.start.toISOString(), "2026-07-12T16:00:00.000Z");
+  assert.equal(range.end.toISOString(), "2026-07-19T15:59:59.999Z");
+  assert.equal(range.label, "07/13 - 07/19");
+});
+
+test("all three student service types receive parent-facing progress copy", () => {
+  assert.equal(parentServicePlanCopy("STANDARD_COURSE").label, "普通课程");
+  assert.equal(parentServicePlanCopy("ACADEMIC_MANAGEMENT").label, "学业管理");
+  assert.equal(parentServicePlanCopy("FULL_CARE").label, "全程托管");
+  assert.match(parentServicePlanCopy(null).headline, /不只上课/);
+});
+
+test("timeline removes empty entries, compacts copy, and sorts newest first", () => {
+  const oldItem = parentProgressTimelineItem({
+    id: "old",
+    kind: "LESSON",
+    title: "数学",
+    summary: " 已完成   课程 ",
+    occurredAt: new Date("2026-07-12T04:00:00.000Z"),
+  });
+  const newItem = parentProgressTimelineItem({
+    id: "new",
+    kind: "CARE",
+    title: "阶段跟进",
+    summary: "已和家长确认下一步",
+    occurredAt: new Date("2026-07-13T04:00:00.000Z"),
+  });
+  const emptyItem = parentProgressTimelineItem({
+    id: "empty",
+    kind: "REQUEST",
+    title: "请求",
+    summary: "",
+    occurredAt: new Date(),
+  });
+  assert.equal(compactParentProgressText(" A   B "), "A B");
+  assert.equal(emptyItem, null);
+  assert.deepEqual(sortParentProgressTimeline([oldItem, newItem, emptyItem]).map((item) => item.id), ["new", "old"]);
+});
+
+test("parent progress API selects only published care summaries", () => {
+  const route = fs.readFileSync(
+    path.join(process.cwd(), "app/api/miniapp/students/[studentId]/service-progress/route.ts"),
+    "utf8",
+  );
+  assert.match(route, /publicationStatus: "PUBLISHED"/);
+  assert.match(route, /audience: \{ in: \["PARENT", "PARENT_AND_STUDENT"\] \}/);
+  assert.match(route, /publicSummary: true/);
+  assert.doesNotMatch(route, /internalNote: true/);
+  assert.doesNotMatch(route, /professionalJudgment: true/);
+  assert.doesNotMatch(route, /factEvidence: true/);
+  assert.doesNotMatch(route, /parentInternalNote: true/);
+});
+
+test("unclassified students use ordinary-course wording in the parent app", () => {
+  const homeRoute = fs.readFileSync(
+    path.join(process.cwd(), "app/api/miniapp/students/[studentId]/home/route.ts"),
+    "utf8",
+  );
+  assert.match(homeRoute, /student\.servicePlanType \|\| "STANDARD_COURSE"/);
+});

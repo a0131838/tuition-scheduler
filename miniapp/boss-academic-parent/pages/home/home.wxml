@@ -16,6 +16,15 @@
     </view>
   </view>
 
+  <view class="progress-entry" bindtap="goProgress">
+    <view class="progress-entry-copy">
+      <view class="label">服务进度</view>
+      <view class="progress-entry-title">{{student.nextAction || "查看本周完成、下一步和服务动态"}}</view>
+      <view class="subtitle">{{student.servicePlanLabel || "课程服务"}} · {{requestSummary.openCount || 0}} 项请求处理中</view>
+    </view>
+    <view class="progress-entry-arrow">›</view>
+  </view>
+
   <view class="card" wx:if="{{nextSession}}">
     <view class="label">下一节课</view>
     <view class="value">{{nextSession.startText}}</view>

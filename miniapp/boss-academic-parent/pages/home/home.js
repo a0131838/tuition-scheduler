@@ -74,6 +74,10 @@ Page({
     wx.navigateTo({ url: "/pages/feedbacks/feedbacks" });
   },
 
+  goProgress() {
+    wx.navigateTo({ url: "/pages/progress/progress" });
+  },
+
   goNewRequest() {
     wx.navigateTo({ url: "/pages/request-new/request-new" });
   },

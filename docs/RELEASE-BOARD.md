@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-07-13`
+- Last checked: `2026-07-14`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -15,11 +15,13 @@
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
 - Current production release: `2026-07-13-r246` at runtime commit `a8a261f`. The visual scheduling API and performance patch are live; the matching native package also includes the earlier UI/search, login separation, parent-only experience, and parent logout changes, which are not visible to WeChat users until the next experience-version upload.
+- Next ready release: `2026-07-14-r247` adds the parent service-progress center. Server and native-miniapp code are validated but not yet deployed/uploaded.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
+- Parent-service-progress rollout risk: all 88 students currently have a null service type, so the parent app temporarily uses ordinary-course wording without changing the database. Management must classify students before academic-management/full-care-specific communication is relied upon. Full-care records remain invisible until explicitly published to parents. Complete a physical-phone pass after the next experience-version upload.
 - Visual-scheduling-calendar rollout risk: `2026-07-13-r246` is live and adds a 42-day miniapp range query, operational overlap indicators, and teacher free-slot display. Single-query relation loading reduced the production 42-day request from 62.64 seconds to 9.98 seconds, but the Hong Kong application server to Singapore database path still leaves an 8-10 second baseline and should be addressed as a separate infrastructure project. It does not add a write path. Complete one physical-phone pass for month/week/day switching, filters, lesson opening, and date/time handoff before relying on it for daily scheduling.
 - Login-portal experience risk: `2026-07-13-r245` removes the employee entry from authenticated parent pages and adds parent logout. Remembered-portal auto-entry, logout confirmation/session cleanup, and the final parent-only phone experience still need one physical-phone pass after uploading the next experience version.
 - Admin-workspace-context monitoring: `2026-07-13-r242` is live. The shared route-sensitive text now follows `usePathname`; authenticated production regression passes Full Care to Student Sources and back without a hard refresh.

@@ -20,6 +20,7 @@
     "pages/bind/bind",
     "pages/students/students",
     "pages/home/home",
+    "pages/progress/progress",
     "pages/schedule/schedule",
     "pages/feedbacks/feedbacks",
     "pages/finance/finance",

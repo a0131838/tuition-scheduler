@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-14-r247
+
+- Release ID: `2026-07-14-r247`
+- Date/Time (Asia/Shanghai): `2026-07-14`
+- Deployment status: `READY`
+- Scope: add the native parent service-progress center for all students, with this-week lesson/feedback/request summaries, responsible person, next step, parent-visible action items, and a unified timeline of lessons, feedback, requests, and formally published full-care updates.
+- Key files:
+  - `app/api/miniapp/students/[studentId]/service-progress/route.ts`
+  - `lib/miniapp-parent-service-progress.ts`
+  - `miniapp/boss-academic-parent/pages/progress/*`
+  - `miniapp/boss-academic-parent/pages/home/*`
+  - `tests/miniapp-parent-service-progress.test.ts`
+  - `docs/tasks/TASK-20260714-miniapp-parent-service-progress.md`
+- Risk impact (if any): Medium read-side and privacy-sensitive parent experience. The endpoint requires parent report permission, respects schedule and feedback permissions, reads only parent-visible Tickets, and exposes full-care activities only when published to parents. It does not add database tables or any write path. All 88 current students have a null service type and therefore temporarily receive ordinary-course wording without changing stored data; management must classify them before relying on type-specific messaging.
+- Verification: 49 existing backend tests plus 5 new progress tests and 4 retained calendar tests pass; TypeScript, all native-miniapp JavaScript syntax, the 27-page release audit, an authenticated read-only real-data endpoint check, and the full 193-page production build pass. The real-data call returned HTTP 200; one active care engagement currently has zero parent-published activities and zero parent-visible action tasks. Physical-phone confirmation remains for the next experience version.
+- Rollback point: `2026-07-13-r246` (`a8a261f`).
+
+---
+
 ## 2026-07-13-r246
 
 - Release ID: `2026-07-13-r246`

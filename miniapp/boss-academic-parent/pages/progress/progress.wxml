@@ -1,0 +1,101 @@
+<view class="page progress-page">
+  <view class="top progress-top">
+    <view class="eyebrow">{{student.name || "服务进度"}}</view>
+    <view class="title">{{service.headline || "服务进度"}}</view>
+    <view class="subtitle">{{service.description}}</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="progress-loading">正在汇总服务记录...</view>
+  <view wx:elif="{{error}}" class="progress-error">
+    <view class="value">暂时无法读取</view>
+    <view class="subtitle">{{error}}</view>
+    <button class="btn progress-retry" bindtap="load">重新加载</button>
+  </view>
+
+  <block wx:else>
+    <view class="service-band">
+      <view class="service-band-head">
+        <view>
+          <view class="label">当前服务</view>
+          <view class="service-name">{{service.label}}</view>
+        </view>
+        <view class="risk-tag">{{student.riskLabel}}</view>
+      </view>
+      <view class="service-cadence">{{service.cadence}}</view>
+      <view class="owner-line">
+        <text class="owner-label">主要负责人</text>
+        <text class="owner-name">{{responsiblePerson}}</text>
+      </view>
+    </view>
+
+    <view class="section-head">
+      <view>
+        <view class="section-title">本周进展</view>
+        <view class="section-note">{{period.label}}</view>
+      </view>
+    </view>
+    <view class="progress-metrics {{permissions.canViewFeedback ? '' : 'two'}}">
+      <view class="progress-metric" bindtap="goSchedule">
+        <view class="metric-number">{{summary.completedLessons || 0}}</view>
+        <view class="metric-label">已完成课程</view>
+        <view class="metric-note">本周共 {{summary.scheduledLessons || 0}} 节</view>
+      </view>
+      <view class="progress-metric" wx:if="{{permissions.canViewFeedback}}" bindtap="goFeedbacks">
+        <view class="metric-number">{{summary.feedbackCount || 0}}</view>
+        <view class="metric-label">课后反馈</view>
+        <view class="metric-note">点击查看记录</view>
+      </view>
+      <view class="progress-metric" bindtap="goRequests">
+        <view class="metric-number">{{summary.openRequestCount || 0}}</view>
+        <view class="metric-label">处理中请求</view>
+        <view class="metric-note">点击查看进度</view>
+      </view>
+    </view>
+
+    <view class="next-band">
+      <view class="next-marker"></view>
+      <view class="next-content">
+        <view class="label">{{nextStep.label}}</view>
+        <view class="next-text">{{nextStep.text}}</view>
+        <view class="next-due" wx:if="{{nextStep.dueText}}">计划日期 {{nextStep.dueText}}</view>
+      </view>
+    </view>
+
+    <view class="parent-actions" wx:if="{{parentActions.length}}">
+      <view class="section-title">需要家长配合</view>
+      <view class="action-row" wx:for="{{parentActions}}" wx:key="id">
+        <view class="action-copy">{{item.summary}}</view>
+        <view class="action-date">{{item.dueAtText}}</view>
+      </view>
+      <button class="btn secondary action-contact" bindtap="goNewRequest">需要沟通</button>
+    </view>
+
+    <view class="section-head timeline-head">
+      <view>
+        <view class="section-title">最近动态</view>
+        <view class="section-note">课程、反馈和已发布的服务记录</view>
+      </view>
+    </view>
+    <view class="timeline" wx:if="{{timeline.length}}">
+      <view class="timeline-row" wx:for="{{timeline}}" wx:key="id">
+        <view class="timeline-rail">
+          <view class="timeline-dot kind-{{item.kind}}"></view>
+          <view class="timeline-line"></view>
+        </view>
+        <view class="timeline-body">
+          <view class="timeline-meta">
+            <text class="timeline-kind">{{item.kindLabel}}</text>
+            <text class="timeline-date">{{item.occurredAtText}}</text>
+          </view>
+          <view class="timeline-title">{{item.title}}</view>
+          <view class="timeline-summary">{{item.summary}}</view>
+        </view>
+      </view>
+    </view>
+    <view class="timeline-empty" wx:else>服务记录会在课程完成或进度更新后显示。</view>
+
+    <view class="care-note" wx:if="{{student.servicePlanType === 'FULL_CARE' && !care.active}}">
+      全程托管动态将在服务团队正式发布后显示，课程与请求记录不受影响。
+    </view>
+  </block>
+</view>

@@ -2,6 +2,36 @@
   margin-top: 18rpx;
 }
 
+.progress-entry {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  margin-top: 24rpx;
+  padding: 24rpx 0;
+  border-top: 2rpx solid #ec5e0a;
+  border-bottom: 1rpx solid #dfe2e5;
+}
+
+.progress-entry-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.progress-entry-title {
+  margin-top: 8rpx;
+  font-size: 29rpx;
+  font-weight: 700;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.progress-entry-arrow {
+  flex: 0 0 auto;
+  color: #ec5e0a;
+  font-size: 46rpx;
+  line-height: 1;
+}
+
 .notification-band {
   border-top: 1rpx solid #e3e5e8;
   border-bottom: 1rpx solid #e3e5e8;

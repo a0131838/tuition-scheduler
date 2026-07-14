@@ -115,6 +115,14 @@ assert(staffScheduleScript.includes("staff-first-scheduling") && staffScheduleSc
 assert(read("pages/staff-first-scheduling/staff-first-scheduling.js").includes("preferredDate"), "first scheduling must preserve the calendar date");
 assert(read("pages/staff-coordination-detail/staff-coordination-detail.js").includes("newScheduleDate = options.date"), "new-session form must receive the calendar date");
 
+const parentHomeMarkup = read("pages/home/home.wxml");
+const parentHomeScript = read("pages/home/home.js");
+const parentProgressMarkup = read("pages/progress/progress.wxml");
+assert(parentHomeMarkup.includes("服务进度") && parentHomeScript.includes("/pages/progress/progress"), "parent home must link to service progress");
+assert(parentProgressMarkup.includes("本周进展") && parentProgressMarkup.includes("最近动态"), "parent progress must show weekly summary and timeline");
+assert(parentProgressMarkup.includes("主要负责人") && parentProgressMarkup.includes("需要家长配合"), "parent progress must show ownership and parent actions");
+assert(!parentProgressMarkup.includes("内部") && !parentProgressMarkup.includes("草稿"), "parent progress must not expose internal workflow wording");
+
 json("sitemap.json");
 
 const result = {
