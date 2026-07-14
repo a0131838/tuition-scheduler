@@ -15,12 +15,13 @@
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
 - Current production release: `2026-07-13-r246` at runtime commit `a8a261f`. The visual scheduling API and performance patch are live; the matching native package also includes the earlier UI/search, login separation, parent-only experience, and parent logout changes, which are not visible to WeChat users until the next experience-version upload.
-- Next ready release: `2026-07-14-r247` adds the parent service-progress center. Server and native-miniapp code are validated but not yet deployed/uploaded.
+- Next ready release: `2026-07-14-r248` adds private full-care evidence attachments and school-communication sources. It also carries the already validated `r247` parent service-progress source; native-miniapp changes remain invisible until a WeChat experience-version upload.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
+- Full-care-evidence rollout risk: `2026-07-14-r248` adds a private attachment table and CARE-scoped upload/download routes. Parent delivery is intentionally disabled; a file marked `PARENT` is only eligible for a later reviewed report. Monitor the first real school-email upload and confirm the intended care team can open it while unrelated staff cannot.
 - Parent-service-progress rollout risk: all 88 students currently have a null service type, so the parent app temporarily uses ordinary-course wording without changing the database. Management must classify students before academic-management/full-care-specific communication is relied upon. Full-care records remain invisible until explicitly published to parents. Complete a physical-phone pass after the next experience-version upload.
 - Visual-scheduling-calendar rollout risk: `2026-07-13-r246` is live and adds a 42-day miniapp range query, operational overlap indicators, and teacher free-slot display. Single-query relation loading reduced the production 42-day request from 62.64 seconds to 9.98 seconds, but the Hong Kong application server to Singapore database path still leaves an 8-10 second baseline and should be addressed as a separate infrastructure project. It does not add a write path. Complete one physical-phone pass for month/week/day switching, filters, lesson opening, and date/time handoff before relying on it for daily scheduling.
 - Login-portal experience risk: `2026-07-13-r245` removes the employee entry from authenticated parent pages and adds parent logout. Remembered-portal auto-entry, logout confirmation/session cleanup, and the final parent-only phone experience still need one physical-phone pass after uploading the next experience version.
@@ -159,6 +160,31 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-07-14-r248 Ready
+
+- Scope: add private evidence files and structured communication sources to each full-care project.
+- Business impact:
+  - CARE staff can upload school emails, notices, meeting minutes, academic reports and life-coordination evidence, then associate each file with an existing follow-up or task.
+  - Active evidence can be viewed or downloaded only after project access is checked; archive and restore preserve the file and audit history.
+  - Existing lesson, attendance, package, settlement, payroll, invoice, receipt and finance workflows are unchanged.
+- Files:
+  - `prisma/schema.prisma`
+  - `lib/care-evidence-files.ts`
+  - `lib/care-management.ts`
+  - `app/admin/care/[id]/page.tsx`
+  - `app/api/admin/care/**`
+  - `tests/care-evidence.test.ts`
+- Verification before deploy:
+  - `npx prisma validate`
+  - `npx tsc --noEmit`
+  - `npm run test:backend` (53/53)
+  - `npm run build` (193 pages)
+  - production-mode browser upload/download/archive/restore and unauthorized-access checks
+- Post-deploy verification:
+  - migration status, PM2 and `/admin/login`
+  - authenticated upload/download on a temporary care project followed by complete cleanup
+  - protected teaching, package, partner-settlement and care-count baseline comparison
 
 ## 2026-07-13-r239 Ready
 

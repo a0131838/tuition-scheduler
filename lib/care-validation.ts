@@ -1,5 +1,6 @@
 import type {
   CareActivityCategory,
+  CareAttachmentCategory,
   CareAudience,
   CareEngagementStatus,
   CareProgramType,
@@ -39,6 +40,28 @@ export const CARE_ACTIVITY_OPTIONS: Array<{ value: CareActivityCategory; zh: str
   { value: "GENERAL", zh: "其他", en: "General" },
 ];
 
+export const CARE_ACTIVITY_SOURCE_OPTIONS = [
+  { value: "EMAIL", zh: "邮件", en: "Email" },
+  { value: "PHONE", zh: "电话", en: "Phone call" },
+  { value: "MEETING", zh: "会议", en: "Meeting" },
+  { value: "SCHOOL_PORTAL", zh: "学校系统", en: "School portal" },
+  { value: "MESSAGE", zh: "即时消息", en: "Message" },
+  { value: "DOCUMENT", zh: "文件", en: "Document" },
+  { value: "OTHER", zh: "其他", en: "Other" },
+] as const;
+
+export const CARE_ATTACHMENT_OPTIONS: Array<{ value: CareAttachmentCategory; zh: string; en: string }> = [
+  { value: "SCHOOL_EMAIL", zh: "学校邮件", en: "School email" },
+  { value: "SCHOOL_NOTICE", zh: "学校通知", en: "School notice" },
+  { value: "MEETING_MINUTES", zh: "会议纪要", en: "Meeting minutes" },
+  { value: "ACADEMIC_REPORT", zh: "成绩或学业报告", en: "Academic report" },
+  { value: "MEDICAL", zh: "医疗资料", en: "Medical" },
+  { value: "TRANSPORT", zh: "交通确认", en: "Transport" },
+  { value: "HOST_FAMILY", zh: "寄宿家庭", en: "Host family" },
+  { value: "VISA", zh: "签证或准证", en: "Visa or pass" },
+  { value: "OTHER", zh: "其他证据", en: "Other evidence" },
+];
+
 export const CARE_LIFE_SUBTYPES = [
   { value: "WEEKLY_WELLBEING", zh: "每周状态核对", en: "Weekly wellbeing" },
   { value: "MEDICAL_ACCOMPANIMENT", zh: "医疗预约及陪同", en: "Medical accompaniment" },
@@ -64,6 +87,8 @@ export const CARE_TASK_STATUS_OPTIONS: CareTaskStatus[] = [
 
 const PROGRAM_TYPES = new Set(CARE_PROGRAM_OPTIONS.map((item) => item.value));
 const ACTIVITY_CATEGORIES = new Set(CARE_ACTIVITY_OPTIONS.map((item) => item.value));
+const ATTACHMENT_CATEGORIES = new Set(CARE_ATTACHMENT_OPTIONS.map((item) => item.value));
+const ACTIVITY_SOURCES = new Set(CARE_ACTIVITY_SOURCE_OPTIONS.map((item) => item.value));
 const RISK_LEVELS = new Set(CARE_RISK_OPTIONS);
 const AUDIENCES = new Set(CARE_AUDIENCE_OPTIONS);
 const TASK_PRIORITIES = new Set(CARE_TASK_PRIORITY_OPTIONS);
@@ -101,6 +126,21 @@ export function careProgramType(value: unknown): CareProgramType {
 export function careActivityCategory(value: unknown): CareActivityCategory {
   const normalized = careText(value, 40) as CareActivityCategory;
   if (!ACTIVITY_CATEGORIES.has(normalized)) throw new Error("Invalid activity category");
+  return normalized;
+}
+
+export function careActivitySource(value: unknown) {
+  const normalized = careText(value, 40).toUpperCase();
+  if (!normalized) return null;
+  if (!ACTIVITY_SOURCES.has(normalized as (typeof CARE_ACTIVITY_SOURCE_OPTIONS)[number]["value"])) {
+    throw new Error("Invalid activity source");
+  }
+  return normalized;
+}
+
+export function careAttachmentCategory(value: unknown): CareAttachmentCategory {
+  const normalized = careText(value, 40) as CareAttachmentCategory;
+  if (!ATTACHMENT_CATEGORIES.has(normalized)) throw new Error("Invalid attachment category");
   return normalized;
 }
 

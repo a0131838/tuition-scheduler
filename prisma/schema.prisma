@@ -104,6 +104,18 @@ enum CareRiskLevel {
   CRITICAL
 }
 
+enum CareAttachmentCategory {
+  SCHOOL_EMAIL
+  SCHOOL_NOTICE
+  MEETING_MINUTES
+  ACADEMIC_REPORT
+  MEDICAL
+  TRANSPORT
+  HOST_FAMILY
+  VISA
+  OTHER
+}
+
 enum UserLanguage {
   BILINGUAL
   ZH
@@ -917,6 +929,7 @@ model Student {
   careEngagements            CareEngagement[]
   careActivities             CareActivity[]
   careTasks                  CareTask[]
+  careAttachments            CareAttachment[]
 
   @@index([sourceChannelId])
   @@index([studentTypeId])
@@ -1063,6 +1076,8 @@ model User {
   careTasksAssigned           CareTask[]                 @relation("CareTaskAssignedTo")
   careTasksCreated            CareTask[]                 @relation("CareTaskCreatedBy")
   careTasksCompleted          CareTask[]                 @relation("CareTaskCompletedBy")
+  careAttachmentsUploaded     CareAttachment[]           @relation("CareAttachmentUploadedBy")
+  careAttachmentsArchived     CareAttachment[]           @relation("CareAttachmentArchivedBy")
 }
 
 model CareEngagement {
@@ -1086,13 +1101,14 @@ model CareEngagement {
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 
-  student    Student                @relation(fields: [studentId], references: [id], onDelete: Restrict)
-  caseOwner  User?                  @relation("CareEngagementCaseOwner", fields: [caseOwnerUserId], references: [id], onDelete: SetNull)
-  createdBy  User                   @relation("CareEngagementCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  members    CareEngagementMember[]
-  plans      CarePlan[]
-  activities CareActivity[]
-  tasks      CareTask[]
+  student     Student                @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  caseOwner   User?                  @relation("CareEngagementCaseOwner", fields: [caseOwnerUserId], references: [id], onDelete: SetNull)
+  createdBy   User                   @relation("CareEngagementCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  members     CareEngagementMember[]
+  plans       CarePlan[]
+  activities  CareActivity[]
+  tasks       CareTask[]
+  attachments CareAttachment[]
 
   @@index([status, caseOwnerUserId, nextReportDueAt])
   @@index([studentId, status])
@@ -1175,12 +1191,13 @@ model CareActivity {
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
 
-  student    Student        @relation(fields: [studentId], references: [id], onDelete: Restrict)
-  engagement CareEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
-  owner      User?          @relation("CareActivityOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
-  createdBy  User           @relation("CareActivityCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  updatedBy  User           @relation("CareActivityUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Restrict)
-  tasks      CareTask[]
+  student     Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  engagement  CareEngagement   @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  owner       User?            @relation("CareActivityOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  createdBy   User             @relation("CareActivityCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  updatedBy   User             @relation("CareActivityUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Restrict)
+  tasks       CareTask[]
+  attachments CareAttachment[]
 
   @@index([engagementId, occurredAt])
   @@index([studentId, publicationStatus, occurredAt])
@@ -1211,16 +1228,53 @@ model CareTask {
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
 
-  student     Student        @relation(fields: [studentId], references: [id], onDelete: Restrict)
-  engagement  CareEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
-  activity    CareActivity?  @relation(fields: [activityId], references: [id], onDelete: SetNull)
-  assignedTo  User           @relation("CareTaskAssignedTo", fields: [assignedToUserId], references: [id], onDelete: Restrict)
-  createdBy   User           @relation("CareTaskCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  completedBy User?          @relation("CareTaskCompletedBy", fields: [completedByUserId], references: [id], onDelete: SetNull)
+  student     Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  engagement  CareEngagement   @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  activity    CareActivity?    @relation(fields: [activityId], references: [id], onDelete: SetNull)
+  assignedTo  User             @relation("CareTaskAssignedTo", fields: [assignedToUserId], references: [id], onDelete: Restrict)
+  createdBy   User             @relation("CareTaskCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  completedBy User?            @relation("CareTaskCompletedBy", fields: [completedByUserId], references: [id], onDelete: SetNull)
+  attachments CareAttachment[]
 
   @@index([assignedToUserId, status, dueAt])
   @@index([engagementId, status, dueAt])
   @@index([studentId, status])
+}
+
+model CareAttachment {
+  id               String                 @id @default(uuid())
+  studentId        String
+  engagementId     String
+  activityId       String?
+  taskId           String?
+  category         CareAttachmentCategory
+  occurredAt       DateTime?
+  title            String
+  sourceLabel      String?
+  note             String?
+  filePath         String
+  originalFileName String
+  fileSizeBytes    Int
+  mimeType         String?
+  audience         CareAudience           @default(INTERNAL_ONLY)
+  uploadedByUserId String
+  archivedAt       DateTime?
+  archivedByUserId String?
+  version          Int                    @default(1)
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  student    Student        @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  engagement CareEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  activity   CareActivity?  @relation(fields: [activityId], references: [id], onDelete: SetNull)
+  task       CareTask?      @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  uploadedBy User           @relation("CareAttachmentUploadedBy", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+  archivedBy User?          @relation("CareAttachmentArchivedBy", fields: [archivedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([engagementId, archivedAt, createdAt])
+  @@index([studentId, category, occurredAt])
+  @@index([activityId])
+  @@index([taskId])
 }
 
 model UserWorkspaceAccess {

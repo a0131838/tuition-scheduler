@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-14-r248
+
+- Release ID: `2026-07-14-r248`
+- Date/Time (Asia/Shanghai): `2026-07-14`
+- Deployment status: `READY`
+- Scope: add private evidence attachments and structured school-communication sources to the isolated full-care workspace, with project-scoped access, activity/task links, archive/restore and audit history.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260714100000_add_care_evidence_attachments/migration.sql`
+  - `lib/care-evidence-files.ts`
+  - `lib/care-management.ts`
+  - `lib/care-validation.ts`
+  - `app/admin/care/[id]/page.tsx`
+  - `app/admin/care/_components/CareAttachmentUploader.tsx`
+  - `app/api/admin/care/engagements/[id]/attachments/route.ts`
+  - `app/api/admin/care/attachments/[id]/file/route.ts`
+  - `tests/care-evidence.test.ts`
+  - `docs/tasks/TASK-20260714-care-evidence-attachments.md`
+- Risk impact (if any): Medium and isolated to CARE. Files are stored under a private S3/local CARE path and every download rechecks care-project access. The migration only adds one enum and one table; it does not alter students, sessions, attendance, packages, partner settlement, payroll, invoices, receipts or finance settings. Parent delivery remains disabled; `PARENT` means eligible for a later reviewed report, not immediately visible.
+- Verification: Prisma validation, TypeScript, all 53 backend tests and the full 193-page production build pass. Production-mode Playwright used a temporary student/project to upload a school-email file, link it to a school update, open/download it, archive it and restore it. Unauthenticated file access returned `401`; authorized access returned a private signed `302`. The temporary student, session, project, attachment, audit rows and S3 test object were cleaned to zero.
+- Rollback point: current production runtime `a8a261f` (`2026-07-13-r246`); immediate Git parent `1d1e395` is the prepared `2026-07-14-r247` parent service-progress source.
+
+---
+
 ## 2026-07-14-r247
 
 - Release ID: `2026-07-14-r247`

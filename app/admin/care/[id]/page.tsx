@@ -6,11 +6,14 @@ import {
   audienceLabel,
   changeCareEngagementStatus,
   jsonSummary,
+  setCareAttachmentArchived,
   updateCareTask,
   updateCareEngagementConfig,
 } from "@/lib/care-management";
 import {
   CARE_ACTIVITY_OPTIONS,
+  CARE_ACTIVITY_SOURCE_OPTIONS,
+  CARE_ATTACHMENT_OPTIONS,
   CARE_AUDIENCE_OPTIONS,
   CARE_LIFE_SUBTYPES,
   CARE_PROGRAM_OPTIONS,
@@ -28,6 +31,7 @@ import type { CareEngagementStatus } from "@prisma/client";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import styles from "../care.module.css";
+import CareAttachmentUploader from "../_components/CareAttachmentUploader";
 
 function first(value?: string | string[]) {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
@@ -44,6 +48,12 @@ function jsonList(value: unknown, field: string) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return [];
   const raw = (value as Record<string, unknown>)[field];
   return Array.isArray(raw) ? raw.filter((item): item is string => typeof item === "string") : [];
+}
+
+function fileSizeLabel(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.ceil(bytes / 1024)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
 async function runCareAction(engagementId: string, label: string, operation: Promise<unknown>) {
@@ -131,6 +141,8 @@ export default async function CareDetailPage({
         subtype: formData.get("subtype"),
         occurredAt: formData.get("occurredAt"),
         title: formData.get("title"),
+        sourceType: formData.get("sourceType"),
+        sourceLabel: formData.get("sourceLabel"),
         factEvidence: formData.get("factEvidence"),
         professionalJudgment: formData.get("professionalJudgment"),
         actionTaken: formData.get("actionTaken"),
@@ -142,6 +154,20 @@ export default async function CareDetailPage({
         internalNote: formData.get("internalNote"),
         audience: formData.get("audience"),
         publicSummary: formData.get("publicSummary"),
+      }),
+    );
+  }
+
+  async function attachmentStatusAction(formData: FormData) {
+    "use server";
+    const current = await requireCareEngagementAccess(id);
+    await runCareAction(id, String(formData.get("archived")) === "true" ? "Evidence archived" : "Evidence restored",
+      setCareAttachmentArchived({
+        actor: current,
+        engagementId: id,
+        attachmentId: String(formData.get("attachmentId") ?? ""),
+        version: Number(formData.get("version")),
+        archived: String(formData.get("archived")) === "true",
       }),
     );
   }
@@ -198,6 +224,15 @@ export default async function CareDetailPage({
           orderBy: [{ status: "asc" }, { dueAt: "asc" }],
           take: 100,
         },
+        attachments: {
+          include: {
+            uploadedBy: { select: { name: true } },
+            activity: { select: { id: true, title: true } },
+            task: { select: { id: true, title: true } },
+          },
+          orderBy: [{ createdAt: "desc" }],
+          take: 100,
+        },
       },
     }), canManageConfig ? prisma.user.findMany({
       where: { role: { in: ["ADMIN", "CS", "TEACHER"] } },
@@ -216,6 +251,8 @@ export default async function CareDetailPage({
   const scopeLabels = CARE_SCOPE_OPTIONS.filter((item) => scopeIds.includes(item.id)).map((item) => lang === "EN" ? item.en : item.zh);
   const exclusions = jsonList(engagement.exclusionsJson, "items");
   const openTasks = engagement.tasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED");
+  const activeAttachments = engagement.attachments.filter((attachment) => !attachment.archivedAt);
+  const archivedAttachments = engagement.attachments.filter((attachment) => attachment.archivedAt);
   const nowInput = formatBusinessDateTime(new Date()).replace(" ", "T");
 
   return (
@@ -248,6 +285,7 @@ export default async function CareDetailPage({
         <div className={styles.metric}><strong>{engagement.activities.length}</strong><span className={styles.muted}>{t(lang, "Updates", "跟进记录")}</span></div>
         <div className={styles.metric}><strong>{engagement.plans.length}</strong><span className={styles.muted}>{t(lang, "Plans", "阶段计划")}</span></div>
         <div className={styles.metric}><strong>{engagement.members.length}</strong><span className={styles.muted}>{t(lang, "Team", "责任成员")}</span></div>
+        <div className={styles.metric}><strong>{activeAttachments.length}</strong><span className={styles.muted}>{t(lang, "Evidence", "证据文件")}</span></div>
       </div>
 
       <section className={styles.section}>
@@ -298,6 +336,8 @@ export default async function CareDetailPage({
                 <label className={styles.label}>{t(lang, "Life subtype", "生活事项")}<select className={styles.select} name="subtype" defaultValue=""><option value="">-</option>{CARE_LIFE_SUBTYPES.map((item) => <option key={item.value} value={item.value}>{lang === "EN" ? item.en : item.zh}</option>)}</select></label>
                 <label className={styles.label}>{t(lang, "Time", "发生时间")}<input className={styles.field} name="occurredAt" type="datetime-local" defaultValue={nowInput} /></label>
                 <label className={styles.label}>{t(lang, "Risk", "风险")}<select className={styles.select} name="riskLevel" defaultValue="LOW">{CARE_RISK_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+                <label className={styles.label}>{t(lang, "Source channel", "沟通来源")}<select className={styles.select} name="sourceType" defaultValue=""><option value="">-</option>{CARE_ACTIVITY_SOURCE_OPTIONS.map((item) => <option key={item.value} value={item.value}>{lang === "EN" ? item.en : item.zh}</option>)}</select></label>
+                <label className={styles.label}>{t(lang, "Source detail", "来源说明")}<input className={styles.field} name="sourceLabel" maxLength={240} placeholder={t(lang, "School, contact or subject", "学校、联系人或邮件主题")} /></label>
                 <label className={`${styles.label} ${styles.full}`}>{t(lang, "Title", "标题")}<input className={styles.field} name="title" maxLength={180} required /></label>
                 <label className={`${styles.label} ${styles.full}`}>{t(lang, "Facts and evidence", "事实与证据")}<textarea className={styles.textarea} name="factEvidence" required /></label>
                 <label className={`${styles.label} ${styles.full}`}>{t(lang, "Professional judgement", "专业判断")}<textarea className={styles.textarea} name="professionalJudgment" /></label>
@@ -318,7 +358,7 @@ export default async function CareDetailPage({
                   <div className={styles.timelineHead}>
                     <div>
                       <strong>{activity.title}</strong>
-                      <div className={styles.muted}>{formatBusinessDateTime(activity.occurredAt)} · {activity.category}{activity.subtype ? ` / ${activity.subtype}` : ""} · {activity.createdBy.name}</div>
+                      <div className={styles.muted}>{formatBusinessDateTime(activity.occurredAt)} · {activity.category}{activity.subtype ? ` / ${activity.subtype}` : ""}{activity.sourceType ? ` · ${activity.sourceType}` : ""}{activity.sourceLabel ? ` / ${activity.sourceLabel}` : ""} · {activity.createdBy.name}</div>
                     </div>
                     <div className={styles.toolbar}>
                       <span className={styles.badge} data-tone={activity.riskLevel === "HIGH" || activity.riskLevel === "CRITICAL" ? "risk" : "neutral"}>{activity.riskLevel}</span>
@@ -335,6 +375,79 @@ export default async function CareDetailPage({
               ))}
               {engagement.activities.length === 0 ? <div className={styles.muted} style={{ paddingTop: 10 }}>{t(lang, "No updates yet.", "暂无跟进记录。")}</div> : null}
             </div>
+          </section>
+
+          <section className={styles.section}>
+            <h2>{t(lang, "Evidence and school records", "证据与学校资料")}</h2>
+            <details className={styles.details}>
+              <summary>{t(lang, "Upload evidence", "上传证据")}</summary>
+              <CareAttachmentUploader
+                engagementId={engagement.id}
+                english={lang === "EN"}
+                categories={CARE_ATTACHMENT_OPTIONS.map((item) => ({ value: item.value, label: lang === "EN" ? item.en : item.zh }))}
+                activities={engagement.activities.map((item) => ({
+                  value: item.id,
+                  label: `${formatBusinessDateOnly(item.occurredAt)} · ${item.title}`,
+                }))}
+                tasks={engagement.tasks.map((item) => ({
+                  value: item.id,
+                  label: `${formatBusinessDateOnly(item.dueAt)} · ${item.title}`,
+                }))}
+              />
+            </details>
+            <div className={styles.rows}>
+              {activeAttachments.map((attachment) => {
+                const category = CARE_ATTACHMENT_OPTIONS.find((item) => item.value === attachment.category);
+                return (
+                  <article className={styles.fileRow} key={attachment.id}>
+                    <div>
+                      <a className={styles.rowTitle} href={`/api/admin/care/attachments/${encodeURIComponent(attachment.id)}/file`} target="_blank" rel="noreferrer">{attachment.title}</a>
+                      <div className={styles.muted}>
+                        {category ? (lang === "EN" ? category.en : category.zh) : attachment.category}
+                        {attachment.occurredAt ? ` · ${formatBusinessDateOnly(attachment.occurredAt)}` : ""}
+                        {attachment.sourceLabel ? ` · ${attachment.sourceLabel}` : ""}
+                      </div>
+                      <div className={styles.muted}>{attachment.originalFileName} · {fileSizeLabel(attachment.fileSizeBytes)} · {attachment.uploadedBy.name}</div>
+                      {attachment.note ? <div>{attachment.note}</div> : null}
+                      {attachment.activity ? <div className={styles.muted}>{t(lang, "Update", "关联跟进")}: {attachment.activity.title}</div> : null}
+                      {attachment.task ? <div className={styles.muted}>{t(lang, "Task", "关联待办")}: {attachment.task.title}</div> : null}
+                    </div>
+                    <div className={styles.toolbar}>
+                      <span className={styles.badge}>{attachment.audience === "INTERNAL_ONLY" ? t(lang, "Internal", "仅内部") : t(lang, "For reviewed report", "供审核报告使用")}</span>
+                      <a className={styles.buttonSecondary} href={`/api/admin/care/attachments/${encodeURIComponent(attachment.id)}/file?download=1`}>{t(lang, "Download", "下载")}</a>
+                      <form action={attachmentStatusAction}>
+                        <input type="hidden" name="attachmentId" value={attachment.id} />
+                        <input type="hidden" name="version" value={attachment.version} />
+                        <input type="hidden" name="archived" value="true" />
+                        <button className={styles.buttonSecondary} type="submit">{t(lang, "Archive", "归档")}</button>
+                      </form>
+                    </div>
+                  </article>
+                );
+              })}
+              {activeAttachments.length === 0 ? <div className={styles.muted} style={{ paddingTop: 10 }}>{t(lang, "No evidence yet.", "暂无证据文件。")}</div> : null}
+            </div>
+            {archivedAttachments.length ? (
+              <details className={styles.details}>
+                <summary>{t(lang, `Archived (${archivedAttachments.length})`, `已归档（${archivedAttachments.length}）`)}</summary>
+                <div className={styles.rows}>
+                  {archivedAttachments.map((attachment) => (
+                    <article className={styles.fileRow} key={attachment.id}>
+                      <div>
+                        <a className={styles.rowTitle} href={`/api/admin/care/attachments/${encodeURIComponent(attachment.id)}/file`} target="_blank" rel="noreferrer">{attachment.title}</a>
+                        <div className={styles.muted}>{attachment.originalFileName} · {fileSizeLabel(attachment.fileSizeBytes)}</div>
+                      </div>
+                      <form action={attachmentStatusAction}>
+                        <input type="hidden" name="attachmentId" value={attachment.id} />
+                        <input type="hidden" name="version" value={attachment.version} />
+                        <input type="hidden" name="archived" value="false" />
+                        <button className={styles.buttonSecondary} type="submit">{t(lang, "Restore", "恢复")}</button>
+                      </form>
+                    </article>
+                  ))}
+                </div>
+              </details>
+            ) : null}
           </section>
 
           <section className={styles.section}>

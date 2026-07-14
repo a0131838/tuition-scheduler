@@ -238,6 +238,15 @@
   border-bottom: 1px solid #e4eaf1;
 }
 
+.fileRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 12px 2px;
+  border-bottom: 1px solid #e4eaf1;
+}
+
 .timelineHead,
 .taskHead {
   display: flex;
@@ -285,6 +294,10 @@
   .row {
     grid-template-columns: 1fr;
     gap: 5px;
+  }
+
+  .fileRow {
+    grid-template-columns: 1fr;
   }
 
   .header {

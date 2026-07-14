@@ -12,6 +12,8 @@ import {
   assertCareStatusTransition,
   assertCareTaskUpdate,
   careActivityCategory,
+  careActivitySource,
+  careAttachmentCategory,
   careAudience,
   careProgramType,
   careRiskLevel,
@@ -309,6 +311,8 @@ export async function addCareActivity(input: {
   subtype: unknown;
   occurredAt: unknown;
   title: unknown;
+  sourceType?: unknown;
+  sourceLabel?: unknown;
   factEvidence: unknown;
   professionalJudgment: unknown;
   actionTaken: unknown;
@@ -325,6 +329,8 @@ export async function addCareActivity(input: {
   const subtype = careText(input.subtype, 80);
   const occurredAt = parseCareDateTime(input.occurredAt) ?? new Date();
   const title = requiredCareText(input.title, "Title", 180);
+  const sourceType = careActivitySource(input.sourceType);
+  const sourceLabel = careText(input.sourceLabel, 240);
   const factEvidence = requiredCareText(input.factEvidence, "Facts", 5000);
   const professionalJudgment = careText(input.professionalJudgment, 5000);
   const actionTaken = careText(input.actionTaken, 5000);
@@ -360,6 +366,8 @@ export async function addCareActivity(input: {
         subtype: subtype || null,
         occurredAt,
         title,
+        sourceType,
+        sourceLabel: sourceLabel || null,
         factEvidence,
         professionalJudgment: professionalJudgment || null,
         actionTaken: actionTaken || null,
@@ -402,6 +410,121 @@ export async function addCareActivity(input: {
       }),
     });
     return activity;
+  });
+}
+
+export async function createCareAttachment(input: {
+  actor: CareActor;
+  engagementId: string;
+  activityId?: unknown;
+  taskId?: unknown;
+  category: unknown;
+  occurredAt?: unknown;
+  title: unknown;
+  sourceLabel?: unknown;
+  note?: unknown;
+  audience: unknown;
+  filePath: unknown;
+  originalFileName: unknown;
+  fileSizeBytes: number;
+  mimeType?: unknown;
+}) {
+  const activityId = careText(input.activityId, 80) || null;
+  const taskId = careText(input.taskId, 80) || null;
+  const category = careAttachmentCategory(input.category);
+  const occurredAt = parseCareDateTime(input.occurredAt);
+  const title = requiredCareText(input.title, "Title", 180);
+  const sourceLabel = careText(input.sourceLabel, 240);
+  const note = careText(input.note, 2000);
+  const audience = careAudience(input.audience);
+  const filePath = requiredCareText(input.filePath, "Stored file", 1200);
+  const originalFileName = requiredCareText(input.originalFileName, "File name", 255);
+  const mimeType = careText(input.mimeType, 160);
+  if (!Number.isInteger(input.fileSizeBytes) || input.fileSizeBytes <= 0) throw new Error("Invalid evidence file size");
+
+  return prisma.$transaction(async (tx) => {
+    const engagement = await tx.careEngagement.findUnique({
+      where: { id: input.engagementId },
+      select: { id: true, studentId: true, status: true },
+    });
+    if (!engagement) throw new Error("Care project not found");
+    if (engagement.status === "COMPLETED" || engagement.status === "CANCELLED") {
+      throw new Error("Closed care projects cannot receive new evidence");
+    }
+
+    const [activity, task] = await Promise.all([
+      activityId
+        ? tx.careActivity.findFirst({ where: { id: activityId, engagementId: engagement.id }, select: { id: true } })
+        : null,
+      taskId
+        ? tx.careTask.findFirst({ where: { id: taskId, engagementId: engagement.id }, select: { id: true } })
+        : null,
+    ]);
+    if (activityId && !activity) throw new Error("Selected update does not belong to this care project");
+    if (taskId && !task) throw new Error("Selected task does not belong to this care project");
+
+    const attachment = await tx.careAttachment.create({
+      data: {
+        studentId: engagement.studentId,
+        engagementId: engagement.id,
+        activityId,
+        taskId,
+        category,
+        occurredAt,
+        title,
+        sourceLabel: sourceLabel || null,
+        note: note || null,
+        filePath,
+        originalFileName,
+        fileSizeBytes: input.fileSizeBytes,
+        mimeType: mimeType || null,
+        audience,
+        uploadedByUserId: input.actor.id,
+      },
+    });
+    await tx.auditLog.create({
+      data: auditData(input.actor, "UPLOAD_ATTACHMENT", "CareAttachment", attachment.id, {
+        engagementId: engagement.id,
+        activityId,
+        taskId,
+        category,
+        audience,
+        originalFileName,
+        fileSizeBytes: input.fileSizeBytes,
+      }),
+    });
+    return attachment;
+  });
+}
+
+export async function setCareAttachmentArchived(input: {
+  actor: CareActor;
+  attachmentId: string;
+  engagementId: string;
+  version: number;
+  archived: boolean;
+}) {
+  return prisma.$transaction(async (tx) => {
+    const current = await tx.careAttachment.findFirst({
+      where: { id: input.attachmentId, engagementId: input.engagementId },
+      select: { id: true, archivedAt: true },
+    });
+    if (!current) throw new Error("Evidence file not found");
+    if (Boolean(current.archivedAt) === input.archived) throw new Error("Evidence status is unchanged");
+    const updated = await tx.careAttachment.updateMany({
+      where: { id: current.id, engagementId: input.engagementId, version: input.version },
+      data: {
+        archivedAt: input.archived ? new Date() : null,
+        archivedByUserId: input.archived ? input.actor.id : null,
+        version: { increment: 1 },
+      },
+    });
+    if (updated.count !== 1) throw new Error("This evidence file was updated by another user. Refresh and try again");
+    await tx.auditLog.create({
+      data: auditData(input.actor, input.archived ? "ARCHIVE_ATTACHMENT" : "RESTORE_ATTACHMENT", "CareAttachment", current.id, {
+        engagementId: input.engagementId,
+      }),
+    });
   });
 }
 
