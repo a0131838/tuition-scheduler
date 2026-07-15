@@ -15,6 +15,32 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-16-r253
+
+- Release ID: `2026-07-16-r253`
+- Date/Time (Asia/Shanghai): `2026-07-16`
+- Deployment status: `READY`
+- Scope: include issued and void partner Credit Notes in Finance Documents, while showing each partner invoice's original amount, issued credit, adjusted amount, and remaining balance consistently on screen and in Excel.
+- Key files:
+  - `lib/finance-documents.ts`
+  - `app/admin/finance/documents/page.tsx`
+  - `app/api/exports/finance-documents/route.ts`
+  - `tests/finance-documents.test.ts`
+  - `docs/tasks/TASK-20260716-finance-documents-credit-notes.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low-to-medium and read-side only. This release does not change invoice, receipt, Credit Note issue/void, settlement, package, attendance, payroll, or stored billing data. Only `ISSUED` Credit Notes reduce adjusted balances; `VOID` notes remain visible for audit but have no amount effect, and `DRAFT` notes remain in the Credit Note workspace.
+- Verification:
+  - `npx tsx --test tests/finance-documents.test.ts tests/partner-credit-notes.test.ts` (9/9)
+  - `npx tsc --noEmit`
+  - `npm run build` (193 pages)
+  - authenticated Finance Playwright check using production data confirmed `RGT-202606-0019`: SGD 18,540 original, SGD 270 issued credit, SGD 18,270 adjusted/remaining
+  - authenticated Finance Playwright check confirmed `RGT-CN-202607-0001` appears as ISSUED with PDF, PDF + Seal, original-invoice link, and Excel export HTTP 200
+  - temporary auth sessions were deleted after checks
+- Rollback point: `6a0b106` (`2026-07-14-r252` documentation head; runtime feature commit `d705793`).
+
+---
+
 ## 2026-07-14-r252
 
 - Release ID: `2026-07-14-r252`

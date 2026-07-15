@@ -21,6 +21,7 @@ function paymentStatusLabel(lang: Lang, status: FinanceDocumentPaymentStatus) {
   if (status === "PARTIAL") return t(lang, "Partial", "部分收款");
   if (status === "PENDING_APPROVAL") return t(lang, "Pending approval", "收据待审批");
   if (status === "REJECTED") return t(lang, "Rejected", "已驳回");
+  if (status === "CREDITED") return t(lang, "Fully credited", "已全额冲减");
   return t(lang, "Unpaid", "未收款");
 }
 
@@ -37,7 +38,26 @@ function paymentStatusStyle(status: FinanceDocumentPaymentStatus): React.CSSProp
   if (status === "PARTIAL") return { ...base, background: "#fef3c7", color: "#92400e" };
   if (status === "PENDING_APPROVAL") return { ...base, background: "#e0f2fe", color: "#075985" };
   if (status === "REJECTED") return { ...base, background: "#fee2e2", color: "#991b1b" };
+  if (status === "CREDITED") return { ...base, background: "#ede9fe", color: "#5b21b6" };
   return { ...base, background: "#f1f5f9", color: "#334155" };
+}
+
+function creditNoteStatusLabel(lang: Lang, status: "ISSUED" | "VOID") {
+  return status === "ISSUED" ? t(lang, "Issued", "已正式开具") : t(lang, "Void", "已作废");
+}
+
+function creditNoteStatusStyle(status: "ISSUED" | "VOID"): React.CSSProperties {
+  const base: React.CSSProperties = {
+    display: "inline-block",
+    padding: "3px 8px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 800,
+    whiteSpace: "nowrap",
+  };
+  return status === "ISSUED"
+    ? { ...base, background: "#dcfce7", color: "#166534" }
+    : { ...base, background: "#fee2e2", color: "#991b1b" };
 }
 
 function buildDocumentQuery(input: Record<string, string>) {
@@ -94,9 +114,11 @@ export default async function FinanceDocumentsPage({
 
   const countInvoices = filteredRows.filter((x) => x.type === "INVOICE").length;
   const countReceipts = filteredRows.filter((x) => x.type === "RECEIPT").length;
-  const countUnpaid = filteredRows.filter((x) => x.paymentStatus === "UNPAID").length;
-  const countPartial = filteredRows.filter((x) => x.paymentStatus === "PARTIAL").length;
-  const countPending = filteredRows.filter((x) => x.paymentStatus === "PENDING_APPROVAL").length;
+  const countCreditNotes = filteredRows.filter((x) => x.type === "CREDIT_NOTE").length;
+  const payableRows = filteredRows.filter((x) => x.type !== "CREDIT_NOTE");
+  const countUnpaid = payableRows.filter((x) => x.paymentStatus === "UNPAID").length;
+  const countPartial = payableRows.filter((x) => x.paymentStatus === "PARTIAL").length;
+  const countPending = payableRows.filter((x) => x.paymentStatus === "PENDING_APPROVAL").length;
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
@@ -105,12 +127,12 @@ export default async function FinanceDocumentsPage({
           <div style={{ fontSize: 12, fontWeight: 800, color: "#1d4ed8", letterSpacing: 0.4 }}>
             {t(lang, "Finance Documents", "财务单据中心")}
           </div>
-          <h1 style={{ margin: 0 }}>{t(lang, "Full Invoices & Receipts", "完整发票与收据")}</h1>
+          <h1 style={{ margin: 0 }}>{t(lang, "Full Invoices, Receipts & Credit Notes", "完整发票、收据与 Credit Note")}</h1>
           <div style={{ color: "#475569", lineHeight: 1.5 }}>
             {t(
               lang,
-              "Use this page to open the full PDF for parent and partner invoices or receipts without jumping through each package workspace.",
-              "这个页面用来统一查看直客和合作方的完整发票、收据 PDF，不用再逐个进入课包或合作方工作台。",
+              "Use this page to review parent and partner invoices, receipts, and issued or void credit notes, including adjusted invoice balances and PDFs.",
+              "这个页面统一查看直客和合作方发票、收据、已正式开具或已作废的 Credit Note，以及发票调整后余额和 PDF。",
             )}
           </div>
         </div>
@@ -143,6 +165,7 @@ export default async function FinanceDocumentsPage({
               <option value="">{t(lang, "All", "全部")}</option>
               <option value="INVOICE">{t(lang, "Invoice", "发票")}</option>
               <option value="RECEIPT">{t(lang, "Receipt", "收据")}</option>
+              <option value="CREDIT_NOTE">{t(lang, "Credit Note", "贷项通知单")}</option>
             </select>
           </label>
           <label style={{ display: "grid", gap: 6 }}>
@@ -158,6 +181,7 @@ export default async function FinanceDocumentsPage({
               <option value="UNPAID">{t(lang, "Unpaid", "未收款")}</option>
               <option value="PENDING_APPROVAL">{t(lang, "Pending approval", "收据待审批")}</option>
               <option value="REJECTED">{t(lang, "Rejected", "已驳回")}</option>
+              <option value="CREDITED">{t(lang, "Fully credited", "已全额冲减")}</option>
             </select>
           </label>
           <label style={{ display: "grid", gap: 6 }}>
@@ -193,6 +217,10 @@ export default async function FinanceDocumentsPage({
           <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b" }}>{t(lang, "Receipts", "收据")}</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>{countReceipts}</div>
         </div>
+        <div style={{ border: "1px solid #ddd6fe", borderRadius: 14, padding: 14, background: "#f5f3ff" }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b" }}>{t(lang, "Credit Notes", "贷项通知单")}</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>{countCreditNotes}</div>
+        </div>
         <div style={{ border: "1px solid #fed7aa", borderRadius: 14, padding: 14, background: "#fff7ed" }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b" }}>{t(lang, "Unpaid / partial / pending", "未收 / 部分 / 待审")}</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>{countUnpaid} / {countPartial} / {countPending}</div>
@@ -205,7 +233,7 @@ export default async function FinanceDocumentsPage({
           <div style={{ padding: "0 14px 14px", color: "#475569" }}>{t(lang, "No documents matched this filter.", "当前筛选下没有单据。")}</div>
         ) : (
           <div style={{ overflowX: "auto" }}>
-          <table cellPadding={10} style={{ width: "100%", borderCollapse: "collapse", minWidth: 1240 }}>
+          <table cellPadding={10} style={{ width: "100%", borderCollapse: "collapse", minWidth: 1500 }}>
             <thead>
               <tr style={{ background: "#f8fafc", borderTop: "1px solid #e5e7eb" }}>
                 <th align="left">{t(lang, "Channel", "渠道")}</th>
@@ -215,10 +243,12 @@ export default async function FinanceDocumentsPage({
                 <th align="left">{t(lang, "Party", "对象")}</th>
                 <th align="left">{t(lang, "Context", "上下文")}</th>
                 <th align="left">{t(lang, "Source", "来源")}</th>
-                <th align="left">{t(lang, "Amount", "金额")}</th>
+                <th align="left">{t(lang, "Original / document amount", "原金额 / 单据金额")}</th>
+                <th align="left">{t(lang, "Issued credit", "已开 Credit")}</th>
+                <th align="left">{t(lang, "Adjusted amount", "调整后金额")}</th>
                 <th align="left">{t(lang, "Received", "已收")}</th>
                 <th align="left">{t(lang, "Remaining", "未收余额")}</th>
-                <th align="left">{t(lang, "Payment status", "收款状态")}</th>
+                <th align="left">{t(lang, "Status", "状态")}</th>
                 <th align="left">{t(lang, "PDF", "PDF")}</th>
                 <th align="left">{t(lang, "Workspace", "工作台")}</th>
               </tr>
@@ -227,7 +257,13 @@ export default async function FinanceDocumentsPage({
               {filteredRows.map((row) => (
                 <tr key={`${row.type}-${row.id}`} style={{ borderTop: "1px solid #eef2f7" }}>
                   <td>{row.channel === "PARENT" ? t(lang, "Parent", "直客") : t(lang, "Partner", "合作方")}</td>
-                  <td>{row.type === "INVOICE" ? t(lang, "Invoice", "发票") : t(lang, "Receipt", "收据")}</td>
+                  <td>
+                    {row.type === "INVOICE"
+                      ? t(lang, "Invoice", "发票")
+                      : row.type === "RECEIPT"
+                      ? t(lang, "Receipt", "收据")
+                      : t(lang, "Credit Note", "贷项通知单")}
+                  </td>
                   <td style={{ fontWeight: 700 }}>{row.docNo}</td>
                   <td>{normalizeDateOnly(row.issueDate) ?? "-"}</td>
                   <td>{row.partyLabel}</td>
@@ -240,15 +276,28 @@ export default async function FinanceDocumentsPage({
                       <span style={{ color: "#475569" }}>{row.sourceLabel ?? "-"}</span>
                     </div>
                   </td>
-                  <td>SGD {money(row.amount)}</td>
-                  <td>SGD {money(row.receiptedAmount)}</td>
-                  <td>SGD {money(row.remainingAmount)}</td>
-                  <td><span style={paymentStatusStyle(row.paymentStatus)}>{paymentStatusLabel(lang, row.paymentStatus)}</span></td>
+                  <td>{row.type === "CREDIT_NOTE" ? `-SGD ${money(row.amount)}` : `SGD ${money(row.amount)}`}</td>
+                  <td>{row.type === "INVOICE" ? `SGD ${money(row.creditAmount)}` : "-"}</td>
+                  <td>{row.type === "INVOICE" ? `SGD ${money(row.adjustedAmount)}` : "-"}</td>
+                  <td>{row.type === "CREDIT_NOTE" ? "-" : `SGD ${money(row.receiptedAmount)}`}</td>
+                  <td>{row.type === "CREDIT_NOTE" ? "-" : `SGD ${money(row.remainingAmount)}`}</td>
+                  <td>
+                    {row.type === "CREDIT_NOTE" && row.creditNoteStatus ? (
+                      <span style={creditNoteStatusStyle(row.creditNoteStatus)}>{creditNoteStatusLabel(lang, row.creditNoteStatus)}</span>
+                    ) : (
+                      <span style={paymentStatusStyle(row.paymentStatus)}>{paymentStatusLabel(lang, row.paymentStatus)}</span>
+                    )}
+                  </td>
                   <td>
                     {row.exportHref ? (
-                      <a href={row.exportHref} target="_blank" rel="noreferrer">
-                        {t(lang, "PDF ready", "PDF 可查看")}
-                      </a>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <a href={row.exportHref} target="_blank" rel="noreferrer">
+                          {row.type === "CREDIT_NOTE" ? t(lang, "PDF", "PDF") : t(lang, "PDF ready", "PDF 可查看")}
+                        </a>
+                        {row.sealedExportHref ? (
+                          <a href={row.sealedExportHref} target="_blank" rel="noreferrer">{t(lang, "PDF + Seal", "PDF + 公司章")}</a>
+                        ) : null}
+                      </div>
                     ) : (
                       <span style={{ color: "#b45309" }}>{t(lang, "Waiting finance approval", "待财务审批")}</span>
                     )}

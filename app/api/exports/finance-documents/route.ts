@@ -15,6 +15,7 @@ function paymentStatusLabel(status: FinanceDocumentPaymentStatus) {
   if (status === "PARTIAL") return "Partial";
   if (status === "PENDING_APPROVAL") return "Pending approval";
   if (status === "REJECTED") return "Rejected";
+  if (status === "CREDITED") return "Fully credited";
   return "Unpaid";
 }
 
@@ -72,7 +73,7 @@ export async function GET(req: Request) {
 
   const sheet = workbook.addWorksheet("Finance Documents");
   sheet.mergeCells("A1:D1");
-  sheet.getCell("A1").value = "Finance Documents - Invoices and Receipts";
+  sheet.getCell("A1").value = "Finance Documents - Invoices, Receipts and Credit Notes";
   sheet.getCell("A1").font = { bold: true, size: 14 };
   sheet.getCell("A2").value = `Generated at: ${generatedAt}`;
   sheet.getCell("A3").value = `Rows: ${rows.length}`;
@@ -84,14 +85,18 @@ export async function GET(req: Request) {
     { header: "Party", key: "partyLabel", width: 24 },
     { header: "Context", key: "contextLabel", width: 36 },
     { header: "Package ID", key: "packageId", width: 38 },
-    { header: "Document Amount", key: "amount", width: 16 },
+    { header: "Original / Document Amount", key: "amount", width: 24 },
+    { header: "Issued Credit", key: "creditAmount", width: 16 },
+    { header: "Adjusted Amount", key: "adjustedAmount", width: 18 },
     { header: "Approved Received", key: "receiptedAmount", width: 18 },
     { header: "Pending Receipt Amount", key: "pendingReceiptAmount", width: 22 },
     { header: "Rejected Receipt Amount", key: "rejectedReceiptAmount", width: 22 },
     { header: "Remaining Unpaid", key: "remainingAmount", width: 18 },
     { header: "Receipt Count", key: "receiptCount", width: 14 },
-    { header: "Payment Status", key: "paymentStatus", width: 18 },
+    { header: "Status", key: "status", width: 18 },
+    { header: "Related Document", key: "relatedDocumentNo", width: 24 },
     { header: "PDF Link", key: "exportHref", width: 42 },
+    { header: "PDF + Seal Link", key: "sealedExportHref", width: 42 },
     { header: "Source Page", key: "openHref", width: 52 },
   ];
 
@@ -102,20 +107,24 @@ export async function GET(req: Request) {
   for (const row of rows) {
     sheet.addRow({
       channel: row.channel === "PARENT" ? "Parent" : "Partner",
-      type: row.type === "INVOICE" ? "Invoice" : "Receipt",
+      type: row.type === "INVOICE" ? "Invoice" : row.type === "RECEIPT" ? "Receipt" : "Credit Note",
       docNo: row.docNo,
       issueDate: row.issueDate,
       partyLabel: row.partyLabel,
       contextLabel: row.contextLabel,
       packageId: row.packageId,
-      amount: row.amount,
-      receiptedAmount: row.receiptedAmount,
-      pendingReceiptAmount: row.pendingReceiptAmount,
-      rejectedReceiptAmount: row.rejectedReceiptAmount,
-      remainingAmount: row.remainingAmount,
-      receiptCount: row.receiptCount,
-      paymentStatus: paymentStatusLabel(row.paymentStatus),
+      amount: row.type === "CREDIT_NOTE" ? -row.amount : row.amount,
+      creditAmount: row.type === "INVOICE" ? row.creditAmount : null,
+      adjustedAmount: row.type === "INVOICE" ? row.adjustedAmount : null,
+      receiptedAmount: row.type === "CREDIT_NOTE" ? null : row.receiptedAmount,
+      pendingReceiptAmount: row.type === "CREDIT_NOTE" ? null : row.pendingReceiptAmount,
+      rejectedReceiptAmount: row.type === "CREDIT_NOTE" ? null : row.rejectedReceiptAmount,
+      remainingAmount: row.type === "CREDIT_NOTE" ? null : row.remainingAmount,
+      receiptCount: row.type === "CREDIT_NOTE" ? null : row.receiptCount,
+      status: row.type === "CREDIT_NOTE" ? row.creditNoteStatus : paymentStatusLabel(row.paymentStatus),
+      relatedDocumentNo: row.relatedDocumentNo ?? "",
       exportHref: row.exportHref ?? "",
+      sealedExportHref: row.sealedExportHref ?? "",
       openHref: row.openHref,
     });
   }
