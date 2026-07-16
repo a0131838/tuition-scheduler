@@ -140,6 +140,41 @@ enum CareAttachmentCategory {
   OTHER
 }
 
+enum CareParentQuestionStatus {
+  OPEN
+  ANSWERED
+  CLOSED
+}
+
+enum CareRiskCaseStatus {
+  OPEN
+  ACKNOWLEDGED
+  MONITORING
+  RESOLVED
+  CLOSED
+}
+
+enum CareCoverageStatus {
+  SCHEDULED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum CareServiceReviewStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+}
+
+enum CareContinuationRecommendation {
+  CONTINUE
+  EXPAND
+  ADJUST
+  COMPLETE
+  HOLD
+}
+
 enum UserLanguage {
   BILINGUAL
   ZH
@@ -965,6 +1000,9 @@ model Student {
   careTasks                  CareTask[]
   careAttachments            CareAttachment[]
   careReports                CareReport[]
+  careParentQuestions        CareParentQuestion[]
+  careRiskCases              CareRiskCase[]
+  careServiceReviews         CareServiceReview[]
 
   @@index([sourceChannelId])
   @@index([studentTypeId])
@@ -1125,56 +1163,68 @@ model User {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
-  teacher                     Teacher?                   @relation(fields: [teacherId], references: [id], onDelete: SetNull)
-  sessions                    AuthSession[]
-  midtermReportsAssigned      MidtermReport[]            @relation("MidtermReportAssignedBy")
-  midtermReportsExempted      MidtermReport[]            @relation("MidtermReportExemptedBy")
-  midtermReportsArchived      MidtermReport[]            @relation("MidtermReportArchivedBy")
-  finalReportsAssigned        FinalReport[]              @relation("FinalReportAssignedBy")
-  finalReportsDelivered       FinalReport[]              @relation("FinalReportDeliveredBy")
-  finalReportsExempted        FinalReport[]              @relation("FinalReportExemptedBy")
-  finalReportsArchived        FinalReport[]              @relation("FinalReportArchivedBy")
-  ticketsCompleted            Ticket[]                   @relation("TicketCompletedBy")
-  ticketHandovers             TicketHandover[]
-  ticketIntakeTokens          TicketIntakeToken[]
-  expenseClaimsSubmitted      ExpenseClaim[]
-  sharedDocumentsUploaded     SharedDocument[]           @relation("SharedDocumentUploader")
-  sharedDocumentAudits        SharedDocumentAudit[]      @relation("SharedDocumentAuditActor")
-  studentContractsCreated     StudentContract[]          @relation("StudentContractCreatedBy")
-  studentContractEvents       StudentContractEvent[]     @relation("StudentContractEventActor")
-  studentParentIntakesCreated StudentParentIntake[]      @relation("StudentParentIntakeCreatedBy")
-  schoolApplicationsCreated   SchoolApplicationService[] @relation("SchoolApplicationCreatedBy")
-  schoolApplicationEvents     SchoolApplicationEvent[]   @relation("SchoolApplicationEventActor")
-  leadsOwned                  Lead[]                     @relation("LeadOwner")
-  leadFollowUps               LeadFollowUp[]             @relation("LeadFollowUpActor")
-  leadAssessmentReopened      LeadAssessmentRequest[]    @relation("LeadAssessmentReopenedBy")
-  managerTeacherFeedbacks     ManagerTeacherFeedback[]   @relation("ManagerTeacherFeedbackCreatedBy")
-  workspaceAccesses           UserWorkspaceAccess[]
-  staffMiniappBindings        StaffMiniappBinding[]
-  staffMiniappSessions        StaffMiniappSession[]
-  staffMiniappBindInvites     StaffMiniappBindInvite[]   @relation("StaffMiniappBindInviteUser")
-  staffMiniappInvitesCreated  StaffMiniappBindInvite[]   @relation("StaffMiniappBindInviteCreator")
-  careEngagementsOwned        CareEngagement[]           @relation("CareEngagementCaseOwner")
-  careEngagementsCreated      CareEngagement[]           @relation("CareEngagementCreatedBy")
-  careMemberships             CareEngagementMember[]     @relation("CareMemberUser")
-  careMembershipsAssigned     CareEngagementMember[]     @relation("CareMemberAssignedBy")
-  carePlansCreated            CarePlan[]                 @relation("CarePlanCreatedBy")
-  carePlansApproved           CarePlan[]                 @relation("CarePlanApprovedBy")
-  careActivitiesCreated       CareActivity[]             @relation("CareActivityCreatedBy")
-  careActivitiesUpdated       CareActivity[]             @relation("CareActivityUpdatedBy")
-  careActivitiesOwned         CareActivity[]             @relation("CareActivityOwner")
-  careTasksAssigned           CareTask[]                 @relation("CareTaskAssignedTo")
-  careTasksCreated            CareTask[]                 @relation("CareTaskCreatedBy")
-  careTasksCompleted          CareTask[]                 @relation("CareTaskCompletedBy")
-  careAttachmentsUploaded     CareAttachment[]           @relation("CareAttachmentUploadedBy")
-  careAttachmentsArchived     CareAttachment[]           @relation("CareAttachmentArchivedBy")
-  careUniversityConsents      CareUniversityProfile[]    @relation("CareUniversityConsentRecordedBy")
-  careReportsPrepared         CareReport[]                @relation("CareReportPreparedBy")
-  careReportsSubmitted        CareReport[]                @relation("CareReportSubmittedBy")
-  careReportsReviewed         CareReport[]                @relation("CareReportReviewedBy")
-  careReportsApproved         CareReport[]                @relation("CareReportApprovedBy")
-  careReportsPublished        CareReport[]                @relation("CareReportPublishedBy")
-  careReportsRevoked          CareReport[]                @relation("CareReportRevokedBy")
+  teacher                      Teacher?                   @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  sessions                     AuthSession[]
+  midtermReportsAssigned       MidtermReport[]            @relation("MidtermReportAssignedBy")
+  midtermReportsExempted       MidtermReport[]            @relation("MidtermReportExemptedBy")
+  midtermReportsArchived       MidtermReport[]            @relation("MidtermReportArchivedBy")
+  finalReportsAssigned         FinalReport[]              @relation("FinalReportAssignedBy")
+  finalReportsDelivered        FinalReport[]              @relation("FinalReportDeliveredBy")
+  finalReportsExempted         FinalReport[]              @relation("FinalReportExemptedBy")
+  finalReportsArchived         FinalReport[]              @relation("FinalReportArchivedBy")
+  ticketsCompleted             Ticket[]                   @relation("TicketCompletedBy")
+  ticketHandovers              TicketHandover[]
+  ticketIntakeTokens           TicketIntakeToken[]
+  expenseClaimsSubmitted       ExpenseClaim[]
+  sharedDocumentsUploaded      SharedDocument[]           @relation("SharedDocumentUploader")
+  sharedDocumentAudits         SharedDocumentAudit[]      @relation("SharedDocumentAuditActor")
+  studentContractsCreated      StudentContract[]          @relation("StudentContractCreatedBy")
+  studentContractEvents        StudentContractEvent[]     @relation("StudentContractEventActor")
+  studentParentIntakesCreated  StudentParentIntake[]      @relation("StudentParentIntakeCreatedBy")
+  schoolApplicationsCreated    SchoolApplicationService[] @relation("SchoolApplicationCreatedBy")
+  schoolApplicationEvents      SchoolApplicationEvent[]   @relation("SchoolApplicationEventActor")
+  leadsOwned                   Lead[]                     @relation("LeadOwner")
+  leadFollowUps                LeadFollowUp[]             @relation("LeadFollowUpActor")
+  leadAssessmentReopened       LeadAssessmentRequest[]    @relation("LeadAssessmentReopenedBy")
+  managerTeacherFeedbacks      ManagerTeacherFeedback[]   @relation("ManagerTeacherFeedbackCreatedBy")
+  workspaceAccesses            UserWorkspaceAccess[]
+  staffMiniappBindings         StaffMiniappBinding[]
+  staffMiniappSessions         StaffMiniappSession[]
+  staffMiniappBindInvites      StaffMiniappBindInvite[]   @relation("StaffMiniappBindInviteUser")
+  staffMiniappInvitesCreated   StaffMiniappBindInvite[]   @relation("StaffMiniappBindInviteCreator")
+  careEngagementsOwned         CareEngagement[]           @relation("CareEngagementCaseOwner")
+  careEngagementsCreated       CareEngagement[]           @relation("CareEngagementCreatedBy")
+  careMemberships              CareEngagementMember[]     @relation("CareMemberUser")
+  careMembershipsAssigned      CareEngagementMember[]     @relation("CareMemberAssignedBy")
+  carePlansCreated             CarePlan[]                 @relation("CarePlanCreatedBy")
+  carePlansApproved            CarePlan[]                 @relation("CarePlanApprovedBy")
+  careActivitiesCreated        CareActivity[]             @relation("CareActivityCreatedBy")
+  careActivitiesUpdated        CareActivity[]             @relation("CareActivityUpdatedBy")
+  careActivitiesOwned          CareActivity[]             @relation("CareActivityOwner")
+  careTasksAssigned            CareTask[]                 @relation("CareTaskAssignedTo")
+  careTasksCreated             CareTask[]                 @relation("CareTaskCreatedBy")
+  careTasksCompleted           CareTask[]                 @relation("CareTaskCompletedBy")
+  careAttachmentsUploaded      CareAttachment[]           @relation("CareAttachmentUploadedBy")
+  careAttachmentsArchived      CareAttachment[]           @relation("CareAttachmentArchivedBy")
+  careUniversityConsents       CareUniversityProfile[]    @relation("CareUniversityConsentRecordedBy")
+  careReportsPrepared          CareReport[]               @relation("CareReportPreparedBy")
+  careReportsSubmitted         CareReport[]               @relation("CareReportSubmittedBy")
+  careReportsReviewed          CareReport[]               @relation("CareReportReviewedBy")
+  careReportsApproved          CareReport[]               @relation("CareReportApprovedBy")
+  careReportsPublished         CareReport[]               @relation("CareReportPublishedBy")
+  careReportsRevoked           CareReport[]               @relation("CareReportRevokedBy")
+  careParentQuestionsAssigned  CareParentQuestion[]       @relation("CareParentQuestionAssigned")
+  careParentQuestionsResponded CareParentQuestion[]       @relation("CareParentQuestionResponded")
+  careRiskCasesOwned           CareRiskCase[]             @relation("CareRiskCaseOwner")
+  careRiskCasesBackup          CareRiskCase[]             @relation("CareRiskCaseBackupOwner")
+  careRiskCasesCreated         CareRiskCase[]             @relation("CareRiskCaseCreatedBy")
+  careRiskCasesUpdated         CareRiskCase[]             @relation("CareRiskCaseUpdatedBy")
+  careCoveragePrimary          CareCoveragePeriod[]       @relation("CareCoveragePrimary")
+  careCoverageBackup           CareCoveragePeriod[]       @relation("CareCoverageBackup")
+  careCoverageCreated          CareCoveragePeriod[]       @relation("CareCoverageCreatedBy")
+  careServiceReviewsPrepared   CareServiceReview[]        @relation("CareServiceReviewPreparedBy")
+  careServiceReviewsSubmitted  CareServiceReview[]        @relation("CareServiceReviewSubmittedBy")
+  careServiceReviewsApproved   CareServiceReview[]        @relation("CareServiceReviewApprovedBy")
 }
 
 model CareEngagement {
@@ -1208,6 +1258,10 @@ model CareEngagement {
   attachments       CareAttachment[]
   universityProfile CareUniversityProfile?
   reports           CareReport[]
+  parentQuestions   CareParentQuestion[]
+  riskCases         CareRiskCase[]
+  coveragePeriods   CareCoveragePeriod[]
+  serviceReviews    CareServiceReview[]
 
   @@index([status, caseOwnerUserId, nextReportDueAt])
   @@index([studentId, status])
@@ -1315,14 +1369,15 @@ model CareActivity {
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
 
-  student     Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
-  engagement  CareEngagement   @relation(fields: [engagementId], references: [id], onDelete: Cascade)
-  owner       User?            @relation("CareActivityOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
-  createdBy   User             @relation("CareActivityCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  updatedBy   User             @relation("CareActivityUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Restrict)
+  student     Student              @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  engagement  CareEngagement       @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  owner       User?                @relation("CareActivityOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  createdBy   User                 @relation("CareActivityCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  updatedBy   User                 @relation("CareActivityUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Restrict)
   tasks       CareTask[]
   attachments CareAttachment[]
   reportLinks CareReportActivity[]
+  riskCases   CareRiskCase[]
 
   @@index([engagementId, occurredAt])
   @@index([studentId, publicationStatus, occurredAt])
@@ -1353,13 +1408,14 @@ model CareTask {
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
 
-  student     Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
-  engagement  CareEngagement   @relation(fields: [engagementId], references: [id], onDelete: Cascade)
-  activity    CareActivity?    @relation(fields: [activityId], references: [id], onDelete: SetNull)
-  assignedTo  User             @relation("CareTaskAssignedTo", fields: [assignedToUserId], references: [id], onDelete: Restrict)
-  createdBy   User             @relation("CareTaskCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  completedBy User?            @relation("CareTaskCompletedBy", fields: [completedByUserId], references: [id], onDelete: SetNull)
-  attachments CareAttachment[]
+  student        Student             @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  engagement     CareEngagement      @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  activity       CareActivity?       @relation(fields: [activityId], references: [id], onDelete: SetNull)
+  assignedTo     User                @relation("CareTaskAssignedTo", fields: [assignedToUserId], references: [id], onDelete: Restrict)
+  createdBy      User                @relation("CareTaskCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  completedBy    User?               @relation("CareTaskCompletedBy", fields: [completedByUserId], references: [id], onDelete: SetNull)
+  attachments    CareAttachment[]
+  parentQuestion CareParentQuestion?
 
   @@index([assignedToUserId, status, dueAt])
   @@index([engagementId, status, dueAt])
@@ -1389,12 +1445,12 @@ model CareAttachment {
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
 
-  student    Student        @relation(fields: [studentId], references: [id], onDelete: Restrict)
-  engagement CareEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
-  activity   CareActivity?  @relation(fields: [activityId], references: [id], onDelete: SetNull)
-  task       CareTask?      @relation(fields: [taskId], references: [id], onDelete: SetNull)
-  uploadedBy User           @relation("CareAttachmentUploadedBy", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
-  archivedBy User?          @relation("CareAttachmentArchivedBy", fields: [archivedByUserId], references: [id], onDelete: SetNull)
+  student     Student                @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  engagement  CareEngagement         @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  activity    CareActivity?          @relation(fields: [activityId], references: [id], onDelete: SetNull)
+  task        CareTask?              @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  uploadedBy  User                   @relation("CareAttachmentUploadedBy", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+  archivedBy  User?                  @relation("CareAttachmentArchivedBy", fields: [archivedByUserId], references: [id], onDelete: SetNull)
   reportLinks CareReportAttachment[]
 
   @@index([engagementId, archivedAt, createdAt])
@@ -1413,7 +1469,7 @@ model CareReport {
   periodStart        DateTime
   periodEnd          DateTime
   title              String
-  riskLevel          CareRiskLevel     @default(LOW)
+  riskLevel          CareRiskLevel    @default(LOW)
   overallSummary     String
   academicSummary    String?
   schoolSummary      String?
@@ -1439,20 +1495,21 @@ model CareReport {
   revokedAt          DateTime?
   revokedByUserId    String?
   version            Int              @default(1)
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
 
-  student         Student        @relation(fields: [studentId], references: [id], onDelete: Restrict)
-  engagement      CareEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
-  preparedBy      User           @relation("CareReportPreparedBy", fields: [preparedByUserId], references: [id], onDelete: Restrict)
-  submittedBy     User?          @relation("CareReportSubmittedBy", fields: [submittedByUserId], references: [id], onDelete: SetNull)
-  reviewedBy      User?          @relation("CareReportReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
-  approvedBy      User?          @relation("CareReportApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
-  publishedBy     User?          @relation("CareReportPublishedBy", fields: [publishedByUserId], references: [id], onDelete: SetNull)
-  revokedBy       User?          @relation("CareReportRevokedBy", fields: [revokedByUserId], references: [id], onDelete: SetNull)
+  student         Student                @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  engagement      CareEngagement         @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  preparedBy      User                   @relation("CareReportPreparedBy", fields: [preparedByUserId], references: [id], onDelete: Restrict)
+  submittedBy     User?                  @relation("CareReportSubmittedBy", fields: [submittedByUserId], references: [id], onDelete: SetNull)
+  reviewedBy      User?                  @relation("CareReportReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  approvedBy      User?                  @relation("CareReportApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  publishedBy     User?                  @relation("CareReportPublishedBy", fields: [publishedByUserId], references: [id], onDelete: SetNull)
+  revokedBy       User?                  @relation("CareReportRevokedBy", fields: [revokedByUserId], references: [id], onDelete: SetNull)
   activityLinks   CareReportActivity[]
   attachmentLinks CareReportAttachment[]
   views           CareReportView[]
+  questions       CareParentQuestion[]
 
   @@unique([engagementId, reportType, periodStart, periodEnd])
   @@index([studentId, status, periodEnd])
@@ -1487,22 +1544,153 @@ model CareReportAttachment {
 }
 
 model CareReportView {
-  id                  String   @id @default(uuid())
+  id                  String    @id @default(uuid())
   reportId            String
   parentId            String
-  firstViewedAt       DateTime @default(now())
-  lastViewedAt        DateTime @default(now())
-  viewCount           Int      @default(1)
+  firstViewedAt       DateTime  @default(now())
+  lastViewedAt        DateTime  @default(now())
+  viewCount           Int       @default(1)
   acknowledgedAt      DateTime?
   acknowledgementNote String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   report CareReport    @relation(fields: [reportId], references: [id], onDelete: Cascade)
   parent ParentAccount @relation(fields: [parentId], references: [id], onDelete: Cascade)
 
   @@unique([reportId, parentId])
   @@index([parentId, lastViewedAt])
+}
+
+model CareParentQuestion {
+  id                     String                   @id @default(uuid())
+  reportId               String
+  engagementId           String
+  studentId              String
+  parentId               String
+  question               String
+  status                 CareParentQuestionStatus @default(OPEN)
+  assignedToUserId       String
+  response               String?
+  respondedAt            DateTime?
+  respondedByUserId      String?
+  parentViewedResponseAt DateTime?
+  closedAt               DateTime?
+  careTaskId             String?                  @unique
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+
+  report      CareReport     @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  engagement  CareEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  student     Student        @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  parent      ParentAccount  @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  assignedTo  User           @relation("CareParentQuestionAssigned", fields: [assignedToUserId], references: [id], onDelete: Restrict)
+  respondedBy User?          @relation("CareParentQuestionResponded", fields: [respondedByUserId], references: [id], onDelete: SetNull)
+  careTask    CareTask?      @relation(fields: [careTaskId], references: [id], onDelete: SetNull)
+
+  @@index([engagementId, status, createdAt])
+  @@index([assignedToUserId, status, createdAt])
+  @@index([parentId, reportId, createdAt])
+}
+
+model CareRiskCase {
+  id                 String             @id @default(uuid())
+  engagementId       String
+  studentId          String
+  sourceActivityId   String?
+  title              String
+  riskLevel          CareRiskLevel
+  status             CareRiskCaseStatus @default(OPEN)
+  facts              String
+  immediateAction    String
+  ownerUserId        String
+  backupOwnerUserId  String?
+  detectedAt         DateTime
+  responseDueAt      DateTime
+  acknowledgedAt     DateTime?
+  resolvedAt         DateTime?
+  resolutionEvidence String?
+  parentVisible      Boolean            @default(false)
+  publicSummary      String?
+  createdByUserId    String
+  updatedByUserId    String
+  version            Int                @default(1)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  engagement     CareEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  student        Student        @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  sourceActivity CareActivity?  @relation(fields: [sourceActivityId], references: [id], onDelete: SetNull)
+  owner          User           @relation("CareRiskCaseOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  backupOwner    User?          @relation("CareRiskCaseBackupOwner", fields: [backupOwnerUserId], references: [id], onDelete: SetNull)
+  createdBy      User           @relation("CareRiskCaseCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  updatedBy      User           @relation("CareRiskCaseUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([engagementId, status, responseDueAt])
+  @@index([ownerUserId, status, responseDueAt])
+  @@index([riskLevel, status, responseDueAt])
+}
+
+model CareCoveragePeriod {
+  id              String             @id @default(uuid())
+  engagementId    String
+  primaryUserId   String
+  backupUserId    String
+  startAt         DateTime
+  endAt           DateTime
+  reason          String
+  handoverSummary String
+  criticalActions String
+  status          CareCoverageStatus @default(SCHEDULED)
+  activatedAt     DateTime?
+  endedAt         DateTime?
+  createdByUserId String
+  version         Int                @default(1)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  engagement CareEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  primary    User           @relation("CareCoveragePrimary", fields: [primaryUserId], references: [id], onDelete: Restrict)
+  backup     User           @relation("CareCoverageBackup", fields: [backupUserId], references: [id], onDelete: Restrict)
+  createdBy  User           @relation("CareCoverageCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@index([engagementId, status, startAt, endAt])
+  @@index([backupUserId, status, startAt, endAt])
+}
+
+model CareServiceReview {
+  id                         String                         @id @default(uuid())
+  engagementId               String
+  studentId                  String
+  periodLabel                String
+  periodStart                DateTime
+  periodEnd                  DateTime
+  status                     CareServiceReviewStatus        @default(DRAFT)
+  goalsSummary               String
+  deliverySummary            String
+  outcomeSummary             String
+  evidenceSummary            String
+  continuationRecommendation CareContinuationRecommendation
+  nextStagePlan              String
+  internalCommercialNote     String?
+  preparedByUserId           String
+  submittedAt                DateTime?
+  submittedByUserId          String?
+  approvedAt                 DateTime?
+  approvedByUserId           String?
+  version                    Int                            @default(1)
+  createdAt                  DateTime                       @default(now())
+  updatedAt                  DateTime                       @updatedAt
+
+  engagement  CareEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  student     Student        @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  preparedBy  User           @relation("CareServiceReviewPreparedBy", fields: [preparedByUserId], references: [id], onDelete: Restrict)
+  submittedBy User?          @relation("CareServiceReviewSubmittedBy", fields: [submittedByUserId], references: [id], onDelete: SetNull)
+  approvedBy  User?          @relation("CareServiceReviewApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([engagementId, periodStart, periodEnd])
+  @@index([status, periodEnd])
+  @@index([studentId, periodEnd])
 }
 
 model UserWorkspaceAccess {
@@ -1674,11 +1862,12 @@ model ParentAccount {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  studentLinks  ParentStudentLink[]
-  sessions      ParentPortalSession[]
-  audits        ParentPortalAudit[]
-  notifications MiniappNotificationOutbox[]
+  studentLinks    ParentStudentLink[]
+  sessions        ParentPortalSession[]
+  audits          ParentPortalAudit[]
+  notifications   MiniappNotificationOutbox[]
   careReportViews CareReportView[]
+  careQuestions   CareParentQuestion[]
 
   @@index([phone])
   @@index([wechatUnionId])

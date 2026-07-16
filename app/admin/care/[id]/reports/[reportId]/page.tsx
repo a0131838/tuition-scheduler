@@ -1,6 +1,7 @@
 import { requireCareEngagementAccess } from "@/lib/care-access";
 import { CARE_REPORT_STATUS_LABELS, canEditCareReport, reportTypeLabel } from "@/lib/care-report-validation";
 import { changeCareReportStatus, updateCareReportDraft } from "@/lib/care-reports";
+import { answerParentCareQuestion, parentQuestionStatusLabel } from "@/lib/care-operations";
 import { isManagerUser } from "@/lib/auth";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
 import { getLang, t } from "@/lib/i18n";
@@ -92,6 +93,17 @@ export default async function CareReportPage({
     }));
   }
 
+  async function answerQuestionAction(formData: FormData) {
+    "use server";
+    const current = await requireCareEngagementAccess(id);
+    await actionRedirect(id, reportId, "Parent question answered", answerParentCareQuestion({
+      actor: current,
+      engagementId: id,
+      questionId: String(formData.get("questionId") ?? ""),
+      response: formData.get("response"),
+    }));
+  }
+
   const report = await prisma.careReport.findFirst({
     where: { id: reportId, engagementId: id },
     include: {
@@ -111,6 +123,14 @@ export default async function CareReportPage({
       activityLinks: { include: { activity: { select: { id: true, title: true, occurredAt: true } } }, orderBy: { createdAt: "asc" } },
       attachmentLinks: { include: { attachment: { select: { id: true, title: true, category: true } } }, orderBy: { createdAt: "asc" } },
       views: { include: { parent: { select: { name: true, phone: true } } }, orderBy: { lastViewedAt: "desc" } },
+      questions: {
+        include: {
+          parent: { select: { name: true, phone: true } },
+          assignedTo: { select: { name: true } },
+          respondedBy: { select: { name: true } },
+        },
+        orderBy: { createdAt: "asc" },
+      },
     },
   });
   if (!report) notFound();
@@ -244,6 +264,35 @@ export default async function CareReportPage({
           {!report.views.length ? <div className={styles.muted}>{t(lang, "No parent has opened this report.", "暂无家长查看记录。")}</div> : null}
         </section>
       </div>
+
+      <section className={styles.section} id="questions">
+        <div className={styles.timelineHead}>
+          <h2>{t(lang, "Parent questions", "家长问答")}</h2>
+          <span className={styles.badge}>{report.questions.length}</span>
+        </div>
+        <div className={styles.rows}>
+          {report.questions.map((question) => (
+            <article className={styles.timelineItem} key={question.id}>
+              <div className={styles.timelineHead}>
+                <div>
+                  <strong>{question.parent.name || question.parent.phone || "Parent"}</strong>
+                  <div className={styles.muted}>{formatBusinessDateTime(question.createdAt)} · {t(lang, "Assigned to", "负责人")}: {question.assignedTo.name}</div>
+                </div>
+                <span className={styles.badge} data-tone={question.status === "CLOSED" ? "active" : question.status === "OPEN" ? "risk" : "neutral"}>{parentQuestionStatusLabel(question.status)}</span>
+              </div>
+              <div className={styles.evidence}><strong>{t(lang, "Question", "家长提问")}</strong>{question.question}</div>
+              {question.response ? <div className={styles.evidence}><strong>{t(lang, "Response", "正式回复")}</strong>{question.response}<span className={styles.muted}>{question.respondedBy?.name ?? "-"} · {question.respondedAt ? formatBusinessDateTime(question.respondedAt) : "-"}</span></div> : null}
+              {question.parentViewedResponseAt ? <div className={styles.muted}>{t(lang, "Parent viewed response", "家长已查看回复")}: {formatBusinessDateTime(question.parentViewedResponseAt)}</div> : null}
+              {question.status !== "CLOSED" ? <form action={answerQuestionAction} className={styles.stack}>
+                <input type="hidden" name="questionId" value={question.id} />
+                <textarea className={styles.textarea} name="response" defaultValue={question.response ?? ""} placeholder={t(lang, "Write the formal response visible to the parent", "填写家长可见的正式回复")} required />
+                <button className={styles.button} type="submit">{t(lang, question.response ? "Update response" : "Send response", question.response ? "更新回复" : "发送回复")}</button>
+              </form> : null}
+            </article>
+          ))}
+          {!report.questions.length ? <div className={styles.muted}>{t(lang, "No parent questions.", "暂无家长提问。")}</div> : null}
+        </div>
+      </section>
     </main>
   );
 }

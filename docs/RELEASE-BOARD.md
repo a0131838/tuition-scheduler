@@ -14,13 +14,15 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-16-r255` at runtime commit `d926d5d` adds isolated formal care reports, parent PDF access and acknowledgement. The guarded release workflow from `r254` and Finance Documents Credit Notes from `r253` remain on the same runtime lineage.
+- Current production release remains `2026-07-16-r255` at runtime commit `d926d5d` until the guarded `r256` deployment completes. `r256` is ready with the Full Care quality dashboard, risk SLA, backup handover, parent report Q&A and service-value review.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
-- Next planned care release: university semester, course and assessment milestones with GPA, credit, deadline and academic-risk tracking. Postgraduate and career pipelines remain subsequent isolated phases.
+- Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
+
+- Full-care-complete-V1 release risk: `2026-07-16-r256` is ready but not yet live. It adds isolated CARE control tables and no automatic real-student changes. Before staff enroll students one by one, production must pass migration verification, authenticated desktop/mobile checks, parent question permission/closure checks, temporary QA cleanup and detailed SOP review.
 
 - Finance-documents Credit Note risk: `2026-07-16-r253` is read-side only, but Finance should confirm the first live screen and Excel view use SGD 18,270 as the adjusted and remaining amount for `RGT-202606-0019`. Issued notes affect adjusted balances; void notes are audit-only; drafts stay excluded.
 - Formal-care-report rollout risk: `2026-07-16-r255` is isolated from teaching and finance, but the first real report should be reviewed for source quality, parent wording and acknowledgement before expanding the pilot beyond 5 to 10 selected students.

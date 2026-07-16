@@ -337,6 +337,7 @@ export default async function CareDetailPage({
         <div>
           <div className={styles.toolbar}>
             <Link href="/admin/care" className={styles.buttonSecondary}>{t(lang, "Back", "返回")}</Link>
+            <Link href={`/admin/care/${encodeURIComponent(id)}/operations`} className={styles.buttonSecondary}>{t(lang, "Operations", "风险、代班与复盘")}</Link>
             <span className={styles.badge} data-tone={engagement.status === "ACTIVE" ? "active" : "neutral"}>{engagement.status}</span>
           </div>
           <h1 style={{ marginTop: 10 }}>{engagement.student.name}</h1>

@@ -1,7 +1,7 @@
 const api = require("../../utils/api");
 
 Page({
-  data: { loading: true, error: "", report: {}, sections: [], acknowledging: false },
+  data: { loading: true, error: "", report: {}, sections: [], acknowledging: false, questions: [], questionText: "", submittingQuestion: false },
 
   onLoad(options) {
     this.reportId = options.id || "";
@@ -12,8 +12,11 @@ Page({
     const studentId = api.requireStudentPage();
     if (!studentId || !this.reportId) return Promise.resolve();
     this.setData({ loading: true, error: "" });
-    return api.request(`/api/miniapp/students/${studentId}/care-reports/${this.reportId}`)
-      .then((data) => {
+    return Promise.all([
+      api.request(`/api/miniapp/students/${studentId}/care-reports/${this.reportId}`),
+      api.request(`/api/miniapp/students/${studentId}/care-reports/${this.reportId}/questions`)
+    ])
+      .then(([data, questionData]) => {
         const report = data.report || {};
         const definitions = [
           ["本期结论", "overallSummary"], ["学业进展", "academicSummary"], ["学校沟通", "schoolSummary"],
@@ -21,7 +24,7 @@ Page({
           ["服务交付证据", "evidenceSummary"], ["下一阶段计划", "nextPlan"], ["学生需要完成", "studentActions"],
           ["家长需要配合", "parentActions"]
         ];
-        this.setData({ report, sections: definitions.filter((row) => report[row[1]]).map((row) => ({ title: row[0], body: report[row[1]] })) });
+        this.setData({ report, questions: questionData.items || [], sections: definitions.filter((row) => report[row[1]]).map((row) => ({ title: row[0], body: report[row[1]] })) });
       })
       .catch((err) => this.setData({ error: err.message || "报告读取失败" }))
       .finally(() => this.setData({ loading: false }));
@@ -39,6 +42,38 @@ Page({
       })
       .catch((err) => api.toast(err.message))
       .finally(() => this.setData({ acknowledging: false }));
+  },
+
+  onQuestionInput(event) {
+    this.setData({ questionText: event.detail.value || "" });
+  },
+
+  submitQuestion() {
+    const question = (this.data.questionText || "").trim();
+    if (!question || this.data.submittingQuestion) return;
+    const studentId = api.requireStudentPage();
+    if (!studentId) return;
+    this.setData({ submittingQuestion: true });
+    api.request(`/api/miniapp/students/${studentId}/care-reports/${this.reportId}/questions`, { method: "POST", data: { question } })
+      .then(() => {
+        this.setData({ questionText: "" });
+        wx.showToast({ title: "已提交", icon: "success" });
+        return this.load();
+      })
+      .catch((err) => api.toast(err.message))
+      .finally(() => this.setData({ submittingQuestion: false }));
+  },
+
+  closeQuestion(event) {
+    const questionId = event.currentTarget.dataset.id;
+    const studentId = api.requireStudentPage();
+    if (!studentId || !questionId) return;
+    api.request(`/api/miniapp/students/${studentId}/care-reports/${this.reportId}/questions/${questionId}`, { method: "POST" })
+      .then(() => {
+        wx.showToast({ title: "已关闭", icon: "success" });
+        return this.load();
+      })
+      .catch((err) => api.toast(err.message));
   },
 
   openPdf() {

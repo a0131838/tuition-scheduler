@@ -239,7 +239,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
   const visibleReports = (careEngagement?.reports ?? []).filter((report) => careReportParentAccessAllowed({
     status: report.status,
     engagement: {
-      programType: careEngagement?.programType ?? "PRE_UNIVERSITY_CARE",
+      programType: careEngagement?.programType ?? "PRE_U_ACADEMIC_CARE",
       universityProfile: careEngagement?.universityProfile ?? null,
     },
   }));

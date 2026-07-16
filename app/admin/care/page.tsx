@@ -127,6 +127,7 @@ export default async function CarePage({
           <h1>{t(lang, "Full Care", "全托管")}</h1>
           <div className={styles.muted}>{t(lang, "Students, evidence, actions and owners.", "学生、证据、行动和负责人。")}</div>
         </div>
+        <Link className={styles.buttonSecondary} href="/admin/care/quality">{t(lang, "Quality dashboard", "质量工作台")}</Link>
       </header>
 
       {err ? <div className={styles.noticeError}>{err}</div> : null}

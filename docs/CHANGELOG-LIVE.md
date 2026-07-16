@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-16-r256
+
+- Release ID: `2026-07-16-r256`
+- Date/Time (Asia/Shanghai): `2026-07-16`
+- Deployment status: `READY` for guarded deployment at the current `r256` release commit
+- Scope: complete the pre-university-first Full Care V1 before operators configure students one by one, adding a quality dashboard, risk-response SLA, backup coverage and handover, parent report Q&A, and reviewed service-value/continuation records.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260716150000_add_care_operating_controls/migration.sql`
+  - `lib/care-operations.ts`
+  - `app/admin/care/quality/page.tsx`
+  - `app/admin/care/[id]/operations/page.tsx`
+  - `app/admin/care/[id]/reports/[reportId]/page.tsx`
+  - `app/api/miniapp/students/[studentId]/care-reports/[reportId]/questions/*`
+  - `miniapp/boss-academic-parent/pages/care-report-detail/*`
+  - `docs/tasks/TASK-20260716-care-complete-v1.md`
+- Risk impact (if any): Medium and isolated to CARE operations. The additive migration creates four new control tables and supporting enums; it does not alter Student, Session, Attendance, CoursePackage, PackageTxn, PartnerSettlement, Invoice, Receipt or payroll tables. Existing care projects and real students are not automatically changed. Parent questions require an existing published report and `canViewReports`; internal notes, risk facts and commercial notes are not serialized to parent APIs.
+- Verification: Prisma validation/generation, TypeScript, all 79 backend tests, migration safety, the 30-page miniapp release audit, the full 194-page production build and `git diff --check` pass. Production verification and SOP screenshot capture remain pending guarded deployment.
+- Rollback point: `ca50f71` documentation head for live runtime `d926d5d` (`2026-07-16-r255`).
+
+---
+
 ## 2026-07-16-r255
 
 - Release ID: `2026-07-16-r255`
