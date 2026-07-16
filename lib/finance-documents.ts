@@ -8,8 +8,9 @@ import { getReceiptApprovalStatus, isReceiptFinanceApproved } from "@/lib/receip
 import { listAllParentBilling } from "@/lib/student-parent-billing";
 
 export type FinanceDocumentChannel = "PARENT" | "PARTNER";
-export type FinanceDocumentType = "INVOICE" | "RECEIPT";
-export type FinanceDocumentPaymentStatus = "PAID" | "PARTIAL" | "UNPAID" | "PENDING_APPROVAL" | "REJECTED";
+export type FinanceDocumentType = "INVOICE" | "RECEIPT" | "CREDIT_NOTE";
+export type FinanceDocumentPaymentStatus = "PAID" | "PARTIAL" | "UNPAID" | "PENDING_APPROVAL" | "REJECTED" | "CREDITED";
+export type FinanceDocumentCreditNoteStatus = "ISSUED" | "VOID";
 
 export type FinanceDocumentFilters = {
   channel?: string | null;
@@ -31,13 +32,18 @@ export type FinanceDocumentRow = {
   partyLabel: string;
   contextLabel: string;
   amount: number;
+  creditAmount: number;
+  adjustedAmount: number;
   receiptedAmount: number;
   pendingReceiptAmount: number;
   rejectedReceiptAmount: number;
   remainingAmount: number;
   receiptCount: number;
   paymentStatus: FinanceDocumentPaymentStatus;
+  creditNoteStatus?: FinanceDocumentCreditNoteStatus | null;
+  relatedDocumentNo?: string | null;
   exportHref: string | null;
+  sealedExportHref?: string | null;
   openHref: string;
   exportReady: boolean;
   sourceLabel?: string | null;
@@ -48,7 +54,7 @@ function roundMoney(value: number) {
   return Number.isFinite(value) ? Number(value.toFixed(2)) : 0;
 }
 
-function normalizeAmount(value: number | null | undefined) {
+function normalizeAmount(value: unknown) {
   const amount = Number(value ?? 0);
   return Number.isFinite(amount) ? amount : 0;
 }
@@ -60,7 +66,7 @@ export function normalizeFinanceDocumentChannel(value: string | null | undefined
 
 export function normalizeFinanceDocumentType(value: string | null | undefined): FinanceDocumentType | "" {
   const normalized = String(value ?? "").trim().toUpperCase();
-  return normalized === "INVOICE" || normalized === "RECEIPT" ? normalized : "";
+  return normalized === "INVOICE" || normalized === "RECEIPT" || normalized === "CREDIT_NOTE" ? normalized : "";
 }
 
 export function normalizeFinanceDocumentPaymentStatus(
@@ -71,7 +77,8 @@ export function normalizeFinanceDocumentPaymentStatus(
     normalized === "PARTIAL" ||
     normalized === "UNPAID" ||
     normalized === "PENDING_APPROVAL" ||
-    normalized === "REJECTED"
+    normalized === "REJECTED" ||
+    normalized === "CREDITED"
     ? normalized
     : "";
 }
@@ -92,6 +99,24 @@ export function resolveInvoicePaymentStatus(input: {
   if (pendingReceiptTotal > 0.009) return "PENDING_APPROVAL";
   if (rejectedReceiptTotal > 0.009) return "REJECTED";
   return "UNPAID";
+}
+
+export function resolveInvoiceAmountsAfterCredit(input: {
+  invoiceTotal: number;
+  issuedCreditTotal?: number;
+  approvedReceiptTotal?: number;
+}) {
+  const originalAmount = roundMoney(Math.max(0, normalizeAmount(input.invoiceTotal)));
+  const creditAmount = roundMoney(Math.min(originalAmount, Math.max(0, normalizeAmount(input.issuedCreditTotal))));
+  const adjustedAmount = roundMoney(Math.max(0, originalAmount - creditAmount));
+  const receiptedAmount = roundMoney(Math.max(0, normalizeAmount(input.approvedReceiptTotal)));
+  return {
+    originalAmount,
+    creditAmount,
+    adjustedAmount,
+    receiptedAmount,
+    remainingAmount: roundMoney(Math.max(0, adjustedAmount - receiptedAmount)),
+  };
 }
 
 function includesQuery(parts: Array<string | number | null | undefined>, query: string) {
@@ -117,7 +142,7 @@ export function filterFinanceDocumentRows(rows: FinanceDocumentRow[], filters: F
   return rows.filter((row) => {
     if (channel && row.channel !== channel) return false;
     if (type && row.type !== type) return false;
-    if (paymentStatus && row.paymentStatus !== paymentStatus) return false;
+    if (paymentStatus && (row.type === "CREDIT_NOTE" || row.paymentStatus !== paymentStatus)) return false;
     if (packageId && row.channel === "PARENT" && row.packageId !== packageId) return false;
     const rowDate = normalizeDateFilter(row.issueDate);
     if (dateFrom && rowDate && rowDate < dateFrom) return false;
@@ -132,6 +157,8 @@ export function filterFinanceDocumentRows(rows: FinanceDocumentRow[], filters: F
         row.issueDate,
         row.packageId,
         row.paymentStatus,
+        row.creditNoteStatus,
+        row.relatedDocumentNo,
       ],
       q,
     );
@@ -139,10 +166,17 @@ export function filterFinanceDocumentRows(rows: FinanceDocumentRow[], filters: F
 }
 
 export async function listFinanceDocumentRows() {
-  const [parentAll, partnerAll, roleCfg] = await Promise.all([
+  const [parentAll, partnerAll, roleCfg, partnerCreditNotes] = await Promise.all([
     listAllParentBilling(),
     listPartnerBilling(),
     getApprovalRoleConfig(),
+    prisma.creditNote.findMany({
+      where: {
+        sourceType: "PARTNER_INVOICE",
+        status: { in: ["ISSUED", "VOID"] },
+      },
+      orderBy: [{ issueDate: "desc" }, { creditNoteNo: "desc" }],
+    }),
   ]);
 
   const packageIds = Array.from(
@@ -218,6 +252,15 @@ export async function listFinanceDocumentRows() {
     partnerReceiptsByInvoice.set(receipt.invoiceId, bucket);
   }
 
+  const issuedCreditByPartnerInvoice = new Map<string, number>();
+  for (const note of partnerCreditNotes) {
+    if (note.status !== "ISSUED") continue;
+    issuedCreditByPartnerInvoice.set(
+      note.sourceInvoiceId,
+      roundMoney((issuedCreditByPartnerInvoice.get(note.sourceInvoiceId) ?? 0) + normalizeAmount(note.totalAmount)),
+    );
+  }
+
   const rows: FinanceDocumentRow[] = [];
 
   for (const invoice of parentAll.invoices) {
@@ -268,6 +311,8 @@ export async function listFinanceDocumentRows() {
       partyLabel: invoice.billTo || pkg?.student.name || "-",
       contextLabel: pkg ? `${pkg.student.name} · ${pkg.course.name}` : invoice.packageId,
       amount: totalAmount,
+      creditAmount: 0,
+      adjustedAmount: totalAmount,
       receiptedAmount,
       pendingReceiptAmount: roundMoney(pendingTotal),
       rejectedReceiptAmount: roundMoney(rejectedTotal),
@@ -303,6 +348,8 @@ export async function listFinanceDocumentRows() {
       partyLabel: receipt.receivedFrom || pkg?.student.name || "-",
       contextLabel: pkg ? `${pkg.student.name} · ${pkg.course.name}` : receipt.packageId,
       amount: amountReceived,
+      creditAmount: 0,
+      adjustedAmount: amountReceived,
       receiptedAmount: exportReady ? amountReceived : 0,
       pendingReceiptAmount: approvalStatus === "PENDING" ? amountReceived : 0,
       rejectedReceiptAmount: approvalStatus === "REJECTED" ? amountReceived : 0,
@@ -328,8 +375,11 @@ export async function listFinanceDocumentRows() {
       else if (status === "REJECTED") rejectedTotal += amount;
       else pendingTotal += amount;
     }
-    const totalAmount = roundMoney(normalizeAmount(invoice.totalAmount));
-    const receiptedAmount = roundMoney(approvedTotal);
+    const amounts = resolveInvoiceAmountsAfterCredit({
+      invoiceTotal: normalizeAmount(invoice.totalAmount),
+      issuedCreditTotal: issuedCreditByPartnerInvoice.get(invoice.id),
+      approvedReceiptTotal: approvedTotal,
+    });
     rows.push({
       id: invoice.id,
       channel: "PARTNER",
@@ -339,20 +389,25 @@ export async function listFinanceDocumentRows() {
       packageId: "",
       partyLabel: invoice.billTo || invoice.partnerName,
       contextLabel: `${invoice.partnerName} · ${invoice.mode}${invoice.monthKey ? ` · ${invoice.monthKey}` : ""}`,
-      amount: totalAmount,
-      receiptedAmount,
+      amount: amounts.originalAmount,
+      creditAmount: amounts.creditAmount,
+      adjustedAmount: amounts.adjustedAmount,
+      receiptedAmount: amounts.receiptedAmount,
       pendingReceiptAmount: roundMoney(pendingTotal),
       rejectedReceiptAmount: roundMoney(rejectedTotal),
-      remainingAmount: roundMoney(Math.max(0, totalAmount - receiptedAmount)),
+      remainingAmount: amounts.remainingAmount,
       receiptCount: receipts.length,
-      paymentStatus: resolveInvoicePaymentStatus({
-        invoiceTotal: totalAmount,
-        approvedReceiptTotal: receiptedAmount,
-        pendingReceiptTotal: pendingTotal,
-        rejectedReceiptTotal: rejectedTotal,
-      }),
+      paymentStatus:
+        amounts.creditAmount > 0 && amounts.adjustedAmount <= 0.009
+          ? "CREDITED"
+          : resolveInvoicePaymentStatus({
+              invoiceTotal: amounts.adjustedAmount,
+              approvedReceiptTotal: amounts.receiptedAmount,
+              pendingReceiptTotal: pendingTotal,
+              rejectedReceiptTotal: rejectedTotal,
+            }),
       exportHref: `/api/exports/partner-invoice/${encodeURIComponent(invoice.id)}`,
-      openHref: `/admin/reports/partner-settlement/billing?mode=${encodeURIComponent(invoice.mode)}${invoice.monthKey ? `&month=${encodeURIComponent(invoice.monthKey)}` : ""}&tab=invoices`,
+      openHref: `/admin/reports/partner-settlement/billing?${invoice.partnerId ? `partnerId=${encodeURIComponent(invoice.partnerId)}&` : ""}mode=${encodeURIComponent(invoice.mode)}${invoice.monthKey ? `&month=${encodeURIComponent(invoice.monthKey)}` : ""}&tab=invoices`,
       exportReady: true,
     });
   }
@@ -372,6 +427,8 @@ export async function listFinanceDocumentRows() {
       partyLabel: receipt.receivedFrom || "-",
       contextLabel: `${receipt.mode}${receipt.monthKey ? ` · ${receipt.monthKey}` : ""}`,
       amount: amountReceived,
+      creditAmount: 0,
+      adjustedAmount: amountReceived,
       receiptedAmount: exportReady ? amountReceived : 0,
       pendingReceiptAmount: approvalStatus === "PENDING" ? amountReceived : 0,
       rejectedReceiptAmount: approvalStatus === "REJECTED" ? amountReceived : 0,
@@ -381,6 +438,43 @@ export async function listFinanceDocumentRows() {
       exportHref: exportReady ? `/api/exports/partner-receipt/${encodeURIComponent(receipt.id)}` : null,
       openHref: `/admin/reports/partner-settlement/billing?mode=${encodeURIComponent(receipt.mode)}${receipt.monthKey ? `&month=${encodeURIComponent(receipt.monthKey)}` : ""}&tab=receipts`,
       exportReady,
+    });
+  }
+
+  const partnerInvoiceMap = new Map(partnerAll.invoices.map((invoice) => [invoice.id, invoice] as const));
+  for (const note of partnerCreditNotes) {
+    const invoice = partnerInvoiceMap.get(note.sourceInvoiceId);
+    const mode = invoice?.mode ?? String((note.sourceInvoiceSnapshot as { mode?: unknown } | null)?.mode ?? "ONLINE_PACKAGE_END");
+    const monthKey = invoice?.monthKey ?? String((note.sourceInvoiceSnapshot as { monthKey?: unknown } | null)?.monthKey ?? "");
+    const partnerId = invoice?.partnerId ?? String((note.sourceInvoiceSnapshot as { partnerId?: unknown } | null)?.partnerId ?? "");
+    const baseHref = `/admin/reports/partner-settlement/billing?${partnerId ? `partnerId=${encodeURIComponent(partnerId)}&` : ""}mode=${encodeURIComponent(mode)}${monthKey ? `&month=${encodeURIComponent(monthKey)}` : ""}`;
+    const totalAmount = roundMoney(normalizeAmount(note.totalAmount));
+    rows.push({
+      id: note.id,
+      channel: "PARTNER",
+      type: "CREDIT_NOTE",
+      docNo: note.creditNoteNo,
+      issueDate: note.issueDate,
+      packageId: "",
+      partyLabel: note.customerName,
+      contextLabel: `Original invoice / 原发票 ${note.sourceInvoiceNo}`,
+      amount: totalAmount,
+      creditAmount: totalAmount,
+      adjustedAmount: 0,
+      receiptedAmount: 0,
+      pendingReceiptAmount: 0,
+      rejectedReceiptAmount: 0,
+      remainingAmount: 0,
+      receiptCount: 0,
+      paymentStatus: "UNPAID",
+      creditNoteStatus: note.status === "ISSUED" ? "ISSUED" : "VOID",
+      relatedDocumentNo: note.sourceInvoiceNo,
+      exportHref: `/api/exports/partner-credit-note/${encodeURIComponent(note.id)}`,
+      sealedExportHref: note.status === "ISSUED" ? `/api/exports/partner-credit-note/${encodeURIComponent(note.id)}?seal=1` : null,
+      openHref: `${baseHref}&tab=credits&creditInvoiceId=${encodeURIComponent(note.sourceInvoiceId)}`,
+      exportReady: true,
+      sourceLabel: note.status === "ISSUED" ? "Issued credit note" : "Voided credit note",
+      contractLinkLabel: `Linked to ${note.sourceInvoiceNo}`,
     });
   }
 

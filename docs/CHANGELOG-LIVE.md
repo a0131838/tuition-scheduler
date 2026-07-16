@@ -15,9 +15,9 @@ This file is the single source of truth for what changed in production.
 
 ---
 
-## 2026-07-16-r253
+## 2026-07-16-r255
 
-- Release ID: `2026-07-16-r253`
+- Release ID: `2026-07-16-r255`
 - Date/Time (Asia/Shanghai): `2026-07-16`
 - Deployment status: `READY` locally; production deployment pending
 - Scope: add an isolated formal progress-report workflow for care projects, with evidence-backed drafts, review/approval/publication locking, parent PDF access and parent acknowledgement.
@@ -35,7 +35,56 @@ This file is the single source of truth for what changed in production.
   - `miniapp/boss-academic-parent/pages/care-report-detail/*`
 - Risk impact (if any): Medium and isolated to CARE reports. The additive migration creates only report-related enums and four new tables. It does not alter existing Student, Session, Attendance, CoursePackage, PackageTxn, Invoice, Receipt, payroll, Partner or PartnerSettlement data. Reports require a legal state transition, optimistic version match and source evidence; only approved reports can be published, and parents can read only published reports through their existing `canViewReports` permission. University-stage parent access additionally requires adult-student consent for `formal_reports`. Internal notes are excluded from parent APIs and PDFs.
 - Verification: Prisma schema validation/generation, TypeScript, all 72 backend tests, six focused report/migration tests, all miniapp JavaScript syntax checks, the 30-page miniapp release audit, the full 193-page production build and `git diff --check` pass locally.
-- Rollback point: `eb91031` (`2026-07-14-r252` documentation head).
+- Rollback point: `2cafb48` (`2026-07-16-r254` guarded release head).
+
+---
+
+## 2026-07-16-r254
+
+- Release ID: `2026-07-16-r254`
+- Date/Time (Asia/Shanghai): `2026-07-16`
+- Deployment status: `LIVE at this release commit after guarded workflow verification`
+- Scope: make GitHub SSH 443 push, remote-commit verification, standard server deployment, and post-deploy version/health checks one guarded release command so a local commit cannot be mistaken for a completed server release.
+- Key files:
+  - `ops/server/scripts/release_to_server.sh`
+  - `ops/server/scripts/quick_deploy.sh`
+  - `docs/SERVER-HANDOFF.md`
+  - `docs/CODEX-生产发布指挥模板.md`
+  - `docs/tasks/TASK-20260716-guarded-git-server-release.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low and operational only. No application code, database schema, finance data, scheduling, attendance, packages, payroll, receipts, or server environment values change. The release command stops before push/deploy when tracked changes exist, GitHub SSH 443 is unavailable, release docs are missing, or the remote branch is not an ancestor of local HEAD.
+- Verification:
+  - `bash -n ops/server/scripts/release_to_server.sh ops/server/scripts/quick_deploy.sh`
+  - `bash ops/server/scripts/release_to_server.sh --check`
+  - the same script performs the real GitHub push and server deploy, then verifies local/GitHub/server commit equality, PM2 PID, and `/admin/login` HTTP 200
+- Rollback point: `fd1d7eb` (`2026-07-16-r253`).
+
+---
+
+## 2026-07-16-r253
+
+- Release ID: `2026-07-16-r253`
+- Date/Time (Asia/Shanghai): `2026-07-16`
+- Deployment status: `LIVE` at runtime commit `fd1d7eb`
+- Scope: include issued and void partner Credit Notes in Finance Documents, while showing each partner invoice's original amount, issued credit, adjusted amount, and remaining balance consistently on screen and in Excel.
+- Key files:
+  - `lib/finance-documents.ts`
+  - `app/admin/finance/documents/page.tsx`
+  - `app/api/exports/finance-documents/route.ts`
+  - `tests/finance-documents.test.ts`
+  - `docs/tasks/TASK-20260716-finance-documents-credit-notes.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low-to-medium and read-side only. This release does not change invoice, receipt, Credit Note issue/void, settlement, package, attendance, payroll, or stored billing data. Only `ISSUED` Credit Notes reduce adjusted balances; `VOID` notes remain visible for audit but have no amount effect, and `DRAFT` notes remain in the Credit Note workspace.
+- Verification:
+  - `npx tsx --test tests/finance-documents.test.ts tests/partner-credit-notes.test.ts` (9/9)
+  - `npx tsc --noEmit`
+  - `npm run build` (193 pages)
+  - authenticated Finance Playwright check using production data confirmed `RGT-202606-0019`: SGD 18,540 original, SGD 270 issued credit, SGD 18,270 adjusted/remaining
+  - authenticated Finance Playwright check confirmed `RGT-CN-202607-0001` appears as ISSUED with PDF, PDF + Seal, original-invoice link, and Excel export HTTP 200
+  - temporary auth sessions were deleted after checks
+- Rollback point: `6a0b106` (`2026-07-14-r252` documentation head; runtime feature commit `d705793`).
 
 ---
 

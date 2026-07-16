@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-07-14`
+- Last checked: `2026-07-16`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,13 +14,17 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-14-r252` at runtime commit `d705793`. Employee-miniapp student scheduling now follows the web workflow: student selection is read-only, ADMIN direct scheduling creates Sessions without Tickets, and explicit coordination requires a course and reason. Five legacy auto-created Tickets are cancelled with retained audit history. The partner Credit Note release `r251` and earlier releases remain on the same runtime lineage.
+- Current production release: `2026-07-16-r254` installs the guarded GitHub SSH 443 to server release workflow. `2026-07-16-r253` is live at runtime commit `fd1d7eb` and adds Credit Notes plus adjusted partner-invoice balances to Finance Documents and its Excel export without changing stored financial records or issue/void workflows.
+- Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
+- Next release candidate: `2026-07-16-r255` adds isolated formal care progress reports and parent acknowledgement.
 - Next planned care release: university semester, course and assessment milestones with GPA, credit, deadline and academic-risk tracking. Postgraduate and career pipelines remain subsequent isolated phases.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
+- Finance-documents Credit Note risk: `2026-07-16-r253` is read-side only, but Finance should confirm the first live screen and Excel view use SGD 18,270 as the adjusted and remaining amount for `RGT-202606-0019`. Issued notes affect adjusted balances; void notes are audit-only; drafts stay excluded.
+- Formal-care-report rollout risk: `2026-07-16-r255` is isolated from teaching and finance, but the first real report should be reviewed for source quality, parent wording and acknowledgement before expanding the pilot beyond 5 to 10 selected students.
 - Miniapp direct-scheduling rollout risk: `2026-07-14-r252` is live on the server. Server-side validation, production build, cancellation audit and read-only data checks pass, but the new 28th miniapp page still needs one WeChat Developer Tools and physical-phone pass after the experience version is uploaded. Verify ADMIN direct scheduling preview/apply and CS explicit coordination creation; merely opening and returning must leave Ticket counts unchanged.
 - Partner-credit-note monitoring: `2026-07-14-r251` is live. Drafts remain excluded from adjusted totals; issued non-void notes are the only credits counted. Existing receipts are intentionally not rewritten and must be reviewed by Finance if the credited invoice already has a receipt. The first real issue remains pending. A long-number production PDF passed without header overlap, and all SOP demo records were cleaned to zero.
 - University-care monitoring: `2026-07-14-r249` is live. Management reviewed the existing Li Chenghao NUS draft on 2026-07-14 and explicitly aligned it to the five current university-academic scopes, milestone/monthly cadence and Jasmine ownership; its earlier pre-university life-care scopes are no longer active. It remains a draft and must not be activated until degree/programme, current term and expected graduation are completed. Adult-student consent remains not recorded, so parent-report eligibility is still blocked. Louis remains an active pre-university full-care project and is now aligned to the complete eight-scope standard.
@@ -148,7 +152,9 @@
 
 1. `deploy_app.sh` now calls `verify_release_docs.sh` by default.
 2. GitHub Actions deploy workflow now runs the same gate before SSH deploy.
-3. Emergency bypass exists: `SKIP_RELEASE_DOC_CHECK=true` (use only for urgent hotfix).
+3. `release_to_server.sh` is the only normal local release entry: it checks a clean tracked worktree, GitHub SSH 443 authentication, release docs and fast-forward safety before push.
+4. After push, the release command verifies GitHub has the exact local commit, calls the server deploy primitive, then verifies the server commit, PM2 PID and HTTP health.
+5. Emergency bypass exists: `SKIP_RELEASE_DOC_CHECK=true` (use only for urgent hotfix).
 
 ## Server Handoff Guard (Installed)
 
@@ -156,13 +162,80 @@
 2. Added local config template: `ops/server/server-handoff.env.example`
 3. Added one-command scripts:
    - `bash ops/server/scripts/quick_check.sh`
-   - `bash ops/server/scripts/quick_deploy.sh`
+   - `bash ops/server/scripts/release_to_server.sh --check`
+   - `bash ops/server/scripts/release_to_server.sh`
+4. `quick_deploy.sh` remains an internal server-deploy primitive and is not the normal release entry.
 
 ## Next Mandatory Step (No Business Logic Change)
 
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
-2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
+2. Keep the GitHub SSH identity and `ssh.github.com:443` mapping available on each release machine.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-07-16-r255 Ready
+
+- Scope: formal care progress reports for the pre-university-first service model, while retaining consent-aware lightweight university reporting.
+- Business impact:
+  - care owners can create monthly, milestone, significant-event and term report drafts from real lesson, feedback, care-update, task and evidence sources
+  - reports follow draft, review, approval and publication states; published content is locked and can only be revoked with a reason
+  - parents with the existing report permission can view published reports, open a PDF and confirm receipt in the miniapp
+  - management can see parent view count, last view and acknowledgement status
+  - university reports remain hidden unless the adult student authorized the `formal_reports` section
+- Safety:
+  - additive migration creates four isolated report tables and no protected workflow table is changed
+  - report write actions verify the current care project, actor access, reviewer role and optimistic version
+  - generated placeholders and reports without evidence cannot be submitted
+  - internal notes are never serialized to the parent interface or PDF
+- Validation before deploy:
+  - Prisma validation/generation and TypeScript pass
+  - backend tests pass `72/72`; focused report and migration tests pass `6/6`
+  - miniapp JavaScript syntax and 30-page release audit pass
+  - production build passes with 193 pages
+  - `git diff --check` passes
+- Deployment status: local READY only; production migration, push and server deployment are pending.
+- Task doc: `docs/tasks/TASK-20260716-care-formal-reports.md`
+
+## 2026-07-16-r254 Live
+
+- Scope: turn GitHub push and server deployment into one fail-closed release workflow.
+- Operational impact:
+  - normal releases no longer use HTTPS Git push or manually sequence push and server deployment
+  - `--check` runs the complete read-only preflight without changing GitHub or production
+  - tracked local changes, missing release docs, unavailable SSH 443, failed GitHub identity, or non-fast-forward history stop the release before production action
+  - after deployment, local, GitHub and server commits must match before success is reported
+- Safety: process and documentation only; no application behavior, database, finance, scheduling, attendance, package, payroll or receipt data changes.
+- Verification:
+  - shell syntax validation
+  - guarded read-only preflight
+  - real release using `release_to_server.sh`
+  - PM2 PID and `/admin/login` HTTP 200
+  - task doc: `docs/tasks/TASK-20260716-guarded-git-server-release.md`
+
+## 2026-07-16-r253 Live
+
+- Scope: include issued and void partner Credit Notes in the Finance Documents center and calculate partner-invoice adjusted amounts from issued credits.
+- Business impact:
+  - Finance can find `RGT-CN-*` documents by number or original invoice and open PDF or PDF + Seal.
+  - Partner invoice rows retain their immutable original amount and separately show issued credit, adjusted amount, approved receipts and remaining balance.
+  - Payment status uses the adjusted invoice amount; a fully credited invoice is labelled `Fully credited` instead of unpaid.
+  - Finance Documents Excel includes Credit Note rows, related invoice, issued credit, adjusted amount, status and both PDF links.
+  - No invoice, receipt, Credit Note, settlement or payment data is written or rewritten.
+- Files:
+  - `lib/finance-documents.ts`
+  - `app/admin/finance/documents/page.tsx`
+  - `app/api/exports/finance-documents/route.ts`
+  - `tests/finance-documents.test.ts`
+  - `docs/tasks/TASK-20260716-finance-documents-credit-notes.md`
+- Verification before deploy:
+  - focused tests 9/9
+  - TypeScript passed
+  - production build passed with 193 pages
+  - authenticated Finance Playwright and Excel checks passed against the real issued Credit Note
+- Post-deploy verification:
+  - verify `RGT-202606-0019` shows SGD 18,540 / 270 / 18,270 / 18,270
+  - verify `RGT-CN-202607-0001` shows ISSUED and both PDF links
+  - verify Credit Note-only filtering shows `0 / 0 / 0` in unpaid/partial/pending
+- task doc: `docs/tasks/TASK-20260716-finance-documents-credit-notes.md`
 
 ## 2026-07-14-r252 Live
 
@@ -184,29 +257,6 @@
   - production runtime `d705793`, PM2 online with zero restarts and `/admin/login` returning `200`
   - post-deploy database check confirmed five cancelled Tickets, five cancellation audit rows and zero open employee-miniapp scheduling Tickets
   - task doc: `docs/tasks/TASK-20260714-miniapp-scheduling-read-only-entry.md`
-
-## 2026-07-16-r253 Ready
-
-- Scope: formal care progress reports for the pre-university-first service model, while retaining consent-aware lightweight university reporting.
-- Business impact:
-  - care owners can create monthly, milestone, significant-event and term report drafts from real lesson, feedback, care-update, task and evidence sources
-  - reports follow draft, review, approval and publication states; published content is locked and can only be revoked with a reason
-  - parents with the existing report permission can view published reports, open a PDF and confirm receipt in the miniapp
-  - management can see parent view count, last view and acknowledgement status
-  - university reports remain hidden unless the adult student authorized the `formal_reports` section
-- Safety:
-  - additive migration creates four isolated report tables and no protected workflow table is changed
-  - report write actions verify the current care project, actor access, reviewer role and optimistic version
-  - generated placeholders and reports without evidence cannot be submitted
-  - internal notes are never serialized to the parent interface or PDF
-- Validation before deploy:
-  - Prisma validation/generation and TypeScript pass
-  - backend tests pass `72/72`; focused report and migration tests pass `6/6`
-  - miniapp JavaScript syntax and 30-page release audit pass
-  - production build passes with 193 pages
-  - `git diff --check` passes
-- Deployment status: local READY only; production migration, commit, push and server deployment are pending.
-- Task doc: `docs/tasks/TASK-20260716-care-formal-reports.md`
 
 ## 2026-07-14-r250 Live
 

@@ -1,5 +1,7 @@
 # TASK-20260716 Care Formal Reports
 
+Release candidate: `2026-07-16-r255`
+
 ## Objective
 
 Deliver an isolated formal-report workflow for pre-university care while keeping university parent reporting consent-aware and leaving all teaching, finance, payroll and partner settlement behavior unchanged.
