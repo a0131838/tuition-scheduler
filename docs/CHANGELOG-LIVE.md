@@ -15,11 +15,34 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-16-r254
+
+- Release ID: `2026-07-16-r254`
+- Date/Time (Asia/Shanghai): `2026-07-16`
+- Deployment status: `LIVE at this release commit after guarded workflow verification`
+- Scope: make GitHub SSH 443 push, remote-commit verification, standard server deployment, and post-deploy version/health checks one guarded release command so a local commit cannot be mistaken for a completed server release.
+- Key files:
+  - `ops/server/scripts/release_to_server.sh`
+  - `ops/server/scripts/quick_deploy.sh`
+  - `docs/SERVER-HANDOFF.md`
+  - `docs/CODEX-生产发布指挥模板.md`
+  - `docs/tasks/TASK-20260716-guarded-git-server-release.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low and operational only. No application code, database schema, finance data, scheduling, attendance, packages, payroll, receipts, or server environment values change. The release command stops before push/deploy when tracked changes exist, GitHub SSH 443 is unavailable, release docs are missing, or the remote branch is not an ancestor of local HEAD.
+- Verification:
+  - `bash -n ops/server/scripts/release_to_server.sh ops/server/scripts/quick_deploy.sh`
+  - `bash ops/server/scripts/release_to_server.sh --check`
+  - the same script performs the real GitHub push and server deploy, then verifies local/GitHub/server commit equality, PM2 PID, and `/admin/login` HTTP 200
+- Rollback point: `fd1d7eb` (`2026-07-16-r253`).
+
+---
+
 ## 2026-07-16-r253
 
 - Release ID: `2026-07-16-r253`
 - Date/Time (Asia/Shanghai): `2026-07-16`
-- Deployment status: `READY`
+- Deployment status: `LIVE` at runtime commit `fd1d7eb`
 - Scope: include issued and void partner Credit Notes in Finance Documents, while showing each partner invoice's original amount, issued credit, adjusted amount, and remaining balance consistently on screen and in Excel.
 - Key files:
   - `lib/finance-documents.ts`

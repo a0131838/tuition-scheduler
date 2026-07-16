@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Server-deploy primitive. Normal local releases must use release_to_server.sh,
+# which verifies GitHub push and local/origin/server commit alignment first.
+
 SERVER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CFG_FILE="${1:-$SERVER_DIR/server-handoff.env}"
 BRANCH_ARG="${2:-}"

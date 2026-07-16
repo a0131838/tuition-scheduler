@@ -14,8 +14,8 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-14-r252` at runtime commit `d705793`. Employee-miniapp student scheduling now follows the web workflow: student selection is read-only, ADMIN direct scheduling creates Sessions without Tickets, and explicit coordination requires a course and reason. Five legacy auto-created Tickets are cancelled with retained audit history. The partner Credit Note release `r251` and earlier releases remain on the same runtime lineage.
-- Next ready release: `2026-07-16-r253` adds Credit Notes and adjusted partner-invoice balances to Finance Documents and its Excel export without changing stored financial records or issue/void workflows.
+- Current production release: `2026-07-16-r254` installs the guarded GitHub SSH 443 to server release workflow. `2026-07-16-r253` is live at runtime commit `fd1d7eb` and adds Credit Notes plus adjusted partner-invoice balances to Finance Documents and its Excel export without changing stored financial records or issue/void workflows.
+- Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Next planned care release: university semester, course and assessment milestones with GPA, credit, deadline and academic-risk tracking. Postgraduate and career pipelines remain subsequent isolated phases.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
@@ -150,7 +150,9 @@
 
 1. `deploy_app.sh` now calls `verify_release_docs.sh` by default.
 2. GitHub Actions deploy workflow now runs the same gate before SSH deploy.
-3. Emergency bypass exists: `SKIP_RELEASE_DOC_CHECK=true` (use only for urgent hotfix).
+3. `release_to_server.sh` is the only normal local release entry: it checks a clean tracked worktree, GitHub SSH 443 authentication, release docs and fast-forward safety before push.
+4. After push, the release command verifies GitHub has the exact local commit, calls the server deploy primitive, then verifies the server commit, PM2 PID and HTTP health.
+5. Emergency bypass exists: `SKIP_RELEASE_DOC_CHECK=true` (use only for urgent hotfix).
 
 ## Server Handoff Guard (Installed)
 
@@ -158,15 +160,33 @@
 2. Added local config template: `ops/server/server-handoff.env.example`
 3. Added one-command scripts:
    - `bash ops/server/scripts/quick_check.sh`
-   - `bash ops/server/scripts/quick_deploy.sh`
+   - `bash ops/server/scripts/release_to_server.sh --check`
+   - `bash ops/server/scripts/release_to_server.sh`
+4. `quick_deploy.sh` remains an internal server-deploy primitive and is not the normal release entry.
 
 ## Next Mandatory Step (No Business Logic Change)
 
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
-2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
+2. Keep the GitHub SSH identity and `ssh.github.com:443` mapping available on each release machine.
 3. Keep ops docs aligned with Neon-as-production-db policy.
 
-## 2026-07-16-r253 Ready
+## 2026-07-16-r254 Live
+
+- Scope: turn GitHub push and server deployment into one fail-closed release workflow.
+- Operational impact:
+  - normal releases no longer use HTTPS Git push or manually sequence push and server deployment
+  - `--check` runs the complete read-only preflight without changing GitHub or production
+  - tracked local changes, missing release docs, unavailable SSH 443, failed GitHub identity, or non-fast-forward history stop the release before production action
+  - after deployment, local, GitHub and server commits must match before success is reported
+- Safety: process and documentation only; no application behavior, database, finance, scheduling, attendance, package, payroll or receipt data changes.
+- Verification:
+  - shell syntax validation
+  - guarded read-only preflight
+  - real release using `release_to_server.sh`
+  - PM2 PID and `/admin/login` HTTP 200
+  - task doc: `docs/tasks/TASK-20260716-guarded-git-server-release.md`
+
+## 2026-07-16-r253 Live
 
 - Scope: include issued and void partner Credit Notes in the Finance Documents center and calculate partner-invoice adjusted amounts from issued credits.
 - Business impact:

@@ -18,6 +18,22 @@ Always read this first before any deploy or server troubleshooting.
 1. Copy `ops/server/server-handoff.env.example` to `ops/server/server-handoff.env`
 2. Confirm key path and host are correct
 3. `ops/server/server-handoff.env` is git-ignored
+4. Configure the Git remote as `git@github.com:a0131838/tuition-scheduler.git`
+5. Configure `github.com` in `~/.ssh/config` to use `ssh.github.com`, port `443`, and the dedicated GitHub identity file
+6. Confirm `ssh -T git@github.com` reports successful authentication
+
+```sshconfig
+Host github.com
+  HostName ssh.github.com
+  Port 443
+  User git
+  IdentityFile ~/.ssh/id_ed25519_sgt_github
+  IdentitiesOnly yes
+  AddKeysToAgent yes
+  UseKeychain yes
+```
+
+The private key stays local and must never be committed. Add only its `.pub` public key to the GitHub account.
 
 ## 3) One-command Operations
 
@@ -25,10 +41,13 @@ Always read this first before any deploy or server troubleshooting.
   - `bash ops/server/scripts/new_chat_startup_check.sh`
 - Quick health check:
   - `bash ops/server/scripts/quick_check.sh`
-- Quick deploy (default branch from config):
-  - `bash ops/server/scripts/quick_deploy.sh`
-- Quick deploy (specific branch):
-  - `bash ops/server/scripts/quick_deploy.sh ops/server/server-handoff.env feat/strict-superadmin-availability-bypass`
+- Release preflight only (no push and no deploy):
+  - `bash ops/server/scripts/release_to_server.sh --check`
+- Standard release (GitHub push + server deploy + version/health verification):
+  - `bash ops/server/scripts/release_to_server.sh`
+- Standard release (specific config and branch):
+  - `bash ops/server/scripts/release_to_server.sh ops/server/server-handoff.env feat/strict-superadmin-availability-bypass`
+- `quick_deploy.sh` is an internal server-deploy primitive. Do not use it as the normal local release entry because it does not push or verify GitHub first.
 
 ## 4) New Chat Startup Command
 
@@ -45,5 +64,7 @@ Always read this first before any deploy or server troubleshooting.
 
 - No business logic edits during server diagnostics.
 - If deploy may impact other modules, list impact first and wait for approval.
+- Never report a release as complete until `release_to_server.sh` confirms one identical local/GitHub/server commit.
+- Do not fall back to HTTPS push or direct file copying when GitHub SSH fails; repair the SSH 443 authorization first.
 - For emergency bypass of release-doc gate, use `SKIP_RELEASE_DOC_CHECK=true` only temporarily.
 - Read and follow `docs/HIGH-RISK-AREAS.md` before any database or deploy operation.
