@@ -43,7 +43,7 @@ Deliver an isolated formal-report workflow for pre-university care while keeping
 - [x] Production build (193 pages)
 - [x] Git diff check
 - [x] PDF render review (two populated A4 pages, no blank footer pages)
-- [ ] Release preflight and deployment
-- [ ] Production migration, PM2, HTTP and authenticated workflow checks
-- [ ] Protected production counts unchanged
+- [x] Release preflight and deployment (`d926d5d`)
+- [x] Production migration, PM2, HTTP and authenticated workflow checks
+- [x] Protected production counts reconciled; one concurrent normal attendance creation documented
 - [x] Long-term planning document synced to the personal knowledge base

@@ -14,9 +14,8 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-16-r254` installs the guarded GitHub SSH 443 to server release workflow. `2026-07-16-r253` is live at runtime commit `fd1d7eb` and adds Credit Notes plus adjusted partner-invoice balances to Finance Documents and its Excel export without changing stored financial records or issue/void workflows.
+- Current production release: `2026-07-16-r255` at runtime commit `d926d5d` adds isolated formal care reports, parent PDF access and acknowledgement. The guarded release workflow from `r254` and Finance Documents Credit Notes from `r253` remain on the same runtime lineage.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
-- Next release candidate: `2026-07-16-r255` adds isolated formal care progress reports and parent acknowledgement.
 - Next planned care release: university semester, course and assessment milestones with GPA, credit, deadline and academic-risk tracking. Postgraduate and career pipelines remain subsequent isolated phases.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
@@ -172,7 +171,7 @@
 2. Keep the GitHub SSH identity and `ssh.github.com:443` mapping available on each release machine.
 3. Keep ops docs aligned with Neon-as-production-db policy.
 
-## 2026-07-16-r255 Ready
+## 2026-07-16-r255 Live
 
 - Scope: formal care progress reports for the pre-university-first service model, while retaining consent-aware lightweight university reporting.
 - Business impact:
@@ -193,7 +192,9 @@
   - production build passes with 193 pages
   - `git diff --check` passes
 - PDF rendering: a production-like report renders as two populated A4 pages with correct `1/2` and `2/2` footers; a regression test prevents footer placement from creating blank pages.
-- Deployment status: local READY only; production migration, push and server deployment are pending.
+- Deployment status: LIVE at runtime commit `d926d5d`; 106 migrations, PM2 online with zero restarts and `/admin/login` HTTP `200`.
+- Production acceptance: admin report workspace, parent list/detail/PDF/acknowledgement and anonymous `401` checks passed. Internal notes were absent from parent output. Final PDF is two populated A4 pages with correct page numbers. Temporary student, parent, engagement, activity, report, view, sessions and QA audits were cleaned to zero.
+- Protected baseline after cleanup: 89 students, 78 packages, 1,916 sessions, 34 partner settlements and care counts `2/0/1/0/0/0/0` for engagements/plans/activities/tasks/attachments/reports/views. Attendance changed `1,740 -> 1,741` because Zhao Jiabo was normally marked present at 12:01 Singapore time during deployment; it is unrelated to this release.
 - Task doc: `docs/tasks/TASK-20260716-care-formal-reports.md`
 
 ## 2026-07-16-r254 Live
