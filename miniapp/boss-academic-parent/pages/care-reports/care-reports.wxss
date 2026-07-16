@@ -1,0 +1,41 @@
+.report-row {
+  margin-bottom: 20rpx;
+  padding: 28rpx;
+  border: 1rpx solid #e2e5e9;
+  background: #fff;
+}
+
+.report-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.report-type,
+.ack {
+  color: #ec5e0a;
+  font-size: 24rpx;
+}
+
+.ack {
+  color: #59606a;
+}
+
+.report-title {
+  margin-top: 12rpx;
+  color: #17191c;
+  font-size: 31rpx;
+  font-weight: 600;
+}
+
+.report-period,
+.report-summary {
+  margin-top: 10rpx;
+  color: #6b6f76;
+  font-size: 25rpx;
+  line-height: 1.55;
+}
+
+.report-summary {
+  color: #34383e;
+}

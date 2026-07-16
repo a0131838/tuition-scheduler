@@ -1,4 +1,5 @@
 import { academicRiskLabel } from "@/lib/academic-management";
+import { careReportParentAccessAllowed } from "@/lib/care-reports";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
 import {
   compactParentProgressText,
@@ -51,7 +52,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
   const upcomingTo = new Date(week.end.getTime() + 21 * 24 * 60 * 60 * 1000);
   const canViewSchedule = auth.link.canViewSchedule;
   const canViewFeedback = auth.link.canViewFeedback;
-  const isFullCare = student.servicePlanType === "FULL_CARE";
+  const hasManagedCare = student.servicePlanType === "FULL_CARE" || student.servicePlanType === "ACADEMIC_MANAGEMENT";
 
   const [sessions, tickets, careEngagement] = await Promise.all([
     canViewSchedule
@@ -100,14 +101,29 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       orderBy: { updatedAt: "desc" },
       take: 30,
     }),
-    isFullCare
+    hasManagedCare
       ? prisma.careEngagement.findFirst({
           where: { studentId, status: "ACTIVE" },
           select: {
             id: true,
+            programType: true,
             startDate: true,
             nextReportDueAt: true,
             caseOwner: { select: { name: true } },
+            universityProfile: true,
+            reports: {
+              where: { status: "PUBLISHED" },
+              select: {
+                id: true,
+                status: true,
+                reportType: true,
+                periodLabel: true,
+                title: true,
+                publishedAt: true,
+              },
+              orderBy: { publishedAt: "desc" },
+              take: 12,
+            },
             activities: {
               where: {
                 publicationStatus: "PUBLISHED",
@@ -220,6 +236,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
   );
 
   const service = parentServicePlanCopy(student.servicePlanType);
+  const visibleReports = (careEngagement?.reports ?? []).filter((report) => careReportParentAccessAllowed({
+    status: report.status,
+    engagement: {
+      programType: careEngagement?.programType ?? "PRE_UNIVERSITY_CARE",
+      universityProfile: careEngagement?.universityProfile ?? null,
+    },
+  }));
   return ok({
     student: {
       id: student.id,
@@ -254,6 +277,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       startDate: careEngagement?.startDate ? formatBusinessDateOnly(careEngagement.startDate) : null,
       nextReportDue: careEngagement?.nextReportDueAt ? formatBusinessDateOnly(careEngagement.nextReportDueAt) : null,
       publishedActivityCount: careEngagement?.activities.length ?? 0,
+      publishedReportCount: visibleReports.length,
+      latestReport: visibleReports[0] ? {
+        id: visibleReports[0].id,
+        reportType: visibleReports[0].reportType,
+        periodLabel: visibleReports[0].periodLabel,
+        title: visibleReports[0].title,
+        publishedAt: visibleReports[0].publishedAt?.toISOString() ?? null,
+      } : null,
     },
     parentActions,
     timeline: sortParentProgressTimeline([...careTimeline, ...feedbackTimeline, ...requestTimeline, ...lessonTimeline]),

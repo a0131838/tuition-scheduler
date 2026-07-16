@@ -89,6 +89,22 @@ enum CarePublicationStatus {
   REVOKED
 }
 
+enum CareReportType {
+  MONTHLY
+  MILESTONE
+  INCIDENT
+  TERM
+}
+
+enum CareReportStatus {
+  DRAFT
+  SUBMITTED
+  RETURNED
+  APPROVED
+  PUBLISHED
+  REVOKED
+}
+
 enum CareTaskStatus {
   OPEN
   IN_PROGRESS
@@ -948,6 +964,7 @@ model Student {
   careActivities             CareActivity[]
   careTasks                  CareTask[]
   careAttachments            CareAttachment[]
+  careReports                CareReport[]
 
   @@index([sourceChannelId])
   @@index([studentTypeId])
@@ -1152,6 +1169,12 @@ model User {
   careAttachmentsUploaded     CareAttachment[]           @relation("CareAttachmentUploadedBy")
   careAttachmentsArchived     CareAttachment[]           @relation("CareAttachmentArchivedBy")
   careUniversityConsents      CareUniversityProfile[]    @relation("CareUniversityConsentRecordedBy")
+  careReportsPrepared         CareReport[]                @relation("CareReportPreparedBy")
+  careReportsSubmitted        CareReport[]                @relation("CareReportSubmittedBy")
+  careReportsReviewed         CareReport[]                @relation("CareReportReviewedBy")
+  careReportsApproved         CareReport[]                @relation("CareReportApprovedBy")
+  careReportsPublished        CareReport[]                @relation("CareReportPublishedBy")
+  careReportsRevoked          CareReport[]                @relation("CareReportRevokedBy")
 }
 
 model CareEngagement {
@@ -1184,6 +1207,7 @@ model CareEngagement {
   tasks             CareTask[]
   attachments       CareAttachment[]
   universityProfile CareUniversityProfile?
+  reports           CareReport[]
 
   @@index([status, caseOwnerUserId, nextReportDueAt])
   @@index([studentId, status])
@@ -1298,6 +1322,7 @@ model CareActivity {
   updatedBy   User             @relation("CareActivityUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Restrict)
   tasks       CareTask[]
   attachments CareAttachment[]
+  reportLinks CareReportActivity[]
 
   @@index([engagementId, occurredAt])
   @@index([studentId, publicationStatus, occurredAt])
@@ -1370,11 +1395,114 @@ model CareAttachment {
   task       CareTask?      @relation(fields: [taskId], references: [id], onDelete: SetNull)
   uploadedBy User           @relation("CareAttachmentUploadedBy", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
   archivedBy User?          @relation("CareAttachmentArchivedBy", fields: [archivedByUserId], references: [id], onDelete: SetNull)
+  reportLinks CareReportAttachment[]
 
   @@index([engagementId, archivedAt, createdAt])
   @@index([studentId, category, occurredAt])
   @@index([activityId])
   @@index([taskId])
+}
+
+model CareReport {
+  id                 String           @id @default(uuid())
+  studentId          String
+  engagementId       String
+  reportType         CareReportType
+  status             CareReportStatus @default(DRAFT)
+  periodLabel        String
+  periodStart        DateTime
+  periodEnd          DateTime
+  title              String
+  riskLevel          CareRiskLevel     @default(LOW)
+  overallSummary     String
+  academicSummary    String?
+  schoolSummary      String?
+  lifeSummary        String?
+  riskSummary        String?
+  actionsCompleted   String
+  evidenceSummary    String?
+  nextPlan           String
+  studentActions     String?
+  parentActions      String?
+  internalNote       String?
+  sourceSnapshotJson Json?
+  preparedByUserId   String
+  submittedAt        DateTime?
+  submittedByUserId  String?
+  reviewedAt         DateTime?
+  reviewedByUserId   String?
+  reviewNote         String?
+  approvedAt         DateTime?
+  approvedByUserId   String?
+  publishedAt        DateTime?
+  publishedByUserId  String?
+  revokedAt          DateTime?
+  revokedByUserId    String?
+  version            Int              @default(1)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  student         Student        @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  engagement      CareEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  preparedBy      User           @relation("CareReportPreparedBy", fields: [preparedByUserId], references: [id], onDelete: Restrict)
+  submittedBy     User?          @relation("CareReportSubmittedBy", fields: [submittedByUserId], references: [id], onDelete: SetNull)
+  reviewedBy      User?          @relation("CareReportReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  approvedBy      User?          @relation("CareReportApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  publishedBy     User?          @relation("CareReportPublishedBy", fields: [publishedByUserId], references: [id], onDelete: SetNull)
+  revokedBy       User?          @relation("CareReportRevokedBy", fields: [revokedByUserId], references: [id], onDelete: SetNull)
+  activityLinks   CareReportActivity[]
+  attachmentLinks CareReportAttachment[]
+  views           CareReportView[]
+
+  @@unique([engagementId, reportType, periodStart, periodEnd])
+  @@index([studentId, status, periodEnd])
+  @@index([engagementId, createdAt])
+  @@index([status, submittedAt])
+}
+
+model CareReportActivity {
+  id         String   @id @default(uuid())
+  reportId   String
+  activityId String
+  createdAt  DateTime @default(now())
+
+  report   CareReport   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  activity CareActivity @relation(fields: [activityId], references: [id], onDelete: Restrict)
+
+  @@unique([reportId, activityId])
+  @@index([activityId])
+}
+
+model CareReportAttachment {
+  id           String   @id @default(uuid())
+  reportId     String
+  attachmentId String
+  createdAt    DateTime @default(now())
+
+  report     CareReport     @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  attachment CareAttachment @relation(fields: [attachmentId], references: [id], onDelete: Restrict)
+
+  @@unique([reportId, attachmentId])
+  @@index([attachmentId])
+}
+
+model CareReportView {
+  id                  String   @id @default(uuid())
+  reportId            String
+  parentId            String
+  firstViewedAt       DateTime @default(now())
+  lastViewedAt        DateTime @default(now())
+  viewCount           Int      @default(1)
+  acknowledgedAt      DateTime?
+  acknowledgementNote String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  report CareReport    @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  parent ParentAccount @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@unique([reportId, parentId])
+  @@index([parentId, lastViewedAt])
 }
 
 model UserWorkspaceAccess {
@@ -1550,6 +1678,7 @@ model ParentAccount {
   sessions      ParentPortalSession[]
   audits        ParentPortalAudit[]
   notifications MiniappNotificationOutbox[]
+  careReportViews CareReportView[]
 
   @@index([phone])
   @@index([wechatUnionId])

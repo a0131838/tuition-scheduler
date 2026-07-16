@@ -1,0 +1,22 @@
+<view class="page">
+  <view class="top">
+    <view class="eyebrow">学生托管服务</view>
+    <view class="title">进展报告</view>
+    <view class="subtitle">由服务负责人整理、审核后正式发布。</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="empty">正在加载...</view>
+  <view wx:elif="{{error}}" class="empty">{{error}}</view>
+  <block wx:elif="{{items.length}}">
+    <view class="report-row" wx:for="{{items}}" wx:key="id" data-id="{{item.id}}" bindtap="openReport">
+      <view class="report-meta">
+        <text class="report-type">{{item.typeLabel}}</text>
+        <text class="ack">{{item.acknowledged ? "已确认" : "待确认"}}</text>
+      </view>
+      <view class="report-title">{{item.title}}</view>
+      <view class="report-period">{{item.periodStartText}} - {{item.periodEndText}}</view>
+      <view class="report-summary">{{item.overallSummary}}</view>
+    </view>
+  </block>
+  <view wx:else class="empty">暂无已发布的报告</view>
+</view>

@@ -61,6 +61,15 @@
       </view>
     </view>
 
+    <view class="report-band" wx:if="{{care.active}}" bindtap="goCareReports">
+      <view>
+        <view class="label">正式进展报告</view>
+        <view class="report-title">{{care.latestReport ? care.latestReport.title : "等待服务团队发布"}}</view>
+        <view class="section-note" wx:if="{{care.latestReport}}">{{care.latestReport.periodLabel}} · 已发布 {{care.publishedReportCount}} 份</view>
+      </view>
+      <view class="report-arrow">›</view>
+    </view>
+
     <view class="parent-actions" wx:if="{{parentActions.length}}">
       <view class="section-title">需要家长配合</view>
       <view class="action-row" wx:for="{{parentActions}}" wx:key="id">

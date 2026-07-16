@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-16-r253
+
+- Release ID: `2026-07-16-r253`
+- Date/Time (Asia/Shanghai): `2026-07-16`
+- Deployment status: `READY` locally; production deployment pending
+- Scope: add an isolated formal progress-report workflow for care projects, with evidence-backed drafts, review/approval/publication locking, parent PDF access and parent acknowledgement.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260716090000_add_care_formal_reports/migration.sql`
+  - `lib/care-reports.ts`
+  - `lib/care-report-validation.ts`
+  - `lib/care-report-pdf.ts`
+  - `lib/parent-care-reports.ts`
+  - `app/admin/care/[id]/*`
+  - `app/api/admin/care/reports/[reportId]/pdf/route.ts`
+  - `app/api/miniapp/students/[studentId]/care-reports/*`
+  - `miniapp/boss-academic-parent/pages/care-reports/*`
+  - `miniapp/boss-academic-parent/pages/care-report-detail/*`
+- Risk impact (if any): Medium and isolated to CARE reports. The additive migration creates only report-related enums and four new tables. It does not alter existing Student, Session, Attendance, CoursePackage, PackageTxn, Invoice, Receipt, payroll, Partner or PartnerSettlement data. Reports require a legal state transition, optimistic version match and source evidence; only approved reports can be published, and parents can read only published reports through their existing `canViewReports` permission. University-stage parent access additionally requires adult-student consent for `formal_reports`. Internal notes are excluded from parent APIs and PDFs.
+- Verification: Prisma schema validation/generation, TypeScript, all 72 backend tests, six focused report/migration tests, all miniapp JavaScript syntax checks, the 30-page miniapp release audit, the full 193-page production build and `git diff --check` pass locally.
+- Rollback point: `eb91031` (`2026-07-14-r252` documentation head).
+
+---
+
 ## 2026-07-14-r252
 
 - Release ID: `2026-07-14-r252`

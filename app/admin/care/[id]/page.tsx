@@ -1,4 +1,6 @@
 import { requireCareEngagementAccess } from "@/lib/care-access";
+import { CARE_REPORT_STATUS_LABELS, CARE_REPORT_TYPE_OPTIONS, reportTypeLabel } from "@/lib/care-report-validation";
+import { createCareReportDraft } from "@/lib/care-reports";
 import {
   addCareActivity,
   addCarePlan,
@@ -117,6 +119,27 @@ export default async function CareDetailPage({
         actionPlan: formData.get("actionPlan"),
       }),
     );
+  }
+
+  async function reportAction(formData: FormData) {
+    "use server";
+    const current = await requireCareEngagementAccess(id);
+    let reportId = "";
+    try {
+      const report = await createCareReportDraft({
+        actor: current,
+        engagementId: id,
+        reportType: formData.get("reportType"),
+        periodLabel: formData.get("periodLabel"),
+        periodStart: formData.get("periodStart"),
+        periodEnd: formData.get("periodEnd"),
+      });
+      reportId = report.id;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Report draft failed";
+      redirect(`/admin/care/${encodeURIComponent(id)}?err=${encodeURIComponent(message)}`);
+    }
+    redirect(`/admin/care/${encodeURIComponent(id)}/reports/${encodeURIComponent(reportId)}?msg=${encodeURIComponent("Report draft created")}`);
   }
 
   async function configAction(formData: FormData) {
@@ -264,6 +287,15 @@ export default async function CareDetailPage({
           orderBy: [{ createdAt: "desc" }],
           take: 100,
         },
+        reports: {
+          include: {
+            preparedBy: { select: { name: true } },
+            approvedBy: { select: { name: true } },
+            _count: { select: { views: true } },
+          },
+          orderBy: [{ periodEnd: "desc" }, { createdAt: "desc" }],
+          take: 24,
+        },
         universityProfile: {
           include: { consentRecordedBy: { select: { name: true } } },
         },
@@ -294,6 +326,10 @@ export default async function CareDetailPage({
   const activeAttachments = engagement.attachments.filter((attachment) => !attachment.archivedAt);
   const archivedAttachments = engagement.attachments.filter((attachment) => attachment.archivedAt);
   const nowInput = formatBusinessDateTime(new Date()).replace(" ", "T");
+  const currentDate = new Date();
+  const currentMonthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+  const currentMonthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+  const currentMonthLabel = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
 
   return (
     <main className={styles.page}>
@@ -326,6 +362,7 @@ export default async function CareDetailPage({
         <div className={styles.metric}><strong>{engagement.plans.length}</strong><span className={styles.muted}>{t(lang, "Plans", "阶段计划")}</span></div>
         <div className={styles.metric}><strong>{engagement.members.length}</strong><span className={styles.muted}>{t(lang, "Team", "责任成员")}</span></div>
         <div className={styles.metric}><strong>{activeAttachments.length}</strong><span className={styles.muted}>{t(lang, "Evidence", "证据文件")}</span></div>
+        <div className={styles.metric}><strong>{engagement.reports.length}</strong><span className={styles.muted}>{t(lang, "Reports", "正式报告")}</span></div>
       </div>
 
       <section className={styles.section}>
@@ -425,6 +462,43 @@ export default async function CareDetailPage({
           ) : null}
         </section>
       ) : null}
+
+      <section className={styles.section}>
+        <div className={styles.timelineHead}>
+          <div>
+            <h2>{t(lang, "Formal reports", "正式报告")}</h2>
+            <div className={styles.muted}>{t(lang, "Draft from real service records, then submit for review before parents can see it.", "从真实服务记录生成草稿，提交审核后才能向家长发布。")}</div>
+          </div>
+          <span className={styles.badge}>{engagement.reports.length}</span>
+        </div>
+        <details className={styles.details}>
+          <summary>{t(lang, "Create report draft", "创建报告草稿")}</summary>
+          <form action={reportAction} className={styles.formGrid}>
+            <label className={styles.label}>{t(lang, "Report type", "报告类型")}<select className={styles.select} name="reportType" defaultValue="MONTHLY">{CARE_REPORT_TYPE_OPTIONS.map((item) => <option key={item.value} value={item.value}>{lang === "EN" ? item.en : item.zh}</option>)}</select></label>
+            <label className={styles.label}>{t(lang, "Period label", "报告期间")}<input className={styles.field} name="periodLabel" defaultValue={currentMonthLabel} maxLength={120} required /></label>
+            <label className={styles.label}>{t(lang, "Start", "开始日期")}<input className={styles.field} name="periodStart" type="date" defaultValue={formatBusinessDateOnly(currentMonthStart)} required /></label>
+            <label className={styles.label}>{t(lang, "End", "结束日期")}<input className={styles.field} name="periodEnd" type="date" defaultValue={formatBusinessDateOnly(currentMonthEnd)} required /></label>
+            <button className={styles.button} type="submit">{t(lang, "Generate editable draft", "生成可编辑草稿")}</button>
+          </form>
+        </details>
+        <div className={styles.rows}>
+          {engagement.reports.map((report) => (
+            <article className={styles.fileRow} key={report.id}>
+              <div>
+                <Link className={styles.rowTitle} href={`/admin/care/${encodeURIComponent(id)}/reports/${encodeURIComponent(report.id)}`}>{report.title}</Link>
+                <div className={styles.muted}>{reportTypeLabel(report.reportType, lang === "EN")} · {formatBusinessDateOnly(report.periodStart)} - {formatBusinessDateOnly(report.periodEnd)} · {report.preparedBy.name}</div>
+                {report.approvedBy ? <div className={styles.muted}>{t(lang, "Approved by", "审核人")}: {report.approvedBy.name}</div> : null}
+              </div>
+              <div className={styles.toolbar}>
+                <span className={styles.badge} data-tone={report.status === "PUBLISHED" ? "active" : report.status === "RETURNED" || report.status === "REVOKED" ? "risk" : "neutral"}>{CARE_REPORT_STATUS_LABELS[report.status][lang === "EN" ? "en" : "zh"]}</span>
+                {report.status === "PUBLISHED" ? <span className={styles.badge}>{t(lang, `${report._count.views} parent views`, `家长查看 ${report._count.views}`)}</span> : null}
+                <Link className={styles.buttonSecondary} href={`/admin/care/${encodeURIComponent(id)}/reports/${encodeURIComponent(report.id)}`}>{t(lang, "Open", "打开")}</Link>
+              </div>
+            </article>
+          ))}
+          {engagement.reports.length === 0 ? <div className={styles.muted}>{t(lang, "No formal reports yet.", "暂无正式报告。")}</div> : null}
+        </div>
+      </section>
 
       <div className={styles.layout}>
         <div className={styles.stack}>

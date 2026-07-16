@@ -185,6 +185,29 @@
   - post-deploy database check confirmed five cancelled Tickets, five cancellation audit rows and zero open employee-miniapp scheduling Tickets
   - task doc: `docs/tasks/TASK-20260714-miniapp-scheduling-read-only-entry.md`
 
+## 2026-07-16-r253 Ready
+
+- Scope: formal care progress reports for the pre-university-first service model, while retaining consent-aware lightweight university reporting.
+- Business impact:
+  - care owners can create monthly, milestone, significant-event and term report drafts from real lesson, feedback, care-update, task and evidence sources
+  - reports follow draft, review, approval and publication states; published content is locked and can only be revoked with a reason
+  - parents with the existing report permission can view published reports, open a PDF and confirm receipt in the miniapp
+  - management can see parent view count, last view and acknowledgement status
+  - university reports remain hidden unless the adult student authorized the `formal_reports` section
+- Safety:
+  - additive migration creates four isolated report tables and no protected workflow table is changed
+  - report write actions verify the current care project, actor access, reviewer role and optimistic version
+  - generated placeholders and reports without evidence cannot be submitted
+  - internal notes are never serialized to the parent interface or PDF
+- Validation before deploy:
+  - Prisma validation/generation and TypeScript pass
+  - backend tests pass `72/72`; focused report and migration tests pass `6/6`
+  - miniapp JavaScript syntax and 30-page release audit pass
+  - production build passes with 193 pages
+  - `git diff --check` passes
+- Deployment status: local READY only; production migration, commit, push and server deployment are pending.
+- Task doc: `docs/tasks/TASK-20260716-care-formal-reports.md`
+
 ## 2026-07-14-r250 Live
 
 - Scope: add formal Credit Notes for partner invoices without changing the existing invoice, receipt or settlement stores.

@@ -57,6 +57,10 @@ Page({
     wx.navigateTo({ url: "/pages/feedbacks/feedbacks" });
   },
 
+  goCareReports() {
+    wx.navigateTo({ url: "/pages/care-reports/care-reports" });
+  },
+
   goRequests() {
     wx.switchTab({ url: "/pages/requests/requests" });
   },

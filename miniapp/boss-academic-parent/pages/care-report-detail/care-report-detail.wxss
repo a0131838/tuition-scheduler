@@ -1,0 +1,38 @@
+.report-head,
+.detail-section {
+  margin-bottom: 20rpx;
+  padding: 28rpx;
+  border: 1rpx solid #e2e5e9;
+  background: #fff;
+}
+
+.detail-title {
+  margin-top: 10rpx;
+  color: #17191c;
+  font-size: 36rpx;
+  font-weight: 700;
+}
+
+.detail-meta {
+  margin-top: 10rpx;
+  color: #6b6f76;
+  font-size: 24rpx;
+}
+
+.section-body {
+  margin-top: 14rpx;
+  color: #34383e;
+  font-size: 28rpx;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.secondary {
+  margin-top: 18rpx;
+}
+
+.acknowledged {
+  padding: 26rpx;
+  color: #39734d;
+  text-align: center;
+}

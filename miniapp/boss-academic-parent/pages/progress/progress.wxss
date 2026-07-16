@@ -308,3 +308,26 @@
   border-top-color: #f0c8af;
   color: #764429;
 }
+.report-band {
+  margin-top: 24rpx;
+  padding: 28rpx;
+  border: 1rpx solid #e2e5e9;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.report-title {
+  margin-top: 8rpx;
+  color: #17191c;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.report-arrow {
+  flex: 0 0 auto;
+  margin-left: 20rpx;
+  color: #ec5e0a;
+  font-size: 48rpx;
+}

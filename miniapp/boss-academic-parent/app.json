@@ -22,6 +22,8 @@
     "pages/students/students",
     "pages/home/home",
     "pages/progress/progress",
+    "pages/care-reports/care-reports",
+    "pages/care-report-detail/care-report-detail",
     "pages/schedule/schedule",
     "pages/feedbacks/feedbacks",
     "pages/finance/finance",

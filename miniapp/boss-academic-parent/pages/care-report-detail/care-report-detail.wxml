@@ -1,0 +1,21 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="empty">正在读取报告...</view>
+  <view wx:elif="{{error}}" class="empty">{{error}}</view>
+  <block wx:else>
+    <view class="report-head">
+      <view class="label">{{report.periodLabel}}</view>
+      <view class="detail-title">{{report.title}}</view>
+      <view class="detail-meta">{{report.periodStartText}} - {{report.periodEndText}}</view>
+      <view class="detail-meta">审核：{{report.approvedByName || "服务团队"}} · {{report.publishedAtText}}</view>
+    </view>
+
+    <view class="detail-section" wx:for="{{sections}}" wx:key="title">
+      <view class="section-title">{{item.title}}</view>
+      <view class="section-body">{{item.body}}</view>
+    </view>
+
+    <button class="btn" bindtap="openPdf">查看 PDF</button>
+    <button class="btn secondary" wx:if="{{!report.acknowledged}}" loading="{{acknowledging}}" bindtap="acknowledge">确认收到</button>
+    <view class="acknowledged" wx:else>已确认收到</view>
+  </block>
+</view>
