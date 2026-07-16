@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-16-r256`
 - Date/Time (Asia/Shanghai): `2026-07-16`
-- Deployment status: `READY` for guarded deployment at the current `r256` release commit
+- Deployment status: `LIVE` at runtime commit `4885bab`
 - Scope: complete the pre-university-first Full Care V1 before operators configure students one by one, adding a quality dashboard, risk-response SLA, backup coverage and handover, parent report Q&A, and reviewed service-value/continuation records.
 - Key files:
   - `prisma/schema.prisma`
@@ -32,8 +32,8 @@ This file is the single source of truth for what changed in production.
   - `miniapp/boss-academic-parent/pages/care-report-detail/*`
   - `docs/tasks/TASK-20260716-care-complete-v1.md`
 - Risk impact (if any): Medium and isolated to CARE operations. The additive migration creates four new control tables and supporting enums; it does not alter Student, Session, Attendance, CoursePackage, PackageTxn, PartnerSettlement, Invoice, Receipt or payroll tables. Existing care projects and real students are not automatically changed. Parent questions require an existing published report and `canViewReports`; internal notes, risk facts and commercial notes are not serialized to parent APIs.
-- Verification: Prisma validation/generation, TypeScript, all 79 backend tests, migration safety, the 30-page miniapp release audit, the full 194-page production build and `git diff --check` pass. Production verification and SOP screenshot capture remain pending guarded deployment.
-- Rollback point: `ca50f71` documentation head for live runtime `d926d5d` (`2026-07-16-r255`).
+- Verification: Prisma validation/generation, TypeScript, all 79 backend tests, migration safety, the 30-page miniapp release audit, the full 194-page production build and `git diff --check` pass. Production has 107 completed migrations; local, GitHub and server are aligned at `4885bab`; PM2 is online with zero restarts and `/admin/login` returns `200`. Authenticated desktop and 390px mobile checks passed the care home, quality dashboard, project, report and operations pages without application errors or horizontal overflow. Parent report/question APIs passed anonymous `401`, authorized report/question/answer/closure `200`, and internal-note exclusion. The detailed SOP rendered as 22 populated landscape pages with verified text and contact-sheet review. Temporary student, parent, care records and both session types were cleaned to zero.
+- Rollback point: `ca50f71` documentation head for previous live runtime `d926d5d` (`2026-07-16-r255`).
 
 ---
 

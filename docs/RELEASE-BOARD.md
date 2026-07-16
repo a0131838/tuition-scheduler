@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release remains `2026-07-16-r255` at runtime commit `d926d5d` until the guarded `r256` deployment completes. `r256` is ready with the Full Care quality dashboard, risk SLA, backup handover, parent report Q&A and service-value review.
+- Current production release: `2026-07-16-r256` at runtime commit `4885bab` with the Full Care quality dashboard, risk SLA, backup handover, parent report Q&A and service-value review.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
@@ -22,7 +22,7 @@
 
 ## Open Risks
 
-- Full-care-complete-V1 release risk: `2026-07-16-r256` is ready but not yet live. It adds isolated CARE control tables and no automatic real-student changes. Before staff enroll students one by one, production must pass migration verification, authenticated desktop/mobile checks, parent question permission/closure checks, temporary QA cleanup and detailed SOP review.
+- Full-care-complete-V1 monitoring: `2026-07-16-r256` is live and isolated from teaching and finance. Migration, desktop/mobile pages, parent question permission/closure, privacy, QA cleanup and 22-page SOP checks pass. Staff should now use the SOP to configure students one by one; no real student was automatically enrolled. Monitor the first real risk escalation, backup handover, parent question and service review instead of bulk-enabling students.
 
 - Finance-documents Credit Note risk: `2026-07-16-r253` is read-side only, but Finance should confirm the first live screen and Excel view use SGD 18,270 as the adjusted and remaining amount for `RGT-202606-0019`. Issued notes affect adjusted balances; void notes are audit-only; drafts stay excluded.
 - Formal-care-report rollout risk: `2026-07-16-r255` is isolated from teaching and finance, but the first real report should be reviewed for source quality, parent wording and acknowledgement before expanding the pilot beyond 5 to 10 selected students.
@@ -172,6 +172,17 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Keep the GitHub SSH identity and `ssh.github.com:443` mapping available on each release machine.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-07-16-r256 Live
+
+- Scope: complete the planned pre-university Full Care V1 before student-by-student operational rollout.
+- Business impact: quality exception dashboard; 30-minute/2-hour/24-hour/72-hour risk response SLA; guarded risk status and resolution evidence; backup coverage and handover; parent report questions linked to 24-hour staff tasks; reviewed service-value and continuation records.
+- Safety: additive migration only creates four isolated CARE control tables. Existing students, care projects, teaching, schedules, attendance, packages, partner settlement, invoices, receipts and payroll are not automatically updated.
+- Validation: 79 backend tests, 194-page production build, 30-page miniapp audit, 107 production migrations, authenticated desktop/mobile browser checks, parent API privacy/permission/closure checks, PM2 online with zero restarts and HTTP 200.
+- QA cleanup: temporary training student, parent, engagement, report, question, risk, coverage, review, admin session and parent session all returned to zero residue.
+- Protected state after cleanup: 89 students, 78 packages, 1,916 sessions and 34 partner settlements. Attendance is 1,743 because Li Hexuan and Huang Zihao were normally marked present at 12:21 and 12:32 Singapore time; unrelated to this release. CARE state is 2 engagements, 0 plans, 1 activity, 0 tasks/attachments/views/questions/risks/coverage/reviews, and 1 real Louis report draft created at 13:14 Singapore time, which was preserved.
+- SOP: `docs/SOP-教务-全托管完整操作流程-培训版-20260716.html`; validated PDF is 22 A4 landscape pages with real production screenshots and red callouts.
+- Task doc: `docs/tasks/TASK-20260716-care-complete-v1.md`
 
 ## 2026-07-16-r255 Live
 

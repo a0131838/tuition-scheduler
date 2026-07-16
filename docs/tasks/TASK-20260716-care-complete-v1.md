@@ -30,4 +30,12 @@ Complete the planned pre-university Full Care V1 before operators enroll student
 - `npm run build` (194 pages)
 - `npm run miniapp:audit-release` (30 pages, passed)
 
-Production deployment, browser acceptance, SOP screenshots and QA cleanup are recorded after release.
+## Production Acceptance
+
+- Guarded release completed at aligned local/GitHub/server commit `4885bab`.
+- Production reports 107 completed migrations, PM2 online with zero restarts, and `/admin/login` HTTP 200.
+- Authenticated care home, quality dashboard, project, report and operations pages passed desktop and 390px mobile checks without application errors or horizontal overflow.
+- Parent API passed anonymous 401, authorized report/question/answer/closure 200, and internal-note exclusion.
+- Detailed SOP rendered as 22 populated A4 landscape pages with real production screenshots, red callouts, text extraction checks and contact-sheet review.
+- Temporary student, parent, engagement, report, question, risk, coverage, review, admin session and parent session were removed with zero residue.
+- Existing Louis report draft and normal attendance changes were identified and preserved as real operations.

@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>SOP-教务-全托管完整操作流程-培训版-20260716</title>
+  <style>
+    @page { size: A4 landscape; margin: 14mm 12mm; }
+    :root { --ink:#172033; --muted:#596579; --line:#d8e1ea; --green:#166534; --green-bg:#f0fdf4; --amber:#a15c08; --amber-bg:#fffbeb; --red:#c52222; --red-bg:#fff5f5; --blue:#1d4ed8; --blue-bg:#eff6ff; --grey:#f6f8fa; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:#fff; font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif; }
+    .page { page-break-after:always; }
+    .page:last-child { page-break-after:auto; }
+    h1 { margin:0 0 10px; font-size:31px; line-height:1.18; letter-spacing:0; }
+    h2 { margin:0 0 10px; font-size:23px; line-height:1.25; letter-spacing:0; }
+    h3 { margin:0 0 7px; font-size:16px; }
+    p,li,td,th { font-size:13.5px; line-height:1.58; }
+    p { margin:6px 0; }
+    ul,ol { margin:7px 0 0 20px; padding:0; }
+    li { margin:4px 0; }
+    .hero,.panel,.step,.card { border:1px solid var(--line); border-radius:8px; background:#fff; break-inside:avoid; }
+    .hero { padding:24px; margin-bottom:14px; border-top:7px solid var(--green); }
+    .eyebrow { color:var(--green); font-size:13px; font-weight:900; margin-bottom:8px; }
+    .lead { color:var(--muted); font-size:15px; line-height:1.7; max-width:1040px; }
+    .panel,.step { padding:15px 17px; margin-bottom:13px; }
+    .grid-2 { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:11px; }
+    .grid-3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+    .grid-4 { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px; }
+    .card { padding:12px 14px; }
+    .card p { color:var(--muted); margin:0; }
+    .meta { margin-top:16px; }
+    .meta strong { display:block; color:var(--muted); font-size:11px; margin-bottom:4px; }
+    .meta span { font-size:15px; font-weight:800; }
+    .answer,.note,.danger,.info { padding:10px 13px; margin-top:10px; border-radius:7px; border:1px solid; font-size:13.5px; line-height:1.58; }
+    .answer { background:var(--green-bg); border-color:#9bd4ac; }
+    .answer strong { color:var(--green); }
+    .note { background:var(--amber-bg); border-color:#edc76b; }
+    .note strong { color:var(--amber); }
+    .danger { background:var(--red-bg); border-color:#efaaaa; }
+    .danger strong { color:var(--red); }
+    .info { background:var(--blue-bg); border-color:#a8c7fa; }
+    .info strong { color:var(--blue); }
+    .step-top { display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-bottom:7px; }
+    .tag { color:var(--green); font-size:12px; font-weight:900; }
+    .action { padding:9px 12px; margin-bottom:10px; background:var(--green-bg); border-left:4px solid var(--green); }
+    .action strong { color:var(--green); }
+    .shot { border:1px solid #cbd5e1; border-radius:7px; overflow:hidden; background:#fff; }
+    .shot-visual { height:82mm; display:flex; align-items:flex-start; justify-content:center; line-height:0; }
+    .shot-visual.short { height:70mm; }
+    .shot-visual.tall { height:92mm; }
+    .shot img { width:100%; height:100%; object-fit:contain; object-position:top center; }
+    .caption { padding:7px 10px; background:var(--grey); border-top:1px solid var(--line); color:var(--muted); font-size:12.5px; }
+    table { width:100%; border-collapse:collapse; margin-top:8px; }
+    th,td { padding:7px 9px; border:1px solid var(--line); vertical-align:top; }
+    th { background:var(--grey); text-align:left; }
+    .flow { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:7px; margin-top:12px; }
+    .flow div { padding:10px 8px; border:1px solid var(--line); border-top:4px solid var(--green); text-align:center; font-size:12.5px; font-weight:800; }
+    .small { color:var(--muted); font-size:12px; }
+    .checklist li { font-weight:700; }
+  </style>
+</head>
+<body>
+  <section class="page">
+    <div class="hero">
+      <div class="eyebrow">Academic Operations SOP / 教务培训流程</div>
+      <h1>全托管完整操作流程<br />从逐一启用学生到家长交付闭环</h1>
+      <p class="lead">适用于大学前学业管理与全方位托管。目标不是增加消息数量，而是用真实证据、专业判断、明确行动、正式报告和及时风险处置，让家长持续看见服务价值。</p>
+      <div class="grid-4 meta">
+        <div class="card"><strong>适用角色</strong><span>Admin / 教务 / 负责人</span></div>
+        <div class="card"><strong>系统入口</strong><span>Full Care / 全托管</span></div>
+        <div class="card"><strong>最终审核</strong><span>zhao hongwei</span></div>
+        <div class="card"><strong>版本日期</strong><span>2026-07-16</span></div>
+      </div>
+    </div>
+    <div class="answer"><strong>执行原则：</strong>系统已完整建设，接下来由管理者按学生逐一选择、配置和启用。名单不写死，不批量自动加入。</div>
+    <div class="note"><strong>截图说明：</strong>所有系统截图由 Playwright 使用临时 Admin 会话从正式站点抓取，演示学生名称明确标注“培训用”；截图与验证结束后临时学生、项目、家长和会话全部清理。</div>
+  </section>
+
+  <section class="page">
+    <div class="panel">
+      <h2>先记住：6 条不能错的规则</h2>
+      <ol>
+        <li>学生必须由管理者主动选择加入全托管，不能因为出现在候选名单中就自动建立项目。</li>
+        <li>先确认服务类型和合同范围，再勾选服务；大学前学业管理与全方位托管不能混为一套默认承诺。</li>
+        <li>“已跟进”不算交付。至少要有课程、老师反馈、学校材料、确认记录、完成结果或结构化跟进之一。</li>
+        <li>高风险与重大风险立即进入 <strong>Operations / 风险、代班与复盘</strong>，不能等到月底写报告。</li>
+        <li>正式报告必须经过 <strong>DRAFT → SUBMITTED → APPROVED → PUBLISHED</strong>，内部备注永远不发给家长。</li>
+        <li>每天先看 <strong>Quality dashboard / 质量工作台</strong>，把红色超时处理完，再做普通跟进。</li>
+      </ol>
+      <div class="danger"><strong>禁止：</strong>不要制造焦虑、夸大风险、用大量无价值打卡代替交付，也不要把未经核实的员工讨论写进家长报告。</div>
+    </div>
+    <div class="grid-3">
+      <div class="card"><h3>Jasmine</h3><p>当前总负责人、学业负责人，学校与生活事项暂代。</p></div>
+      <div class="card"><h3>zhao hongwei</h3><p>最终审核人、重大事项责任人、Jasmine 缺席时备份负责人。</p></div>
+      <div class="card"><h3>教务执行人</h3><p>按事实记录、建待办、补证据、准备草稿，不越权发布。</p></div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="panel">
+      <h2>完整闭环总览</h2>
+      <div class="flow"><div>1 选择学生</div><div>2 配置项目</div><div>3 建阶段计划</div><div>4 持续交付</div><div>5 审核月报</div><div>6 复盘续期</div></div>
+      <table>
+        <tr><th>阶段</th><th>必须产出</th><th>负责人</th><th>停止条件</th></tr>
+        <tr><td>启用前</td><td>服务类型、范围、负责人、家长权限、基线</td><td>管理者</td><td>合同范围不清或负责人未确认</td></tr>
+        <tr><td>日常</td><td>跟进、待办、证据、风险事件</td><td>项目团队</td><td>事实未核实、涉及安全或越权判断</td></tr>
+        <tr><td>月度</td><td>正式报告、审核、发布、查看确认、问答</td><td>Jasmine 起草，zhao 审核</td><td>无证据、仍有占位文字、风险未处置</td></tr>
+        <tr><td>阶段/续费</td><td>服务价值复盘与下一阶段方案</td><td>负责人 + 管理者</td><td>只写工作量，没有学生结果和证据</td></tr>
+      </table>
+      <div class="info"><strong>大学阶段：</strong>保持轻量。根据授权制作每次、每月、阶段或学期报告；复杂研究生申请和就业管道目前不作为大学前教务日常流程。</div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="step">
+      <div class="step-top"><h2>步骤 1：进入全托管并选择学生</h2><span class="tag">Full Care / 全托管</span></div>
+      <div class="action"><strong>操作：</strong>管理后台进入 Full Care；先用姓名、学校或年级搜索；选择学生后才建立项目。已有项目的学生直接点击姓名进入。</div>
+      <div class="shot"><div class="shot-visual"><img src="assets/sop-教务-全托管完整V1-20260716/annotated/01-care-home.png" alt="全托管首页" /></div><div class="caption"><strong>图 1：</strong>首页同时显示学生项目和质量工作台入口。培训演示学生不是固定名单。</div></div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="panel">
+      <h2>步骤 2：创建项目前的业务判断</h2>
+      <div class="grid-2">
+        <div class="card"><h3>大学前学业管理</h3><p>以课程规划、老师反馈、学习进度、考试作业、补习和学校学业沟通为主。不要默认承诺生活现场服务。</p></div>
+        <div class="card"><h3>大学前全方位托管</h3><p>除学业外，根据合同加入医疗陪同、重要交通、寄宿家庭、假期照护、签证行政协助等。</p></div>
+      </div>
+      <h3 style="margin-top:14px">创建时逐项确认</h3>
+      <ol>
+        <li><strong>Program / 服务类型：</strong>选择与真实合同一致的项目。</li>
+        <li><strong>Service scope / 服务范围：</strong>只勾选已承诺内容；第三方费用、医疗诊断、移民法律意见和无限现场支持不自动包含。</li>
+        <li><strong>Case owner / 总负责人：</strong>当前通常为 Jasmine。</li>
+        <li><strong>Reviewer / 月报审核人：</strong>zhao hongwei。</li>
+        <li><strong>Start date / 开始日期：</strong>使用真实服务起始日，不倒填。</li>
+      </ol>
+      <div class="danger"><strong>无陪读不等于无限服务：</strong>现场支持仍按合同、风险等级、工作时间和第三方费用规则执行；不确定时先停止并让管理者确认。</div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="step">
+      <div class="step-top"><h2>步骤 3：核对项目范围与责任人</h2><span class="tag">Project overview / 项目总览</span></div>
+      <div class="action"><strong>启用前检查：</strong>项目状态、服务范围、Jasmine 的角色、zhao hongwei 的 REVIEWER / EXECUTIVE_OWNER 是否完整。</div>
+      <div class="shot"><div class="shot-visual"><img src="assets/sop-教务-全托管完整V1-20260716/annotated/04-project-overview.png" alt="项目总览" /></div><div class="caption"><strong>图 2：</strong>运营闭环、范围、负责人、正式报告和日常跟进都从学生项目页进入。</div></div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="panel">
+      <h2>步骤 4：启用前建立阶段计划</h2>
+      <table>
+        <tr><th>字段</th><th>正确写法</th><th>错误写法</th></tr>
+        <tr><td>Period / 阶段</td><td>“入学后 30 天适应期”“7 月学业稳定期”</td><td>“长期跟进”</td></tr>
+        <tr><td>Baseline / 基线</td><td>事实：当前成绩、出勤、学校反馈、已知风险</td><td>“基础一般”</td></tr>
+        <tr><td>Goals / 目标</td><td>明确结果和时间，例如两次测评按时完成</td><td>“提升成绩”</td></tr>
+        <tr><td>Success criteria / 标准</td><td>可以检查的完成条件</td><td>“家长满意”</td></tr>
+        <tr><td>Action plan / 行动</td><td>谁、何时、做什么、证据在哪里</td><td>“持续关注”</td></tr>
+      </table>
+      <div class="answer"><strong>启用条件：</strong>负责人明确、范围明确、阶段目标明确、家长权限明确，并且团队有能力持续维护。否则保持 DRAFT，不要为赶进度强行 ACTIVE。</div>
+      <div class="note"><strong>每日打卡：</strong>只在刚到新加坡、失联、健康/行为/住宿高风险或合同明确约定时短期启用；记录目的、频率、开始和结束日期，风险解除后降频。</div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="panel">
+      <h2>步骤 5：日常交付怎么记录</h2>
+      <div class="grid-3">
+        <div class="card"><h3>Update / 跟进</h3><p>写事实、专业判断、已采取行动、结果验证、下一步和负责人。</p></div>
+        <div class="card"><h3>Task / 待办</h3><p>凡是还没完成的动作，都要有负责人和截止时间；完成时写结果证据。</p></div>
+        <div class="card"><h3>Evidence / 证据</h3><p>上传学校邮件、会议纪要、成绩、确认文件等；敏感原件设为内部。</p></div>
+      </div>
+      <h3 style="margin-top:14px">一条合格跟进的模板</h3>
+      <ol>
+        <li><strong>Facts / 事实：</strong>谁在什么时候提供了什么信息。</li>
+        <li><strong>Judgement / 判断：</strong>正常、需观察还是需要介入，理由是什么。</li>
+        <li><strong>Action / 行动：</strong>团队已经做了什么。</li>
+        <li><strong>Result / 结果：</strong>对方是否确认、事情是否真的完成。</li>
+        <li><strong>Next / 下一步：</strong>负责人、截止时间和下一证据节点。</li>
+      </ol>
+      <div class="danger"><strong>家长可见摘要：</strong>必须单独写经过核实的公开版；不要直接复制内部备注、医疗原件、寄宿家庭隐私或学生依法/依约应保密的信息。</div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="step">
+      <div class="step-top"><h2>步骤 6：生成正式月报</h2><span class="tag">Formal reports / 正式报告</span></div>
+      <div class="action"><strong>操作：</strong>项目页展开 Create report draft；选 MONTHLY、报告期间、开始和结束日期；系统从课程、反馈、跟进和证据形成可编辑草稿。</div>
+      <div class="shot"><div class="shot-visual short"><img src="assets/sop-教务-全托管完整V1-20260716/raw-pw/05-formal-reports.png" alt="正式报告入口" /></div><div class="caption"><strong>图 3：</strong>已发布报告显示状态、家长查看人数和打开入口。</div></div>
+      <div class="note"><strong>系统会阻止：</strong>没有任何真实来源、仍保留“请负责人补充”占位文字、必填结论或下一步为空的报告提交。</div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="step">
+      <div class="step-top"><h2>步骤 7：写成家长真正需要的报告</h2><span class="tag">Conclusion → Evidence → Action</span></div>
+      <div class="action"><strong>每份报告必须回答：</strong>现在怎样、证据是什么、哪些正常/有风险、团队做了什么、接下来谁在何时做什么、家长是否需要配合。</div>
+      <div class="shot"><div class="shot-visual"><img src="assets/sop-教务-全托管完整V1-20260716/annotated/06-report-overview.png" alt="家长正式报告" /></div><div class="caption"><strong>图 4：</strong>家长看到正式栏目和审核后的 PDF；内部备注不进入页面、API 或 PDF。</div></div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="panel">
+      <h2>步骤 8：审核、发布和撤回</h2>
+      <table>
+        <tr><th>状态</th><th>谁操作</th><th>允许动作</th><th>注意</th></tr>
+        <tr><td>DRAFT / RETURNED</td><td>负责人</td><td>编辑并提交</td><td>退回后先读 Review note</td></tr>
+        <tr><td>SUBMITTED</td><td>zhao hongwei / 指定审核人</td><td>批准或退回</td><td>退回必须写原因</td></tr>
+        <tr><td>APPROVED</td><td>审核人</td><td>发布给家长</td><td>发布前再次核对家长可见内容</td></tr>
+        <tr><td>PUBLISHED</td><td>审核人</td><td>下载 PDF 或撤回</td><td>已发布内容不能直接改写</td></tr>
+        <tr><td>REVOKED</td><td>管理者</td><td>保留审计</td><td>修正应建立新报告，不覆盖历史</td></tr>
+      </table>
+      <div class="answer"><strong>发布后不是结束：</strong>质量工作台会继续追踪 3 天未查看、7 天未确认和家长提问。</div>
+      <div class="danger"><strong>大学生：</strong>报告发布和读取还必须满足学生授权为 GRANTED/LIMITED，且授权栏目包含 formal_reports；未授权时不能用家长焦虑作为越权理由。</div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="step">
+      <div class="step-top"><h2>步骤 9：家长报告问答闭环</h2><span class="tag">Parent miniapp + Admin reply</span></div>
+      <div class="action"><strong>家长端：</strong>打开已发布报告 → 在“报告问答”输入问题 → 提交。系统自动给总负责人建立 HIGH、24 小时到期待办。</div>
+      <div class="shot"><div class="shot-visual short"><img src="assets/sop-教务-全托管完整V1-20260716/annotated/07-parent-questions.png" alt="家长问答管理端" /></div><div class="caption"><strong>图 5：</strong>管理端在报告底部正式回复；回复后关联待办自动完成，家长查看后可点“问题已解决”。</div></div>
+      <div class="danger"><strong>回复标准：</strong>只回答已核实信息；需要内部确认时先建立待办，不要猜。紧急安全风险不能只在问答里回复，必须同时升级风险。</div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="step">
+      <div class="step-top"><h2>步骤 10：每天先看质量工作台</h2><span class="tag">Quality dashboard / 质量工作台</span></div>
+      <div class="action"><strong>建议顺序：</strong>响应超时 → 重大/高风险 → 家长提问超时 → 报告逾期/待审核 → 逾期待办 → 未查看/未确认 → 代班与复盘。</div>
+      <div class="shot"><div class="shot-visual"><img src="assets/sop-教务-全托管完整V1-20260716/annotated/02-quality-dashboard.png" alt="质量工作台" /></div><div class="caption"><strong>图 6：</strong>工作台只列异常和需要行动的事项，不要求员工在多个项目间逐个寻找。</div></div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="step">
+      <div class="step-top"><h2>步骤 11：风险升级与响应时限</h2><span class="tag">Operations → Risk escalation</span></div>
+      <div class="shot"><div class="shot-visual tall"><img src="assets/sop-教务-全托管完整V1-20260716/annotated/09-risk-workflow.png" alt="风险升级" /></div><div class="caption"><strong>图 7：</strong>登记风险时写事实、立即行动、主负责人和备份负责人；超过首次响应时限自动标红。</div></div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="panel">
+      <h2>风险等级与处理规则</h2>
+      <table>
+        <tr><th>等级</th><th>首次响应 SLA</th><th>例子</th><th>状态路径</th></tr>
+        <tr><td>CRITICAL / 重大</td><td>30 分钟</td><td>人身安全、急诊、警方、失联、住宿安全</td><td>OPEN → ACKNOWLEDGED → MONITORING/RESOLVED → CLOSED</td></tr>
+        <tr><td>HIGH / 高</td><td>2 小时</td><td>当天截止、严重出勤/成绩、重大住宿或签证问题</td><td>必须指定不同的备份负责人</td></tr>
+        <tr><td>MEDIUM / 中</td><td>24 小时</td><td>需要尽快介入但不危及当天安全</td><td>确认后持续观察或解决</td></tr>
+        <tr><td>LOW / 低</td><td>72 小时</td><td>一般观察项和轻微偏差</td><td>按计划处理，不长期悬空</td></tr>
+      </table>
+      <div class="danger"><strong>非工作时间现场支持：</strong>人身安全、急诊、警方、失联、住宿安全或当天无法延后的重大交通可启动；普通咨询、材料提醒和可延至工作日事项不属于紧急现场支持。</div>
+      <div class="answer"><strong>关闭条件：</strong>不能只点 RESOLVED。必须写 Resolution evidence / 解决证据；确认结果稳定后再 CLOSED。</div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="step">
+      <div class="step-top"><h2>步骤 12：Jasmine 缺席时安排代班</h2><span class="tag">Backup coverage and handover</span></div>
+      <div class="shot"><div class="shot-visual tall"><img src="assets/sop-教务-全托管完整V1-20260716/annotated/10-coverage-workflow.png" alt="代班与交接" /></div><div class="caption"><strong>图 8：</strong>记录原负责人、代班人、起止时间、原因、交接摘要和关键截止日；同一项目不能重叠安排有效代班。</div></div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="panel">
+      <h2>代班交接最少包含什么</h2>
+      <div class="grid-2">
+        <div class="card"><h3>Handover summary / 交接摘要</h3><p>学生当前状态、未结风险、学校与家长沟通、报告进度、哪些事项不能遗漏。</p></div>
+        <div class="card"><h3>Critical actions / 关键事项</h3><p>逐项写负责人、截止时间、需要的结果证据，以及出现什么变化要升级。</p></div>
+      </div>
+      <ol>
+        <li><strong>SCHEDULED：</strong>安排已保存，但代班尚未开始。</li>
+        <li><strong>ACTIVE：</strong>代班人正式接管，质量工作台显示进行中。</li>
+        <li><strong>COMPLETED：</strong>原负责人恢复，代班事项已交回并确认。</li>
+        <li><strong>CANCELLED：</strong>计划取消但保留历史，不直接删除。</li>
+      </ol>
+      <div class="danger"><strong>不要只写“帮忙看一下”：</strong>没有截止时间和关键事项的交接等于没有交接。重大/高风险还应在风险事件中单独存在。</div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="step">
+      <div class="step-top"><h2>步骤 13：阶段结束或续费前做服务价值复盘</h2><span class="tag">Service value review</span></div>
+      <div class="shot"><div class="shot-visual tall"><img src="assets/sop-教务-全托管完整V1-20260716/annotated/11-service-review.png" alt="服务价值复盘" /></div><div class="caption"><strong>图 9：</strong>复盘必须区分原目标、实际交付、学生变化、证据和下一阶段；内部续费备注不会发给家长。</div></div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="panel">
+      <h2>服务价值复盘怎么写</h2>
+      <table>
+        <tr><th>栏目</th><th>要回答的问题</th></tr>
+        <tr><td>Goals</td><td>这个周期原来承诺解决什么，不事后改目标。</td></tr>
+        <tr><td>Delivery</td><td>团队实际完成了什么，不用“沟通很多次”代替结果。</td></tr>
+        <tr><td>Outcomes</td><td>学生、学校或家长发生了什么可观察变化。</td></tr>
+        <tr><td>Evidence</td><td>课程、反馈、学校材料、会议、完成记录在哪里。</td></tr>
+        <tr><td>Recommendation</td><td>CONTINUE、EXPAND、ADJUST、COMPLETE 或 HOLD，并说明原因。</td></tr>
+        <tr><td>Next stage</td><td>下一阶段目标、动作和检查点。</td></tr>
+        <tr><td>Internal commercial note</td><td>仅内部：续费沟通准备、合同边界和资源安排。</td></tr>
+      </table>
+      <div class="answer"><strong>状态：</strong>DRAFT 可编辑；SUBMITTED 等待管理者；APPROVED 表示管理者已确认。复盘不是家长月报的替代品。</div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="panel">
+      <h2>建议工作节奏</h2>
+      <div class="grid-3">
+        <div class="card"><h3>每天</h3><p>打开质量工作台；处理红色超时；核对当日截止待办；重大变化立即升级。</p></div>
+        <div class="card"><h3>每周</h3><p>核对学生状态、老师反馈、学校节点和未结待办；补齐证据；更新阶段计划进度。</p></div>
+        <div class="card"><h3>每月/每阶段</h3><p>生成正式报告、审核发布、追踪家长查看与问答；阶段末完成服务价值复盘。</p></div>
+      </div>
+      <h2 style="margin-top:16px">家长可以看什么</h2>
+      <div class="grid-2">
+        <div class="answer"><strong>默认可见：</strong>已发布报告、公开版托管动态、课程出勤概况、老师反馈、下一步、家长配合事项、服务请求进度。</div>
+        <div class="danger"><strong>默认不可见：</strong>内部备注、未核实判断、员工讨论、第三方隐私、医疗原件、寄宿家庭敏感信息、未批准或已撤回报告。</div>
+      </div>
+      <div class="note"><strong>解决家长焦虑的方法：</strong>稳定、及时、可验证地回答“现状、证据、判断、行动、下一步”，不是承诺所有事情都没有风险。</div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="panel">
+      <h2>异常与停止规则</h2>
+      <div class="grid-2">
+        <div class="card"><h3>找不到学生</h3><p>回 Students 核对真实档案，不要创建重复学生。</p></div>
+        <div class="card"><h3>服务范围不清</h3><p>保持 DRAFT，核对合同和管理决定，不要先全勾。</p></div>
+        <div class="card"><h3>没有证据</h3><p>先补课程、反馈、学校材料或结果记录，不能用空泛文字提交报告。</p></div>
+        <div class="card"><h3>家长追问未核实</h3><p>回复“正在核实”前先建立责任待办；获得事实后再正式回复。</p></div>
+        <div class="card"><h3>风险已经超时</h3><p>立即确认 ACKNOWLEDGED 并执行行动；不能为了消除红色直接点解决。</p></div>
+        <div class="card"><h3>已发布报告有误</h3><p>由审核人撤回并记录原因，建立修正版；不要覆盖历史。</p></div>
+      </div>
+      <div class="danger"><strong>必须找管理者：</strong>涉及人身安全、医疗判断、警方、法律/签证意见、合同外费用、无限现场支持、成年学生授权冲突或信息披露争议。</div>
+      <div class="shot" style="margin-top:10px"><div class="shot-visual short"><img src="assets/sop-教务-全托管完整V1-20260716/annotated/12-quality-mobile.png" alt="手机质量工作台" /></div><div class="caption"><strong>图 10：</strong>手机端也可以先看异常；复杂录入建议在电脑完成。</div></div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="panel">
+      <h2>每名学生启用前最终检查表</h2>
+      <ul class="checklist">
+        <li>□ 已确认该学生确实加入全托管，不是因为候选名单而自动加入</li>
+        <li>□ Program 与合同一致：大学前学业管理 / 大学前全方位托管</li>
+        <li>□ Service scope 只包含真实承诺，第三方费用和排除项已说明</li>
+        <li>□ Jasmine 为总负责人；zhao hongwei 为审核和备份负责人</li>
+        <li>□ 家长查看权限、学生隐私和成年学生授权已确认</li>
+        <li>□ 已建立阶段计划：基线、目标、完成标准、行动和证据节点</li>
+        <li>□ 团队知道每日、每周、每月工作节奏</li>
+        <li>□ 高/重大风险知道如何在 2 小时/30 分钟内响应</li>
+        <li>□ 月报知道由谁起草、谁审核、谁发布</li>
+        <li>□ 阶段结束或续费前会建立服务价值复盘</li>
+      </ul>
+      <div class="answer"><strong>全部打勾后：</strong>把项目从 DRAFT 更新为 ACTIVE。此后每次交付都留证据，每次风险都闭环，每次报告都审核。</div>
+      <div class="note"><strong>培训建议：</strong>第一次由 zhao hongwei 与 Jasmine 共同建立 1 名学生；第二名由教务操作、管理者旁看；第三名开始按本 SOP 独立执行并由质量工作台检查。</div>
+    </div>
+  </section>
+</body>
+</html>
