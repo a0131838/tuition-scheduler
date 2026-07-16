@@ -37,11 +37,12 @@ Deliver an isolated formal-report workflow for pre-university care while keeping
 
 - [x] Prisma validate and generate
 - [x] TypeScript check
-- [x] Focused report and migration-safety tests (6/6)
-- [x] Full backend test suite (72/72)
+- [x] Focused report and migration-safety tests (7/7)
+- [x] Full backend test suite (73/73)
 - [x] Miniapp JavaScript syntax and release audit (30 pages)
 - [x] Production build (193 pages)
 - [x] Git diff check
+- [x] PDF render review (two populated A4 pages, no blank footer pages)
 - [ ] Release preflight and deployment
 - [ ] Production migration, PM2, HTTP and authenticated workflow checks
 - [ ] Protected production counts unchanged

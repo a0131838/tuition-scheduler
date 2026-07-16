@@ -34,7 +34,7 @@ This file is the single source of truth for what changed in production.
   - `miniapp/boss-academic-parent/pages/care-reports/*`
   - `miniapp/boss-academic-parent/pages/care-report-detail/*`
 - Risk impact (if any): Medium and isolated to CARE reports. The additive migration creates only report-related enums and four new tables. It does not alter existing Student, Session, Attendance, CoursePackage, PackageTxn, Invoice, Receipt, payroll, Partner or PartnerSettlement data. Reports require a legal state transition, optimistic version match and source evidence; only approved reports can be published, and parents can read only published reports through their existing `canViewReports` permission. University-stage parent access additionally requires adult-student consent for `formal_reports`. Internal notes are excluded from parent APIs and PDFs.
-- Verification: Prisma schema validation/generation, TypeScript, all 72 backend tests, six focused report/migration tests, all miniapp JavaScript syntax checks, the 30-page miniapp release audit, the full 193-page production build and `git diff --check` pass locally.
+- Verification: Prisma schema validation/generation, TypeScript, all 73 backend tests, seven focused report/migration tests, all miniapp JavaScript syntax checks, the 30-page miniapp release audit, the full 193-page production build and `git diff --check` pass locally. The production-like report PDF was rendered and visually checked as two populated A4 pages with correct `1/2` and `2/2` footers and no extra blank pages.
 - Rollback point: `2cafb48` (`2026-07-16-r254` guarded release head).
 
 ---

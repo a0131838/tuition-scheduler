@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
+import { once } from "node:events";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { buildCareReportPdf } from "../lib/care-report-pdf";
 import {
   assertCareReportReady,
   assertCareReportTransition,
@@ -67,4 +69,37 @@ test("parent report routes never serialize the internal note", async () => {
   assert.doesNotMatch(detailRoute, /internalNote:\s*report\.internalNote/);
   assert.doesNotMatch(pdf, /internalNote/);
   assert.match(detailRoute, /requireMiniappStudentAccess\(req, studentId, "canViewReports"\)/);
+});
+
+test("care report PDF footer does not create blank pages", async () => {
+  const { doc } = buildCareReportPdf({
+    id: "qa-report",
+    title: "QA report",
+    reportType: "MONTHLY",
+    periodLabel: "July 2026",
+    periodStart: new Date("2026-07-01T00:00:00+08:00"),
+    periodEnd: new Date("2026-07-31T23:59:59+08:00"),
+    riskLevel: "LOW",
+    overallSummary: "Stable progress.",
+    academicSummary: null,
+    schoolSummary: null,
+    lifeSummary: null,
+    riskSummary: null,
+    actionsCompleted: "Plan reviewed.",
+    evidenceSummary: null,
+    nextPlan: "Complete the next assessment.",
+    studentActions: null,
+    parentActions: null,
+    approvedAt: new Date("2026-07-16T10:00:00+08:00"),
+    publishedAt: new Date("2026-07-16T10:10:00+08:00"),
+    student: { name: "QA Student", school: "QA School", grade: "QA" },
+    preparedBy: { name: "QA Owner" },
+    approvedBy: { name: "QA Reviewer" },
+  });
+  const chunks: Buffer[] = [];
+  doc.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+  doc.end();
+  await once(doc, "end");
+  const pageObjects = Buffer.concat(chunks).toString("latin1").match(/\/Type\s*\/Page\b/g) ?? [];
+  assert.equal(pageObjects.length, 1);
 });

@@ -123,7 +123,7 @@ export function buildCareReportPdf(report: CareReportPdfData) {
     doc.fillColor("#9CA3AF").fontSize(8).text(
       `GT Educational Institute Pte. Ltd. · ${index + 1}/${range.count}`,
       40,
-      doc.page.height - 32,
+      doc.page.height - 52,
       { width: 515, align: "center", lineBreak: false },
     );
   }

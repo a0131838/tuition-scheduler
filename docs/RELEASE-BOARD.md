@@ -188,10 +188,11 @@
   - internal notes are never serialized to the parent interface or PDF
 - Validation before deploy:
   - Prisma validation/generation and TypeScript pass
-  - backend tests pass `72/72`; focused report and migration tests pass `6/6`
+  - backend tests pass `73/73`; focused report and migration tests pass `7/7`
   - miniapp JavaScript syntax and 30-page release audit pass
   - production build passes with 193 pages
   - `git diff --check` passes
+- PDF rendering: a production-like report renders as two populated A4 pages with correct `1/2` and `2/2` footers; a regression test prevents footer placement from creating blank pages.
 - Deployment status: local READY only; production migration, push and server deployment are pending.
 - Task doc: `docs/tasks/TASK-20260716-care-formal-reports.md`
 
