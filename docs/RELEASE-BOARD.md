@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-17-r260` at runtime feature commit `d919074`. Release `2026-07-17-r261` is ready for the first native-miniapp UI-system batch and remains undeployed until full regression and WeChat compile checks pass.
+- Current production release: `2026-07-17-r261` at runtime feature commit `e4edbb4`. The first native-miniapp UI-system batch is live on the server and uploaded as WeChat development version `1.0.1`; formal review remains gated by physical-phone role checks.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
@@ -22,7 +22,7 @@
 
 ## Open Risks
 
-- Miniapp role-home UI rollout: `2026-07-17-r261` is READY. Shared native styles and the parent/employee entry pages are changed, while web pages, APIs and business writes remain untouched. Before formal review, validate a manager, CS/academic, teacher, normal-course parent and Full Care parent on physical phones; confirm long names, zero counts, overdue states, the teacher next-lesson link and return refresh.
+- Miniapp role-home UI rollout: `2026-07-17-r261` is live at runtime feature commit `e4edbb4` and uploaded as WeChat development version `1.0.1` (345.8 KB). Shared native styles and the parent/employee entry pages changed, while web pages, APIs and business writes remained untouched. Before formal review, designate the upload as an experience version and validate a manager, CS/academic, teacher, normal-course parent and Full Care parent on physical phones; confirm long names, zero counts, overdue states, the teacher next-lesson link and return refresh.
 
 - Miniapp calendar Ticket-queue rollout: `2026-07-17-r260` is live on the server and uploaded as WeChat development version `1.0.0` with a read-only embedded queue, filters and detail deep links. Production currently has 6 open scheduling Tickets and all 6 are overdue. Time-change, teacher-change and leave/cancellation Tickets remain labelled `待关联原课程` until phase two adds explicit original-Session linkage. Set this upload as the experience version, then validate ADMIN and CS visibility, long-list scrolling, filters, return refresh and confirmation that teachers do not see the global queue.
 - Parent-miniapp reassurance rollout: `2026-07-17-r259` is live on the server at runtime commit `931edbd`; production has 107 current migrations, PM2 is online with zero restarts and health is 200. Server API and source deployment do not publish the native WeChat package. After upload, complete a physical-phone pass for a normal-course parent, a pre-university Full Care parent, a restricted-permission link and a multi-student family. No WeChat Developer Tools installation is available in the current Codex runtime.
@@ -155,7 +155,7 @@
 - Tutor-Wise-payment-profile risk: `2026-05-29-r161` removes Bank Transfer as a new tutor payment method and adds Wise details plus finance review status; finance should verify PayNow/Wise details before payout exports are used.
 - Teacher-notice-attachment risk: `2026-05-30-r162` lets teachers open only the active Shared Docs file attached to an active teacher notice; verify the notice attachment is intentional before publishing because the full Shared Docs library remains manager/admin controlled.
 
-## 2026-07-17-r261 Ready
+## 2026-07-17-r261 Live
 
 - Scope: create the shared native-miniapp UI foundation and role-aware parent/employee entry experience.
 - Business impact:
@@ -175,8 +175,9 @@
   - 30-page miniapp release audit.
   - full miniapp/backend tests, JavaScript syntax, TypeScript, production build and explicit no-web diff check.
 - Post-deploy verification:
-  - local/GitHub/server commit alignment, PM2 PID and HTTP 200.
-  - WeChat development upload and representative role checks before formal review.
+  - Local/GitHub/server aligned at runtime feature commit `e4edbb4`; PM2 PID `1721052` is online and HTTP health is 200.
+  - WeChat development version `1.0.1` uploaded successfully at 345.8 KB.
+  - Representative physical-phone role checks remain before formal review.
 
 ## 2026-07-17-r260 Live
 

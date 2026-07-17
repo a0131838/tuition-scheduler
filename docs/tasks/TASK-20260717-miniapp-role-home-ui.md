@@ -32,7 +32,9 @@ The native miniapp already supported parent service visibility, staff scheduling
 - `npx tsc --noEmit` passed.
 - `npm run build` passed — 194 pages.
 - WeChat Developer Tools preview compiled successfully for AppID `wxe7017f8545e8ad49`; final package size was 345.8 KB. The first preview attempt used a relative project path and was rejected before compilation; the absolute project path succeeded.
-- Guarded deploy, WeChat development upload and physical-phone role checks are recorded before release completion.
+- Guarded release aligned local, GitHub and server at runtime feature commit `e4edbb4`; production has 107 current migrations, PM2 PID `1721052` is online and `/admin/login` returns `200`.
+- WeChat development version `1.0.1` uploaded successfully for AppID `wxe7017f8545e8ad49`; final package size was 345.8 KB.
+- Experience-version designation and physical-phone manager/academic/teacher/parent checks remain before formal review.
 
 ## Risk
 

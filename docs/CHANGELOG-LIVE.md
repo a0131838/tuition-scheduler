@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-17-r261`
 - Date/Time (Asia/Shanghai): `2026-07-17`
-- Deployment status: `READY`
+- Deployment status: `LIVE` at runtime feature commit `e4edbb4`
 - Scope: establish the native-miniapp UI foundation and redesign the parent/employee entry experience into role-aware management, academic, teacher and parent workspaces.
 - Key files:
   - `miniapp/boss-academic-parent/app.json`
@@ -32,7 +32,7 @@ This file is the single source of truth for what changed in production.
   - `docs/CHANGELOG-LIVE.md`
   - `docs/RELEASE-BOARD.md`
 - Risk impact (if any): Low-to-medium and presentation-only in the native miniapp. No `app/admin/**`, API, database, permission or business write changed. Shared native styles affect all 30 pages, so representative physical-phone checks remain required before formal review.
-- Verification: focused role-home/login/calendar tests and the 30-page miniapp release audit pass. Full miniapp/backend tests, JavaScript syntax, TypeScript, production build, explicit no-web diff check, guarded deploy and WeChat development upload are required before marking live.
+- Verification: all native-miniapp JavaScript syntax, 44 miniapp/WeChat tests, 79 backend tests, the 30-page release audit, TypeScript, the full 194-page production build, `git diff --check`, explicit no-`app/admin/**` diff check and WeChat Developer Tools preview pass. The guarded release aligned local, GitHub and server at runtime feature commit `e4edbb4`; production has 107 current migrations, PM2 PID `1721052` is online and `/admin/login` returns `200`. WeChat development version `1.0.1` uploaded successfully for AppID `wxe7017f8545e8ad49`, package size 345.8 KB. Experience-version designation and physical-phone role checks remain before formal review.
 - Rollback point: `d0bc927` (`2026-07-17-r260` final production documentation head; runtime feature commit `d919074`).
 
 ---
