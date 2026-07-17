@@ -1,79 +1,107 @@
-<view class="page">
-  <view class="top">
-    <view class="eyebrow">{{roleText}}</view>
-    <view class="title">{{staffNameText}}</view>
-    <view class="subtitle" wx:if="{{isTeacher}}">我的课程与教学事务</view>
-    <view class="subtitle" wx:else>课程、家长请求与排课事务</view>
+<view class="page staff-page page-enter">
+  <view class="workspace-head">
+    <view class="workspace-meta">
+      <view class="role-chip">{{roleText}}</view>
+      <view class="today-text">{{todayText}}</view>
+    </view>
+    <view class="workspace-title">{{staffNameText}}</view>
+    <view class="workspace-subtitle">{{workspaceSubtitle}}</view>
   </view>
 
-  <view class="card work-card" bindtap="goSchedule">
+  <view class="priority-panel {{priorityTone}}" bindtap="goPriority">
+    <view class="priority-kicker">{{priorityLabel}}</view>
+    <view class="priority-title">{{priorityTitle}}</view>
+    <view class="priority-meta">{{priorityMeta}}</view>
+    <view class="priority-action">{{priorityAction}} <text>›</text></view>
+  </view>
+
+  <view class="metric-strip" wx:if="{{isTeacher}}">
+    <view class="metric-cell" bindtap="goSchedule"><view class="metric-value">{{todaySessionCount}}</view><view class="metric-name">今日课程</view></view>
+    <view class="metric-cell" bindtap="goTeacherHistory"><view class="metric-value">{{teacherCompletedCount}}</view><view class="metric-name">本月完成</view></view>
+    <view class="metric-cell" bindtap="goTeacherExpenses"><view class="metric-value">{{teacherExpenseCount}}</view><view class="metric-name">报销处理中</view></view>
+  </view>
+  <view class="metric-strip" wx:else>
+    <view class="metric-cell" bindtap="goSchedule"><view class="metric-value">{{todaySessionCount}}</view><view class="metric-name">今日课程</view></view>
+    <view class="metric-cell" bindtap="goRequests"><view class="metric-value">{{pendingCount}}</view><view class="metric-name">家长请求</view></view>
+    <view class="metric-cell metric-alert" wx:if="{{canManageCoordination}}" bindtap="goCoordination"><view class="metric-value">{{coordinationOverdueCount}}</view><view class="metric-name">排课逾期</view></view>
+    <view class="metric-cell" wx:else><view class="metric-value">—</view><view class="metric-name">按角色开放</view></view>
+  </view>
+
+  <view class="section-head">
     <view>
-      <view class="label">今日课程</view>
-      <view class="value">{{todaySessionCount}} 节待查看</view>
+      <view class="section-title">{{workSectionTitle}}</view>
+      <view class="section-hint">{{workSectionHint}}</view>
     </view>
-    <view class="arrow">›</view>
   </view>
 
-  <view class="card work-card" wx:if="{{!isTeacher}}" bindtap="goRequests">
-    <view>
-      <view class="label">家长请求</view>
-      <view class="value">{{pendingCount}} 条待查看</view>
+  <view class="work-list" wx:if="{{isTeacher}}">
+    <view class="work-row" wx:if="{{hasNextTeacherSession}}" bindtap="goNextTeacherSession">
+      <view class="work-icon icon-orange">课</view>
+      <view class="work-copy"><view class="work-title">下一节课</view><view class="work-detail">{{nextTeacherSessionText}}</view></view>
+      <view class="work-arrow">›</view>
     </view>
-    <view class="arrow">›</view>
+    <view class="work-row" bindtap="goSchedule">
+      <view class="work-icon">表</view>
+      <view class="work-copy"><view class="work-title">我的课表</view><view class="work-detail">查看课程、点名与课后反馈</view></view>
+      <view class="work-arrow">›</view>
+    </view>
+    <view class="work-row" bindtap="goTeacherAvailability">
+      <view class="work-icon">时</view>
+      <view class="work-copy"><view class="work-title">我的可用时间</view><view class="work-detail">未来 30 天 {{teacherAvailabilityCount}} 个时段</view></view>
+      <view class="work-arrow">›</view>
+    </view>
+    <view class="work-row" bindtap="goTeacherLeave">
+      <view class="work-icon">调</view>
+      <view class="work-copy"><view class="work-title">请假与调课申请</view><view class="work-detail">未来 30 天 {{teacherUpcomingCount}} 节课程</view></view>
+      <view class="work-arrow">›</view>
+    </view>
+    <view class="work-row" bindtap="goTeacherExpenses">
+      <view class="work-icon">费</view>
+      <view class="work-copy"><view class="work-title">我的报销</view><view class="work-detail">{{teacherExpenseCount}} 笔处理中或需补充</view></view>
+      <view class="work-arrow">›</view>
+    </view>
+    <view class="work-row" bindtap="goTeacherHistory">
+      <view class="work-icon">记</view>
+      <view class="work-copy"><view class="work-title">教学记录</view><view class="work-detail">本月已完成 {{teacherCompletedCount}} 节</view></view>
+      <view class="work-arrow">›</view>
+    </view>
   </view>
 
-  <view class="card work-card" wx:if="{{canManageCoordination}}" bindtap="goCoordination">
-    <view>
-      <view class="label">排课与调课</view>
-      <view class="value">{{coordinationCount}} 条开放 · {{coordinationOverdueCount}} 条逾期</view>
+  <view class="work-list" wx:else>
+    <view class="work-row" bindtap="goSchedule">
+      <view class="work-icon icon-orange">课</view>
+      <view class="work-copy"><view class="work-title">课程工作台</view><view class="work-detail">月历、今日课程与待排课工单</view></view>
+      <view class="work-badge">{{todaySessionCount}}</view><view class="work-arrow">›</view>
     </view>
-    <view class="arrow">›</view>
+    <view class="work-row" wx:if="{{canManageCoordination}}" bindtap="goCoordination">
+      <view class="work-icon">排</view>
+      <view class="work-copy"><view class="work-title">排课与调课</view><view class="work-detail">{{coordinationCount}} 条开放 · {{coordinationOverdueCount}} 条逾期</view></view>
+      <view class="work-badge alert" wx:if="{{hasCoordinationOverdue}}">{{coordinationOverdueCount}}</view><view class="work-arrow">›</view>
+    </view>
+    <view class="work-row" bindtap="goRequests">
+      <view class="work-icon">家</view>
+      <view class="work-copy"><view class="work-title">家长请求</view><view class="work-detail">集中处理咨询、安排与服务跟进</view></view>
+      <view class="work-badge" wx:if="{{hasPendingRequests}}">{{pendingCount}}</view><view class="work-arrow">›</view>
+    </view>
+    <view class="work-row" wx:if="{{canManageFirstScheduling}}" bindtap="goFirstScheduling">
+      <view class="work-icon">生</view>
+      <view class="work-copy"><view class="work-title">学生排课</view><view class="work-detail">全部学生可安排 · {{firstSchedulingAttentionCount}} 名需关注</view></view>
+      <view class="work-arrow">›</view>
+    </view>
+    <view class="work-row" wx:if="{{canViewReminderAttention}}" bindtap="goReminderAttention">
+      <view class="work-icon">醒</view>
+      <view class="work-copy"><view class="work-title">提醒异常</view><view class="work-detail">{{reminderAttentionCount}} 条消息需补授权</view></view>
+      <view class="work-badge alert" wx:if="{{hasReminderAttention}}">{{reminderAttentionCount}}</view><view class="work-arrow">›</view>
+    </view>
+    <view class="work-row" bindtap="goNewRequest">
+      <view class="work-icon">录</view>
+      <view class="work-copy"><view class="work-title">代录服务请求</view><view class="work-detail">把微信群消息整理成可追踪工单</view></view>
+      <view class="work-arrow">›</view>
+    </view>
   </view>
 
-  <view class="card work-card" wx:if="{{canManageFirstScheduling}}" bindtap="goFirstScheduling">
-    <view>
-      <view class="label">学生排课</view>
-      <view class="value">全部学生可安排 · {{firstSchedulingAttentionCount}} 名需关注</view>
-    </view>
-    <view class="arrow">›</view>
+  <view class="account-actions">
+    <button class="btn secondary" bindtap="logout">退出员工登录</button>
+    <button class="portal-foot-link" bindtap="goParentPortal">切换到家长端</button>
   </view>
-
-  <view class="card work-card" wx:if="{{canViewReminderAttention}}" bindtap="goReminderAttention">
-    <view>
-      <view class="label">待补微信提醒</view>
-      <view class="value">{{reminderAttentionCount}} 条消息需补授权</view>
-    </view>
-    <view class="arrow">›</view>
-  </view>
-
-  <view class="card work-card" wx:if="{{!isTeacher}}" bindtap="goNewRequest">
-    <view>
-      <view class="label">代录工单</view>
-      <view class="value">微信群消息整理成请求</view>
-    </view>
-    <view class="arrow">›</view>
-  </view>
-
-  <block wx:if="{{isTeacher}}">
-    <view class="teacher-section-title">教学事务</view>
-    <view class="card work-card" bindtap="goTeacherAvailability">
-      <view><view class="label">我的可用时间</view><view class="value">未来30天 {{teacherAvailabilityCount}} 个时段</view></view>
-      <view class="arrow">›</view>
-    </view>
-    <view class="card work-card" bindtap="goTeacherLeave">
-      <view><view class="label">请假与调课申请</view><view class="value">未来30天 {{teacherUpcomingCount}} 节课程</view></view>
-      <view class="arrow">›</view>
-    </view>
-    <view class="card work-card" bindtap="goTeacherExpenses">
-      <view><view class="label">我的报销</view><view class="value">{{teacherExpenseCount}} 笔处理中或需补充</view></view>
-      <view class="arrow">›</view>
-    </view>
-    <view class="card work-card" bindtap="goTeacherHistory">
-      <view><view class="label">教学记录</view><view class="value">本月已完成 {{teacherCompletedCount}} 节</view></view>
-      <view class="arrow">›</view>
-    </view>
-  </block>
-
-  <button class="btn secondary" bindtap="logout">退出员工登录</button>
-  <button class="portal-foot-link" bindtap="goParentPortal">切换到家长端</button>
 </view>

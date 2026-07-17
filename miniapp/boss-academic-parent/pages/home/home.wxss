@@ -1,5 +1,5 @@
 .home-page {
-  padding-top: 14rpx;
+  padding-top: 16rpx;
 }
 
 .student-head {
@@ -33,8 +33,8 @@
   min-height: 64rpx;
   margin: 0;
   padding: 0 24rpx;
-  border: 1rpx solid #d9dce0;
-  border-radius: 6rpx;
+  border: 1rpx solid #d8d5d0;
+  border-radius: 12rpx;
   background: #fff;
   color: #34383e;
   font-size: 24rpx;
@@ -45,7 +45,9 @@
   position: relative;
   padding: 28rpx 28rpx 26rpx;
   border-left: 8rpx solid #287a62;
+  border-radius: 0 16rpx 16rpx 0;
   background: #edf7f2;
+  box-shadow: 0 10rpx 28rpx rgba(40, 122, 98, 0.08);
 }
 
 .status-band.tone-watch {
@@ -102,8 +104,8 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-top: 18rpx;
-  border-top: 1rpx solid #dfe2e5;
-  border-bottom: 1rpx solid #dfe2e5;
+  border-top: 1rpx solid #dedbd6;
+  border-bottom: 1rpx solid #dedbd6;
 }
 
 .service-metrics.two {
@@ -196,7 +198,8 @@
 .parent-action-band {
   margin-top: 24rpx;
   padding: 22rpx 24rpx;
-  border: 1rpx solid #e2e5e9;
+  border: 1rpx solid #e2dfda;
+  border-radius: 14rpx;
   background: #fff;
 }
 
@@ -223,8 +226,8 @@
   min-height: 64rpx;
   margin: 18rpx 0 0;
   padding: 0 22rpx;
-  border-radius: 6rpx;
-  background: #f0f1f3;
+  border-radius: 12rpx;
+  background: #eae8e4;
   color: #34383e;
   font-size: 23rpx;
   font-weight: 700;
@@ -234,8 +237,10 @@
 .report-entry {
   margin-top: 18rpx;
   padding: 26rpx 24rpx;
-  border: 1rpx solid #e2e5e9;
+  border: 1rpx solid #e2dfda;
+  border-radius: 14rpx;
   background: #fff;
+  box-shadow: 0 8rpx 22rpx rgba(35, 39, 44, 0.04);
 }
 
 .detail-heading {
@@ -286,8 +291,8 @@
   min-height: 72rpx;
   margin: 0;
   padding: 12rpx 14rpx;
-  border-radius: 6rpx;
-  background: #f0f1f3;
+  border-radius: 12rpx;
+  background: #eae8e4;
   color: #9b3e08;
   font-size: 23rpx;
   font-weight: 700;

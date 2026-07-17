@@ -1,7 +1,7 @@
 page {
   min-height: 100%;
-  background: #f5f6f7;
-  color: #202124;
+  background: #f6f4f1;
+  color: #202328;
   font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
   font-size: 28rpx;
 }
@@ -9,7 +9,16 @@ page {
 .page {
   min-height: 100vh;
   box-sizing: border-box;
-  padding: 28rpx 28rpx 52rpx;
+  padding: 28rpx 30rpx 56rpx;
+}
+
+.page-enter {
+  animation: pageEnter 220ms ease-out both;
+}
+
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(10rpx); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .top {
@@ -25,33 +34,35 @@ page {
 
 .eyebrow {
   color: #ec5e0a;
-  font-size: 23rpx;
-  font-weight: 700;
+  font-size: 22rpx;
+  font-weight: 750;
+  letter-spacing: 1rpx;
 }
 
 .title {
   margin-top: 8rpx;
-  color: #202124;
+  color: #17191d;
   font-size: 40rpx;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1.25;
   letter-spacing: 0;
 }
 
 .subtitle {
   margin-top: 10rpx;
-  color: #61656d;
+  color: #656b73;
   font-size: 26rpx;
   line-height: 1.55;
 }
 
 .card {
-  margin-top: 16rpx;
-  padding: 24rpx;
+  margin-top: 18rpx;
+  padding: 26rpx;
   background: #ffffff;
-  border: 1rpx solid #e3e5e8;
-  border-radius: 6rpx;
+  border: 1rpx solid #e4e1dc;
+  border-radius: 16rpx;
   box-sizing: border-box;
+  box-shadow: 0 8rpx 24rpx rgba(35, 39, 44, 0.045);
 }
 
 .row {
@@ -85,7 +96,7 @@ page {
   box-sizing: border-box;
   min-height: 88rpx;
   padding: 0 28rpx;
-  border-radius: 6rpx;
+  border-radius: 14rpx;
   background: #ec5e0a;
   color: #ffffff;
   font-size: 28rpx;
@@ -99,7 +110,7 @@ page {
 }
 
 .btn.secondary {
-  background: #f0f1f3;
+  background: #eae8e4;
   color: #202124;
 }
 
@@ -149,8 +160,8 @@ button[disabled] {
   box-sizing: border-box;
   min-height: 86rpx;
   padding: 20rpx;
-  border: 1rpx solid #d9dce0;
-  border-radius: 6rpx;
+  border: 1rpx solid #d8d5d0;
+  border-radius: 12rpx;
   background: #ffffff;
   color: #202124;
   font-size: 28rpx;
@@ -196,8 +207,8 @@ button[disabled] {
   flex: 1;
   min-width: 0;
   padding: 20rpx;
-  border-radius: 6rpx;
-  background: #f0f1f3;
+  border-radius: 12rpx;
+  background: #eceae6;
   border: 0;
 }
 
@@ -218,8 +229,8 @@ button[disabled] {
   min-height: 78rpx;
   box-sizing: border-box;
   padding: 0 72rpx 0 22rpx;
-  border: 1rpx solid #d9dce0;
-  border-radius: 6rpx;
+  border: 1rpx solid #d8d5d0;
+  border-radius: 12rpx;
   background: #ffffff;
   color: #202124;
   font-size: 27rpx;
@@ -246,7 +257,7 @@ button[disabled] {
   height: 78rpx;
   margin: 0;
   padding: 0;
-  border-radius: 6rpx;
+  border-radius: 12rpx;
   background: #ec5e0a;
   color: #ffffff;
   font-size: 25rpx;

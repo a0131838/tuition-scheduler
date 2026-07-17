@@ -1,28 +1,41 @@
-.work-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 0;
-  padding: 26rpx 4rpx;
-  border-width: 0 0 1rpx;
-  border-color: #e3e5e8;
-  border-radius: 0;
-  background: transparent;
-}
+.staff-page { padding-top: 18rpx; }
+.workspace-head { padding: 18rpx 0 30rpx; }
+.workspace-meta { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; }
+.role-chip { display: inline-flex; align-items: center; min-height: 46rpx; padding: 0 16rpx; border-radius: 999rpx; background: #fff0e7; color: #9b3e08; font-size: 22rpx; font-weight: 750; }
+.today-text { color: #7a7f87; font-size: 23rpx; }
+.workspace-title { margin-top: 22rpx; color: #17191d; font-size: 46rpx; font-weight: 800; line-height: 1.15; letter-spacing: -1rpx; }
+.workspace-subtitle { margin-top: 10rpx; color: #626871; font-size: 25rpx; line-height: 1.5; }
 
-.work-card:active {
-  background: #f0f1f3;
-}
+.priority-panel { position: relative; overflow: hidden; padding: 30rpx 30rpx 28rpx; border-radius: 18rpx; background: #20242a; color: #fff; box-shadow: 0 14rpx 36rpx rgba(29, 33, 39, 0.14); }
+.priority-panel::after { content: ""; position: absolute; right: -44rpx; bottom: -84rpx; width: 210rpx; height: 210rpx; border: 34rpx solid rgba(255, 255, 255, 0.06); border-radius: 50%; }
+.priority-panel.tone-watch { background: #8d4d20; }
+.priority-panel.tone-risk { background: #8a3731; }
+.priority-kicker { position: relative; z-index: 1; color: rgba(255, 255, 255, 0.7); font-size: 22rpx; font-weight: 700; }
+.priority-title { position: relative; z-index: 1; margin-top: 12rpx; max-width: 90%; font-size: 34rpx; font-weight: 800; line-height: 1.35; overflow-wrap: anywhere; }
+.priority-meta { position: relative; z-index: 1; margin-top: 10rpx; max-width: 88%; color: rgba(255, 255, 255, 0.76); font-size: 23rpx; line-height: 1.5; overflow-wrap: anywhere; }
+.priority-action { position: relative; z-index: 1; margin-top: 24rpx; color: #ffb783; font-size: 24rpx; font-weight: 750; }
+.priority-action text { margin-left: 6rpx; font-size: 30rpx; }
+.priority-panel:active { transform: scale(0.992); opacity: 0.94; }
 
-.arrow {
-  color: #ec5e0a;
-  font-size: 42rpx;
-  line-height: 1;
-}
+.metric-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 28rpx; padding: 22rpx 0; border-top: 1rpx solid #dedbd6; border-bottom: 1rpx solid #dedbd6; }
+.metric-cell { min-width: 0; padding: 0 14rpx; border-right: 1rpx solid #e1ded9; text-align: center; }
+.metric-cell:last-child { border-right: 0; }
+.metric-value { color: #17191d; font-size: 38rpx; font-weight: 800; line-height: 1.1; }
+.metric-alert .metric-value { color: #a23f34; }
+.metric-name { margin-top: 8rpx; color: #686e76; font-size: 21rpx; line-height: 1.3; }
 
-.teacher-section-title {
-  margin: 32rpx 0 4rpx;
-  color: #202124;
-  font-size: 26rpx;
-  font-weight: 800;
-}
+.section-head { margin-top: 40rpx; }
+.section-title { color: #17191d; font-size: 31rpx; font-weight: 800; }
+.section-hint { margin-top: 8rpx; color: #7a7f87; font-size: 23rpx; }
+.work-list { margin-top: 16rpx; border-top: 1rpx solid #dedbd6; }
+.work-row { display: flex; align-items: center; gap: 18rpx; min-height: 112rpx; padding: 16rpx 0; border-bottom: 1rpx solid #e2dfda; }
+.work-row:active { background: rgba(255, 255, 255, 0.7); }
+.work-icon { display: flex; align-items: center; justify-content: center; width: 64rpx; height: 64rpx; flex: 0 0 auto; border-radius: 16rpx; background: #e9e7e3; color: #34383e; font-size: 23rpx; font-weight: 800; }
+.work-icon.icon-orange { background: #fff0e7; color: #a6450d; }
+.work-copy { flex: 1; min-width: 0; }
+.work-title { color: #202328; font-size: 28rpx; font-weight: 750; line-height: 1.35; }
+.work-detail { margin-top: 6rpx; color: #747a82; font-size: 22rpx; line-height: 1.4; overflow-wrap: anywhere; }
+.work-badge { min-width: 40rpx; height: 40rpx; box-sizing: border-box; padding: 0 10rpx; border-radius: 999rpx; background: #eceae6; color: #4d5259; font-size: 21rpx; font-weight: 750; line-height: 40rpx; text-align: center; }
+.work-badge.alert { background: #f8e5e2; color: #96392f; }
+.work-arrow { flex: 0 0 auto; color: #a2a6ac; font-size: 38rpx; line-height: 1; }
+.account-actions { margin-top: 38rpx; padding-top: 8rpx; }

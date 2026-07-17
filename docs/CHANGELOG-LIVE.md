@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-17-r261
+
+- Release ID: `2026-07-17-r261`
+- Date/Time (Asia/Shanghai): `2026-07-17`
+- Deployment status: `READY`
+- Scope: establish the native-miniapp UI foundation and redesign the parent/employee entry experience into role-aware management, academic, teacher and parent workspaces.
+- Key files:
+  - `miniapp/boss-academic-parent/app.json`
+  - `miniapp/boss-academic-parent/app.wxss`
+  - `miniapp/boss-academic-parent/pages/staff-home/*`
+  - `miniapp/boss-academic-parent/pages/home/*`
+  - `tests/miniapp-role-home-ui.test.ts`
+  - `docs/小程序UI设计规范与改造计划-20260717.md`
+  - `docs/tasks/TASK-20260717-miniapp-role-home-ui.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low-to-medium and presentation-only in the native miniapp. No `app/admin/**`, API, database, permission or business write changed. Shared native styles affect all 30 pages, so representative physical-phone checks remain required before formal review.
+- Verification: focused role-home/login/calendar tests and the 30-page miniapp release audit pass. Full miniapp/backend tests, JavaScript syntax, TypeScript, production build, explicit no-web diff check, guarded deploy and WeChat development upload are required before marking live.
+- Rollback point: `d0bc927` (`2026-07-17-r260` final production documentation head; runtime feature commit `d919074`).
+
+---
+
 ## 2026-07-17-r260
 
 - Release ID: `2026-07-17-r260`
