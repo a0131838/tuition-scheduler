@@ -35,7 +35,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
 
   const now = new Date();
   const [nextSession, latestFeedbackSession, packages, openRequestCount] = await Promise.all([
-    prisma.session.findFirst({
+    auth.link.canViewSchedule ? prisma.session.findFirst({
       where: {
         startAt: { gte: now },
         ...sessionBelongsToStudentWhere(studentId),
@@ -46,8 +46,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
         attendances: { where: { studentId }, take: 1 },
       },
       orderBy: { startAt: "asc" },
-    }),
-    prisma.session.findFirst({
+    }) : Promise.resolve(null),
+    auth.link.canViewFeedback ? prisma.session.findFirst({
       where: {
         startAt: { lte: now },
         feedbacks: { some: { content: { not: "" } } },
@@ -62,19 +62,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
         },
       },
       orderBy: { startAt: "desc" },
-    }),
-    prisma.coursePackage.findMany({
+    }) : Promise.resolve(null),
+    auth.link.canViewFinance ? prisma.coursePackage.findMany({
       where: { studentId, status: "ACTIVE" },
       select: { id: true, remainingMinutes: true, paidAmount: true },
       take: 50,
-    }),
-    prisma.ticket.count({
+    }) : Promise.resolve([]),
+    auth.link.canCreateRequests ? prisma.ticket.count({
       where: {
         studentId,
         isArchived: false,
         status: { notIn: ["Completed", "Cancelled", "Closed", "已完成", "已关闭"] },
       },
-    }),
+    }) : Promise.resolve(0),
   ]);
 
   const billing = await Promise.all(packages.map((pkg) => listParentBillingForPackage(pkg.id)));
@@ -91,10 +91,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       grade: student.grade,
       servicePlanType: student.servicePlanType || "STANDARD_COURSE",
       servicePlanLabel: servicePlanLabel(student.servicePlanType || "STANDARD_COURSE"),
-      academicRiskLevel: student.academicRiskLevel,
-      academicRiskLabel: academicRiskLabel(student.academicRiskLevel),
-      nextAction: student.nextAction,
-      nextActionDue: student.nextActionDue ? formatBusinessDateOnly(student.nextActionDue) : null,
+      academicRiskLevel: auth.link.canViewReports ? student.academicRiskLevel : null,
+      academicRiskLabel: auth.link.canViewReports ? academicRiskLabel(student.academicRiskLevel) : null,
+      nextAction: auth.link.canViewReports ? student.nextAction : null,
+      nextActionDue: auth.link.canViewReports && student.nextActionDue ? formatBusinessDateOnly(student.nextActionDue) : null,
     },
     nextSession: nextSession ? sessionDto(nextSession, nextSession.attendances[0]) : null,
     latestFeedback: latestFeedback
@@ -113,6 +113,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
     },
     requestSummary: {
       openCount: openRequestCount,
+    },
+    permissions: {
+      canViewSchedule: auth.link.canViewSchedule,
+      canViewFeedback: auth.link.canViewFeedback,
+      canViewFinance: auth.link.canViewFinance,
+      canViewReports: auth.link.canViewReports,
+      canCreateRequests: auth.link.canCreateRequests,
     },
   });
 }

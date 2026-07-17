@@ -1,7 +1,7 @@
 <view class="page progress-page">
   <view class="top progress-top">
-    <view class="eyebrow">{{student.name || "服务进度"}}</view>
-    <view class="title">{{service.headline || "服务进度"}}</view>
+    <view class="eyebrow">{{student.name || "当前学生"}}</view>
+    <view class="title">服务进展</view>
     <view class="subtitle">{{service.description}}</view>
   </view>
 
@@ -13,13 +13,20 @@
   </view>
 
   <block wx:else>
+    <view class="status-band tone-{{parentStatus.tone}}">
+      <view class="status-copy">
+        <view class="label">当前状态</view>
+        <view class="status-title">{{parentStatus.label}}</view>
+        <view class="status-summary">{{parentStatus.summary}}</view>
+      </view>
+    </view>
+
     <view class="service-band">
       <view class="service-band-head">
         <view>
           <view class="label">当前服务</view>
           <view class="service-name">{{service.label}}</view>
         </view>
-        <view class="risk-tag">{{student.riskLabel}}</view>
       </view>
       <view class="service-cadence">{{service.cadence}}</view>
       <view class="owner-line">
@@ -30,25 +37,25 @@
 
     <view class="section-head">
       <view>
-        <view class="section-title">本周进展</view>
+        <view class="section-title">本周服务</view>
         <view class="section-note">{{period.label}}</view>
       </view>
     </view>
-    <view class="progress-metrics {{permissions.canViewFeedback ? '' : 'two'}}">
-      <view class="progress-metric" bindtap="goSchedule">
+    <view class="progress-metrics {{metricClass}}">
+      <view class="progress-metric" wx:if="{{permissions.canViewSchedule}}" bindtap="goSchedule">
         <view class="metric-number">{{summary.completedLessons || 0}}</view>
-        <view class="metric-label">已完成课程</view>
+        <view class="metric-label">完成课程</view>
         <view class="metric-note">本周共 {{summary.scheduledLessons || 0}} 节</view>
       </view>
       <view class="progress-metric" wx:if="{{permissions.canViewFeedback}}" bindtap="goFeedbacks">
         <view class="metric-number">{{summary.feedbackCount || 0}}</view>
         <view class="metric-label">课后反馈</view>
-        <view class="metric-note">点击查看记录</view>
+        <view class="metric-note">查看学习记录</view>
       </view>
-      <view class="progress-metric" bindtap="goRequests">
+      <view class="progress-metric" wx:if="{{permissions.canCreateRequests}}" bindtap="goRequests">
         <view class="metric-number">{{summary.openRequestCount || 0}}</view>
         <view class="metric-label">处理中请求</view>
-        <view class="metric-note">点击查看进度</view>
+        <view class="metric-note">查看处理进度</view>
       </view>
     </view>
 
@@ -61,28 +68,34 @@
       </view>
     </view>
 
-    <view class="report-band" wx:if="{{care.active}}" bindtap="goCareReports">
-      <view>
-        <view class="label">正式进展报告</view>
-        <view class="report-title">{{care.latestReport ? care.latestReport.title : "等待服务团队发布"}}</view>
-        <view class="section-note" wx:if="{{care.latestReport}}">{{care.latestReport.periodLabel}} · 已发布 {{care.publishedReportCount}} 份</view>
-      </view>
-      <view class="report-arrow">›</view>
-    </view>
-
     <view class="parent-actions" wx:if="{{parentActions.length}}">
       <view class="section-title">需要家长配合</view>
       <view class="action-row" wx:for="{{parentActions}}" wx:key="id">
         <view class="action-copy">{{item.summary}}</view>
         <view class="action-date">{{item.dueAtText}}</view>
       </view>
-      <button class="btn secondary action-contact" bindtap="goNewRequest">需要沟通</button>
+      <button class="btn secondary action-contact" wx:if="{{permissions.canCreateRequests}}" bindtap="goNewRequest">需要沟通</button>
+    </view>
+    <view class="parent-clear" wx:else>
+      <view class="label">需要家长配合</view>
+      <view class="parent-clear-text">目前无需家长处理</view>
+    </view>
+
+    <view class="report-band" wx:if="{{care.active}}" bindtap="goCareReports">
+      <view>
+        <view class="label">正式进展报告</view>
+        <view class="report-title">{{care.latestReport ? care.latestReport.title : "等待服务团队发布"}}</view>
+        <view class="section-note" wx:if="{{care.latestReport}}">
+          {{care.latestReport.periodLabel}} · {{care.latestReport.acknowledged ? "已确认" : "待确认"}}
+        </view>
+      </view>
+      <view class="report-arrow">›</view>
     </view>
 
     <view class="section-head timeline-head">
       <view>
-        <view class="section-title">最近动态</view>
-        <view class="section-note">课程、反馈和已发布的服务记录</view>
+        <view class="section-title">最近服务记录</view>
+        <view class="section-note">课程、反馈、请求和已发布的服务进展</view>
       </view>
     </view>
     <view class="timeline" wx:if="{{timeline.length}}">
@@ -103,7 +116,12 @@
     </view>
     <view class="timeline-empty" wx:else>服务记录会在课程完成或进度更新后显示。</view>
 
-    <view class="care-note" wx:if="{{student.servicePlanType === 'FULL_CARE' && !care.active}}">
+    <view class="service-actions" wx:if="{{permissions.canCreateRequests}}">
+      <button class="btn" bindtap="goNewRequest">提交服务请求</button>
+      <button class="btn secondary" bindtap="goRequests">查看请求记录</button>
+    </view>
+
+    <view class="care-note" wx:if="{{student.servicePlanType === 'FULL_CARE' && permissions.canViewReports && !care.active}}">
       全程托管动态将在服务团队正式发布后显示，课程与请求记录不受影响。
     </view>
   </block>

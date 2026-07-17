@@ -27,7 +27,7 @@ function feedbackSummary(content: string) {
 
 export async function GET(req: Request, { params }: { params: Promise<{ studentId: string }> }) {
   const { studentId } = await params;
-  const auth = await requireMiniappStudentAccess(req, studentId, "canViewReports");
+  const auth = await requireMiniappStudentAccess(req, studentId);
   if (!auth.ok) return auth.response;
 
   const student = await prisma.student.findUnique({
@@ -52,6 +52,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
   const upcomingTo = new Date(week.end.getTime() + 21 * 24 * 60 * 60 * 1000);
   const canViewSchedule = auth.link.canViewSchedule;
   const canViewFeedback = auth.link.canViewFeedback;
+  const canViewReports = auth.link.canViewReports;
+  const canCreateRequests = auth.link.canCreateRequests;
   const hasManagedCare = student.servicePlanType === "FULL_CARE" || student.servicePlanType === "ACADEMIC_MANAGEMENT";
 
   const [sessions, tickets, careEngagement] = await Promise.all([
@@ -86,7 +88,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
           relationLoadStrategy: "join",
         })
       : Promise.resolve([]),
-    prisma.ticket.findMany({
+    canCreateRequests ? prisma.ticket.findMany({
       where: { studentId, isArchived: false, parentVisible: true },
       select: {
         id: true,
@@ -100,8 +102,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       },
       orderBy: { updatedAt: "desc" },
       take: 30,
-    }),
-    hasManagedCare
+    }) : Promise.resolve([]),
+    hasManagedCare && canViewReports
       ? prisma.careEngagement.findFirst({
           where: { studentId, status: "ACTIVE" },
           select: {
@@ -120,6 +122,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
                 periodLabel: true,
                 title: true,
                 publishedAt: true,
+                views: {
+                  where: { parentId: auth.parent.id },
+                  select: { acknowledgedAt: true },
+                  take: 1,
+                },
               },
               orderBy: { publishedAt: "desc" },
               take: 12,
@@ -175,7 +182,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
 
   const nextStep = parentActions[0]
     ? { label: "需要家长配合", text: parentActions[0].summary, dueText: parentActions[0].dueAtText }
-    : student.nextAction
+    : canViewReports && student.nextAction
       ? {
           label: "下一步",
           text: compactParentProgressText(student.nextAction, 180),
@@ -250,7 +257,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       school: student.school,
       grade: student.grade,
       servicePlanType: student.servicePlanType || "STANDARD_COURSE",
-      riskLabel: academicRiskLabel(student.academicRiskLevel),
+      riskLabel: canViewReports ? academicRiskLabel(student.academicRiskLevel) : null,
     },
     service,
     period: { label: week.label, start: week.start.toISOString(), end: week.end.toISOString() },
@@ -260,8 +267,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       feedbackCount: canViewFeedback ? feedbackThisWeek : null,
       openRequestCount: openTickets.length,
     },
-    permissions: { canViewSchedule, canViewFeedback },
-    responsiblePerson: careEngagement?.caseOwner?.name || student.advisorOwner || "博思服务团队",
+    permissions: { canViewSchedule, canViewFeedback, canViewReports, canCreateRequests },
+    responsiblePerson: careEngagement?.caseOwner?.name || (canViewReports ? student.advisorOwner : null) || "博思服务团队",
     nextStep,
     nextSession: nextSession
       ? {
@@ -284,6 +291,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
         periodLabel: visibleReports[0].periodLabel,
         title: visibleReports[0].title,
         publishedAt: visibleReports[0].publishedAt?.toISOString() ?? null,
+        acknowledged: Boolean(visibleReports[0].views[0]?.acknowledgedAt),
       } : null,
     },
     parentActions,

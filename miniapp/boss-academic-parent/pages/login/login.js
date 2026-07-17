@@ -23,6 +23,10 @@ Page({
     api.loginWithWeChat()
       .then((data) => {
         if (data.students && data.students.length > 0) {
+          const app = getApp();
+          const selectedId = api.currentStudentId();
+          const selectedStudent = data.students.find((student) => student.id === selectedId) || data.students[0];
+          app.setCurrentStudent(selectedStudent);
           this.switchToParentHome();
         } else {
           wx.navigateTo({ url: "/pages/bind/bind" });
@@ -35,7 +39,7 @@ Page({
   switchToParentHome() {
     this.routing = true;
     wx.switchTab({
-      url: "/pages/students/students",
+      url: "/pages/home/home",
       complete: () => { this.routing = false; }
     });
   },

@@ -1,7 +1,17 @@
 const api = require("../../utils/api");
 
 Page({
-  data: { loading: true, error: "", report: {}, sections: [], acknowledging: false, questions: [], questionText: "", submittingQuestion: false },
+  data: {
+    loading: true,
+    error: "",
+    report: {},
+    prioritySections: [],
+    detailSections: [],
+    acknowledging: false,
+    questions: [],
+    questionText: "",
+    submittingQuestion: false
+  },
 
   onLoad(options) {
     this.reportId = options.id || "";
@@ -18,13 +28,23 @@ Page({
     ])
       .then(([data, questionData]) => {
         const report = data.report || {};
-        const definitions = [
-          ["本期结论", "overallSummary"], ["学业进展", "academicSummary"], ["学校沟通", "schoolSummary"],
-          ["生活与状态", "lifeSummary"], ["风险与专业判断", "riskSummary"], ["已完成行动", "actionsCompleted"],
-          ["服务交付证据", "evidenceSummary"], ["下一阶段计划", "nextPlan"], ["学生需要完成", "studentActions"],
-          ["家长需要配合", "parentActions"]
+        const priorityDefinitions = [
+          ["已完成行动", "actionsCompleted"], ["下一阶段计划", "nextPlan"],
+          ["学生需要完成", "studentActions"], ["家长需要配合", "parentActions"]
         ];
-        this.setData({ report, questions: questionData.items || [], sections: definitions.filter((row) => report[row[1]]).map((row) => ({ title: row[0], body: report[row[1]] })) });
+        const detailDefinitions = [
+          ["学业进展", "academicSummary"], ["学校沟通", "schoolSummary"], ["生活与状态", "lifeSummary"],
+          ["风险与专业判断", "riskSummary"], ["服务交付证据", "evidenceSummary"]
+        ];
+        const sections = (definitions) => definitions
+          .filter((row) => report[row[1]])
+          .map((row) => ({ title: row[0], body: report[row[1]] }));
+        this.setData({
+          report,
+          questions: questionData.items || [],
+          prioritySections: sections(priorityDefinitions),
+          detailSections: sections(detailDefinitions)
+        });
       })
       .catch((err) => this.setData({ error: err.message || "报告读取失败" }))
       .finally(() => this.setData({ loading: false }));

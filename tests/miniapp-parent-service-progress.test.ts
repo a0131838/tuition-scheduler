@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
+import { createRequire } from "node:module";
 import {
   compactParentProgressText,
   parentProgressTimelineItem,
@@ -9,6 +10,9 @@ import {
   parentServiceWeekRange,
   sortParentProgressTimeline,
 } from "../lib/miniapp-parent-service-progress";
+
+const require = createRequire(import.meta.url);
+const presentation = require("../miniapp/boss-academic-parent/utils/parent-presentation.js");
 
 test("parent service progress uses the Singapore Monday-to-Sunday week", () => {
   const range = parentServiceWeekRange(new Date("2026-07-14T04:00:00.000Z"));
@@ -71,4 +75,47 @@ test("unclassified students use ordinary-course wording in the parent app", () =
     "utf8",
   );
   assert.match(homeRoute, /student\.servicePlanType \|\| "STANDARD_COURSE"/);
+});
+
+test("parent progress projects acknowledgement without exposing report workflow internals", () => {
+  const route = fs.readFileSync(
+    path.join(process.cwd(), "app/api/miniapp/students/[studentId]/service-progress/route.ts"),
+    "utf8",
+  );
+  assert.match(route, /views: \{/);
+  assert.match(route, /acknowledged: Boolean/);
+  assert.doesNotMatch(route, /reviewerNote: true/);
+  assert.doesNotMatch(route, /returnReason: true/);
+});
+
+test("parent reassurance copy translates internal risk and formats lesson balance", () => {
+  assert.equal(presentation.parentStatus("LOW").label, "进展稳定");
+  assert.equal(presentation.parentStatus("MEDIUM").label, "需要关注");
+  assert.equal(presentation.parentStatus("HIGH").label, "正在重点跟进");
+  assert.equal(presentation.parentStatus("HIGH", false).label, "服务进行中");
+  assert.equal(presentation.lessonBalance(150), "2 小时 30 分钟");
+  assert.equal(presentation.lessonBalance(0), "暂无剩余课时");
+});
+
+test("service tab preserves relationship permissions for reports and requests", () => {
+  const route = fs.readFileSync(
+    path.join(process.cwd(), "app/api/miniapp/students/[studentId]/service-progress/route.ts"),
+    "utf8",
+  );
+  assert.match(route, /requireMiniappStudentAccess\(req, studentId\)/);
+  assert.match(route, /hasManagedCare && canViewReports/);
+  assert.match(route, /canCreateRequests \? prisma\.ticket\.findMany/);
+  assert.match(route, /permissions: \{ canViewSchedule, canViewFeedback, canViewReports, canCreateRequests \}/);
+  assert.match(route, /riskLabel: canViewReports \? academicRiskLabel/);
+});
+
+test("parent home discards stale responses after switching students", () => {
+  const homeScript = fs.readFileSync(
+    path.join(process.cwd(), "miniapp/boss-academic-parent/pages/home/home.js"),
+    "utf8",
+  );
+  assert.match(homeScript, /const loadSeq = \(this\.loadSeq \|\| 0\) \+ 1/);
+  assert.match(homeScript, /if \(loadSeq !== this\.loadSeq\) return/);
+  assert.match(homeScript, /student: \{\}/);
+  assert.match(homeScript, /care: \{\}/);
 });

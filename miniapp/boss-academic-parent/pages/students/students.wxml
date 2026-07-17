@@ -1,8 +1,8 @@
 <view class="page">
   <view class="top">
-    <view class="eyebrow">我的学生</view>
-    <view class="title">选择要查看的孩子</view>
-    <view class="subtitle">选择学生后查看对应的课程和服务。</view>
+    <view class="eyebrow">我的</view>
+    <view class="title">选择学生</view>
+    <view class="subtitle">切换后，首页、服务、课表和财务会显示对应信息。</view>
   </view>
 
   <block wx:if="{{students.length}}">
@@ -14,7 +14,7 @@
         </view>
         <view class="pill" wx:if="{{item.id === currentStudentId}}">当前</view>
       </view>
-      <view class="subtitle">{{item.servicePlanLabel || "普通课程"}} · {{item.academicRiskLabel || "风险未设置"}}</view>
+      <view class="subtitle">{{item.servicePlanLabel || "普通课程"}} · 查看学习与服务进展</view>
     </view>
   </block>
   <view wx:else class="empty">还没有绑定学生</view>

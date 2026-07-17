@@ -1,4 +1,5 @@
 const api = require("../../utils/api");
+const presentation = require("../../utils/parent-presentation");
 
 function buildSubscriptionActions(groups) {
   const labels = {
@@ -31,6 +32,19 @@ Page({
     latestFeedback: null,
     financeSummary: {},
     requestSummary: {},
+    requestCountText: "-",
+    permissions: {},
+    metricClass: "three",
+    serviceSummary: {},
+    progressAvailable: false,
+    completedLessonText: "-",
+    feedbackCountText: "-",
+    nextStep: {},
+    care: {},
+    parentActions: [],
+    primaryParentAction: null,
+    parentStatus: presentation.parentStatus(null),
+    lessonBalanceText: "暂无剩余课时",
     subscriptionGroups: [],
     courseReminder: null,
     hasSubscriptionGroups: false,
@@ -49,25 +63,91 @@ Page({
   load() {
     const studentId = api.requireStudentPage();
     if (!studentId) return Promise.resolve();
+    const loadSeq = (this.loadSeq || 0) + 1;
+    this.loadSeq = loadSeq;
+    this.setData({
+      student: {},
+      nextSession: null,
+      latestFeedback: null,
+      financeSummary: {},
+      requestSummary: {},
+      requestCountText: "-",
+      permissions: {},
+      metricClass: "three",
+      parentStatus: presentation.parentStatus(null, false),
+      serviceSummary: {},
+      nextStep: {},
+      care: {},
+      parentActions: [],
+      primaryParentAction: null,
+      progressAvailable: false,
+      completedLessonText: "-",
+      feedbackCountText: "-",
+      lessonBalanceText: "暂无剩余课时",
+      subscriptionGroups: [],
+      courseReminder: null,
+      hasSubscriptionGroups: false
+    });
     const homeTask = api.request(`/api/miniapp/students/${studentId}/home`)
       .then((data) => {
+        if (loadSeq !== this.loadSeq) return;
+        const permissions = data.permissions || {};
+        const metricCount = [permissions.canViewSchedule, permissions.canViewFeedback, permissions.canCreateRequests].filter(Boolean).length;
         this.setData({
           student: data.student || {},
           nextSession: data.nextSession || null,
           latestFeedback: data.latestFeedback || null,
           financeSummary: data.financeSummary || {},
-          requestSummary: data.requestSummary || {}
+          requestSummary: data.requestSummary || {},
+          requestCountText: permissions.canCreateRequests
+            ? String((data.requestSummary || {}).openCount || 0)
+            : "-",
+          permissions,
+          metricClass: metricCount <= 1 ? "one" : metricCount === 2 ? "two" : "three",
+          parentStatus: presentation.parentStatus(
+            (data.student || {}).academicRiskLevel,
+            permissions.canViewReports
+          ),
+          lessonBalanceText: presentation.lessonBalance((data.financeSummary || {}).totalRemainingMinutes)
         });
       })
-      .catch((err) => api.toast(err.message));
+      .catch((err) => {
+        if (loadSeq === this.loadSeq) api.toast(err.message);
+      });
+    const progressTask = api.request(`/api/miniapp/students/${studentId}/service-progress`)
+      .then((data) => {
+        if (loadSeq !== this.loadSeq) return;
+        this.setData({
+          serviceSummary: data.summary || {},
+          nextStep: data.nextStep || {},
+          care: data.care || {},
+          parentActions: data.parentActions || [],
+          primaryParentAction: (data.parentActions || [])[0] || null,
+          progressAvailable: true,
+          completedLessonText: String((data.summary || {}).completedLessons || 0),
+          feedbackCountText: (data.permissions || {}).canViewFeedback
+            ? String((data.summary || {}).feedbackCount || 0)
+            : "-"
+        });
+      })
+      .catch(() => {
+        if (loadSeq !== this.loadSeq) return;
+        this.setData({
+          serviceSummary: {}, nextStep: {}, care: {}, parentActions: [], primaryParentAction: null,
+          progressAvailable: false, completedLessonText: "-", feedbackCountText: "-"
+        });
+      });
     const subscriptionTask = api.request(`/api/miniapp/subscriptions/intent?studentId=${encodeURIComponent(studentId)}`)
       .then((data) => {
+        if (loadSeq !== this.loadSeq) return;
         const groups = (data.groups || []).filter((group) => group.configured);
         const actions = buildSubscriptionActions(groups);
         this.setData({ subscriptionGroups: actions, courseReminder: data.courseReminder || null, hasSubscriptionGroups: actions.length > 0 });
       })
-      .catch(() => this.setData({ subscriptionGroups: [], courseReminder: null, hasSubscriptionGroups: false }));
-    return Promise.allSettled([homeTask, subscriptionTask]);
+      .catch(() => {
+        if (loadSeq === this.loadSeq) this.setData({ subscriptionGroups: [], courseReminder: null, hasSubscriptionGroups: false });
+      });
+    return Promise.allSettled([homeTask, progressTask, subscriptionTask]);
   },
 
   goFeedbacks() {
@@ -75,7 +155,20 @@ Page({
   },
 
   goProgress() {
-    wx.navigateTo({ url: "/pages/progress/progress" });
+    wx.switchTab({ url: "/pages/progress/progress" });
+  },
+
+  goSchedule() {
+    wx.switchTab({ url: "/pages/schedule/schedule" });
+  },
+
+  goLatestReport() {
+    const report = this.data.care.latestReport;
+    if (report && report.id) {
+      wx.navigateTo({ url: `/pages/care-report-detail/care-report-detail?id=${report.id}` });
+      return;
+    }
+    wx.navigateTo({ url: "/pages/care-reports/care-reports" });
   },
 
   goNewRequest() {

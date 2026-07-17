@@ -1,8 +1,8 @@
-<view class="page">
+<view class="page report-list-page">
   <view class="top">
     <view class="eyebrow">学生托管服务</view>
     <view class="title">进展报告</view>
-    <view class="subtitle">由服务负责人整理、审核后正式发布。</view>
+    <view class="subtitle">仅展示服务团队审核后正式发布的报告。</view>
   </view>
 
   <view wx:if="{{loading}}" class="empty">正在加载...</view>
@@ -11,12 +11,16 @@
     <view class="report-row" wx:for="{{items}}" wx:key="id" data-id="{{item.id}}" bindtap="openReport">
       <view class="report-meta">
         <text class="report-type">{{item.typeLabel}}</text>
-        <text class="ack">{{item.acknowledged ? "已确认" : "待确认"}}</text>
+        <text class="ack {{item.acknowledged ? 'done' : 'pending'}}">{{item.acknowledged ? "已确认" : "待确认"}}</text>
       </view>
       <view class="report-title">{{item.title}}</view>
       <view class="report-period">{{item.periodStartText}} - {{item.periodEndText}}</view>
       <view class="report-summary">{{item.overallSummary}}</view>
+      <view class="report-open">查看报告 ›</view>
     </view>
   </block>
-  <view wx:else class="empty">暂无已发布的报告</view>
+  <view wx:else class="empty">
+    <view class="empty-title">暂无已发布报告</view>
+    <view class="empty-note">服务团队发布后会显示在这里。</view>
+  </view>
 </view>

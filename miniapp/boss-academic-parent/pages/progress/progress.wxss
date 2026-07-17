@@ -6,6 +6,35 @@
   padding-bottom: 30rpx;
 }
 
+.status-band {
+  padding: 26rpx 28rpx;
+  border-left: 8rpx solid #287a62;
+  background: #edf7f2;
+}
+
+.status-band.tone-watch {
+  border-left-color: #c56a25;
+  background: #fff6ed;
+}
+
+.status-band.tone-attention {
+  border-left-color: #9d3b30;
+  background: #fff1ef;
+}
+
+.status-title {
+  margin-top: 7rpx;
+  font-size: 34rpx;
+  font-weight: 760;
+}
+
+.status-summary {
+  margin-top: 9rpx;
+  color: #555a62;
+  font-size: 25rpx;
+  line-height: 1.55;
+}
+
 .progress-loading,
 .progress-error {
   margin-top: 24rpx;
@@ -21,8 +50,9 @@
 }
 
 .service-band {
+  margin-top: 22rpx;
   padding: 28rpx 0;
-  border-top: 2rpx solid #ec5e0a;
+  border-top: 1rpx solid #dfe2e5;
   border-bottom: 1rpx solid #dfe2e5;
 }
 
@@ -42,16 +72,6 @@
   font-size: 36rpx;
   font-weight: 750;
   line-height: 1.25;
-}
-
-.risk-tag {
-  flex: 0 0 auto;
-  padding: 8rpx 14rpx;
-  border: 1rpx solid #f0b48f;
-  border-radius: 6rpx;
-  color: #9b3e08;
-  font-size: 22rpx;
-  font-weight: 700;
 }
 
 .service-cadence {
@@ -103,6 +123,10 @@
 
 .progress-metrics.two {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.progress-metrics.one {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .progress-metric {
@@ -176,6 +200,20 @@
   background: #fff7f1;
   border: 1rpx solid #f2cbb3;
   border-radius: 6rpx;
+}
+
+.parent-clear {
+  margin-top: 28rpx;
+  padding: 22rpx 0;
+  border-top: 1rpx solid #dfe2e5;
+  border-bottom: 1rpx solid #dfe2e5;
+}
+
+.parent-clear-text {
+  margin-top: 8rpx;
+  color: #4f555c;
+  font-size: 27rpx;
+  font-weight: 650;
 }
 
 .action-row {
@@ -316,6 +354,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.service-actions {
+  margin-top: 28rpx;
 }
 
 .report-title {

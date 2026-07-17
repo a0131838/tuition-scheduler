@@ -1,4 +1,4 @@
-<view class="page">
+<view class="page report-detail-page">
   <view wx:if="{{loading}}" class="empty">正在读取报告...</view>
   <view wx:elif="{{error}}" class="empty">{{error}}</view>
   <block wx:else>
@@ -9,13 +9,30 @@
       <view class="detail-meta">审核：{{report.approvedByName || "服务团队"}} · {{report.publishedAtText}}</view>
     </view>
 
-    <view class="detail-section" wx:for="{{sections}}" wx:key="title">
-      <view class="section-title">{{item.title}}</view>
-      <view class="section-body">{{item.body}}</view>
+    <view class="summary-band">
+      <view class="summary-label">本期结论</view>
+      <view class="summary-body">{{report.overallSummary}}</view>
+    </view>
+
+    <view class="section-group" wx:if="{{prioritySections.length}}">
+      <view class="group-title">行动与下一步</view>
+      <view class="priority-section" wx:for="{{prioritySections}}" wx:key="title">
+        <view class="section-title">{{item.title}}</view>
+        <view class="section-body">{{item.body}}</view>
+      </view>
+    </view>
+
+    <view class="section-group" wx:if="{{detailSections.length}}">
+      <view class="group-title">详细进展</view>
+      <view class="detail-section" wx:for="{{detailSections}}" wx:key="title">
+        <view class="section-title">{{item.title}}</view>
+        <view class="section-body">{{item.body}}</view>
+      </view>
     </view>
 
     <view class="question-area">
-      <view class="section-title">报告问答</view>
+      <view class="section-title">对本期报告有疑问</view>
+      <view class="question-note">提交后由服务团队跟进回复。</view>
       <view class="question-item" wx:for="{{questions}}" wx:key="id">
         <view class="question-meta">{{item.createdAtText}} · {{item.statusText}}</view>
         <view class="question-title">问：{{item.question}}</view>
@@ -24,12 +41,14 @@
         <button class="btn secondary compact" wx:if="{{item.status === 'ANSWERED'}}" data-id="{{item.id}}" bindtap="closeQuestion">问题已解决</button>
       </view>
       <view class="question-empty" wx:if="{{!questions.length}}">暂无提问</view>
-      <textarea class="question-input" maxlength="2000" value="{{questionText}}" bindinput="onQuestionInput" placeholder="对本期报告有疑问，可在这里提交" />
+      <textarea class="question-input" maxlength="2000" value="{{questionText}}" bindinput="onQuestionInput" placeholder="请写下对本期报告的疑问" />
       <button class="btn secondary" disabled="{{!questionText || submittingQuestion}}" loading="{{submittingQuestion}}" bindtap="submitQuestion">提交问题</button>
     </view>
 
-    <button class="btn" bindtap="openPdf">查看 PDF</button>
-    <button class="btn secondary" wx:if="{{!report.acknowledged}}" loading="{{acknowledging}}" bindtap="acknowledge">确认收到</button>
-    <view class="acknowledged" wx:else>已确认收到</view>
+    <view class="report-action-bar">
+      <button class="action-button secondary-action" bindtap="openPdf">查看 PDF</button>
+      <button class="action-button primary-action" wx:if="{{!report.acknowledged}}" loading="{{acknowledging}}" bindtap="acknowledge">确认收到</button>
+      <view class="acknowledged" wx:else>已确认收到</view>
+    </view>
   </block>
 </view>

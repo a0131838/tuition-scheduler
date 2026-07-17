@@ -1,41 +1,81 @@
+.report-list-page {
+  padding-top: 10rpx;
+}
+
 .report-row {
-  margin-bottom: 20rpx;
+  margin-bottom: 18rpx;
   padding: 28rpx;
-  border: 1rpx solid #e2e5e9;
+  border-left: 6rpx solid #ec5e0a;
   background: #fff;
 }
 
 .report-meta {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
 }
 
 .report-type,
 .ack {
-  color: #ec5e0a;
-  font-size: 24rpx;
+  color: #9b3e08;
+  font-size: 23rpx;
+  font-weight: 700;
 }
 
 .ack {
-  color: #59606a;
+  padding: 6rpx 12rpx;
+  border-radius: 6rpx;
+}
+
+.ack.pending {
+  background: #fff0e7;
+  color: #9b3e08;
+}
+
+.ack.done {
+  background: #edf7f2;
+  color: #287a62;
 }
 
 .report-title {
-  margin-top: 12rpx;
+  margin-top: 14rpx;
   color: #17191c;
-  font-size: 31rpx;
-  font-weight: 600;
+  font-size: 32rpx;
+  font-weight: 700;
+  line-height: 1.4;
 }
 
 .report-period,
 .report-summary {
   margin-top: 10rpx;
   color: #6b6f76;
-  font-size: 25rpx;
+  font-size: 24rpx;
   line-height: 1.55;
 }
 
 .report-summary {
+  display: -webkit-box;
+  overflow: hidden;
   color: #34383e;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.report-open {
+  margin-top: 18rpx;
+  color: #9b3e08;
+  font-size: 23rpx;
+  font-weight: 700;
+}
+
+.empty-title {
+  color: #34383e;
+  font-size: 29rpx;
+  font-weight: 700;
+}
+
+.empty-note {
+  margin-top: 8rpx;
+  font-size: 24rpx;
 }
