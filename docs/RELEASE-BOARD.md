@@ -14,8 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-17-r257` at runtime commit `c26f725` with the redesigned Full Care professional operations workspace. Its compact header/sidebar, priority quality queues, project/report/operations hierarchy and 390px layout preserve all r256 business behavior.
-- Release candidate `2026-07-17-r258` restores the normal complete admin sidebar on Full Care routes while keeping role-specific navigation boundaries and the redesigned Care page content. The training SOP will be refreshed against the final production view.
+- Current production release: `2026-07-17-r258` at runtime commit `21ece37`. Full Care keeps the redesigned professional workspace and local module tabs while Admin users again see the normal complete backend sidebar with Full Care highlighted. Finance and resource-only navigation remains role-specific. The matching 22-page SOP has been refreshed from production.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
@@ -23,7 +22,7 @@
 
 ## Open Risks
 
-- Full-care-sidebar release risk: confirm Admin sees the complete menu and Full Care remains highlighted, while CS/resource-only accounts do not gain unauthorized links. Refresh every SOP screenshot after production deployment so training material matches the live navigation.
+- Full-care-sidebar monitoring: `2026-07-17-r258` is live. Authenticated production screenshots confirm the complete Admin menu and active Full Care link; the code continues to select Finance and resource-only menus by role rather than Care route. The refreshed 22-page SOP matches the live desktop/mobile UI and temporary fixture residue is zero.
 - Full-care-UI monitoring: `2026-07-17-r257` is live and presentation-only. Authenticated production checks passed the care home, quality dashboard, project, operations and report pages on desktop and 390px mobile with HTTP 200, no console errors and no horizontal overflow. Monitor the first staff use of long forms and dense project data; existing CARE actions and all teaching/finance boundaries remain unchanged.
 - Full-care-complete-V1 monitoring: `2026-07-16-r256` is live and isolated from teaching and finance. Migration, desktop/mobile pages, parent question permission/closure, privacy, QA cleanup and 22-page SOP checks pass. Staff should now use the SOP to configure students one by one; no real student was automatically enrolled. Monitor the first real risk escalation, backup handover, parent question and service review instead of bulk-enabling students.
 

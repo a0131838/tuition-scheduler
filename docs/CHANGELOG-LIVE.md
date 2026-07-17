@@ -19,13 +19,15 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-17-r258`
 - Date/Time (Asia/Shanghai): `2026-07-17`
-- Deployment status: `READY for guarded deployment`
+- Deployment status: `LIVE` at runtime commit `21ece37`
 - Scope: restore the complete role-appropriate admin sidebar inside Full Care pages while preserving the redesigned Care workspace and its local module navigation.
 - Key files:
   - `app/admin/layout.tsx`
+  - `docs/SOP-教务-全托管完整操作流程-培训版-20260717.html`
+  - `docs/assets/sop-教务-全托管完整V1-20260717/*`
   - `docs/tasks/TASK-20260717-care-full-sidebar-and-sop-refresh.md`
 - Risk impact (if any): Low and navigation-only. Admin users regain the normal complete admin menu; Finance and resource-only users continue to receive their role-specific menus. No route permission, CARE action, database, teaching, package, payroll, settlement, invoice or receipt behavior changes.
-- Verification: TypeScript and `git diff --check` pass. Production build, authenticated production navigation checks and refreshed SOP validation are required before marking live.
+- Verification: TypeScript, all 79 backend tests, the complete 194-page build and `git diff --check` pass. The guarded release aligned runtime at `21ece37`, production has 107 completed migrations with none pending, PM2 is online with zero restarts and `/admin/login` returns `200`. Authenticated production screenshots confirm the complete Admin sidebar and active Full Care item. The refreshed SOP uses real production desktop/mobile screenshots and calibrated red callouts; its 22 A4 landscape pages, 2.5 MB file, 6,024 extracted characters, key workflow terms and contact sheet all pass. Temporary student, engagement, parent and session residue is zero.
 - Rollback point: `2fb0a1f` (`2026-07-17-r257` final documentation head; runtime feature commit `c26f725`).
 
 ---

@@ -31,4 +31,9 @@ Restore the complete role-appropriate admin sidebar on Full Care routes, then re
 
 ## Production Acceptance
 
-- Pending guarded deployment and final SOP validation.
+- Guarded release completed with runtime commit `21ece37`; production reports 107 completed migrations with none pending, PM2 online with zero restarts and `/admin/login` HTTP 200.
+- Authenticated production screenshots confirm the complete Admin sidebar, active Full Care link and unchanged Care local navigation.
+- Refreshed SOP uses 12 real production desktop/mobile screenshots and calibrated red callouts.
+- Final PDF is 22 populated A4 landscape pages, approximately 2.5 MB, with 6,024 extracted characters and all required workflow terms present.
+- Rendered contact sheet and focused page review show no blank pages, clipped text, misplaced callouts or unreadable screenshots.
+- Temporary training student, engagement, parent and session cleanup all report zero residue.
