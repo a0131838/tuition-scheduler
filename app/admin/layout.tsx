@@ -64,6 +64,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const canSeeSharedDocs = showManagerConsole && user.role === "ADMIN";
   const isFinance = user.role === "FINANCE";
   const isResourceOnly = isResourceOnlyRole(user.role);
+  const isCareWorkspace = pathname.startsWith("/admin/care");
   const ledgerAlertRow = await prisma.appSetting.findUnique({
     where: { key: LEDGER_INTEGRITY_ALERT_KEY },
     select: { value: true },
@@ -418,6 +419,30 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     },
   ];
 
+  const careNavGroups = [
+    {
+      title: t(lang, "Care Workspace", "全托管工作台"),
+      summary: t(lang, "Student projects and quality exceptions.", "学生项目与质量异常。"),
+      items: [
+        {
+          href: "/admin/care",
+          label: t(lang, "Care Students", "托管学生"),
+          description: t(lang, "Projects, delivery records and reports.", "项目、交付记录和正式报告。"),
+          tone: "success" as const,
+        },
+      ],
+    },
+    {
+      title: t(lang, "Related Work", "关联工作"),
+      items: [
+        { href: "/admin/todos", label: t(lang, "Todo Center", "待办中心"), tone: "warning" as const },
+        { href: "/admin/students", label: t(lang, "Student Records", "学生档案"), tone: "neutral" as const },
+        { href: "/admin/school-applications", label: t(lang, "School Applications", "学校申请"), tone: "neutral" as const },
+        { href: "/admin", label: t(lang, "Admin Dashboard", "后台总览"), tone: "accent" as const },
+      ],
+    },
+  ];
+
   const sidebarNavContent = (
     <>
       <div
@@ -437,15 +462,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                   : t(lang, "Sales Workspace", "销售工作台")
                 : t(lang, "Admin Workspace", "管理工作台")}
           </div>
-          <div style={{ fontSize: 11.5, lineHeight: 1.4, color: "#475569" }}>
-            <AdminWorkspaceContextClient
-              initialPathname={pathname}
-              lang={lang}
-              isFinance={isFinance}
-              isResourceOnly={isResourceOnly}
-              field="hint"
-            />
-          </div>
+          {!isCareWorkspace ? (
+            <div style={{ fontSize: 11.5, lineHeight: 1.4, color: "#475569" }}>
+              <AdminWorkspaceContextClient
+                initialPathname={pathname}
+                lang={lang}
+                isFinance={isFinance}
+                isResourceOnly={isResourceOnly}
+                field="hint"
+              />
+            </div>
+          ) : null}
         </div>
         <div
           style={{
@@ -491,7 +518,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
       </div>
 
-      <AdminSidebarNavClient groups={isFinance ? financeNavGroups : isResourceOnly ? resourceNavGroups : adminNavGroups} />
+      <AdminSidebarNavClient groups={isCareWorkspace ? careNavGroups : isFinance ? financeNavGroups : isResourceOnly ? resourceNavGroups : adminNavGroups} />
 
       <div
         style={{
@@ -543,10 +570,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div style={{ fontFamily: "system-ui", margin: 0, fontSize: 12.5 }}>
-      <div className="app-shell">
+      <div className={`app-shell${isCareWorkspace ? " app-shell-care" : ""}`}>
         <SidebarScrollMemoryClient />
         <aside className="app-sidebar">
           <div
+            className="app-admin-brand"
             style={{
               ...workbenchFilterPanelStyle,
               padding: 12,
@@ -574,23 +602,30 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </details>
         </aside>
 
-        <main className="app-main">
+        <main className={`app-main${isCareWorkspace ? " app-main-care" : ""}`}>
           <WorkbenchStickyGuardClient />
           <div
             className="app-main-head"
             style={{
-              ...workbenchHeroStyle("indigo"),
-              padding: 14,
-              marginBottom: 14,
+              ...(isCareWorkspace
+                ? {
+                    padding: "9px 12px",
+                    marginBottom: 18,
+                    borderRadius: 8,
+                    border: "1px solid #e2e8f0",
+                    background: "#ffffff",
+                    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+                  }
+                : workbenchHeroStyle("indigo")),
               display: "flex",
               justifyContent: "space-between",
-              alignItems: "flex-start",
+              alignItems: isCareWorkspace ? "center" : "flex-start",
               gap: 12,
               flexWrap: "wrap",
             }}
           >
-            <div style={{ display: "grid", gap: 6 }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>
+            <div style={{ display: "grid", gap: isCareWorkspace ? 2 : 6 }}>
+              <div style={{ fontSize: isCareWorkspace ? 13 : 16, fontWeight: 800, color: "#0f172a" }}>
                 <AdminWorkspaceContextClient
                   initialPathname={pathname}
                   lang={lang}
@@ -599,17 +634,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                   field="title"
                 />
               </div>
-              <div style={{ color: "#64748b", lineHeight: 1.45 }}>
-                <AdminWorkspaceContextClient
-                  initialPathname={pathname}
-                  lang={lang}
-                  isFinance={isFinance}
-                  isResourceOnly={isResourceOnly}
-                  field="hint"
-                />
-              </div>
-              <div style={{ color: "#475569", fontSize: 12 }}>
-                {t(lang, "Logged in", "已登录")}: <b>{user.name}</b> ({user.email})
+              {!isCareWorkspace ? (
+                <div style={{ color: "#64748b", lineHeight: 1.45 }}>
+                  <AdminWorkspaceContextClient
+                    initialPathname={pathname}
+                    lang={lang}
+                    isFinance={isFinance}
+                    isResourceOnly={isResourceOnly}
+                    field="hint"
+                  />
+                </div>
+              ) : null}
+              <div style={{ color: "#64748b", fontSize: isCareWorkspace ? 11.5 : 12 }}>
+                {isCareWorkspace ? user.name : <>{t(lang, "Logged in", "已登录")}: <b>{user.name}</b> ({user.email})</>}
               </div>
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>

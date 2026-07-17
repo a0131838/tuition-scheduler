@@ -220,27 +220,40 @@ export default async function CareOperationsPage({
     <main className={styles.page}>
       <header className={styles.header}>
         <div>
-          <div className={styles.toolbar}>
-            <Link className={styles.buttonSecondary} href={`/admin/care/${encodeURIComponent(id)}`}>{t(lang, "Back to project", "返回项目")}</Link>
-            <Link className={styles.buttonSecondary} href="/admin/care/quality">{t(lang, "Quality dashboard", "质量工作台")}</Link>
-          </div>
-          <h1 style={{ marginTop: 10 }}>{t(lang, "Operations", "运营闭环")} · {engagement.student.name}</h1>
+          <div className={styles.eyebrow}>{t(lang, "Risk and continuity", "风险与服务连续性")}</div>
+          <h1>{t(lang, "Operations", "运营闭环")} · {engagement.student.name}</h1>
           <div className={styles.muted}>{engagement.student.school ?? "-"} · {engagement.student.grade ?? "-"}</div>
+        </div>
+        <div className={styles.headerActions}>
+          <Link className={styles.buttonSecondary} href={`/admin/care/${encodeURIComponent(id)}`}>{t(lang, "Project overview", "项目总览")}</Link>
         </div>
       </header>
 
       {err ? <div className={styles.noticeError}>{err}</div> : null}
       {msg ? <div className={styles.noticeSuccess}>{msg}</div> : null}
 
+      <nav className={styles.moduleNav} aria-label={t(lang, "Project navigation", "项目导航")}>
+        <Link href="/admin/care">{t(lang, "All students", "全部学生")}</Link>
+        <Link href={`/admin/care/${encodeURIComponent(id)}`}>{t(lang, "Overview", "项目总览")}</Link>
+        <Link data-active="true" href={`/admin/care/${encodeURIComponent(id)}/operations`}>{t(lang, "Operations", "运营闭环")}</Link>
+        <Link href="/admin/care/quality">{t(lang, "Quality", "质量工作台")}</Link>
+      </nav>
+
       <div className={styles.metrics}>
-        <div className={styles.metric}><strong>{openRisks.length}</strong><span className={styles.muted}>{t(lang, "Open risks", "未结风险")}</span></div>
-        <div className={styles.metric}><strong>{breached.length}</strong><span className={styles.muted}>{t(lang, "SLA breaches", "响应超时")}</span></div>
-        <div className={styles.metric}><strong>{activeCoverage.length}</strong><span className={styles.muted}>{t(lang, "Active coverage", "代班中")}</span></div>
+        <div className={styles.metric} data-tone={openRisks.length ? "risk" : "active"}><strong>{openRisks.length}</strong><span className={styles.muted}>{t(lang, "Open risks", "未结风险")}</span></div>
+        <div className={styles.metric} data-tone={breached.length ? "risk" : "active"}><strong>{breached.length}</strong><span className={styles.muted}>{t(lang, "SLA breaches", "响应超时")}</span></div>
+        <div className={styles.metric} data-tone={activeCoverage.length ? "active" : "neutral"}><strong>{activeCoverage.length}</strong><span className={styles.muted}>{t(lang, "Active coverage", "代班中")}</span></div>
         <div className={styles.metric}><strong>{approvedReviews.length}</strong><span className={styles.muted}>{t(lang, "Approved reviews", "已批准复盘")}</span></div>
       </div>
 
       <section className={styles.section} id="risks">
-        <div className={styles.timelineHead}><h2>{t(lang, "Risk escalation", "风险升级")}</h2><span className={styles.badge} data-tone={breached.length ? "risk" : "neutral"}>{breached.length} SLA</span></div>
+        <div className={styles.sectionHeader}>
+          <div className={styles.sectionHeading}>
+            <h2>{t(lang, "Risk escalation", "风险升级")}</h2>
+            <div className={styles.muted}>{t(lang, "Record verified facts, response ownership and closure evidence.", "记录已核实事实、响应负责人和闭环证据。")}</div>
+          </div>
+          <span className={styles.badge} data-tone={breached.length ? "risk" : "neutral"}>{breached.length} SLA</span>
+        </div>
         <details className={styles.details}>
           <summary>{t(lang, "Add risk", "登记风险")}</summary>
           <form action={riskCreateAction} className={styles.formGrid}>
@@ -260,7 +273,7 @@ export default async function CareOperationsPage({
           {engagement.riskCases.map((risk) => {
             const slaBreached = isCareRiskSlaBreached(risk, now);
             const next = riskNextStatuses(risk.status);
-            return <article className={styles.timelineItem} key={risk.id}>
+            return <article className={styles.timelineItem} data-tone={slaBreached || risk.riskLevel === "HIGH" || risk.riskLevel === "CRITICAL" ? "risk" : risk.status === "CLOSED" ? "active" : "neutral"} key={risk.id}>
               <div className={styles.timelineHead}><div><strong>{risk.title}</strong><div className={styles.muted}>{formatBusinessDateTime(risk.detectedAt)} · {risk.owner.name}{risk.backupOwner ? ` / ${risk.backupOwner.name}` : ""}</div></div><div className={styles.toolbar}><span className={styles.badge} data-tone={risk.riskLevel === "HIGH" || risk.riskLevel === "CRITICAL" ? "risk" : "neutral"}>{risk.riskLevel}</span><span className={styles.badge} data-tone={slaBreached ? "risk" : risk.status === "CLOSED" ? "active" : "neutral"}>{slaBreached ? t(lang, "SLA overdue", "响应超时") : risk.status}</span></div></div>
               <div className={styles.evidence}><strong>{t(lang, "Facts", "事实")}</strong>{risk.facts}</div>
               <div className={styles.evidence}><strong>{t(lang, "Immediate action", "立即行动")}</strong>{risk.immediateAction}</div>
@@ -274,7 +287,10 @@ export default async function CareOperationsPage({
       </section>
 
       <section className={styles.section} id="coverage">
-        <h2>{t(lang, "Backup coverage and handover", "代班与交接")}</h2>
+        <div className={styles.sectionHeading}>
+          <h2>{t(lang, "Backup coverage and handover", "代班与交接")}</h2>
+          <div className={styles.muted}>{t(lang, "Keep ownership explicit when the primary owner is unavailable.", "主负责人缺席时，明确代班时间、关键事项和交接责任。")}</div>
+        </div>
         {manager ? <details className={styles.details}>
           <summary>{t(lang, "Schedule coverage", "安排代班")}</summary>
           <form action={coverageCreateAction} className={styles.formGrid}>
@@ -288,12 +304,15 @@ export default async function CareOperationsPage({
             <button className={styles.button} type="submit">{t(lang, "Schedule", "保存安排")}</button>
           </form>
         </details> : null}
-        {engagement.coveragePeriods.map((coverage) => <article className={styles.timelineItem} key={coverage.id}><div className={styles.timelineHead}><strong>{coverage.primary.name} → {coverage.backup.name}</strong><span className={styles.badge} data-tone={coverage.status === "ACTIVE" ? "active" : "neutral"}>{coverage.status}</span></div><div className={styles.muted}>{formatBusinessDateTime(coverage.startAt)} - {formatBusinessDateTime(coverage.endAt)} · {coverage.reason}</div><div className={styles.evidence}><strong>{t(lang, "Handover", "交接")}</strong>{coverage.handoverSummary}</div><div className={styles.evidence}><strong>{t(lang, "Critical actions", "关键事项")}</strong>{coverage.criticalActions}</div>{manager && coverageNextStatuses(coverage.status).length ? <form action={coverageStatusAction} className={styles.inlineForm}><input type="hidden" name="coverageId" value={coverage.id} /><input type="hidden" name="version" value={coverage.version} /><select className={styles.select} style={{ width: "auto" }} name="nextStatus">{coverageNextStatuses(coverage.status).map((status) => <option key={status} value={status}>{status}</option>)}</select><button className={styles.buttonSecondary} type="submit">{t(lang, "Update", "更新")}</button></form> : null}</article>)}
+        {engagement.coveragePeriods.map((coverage) => <article className={styles.timelineItem} data-tone={coverage.status === "ACTIVE" ? "active" : "neutral"} key={coverage.id}><div className={styles.timelineHead}><strong>{coverage.primary.name} → {coverage.backup.name}</strong><span className={styles.badge} data-tone={coverage.status === "ACTIVE" ? "active" : "neutral"}>{coverage.status}</span></div><div className={styles.muted}>{formatBusinessDateTime(coverage.startAt)} - {formatBusinessDateTime(coverage.endAt)} · {coverage.reason}</div><div className={styles.evidence}><strong>{t(lang, "Handover", "交接")}</strong>{coverage.handoverSummary}</div><div className={styles.evidence}><strong>{t(lang, "Critical actions", "关键事项")}</strong>{coverage.criticalActions}</div>{manager && coverageNextStatuses(coverage.status).length ? <form action={coverageStatusAction} className={styles.inlineForm}><input type="hidden" name="coverageId" value={coverage.id} /><input type="hidden" name="version" value={coverage.version} /><select className={styles.select} style={{ width: "auto" }} name="nextStatus">{coverageNextStatuses(coverage.status).map((status) => <option key={status} value={status}>{status}</option>)}</select><button className={styles.buttonSecondary} type="submit">{t(lang, "Update", "更新")}</button></form> : null}</article>)}
         {!engagement.coveragePeriods.length ? <div className={styles.muted}>{t(lang, "No coverage periods.", "暂无代班安排。")}</div> : null}
       </section>
 
       <section className={styles.section} id="reviews">
-        <h2>{t(lang, "Service value review", "服务价值复盘")}</h2>
+        <div className={styles.sectionHeading}>
+          <h2>{t(lang, "Service value review", "服务价值复盘")}</h2>
+          <div className={styles.muted}>{t(lang, "Compare goals, delivery evidence and the recommended next stage.", "对照目标、实际交付和证据，形成下一阶段建议。")}</div>
+        </div>
         <details className={styles.details}>
           <summary>{t(lang, "Create review", "创建复盘")}</summary>
           <form action={reviewCreateAction} className={styles.formGrid}>

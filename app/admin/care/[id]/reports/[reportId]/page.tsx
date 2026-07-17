@@ -38,7 +38,7 @@ async function actionRedirect(engagementId: string, reportId: string, label: str
 
 function Section({ title, value }: { title: string; value: string | null }) {
   if (!value) return null;
-  return <div className={styles.evidence}><strong>{title}</strong><div style={{ whiteSpace: "pre-wrap" }}>{value}</div></div>;
+  return <div className={styles.reportSection}><strong>{title}</strong><div style={{ whiteSpace: "pre-wrap", lineHeight: 1.65 }}>{value}</div></div>;
 }
 
 export default async function CareReportPage({
@@ -141,26 +141,49 @@ export default async function CareReportPage({
   const editable = canEditCareReport(report.status);
   const metrics = snapshotMetrics(report.sourceSnapshotJson);
   const statusLabel = CARE_REPORT_STATUS_LABELS[report.status][lang === "EN" ? "en" : "zh"];
+  const workflowStatuses = ["DRAFT", "SUBMITTED", "APPROVED", "PUBLISHED"] as const;
+  const workflowIndex =
+    report.status === "RETURNED" ? 0
+      : report.status === "REVOKED" ? 3
+        : Math.max(0, workflowStatuses.indexOf(report.status as typeof workflowStatuses[number]));
 
   return (
     <main className={styles.page}>
       <header className={styles.header}>
         <div>
-          <div className={styles.toolbar}>
-            <Link href={`/admin/care/${encodeURIComponent(id)}`} className={styles.buttonSecondary}>{t(lang, "Back to project", "返回项目")}</Link>
-            <span className={styles.badge}>{reportTypeLabel(report.reportType, lang === "EN")}</span>
-            <span className={styles.badge} data-tone={report.status === "PUBLISHED" ? "active" : report.status === "RETURNED" || report.status === "REVOKED" ? "risk" : "neutral"}>{statusLabel}</span>
-          </div>
-          <h1 style={{ marginTop: 10 }}>{report.title}</h1>
+          <div className={styles.eyebrow}>{reportTypeLabel(report.reportType, lang === "EN")}</div>
+          <h1>{report.title}</h1>
           <div className={styles.muted}>{report.student.name} · {report.student.school ?? "-"} · {formatBusinessDateOnly(report.periodStart)} - {formatBusinessDateOnly(report.periodEnd)}</div>
         </div>
-        <div className={styles.toolbar}>
+        <div className={styles.headerActions}>
+          <span className={styles.badge} data-tone={report.status === "PUBLISHED" ? "active" : report.status === "RETURNED" || report.status === "REVOKED" ? "risk" : "neutral"}>{statusLabel}</span>
           {(report.status === "APPROVED" || report.status === "PUBLISHED") ? <a className={styles.buttonSecondary} href={`/api/admin/care/reports/${encodeURIComponent(report.id)}/pdf`}>{t(lang, "PDF", "下载PDF")}</a> : null}
         </div>
       </header>
 
       {err ? <div className={styles.noticeError}>{err}</div> : null}
       {msg ? <div className={styles.noticeSuccess}>{msg}</div> : null}
+
+      <nav className={styles.moduleNav} aria-label={t(lang, "Report navigation", "报告导航")}>
+        <Link href="/admin/care">{t(lang, "All students", "全部学生")}</Link>
+        <Link href={`/admin/care/${encodeURIComponent(id)}`}>{t(lang, "Project overview", "项目总览")}</Link>
+        <Link data-active="true" href={`/admin/care/${encodeURIComponent(id)}/reports/${encodeURIComponent(reportId)}`}>{t(lang, "Current report", "当前报告")}</Link>
+        <Link href={`/admin/care/${encodeURIComponent(id)}/operations`}>{t(lang, "Operations", "运营闭环")}</Link>
+      </nav>
+
+      <div className={styles.workflow} aria-label={t(lang, "Report workflow", "报告流程")}>
+        {workflowStatuses.map((status, index) => (
+          <div
+            className={styles.workflowStep}
+            data-complete={workflowIndex > index || report.status === "PUBLISHED"}
+            data-current={workflowIndex === index && report.status !== "REVOKED"}
+            key={status}
+          >
+            <strong>{CARE_REPORT_STATUS_LABELS[status][lang === "EN" ? "en" : "zh"]}</strong>
+            <span>{index === 0 ? t(lang, "Prepare", "整理内容") : index === 1 ? t(lang, "Review", "负责人审核") : index === 2 ? t(lang, "Lock", "批准锁定") : t(lang, "Parent", "家长可见")}</span>
+          </div>
+        ))}
+      </div>
 
       <div className={styles.metrics}>
         {metrics.map(([en, zh, value]) => <div className={styles.metric} key={en}><strong>{value}</strong><span className={styles.muted}>{t(lang, en, zh)}</span></div>)}
@@ -173,18 +196,22 @@ export default async function CareReportPage({
           {report.status === "RETURNED" && report.reviewNote ? <div className={styles.noticeError}>{t(lang, "Return reason", "退回原因")}: {report.reviewNote}</div> : null}
           <form action={saveAction} className={styles.formGrid}>
             <input type="hidden" name="version" value={report.version} />
+            <div className={`${styles.formSectionTitle} ${styles.full}`}>{t(lang, "Report identity", "报告基本信息")}</div>
             <label className={`${styles.label} ${styles.full}`}>{t(lang, "Title", "标题")}<input className={styles.field} name="title" maxLength={240} defaultValue={report.title} required /></label>
             <label className={styles.label}>{t(lang, "Risk", "风险等级")}<select className={styles.select} name="riskLevel" defaultValue={report.riskLevel}>{["LOW", "MEDIUM", "HIGH", "CRITICAL"].map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+            <div className={`${styles.formSectionTitle} ${styles.full}`}>{t(lang, "Conclusion and progress", "结论与进展")}</div>
             <label className={`${styles.label} ${styles.full}`}>{t(lang, "Overall conclusion", "本期结论")}<textarea className={styles.textarea} name="overallSummary" defaultValue={report.overallSummary} required /></label>
             <label className={`${styles.label} ${styles.full}`}>{t(lang, "Academic progress", "学业进展")}<textarea className={styles.textarea} name="academicSummary" defaultValue={report.academicSummary ?? ""} /></label>
             <label className={`${styles.label} ${styles.full}`}>{t(lang, "School communication", "学校沟通")}<textarea className={styles.textarea} name="schoolSummary" defaultValue={report.schoolSummary ?? ""} /></label>
             <label className={`${styles.label} ${styles.full}`}>{t(lang, "Life and wellbeing", "生活与状态")}<textarea className={styles.textarea} name="lifeSummary" defaultValue={report.lifeSummary ?? ""} /></label>
             <label className={`${styles.label} ${styles.full}`}>{t(lang, "Risks", "风险与判断")}<textarea className={styles.textarea} name="riskSummary" defaultValue={report.riskSummary ?? ""} /></label>
+            <div className={`${styles.formSectionTitle} ${styles.full}`}>{t(lang, "Delivery and next actions", "交付与下一步")}</div>
             <label className={`${styles.label} ${styles.full}`}>{t(lang, "Actions completed", "已完成行动")}<textarea className={styles.textarea} name="actionsCompleted" defaultValue={report.actionsCompleted} required /></label>
             <label className={`${styles.label} ${styles.full}`}>{t(lang, "Delivery evidence", "交付证据")}<textarea className={styles.textarea} name="evidenceSummary" defaultValue={report.evidenceSummary ?? ""} /></label>
             <label className={`${styles.label} ${styles.full}`}>{t(lang, "Next plan", "下一阶段计划")}<textarea className={styles.textarea} name="nextPlan" defaultValue={report.nextPlan} required /></label>
             <label className={`${styles.label} ${styles.full}`}>{t(lang, "Student actions", "学生需要完成")}<textarea className={styles.textarea} name="studentActions" defaultValue={report.studentActions ?? ""} /></label>
             <label className={`${styles.label} ${styles.full}`}>{t(lang, "Parent actions", "家长需要配合")}<textarea className={styles.textarea} name="parentActions" defaultValue={report.parentActions ?? ""} /></label>
+            <div className={`${styles.formSectionTitle} ${styles.full}`}>{t(lang, "Internal only", "仅内部可见")}</div>
             <label className={`${styles.label} ${styles.full}`}>{t(lang, "Internal note", "内部备注，不向家长展示")}<textarea className={styles.textarea} name="internalNote" defaultValue={report.internalNote ?? ""} /></label>
             <button className={styles.button} type="submit">{t(lang, "Save draft", "保存草稿")}</button>
           </form>
@@ -192,7 +219,7 @@ export default async function CareReportPage({
       ) : (
         <section className={styles.section}>
           <div className={styles.timelineHead}><h2>{t(lang, "Parent report", "家长报告内容")}</h2><span className={styles.badge} data-tone={report.riskLevel === "HIGH" || report.riskLevel === "CRITICAL" ? "risk" : "neutral"}>{report.riskLevel}</span></div>
-          <div className={styles.stack}>
+          <div className={styles.reportDocument}>
             <Section title={t(lang, "Overall conclusion", "本期结论")} value={report.overallSummary} />
             <Section title={t(lang, "Academic progress", "学业进展")} value={report.academicSummary} />
             <Section title={t(lang, "School communication", "学校沟通")} value={report.schoolSummary} />

@@ -335,30 +335,36 @@ export default async function CareDetailPage({
     <main className={styles.page}>
       <header className={styles.header}>
         <div>
-          <div className={styles.toolbar}>
-            <Link href="/admin/care" className={styles.buttonSecondary}>{t(lang, "Back", "返回")}</Link>
-            <Link href={`/admin/care/${encodeURIComponent(id)}/operations`} className={styles.buttonSecondary}>{t(lang, "Operations", "风险、代班与复盘")}</Link>
-            <span className={styles.badge} data-tone={engagement.status === "ACTIVE" ? "active" : "neutral"}>{engagement.status}</span>
-          </div>
-          <h1 style={{ marginTop: 10 }}>{engagement.student.name}</h1>
+          <div className={styles.eyebrow}>{t(lang, "Student care project", "学生托管项目")}</div>
+          <h1>{engagement.student.name}</h1>
           <div className={styles.muted}>{engagement.student.school ?? "-"} · {engagement.student.grade ?? "-"} · {program ? (lang === "EN" ? program.en : program.zh) : engagement.programType}</div>
         </div>
-        {nextStatuses(engagement.status).length ? (
-          <form action={statusAction} className={styles.inlineForm}>
-            <input type="hidden" name="version" value={engagement.version} />
-            <select className={styles.select} style={{ width: "auto" }} name="nextStatus" defaultValue={nextStatuses(engagement.status)[0]}>
-              {nextStatuses(engagement.status).map((status) => <option value={status} key={status}>{status}</option>)}
-            </select>
-            <button className={styles.buttonSecondary} type="submit">{t(lang, "Update status", "更新状态")}</button>
-          </form>
-        ) : null}
+        <div className={styles.headerActions}>
+          <span className={styles.badge} data-tone={engagement.status === "ACTIVE" ? "active" : engagement.status === "CANCELLED" ? "risk" : "neutral"}>{engagement.status}</span>
+          {nextStatuses(engagement.status).length ? (
+            <form action={statusAction} className={styles.inlineForm}>
+              <input type="hidden" name="version" value={engagement.version} />
+              <select className={styles.select} style={{ width: "auto" }} name="nextStatus" defaultValue={nextStatuses(engagement.status)[0]}>
+                {nextStatuses(engagement.status).map((status) => <option value={status} key={status}>{status}</option>)}
+              </select>
+              <button className={styles.buttonSecondary} type="submit">{t(lang, "Update status", "更新状态")}</button>
+            </form>
+          ) : null}
+        </div>
       </header>
 
       {err ? <div className={styles.noticeError}>{err}</div> : null}
       {msg ? <div className={styles.noticeSuccess}>{msg}</div> : null}
 
+      <nav className={styles.moduleNav} aria-label={t(lang, "Project navigation", "项目导航")}>
+        <Link href="/admin/care">{t(lang, "All students", "全部学生")}</Link>
+        <Link data-active="true" href={`/admin/care/${encodeURIComponent(id)}`}>{t(lang, "Overview", "项目总览")}</Link>
+        <Link href={`/admin/care/${encodeURIComponent(id)}/operations`}>{t(lang, "Operations", "运营闭环")}</Link>
+        <Link href="/admin/care/quality">{t(lang, "Quality", "质量工作台")}</Link>
+      </nav>
+
       <div className={styles.metrics}>
-        <div className={styles.metric}><strong>{openTasks.length}</strong><span className={styles.muted}>{t(lang, "Open tasks", "未完成待办")}</span></div>
+        <div className={styles.metric} data-tone={openTasks.length ? "risk" : "active"}><strong>{openTasks.length}</strong><span className={styles.muted}>{t(lang, "Open tasks", "未完成待办")}</span></div>
         <div className={styles.metric}><strong>{engagement.activities.length}</strong><span className={styles.muted}>{t(lang, "Updates", "跟进记录")}</span></div>
         <div className={styles.metric}><strong>{engagement.plans.length}</strong><span className={styles.muted}>{t(lang, "Plans", "阶段计划")}</span></div>
         <div className={styles.metric}><strong>{engagement.members.length}</strong><span className={styles.muted}>{t(lang, "Team", "责任成员")}</span></div>
@@ -367,21 +373,23 @@ export default async function CareDetailPage({
       </div>
 
       <section className={styles.section}>
-        <div className={styles.layout}>
-          <div>
+        <div className={styles.overviewGrid}>
+          <div className={styles.summaryBlock}>
             <h2>{t(lang, "Service scope", "服务范围")}</h2>
-            <div style={{ marginTop: 8 }}>{scopeLabels.join(" · ") || "-"}</div>
+            <div className={styles.scopeList}>
+              {scopeLabels.length ? scopeLabels.map((label) => <span className={styles.scopeItem} key={label}>{label}</span>) : <span className={styles.muted}>-</span>}
+            </div>
             {retainedLegacyScopeIds.length ? <div className={styles.noticeError} style={{ marginTop: 8 }}>{t(lang, "Retained scope from the earlier programme template. Review before activation.", "包含原项目模板保留范围，请在启用前审核。")}</div> : null}
-            <div className={styles.muted} style={{ marginTop: 5 }}>
+            <div className={styles.muted}>
               {t(lang, "Third-party costs are excluded unless the contract states otherwise.", "第三方实际费用不包含，除非合同另有明确约定。")}
               {exclusions.length ? ` (${exclusions.length})` : ""}
             </div>
           </div>
-          <div>
+          <div className={styles.summaryBlock}>
             <h2>{t(lang, "Owners", "负责人")}</h2>
-            <div className={styles.stack} style={{ marginTop: 8 }}>
+            <div className={styles.ownerList}>
               {engagement.members.map((member) => (
-                <div key={member.id}><strong>{member.user.name}</strong> <span className={styles.muted}>{member.role}</span></div>
+                <div className={styles.ownerItem} key={member.id}><strong>{member.user.name}</strong><span className={styles.muted}>{member.role}</span></div>
               ))}
             </div>
           </div>
@@ -465,8 +473,8 @@ export default async function CareDetailPage({
       ) : null}
 
       <section className={styles.section}>
-        <div className={styles.timelineHead}>
-          <div>
+        <div className={styles.sectionHeader}>
+          <div className={styles.sectionHeading}>
             <h2>{t(lang, "Formal reports", "正式报告")}</h2>
             <div className={styles.muted}>{t(lang, "Draft from real service records, then submit for review before parents can see it.", "从真实服务记录生成草稿，提交审核后才能向家长发布。")}</div>
           </div>
@@ -530,7 +538,7 @@ export default async function CareDetailPage({
             </details>
             <div>
               {engagement.activities.map((activity) => (
-                <article className={styles.timelineItem} key={activity.id}>
+                <article className={styles.timelineItem} data-tone={activity.riskLevel === "HIGH" || activity.riskLevel === "CRITICAL" ? "risk" : "neutral"} key={activity.id}>
                   <div className={styles.timelineHead}>
                     <div>
                       <strong>{activity.title}</strong>
@@ -653,7 +661,7 @@ export default async function CareDetailPage({
           </section>
         </div>
 
-        <aside className={styles.stack}>
+        <aside className={`${styles.stack} ${styles.stickyAside}`}>
           <section className={styles.section}>
             <h2>{t(lang, "Tasks", "待办")}</h2>
             <details className={styles.details}>
@@ -669,7 +677,7 @@ export default async function CareDetailPage({
             </details>
             <div>
               {engagement.tasks.map((task) => (
-                <article className={styles.taskItem} key={task.id}>
+                <article className={styles.taskItem} data-tone={task.priority === "HIGH" || task.priority === "URGENT" ? "risk" : "neutral"} key={task.id}>
                   <div className={styles.taskHead}>
                     <strong>{task.title}</strong>
                     <span className={styles.badge} data-tone={task.priority === "HIGH" || task.priority === "URGENT" ? "risk" : "neutral"}>{task.priority}</span>

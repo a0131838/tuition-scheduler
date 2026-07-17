@@ -17,10 +17,12 @@ type QueueItem = {
 };
 
 function Queue({ title, items, empty, open }: { title: string; items: QueueItem[]; empty: string; open: string }) {
-  return <section className={styles.section}>
-    <div className={styles.timelineHead}><h2>{title}</h2><span className={styles.badge} data-tone={items.some((item) => item.tone === "risk") ? "risk" : "neutral"}>{items.length}</span></div>
-    <div className={styles.rows}>
-      {items.map((item) => <article className={styles.fileRow} key={item.id}><div><strong>{item.studentName} · {item.title}</strong><div className={styles.muted}>{item.detail}</div></div><Link className={styles.buttonSecondary} href={item.href}>{open}</Link></article>)}
+  if (!items.length) return null;
+  const risk = items.some((item) => item.tone === "risk");
+  return <section className={styles.queueSection} data-tone={risk ? "risk" : "neutral"}>
+    <div className={styles.queueHeader}><h2>{title}</h2><span className={styles.badge} data-tone={risk ? "risk" : "neutral"}>{items.length}</span></div>
+    <div className={styles.queueList}>
+      {items.map((item) => <article className={styles.queueItem} key={item.id}><div><div className={styles.queueItemTitle}>{item.studentName} · {item.title}</div><div className={styles.muted}>{item.detail}</div></div><Link className={styles.buttonSecondary} href={item.href}>{open}</Link></article>)}
       {!items.length ? <div className={styles.muted}>{empty}</div> : null}
     </div>
   </section>;
@@ -136,14 +138,34 @@ export default async function CareQualityPage() {
   const urgent = [...reportQueue, ...receiptQueue, ...taskQueue, ...riskQueue, ...questionQueue].filter((item) => item.tone === "risk").length;
 
   return <main className={styles.page}>
-    <header className={styles.header}><div><div className={styles.toolbar}><Link className={styles.buttonSecondary} href="/admin/care">{t(lang, "Back", "返回全托管")}</Link></div><h1 style={{ marginTop: 10 }}>{t(lang, "Care quality dashboard", "全托管质量工作台")}</h1><div className={styles.muted}>{t(lang, "Only exceptions and items requiring action are shown.", "只显示异常和需要处理的事项。")}</div></div></header>
-    <div className={styles.metrics}><div className={styles.metric}><strong>{total}</strong><span className={styles.muted}>{t(lang, "Action items", "待处理")}</span></div><div className={styles.metric}><strong>{urgent}</strong><span className={styles.muted}>{t(lang, "Overdue", "已超时")}</span></div><div className={styles.metric}><strong>{riskQueue.length}</strong><span className={styles.muted}>{t(lang, "Open risks", "未结风险")}</span></div><div className={styles.metric}><strong>{questionQueue.length}</strong><span className={styles.muted}>{t(lang, "Parent questions", "家长问答")}</span></div></div>
-    <Queue title={t(lang, "Reports awaiting action", "报告待处理")} items={reportQueue} empty={t(lang, "No report exceptions.", "报告无异常。")} open={t(lang, "Open", "打开")} />
-    <Queue title={t(lang, "Parent receipt", "家长查看与确认")} items={receiptQueue} empty={t(lang, "No receipt exceptions.", "家长查看确认无异常。")} open={t(lang, "Open", "打开")} />
-    <Queue title={t(lang, "Risk and SLA", "风险与响应时限")} items={riskQueue} empty={t(lang, "No open risks.", "暂无未结风险。")} open={t(lang, "Handle", "处理")} />
-    <Queue title={t(lang, "Parent questions", "家长问答")} items={questionQueue} empty={t(lang, "No open questions.", "暂无待闭环提问。")} open={t(lang, "Reply", "回复")} />
-    <Queue title={t(lang, "Overdue tasks", "逾期待办")} items={taskQueue} empty={t(lang, "No overdue tasks.", "暂无逾期待办。")} open={t(lang, "Open", "打开")} />
-    <Queue title={t(lang, "Coverage handover", "代班交接")} items={coverageQueue} empty={t(lang, "No active or upcoming coverage.", "暂无进行中或即将开始的代班。")} open={t(lang, "Open", "打开")} />
-    <Queue title={t(lang, "Service review approval", "服务复盘审核")} items={reviewQueue} empty={t(lang, "No reviews awaiting approval.", "暂无待审核复盘。")} open={t(lang, "Review", "审核")} />
+    <header className={styles.header}>
+      <div>
+        <div className={styles.eyebrow}>{t(lang, "Exception management", "异常管理")}</div>
+        <h1>{t(lang, "Quality desk", "质量工作台")}</h1>
+        <div className={styles.muted}>{t(lang, "Prioritized items that need a person to act.", "这里只保留需要负责人处理的事项，并按风险优先。")}</div>
+      </div>
+      <div className={styles.headerActions}>
+        <Link className={styles.buttonSecondary} href="/admin/care">{t(lang, "Student projects", "学生项目")}</Link>
+      </div>
+    </header>
+    <nav className={styles.moduleNav} aria-label={t(lang, "Care navigation", "全托管导航")}>
+      <Link href="/admin/care">{t(lang, "Students", "学生项目")}</Link>
+      <Link data-active="true" href="/admin/care/quality">{t(lang, "Quality", "质量工作台")}</Link>
+    </nav>
+    <div className={styles.metrics}>
+      <div className={styles.metric}><strong>{total}</strong><span className={styles.muted}>{t(lang, "Action items", "待处理")}</span></div>
+      <div className={styles.metric} data-tone={urgent ? "risk" : "active"}><strong>{urgent}</strong><span className={styles.muted}>{t(lang, "Overdue", "已超时")}</span></div>
+      <div className={styles.metric} data-tone={riskQueue.length ? "risk" : "active"}><strong>{riskQueue.length}</strong><span className={styles.muted}>{t(lang, "Open risks", "未结风险")}</span></div>
+      <div className={styles.metric}><strong>{questionQueue.length}</strong><span className={styles.muted}>{t(lang, "Parent questions", "家长问答")}</span></div>
+    </div>
+    {total ? <div className={styles.queueGrid}>
+      <Queue title={t(lang, "Risk and SLA", "风险与响应时限")} items={riskQueue} empty={t(lang, "No open risks.", "暂无未结风险。")} open={t(lang, "Handle", "处理")} />
+      <Queue title={t(lang, "Overdue tasks", "逾期待办")} items={taskQueue} empty={t(lang, "No overdue tasks.", "暂无逾期待办。")} open={t(lang, "Open", "打开")} />
+      <Queue title={t(lang, "Parent questions", "家长问答")} items={questionQueue} empty={t(lang, "No open questions.", "暂无待闭环提问。")} open={t(lang, "Reply", "回复")} />
+      <Queue title={t(lang, "Reports awaiting action", "报告待处理")} items={reportQueue} empty={t(lang, "No report exceptions.", "报告无异常。")} open={t(lang, "Open", "打开")} />
+      <Queue title={t(lang, "Parent receipt", "家长查看与确认")} items={receiptQueue} empty={t(lang, "No receipt exceptions.", "家长查看确认无异常。")} open={t(lang, "Open", "打开")} />
+      <Queue title={t(lang, "Coverage handover", "代班交接")} items={coverageQueue} empty={t(lang, "No active or upcoming coverage.", "暂无进行中或即将开始的代班。")} open={t(lang, "Open", "打开")} />
+      <Queue title={t(lang, "Service review approval", "服务复盘审核")} items={reviewQueue} empty={t(lang, "No reviews awaiting approval.", "暂无待审核复盘。")} open={t(lang, "Review", "审核")} />
+    </div> : <section className={styles.section}><div className={styles.emptyState}><strong>{t(lang, "Everything is clear", "目前没有异常")}</strong><span>{t(lang, "No overdue reports, risks, questions or tasks require action.", "没有逾期报告、风险、家长问题或待办需要处理。")}</span></div></section>}
   </main>;
 }

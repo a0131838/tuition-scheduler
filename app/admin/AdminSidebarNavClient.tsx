@@ -18,6 +18,11 @@ type NavGroup = {
   items: NavItem[];
 };
 
+function isNavItemActive(pathname: string, href: string) {
+  if (href === "/admin") return pathname === href;
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 function groupStyles(title: string, isActiveGroup: boolean) {
   if (title.includes("Today") || title.includes("今天")) {
     return isActiveGroup
@@ -85,7 +90,7 @@ export default function AdminSidebarNavClient({
   return (
     <nav style={{ display: "grid", gap: 12 }}>
       {groups.map((group) => {
-        const isActiveGroup = group.items.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
+        const isActiveGroup = group.items.some((item) => isNavItemActive(pathname, item.href));
         const groupTone = groupStyles(group.title, isActiveGroup);
         return (
           <details
@@ -151,7 +156,7 @@ export default function AdminSidebarNavClient({
             </summary>
             <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
               {group.items.map((item) => {
-                const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                const isActive = isNavItemActive(pathname, item.href);
                 const tone = toneStyles(item.tone ?? "neutral", isActive);
                 return (
                   <Link

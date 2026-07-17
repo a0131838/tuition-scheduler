@@ -61,7 +61,7 @@ export default function LanguageSelectorClient({
   }
 
   return (
-    <div style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+    <div className="language-selector" style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
       <select
         name="lang"
         value={lang}
