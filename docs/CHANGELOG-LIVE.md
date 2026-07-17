@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-17-r259`
 - Date/Time (Asia/Shanghai): `2026-07-17`
-- Deployment status: `READY`
+- Deployment status: `LIVE` at runtime commit `931edbd`
 - Scope: redesign the native parent miniapp as a permission-aware reassurance dashboard, making Service a primary tab and prioritising status, delivered work, next steps, parent actions and reviewed Full Care reports.
 - Key files:
   - `miniapp/boss-academic-parent/app.json`
@@ -32,7 +32,7 @@ This file is the single source of truth for what changed in production.
   - `docs/小程序产品规划-家长安心看板-20260717.md`
   - `docs/tasks/TASK-20260717-miniapp-parent-reassurance-dashboard.md`
 - Risk impact (if any): Low-to-medium presentation and read-projection change. There is no migration and no new business write. Existing relationship permissions separately gate schedule, feedback, finance, requests and reports. Care drafts, internal notes and unauthorised university reports remain excluded. Scheduling, attendance, packages, payroll, settlement, invoices and receipts are unchanged.
-- Verification: all native miniapp JavaScript syntax, the 30-page release audit, 12 focused tests, 40 complete miniapp/subscription tests, 79 backend tests, TypeScript, the full 194-page build and `git diff --check` pass. Multi-student stale responses are discarded and the page clears before each student load. The acknowledgement relation projection also passes a read-only production-schema query. WeChat Developer Tools is not installed in the current runtime, so experience-version upload and physical-phone visual confirmation remain a rollout gate.
+- Verification: all native miniapp JavaScript syntax, the 30-page release audit, 12 focused tests, 40 complete miniapp/subscription tests, 79 backend tests, TypeScript, the full 194-page build and `git diff --check` pass. Multi-student stale responses are discarded and the page clears before each student load. The acknowledgement relation projection also passes a read-only production-schema query. The guarded release aligned runtime at `931edbd`; production has 107 completed migrations with none pending, PM2 is online with zero restarts and `/admin/login` returns `200`. WeChat Developer Tools is not installed in the current runtime, so experience-version upload and physical-phone visual confirmation remain a rollout gate.
 - Rollback point: `02dfa63` (`2026-07-17-r258` final documentation head; runtime feature commit `21ece37`).
 
 ---

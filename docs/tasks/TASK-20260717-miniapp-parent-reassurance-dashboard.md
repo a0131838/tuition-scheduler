@@ -40,7 +40,7 @@ Turn the parent miniapp from a collection of operational entries into a calm, pe
 
 ## Rollout
 
-This release updates the server API and stores the native miniapp source in the production repository. It does not by itself publish a new WeChat experience or formal version. Upload the next experience version before family rollout.
+The server API and native miniapp source are live at runtime commit `931edbd`. This does not by itself publish a new WeChat experience or formal version. Upload the next experience version before family rollout.
 
 ## Follow-up
 
