@@ -41,3 +41,10 @@ Bring the existing scheduling Ticket queue into Eva and Jasmine's native-miniapp
 
 Low-to-medium native-miniapp presentation and read-orchestration change. The main remaining risk is long Ticket lists and physical-device layout variance. Formal scheduling writes remain in the existing guarded detail workflow.
 
+## Rollout
+
+- Server source and release documentation are live at feature commit `d919074`.
+- Production has 107 current migrations, PM2 is online and `/admin/login` returns `200`.
+- Anonymous calendar and coordination endpoints return `401`.
+- A read-only production count reports 6 open scheduling Tickets and 6 overdue Tickets.
+- The native package still requires the next WeChat experience-version upload and physical-phone acceptance before staff can see this UI.

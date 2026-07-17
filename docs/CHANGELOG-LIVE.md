@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-17-r260`
 - Date/Time (Asia/Shanghai): `2026-07-17`
-- Deployment status: `READY`
+- Deployment status: `LIVE` at runtime feature commit `d919074`
 - Scope: integrate the existing scheduling Ticket queue into the native staff-miniapp calendar workspace with status/owner/search filters, overdue visibility and deep links to the existing guarded scheduling detail.
 - Key files:
   - `miniapp/boss-academic-parent/pages/staff-schedule/*`
@@ -28,7 +28,7 @@ This file is the single source of truth for what changed in production.
   - `docs/CHANGELOG-LIVE.md`
   - `docs/RELEASE-BOARD.md`
 - Risk impact (if any): Low-to-medium and limited to native-miniapp presentation/read orchestration. No `app/admin/**` page, web workflow, API, migration or business write changed. The calendar remains read-only; Session creation still uses the existing ADMIN-only signed preview and transactional revalidation. Time-change, teacher-change and leave/cancellation Tickets are labelled as needing an original-Session link and are not executed from the calendar in phase one.
-- Verification: all native-miniapp JavaScript syntax, 5 focused calendar tests, 41 complete miniapp/subscription tests, 79 backend tests, the 30-page miniapp release audit, TypeScript, the full 194-page production build, `git diff --check` and an explicit no-`app/admin/**` diff check pass. WeChat Developer Tools is not installed in this runtime, so experience-version upload and physical-phone confirmation remain the final native-package gate.
+- Verification: all native-miniapp JavaScript syntax, 5 focused calendar tests, 41 complete miniapp/subscription tests, 79 backend tests, the 30-page miniapp release audit, TypeScript, the full 194-page production build, `git diff --check` and an explicit no-`app/admin/**` diff check pass. The guarded release aligned local, GitHub and server at `d919074`; production has 107 current migrations, PM2 is online and `/admin/login` returns `200`. Deployed source markers pass, anonymous calendar/queue calls return `401`, and a read-only production count reports 6 open scheduling Tickets, all 6 overdue. WeChat Developer Tools is not installed in this runtime, so experience-version upload and physical-phone confirmation remain the final native-package gate.
 - Rollback point: `1832181` documentation head for live runtime `931edbd` (`2026-07-17-r259`).
 
 ---

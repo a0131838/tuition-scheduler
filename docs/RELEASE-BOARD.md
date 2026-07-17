@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-17-r259` at runtime commit `931edbd`. Release candidate `2026-07-17-r260` integrates the existing scheduling Ticket queue into the native staff calendar without changing the web system or adding a write path. Native package changes still require a separate WeChat experience-version upload before users see them.
+- Current production release: `2026-07-17-r260` at runtime feature commit `d919074`. It integrates the existing scheduling Ticket queue into the native staff calendar without changing the web system or adding a write path. Native package changes still require a separate WeChat experience-version upload before users see them.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
@@ -22,7 +22,7 @@
 
 ## Open Risks
 
-- Miniapp calendar Ticket-queue rollout: `2026-07-17-r260` is ready with a read-only embedded queue, filters and detail deep links. Time-change, teacher-change and leave/cancellation Tickets remain labelled `待关联原课程` until phase two adds explicit original-Session linkage. Physical-phone validation must cover ADMIN and CS visibility, long-list scrolling, filters, return refresh and confirmation that teachers do not see the global queue.
+- Miniapp calendar Ticket-queue rollout: `2026-07-17-r260` is live on the server with a read-only embedded queue, filters and detail deep links. Production currently has 6 open scheduling Tickets and all 6 are overdue. Time-change, teacher-change and leave/cancellation Tickets remain labelled `待关联原课程` until phase two adds explicit original-Session linkage. Physical-phone validation must cover ADMIN and CS visibility, long-list scrolling, filters, return refresh and confirmation that teachers do not see the global queue.
 - Parent-miniapp reassurance rollout: `2026-07-17-r259` is live on the server at runtime commit `931edbd`; production has 107 current migrations, PM2 is online with zero restarts and health is 200. Server API and source deployment do not publish the native WeChat package. After upload, complete a physical-phone pass for a normal-course parent, a pre-university Full Care parent, a restricted-permission link and a multi-student family. No WeChat Developer Tools installation is available in the current Codex runtime.
 - Full-care-sidebar monitoring: `2026-07-17-r258` is live. Authenticated production screenshots confirm the complete Admin menu and active Full Care link; the code continues to select Finance and resource-only menus by role rather than Care route. The refreshed 22-page SOP matches the live desktop/mobile UI and temporary fixture residue is zero.
 - Full-care-UI monitoring: `2026-07-17-r257` is live and presentation-only. Authenticated production checks passed the care home, quality dashboard, project, operations and report pages on desktop and 390px mobile with HTTP 200, no console errors and no horizontal overflow. Monitor the first staff use of long forms and dense project data; existing CARE actions and all teaching/finance boundaries remain unchanged.
@@ -153,7 +153,7 @@
 - Tutor-Wise-payment-profile risk: `2026-05-29-r161` removes Bank Transfer as a new tutor payment method and adds Wise details plus finance review status; finance should verify PayNow/Wise details before payout exports are used.
 - Teacher-notice-attachment risk: `2026-05-30-r162` lets teachers open only the active Shared Docs file attached to an active teacher notice; verify the notice attachment is intentional before publishing because the full Shared Docs library remains manager/admin controlled.
 
-## 2026-07-17-r260 Ready
+## 2026-07-17-r260 Live
 
 - Scope: place the existing scheduling Ticket queue inside the month/week/day staff-miniapp calendar.
 - Business impact:
@@ -179,10 +179,11 @@
   - TypeScript and 194-page production build
   - `git diff --check` and no-`app/admin/**` diff check
 - Post-deploy verification:
-  - local, GitHub and server commit equality
-  - PM2 online and `/admin/login` HTTP 200
-  - anonymous coordination API remains 401
-  - authenticated production calendar and coordination queue remain read-only GETs
+  - local, GitHub and server aligned at feature commit `d919074`
+  - 107 migrations current, PM2 online and `/admin/login` HTTP 200
+  - deployed miniapp source contains the queue and original-Session boundary markers
+  - anonymous calendar and coordination endpoints both return 401
+  - read-only production counts report 6 open and 6 overdue scheduling Tickets
   - WeChat experience-version upload and physical-phone regression remain external release gates
 
 ## Process Guard (Installed)
