@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import test from "node:test";
 import { buildCalendarConflictMap, subtractBusyTime } from "../lib/miniapp-staff-schedule-calendar";
 
@@ -67,4 +69,19 @@ test("teacher free slots omit fragments shorter than fifteen minutes", () => {
     [{ startMin: 9 * 60 + 10, endMin: 10 * 60 }],
   );
   assert.deepEqual(result, []);
+});
+
+test("calendar workbench embeds the existing scheduling queue without adding a write path", () => {
+  const root = path.join(process.cwd(), "miniapp", "boss-academic-parent", "pages", "staff-schedule");
+  const script = fs.readFileSync(path.join(root, "staff-schedule.js"), "utf8");
+  const template = fs.readFileSync(path.join(root, "staff-schedule.wxml"), "utf8");
+
+  assert.match(script, /\/api\/miniapp\/staff\/scheduling-coordination\?/);
+  assert.match(script, /staff-coordination-detail/);
+  assert.match(script, /"排课协调", "排课要求", "新排课", "补课加课"/);
+  assert.doesNotMatch(script, /method:\s*"(?:POST|PATCH|DELETE)"/);
+  assert.match(template, /待排课工单/);
+  assert.match(template, /学生、课程或工单号/);
+  assert.match(script, /待关联原课程/);
+  assert.match(template, /工单不是课程；只有最终确认排课后才会进入正式课表/);
 });

@@ -109,6 +109,66 @@
 .week-number { margin-top: 5rpx; font-size: 27rpx; }
 .week-count { min-height: 27rpx; margin-top: 4rpx; color: #777; font-size: 19rpx; }
 
+.ticket-workbench {
+  margin-top: 24rpx;
+  background: #fff;
+  border: 1rpx solid #dfe1e5;
+  border-radius: 7rpx;
+  overflow: hidden;
+}
+.ticket-workbench-head,
+.ticket-row-head,
+.ticket-row-foot,
+.ticket-filter-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ticket-workbench-head { min-height: 104rpx; padding: 0 22rpx; background: #fff8f3; }
+.ticket-workbench-title { font-size: 28rpx; font-weight: 760; }
+.ticket-workbench-meta { margin-top: 5rpx; color: #6b6f76; font-size: 21rpx; }
+.ticket-workbench-toggle { color: #ec5e0a; font-size: 23rpx; }
+.ticket-workbench-body { padding: 18rpx; border-top: 1rpx solid #f0ded2; }
+.ticket-filter-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12rpx; }
+.ticket-filter-field,
+.ticket-search-row {
+  min-height: 68rpx;
+  line-height: 68rpx;
+  padding: 0 18rpx;
+  background: #f8f9fa;
+  border: 1rpx solid #dfe1e5;
+  border-radius: 5rpx;
+  color: #3c4043;
+  font-size: 23rpx;
+}
+.ticket-search-row { display: flex; align-items: center; margin-top: 12rpx; }
+.ticket-search-input { flex: 1; height: 68rpx; }
+.ticket-search-clear { width: 54rpx; text-align: center; color: #777; font-size: 32rpx; }
+.ticket-filter-status { min-height: 62rpx; color: #777; font-size: 21rpx; }
+.ticket-reset { color: #ec5e0a; }
+.ticket-inline-loading,
+.ticket-empty { padding: 38rpx 12rpx; text-align: center; color: #777; font-size: 23rpx; }
+.ticket-row { padding: 20rpx 4rpx; border-top: 1rpx solid #eceff1; }
+.ticket-row-tags { display: flex; align-items: center; flex-wrap: wrap; gap: 7rpx; }
+.ticket-type,
+.ticket-status,
+.ticket-overdue {
+  padding: 5rpx 9rpx;
+  border-radius: 4rpx;
+  font-size: 19rpx;
+}
+.ticket-type { color: #5f6368; background: #f1f3f4; }
+.ticket-status { color: #8a4308; background: #fff1e8; }
+.ticket-overdue { color: #b3261e; background: #fce8e6; }
+.ticket-due { color: #777; font-size: 20rpx; }
+.ticket-student { margin-top: 12rpx; font-size: 25rpx; font-weight: 700; }
+.ticket-next { margin-top: 7rpx; color: #5f6368; font-size: 22rpx; line-height: 1.45; }
+.ticket-row-foot { margin-top: 12rpx; gap: 14rpx; }
+.ticket-owner { min-width: 0; flex: 1; color: #80868b; font-size: 20rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ticket-action { flex-shrink: 0; color: #ec5e0a; font-size: 21rpx; }
+.ticket-action.blocked { color: #777; }
+.ticket-boundary { margin-top: 12rpx; padding: 14rpx 16rpx; color: #6b6f76; background: #f8f9fa; font-size: 20rpx; line-height: 1.5; }
+
 .day-summary { margin-top: 24rpx; padding-bottom: 18rpx; border-bottom: 1rpx solid #dde0e3; }
 .selected-title { font-size: 30rpx; font-weight: 750; }
 .selected-meta { margin-top: 7rpx; color: #6b6f76; font-size: 22rpx; }

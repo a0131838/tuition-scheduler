@@ -1,8 +1,8 @@
 <view class="page">
   <view class="schedule-header">
     <view>
-      <view class="eyebrow">课程安排</view>
-      <view class="title">排课日历</view>
+      <view class="eyebrow">课程与工单 · 排课日历</view>
+      <view class="title">排课工作台</view>
     </view>
     <button class="today-button" bindtap="goToday">今天</button>
   </view>
@@ -59,6 +59,57 @@
       <view class="week-label">{{item.weekday}}</view>
       <view class="week-number">{{item.dayNumber}}</view>
       <view class="week-count">{{item.sessionCount || '·'}}</view>
+    </view>
+  </view>
+
+  <view class="ticket-workbench" wx:if="{{canCoordinate}}">
+    <view class="ticket-workbench-head" bindtap="toggleTicketQueue">
+      <view>
+        <view class="ticket-workbench-title">待排课工单</view>
+        <view class="ticket-workbench-meta">{{ticketOpenText}} 条开放 · {{ticketOverdueText}} 条逾期</view>
+      </view>
+      <view class="ticket-workbench-toggle">{{ticketQueueExpanded ? '收起' : '展开'}}</view>
+    </view>
+
+    <view wx:if="{{ticketQueueExpanded}}" class="ticket-workbench-body">
+      <view class="ticket-filter-row">
+        <picker mode="selector" range="{{ticketScopes}}" range-key="label" value="{{ticketScopeIndex}}" bindchange="changeTicketScope">
+          <view class="ticket-filter-field">{{ticketScopes[ticketScopeIndex].label}}</view>
+        </picker>
+        <picker mode="selector" range="{{ticketOwners}}" value="{{ticketOwnerIndex}}" bindchange="changeTicketOwner">
+          <view class="ticket-filter-field">{{ticketOwners[ticketOwnerIndex]}}</view>
+        </picker>
+      </view>
+      <view class="ticket-search-row">
+        <input class="ticket-search-input" value="{{ticketQuery}}" bindinput="inputTicketQuery" placeholder="学生、课程或工单号" />
+        <view class="ticket-search-clear" wx:if="{{ticketQuery}}" catchtap="clearTicketQuery">×</view>
+      </view>
+      <view class="ticket-filter-status">
+        <text>匹配 {{ticketMatchedText}} 条</text>
+        <text wx:if="{{ticketFilterCount}}" class="ticket-reset" bindtap="resetTicketFilters">清除 {{ticketFilterCount}} 项筛选</text>
+      </view>
+
+      <view class="ticket-inline-loading" wx:if="{{ticketLoading}}">正在更新待排课工单…</view>
+      <block wx:elif="{{ticketRows.length}}">
+        <view wx:for="{{ticketRows}}" wx:key="id" class="ticket-row" bindtap="openTicket" data-id="{{item.id}}">
+          <view class="ticket-row-head">
+            <view class="ticket-row-tags">
+              <view class="ticket-type">{{item.type}}</view>
+              <view class="ticket-status">{{item.statusLabel}}</view>
+              <view class="ticket-overdue" wx:if="{{item.isOverdue}}">已逾期</view>
+            </view>
+            <view class="ticket-due" wx:if="{{!item.isOverdue}}">{{item.nextActionDueText}}</view>
+          </view>
+          <view class="ticket-student">{{item.studentName}} · {{item.course}}</view>
+          <view class="ticket-next">{{item.nextAction}}</view>
+          <view class="ticket-row-foot">
+            <view class="ticket-owner">{{item.ticketNo}} · {{item.owner}}</view>
+            <view class="{{item.actionClass}}">{{item.actionHint}} ›</view>
+          </view>
+        </view>
+      </block>
+      <view wx:else class="ticket-empty">当前筛选下没有待排课工单</view>
+      <view class="ticket-boundary">工单不是课程；只有最终确认排课后才会进入正式课表。</view>
     </view>
   </view>
 
