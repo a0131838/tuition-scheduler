@@ -33,4 +33,8 @@ Turn the completed Full Care feature set into a compact, professional daily oper
 
 ## Production Acceptance
 
-- Pending guarded deployment and authenticated production verification.
+- Guarded release completed with local, GitHub and server aligned at runtime commit `c26f725`.
+- Production reports 107 completed migrations with none pending, PM2 online with zero restarts, and `/admin/login` HTTP 200.
+- Authenticated home, quality, project, operations and report pages all returned HTTP 200 on desktop and 390px mobile.
+- All mobile pages reported equal 390px document and client widths, with no horizontal overflow, application console errors or warnings.
+- Production screenshots passed visual review; temporary production QA session cleanup reports zero remaining sessions.

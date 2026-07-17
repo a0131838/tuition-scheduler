@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-17-r257`
 - Date/Time (Asia/Shanghai): `2026-07-17`
-- Deployment status: `READY for guarded deployment`
+- Deployment status: `LIVE` at runtime commit `c26f725`
 - Scope: redesign the Full Care management UI as a compact professional operations workspace, with clearer module navigation, action priority, project hierarchy, report workflow and mobile behavior while preserving all existing Full Care business rules.
 - Key files:
   - `app/admin/care/care.module.css`
@@ -33,7 +33,7 @@ This file is the single source of truth for what changed in production.
   - `app/responsive-layout.css`
   - `docs/tasks/TASK-20260717-care-ui-workspace-redesign.md`
 - Risk impact (if any): Low and presentation-only. There is no database migration and no change to CARE APIs, permissions, state transitions, parent visibility, teaching, packages, payroll, partner settlement, invoices or receipts. Existing forms continue to call their original Server Actions.
-- Verification: TypeScript, all 79 backend tests, the full 194-page production build and `git diff --check` pass. Authenticated local checks cover the care home, populated quality dashboard, project, operations and report pages at 1600px desktop and 390px mobile, with no application console errors or horizontal overflow. All temporary QA records and sessions were removed with zero residue.
+- Verification: TypeScript, all 79 backend tests, the full 194-page production build and `git diff --check` pass. The guarded release aligned local, GitHub and server at `c26f725`; production has 107 completed migrations with none pending, PM2 is online with zero restarts, and `/admin/login` returns `200`. Authenticated production checks cover the care home, quality dashboard, project, operations and report pages at desktop and 390px mobile; all ten requests returned `200`, all mobile document/client widths were `390/390`, and there were no application console errors or horizontal overflow. All temporary QA records and sessions were removed with zero residue.
 - Rollback point: `4a29b7b` documentation head for live runtime `4885bab` (`2026-07-16-r256`).
 
 ---
