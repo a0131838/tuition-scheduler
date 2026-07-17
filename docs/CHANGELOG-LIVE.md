@@ -15,6 +15,21 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-17-r258
+
+- Release ID: `2026-07-17-r258`
+- Date/Time (Asia/Shanghai): `2026-07-17`
+- Deployment status: `READY for guarded deployment`
+- Scope: restore the complete role-appropriate admin sidebar inside Full Care pages while preserving the redesigned Care workspace and its local module navigation.
+- Key files:
+  - `app/admin/layout.tsx`
+  - `docs/tasks/TASK-20260717-care-full-sidebar-and-sop-refresh.md`
+- Risk impact (if any): Low and navigation-only. Admin users regain the normal complete admin menu; Finance and resource-only users continue to receive their role-specific menus. No route permission, CARE action, database, teaching, package, payroll, settlement, invoice or receipt behavior changes.
+- Verification: TypeScript and `git diff --check` pass. Production build, authenticated production navigation checks and refreshed SOP validation are required before marking live.
+- Rollback point: `2fb0a1f` (`2026-07-17-r257` final documentation head; runtime feature commit `c26f725`).
+
+---
+
 ## 2026-07-17-r257
 
 - Release ID: `2026-07-17-r257`

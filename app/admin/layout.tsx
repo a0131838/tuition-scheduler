@@ -419,30 +419,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     },
   ];
 
-  const careNavGroups = [
-    {
-      title: t(lang, "Care Workspace", "全托管工作台"),
-      summary: t(lang, "Student projects and quality exceptions.", "学生项目与质量异常。"),
-      items: [
-        {
-          href: "/admin/care",
-          label: t(lang, "Care Students", "托管学生"),
-          description: t(lang, "Projects, delivery records and reports.", "项目、交付记录和正式报告。"),
-          tone: "success" as const,
-        },
-      ],
-    },
-    {
-      title: t(lang, "Related Work", "关联工作"),
-      items: [
-        { href: "/admin/todos", label: t(lang, "Todo Center", "待办中心"), tone: "warning" as const },
-        { href: "/admin/students", label: t(lang, "Student Records", "学生档案"), tone: "neutral" as const },
-        { href: "/admin/school-applications", label: t(lang, "School Applications", "学校申请"), tone: "neutral" as const },
-        { href: "/admin", label: t(lang, "Admin Dashboard", "后台总览"), tone: "accent" as const },
-      ],
-    },
-  ];
-
   const sidebarNavContent = (
     <>
       <div
@@ -518,7 +494,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
       </div>
 
-      <AdminSidebarNavClient groups={isCareWorkspace ? careNavGroups : isFinance ? financeNavGroups : isResourceOnly ? resourceNavGroups : adminNavGroups} />
+      <AdminSidebarNavClient groups={isFinance ? financeNavGroups : isResourceOnly ? resourceNavGroups : adminNavGroups} />
 
       <div
         style={{
