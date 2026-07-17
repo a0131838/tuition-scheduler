@@ -35,7 +35,8 @@ Bring the existing scheduling Ticket queue into Eva and Jasmine's native-miniapp
 - [x] TypeScript.
 - [x] Full production build: 194 pages.
 - [x] `git diff --check` and explicit no-`app/admin/**` diff check.
-- [ ] WeChat Developer Tools compilation and physical-phone touch/visual acceptance after the next experience-version upload.
+- [x] WeChat Developer Tools CLI upload: version `1.0.0`, AppID `wxe7017f8545e8ad49`, package 335.2 KB.
+- [ ] WeChat portal experience-version designation and physical-phone touch/visual acceptance.
 
 ## Risk
 
@@ -47,4 +48,5 @@ Low-to-medium native-miniapp presentation and read-orchestration change. The mai
 - Production has 107 current migrations, PM2 is online and `/admin/login` returns `200`.
 - Anonymous calendar and coordination endpoints return `401`.
 - A read-only production count reports 6 open scheduling Tickets and 6 overdue Tickets.
-- The native package still requires the next WeChat experience-version upload and physical-phone acceptance before staff can see this UI.
+- WeChat Developer Tools uploaded development version `1.0.0` successfully with a 335.2 KB package.
+- The upload still needs to be designated as the experience version in the WeChat portal, followed by physical-phone acceptance.
