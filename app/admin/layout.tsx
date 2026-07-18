@@ -159,6 +159,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           tone: "neutral" as const,
         },
         {
+          href: "/admin/tickets/scheduling",
+          label: t(lang, "Scheduling Work Orders", "排课执行工单"),
+          description: t(lang, "Turn parent requests into verified schedule actions.", "把家长需求转成可核验的课表动作。"),
+          tone: "warning" as const,
+        },
+        {
           href: "/admin/reports/monthly-schedule",
           label: t(lang, "Monthly Schedule", "月课表总览"),
           description: t(lang, "Review the month view without leaving the day-first desk.", "在今天工作台附近直接查看整月课表。"),

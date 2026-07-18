@@ -2,7 +2,7 @@
   <view class="top request-head">
     <view class="eyebrow">教务代录</view>
     <view class="title">把家长消息变成工单</view>
-    <view class="subtitle">照着三步填写，提交后系统自动留下负责人和处理记录。</view>
+    <view class="subtitle">先选学生和具体课程，再把家长消息拆成教务可以直接执行的动作。</view>
   </view>
 
   <view class="progress-line">
@@ -26,8 +26,29 @@
       <view class="result-title">{{item.label}}</view><view class="hint">{{item.school}}</view>
     </view>
     <view class="field type-field">
-      <view class="question-label">这件事属于什么？</view>
-      <picker mode="selector" range="{{types}}" value="{{typeIndex}}" bindchange="onTypeChange"><view class="large-picker">{{types[typeIndex]}}<text>更换 ›</text></view></picker>
+      <view class="question-label">家长希望教务做什么？</view>
+      <picker mode="selector" range="{{typeOptions}}" range-key="label" value="{{typeIndex}}" bindchange="onTypeChange"><view class="large-picker">{{typeOptions[typeIndex].label}}<text>更换 ›</text></view></picker>
+    </view>
+
+    <view class="action-builder" wx:if="{{schedulingActions.length}}">
+      <view class="action-builder-head"><view><view class="question-label">排课执行动作</view><view class="hint">一条消息有多个要求时，继续添加动作，不要重复建工单。</view></view><button class="add-action" bindtap="addSchedulingAction">＋ 添加</button></view>
+      <view class="schedule-loading" wx:if="{{scheduleOptionsLoading}}">正在读取该学生未来课程…</view>
+      <view class="schedule-action" wx:for="{{schedulingActions}}" wx:key="index">
+        <view class="schedule-action-head"><view><view class="action-order">动作 {{index + 1}}</view><view class="action-name">{{item.actionLabel}}</view></view><button class="remove-action" wx:if="{{schedulingActions.length > 1}}" data-index="{{index}}" bindtap="removeSchedulingAction">删除</button></view>
+        <view class="field" wx:if="{{item.needsSource}}">
+          <view class="label">选择要处理的原课程 <text class="required">必选</text></view>
+          <picker mode="selector" range="{{upcomingSessions}}" range-key="startText" value="{{item.sourceIndex}}" data-index="{{index}}" bindchange="changeActionSource">
+            <view class="action-picker {{item.sourceSessionId ? 'selected' : ''}}">{{item.sourceSessionLabel}}<text>选择 ›</text></view>
+          </picker>
+          <view class="hint" wx:if="{{!scheduleOptionsLoading && !upcomingSessions.length}}">没有找到未来课程，请先保存为“时间未确定，需要协调”，由教务补充关联。</view>
+        </view>
+        <view class="requested-time" wx:if="{{item.actionType === 'RESCHEDULE_SESSION' || item.actionType === 'CREATE_SESSION' || item.actionType === 'COORDINATE_ONLY'}}">
+          <view class="field"><view class="label">希望日期（可先不填具体时间）</view><picker mode="date" value="{{item.requestedDate}}" data-index="{{index}}" bindchange="changeActionDate"><view class="compact-picker">{{item.requestedDate}}</view></picker></view>
+          <view class="field"><view class="label">希望时间</view><picker mode="time" value="{{item.requestedTime}}" data-index="{{index}}" bindchange="changeActionTime"><view class="compact-picker">{{item.requestedTime || '待家长确认'}}</view></picker></view>
+        </view>
+        <view class="replacement-line" wx:if="{{item.actionType === 'CANCEL_SESSION'}}"><view><view class="label">取消后还需要补课吗？</view><view class="hint">打开后，这张工单不会在取消完成时提前关闭。</view></view><switch checked="{{item.replacementRequired}}" data-index="{{index}}" bindchange="changeReplacementRequired" color="#ec5e0a" /></view>
+        <view class="field"><view class="label">这个动作的补充说明</view><textarea class="textarea action-notes" value="{{item.notes}}" data-index="{{index}}" placeholder="例如：老师已确认；家长只能周六；取消不扣课时待管理员确认" bindinput="inputActionNotes" /></view>
+      </view>
     </view>
   </view>
 

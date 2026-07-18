@@ -146,7 +146,7 @@ async function updateStatusAction(formData: FormData) {
 
   const row = await prisma.ticket.findUnique({
     where: { id },
-    select: { status: true, summary: true, isArchived: true },
+    select: { status: true, summary: true, isArchived: true, schedulingActions: { select: { status: true } } },
   });
   if (!row) redirect(back);
   if (row.isArchived) redirect(`${back}${back.includes("?") ? "&" : "?"}err=archived-locked`);
@@ -156,6 +156,9 @@ async function updateStatusAction(formData: FormData) {
   }
   if (nextStatus === "Completed" && !completionNote) {
     redirect(`${back}${back.includes("?") ? "&" : "?"}err=need-note`);
+  }
+  if (nextStatus === "Completed" && row.schedulingActions.length > 0 && row.schedulingActions.some((action) => !["APPLIED", "CANCELLED"].includes(action.status))) {
+    redirect(`${back}${back.includes("?") ? "&" : "?"}err=scheduling-actions-open`);
   }
 
   await prisma.ticket.update({
@@ -358,6 +361,7 @@ export default async function AdminTicketsPage({
   const ticketErrorMessage =
     err === "status-flow" ? t(lang, "Invalid status transition.", "状态流转不允许。")
     : err === "need-note" ? t(lang, "Completion note is required when marking completed.", "标记完成时必须填写完成说明。")
+    : err === "scheduling-actions-open" ? t(lang, "Resolve every scheduling action before closing the ticket.", "仍有未执行的排课动作，不能关闭整张工单。")
     : err === "completed-locked" ? t(lang, "Completed ticket is locked. Use archive instead.", "已完成工单不可修改，请改用归档。")
     : err === "archived-locked" ? t(lang, "Archived ticket is locked.", "已归档工单不可修改。")
     : err === "need-closed-archive" ? t(lang, "Only completed or cancelled tickets can be archived.", "仅已完成或已取消工单可归档。")
@@ -453,6 +457,10 @@ export default async function AdminTicketsPage({
             <strong>{t(lang, "Ticket list", "工单列表")}</strong>
             <span style={{ fontSize: 12, color: "#3730a3" }}>{t(lang, "Work one ticket at a time without rescanning the page", "一条条处理，不用反复从顶部找入口")}</span>
           </a>
+          <Link scroll={false} href="/admin/tickets/scheduling" style={ticketSectionLinkStyle("#fff7ed", "#fdba74")}>
+            <strong>{t(lang, "Scheduling work orders", "排课执行工单")}</strong>
+            <span style={{ fontSize: 12, color: "#9a3412" }}>{t(lang, "Link lessons, preview conflicts, and verify completion", "关联原课程、处理冲突并核验闭环")}</span>
+          </Link>
         </div>
       </section>
       {resumedRememberedDesk ? (

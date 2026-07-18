@@ -4,3 +4,4 @@
 }
 .close-boundary { margin-top: 14rpx; padding: 16rpx; border-left: 4rpx solid #a44a15; background: #fff5ed; color: #70401f; font-size: 22rpx; line-height: 1.5; }
 .btn.locked { background: #dedbd6; color: #747980; }
+.work-actions { border-top: 4rpx solid #202328; }.work-action { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; padding: 18rpx 0; border-bottom: 1rpx solid #dedbd6; }.work-action-name { color: #202328; font-weight: 800; }.work-action-status { flex-shrink: 0; padding: 6rpx 12rpx; border-radius: 999rpx; background: #fff0e7; color: #9b3e08; font-size: 20rpx; font-weight: 800; }.missing-source { margin-top: 5rpx; color: #a13e32; font-size: 21rpx; }.coordination-link { margin-top: 18rpx; color: #9b3e08; font-weight: 800; }

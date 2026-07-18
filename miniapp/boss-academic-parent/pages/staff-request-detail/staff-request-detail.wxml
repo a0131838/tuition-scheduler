@@ -5,6 +5,12 @@
     <view class="subtitle">{{request.typeText}} · {{request.statusLabelText}}</view>
   </view>
 
+  <view class="card work-actions" wx:if="{{hasSchedulingActions}}">
+    <view class="label">排课执行动作</view>
+    <view class="work-action" wx:for="{{schedulingActions}}" wx:key="id"><view><view class="work-action-name">{{index + 1}}. {{item.actionLabel}}</view><view class="subtitle" wx:if="{{item.sourceSession}}">{{item.sourceSession.courseLabel}} · {{item.sourceSession.teacherName}}</view><view class="missing-source" wx:elif="{{item.needsSource}}">还未选择原课程</view></view><view class="work-action-status">{{item.statusLabel}}</view></view>
+    <navigator class="coordination-link" url="/pages/staff-coordination-detail/staff-coordination-detail?id={{id}}">进入排课执行工作台 →</navigator>
+  </view>
+
   <view class="card">
     <view class="label">对家长可见摘要</view>
     <view class="value">{{request.contentText}}</view>

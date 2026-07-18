@@ -110,7 +110,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ ticketId: strin
     upcomingSessions,
     capabilities: {
       canCreateNewSession:
-        access.auth.user.role === "ADMIN" && canCreateSessionFromTicketType(access.ticket.type),
+        access.auth.user.role === "ADMIN" && (
+          canCreateSessionFromTicketType(access.ticket.type) ||
+          access.ticket.schedulingActions.some((action) => action.actionType === "CREATE_SESSION" && !["APPLIED", "CANCELLED"].includes(action.status))
+        ),
     },
   });
 }

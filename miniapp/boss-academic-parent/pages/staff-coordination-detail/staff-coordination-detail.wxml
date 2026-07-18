@@ -14,6 +14,24 @@
     <view class="hint" wx:else>{{ticket.nextActionDueText}}</view>
   </view>
 
+  <view class="action-worklist" wx:if="{{hasSchedulingActions}}">
+    <view class="section-title">排课执行动作</view>
+    <view class="hint tool-hint">每个动作都要关联真实课程并执行；全部完成后工单才会关闭。</view>
+    <view class="action-row" wx:for="{{schedulingActions}}" wx:key="id">
+      <view class="action-row-head"><view><view class="action-seq">动作 {{index + 1}}</view><view class="label">{{item.actionLabel}}</view></view><view class="action-state state-{{item.status}}">{{item.statusLabel}}</view></view>
+      <view class="linked-session" wx:if="{{item.sourceSession}}" bindtap="openActionSession" data-id="{{item.sourceSession.id}}">
+        <view>{{item.sourceSession.courseLabel}} · {{item.sourceSession.teacherName}}</view><view class="hint">点击打开原课程并执行 ›</view>
+      </view>
+      <view wx:elif="{{item.needsSource && item.status !== 'APPLIED' && item.status !== 'CANCELLED'}}">
+        <picker mode="selector" range="{{upcomingSessions}}" range-key="startText" value="{{item.sourceIndex}}" data-id="{{item.id}}" bindchange="changeActionSource">
+          <view class="action-source-picker">还缺原课程，点这里选择 ›</view>
+        </picker>
+      </view>
+      <view class="hint" wx:if="{{item.notes}}">{{item.notes}}</view>
+      <view class="result-session" wx:if="{{item.resultSession}}">已执行：{{item.resultSession.courseLabel}} · {{item.resultSession.teacherName}}</view>
+    </view>
+  </view>
+
   <view class="upcoming" wx:if="{{hasUpcomingSessions}}">
     <view class="section-title">未来课程</view>
     <view class="session-row" wx:for="{{upcomingSessions}}" wx:key="id" bindtap="openSession" data-id="{{item.id}}">

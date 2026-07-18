@@ -16,6 +16,10 @@ export const MINIAPP_STAFF_REQUEST_TYPES = [
   ...MINIAPP_PARENT_REQUEST_TYPES,
   "新排课",
   "补课加课",
+  "改课程时间",
+  "改上课老师",
+  "临时取消&请假课程",
+  "排课协调",
 ] as const;
 
 type MiniappParentRequestType = (typeof MINIAPP_PARENT_REQUEST_TYPES)[number];
@@ -31,6 +35,10 @@ const TYPE_CONFIG: Record<string, { owner: "Jasmine" | "Eva"; closer: "Jasmine" 
   其他: { owner: "Jasmine", closer: "Jasmine", priority: "普通" },
   新排课: { owner: "Jasmine", closer: "Jasmine", priority: "普通" },
   补课加课: { owner: "Jasmine", closer: "Jasmine", priority: "普通" },
+  改课程时间: { owner: "Eva", closer: "Eva", priority: "24小时紧急" },
+  改上课老师: { owner: "Jasmine", closer: "Jasmine", priority: "24小时紧急" },
+  "临时取消&请假课程": { owner: "Eva", closer: "Eva", priority: "24小时紧急" },
+  排课协调: { owner: "Eva", closer: "Eva", priority: "普通" },
 };
 
 export function normalizeMiniappRequestType(input: unknown): MiniappParentRequestType {

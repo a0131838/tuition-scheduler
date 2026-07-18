@@ -122,13 +122,17 @@ export async function POST(req: Request, ctx: { params: Promise<{ ticketId: stri
         targetId: `${applied.ticket.id}:${applied.ticket.updatedAt.toISOString()}`,
         permission: "canCreateRequests",
         payload: {
-          ticketNo: applied.ticket.ticketNo, type: applied.ticket.type, status: "Completed",
+          ticketNo: applied.ticket.ticketNo, type: applied.ticket.type, status: applied.ticket.status,
           ticketId: applied.ticket.id, studentName: applied.ticket.studentName,
           updatedAt: applied.ticket.updatedAt.toISOString(),
         },
       }).catch(() => null);
     }
-    return ok({ message: "课程已排入系统，工单已完成。", sessionId: applied.sessionId, result: applied.preview });
+    return ok({
+      message: applied.ticket.status === "Completed" ? "课程已排入系统，工单已完成。" : "课程已排入系统，工单还有其他动作待处理。",
+      sessionId: applied.sessionId,
+      result: applied.preview,
+    });
   } catch (error) {
     if (error instanceof TicketNewSessionError) return bad(error.message, error.status, { code: error.code });
     throw error;

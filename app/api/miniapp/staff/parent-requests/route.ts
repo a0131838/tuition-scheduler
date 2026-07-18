@@ -3,6 +3,8 @@ import { requireMiniappStaff } from "@/app/api/miniapp/staff/_lib";
 import { miniappRequestConfig, miniappRequestDto, normalizeMiniappStaffRequestType } from "@/lib/miniapp-parent-requests";
 import { prisma } from "@/lib/prisma";
 import { allocateTicketNo, composeTicketSituation, normalizeTicketString, parseDateLike } from "@/lib/tickets";
+import { normalizeSchedulingActionInput } from "@/lib/ticket-scheduling-actions";
+import { sessionBelongsToStudentWhere } from "@/lib/session-students";
 
 function toInt(v: string | null, fallback: number) {
   const n = Number(v ?? "");
@@ -75,10 +77,26 @@ export async function POST(req: Request) {
   const latestDeadlineText = cleanString((body as any).latestDeadlineText, 120);
   const overrideOwner = cleanString((body as any).owner, 20);
   const nextActionDueRaw = cleanString((body as any).nextActionDue, 80);
+  const rawSchedulingActions: unknown[] = Array.isArray((body as any).schedulingActions)
+    ? ((body as any).schedulingActions as unknown[]).slice(0, 10)
+    : [];
+  const normalizedSchedulingActions = rawSchedulingActions
+    .map((item: unknown) => normalizeSchedulingActionInput((item ?? {}) as any))
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+  const schedulingActions = normalizedSchedulingActions.flatMap((action) => {
+    if (action.actionType !== "CANCEL_SESSION" || !action.replacementRequired) return [action];
+    const replacement = normalizeSchedulingActionInput({
+      actionType: "CREATE_SESSION",
+      courseLabel: action.courseLabel,
+      notes: "原课程取消后需要安排补课；时间待教务继续协调。",
+    });
+    return replacement ? [action, replacement] : [action];
+  });
 
   if (!studentId) return bad("Student is required");
   if (!originalContent) return bad("Original content is required");
   if (!publicSummary) return bad("Parent visible summary is required");
+  if (rawSchedulingActions.length !== normalizedSchedulingActions.length) return bad("Invalid scheduling action", 409);
 
   const student = await prisma.student.findUnique({
     where: { id: studentId },
@@ -102,8 +120,23 @@ export async function POST(req: Request) {
   });
 
   const ticket = await prisma.$transaction(async (tx) => {
+    const sourceIds: string[] = Array.from(new Set(schedulingActions.map((item) => item.sourceSessionId).filter((value): value is string => Boolean(value))));
+    const sourceCourseLabels = new Map<string, string>();
+    if (sourceIds.length) {
+      const matched = await tx.session.findMany({
+        where: { id: { in: sourceIds }, ...sessionBelongsToStudentWhere(student.id) },
+        select: { id: true, class: { select: { course: { select: { name: true } }, subject: { select: { name: true } }, level: { select: { name: true } } } } },
+      });
+      if (matched.length !== sourceIds.length) throw new Error("SCHEDULING_SOURCE_MISMATCH");
+      matched.forEach((session) => sourceCourseLabels.set(session.id, [session.class.course.name, session.class.subject?.name, session.class.level?.name].filter(Boolean).join(" / ")));
+    }
+    const sourceDefaultCourseLabel = sourceIds.map((id) => sourceCourseLabels.get(id)).find(Boolean) || null;
+    const actionRows = schedulingActions.map((action) => ({
+      ...action,
+      courseLabel: action.courseLabel || (action.sourceSessionId ? sourceCourseLabels.get(action.sourceSessionId) || null : null) || (action.actionType === "CREATE_SESSION" ? sourceDefaultCourseLabel : null),
+    }));
     const ticketNo = await allocateTicketNo(tx);
-    return tx.ticket.create({
+    const created = await tx.ticket.create({
       data: {
         ticketNo,
         studentId: student.id,
@@ -112,6 +145,7 @@ export async function POST(req: Request) {
         priority,
         studentName: student.name,
         grade: student.grade,
+        course: actionRows.find((action) => action.courseLabel)?.courseLabel || null,
         wechat: sourceText,
         poc: auth.user.name || null,
         status: defaultStatusForType(type),
@@ -133,7 +167,37 @@ export async function POST(req: Request) {
         createdByName: `员工代录：${auth.user.name || auth.user.email}`,
       },
     });
+    if (schedulingActions.length) {
+      await tx.ticketSchedulingAction.createMany({
+        data: actionRows.map((action, sequence) => ({
+          ticketId: created.id,
+          sequence,
+          ...action,
+        })),
+      });
+      await tx.auditLog.create({
+        data: {
+          actorEmail: auth.user.email.trim().toLowerCase(),
+          actorName: auth.user.name?.trim() || null,
+          actorRole: auth.user.role,
+          module: "TICKETS",
+          action: "CREATE_TICKET_SCHEDULING_ACTIONS",
+          entityType: "Ticket",
+          entityId: created.id,
+          meta: {
+            actionCount: actionRows.length,
+            actionTypes: actionRows.map((action) => action.actionType),
+            sourceSessionIds: sourceIds,
+          },
+        },
+      });
+    }
+    return created;
+  }).catch((error) => {
+    if (error instanceof Error && error.message === "SCHEDULING_SOURCE_MISMATCH") return null;
+    throw error;
   });
+  if (!ticket) return bad("Selected lesson does not belong to this student", 409);
 
   return ok({
     message: "已代家长创建工单。",

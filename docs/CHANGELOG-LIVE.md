@@ -15,6 +15,31 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-18-r265
+
+- Release ID: `2026-07-18-r265`
+- Date/Time (Asia/Shanghai): `2026-07-18`
+- Deployment status: `READY`
+- Scope: connect scheduling Tickets to exact source/result Sessions through multi-action work orders shared by Emily's miniapp intake and the web scheduling operations desk.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260718143000_add_ticket_scheduling_actions/migration.sql`
+  - `lib/ticket-scheduling-actions.ts`
+  - `lib/ticket-scheduling-action-write.ts`
+  - `app/admin/tickets/scheduling/page.tsx`
+  - `app/admin/tickets/[id]/page.tsx`
+  - `app/api/miniapp/staff/parent-requests/route.ts`
+  - `app/api/miniapp/staff/scheduling-coordination/[ticketId]/actions/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-request-new/*`
+  - `miniapp/boss-academic-parent/pages/staff-coordination-detail/*`
+  - `tests/ticket-scheduling-actions.test.ts`
+  - `docs/tasks/TASK-20260718-ticket-scheduling-work-orders.md`
+- Risk impact (if any): Medium. One additive work-order table and transactional action-result writes are added around the existing scheduling flows. Existing Ticket/Session meanings and all Attendance, package, finance, payroll and settlement columns are unchanged. Legacy Tickets remain valid without backfill. Formal schedule writes stay ADMIN-only and continue through the existing preview, qualification, availability, package/finance and conflict gates.
+- Verification: 5 focused scheduling-action tests, 56 miniapp/WeChat tests, 79 backend tests, all native JavaScript syntax, 34-page miniapp audit, Prisma validation, TypeScript, `git diff --check`, and the full 199-page production build pass.
+- Rollback point: `6f1e602` (`2026-07-18-r264` final production documentation head; runtime feature commit `21310b2`).
+
+---
+
 ## 2026-07-18-r264
 
 - Release ID: `2026-07-18-r264`

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { MINIAPP_TEMPLATE_KEYS, queueMiniappNotificationsForStudent } from "@/lib/miniapp-notifications";
 import { miniappRequestDto } from "@/lib/miniapp-parent-requests";
 import { canTransitionTicketStatus, TICKET_OWNER_OPTIONS, TICKET_STATUS_OPTIONS } from "@/lib/tickets";
+import { schedulingActionDto } from "@/lib/ticket-scheduling-actions";
 
 function normalizeOption(v: unknown, options: Array<{ value: string }>) {
   const s = typeof v === "string" ? v.trim() : "";
@@ -35,6 +36,11 @@ function completionCapability(user: { role: string; name: string | null }, ticke
   return { canComplete: true, completionBlockReason: "" };
 }
 
+function schedulingCompletionBlock(actions: Array<{ status: string }>) {
+  const unresolved = actions.filter((action) => !["APPLIED", "CANCELLED"].includes(action.status)).length;
+  return unresolved ? `还有 ${unresolved} 个排课动作未执行，完成真实课表操作后才能关闭工单。` : "";
+}
+
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireMiniappStaff(req);
   if (!auth.ok) return auth.response;
@@ -42,9 +48,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const { id } = await params;
   const ticket = await getParentRequestTicket(id);
   if (!ticket) return bad("Parent request not found", 404);
+  const capability = completionCapability(auth.user, ticket);
+  const schedulingBlock = schedulingCompletionBlock(ticket.schedulingActions);
   return ok({
     request: miniappRequestDto(ticket, { includeInternal: true }),
-    capabilities: completionCapability(auth.user, ticket),
+    schedulingActions: ticket.schedulingActions.map(schedulingActionDto),
+    capabilities: schedulingBlock ? { canComplete: false, completionBlockReason: schedulingBlock } : capability,
   });
 }
 
@@ -77,6 +86,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return bad("Completion result is required before marking the request completed", 409);
   }
   if (nextStatus === "Completed") {
+    const schedulingBlock = schedulingCompletionBlock(ticket.schedulingActions);
+    if (schedulingBlock) return bad(schedulingBlock, 409);
     const capability = completionCapability(auth.user, ticket);
     if (!capability.canComplete) return bad(capability.completionBlockReason, 403);
   }

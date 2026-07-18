@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
+import { schedulingActionDto, schedulingActionInclude } from "@/lib/ticket-scheduling-actions";
 
 export const COORDINATION_BOARD_STATUSES = [
   { value: "Need Info", label: "待补信息" },
@@ -29,6 +30,7 @@ export function canCreateSessionFromTicketType(type: string) {
 
 export const coordinationBoardTicketInclude = Prisma.validator<Prisma.TicketInclude>()({
   parentAvailabilityRequest: true,
+  schedulingActions: { include: schedulingActionInclude, orderBy: { sequence: "asc" } },
 });
 
 export type CoordinationBoardTicket = Prisma.TicketGetPayload<{
@@ -71,6 +73,7 @@ export function coordinationBoardTicketDto(ticket: CoordinationBoardTicket) {
     communicationHistory: ticket.risksNotes || "",
     availabilityUrl: availabilityUrl(ticket),
     updatedAtText: formatBusinessDateTime(ticket.updatedAt),
+    schedulingActions: ticket.schedulingActions.map(schedulingActionDto),
   };
 }
 

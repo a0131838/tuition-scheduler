@@ -465,6 +465,7 @@ model Teacher {
   classes                   Class[]
   appointments              Appointment[]
   sessionOverrides          Session[]                        @relation("SessionTeacherOverride")
+  ticketSchedulingActions   TicketSchedulingAction[]         @relation("TicketSchedulingRequestedTeacher")
   sessionFeedbacks          SessionFeedback[]
   sessionTeacherChangesFrom SessionTeacherChange[]           @relation("SessionTeacherChangeFrom")
   sessionTeacherChangesTo   SessionTeacherChange[]           @relation("SessionTeacherChangeTo")
@@ -749,15 +750,17 @@ model Session {
   teacherId String?
   studentId String?
 
-  class            Class                    @relation(fields: [classId], references: [id])
-  teacher          Teacher?                 @relation("SessionTeacherOverride", fields: [teacherId], references: [id])
-  student          Student?                 @relation("SessionStudent", fields: [studentId], references: [id])
-  attendances      Attendance[]
-  feedbacks        SessionFeedback[]
-  teacherChanges   SessionTeacherChange[]
-  bookingRequests  StudentBookingRequest[]
-  signInAlerts     SignInAlert[]
-  managerFeedbacks ManagerTeacherFeedback[]
+  class                     Class                    @relation(fields: [classId], references: [id])
+  teacher                   Teacher?                 @relation("SessionTeacherOverride", fields: [teacherId], references: [id])
+  student                   Student?                 @relation("SessionStudent", fields: [studentId], references: [id])
+  attendances               Attendance[]
+  feedbacks                 SessionFeedback[]
+  teacherChanges            SessionTeacherChange[]
+  bookingRequests           StudentBookingRequest[]
+  signInAlerts              SignInAlert[]
+  managerFeedbacks          ManagerTeacherFeedback[]
+  schedulingActionsAsSource TicketSchedulingAction[] @relation("TicketSchedulingSourceSession")
+  schedulingActionsAsResult TicketSchedulingAction[] @relation("TicketSchedulingResultSession")
 
   @@unique([classId, startAt, endAt])
   @@index([studentId])
@@ -2604,6 +2607,7 @@ model Ticket {
   student                   Student?                   @relation(fields: [studentId], references: [id], onDelete: SetNull)
   completedByUser           User?                      @relation("TicketCompletedBy", fields: [completedByUserId], references: [id], onDelete: SetNull)
   parentAvailabilityRequest ParentAvailabilityRequest?
+  schedulingActions         TicketSchedulingAction[]
 
   @@index([status, createdAt])
   @@index([isArchived, createdAt])
@@ -2612,6 +2616,40 @@ model Ticket {
   @@index([studentId, isArchived, createdAt])
   @@index([parentVisible, studentId, isArchived, createdAt])
   @@index([type, createdAt])
+}
+
+model TicketSchedulingAction {
+  id                  String    @id @default(uuid())
+  ticketId            String
+  sequence            Int       @default(0)
+  actionType          String
+  status              String    @default("NEED_INFO")
+  sourceSessionId     String?
+  resultSessionId     String?
+  requestedStartAt    DateTime?
+  requestedEndAt      DateTime?
+  requestedTeacherId  String?
+  courseLabel         String?
+  durationMin         Int?
+  mode                String?
+  chargePolicy        String?
+  replacementRequired Boolean   @default(false)
+  notes               String?
+  appliedAt           DateTime?
+  appliedByUserId     String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  ticket           Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  sourceSession    Session? @relation("TicketSchedulingSourceSession", fields: [sourceSessionId], references: [id], onDelete: SetNull)
+  resultSession    Session? @relation("TicketSchedulingResultSession", fields: [resultSessionId], references: [id], onDelete: SetNull)
+  requestedTeacher Teacher? @relation("TicketSchedulingRequestedTeacher", fields: [requestedTeacherId], references: [id], onDelete: SetNull)
+
+  @@unique([ticketId, sequence])
+  @@index([ticketId, status])
+  @@index([sourceSessionId])
+  @@index([resultSessionId])
+  @@index([requestedTeacherId])
 }
 
 model ParentAvailabilityRequest {

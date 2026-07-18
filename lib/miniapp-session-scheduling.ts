@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { Prisma } from "@prisma/client";
 import { campusRequiresRoom } from "@/lib/campus";
 import { formatBusinessDateTime } from "@/lib/date-only";
+import { applyLinkedTicketSchedulingAction } from "@/lib/ticket-scheduling-action-write";
 import { prisma } from "@/lib/prisma";
 import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 import { schedulingCoordinationCourseLabelsMatch } from "@/lib/scheduling-coordination";
@@ -144,7 +145,8 @@ async function openCoordinationTickets(
   db: DbClient,
   studentIds: string[],
   expectedCourseLabel: string,
-  action: MiniappSchedulingAction
+  action: MiniappSchedulingAction,
+  sourceSessionId: string
 ) {
   const ticketTypes =
     action === "create"
@@ -153,7 +155,15 @@ async function openCoordinationTickets(
   const rows = await db.ticket.findMany({
     where: {
       studentId: { in: studentIds },
-      type: { in: ticketTypes },
+      OR: action === "reschedule"
+        ? [
+            { schedulingActions: { some: { actionType: "RESCHEDULE_SESSION", sourceSessionId, status: { notIn: ["APPLIED", "CANCELLED"] } } } },
+            { type: { in: ticketTypes }, schedulingActions: { none: {} } },
+          ]
+        : [
+            { schedulingActions: { some: { actionType: "CREATE_SESSION", status: { notIn: ["APPLIED", "CANCELLED"] } } } },
+            { type: { in: ticketTypes }, schedulingActions: { none: {} } },
+          ],
       isArchived: false,
       status: { notIn: ["Completed", "Cancelled"] },
     },
@@ -303,7 +313,7 @@ async function validateScheduling(db: DbClient, input: SchedulingInput) {
   }
 
   const expectedCourseLabel = courseLabel(session);
-  const coordinationTickets = await openCoordinationTickets(db, studentIds, expectedCourseLabel, input.action);
+  const coordinationTickets = await openCoordinationTickets(db, studentIds, expectedCourseLabel, input.action, input.sessionId);
 
   return {
     session,
@@ -400,22 +410,29 @@ export async function applyMiniappSessionScheduling(
           for (const ticket of checked.coordinationTickets.filter((row) => requestedTicketIds.includes(row.id))) {
             const coordinationLog = `[${formatBusinessDateTime(now)}] ${actorName} · 移动排课\n${completionResult}`;
             const previousNotes = String(ticket.risksNotes ?? "").trim();
+            const actionState = await applyLinkedTicketSchedulingAction(tx, {
+              ticketId: ticket.id,
+              actionType: input.action === "reschedule" ? "RESCHEDULE_SESSION" : "CREATE_SESSION",
+              sourceSessionId: input.sessionId,
+              resultSessionId: writtenSessionId,
+              appliedByUserId: actor.userId,
+            });
             await tx.ticket.update({
               where: { id: ticket.id },
               data: {
-                status: "Completed",
+                status: actionState.allResolved ? "Completed" : "Confirmed",
                 systemUpdated: "Y",
                 finalSchedule: completionResult,
                 parentCompletionResult: completionResult,
-                nextAction: "排课已完成，无需继续跟进。",
-                nextActionDue: null,
+                nextAction: actionState.allResolved ? "排课已完成，无需继续跟进。" : `本次排课已完成，仍有 ${actionState.unresolved} 个动作待执行。`,
+                nextActionDue: actionState.allResolved ? null : new Date(now.getTime() + 24 * 60 * 60 * 1000),
                 risksNotes: previousNotes ? `${previousNotes}\n\n${coordinationLog}` : coordinationLog,
                 lastUpdateAt: now,
-                completedAt: now,
-                completedByUserId: actor.userId,
+                completedAt: actionState.allResolved ? now : null,
+                completedByUserId: actionState.allResolved ? actor.userId : null,
               },
             });
-            await tx.parentAvailabilityRequest.updateMany({
+            if (actionState.allResolved) await tx.parentAvailabilityRequest.updateMany({
               where: { ticketId: ticket.id },
               data: { isActive: false },
             });
@@ -425,13 +442,13 @@ export async function applyMiniappSessionScheduling(
                 actorName: actor.name?.trim() || null,
                 actorRole: actor.role,
                 module: "TICKETS",
-                action: "MINIAPP_COORDINATION_COMPLETE_AFTER_SCHEDULING",
+                action: actionState.allResolved ? "MINIAPP_COORDINATION_COMPLETE_AFTER_SCHEDULING" : "MINIAPP_SCHEDULING_ACTION_APPLIED",
                 entityType: "Ticket",
                 entityId: ticket.id,
                 meta: { sessionId: writtenSessionId, sourceSessionId: input.sessionId },
               },
             });
-            completedCoordinationTickets.push({
+            if (actionState.allResolved) completedCoordinationTickets.push({
               id: ticket.id,
               ticketNo: ticket.ticketNo,
               studentId: ticket.studentId,
@@ -571,24 +588,31 @@ export async function applyMiniappSessionSeries(
         for (const ticket of first.coordinationTickets.filter((row) => requestedTicketIds.includes(row.id))) {
           const log = `[${formatBusinessDateTime(now)}] ${actorName} · 移动连续排课\n${completionResult}`;
           const previousNotes = String(ticket.risksNotes ?? "").trim();
+          const actionState = await applyLinkedTicketSchedulingAction(tx, {
+            ticketId: ticket.id,
+            actionType: "CREATE_SESSION",
+            sourceSessionId: input.sessionId,
+            resultSessionId: sessionIds[0] ?? null,
+            appliedByUserId: actor.userId,
+          });
           await tx.ticket.update({
             where: { id: ticket.id },
             data: {
-              status: "Completed", systemUpdated: "Y", finalSchedule: completionResult,
-              parentCompletionResult: completionResult, nextAction: "连续排课已完成，无需继续跟进。",
-              nextActionDue: null, risksNotes: previousNotes ? `${previousNotes}\n\n${log}` : log,
-              lastUpdateAt: now, completedAt: now, completedByUserId: actor.userId,
+              status: actionState.allResolved ? "Completed" : "Confirmed", systemUpdated: "Y", finalSchedule: completionResult,
+              parentCompletionResult: completionResult, nextAction: actionState.allResolved ? "连续排课已完成，无需继续跟进。" : `连续排课已完成，仍有 ${actionState.unresolved} 个动作待执行。`,
+              nextActionDue: actionState.allResolved ? null : new Date(now.getTime() + 24 * 60 * 60 * 1000), risksNotes: previousNotes ? `${previousNotes}\n\n${log}` : log,
+              lastUpdateAt: now, completedAt: actionState.allResolved ? now : null, completedByUserId: actionState.allResolved ? actor.userId : null,
             },
           });
-          await tx.parentAvailabilityRequest.updateMany({ where: { ticketId: ticket.id }, data: { isActive: false } });
+          if (actionState.allResolved) await tx.parentAvailabilityRequest.updateMany({ where: { ticketId: ticket.id }, data: { isActive: false } });
           await tx.auditLog.create({
             data: {
               actorEmail: actor.email.trim().toLowerCase(), actorName: actor.name?.trim() || null, actorRole: actor.role,
-              module: "TICKETS", action: "MINIAPP_COORDINATION_COMPLETE_AFTER_SERIES_SCHEDULING",
+              module: "TICKETS", action: actionState.allResolved ? "MINIAPP_COORDINATION_COMPLETE_AFTER_SERIES_SCHEDULING" : "MINIAPP_SERIES_SCHEDULING_ACTION_APPLIED",
               entityType: "Ticket", entityId: ticket.id, meta: { sessionIds, sourceSessionId: input.sessionId },
             },
           });
-          completedCoordinationTickets.push({
+          if (actionState.allResolved) completedCoordinationTickets.push({
             id: ticket.id, ticketNo: ticket.ticketNo, studentId: ticket.studentId,
             studentName: ticket.studentName, parentVisible: ticket.parentVisible, updatedAt: now,
           });

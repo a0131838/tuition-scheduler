@@ -10,6 +10,8 @@ Page({
     canComplete: false,
     completionBlockReason: "",
     isCompleted: false
+    ,schedulingActions: []
+    ,hasSchedulingActions: false
   },
 
   onLoad(options) {
@@ -41,6 +43,8 @@ Page({
           }),
           hasAttachments: attachmentUrls.length > 0,
           completionResult: request.completionResult || "",
+          schedulingActions: data.schedulingActions || [],
+          hasSchedulingActions: Boolean(data.schedulingActions && data.schedulingActions.length),
           canComplete: capabilities.canComplete === true,
           completionBlockReason: capabilities.completionBlockReason || "",
           isCompleted: request.status === "Completed" || request.status === "Cancelled"

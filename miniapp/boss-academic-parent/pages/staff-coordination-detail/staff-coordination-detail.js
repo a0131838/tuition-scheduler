@@ -36,6 +36,9 @@ Page({
     ownerIndex: 0,
     upcomingSessions: [],
     hasUpcomingSessions: false,
+    schedulingActions: [],
+    hasSchedulingActions: false,
+    actionSaving: false,
     communicationResult: "",
     nextAction: "",
     nextActionDue: tomorrow(),
@@ -97,14 +100,20 @@ Page({
         let ownerIndex = ownerOptions.findIndex((item) => item.value === (ticket && ticket.owner !== "-" ? ticket.owner : ""));
         if (ownerIndex < 0) ownerIndex = 0;
         const canCreateNewSession = Boolean(data.capabilities && data.capabilities.canCreateNewSession);
+        const upcomingSessions = data.upcomingSessions || [];
+        const schedulingActions = ((ticket && ticket.schedulingActions) || []).map((action) => Object.assign({}, action, {
+          sourceIndex: action.sourceSession ? upcomingSessions.findIndex((session) => session.id === action.sourceSession.id) : -1
+        }));
         this.setData({
           ticket,
           statusOptions,
           statusIndex,
           ownerOptions,
           ownerIndex,
-          upcomingSessions: data.upcomingSessions || [],
+          upcomingSessions,
           hasUpcomingSessions: Boolean(data.upcomingSessions && data.upcomingSessions.length),
+          schedulingActions,
+          hasSchedulingActions: schedulingActions.length > 0,
           nextAction: ticket ? ticket.nextAction : "",
           nextActionDue: ticket && ticket.nextActionDueDate ? ticket.nextActionDueDate : tomorrow(),
           hasAvailabilityUrl: Boolean(ticket && ticket.availabilityUrl),
@@ -340,6 +349,27 @@ Page({
     const id = e.currentTarget.dataset.id;
     if (!id) return;
     wx.navigateTo({ url: "/pages/staff-session-detail/staff-session-detail?id=" + encodeURIComponent(id) });
+  },
+
+  openActionSession(e) {
+    const id = e.currentTarget.dataset.id;
+    if (!id) return;
+    wx.navigateTo({ url: "/pages/staff-session-detail/staff-session-detail?id=" + encodeURIComponent(id) });
+  },
+
+  changeActionSource(e) {
+    const actionId = e.currentTarget.dataset.id;
+    const sourceIndex = Number(e.detail.value);
+    const session = this.data.upcomingSessions[sourceIndex];
+    if (!actionId || !session || this.data.actionSaving) return;
+    this.setData({ actionSaving: true });
+    api.requestStaff("/api/miniapp/staff/scheduling-coordination/" + encodeURIComponent(this.data.id) + "/actions", {
+      method: "PATCH",
+      data: { actionId, sourceSessionId: session.id, status: "READY" }
+    })
+      .then(() => { wx.showToast({ title: "已关联课程", icon: "success" }); return this.load(); })
+      .catch((err) => api.toast(err.message))
+      .finally(() => this.setData({ actionSaving: false }));
   },
 
   save() {

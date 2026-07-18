@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { Prisma } from "@prisma/client";
 import { campusRequiresRoom } from "@/lib/campus";
 import { formatBusinessDateTime } from "@/lib/date-only";
+import { applyLinkedTicketSchedulingAction } from "@/lib/ticket-scheduling-action-write";
 import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 import { pickStudentSessionConflict, pickTeacherSessionConflict } from "@/lib/session-conflict";
 import { isSessionDuplicateError } from "@/lib/session-unique";
@@ -97,7 +98,10 @@ async function validate(db: DbClient, input: TicketNewSessionInput) {
     ? await db.ticket.findFirst({
         where: {
           id: input.ticketId,
-          type: { in: [...NEW_SESSION_TICKET_TYPES] },
+          OR: [
+            { type: { in: [...NEW_SESSION_TICKET_TYPES] } },
+            { schedulingActions: { some: { actionType: "CREATE_SESSION", status: { notIn: ["APPLIED", "CANCELLED"] } } } },
+          ],
           isArchived: false,
           status: { notIn: ["Completed", "Cancelled"] },
         },
@@ -230,7 +234,15 @@ async function validate(db: DbClient, input: TicketNewSessionInput) {
 
 export async function getTicketNewSessionOptions(ticketId: string) {
   const ticket = await prisma.ticket.findFirst({
-    where: { id: ticketId, type: { in: [...NEW_SESSION_TICKET_TYPES] }, isArchived: false },
+    where: {
+      id: ticketId,
+      isArchived: false,
+      status: { notIn: ["Completed", "Cancelled"] },
+      OR: [
+        { type: { in: [...NEW_SESSION_TICKET_TYPES] } },
+        { schedulingActions: { some: { actionType: "CREATE_SESSION", status: { notIn: ["APPLIED", "CANCELLED"] } } } },
+      ],
+    },
     select: { studentId: true, studentName: true },
   });
   if (!ticket) return null;
@@ -302,7 +314,10 @@ export async function getStudentNewSessionOptions(studentId: string) {
     prisma.ticket.findMany({
       where: {
         studentId,
-        type: { in: [...NEW_SESSION_TICKET_TYPES] },
+        OR: [
+          { type: { in: [...NEW_SESSION_TICKET_TYPES] } },
+          { schedulingActions: { some: { actionType: "CREATE_SESSION", status: { notIn: ["APPLIED", "CANCELLED"] } } } },
+        ],
         isArchived: false,
         status: { notIn: ["Completed", "Cancelled"] },
       },
@@ -442,27 +457,35 @@ export async function applyTicketNewSession(input: TicketNewSessionInput, actor:
       const completionResult = `已完成排课：${scheduleText}；课程：${checked.preview.courseLabel}；老师：${checked.preview.teacherName}；地点：${checked.preview.locationText}。`;
       const actorName = actor.name?.trim() || actor.email;
       let completedTicket = checked.ticket;
+      let ticketAllResolved = true;
       if (checked.ticket) {
         const log = `[${formatBusinessDateTime(now)}] ${actorName} · 移动端新排课\n${completionResult}`;
         const previousNotes = String(checked.ticket.risksNotes ?? "").trim();
+        const actionState = await applyLinkedTicketSchedulingAction(tx, {
+          ticketId: checked.ticket.id,
+          actionType: "CREATE_SESSION",
+          resultSessionId: sessions[0]?.id ?? null,
+          appliedByUserId: actor.userId,
+        });
+        ticketAllResolved = actionState.allResolved;
         completedTicket = await tx.ticket.update({
           where: { id: checked.ticket.id },
           data: {
             studentId: checked.student.id,
-            status: "Completed",
+            status: actionState.allResolved ? "Completed" : "Confirmed",
             systemUpdated: "Y",
             finalSchedule: completionResult,
             parentCompletionResult: completionResult,
-            nextAction: "排课已完成，无需继续跟进。",
-            nextActionDue: null,
+            nextAction: actionState.allResolved ? "排课已完成，无需继续跟进。" : `本次排课已完成，仍有 ${actionState.unresolved} 个动作待执行。`,
+            nextActionDue: actionState.allResolved ? null : checked.ticket.nextActionDue,
             risksNotes: previousNotes ? `${previousNotes}\n\n${log}` : log,
             lastUpdateAt: now,
-            completedAt: now,
-            completedByUserId: actor.userId,
+            completedAt: actionState.allResolved ? now : null,
+            completedByUserId: actionState.allResolved ? actor.userId : null,
           },
           include: { student: { select: { id: true, name: true } } },
         });
-        await tx.parentAvailabilityRequest.updateMany({ where: { ticketId: checked.ticket.id }, data: { isActive: false } });
+        if (actionState.allResolved) await tx.parentAvailabilityRequest.updateMany({ where: { ticketId: checked.ticket.id }, data: { isActive: false } });
       }
       await tx.auditLog.createMany({
         data: [
@@ -477,7 +500,7 @@ export async function applyTicketNewSession(input: TicketNewSessionInput, actor:
           })),
           ...(checked.ticket ? [{
             actorEmail: actor.email.trim().toLowerCase(), actorName: actor.name?.trim() || null, actorRole: actor.role,
-            module: "TICKETS", action: "MINIAPP_COORDINATION_COMPLETE_AFTER_NEW_SESSION", entityType: "Ticket", entityId: checked.ticket.id,
+            module: "TICKETS", action: ticketAllResolved ? "MINIAPP_COORDINATION_COMPLETE_AFTER_NEW_SESSION" : "MINIAPP_NEW_SESSION_ACTION_APPLIED", entityType: "Ticket", entityId: checked.ticket.id,
             meta: { sessionIds: sessions.map((session) => session.id), weeks: sessions.length },
           }] : []),
         ],

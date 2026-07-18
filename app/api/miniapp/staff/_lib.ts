@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { bearerToken, bad } from "@/app/api/miniapp/_lib";
 import { getStaffMiniappSession } from "@/lib/miniapp-staff";
+import { schedulingActionInclude } from "@/lib/ticket-scheduling-actions";
 
 export async function requireMiniappStaff(req: Request) {
   const token = bearerToken(req);
@@ -11,7 +12,10 @@ export async function requireMiniappStaff(req: Request) {
 }
 
 export async function getParentRequestTicket(id: string) {
-  const ticket = await prisma.ticket.findUnique({ where: { id } });
+  const ticket = await prisma.ticket.findUnique({
+    where: { id },
+    include: { schedulingActions: { include: schedulingActionInclude, orderBy: { sequence: "asc" } } },
+  });
   if (!ticket || ticket.source !== "家长小程序") return null;
   return ticket;
 }

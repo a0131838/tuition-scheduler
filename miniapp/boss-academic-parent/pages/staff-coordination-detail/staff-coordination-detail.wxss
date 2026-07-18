@@ -190,3 +190,4 @@ textarea {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.action-worklist { margin: 20rpx 0; padding: 24rpx 0; border-top: 4rpx solid #202328; border-bottom: 1rpx solid #d8d5d0; }.action-row { padding: 20rpx 0; border-top: 1rpx solid #dedbd6; }.action-row-head { display: flex; justify-content: space-between; align-items: center; gap: 16rpx; }.action-seq { color: #9b3e08; font-size: 19rpx; font-weight: 800; }.action-state { padding: 6rpx 12rpx; border-radius: 999rpx; background: #fff0e7; color: #9b3e08; font-size: 20rpx; font-weight: 800; }.state-APPLIED { background: #e6f5ea; color: #28663d; }.state-CONFLICT { background: #fae8e6; color: #9b342d; }.linked-session,.action-source-picker { margin-top: 14rpx; padding: 16rpx; border-left: 5rpx solid #ec5e0a; background: #fff8f3; font-size: 24rpx; font-weight: 750; }.action-source-picker { color: #9b3e08; }.result-session { margin-top: 12rpx; color: #28663d; font-size: 22rpx; font-weight: 750; }

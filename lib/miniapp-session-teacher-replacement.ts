@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { Prisma } from "@prisma/client";
 import { formatBusinessDateTime } from "@/lib/date-only";
+import { applyLinkedTicketSchedulingAction } from "@/lib/ticket-scheduling-action-write";
 import { prisma } from "@/lib/prisma";
 import { schedulingCoordinationCourseLabelsMatch } from "@/lib/scheduling-coordination";
 import { pickTeacherSessionConflict } from "@/lib/session-conflict";
@@ -152,7 +153,10 @@ async function validateReplacement(db: DbClient, input: MiniappTeacherReplacemen
   const rows = await db.ticket.findMany({
     where: {
       studentId: { in: students.map((student) => student.id) },
-      type: "改上课老师",
+      OR: [
+        { schedulingActions: { some: { actionType: "REPLACE_TEACHER", sourceSessionId: session.id, status: { notIn: ["APPLIED", "CANCELLED"] } } } },
+        { type: "改上课老师", schedulingActions: { none: {} } },
+      ],
       isArchived: false,
       status: { notIn: ["Completed", "Cancelled"] },
     },
@@ -236,35 +240,43 @@ export async function applyMiniappTeacherReplacement(
       for (const ticket of checked.tickets.filter((row) => requestedIds.includes(row.id))) {
         const log = `[${formatBusinessDateTime(now)}] ${actorName} · 移动换老师\n${resultText}`;
         const previousNotes = String(ticket.risksNotes ?? "").trim();
+        const actionState = await applyLinkedTicketSchedulingAction(tx, {
+          ticketId: ticket.id,
+          actionType: "REPLACE_TEACHER",
+          sourceSessionId: checked.session.id,
+          resultSessionId: checked.session.id,
+          requestedTeacherId: checked.teacher.id,
+          appliedByUserId: actor.userId,
+        });
         await tx.ticket.update({
           where: { id: ticket.id },
           data: {
-            status: "Completed",
+            status: actionState.allResolved ? "Completed" : "Confirmed",
             systemUpdated: "Y",
             finalSchedule: resultText,
             parentCompletionResult: resultText,
-            nextAction: "本节课老师已更换，无需继续跟进。",
-            nextActionDue: null,
+            nextAction: actionState.allResolved ? "本节课老师已更换，无需继续跟进。" : `老师已更换，仍有 ${actionState.unresolved} 个排课动作待执行。`,
+            nextActionDue: actionState.allResolved ? null : new Date(now.getTime() + 24 * 60 * 60 * 1000),
             risksNotes: previousNotes ? `${previousNotes}\n\n${log}` : log,
             lastUpdateAt: now,
-            completedAt: now,
-            completedByUserId: actor.userId,
+            completedAt: actionState.allResolved ? now : null,
+            completedByUserId: actionState.allResolved ? actor.userId : null,
           },
         });
-        await tx.parentAvailabilityRequest.updateMany({ where: { ticketId: ticket.id }, data: { isActive: false } });
+        if (actionState.allResolved) await tx.parentAvailabilityRequest.updateMany({ where: { ticketId: ticket.id }, data: { isActive: false } });
         await tx.auditLog.create({
           data: {
             actorEmail: actor.email.trim().toLowerCase(),
             actorName: actor.name?.trim() || null,
             actorRole: actor.role,
             module: "TICKETS",
-            action: "MINIAPP_TEACHER_CHANGE_TICKET_COMPLETE",
+            action: actionState.allResolved ? "MINIAPP_TEACHER_CHANGE_TICKET_COMPLETE" : "MINIAPP_TEACHER_CHANGE_ACTION_APPLIED",
             entityType: "Ticket",
             entityId: ticket.id,
             meta: { sessionId: checked.session.id, toTeacherId: checked.teacher.id },
           },
         });
-        completedTickets.push({
+        if (actionState.allResolved) completedTickets.push({
           id: ticket.id,
           ticketNo: ticket.ticketNo,
           studentId: ticket.studentId,
