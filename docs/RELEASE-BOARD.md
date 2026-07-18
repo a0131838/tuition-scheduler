@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-07-17`
+- Last checked: `2026-07-18`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,8 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-17-r261` at runtime feature commit `e4edbb4`. The first native-miniapp UI-system batch is live on the server and uploaded as WeChat development version `1.0.1`; formal review remains gated by physical-phone role checks.
-- Next release candidate: `2026-07-18-r262` adds verified-WeChat multi-account binding and switching for employees such as Jasmine who retain separate ADMIN and TEACHER users.
+- Current production release: `2026-07-18-r262` at runtime feature commit `960457f`. Verified-WeChat employee multi-account binding and switching are live on the server and uploaded as WeChat development version `1.0.2`; physical-phone Jasmine ADMIN/TEACHER switching remains the rollout gate.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
@@ -23,7 +22,7 @@
 
 ## Open Risks
 
-- Miniapp multi-account rollout: `2026-07-18-r262` changes the employee-miniapp binding uniqueness rule and adds a verified OpenID to new employee sessions. Existing bindings are preserved, but sessions created before deployment must re-login once before account switching is available. After deploy, bind Jasmine's currently unbound ADMIN account from her already-bound TEACHER WeChat, then confirm both directions preserve the correct workbench and permissions.
+- Miniapp multi-account rollout: `2026-07-18-r262` is live at runtime feature commit `960457f` and uploaded as WeChat development version `1.0.2` (355.4 KB). Existing bindings are preserved, but sessions created before deployment must re-login once before account switching is available. Designate `1.0.2` as the experience version, bind Jasmine's currently unbound ADMIN account from her already-bound TEACHER WeChat, then confirm both directions preserve the correct workbench and permissions.
 - Miniapp role-home UI rollout: `2026-07-17-r261` is live at runtime feature commit `e4edbb4` and uploaded as WeChat development version `1.0.1` (345.8 KB). Shared native styles and the parent/employee entry pages changed, while web pages, APIs and business writes remained untouched. Before formal review, designate the upload as an experience version and validate a manager, CS/academic, teacher, normal-course parent and Full Care parent on physical phones; confirm long names, zero counts, overdue states, the teacher next-lesson link and return refresh.
 
 - Miniapp calendar Ticket-queue rollout: `2026-07-17-r260` is live on the server and uploaded as WeChat development version `1.0.0` with a read-only embedded queue, filters and detail deep links. Production currently has 6 open scheduling Tickets and all 6 are overdue. Time-change, teacher-change and leave/cancellation Tickets remain labelled `待关联原课程` until phase two adds explicit original-Session linkage. Set this upload as the experience version, then validate ADMIN and CS visibility, long-list scrolling, filters, return refresh and confirmation that teachers do not see the global queue.
@@ -157,7 +156,7 @@
 - Tutor-Wise-payment-profile risk: `2026-05-29-r161` removes Bank Transfer as a new tutor payment method and adds Wise details plus finance review status; finance should verify PayNow/Wise details before payout exports are used.
 - Teacher-notice-attachment risk: `2026-05-30-r162` lets teachers open only the active Shared Docs file attached to an active teacher notice; verify the notice attachment is intentional before publishing because the full Shared Docs library remains manager/admin controlled.
 
-## 2026-07-18-r262 Ready
+## 2026-07-18-r262 Live
 
 - Scope: let one verified WeChat bind and switch between multiple existing employee accounts without merging roles or audit identities.
 - Business impact:
@@ -180,16 +179,19 @@
   - `miniapp/boss-academic-parent/pages/staff-account-switch/*`
   - `miniapp/boss-academic-parent/pages/staff-home/*`
   - `tests/miniapp-staff-multi-account.test.ts`
-- Verification before deploy:
+- Verification:
   - Prisma generate/validate and exact production-index inspection
   - focused multi-account tests `4/4`
   - complete miniapp tests `41/41`
   - backend tests `79/79`
   - TypeScript and 195-page production build
-  - WeChat Developer Tools preview, 355.4 KB
-- Post-deploy verification:
-  - pending guarded local/GitHub/server alignment, migration count, PM2 and HTTP health checks
-  - pending WeChat development-version upload and physical-phone Jasmine ADMIN/TEACHER switch test
+  - WeChat Developer Tools preview and development upload `1.0.2`, 355.4 KB
+  - guarded local/GitHub/server alignment at runtime feature commit `960457f`
+  - completed production migration, nullable session OpenID column and composite binding indexes
+  - PM2 online at PID `2073081`; `/admin/login` => `200`; anonymous account-list access => `401`
+  - read-only production verification preserves Jasmine's existing TEACHER binding and leaves ADMIN unbound for explicit one-use-code confirmation
+- Remaining rollout gate:
+  - designate `1.0.2` as the experience version and complete a physical-phone Jasmine ADMIN/TEACHER switch test
 
 ## 2026-07-17-r261 Live
 

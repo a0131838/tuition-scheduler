@@ -36,6 +36,17 @@ Read-only production inspection on 2026-07-18 confirmed:
 - `npm run build` (`195` pages)
 - `git diff --check`
 - WeChat Developer Tools CLI preview for AppID `wxe7017f8545e8ad49` (`355.4 KB`)
+- Guarded production release aligned runtime feature commit `960457f`; PM2 PID `2073081`; `/admin/login` returned `200`
+- Production migration, nullable session OpenID column and composite OpenID/user binding indexes confirmed read-only
+- Existing Jasmine TEACHER binding remained `1`; ADMIN binding remained `0`
+- Anonymous `GET /api/miniapp/staff/accounts` returned `401`
+- WeChat development version `1.0.2` uploaded successfully (`355.4 KB`)
+
+## Remaining rollout gate
+
+- Set development version `1.0.2` as the experience version in the WeChat Mini Program admin console.
+- Generate a one-use employee binding code for Jasmine's ADMIN account.
+- Jasmine re-logs into the miniapp once, binds the ADMIN account from Account Management, and verifies ADMIN to TEACHER and TEACHER to ADMIN switching on a physical phone.
 
 ## Risk
 

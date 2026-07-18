@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-18-r262`
 - Date/Time (Asia/Shanghai): `2026-07-18`
-- Deployment status: `READY`
+- Deployment status: `LIVE` at runtime feature commit `960457f`
 - Scope: allow one WeChat identity to bind and safely switch between multiple existing employee accounts, preserving separate ADMIN/TEACHER permissions and audit ownership.
 - Key files:
   - `prisma/schema.prisma`
@@ -35,7 +35,7 @@ This file is the single source of truth for what changed in production.
   - `docs/CHANGELOG-LIVE.md`
   - `docs/RELEASE-BOARD.md`
 - Risk impact (if any): Medium and limited to employee-miniapp identity/session handling. The additive nullable session column and replacement of the single-openId unique index with a composite openId/user unique index preserve existing bindings. Account selection is allowed only among active bindings carrying the current session's verified WeChat OpenID. Web passwords, web login, employee roles, teacher links, scheduling, attendance, package balances, finance, payroll and parent access remain unchanged.
-- Verification: read-only production inspection confirms Jasmine has separate ADMIN and TEACHER users, the TEACHER user has a linked teacher profile and one active miniapp binding, and the ADMIN user is unbound. The exact production index name matches the migration. Prisma generation/validation, TypeScript, 4 focused multi-account tests, all 41 miniapp tests, all 79 backend tests, the full 195-page production build, `git diff --check` and WeChat Developer Tools preview (355.4 KB) pass.
+- Verification: read-only production inspection confirms Jasmine has separate ADMIN and TEACHER users, the TEACHER user has a linked teacher profile and one active miniapp binding, and the ADMIN user remains unbound. Prisma generation/validation, TypeScript, 4 focused multi-account tests, all 41 miniapp tests, all 79 backend tests, the full 195-page production build, `git diff --check` and WeChat Developer Tools preview pass. The guarded release aligned runtime at `960457f`; migration `20260718090000_add_staff_miniapp_multi_account` is complete, the nullable session OpenID column and composite binding indexes are present, PM2 is online at PID `2073081`, `/admin/login` returns `200`, and anonymous account-list access returns `401`. WeChat development version `1.0.2` uploaded successfully at 355.4 KB.
 - Rollback point: `65148be` documentation head for live runtime feature commit `e4edbb4` (`2026-07-17-r261`).
 
 ---
