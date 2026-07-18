@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-18-r264`
 - Date/Time (Asia/Shanghai): `2026-07-18`
-- Deployment status: `READY`
+- Deployment status: `LIVE` at runtime feature commit `21310b2`
 - Scope: make Emily's staff-assisted Ticket intake unmistakable and three-step simple, while reserving sensitive, non-owned and reassignment closure authority for management.
 - Key files:
   - `app/api/miniapp/staff/parent-requests/[id]/route.ts`
@@ -29,7 +29,7 @@ This file is the single source of truth for what changed in production.
   - `tests/miniapp-emily-request-intake.test.ts`
   - `docs/tasks/TASK-20260718-miniapp-emily-request-intake.md`
 - Risk impact (if any): Medium-low and limited to native employee-miniapp presentation plus narrower parent-request completion/reassignment authorization. ADMIN retains full authority. CS can complete only a low-risk Ticket assigned to the current user's exact display name; complaints, finance issues, school affairs, non-owned Tickets and all post-creation reassignment require ADMIN. No web page, migration, Ticket creation schema, parent visibility, notification, scheduling, attendance, package, finance calculation or payroll behavior changes.
-- Verification: 3 focused tests, all 49 miniapp tests, all 79 backend tests, TypeScript, native JavaScript syntax, the full 198-page production build, `git diff --check`, the no-`app/admin/**` diff check and a 388.1 KB WeChat Developer Tools preview pass.
+- Verification: 3 focused tests, all 49 miniapp tests, all 79 backend tests, TypeScript, native JavaScript syntax, the full 198-page production build, `git diff --check`, the no-`app/admin/**` diff check and a 388.1 KB WeChat Developer Tools preview pass. Production is aligned at runtime feature commit `21310b2`; 108 migrations are current with none pending, PM2 is online at PID `2109211`, `/admin/login` returns `200`, and anonymous request-detail access returns `401`. WeChat development version `1.0.4` uploaded successfully at 388.1 KB.
 - Rollback point: `13a05d2` (`2026-07-18-r263` final production documentation head; runtime feature commit `e0cdecb`).
 
 ---

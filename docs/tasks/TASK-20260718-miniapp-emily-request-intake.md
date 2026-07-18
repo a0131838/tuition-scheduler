@@ -33,10 +33,13 @@ Emily's CS miniapp already allowed staff-assisted Ticket creation, but the entry
 - `git diff --check`
 - Explicit no-`app/admin/**` diff check
 - WeChat Developer Tools preview for AppID `wxe7017f8545e8ad49` (`388.1 KB`)
+- Runtime feature commit `21310b2`; 108 migrations current; PM2 PID `2109211`; `/admin/login` returned `200`
+- Anonymous request-detail access returned `401`
+- WeChat development version `1.0.4` uploaded successfully (`388.1 KB`)
 
 ## Rollout gate
 
-- Upload development version `1.0.4` and designate it as the experience version.
+- Designate uploaded development version `1.0.4` as the experience version.
 - Emily verifies the orange home entry, one no-submit form walkthrough, album/WeChat attachment choices and the manager-close explanation on a physical phone.
 - If a real low-risk Ticket is assigned to Emily, verify she can complete it only after entering a parent-visible result.
 - Jasmine or Eva verifies one restricted Ticket shows the final completion action under ADMIN.
