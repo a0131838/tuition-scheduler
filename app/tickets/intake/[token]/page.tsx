@@ -72,6 +72,10 @@ export default async function TicketIntakeByTokenPage({
           nextAction: true,
           nextActionDue: true,
           createdAt: true,
+          schedulingActions: {
+            select: { status: true },
+            orderBy: { sequence: "asc" },
+          },
           parentAvailabilityRequest: {
             select: {
               token: true,
@@ -172,6 +176,12 @@ export default async function TicketIntakeByTokenPage({
                         <div>
                           <b>录入时间 / Created:</b> {formatBusinessDateTime(row.createdAt)}
                         </div>
+                        {row.schedulingActions.length > 0 ? (
+                          <div>
+                            <b>排课动作 / Scheduling actions:</b>{" "}
+                            {row.schedulingActions.filter((action) => ["APPLIED", "CANCELLED"].includes(action.status)).length}/{row.schedulingActions.length} 已处理
+                          </div>
+                        ) : null}
                         {row.parentAvailabilityRequest ? (
                           <div>
                             <b>家长时间表单 / Parent form:</b>{" "}
@@ -204,6 +214,7 @@ export default async function TicketIntakeByTokenPage({
         uploadPath={`/api/tickets/upload/${encoded}`}
         studentLookupPath={`/api/tickets/intake/${encoded}/students/lookup`}
         teacherLookupPath={`/api/tickets/intake/${encoded}/teachers/lookup`}
+        sessionLookupPath={`/api/tickets/intake/${encoded}/sessions/lookup`}
         createdByNameDefault={viewerName || undefined}
         lockCreatedByName={Boolean(viewerName)}
       />

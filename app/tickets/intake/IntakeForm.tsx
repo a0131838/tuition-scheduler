@@ -18,6 +18,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
 import { formatBusinessDateTime } from "@/lib/date-only";
+import GuidedIntakeForm from "./GuidedIntakeForm";
 
 const fieldStyle: React.CSSProperties = {
   width: "100%",
@@ -55,21 +56,24 @@ function OptionList({
   );
 }
 
-export default function IntakeForm({
+export type IntakeFormProps = {
+  apiPath: string;
+  uploadPath: string;
+  studentLookupPath: string;
+  teacherLookupPath: string;
+  sessionLookupPath: string;
+  createdByNameDefault?: string;
+  lockCreatedByName?: boolean;
+};
+
+export function LegacyIntakeForm({
   apiPath,
   uploadPath,
   studentLookupPath,
   teacherLookupPath,
   createdByNameDefault,
   lockCreatedByName,
-}: {
-  apiPath: string;
-  uploadPath: string;
-  studentLookupPath: string;
-  teacherLookupPath: string;
-  createdByNameDefault?: string;
-  lockCreatedByName?: boolean;
-}) {
+}: Omit<IntakeFormProps, "sessionLookupPath">) {
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [msg, setMsg] = useState("");
@@ -978,4 +982,21 @@ export default function IntakeForm({
       </form>
     </div>
   );
+}
+
+export default function IntakeForm(props: IntakeFormProps) {
+  const [showLegacy, setShowLegacy] = useState(false);
+  if (showLegacy) {
+    return (
+      <div>
+        <div style={{ maxWidth: 920, margin: "0 auto", padding: "12px 12px 0" }}>
+          <button type="button" onClick={() => setShowLegacy(false)}>
+            ← 返回简易排课录入
+          </button>
+        </div>
+        <LegacyIntakeForm {...props} />
+      </div>
+    );
+  }
+  return <GuidedIntakeForm {...props} onOpenLegacy={() => setShowLegacy(true)} />;
 }

@@ -57,6 +57,13 @@ function collectCourseNames(input: {
   return ordered.slice(0, 3);
 }
 
+function ticketSource(sourceName: string | null | undefined) {
+  const raw = String(sourceName ?? "").trim();
+  if (raw.includes("新东方")) return "新东方外包";
+  if (raw.includes("上海新卓思")) return "上海新卓思外包";
+  return "自营学生";
+}
+
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ token: string }> }
@@ -81,6 +88,7 @@ export async function GET(
       id: true,
       name: true,
       grade: true,
+      sourceChannel: { select: { name: true } },
       appointments: {
         orderBy: { startAt: "desc" },
         take: 3,
@@ -120,6 +128,7 @@ export async function GET(
             id: true,
             name: true,
             grade: true,
+            sourceChannel: { select: { name: true } },
             appointments: {
               orderBy: { startAt: "desc" },
               take: 2,
@@ -159,6 +168,7 @@ export async function GET(
       sessions: row.sessions,
       enrollments: row.enrollments,
     }),
+    ticketSource: ticketSource(row.sourceChannel?.name),
   }));
 
   const hasExact = exact.length > 0;

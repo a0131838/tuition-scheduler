@@ -61,6 +61,7 @@ import {
 import { sessionBelongsToStudentWhere } from "@/lib/session-students";
 import {
   normalizeSchedulingActionInput,
+  schedulingActionCanBeReady,
   schedulingActionDefinition,
   schedulingActionStatusLabel,
   schedulingActionInclude,
@@ -602,7 +603,6 @@ async function updateTicketSchedulingActionAction(formData: FormData) {
   if (!current || current.ticket.isArchived || ["Completed", "Cancelled"].includes(current.ticket.status)) redirect(appendQuery(back, { err: "scheduling-action-closed" }));
   if (["APPLIED", "CANCELLED"].includes(current.status)) redirect(appendQuery(back, { err: "scheduling-action-resolved" }));
   const sourceSessionId = trimValue(formData, "sourceSessionId", 80) || null;
-  const definition = schedulingActionDefinition(current.actionType);
   if (sourceSessionId) {
     if (!current.ticket.studentId) redirect(appendQuery(back, { err: "scheduling-action-student" }));
     const source = await prisma.session.findFirst({ where: { id: sourceSessionId, ...sessionBelongsToStudentWhere(current.ticket.studentId!) }, select: { id: true } });
@@ -610,7 +610,18 @@ async function updateTicketSchedulingActionAction(formData: FormData) {
   }
   let status = trimValue(formData, "actionStatus", 40);
   if (!TICKET_SCHEDULING_ACTION_STATUSES.some((item) => item.value === status) || status === "APPLIED") status = current.status;
-  if (definition?.needsSource && !sourceSessionId && status === "READY") status = "NEED_INFO";
+  if (
+    status === "READY" &&
+    !schedulingActionCanBeReady({
+      actionType: current.actionType,
+      sourceSessionId,
+      requestedStartAt: current.requestedStartAt,
+      requestedEndAt: current.requestedEndAt,
+      requestedTeacherId: current.requestedTeacherId,
+      courseLabel: current.courseLabel,
+      durationMin: current.durationMin,
+    })
+  ) status = "NEED_INFO";
   await prisma.$transaction([
     prisma.ticketSchedulingAction.update({ where: { id: actionId }, data: { sourceSessionId, status, notes: trimValue(formData, "notes", 2000) || null } }),
     prisma.auditLog.create({ data: {

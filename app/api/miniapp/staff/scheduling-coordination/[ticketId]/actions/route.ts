@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { sessionBelongsToStudentWhere } from "@/lib/session-students";
 import {
   normalizeSchedulingActionInput,
+  schedulingActionCanBeReady,
   schedulingActionDefinition,
   schedulingActionDto,
   schedulingActionInclude,
@@ -79,11 +80,21 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ ticketId: str
     ? String((body as any).sourceSessionId ?? "").trim() || null
     : action.sourceSessionId;
   if (!(await validateSource(checked.ticket.studentId, sourceSessionId))) return bad("Selected lesson does not belong to this student", 409);
-  const definition = schedulingActionDefinition(action.actionType);
   const requestedStatus = String((body as any).status ?? "").trim();
   const allowedStatuses = new Set(["NEED_INFO", "WAITING_PARENT", "WAITING_TEACHER", "READY", "CONFLICT", "CANCELLED"]);
   let status = allowedStatuses.has(requestedStatus) ? requestedStatus : action.status;
-  if (definition?.needsSource && !sourceSessionId && status === "READY") status = "NEED_INFO";
+  if (
+    status === "READY" &&
+    !schedulingActionCanBeReady({
+      actionType: action.actionType,
+      sourceSessionId,
+      requestedStartAt: action.requestedStartAt,
+      requestedEndAt: action.requestedEndAt,
+      requestedTeacherId: action.requestedTeacherId,
+      courseLabel: action.courseLabel,
+      durationMin: action.durationMin,
+    })
+  ) status = "NEED_INFO";
   const notes = Object.prototype.hasOwnProperty.call(body, "notes") ? String((body as any).notes ?? "").trim().slice(0, 2000) || null : action.notes;
   await prisma.$transaction([
     prisma.ticketSchedulingAction.update({ where: { id: action.id }, data: { sourceSessionId, status, notes } }),

@@ -15,12 +15,15 @@
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
 - Current production release: `2026-07-18-r265` at runtime feature commit `421b4e7`. Scheduling Tickets now have additive multi-action work orders, exact source/result Session links, a web execution queue and Emily multi-action intake. WeChat development version `1.0.5` is uploaded; experience-version designation and physical-phone checks remain.
+- Current release line on this branch: `2026-07-18-r266` READY. The existing public web intake link now opens the same guided multi-action workflow, and authenticated miniapp mutations/uploads emit searchable redacted operation logs.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
+
+- Guided-intake and miniapp-audit rollout: `2026-07-18-r266` keeps the old complete web form behind a secondary non-scheduling entry and adds one AuditLog row per authenticated miniapp mutation/upload. Verify Emily's existing link opens the guided form, one controlled intake creates exact actions, and `MINIAPP` audit filtering shows the resulting client operation. GET reads and pre-session login attempts are intentionally not logged.
 
 - Scheduling work-order rollout: `2026-07-18-r265` is live at runtime feature commit `421b4e7` and uploaded as WeChat development version `1.0.5` (401.3 KB). Historical Tickets are intentionally not backfilled and appear as `待结构化`; designate `1.0.5` as the experience version, then verify the first Emily multi-action Ticket and the first cancellation-plus-replacement flow on a physical phone. The Ticket must remain open after cancellation until replacement scheduling is applied.
 
@@ -159,6 +162,28 @@
 - Workspace-access-form risk: `2026-05-29-r160` lets the owner manager edit Sales/CS focused workspace access from System User Admin; verify non-owner managers cannot write this endpoint and that main roles remain unchanged.
 - Tutor-Wise-payment-profile risk: `2026-05-29-r161` removes Bank Transfer as a new tutor payment method and adds Wise details plus finance review status; finance should verify PayNow/Wise details before payout exports are used.
 - Teacher-notice-attachment risk: `2026-05-30-r162` lets teachers open only the active Shared Docs file attached to an active teacher notice; verify the notice attachment is intentional before publishing because the full Shared Docs library remains manager/admin controlled.
+
+## 2026-07-18-r266 Ready
+
+- Scope: close the remaining web-intake gap and add a uniform miniapp mutation audit trail.
+- Business impact:
+  - Emily's existing intake URL now starts with student selection, one-or-more scheduling actions, exact source lesson, parent message and attachments
+  - the legacy detailed form remains available for non-scheduling tickets
+  - web-created actions enter the same scheduling workbench and the intake-agent board shows resolved/total action counts
+  - every authenticated miniapp POST/PATCH/PUT/DELETE/upload records actor, path, outcome, status and redacted request/response context in the existing audit report
+- Safety:
+  - source Sessions are server-validated against the selected student
+  - reschedule and teacher-replacement actions no longer appear ready before the requested time or target teacher is known
+  - generic logging is fire-and-forget on the client and cannot make the original business action fail
+  - no database migration or protected finance/attendance/package/payroll behavior changes
+- Verification before deploy:
+  - focused tests `8/8`; miniapp/WeChat/scheduling tests `64/64`; backend tests `79/79`
+  - TypeScript, all native JavaScript, 34-page miniapp audit, 200-page build and diff checks pass
+- Post-deploy verification:
+  - local/origin/server commit equality, PM2 online and `/admin/login` 200
+  - existing active intake token renders the guided title and the new session lookup rejects an invalid token
+  - unauthenticated miniapp operation logging returns 401
+  - upload WeChat development version `1.0.6`; do not auto-designate experience or production versions
 
 ## 2026-07-18-r265 Live
 

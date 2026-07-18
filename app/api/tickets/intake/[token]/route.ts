@@ -28,6 +28,11 @@ import {
   normalizeSchedulingCoordinationCourseKey,
   schedulingCoordinationCourseLabelsMatch,
 } from "@/lib/scheduling-coordination";
+import { sessionBelongsToStudentWhere } from "@/lib/session-students";
+import {
+  normalizeSchedulingActionInput,
+  schedulingActionDefinition,
+} from "@/lib/ticket-scheduling-actions";
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
 }
@@ -79,6 +84,23 @@ export async function POST(
     return bad("Invalid JSON body");
   }
 
+  const rawSchedulingActions = Array.isArray(body.schedulingActions) ? body.schedulingActions.slice(0, 10) : [];
+  const normalizedSchedulingActions = rawSchedulingActions
+    .map((item) => normalizeSchedulingActionInput((item ?? {}) as any))
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+  const schedulingActions = normalizedSchedulingActions.flatMap((action) => {
+    if (action.actionType !== "CANCEL_SESSION" || !action.replacementRequired) return [action];
+    const replacement = normalizeSchedulingActionInput({
+      actionType: "CREATE_SESSION",
+      courseLabel: action.courseLabel,
+      notes: "原课程取消后需要安排补课；时间待教务继续协调。",
+    });
+    return replacement ? [action, replacement] : [action];
+  });
+  const guidedScheduling = body.guidedScheduling === true || String(body.guidedScheduling ?? "") === "1";
+  if (rawSchedulingActions.length !== normalizedSchedulingActions.length) return bad("Invalid scheduling action / 排课动作无效", 409);
+  if (guidedScheduling && schedulingActions.length === 0) return bad("At least one scheduling action is required / 至少需要一个排课动作", 409);
+
   const studentName = normalizeTicketString(body.studentName, 120);
   if (!studentName) return bad("Student name is required / 学生姓名必填");
 
@@ -111,7 +133,7 @@ export async function POST(
     mode,
     wechat,
   });
-  if (requirementCheck.missingLabels.length > 0) {
+  if (!guidedScheduling && requirementCheck.missingLabels.length > 0) {
     return bad(
       `Missing required fields for this ticket type / 该工单类型缺少必填字段: ${requirementCheck.missingLabels.join("、")}`
     );
@@ -149,7 +171,13 @@ export async function POST(
     return bad("Please confirm the student from the lookup before creating a scheduling coordination ticket / 请先从学生匹配列表确认学生后，再创建排课协调工单");
   }
 
-  if (normalizedType === SCHEDULING_COORDINATION_TICKET_TYPE && linkedStudent) {
+  if (guidedScheduling && !linkedStudent) {
+    return bad("Please confirm the student before creating a guided scheduling ticket / 请先确认学生", 409);
+  }
+  const missingRequiredSource = schedulingActions.find((action) => schedulingActionDefinition(action.actionType)?.needsSource && !action.sourceSessionId);
+  if (missingRequiredSource) return bad("Please select the exact original lesson / 请选择具体原课程", 409);
+
+  if (normalizedType === SCHEDULING_COORDINATION_TICKET_TYPE && linkedStudent && schedulingActions.length === 0) {
     const existingCoordinations = await prisma.ticket.findMany({
       where: {
         studentId: linkedStudent.id,
@@ -234,7 +262,9 @@ export async function POST(
   }
 
   const shouldCreateParentAvailabilityLink =
-    normalizedType === SCHEDULING_COORDINATION_TICKET_TYPE && Boolean(linkedStudent);
+    normalizedType === SCHEDULING_COORDINATION_TICKET_TYPE &&
+    Boolean(linkedStudent) &&
+    (schedulingActions.length === 0 || schedulingActions.some((action) => action.actionType === "COORDINATE_ONLY"));
 
   const parentAvailabilityToken = shouldCreateParentAvailabilityLink ? createParentAvailabilityToken() : null;
   const parentAvailabilityExpiresAt = shouldCreateParentAvailabilityLink ? buildParentAvailabilityExpiresAt() : null;
@@ -243,6 +273,35 @@ export async function POST(
     : null;
 
   const created = await prisma.$transaction(async (tx) => {
+    const sourceIds = Array.from(new Set(schedulingActions.map((action) => action.sourceSessionId).filter((value): value is string => Boolean(value))));
+    const sourceDetails = sourceIds.length && linkedStudent
+      ? await tx.session.findMany({
+          where: { id: { in: sourceIds }, ...sessionBelongsToStudentWhere(linkedStudent.id) },
+          select: {
+            id: true,
+            teacher: { select: { name: true } },
+            class: {
+              select: {
+                course: { select: { name: true } },
+                subject: { select: { name: true } },
+                level: { select: { name: true } },
+                teacher: { select: { name: true } },
+              },
+            },
+          },
+        })
+      : [];
+    if (sourceDetails.length !== sourceIds.length) throw new Error("SCHEDULING_SOURCE_MISMATCH");
+    const sourceById = new Map(sourceDetails.map((session) => [session.id, {
+      courseLabel: [session.class.course.name, session.class.subject?.name, session.class.level?.name].filter(Boolean).join(" / "),
+      teacherName: session.teacher?.name ?? session.class.teacher.name,
+    }]));
+    const actionRows = schedulingActions.map((action) => ({
+      ...action,
+      courseLabel: action.courseLabel || (action.sourceSessionId ? sourceById.get(action.sourceSessionId)?.courseLabel ?? null : null) || course,
+    }));
+    const resolvedCourse = actionRows.find((action) => action.courseLabel)?.courseLabel || course;
+    const resolvedTeacher = sourceIds.map((id) => sourceById.get(id)?.teacherName).find(Boolean) || teacher;
     const ticketNo = await allocateTicketNo(tx);
     const ticket = await tx.ticket.create({
       data: {
@@ -253,8 +312,8 @@ export async function POST(
         priority,
         studentName,
         grade,
-        course,
-        teacher,
+        course: resolvedCourse,
+        teacher: resolvedTeacher,
         poc: normalizeTicketString(body.poc, 120),
         wechat,
         phone: null,
@@ -281,20 +340,42 @@ export async function POST(
       select: { id: true, ticketNo: true },
     });
 
+    if (actionRows.length > 0) {
+      await tx.ticketSchedulingAction.createMany({
+        data: actionRows.map((action, sequence) => ({ ticketId: ticket.id, sequence, ...action })),
+      });
+      await tx.auditLog.create({
+        data: {
+          actorEmail: "ticket-intake-link@sgtmanage.local",
+          actorName: normalizeTicketString(tokenRow.label, 120),
+          actorRole: "INTAKE_LINK",
+          module: "TICKETS",
+          action: "CREATE_GUIDED_TICKET_SCHEDULING_ACTIONS",
+          entityType: "Ticket",
+          entityId: ticket.id,
+          meta: { actionCount: actionRows.length, actionTypes: actionRows.map((action) => action.actionType), sourceSessionIds: sourceIds },
+        },
+      });
+    }
+
     if (shouldCreateParentAvailabilityLink && linkedStudent && parentAvailabilityToken && parentAvailabilityExpiresAt) {
       await tx.parentAvailabilityRequest.create({
         data: {
           ticketId: ticket.id,
           studentId: linkedStudent.id,
-          courseLabel: course,
+          courseLabel: resolvedCourse,
           token: parentAvailabilityToken,
           expiresAt: parentAvailabilityExpiresAt,
         },
       });
     }
 
-    return ticket;
+    return { ...ticket, schedulingActionCount: actionRows.length };
+  }).catch((error) => {
+    if (error instanceof Error && error.message === "SCHEDULING_SOURCE_MISMATCH") return null;
+    throw error;
   });
+  if (!created) return bad("Selected lesson does not belong to this student / 所选课程不属于该学生", 409);
 
   const origin = await resolveOriginFromRequest(req);
   const parentAvailabilityUrl =
@@ -307,6 +388,7 @@ export async function POST(
       ok: true,
       id: created.id,
       ticketNo: created.ticketNo,
+      schedulingActionCount: created.schedulingActionCount,
       parentAvailabilityUrl,
       parentAvailabilityExpiresAt: parentAvailabilityExpiresAt?.toISOString() ?? null,
     },

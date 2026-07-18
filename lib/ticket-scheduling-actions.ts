@@ -59,21 +59,36 @@ export function normalizeSchedulingActionInput(input: TicketSchedulingActionInpu
   const requestedEndAt = dateOrNull(input.requestedEndAt);
   const duration = Number(input.durationMin);
   const durationMin = Number.isInteger(duration) && duration >= 15 && duration <= 360 ? duration : null;
-  const ready = definition.needsSource ? Boolean(sourceSessionId) : definition.value === "COORDINATE_ONLY" ? false : Boolean(requestedStartAt || durationMin);
+  const requestedTeacherId = clean(input.requestedTeacherId, 80);
+  const courseLabel = clean(input.courseLabel, 160);
+  const ready =
+    definition.value === "CANCEL_SESSION"
+      ? Boolean(sourceSessionId)
+      : definition.value === "RESCHEDULE_SESSION"
+        ? Boolean(sourceSessionId && requestedStartAt)
+        : definition.value === "REPLACE_TEACHER"
+          ? Boolean(sourceSessionId && requestedTeacherId)
+          : definition.value === "CREATE_SESSION"
+            ? Boolean(requestedStartAt && courseLabel && durationMin)
+            : false;
   return {
     actionType: definition.value,
     status: ready ? "READY" : "NEED_INFO",
     sourceSessionId,
     requestedStartAt,
     requestedEndAt,
-    requestedTeacherId: clean(input.requestedTeacherId, 80),
-    courseLabel: clean(input.courseLabel, 160),
+    requestedTeacherId,
+    courseLabel,
     durationMin,
     mode: clean(input.mode, 40),
     chargePolicy: clean(input.chargePolicy, 40),
     replacementRequired: Boolean(input.replacementRequired),
     notes: clean(input.notes, 2000),
   };
+}
+
+export function schedulingActionCanBeReady(input: TicketSchedulingActionInput) {
+  return normalizeSchedulingActionInput(input)?.status === "READY";
 }
 
 export function schedulingActionDto(action: TicketSchedulingAction & {

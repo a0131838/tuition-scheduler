@@ -12,14 +12,56 @@ function staffToken() {
   return app().globalData.staffToken || wx.getStorageSync("staff_token") || "";
 }
 
+function summarizeForLog(value, depth) {
+  const level = depth || 0;
+  if (level > 4) return "[truncated]";
+  if (value === null || typeof value === "number" || typeof value === "boolean") return value;
+  if (typeof value === "string") return value.slice(0, 1200);
+  if (Array.isArray(value)) return value.slice(0, 20).map((item) => summarizeForLog(item, level + 1));
+  if (value && typeof value === "object") {
+    const blocked = { authorization: 1, code: 1, mockopenid: 1, password: 1, previewtoken: 1, signaturedataurl: 1, token: 1 };
+    const out = {};
+    Object.keys(value).slice(0, 40).forEach((key) => {
+      out[key] = blocked[key.toLowerCase()] ? "[redacted]" : summarizeForLog(value[key], level + 1);
+    });
+    return out;
+  }
+  return String(value || "").slice(0, 1200);
+}
+
+function logOperation(path, method, opts, result) {
+  if (!path || path === "/api/miniapp/operation-log" || method === "GET") return;
+  const authToken = opts.staff ? staffToken() : token();
+  if (!authToken) return;
+  wx.request({
+    url: config.apiBaseUrl + "/api/miniapp/operation-log",
+    method: "POST",
+    timeout: 8000,
+    header: { "content-type": "application/json", Authorization: "Bearer " + authToken },
+    data: {
+      path,
+      method,
+      outcome: result.ok ? "SUCCESS" : "FAILED",
+      statusCode: result.statusCode || 0,
+      requestData: summarizeForLog(opts.data || null),
+      responseData: summarizeForLog(result.data || null),
+      error: result.error || "",
+      clientAt: new Date().toISOString()
+    },
+    success() {},
+    fail() {}
+  });
+}
+
 function request(path, options) {
   const opts = options || {};
   const authToken = opts.staff ? staffToken() : token();
   const timeout = opts.timeout || 20000;
+  const method = String(opts.method || "GET").toUpperCase();
   return new Promise((resolve, reject) => {
     wx.request({
       url: config.apiBaseUrl + path,
-      method: opts.method || "GET",
+      method,
       data: opts.data || undefined,
       timeout,
       header: Object.assign(
@@ -32,12 +74,15 @@ function request(path, options) {
       success(res) {
         const data = res.data || {};
         if (res.statusCode >= 200 && res.statusCode < 300 && data.ok !== false) {
+          logOperation(path, method, opts, { ok: true, statusCode: res.statusCode, data });
           resolve(data);
           return;
         }
+        logOperation(path, method, opts, { ok: false, statusCode: res.statusCode, data, error: data.message || "请求失败" });
         reject(new Error(data.message || "请求失败"));
       },
       fail(err) {
+        logOperation(path, method, opts, { ok: false, statusCode: 0, error: err.errMsg || "网络连接失败" });
         reject(new Error(err.errMsg || "网络连接失败"));
       }
     });
@@ -199,7 +244,13 @@ function uploadFiles(path, filePaths, options) {
       })
     );
   });
-  return chain;
+  return chain.then((urls) => {
+    logOperation(path, "UPLOAD", opts, { ok: true, statusCode: 200, data: { fileCount: list.length, uploadedCount: urls.length } });
+    return urls;
+  }).catch((err) => {
+    logOperation(path, "UPLOAD", opts, { ok: false, statusCode: 0, error: err.message || "附件上传失败", data: { fileCount: list.length } });
+    throw err;
+  });
 }
 
 function uploadStaffForm(path, filePath, name, formData) {
@@ -218,12 +269,15 @@ function uploadStaffForm(path, filePath, name, formData) {
           data = {};
         }
         if (res.statusCode >= 200 && res.statusCode < 300 && data.ok !== false) {
+          logOperation(path, "UPLOAD", { staff: true, data: formData || {} }, { ok: true, statusCode: res.statusCode, data });
           resolve(data);
           return;
         }
+        logOperation(path, "UPLOAD", { staff: true, data: formData || {} }, { ok: false, statusCode: res.statusCode, data, error: data.message || "文件提交失败" });
         reject(new Error(data.message || "文件提交失败"));
       },
       fail(err) {
+        logOperation(path, "UPLOAD", { staff: true, data: formData || {} }, { ok: false, statusCode: 0, error: err.errMsg || "文件提交失败" });
         reject(new Error(err.errMsg || "文件提交失败"));
       }
     });
