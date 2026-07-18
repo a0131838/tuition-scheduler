@@ -1,97 +1,83 @@
-<view class="page">
-  <view class="top">
-    <view class="eyebrow">家长服务</view>
-    <view class="title">代录工单</view>
-    <view class="subtitle">记录家长诉求和后续处理事项。</view>
+<view class="page page-enter request-page">
+  <view class="top request-head">
+    <view class="eyebrow">教务代录</view>
+    <view class="title">把家长消息变成工单</view>
+    <view class="subtitle">照着三步填写，提交后系统自动留下负责人和处理记录。</view>
   </view>
 
-  <view class="card">
-    <view class="field">
-      <view class="label">学生</view>
-      <view class="search-row">
-        <view class="search-input-wrap">
-          <input class="search-input" value="{{studentQuery}}" placeholder="输入学生姓名或学校" confirm-type="search" bindinput="onStudentInput" bindconfirm="searchStudents" />
-          <view class="search-clear" wx:if="{{studentQuery}}" catchtap="clearStudentSearch">×</view>
-        </view>
-        <view class="search-submit" bindtap="searchStudents">查询</view>
+  <view class="progress-line">
+    <view class="progress-item {{selectedStudentId ? 'done' : ''}}"><text>1</text>选学生</view>
+    <view class="progress-item {{originalContent && publicSummary ? 'done' : ''}}"><text>2</text>写内容</view>
+    <view class="progress-item"><text>3</text>加截图</view>
+  </view>
+
+  <view class="step-section">
+    <view class="step-head"><view class="step-number">1</view><view><view class="step-title">这是哪位学生的事？</view><view class="step-hint">输入姓名或学校，点选正确学生</view></view></view>
+    <view class="search-row">
+      <view class="search-input-wrap">
+        <input class="search-input" value="{{studentQuery}}" placeholder="例如：Daisy 或学校名称" confirm-type="search" bindinput="onStudentInput" bindconfirm="searchStudents" />
+        <view class="search-clear" wx:if="{{studentQuery}}" catchtap="clearStudentSearch">×</view>
       </view>
-      <view class="hint" wx:if="{{searching}}">正在查询…</view>
-      <view class="selected" wx:if="{{selectedStudentLabel}}">已选择：{{selectedStudentLabel}}</view>
-      <view wx:for="{{studentResults}}" wx:key="id" class="result" bindtap="selectStudent" data-id="{{item.id}}" data-label="{{item.label}}">
-        <view class="result-title">{{item.label}}</view>
-        <view class="hint">{{item.school}}</view>
+      <view class="search-submit" bindtap="searchStudents">查询</view>
+    </view>
+    <view class="hint" wx:if="{{searching}}">正在查询…</view>
+    <view class="selected-student" wx:if="{{selectedStudentLabel}}"><view class="selected-check">✓</view><view><view class="selected-label">已选学生</view><view class="selected-name">{{selectedStudentLabel}}</view></view></view>
+    <view class="result" wx:for="{{studentResults}}" wx:key="id" bindtap="selectStudent" data-id="{{item.id}}" data-label="{{item.label}}">
+      <view class="result-title">{{item.label}}</view><view class="hint">{{item.school}}</view>
+    </view>
+    <view class="field type-field">
+      <view class="question-label">这件事属于什么？</view>
+      <picker mode="selector" range="{{types}}" value="{{typeIndex}}" bindchange="onTypeChange"><view class="large-picker">{{types[typeIndex]}}<text>更换 ›</text></view></picker>
+    </view>
+  </view>
+
+  <view class="step-section">
+    <view class="step-head"><view class="step-number">2</view><view><view class="step-title">家长说了什么？</view><view class="step-hint">先记录原话，再写一句给家长看的摘要</view></view></view>
+    <view class="field">
+      <view class="question-label">粘贴聊天原话 <text class="required">必填 · 仅员工可见</text></view>
+      <textarea class="textarea primary-input" value="{{originalContent}}" placeholder="长按这里，粘贴微信群里的家长消息；也可以手动概括" bindinput="onOriginalInput" />
+    </view>
+    <view class="privacy-note">家长不会看到上面的聊天原话</view>
+    <view class="field">
+      <view class="question-label">给家长看的事项摘要 <text class="required">必填</text></view>
+      <textarea class="textarea summary-input" value="{{publicSummary}}" placeholder="例如：已收到本周请假申请，教务正在协调补课时间" bindinput="onPublicInput" />
+      <view class="hint">请只写家长可以直接看到的内容，不写内部判断。</view>
+    </view>
+  </view>
+
+  <view class="step-section">
+    <view class="step-head"><view class="step-number">3</view><view><view class="step-title">有截图或文件吗？</view><view class="step-hint">没有附件也可以直接提交</view></view></view>
+    <view class="attachment-actions">
+      <button class="attachment-button photo" bindtap="choosePhotos"><view class="attachment-icon">图</view><view><view class="attachment-title">从相册选择截图</view><view class="attachment-help">手机里已经保存的图片</view></view></button>
+      <button class="attachment-button" bindtap="chooseFiles"><view class="attachment-icon">微</view><view><view class="attachment-title">从微信聊天选择文件</view><view class="attachment-help">图片、PDF 或 Word</view></view></button>
+    </view>
+    <view class="file-count" wx:if="{{files.length}}">已选择 {{files.length}} 个附件（最多 9 个）</view>
+    <view class="file-list" wx:if="{{files.length}}">
+      <view class="file-row" wx:for="{{files}}" wx:key="path">
+        <view class="file-preview" data-index="{{index}}" bindtap="previewFile"><image wx:if="{{item.isImage}}" src="{{item.path}}" mode="aspectFill"/><view wx:else class="file-icon">文</view></view>
+        <view class="file-copy" data-index="{{index}}" bindtap="previewFile"><view class="file-name">{{item.name}}</view><view class="file-meta">{{item.isImage ? '点击预览' : '已选择文件'}}</view></view>
+        <button class="file-remove" data-index="{{index}}" bindtap="removeFile">删除</button>
       </view>
     </view>
+  </view>
 
+  <view class="advanced-toggle" bindtap="toggleAdvanced"><view><view class="advanced-title">更多设置（通常不用改）</view><view class="advanced-hint">来源、下一步、紧急程度、负责人和截止时间</view></view><view class="advanced-arrow">{{advancedOpen ? '⌃' : '⌄'}}</view></view>
+  <view class="advanced-fields" wx:if="{{advancedOpen}}">
     <view class="grid">
-      <view class="field">
-        <view class="label">请求类型</view>
-        <picker mode="selector" range="{{types}}" value="{{typeIndex}}" bindchange="onTypeChange">
-          <view class="picker">{{types[typeIndex]}}</view>
-        </picker>
-      </view>
-      <view class="field">
-        <view class="label">沟通入口</view>
-        <picker mode="selector" range="{{communicationSources}}" value="{{communicationSourceIndex}}" bindchange="onSourceChange">
-          <view class="picker">{{communicationSources[communicationSourceIndex]}}</view>
-        </picker>
-      </view>
+      <view class="field"><view class="label">沟通入口</view><picker mode="selector" range="{{communicationSources}}" value="{{communicationSourceIndex}}" bindchange="onSourceChange"><view class="picker">{{communicationSources[communicationSourceIndex]}}</view></picker></view>
+      <view class="field"><view class="label">紧急程度</view><picker mode="selector" range="{{priorities}}" value="{{priorityIndex}}" bindchange="onPriorityChange"><view class="picker">{{priorities[priorityIndex]}}</view></picker></view>
+      <view class="field"><view class="label">负责人</view><picker mode="selector" range="{{owners}}" value="{{ownerIndex}}" bindchange="onOwnerChange"><view class="picker">{{owners[ownerIndex]}}</view></picker></view>
+      <view class="field"><view class="label">群名/补充来源</view><input class="input" value="{{sourceDetail}}" placeholder="例如：G9数学家长群" bindinput="onSourceDetailInput" /></view>
     </view>
+    <view class="field"><view class="label">下一步动作</view><textarea class="textarea small" value="{{requiredAction}}" placeholder="例如：Eva 今天确认老师并回复家长" bindinput="onActionInput" /></view>
+    <view class="field"><view class="label">截止说明</view><input class="input" value="{{latestDeadlineText}}" placeholder="例如：今天18:00前" bindinput="onDeadlineInput" /></view>
+  </view>
 
-    <view class="field">
-      <view class="label">群名/补充来源</view>
-      <input class="input" value="{{sourceDetail}}" placeholder="例如：G9数学家长群，可选" bindinput="onSourceDetailInput" />
-    </view>
-
-    <view class="field">
-      <view class="label">沟通记录（仅内部可见）</view>
-      <textarea class="textarea" value="{{originalContent}}" placeholder="记录原始诉求和必要背景" bindinput="onOriginalInput" />
-    </view>
-
-    <view class="field">
-      <view class="label">对家长可见摘要</view>
-      <textarea class="textarea" value="{{publicSummary}}" placeholder="填写家长可查看的事项摘要" bindinput="onPublicInput" />
-    </view>
-
-    <view class="field">
-      <view class="label">下一步动作</view>
-      <textarea class="textarea small" value="{{requiredAction}}" placeholder="例如：Eva 确认排课并在今天内回复家长" bindinput="onActionInput" />
-    </view>
-
-    <view class="grid">
-      <view class="field">
-        <view class="label">紧急程度</view>
-        <picker mode="selector" range="{{priorities}}" value="{{priorityIndex}}" bindchange="onPriorityChange">
-          <view class="picker">{{priorities[priorityIndex]}}</view>
-        </picker>
-      </view>
-      <view class="field">
-        <view class="label">负责人</view>
-        <picker mode="selector" range="{{owners}}" value="{{ownerIndex}}" bindchange="onOwnerChange">
-          <view class="picker">{{owners[ownerIndex]}}</view>
-        </picker>
-      </view>
-    </view>
-
-    <view class="field">
-      <view class="label">截止说明</view>
-      <input class="input" value="{{latestDeadlineText}}" placeholder="例如：今天18:00前，可选" bindinput="onDeadlineInput" />
-    </view>
-
-    <view class="field">
-      <view class="label">聊天截图/附件</view>
-      <button class="btn" bindtap="choosePhotos">从相册选择截图</button>
-      <button class="btn secondary" bindtap="chooseFiles">从微信聊天选择文件</button>
-      <view class="hint">支持相册截图、微信文件、PDF 和 Word；最多 9 个。</view>
-      <view class="file-list" wx:if="{{files.length}}">
-        <view class="file-row" wx:for="{{files}}" wx:key="path">
-          <view class="file-preview" data-index="{{index}}" bindtap="previewFile"><image wx:if="{{item.isImage}}" src="{{item.path}}" mode="aspectFill"/><view wx:else class="file-icon">文</view></view>
-          <view class="file-copy" data-index="{{index}}" bindtap="previewFile"><view class="file-name">{{item.name}}</view><view class="file-meta">{{item.isImage ? '点击预览' : '已选择文件'}}</view></view>
-          <button class="file-remove" data-index="{{index}}" bindtap="removeFile">删除</button>
-        </view>
-      </view>
-    </view>
-
-    <button class="btn" loading="{{loading}}" bindtap="submit">创建工单</button>
+  <view class="submit-area">
+    <view class="submit-hint" wx:if="{{!selectedStudentId}}">还差：选择学生</view>
+    <view class="submit-hint" wx:elif="{{!originalContent}}">还差：填写家长原话</view>
+    <view class="submit-hint" wx:elif="{{!publicSummary}}">还差：填写家长可见摘要</view>
+    <view class="submit-ready" wx:else>信息已齐，可以创建</view>
+    <button class="btn create-button" loading="{{loading}}" disabled="{{loading}}" bindtap="submit">确认创建工单</button>
   </view>
 </view>

@@ -27,6 +27,16 @@
     <view class="metric-cell" wx:else><view class="metric-value">—</view><view class="metric-name">按角色开放</view></view>
   </view>
 
+  <view class="academic-capture" wx:if="{{isAcademic}}" bindtap="goNewRequest">
+    <view class="capture-mark">录</view>
+    <view class="capture-copy">
+      <view class="capture-kicker">微信群有新的家长消息？</view>
+      <view class="capture-title">立即录入工单</view>
+      <view class="capture-detail">选学生、粘贴消息、加截图，三步完成</view>
+    </view>
+    <view class="capture-arrow">›</view>
+  </view>
+
   <view class="section-head">
     <view>
       <view class="section-title">{{workSectionTitle}}</view>

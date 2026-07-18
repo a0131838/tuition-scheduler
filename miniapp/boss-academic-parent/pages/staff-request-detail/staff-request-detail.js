@@ -6,7 +6,10 @@ Page({
     request: {},
     hasAttachments: false,
     loading: false,
-    completionResult: ""
+    completionResult: "",
+    canComplete: false,
+    completionBlockReason: "",
+    isCompleted: false
   },
 
   onLoad(options) {
@@ -19,6 +22,7 @@ Page({
     return api.requestStaff("/api/miniapp/staff/parent-requests/" + this.data.id)
       .then((data) => {
         const request = data.request || {};
+        const capabilities = data.capabilities || {};
         const attachmentUrls = request.attachmentUrls || [];
         this.setData({
           request: Object.assign({}, request, {
@@ -36,7 +40,10 @@ Page({
             closeOwnerText: request.closeOwner || "-"
           }),
           hasAttachments: attachmentUrls.length > 0,
-          completionResult: request.completionResult || ""
+          completionResult: request.completionResult || "",
+          canComplete: capabilities.canComplete === true,
+          completionBlockReason: capabilities.completionBlockReason || "",
+          isCompleted: request.status === "Completed" || request.status === "Cancelled"
         });
       })
       .catch((err) => api.toast(err.message));
@@ -61,6 +68,7 @@ Page({
     })
       .then((data) => {
         const request = data.request || this.data.request;
+        const capabilities = data.capabilities || {};
         this.setData({
           request: Object.assign({}, request, {
             ticketNoText: request.ticketNo || "请求处理",
@@ -75,7 +83,10 @@ Page({
             completionResultText: request.completionResult || "",
             ownerText: request.owner || request.mainOwner || "-",
             closeOwnerText: request.closeOwner || "-"
-          })
+          }),
+          canComplete: capabilities.canComplete === true,
+          completionBlockReason: capabilities.completionBlockReason || "",
+          isCompleted: request.status === "Completed" || request.status === "Cancelled"
         });
         wx.showToast({ title: "已更新", icon: "success" });
       })

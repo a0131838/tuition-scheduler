@@ -17,6 +17,24 @@ function cleanString(v: unknown, maxLen = 1000) {
   return s ? s.slice(0, maxLen) : null;
 }
 
+const MANAGER_CLOSE_TYPES = new Set(["投诉", "财务问题", "学校事务"]);
+
+function completionCapability(user: { role: string; name: string | null }, ticket: { type: string; owner: string | null }) {
+  if (user.role === "ADMIN") return { canComplete: true, completionBlockReason: "" };
+  if (user.role !== "CS") {
+    return { canComplete: false, completionBlockReason: "只有教务负责人或管理账号可以完成工单。" };
+  }
+  if (MANAGER_CLOSE_TYPES.has(ticket.type)) {
+    return { canComplete: false, completionBlockReason: "投诉、财务问题和学校事务需由 Jasmine 或 Eva 最终完成。" };
+  }
+  const staffName = String(user.name ?? "").trim().toLowerCase();
+  const ownerName = String(ticket.owner ?? "").trim().toLowerCase();
+  if (!staffName || staffName !== ownerName) {
+    return { canComplete: false, completionBlockReason: "这张工单不是由你负责，请由负责人或管理账号完成。" };
+  }
+  return { canComplete: true, completionBlockReason: "" };
+}
+
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireMiniappStaff(req);
   if (!auth.ok) return auth.response;
@@ -24,7 +42,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const { id } = await params;
   const ticket = await getParentRequestTicket(id);
   if (!ticket) return bad("Parent request not found", 404);
-  return ok({ request: miniappRequestDto(ticket, { includeInternal: true }) });
+  return ok({
+    request: miniappRequestDto(ticket, { includeInternal: true }),
+    capabilities: completionCapability(auth.user, ticket),
+  });
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -42,6 +63,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const nextOwner = normalizeOption((body as any).owner, TICKET_OWNER_OPTIONS);
   if ((body as any).status && !nextStatus) return bad("Invalid status", 409);
   if ((body as any).owner && !nextOwner) return bad("Invalid owner", 409);
+  if (nextOwner && auth.user.role !== "ADMIN") return bad("Only management can reassign a request", 403);
   if (nextStatus && !canTransitionTicketStatus(ticket.status, nextStatus)) {
     return bad("Invalid status transition", 409, { from: ticket.status, to: nextStatus });
   }
@@ -53,6 +75,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const existingCompletionResult = ticket.parentCompletionResult ?? ticket.finalSchedule;
   if (nextStatus === "Completed" && !(completionResult ?? existingCompletionResult)) {
     return bad("Completion result is required before marking the request completed", 409);
+  }
+  if (nextStatus === "Completed") {
+    const capability = completionCapability(auth.user, ticket);
+    if (!capability.canComplete) return bad(capability.completionBlockReason, 403);
   }
 
   const updated = await prisma.ticket.update({
@@ -90,6 +116,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   return ok({
     request: miniappRequestDto(updated, { includeInternal: true }),
+    capabilities: completionCapability(auth.user, updated),
     notifyParent: Boolean(nextStatus),
   });
 }

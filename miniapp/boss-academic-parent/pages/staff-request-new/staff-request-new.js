@@ -28,6 +28,7 @@ Page({
     requiredAction: "",
     latestDeadlineText: "",
     files: [],
+    advancedOpen: false,
     searching: false,
     loading: false
   },
@@ -133,6 +134,10 @@ Page({
     this.setData({ latestDeadlineText: e.detail.value });
   },
 
+  toggleAdvanced() {
+    this.setData({ advancedOpen: !this.data.advancedOpen });
+  },
+
   appendFiles(nextFiles) {
     const merged = this.data.files.slice();
     (nextFiles || []).forEach((file) => {
@@ -209,6 +214,17 @@ Page({
       return;
     }
 
+    wx.showModal({
+      title: "确认创建工单",
+      content: `${this.data.selectedStudentLabel}\n${types[this.data.typeIndex]} · ${owners[this.data.ownerIndex]}`,
+      confirmText: "确认创建",
+      success: (res) => {
+        if (res.confirm) this.createRequest();
+      }
+    });
+  },
+
+  createRequest() {
     this.setData({ loading: true });
     api.requestStaff("/api/miniapp/staff/parent-requests", {
       method: "POST",

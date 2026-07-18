@@ -34,15 +34,17 @@
     </view>
   </view>
 
-  <view class="card">
+  <view class="card" wx:if="{{!isCompleted}}">
     <view class="label">处理结果（家长可见）</view>
     <textarea class="textarea" value="{{completionResult}}" placeholder="例如：已和老师确认，本周课程取消并保留补课安排，后续由 Eva 跟进具体时间。" bindinput="onCompletionResultInput" />
+    <view class="close-boundary" wx:if="{{!canComplete}}">{{completionBlockReason}}</view>
   </view>
 
-  <view class="card actions">
+  <view class="card actions" wx:if="{{!isCompleted}}">
     <button class="btn secondary" loading="{{loading}}" data-status="Waiting Parent" bindtap="updateStatus">等家长补充</button>
     <button class="btn secondary" loading="{{loading}}" data-status="Confirmed" bindtap="updateStatus">标记已确认</button>
-    <button class="btn staff" loading="{{loading}}" data-status="Completed" bindtap="updateStatus">标记完成</button>
+    <button class="btn staff" wx:if="{{canComplete}}" loading="{{loading}}" data-status="Completed" bindtap="updateStatus">填写结果并标记完成</button>
+    <button class="btn locked" wx:else disabled>等待负责人或管理确认完成</button>
   </view>
 
   <view class="card" wx:if="{{hasAttachments}}">

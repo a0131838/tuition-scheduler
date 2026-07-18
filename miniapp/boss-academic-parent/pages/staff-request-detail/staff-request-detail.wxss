@@ -2,3 +2,5 @@
   display: grid;
   gap: 16rpx;
 }
+.close-boundary { margin-top: 14rpx; padding: 16rpx; border-left: 4rpx solid #a44a15; background: #fff5ed; color: #70401f; font-size: 22rpx; line-height: 1.5; }
+.btn.locked { background: #dedbd6; color: #747980; }
