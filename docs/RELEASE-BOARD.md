@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-18-r267` at runtime feature commit `474e40c`. Feedback review, parent publication, automatic reminders and manual WeChat forwarding now share one audited communication center for Emily/Eva. WeChat development version `1.0.7` is uploaded; experience-version designation and physical-phone checks remain.
+- Current documentation release: `2026-07-18-r268`; application runtime remains the `2026-07-18-r267` feature set. Teacher, Academic Operations and Management now each have a detailed bilingual miniapp SOP based on real WeChat DevTools screenshots. WeChat development version `1.0.7` remains uploaded; experience-version designation and physical-phone checks remain.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
@@ -163,6 +163,16 @@
 - Workspace-access-form risk: `2026-05-29-r160` lets the owner manager edit Sales/CS focused workspace access from System User Admin; verify non-owner managers cannot write this endpoint and that main roles remain unchanged.
 - Tutor-Wise-payment-profile risk: `2026-05-29-r161` removes Bank Transfer as a new tutor payment method and adds Wise details plus finance review status; finance should verify PayNow/Wise details before payout exports are used.
 - Teacher-notice-attachment risk: `2026-05-30-r162` lets teachers open only the active Shared Docs file attached to an active teacher notice; verify the notice attachment is intentional before publishing because the full Shared Docs library remains manager/admin controlled.
+
+## 2026-07-18-r268 Live
+
+- Scope: publish three role-specific bilingual miniapp SOPs with real WeChat DevTools screenshots and red callouts.
+- Deliverables:
+  - Teacher: 14 pages covering identity, workbench, tasks, lessons, attendance/feedback, cross-teacher history, payroll, availability and dual-account switching.
+  - Academic Operations: 18 pages covering guided Ticket intake, album/WeChat attachments, scheduling work orders, feedback review/publication, manual WeChat evidence, reminders, corrections and daily handover.
+  - Management: 14 pages covering backlog/exception oversight, scheduling, SLA, incident response, Jasmine dual identities, permissions and escalation.
+- Safety: temporary training CS, ADMIN and TEACHER users plus miniapp sessions were deleted after automated capture; no real business record was created or edited.
+- Validation: 46 total PDF pages rendered; required bilingual terms were extracted successfully and contact-sheet review found no blank or clipped pages.
 
 ## 2026-07-18-r267 Live
 

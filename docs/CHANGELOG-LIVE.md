@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-18-r268
+
+- Release ID: `2026-07-18-r268`
+- Date/Time (Asia/Shanghai): `2026-07-18`
+- Deployment status: `LIVE` (documentation-only release; application runtime remains the r267 feature set)
+- Scope: add three detailed bilingual WeChat-mini-program SOPs for Teacher, Academic Operations and Management, using real iPhone 12/13 DevTools screenshots and red callouts.
+- Key files:
+  - `docs/SOP-小程序-老师-完整操作-中英文培训版-20260718.html`
+  - `docs/SOP-小程序-教务-完整操作-中英文培训版-20260718.html`
+  - `docs/SOP-小程序-管理-监督与账号-中英文培训版-20260718.html`
+  - `docs/assets/sop-小程序员工工作台-20260718/*`
+  - `output/pdf/SOP-小程序-*-20260718.pdf`
+  - `docs/tasks/TASK-20260718-miniapp-bilingual-sops.md`
+- Risk impact (if any): Documentation-only. No API, database, permission, scheduling, attendance, package, finance, payroll, notification or miniapp source behavior changes.
+- Verification: WeChat DevTools automated capture completed with temporary CS, ADMIN and TEACHER identities; all temporary users/sessions were removed. PDF render and text extraction passed for Teacher 14 pages, Academic Operations 18 pages and Management 14 pages. Contact-sheet visual review found no blank, clipped or overflow pages.
+- Rollback point: `7e4d3e1` (r267 final feature and web-SOP documentation head).
+
+---
+
 ## 2026-07-18-r267
 
 - Release ID: `2026-07-18-r267`
