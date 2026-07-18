@@ -3,6 +3,7 @@
     "pages/login/login",
     "pages/staff-login/staff-login",
     "pages/staff-bind/staff-bind",
+    "pages/staff-account-switch/staff-account-switch",
     "pages/staff-home/staff-home",
     "pages/staff-schedule/staff-schedule",
     "pages/staff-session-detail/staff-session-detail",

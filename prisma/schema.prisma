@@ -1930,7 +1930,7 @@ model ParentBindInvite {
 model StaffMiniappBinding {
   id            String    @id @default(uuid())
   userId        String
-  wechatOpenId  String    @unique
+  wechatOpenId  String
   wechatUnionId String?
   status        String    @default("ACTIVE")
   boundAt       DateTime  @default(now())
@@ -1940,20 +1940,24 @@ model StaffMiniappBinding {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([wechatOpenId, userId])
+  @@index([wechatOpenId, status])
   @@index([userId, status])
   @@index([wechatUnionId])
 }
 
 model StaffMiniappSession {
-  id        String   @id @default(uuid())
-  userId    String
-  token     String   @unique
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  id           String   @id @default(uuid())
+  userId       String
+  wechatOpenId String?
+  token        String   @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([wechatOpenId])
   @@index([expiresAt])
 }
 

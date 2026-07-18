@@ -24,7 +24,7 @@ Page({
     api.bindStaffInvite(token)
       .then(() => {
         wx.showToast({ title: "绑定成功", icon: "success" });
-        wx.redirectTo({ url: "/pages/staff-home/staff-home" });
+        wx.reLaunch({ url: "/pages/staff-home/staff-home" });
       })
       .catch((err) => api.toast(err.message))
       .finally(() => this.setData({ loading: false }));

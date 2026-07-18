@@ -1,0 +1,29 @@
+<view class="page account-page page-enter">
+  <view class="top account-top">
+    <view class="eyebrow">员工身份</view>
+    <view class="title">选择工作账号</view>
+    <view class="subtitle">管理与教学记录分别保留在对应账号中。</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="empty">正在读取已绑定账号…</view>
+  <view wx:else class="account-list">
+    <button class="account-row {{item.isCurrent ? 'is-current' : ''}}" wx:for="{{accounts}}" wx:key="id" data-userid="{{item.id}}" loading="{{switchingId === item.id}}" bindtap="switchAccount">
+      <view class="account-main">
+        <view class="account-name">{{item.name}}</view>
+        <view class="account-role">{{item.roleText}}</view>
+      </view>
+      <view class="account-state">{{item.isCurrent ? "当前使用" : "切换"}}</view>
+    </button>
+  </view>
+
+  <view wx:if="{{requiresRelogin}}" class="session-note">
+    <view class="session-note-title">需要重新验证微信</view>
+    <view class="session-note-copy">当前登录来自旧版本，重新登录后即可读取同一微信下的全部账号。</view>
+    <button class="session-note-action" bindtap="relogin">重新登录</button>
+  </view>
+
+  <view class="account-footer">
+    <button class="btn staff" bindtap="bindAnother">绑定另一个员工账号</button>
+    <view class="account-footer-note">绑定码对应一个独立的网页版员工账号。</view>
+  </view>
+</view>

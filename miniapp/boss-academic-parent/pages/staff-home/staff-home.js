@@ -240,6 +240,7 @@ Page({
   goTeacherAvailability() { wx.navigateTo({ url: "/pages/staff-teacher-availability/staff-teacher-availability" }); },
   goTeacherExpenses() { wx.navigateTo({ url: "/pages/staff-teacher-expenses/staff-teacher-expenses" }); },
   goTeacherHistory() { wx.navigateTo({ url: "/pages/staff-teacher-history/staff-teacher-history" }); },
+  goAccountSwitch() { wx.navigateTo({ url: "/pages/staff-account-switch/staff-account-switch" }); },
 
   logout() {
     getApp().setStaffSession("", null);

@@ -17,6 +17,17 @@
   margin-top: 34rpx;
 }
 
+.account-choice-list { margin-top: 34rpx; border-top: 1rpx solid #dcd9d4; }
+.account-choice-row { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 116rpx; margin: 0; padding: 18rpx 0; border-bottom: 1rpx solid #e2dfda; border-radius: 0; background: transparent; text-align: left; }
+.account-choice-row::after { border: 0; }
+.account-choice-row:active { background: rgba(255, 255, 255, 0.72); }
+.account-choice-copy { flex: 1; min-width: 0; }
+.account-choice-name { color: #1d2024; font-size: 29rpx; font-weight: 780; line-height: 1.35; }
+.account-choice-role { margin-top: 7rpx; color: #727881; font-size: 23rpx; line-height: 1.35; }
+.account-choice-arrow { flex: 0 0 auto; color: #9ca1a8; font-size: 40rpx; }
+.account-bind-link { width: auto; min-height: 68rpx; margin: 22rpx 0 0; padding: 0; background: transparent; color: #8f3d0d; font-size: 24rpx; font-weight: 720; line-height: 68rpx; text-align: left; }
+.account-bind-link::after { border: 0; }
+
 .parent-switch {
   display: flex;
   align-items: center;

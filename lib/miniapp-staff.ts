@@ -11,11 +11,11 @@ export function createStaffMiniappInviteToken() {
   return randomToken(20);
 }
 
-export async function createStaffMiniappSession(userId: string) {
+export async function createStaffMiniappSession(userId: string, wechatOpenId?: string | null) {
   const token = randomToken(32);
   const expiresAt = new Date(Date.now() + STAFF_MINIAPP_SESSION_DAYS * 24 * 60 * 60 * 1000);
   return prisma.staffMiniappSession.create({
-    data: { userId, token, expiresAt },
+    data: { userId, wechatOpenId: wechatOpenId || null, token, expiresAt },
   });
 }
 
@@ -60,6 +60,26 @@ export function staffMiniappUserDto(user: {
     teacherId: user.teacherId,
     workspaces: (user.workspaceAccesses ?? []).map((x) => x.workspace),
   };
+}
+
+export async function listStaffMiniappAccounts(openId: string) {
+  const cleanOpenId = String(openId ?? "").trim();
+  if (!cleanOpenId) return [];
+  const bindings = await prisma.staffMiniappBinding.findMany({
+    where: { wechatOpenId: cleanOpenId, status: "ACTIVE" },
+    include: {
+      user: {
+        include: {
+          workspaceAccesses: {
+            where: { isActive: true },
+            select: { workspace: true },
+          },
+        },
+      },
+    },
+    orderBy: [{ boundAt: "asc" }, { createdAt: "asc" }],
+  });
+  return bindings.map((binding) => staffMiniappUserDto(binding.user));
 }
 
 export async function resolveStaffWechatIdentity(input: { code?: string | null; mockOpenId?: string | null }) {
@@ -117,9 +137,8 @@ export async function bindStaffMiniappInvite(input: { token: string; openId: str
     if (invite.expiresAt && invite.expiresAt < new Date()) throw new Error("Invite has expired");
 
     await tx.staffMiniappBinding.upsert({
-      where: { wechatOpenId: input.openId },
+      where: { wechatOpenId_userId: { wechatOpenId: input.openId, userId: invite.userId } },
       update: {
-        userId: invite.userId,
         wechatUnionId: input.unionId || null,
         status: "ACTIVE",
         revokedAt: null,

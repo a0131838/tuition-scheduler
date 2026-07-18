@@ -15,6 +15,31 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-18-r262
+
+- Release ID: `2026-07-18-r262`
+- Date/Time (Asia/Shanghai): `2026-07-18`
+- Deployment status: `READY`
+- Scope: allow one WeChat identity to bind and safely switch between multiple existing employee accounts, preserving separate ADMIN/TEACHER permissions and audit ownership.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260718090000_add_staff_miniapp_multi_account/migration.sql`
+  - `lib/miniapp-staff.ts`
+  - `app/api/miniapp/staff/auth/*`
+  - `app/api/miniapp/staff/accounts/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-login/*`
+  - `miniapp/boss-academic-parent/pages/staff-account-switch/*`
+  - `miniapp/boss-academic-parent/pages/staff-home/*`
+  - `tests/miniapp-staff-multi-account.test.ts`
+  - `docs/tasks/TASK-20260718-miniapp-staff-multi-account.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Medium and limited to employee-miniapp identity/session handling. The additive nullable session column and replacement of the single-openId unique index with a composite openId/user unique index preserve existing bindings. Account selection is allowed only among active bindings carrying the current session's verified WeChat OpenID. Web passwords, web login, employee roles, teacher links, scheduling, attendance, package balances, finance, payroll and parent access remain unchanged.
+- Verification: read-only production inspection confirms Jasmine has separate ADMIN and TEACHER users, the TEACHER user has a linked teacher profile and one active miniapp binding, and the ADMIN user is unbound. The exact production index name matches the migration. Prisma generation/validation, TypeScript, 4 focused multi-account tests, all 41 miniapp tests, all 79 backend tests, the full 195-page production build, `git diff --check` and WeChat Developer Tools preview (355.4 KB) pass.
+- Rollback point: `65148be` documentation head for live runtime feature commit `e4edbb4` (`2026-07-17-r261`).
+
+---
+
 ## 2026-07-17-r261
 
 - Release ID: `2026-07-17-r261`

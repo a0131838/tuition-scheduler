@@ -1,0 +1,19 @@
+.account-page { padding-top: 18rpx; }
+.account-top { padding-top: 26rpx; }
+.account-list { margin-top: 20rpx; border-top: 1rpx solid #dcd9d4; }
+.account-row { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 118rpx; margin: 0; padding: 18rpx 0; border-bottom: 1rpx solid #e1ded9; border-radius: 0; background: transparent; text-align: left; }
+.account-row::after { border: 0; }
+.account-row:active { background: rgba(255, 255, 255, 0.72); }
+.account-row.is-current { color: #202328; }
+.account-main { flex: 1; min-width: 0; }
+.account-name { color: #1d2024; font-size: 30rpx; font-weight: 780; line-height: 1.35; overflow-wrap: anywhere; }
+.account-role { margin-top: 7rpx; color: #747a82; font-size: 23rpx; line-height: 1.35; }
+.account-state { flex: 0 0 auto; margin-left: 20rpx; color: #9b3e08; font-size: 23rpx; font-weight: 750; }
+.is-current .account-state { color: #687078; }
+.session-note { margin-top: 28rpx; padding: 24rpx; border-left: 6rpx solid #d56928; background: #fff7f0; }
+.session-note-title { color: #282b30; font-size: 26rpx; font-weight: 760; }
+.session-note-copy { margin-top: 8rpx; color: #6f747c; font-size: 23rpx; line-height: 1.5; }
+.session-note-action { width: auto; min-height: 64rpx; margin: 14rpx 0 0; padding: 0; background: transparent; color: #913c0c; font-size: 24rpx; font-weight: 750; line-height: 64rpx; }
+.session-note-action::after { border: 0; }
+.account-footer { margin-top: 44rpx; padding-top: 28rpx; border-top: 1rpx solid #dcd9d4; }
+.account-footer-note { margin-top: 14rpx; color: #7a7f87; font-size: 22rpx; line-height: 1.45; text-align: center; }

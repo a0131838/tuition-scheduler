@@ -1,8 +1,18 @@
 const api = require("../../utils/api");
 
+const roleLabels = {
+  ADMIN: "管理账号",
+  TEACHER: "老师账号",
+  CS: "教务账号",
+  FINANCE: "财务账号",
+  SALES: "课程顾问账号"
+};
+
 Page({
   data: {
-    loading: false
+    loading: false,
+    accounts: [],
+    choosing: false
   },
 
   onShow() {
@@ -19,10 +29,32 @@ Page({
           wx.navigateTo({ url: "/pages/staff-bind/staff-bind" });
           return;
         }
+        if (data.needsAccountChoice) {
+          const accounts = (data.accounts || []).map((account) => ({
+            ...account,
+            roleText: roleLabels[account.role] || "员工账号"
+          }));
+          this.setData({ accounts, choosing: true });
+          return;
+        }
         wx.redirectTo({ url: "/pages/staff-home/staff-home" });
       })
       .catch((err) => api.toast(err.message))
       .finally(() => this.setData({ loading: false }));
+  },
+
+  chooseAccount(e) {
+    const userId = e.currentTarget.dataset.userid;
+    if (!userId || this.data.loading) return;
+    this.setData({ loading: true });
+    api.loginStaffWithWeChat(userId)
+      .then(() => wx.redirectTo({ url: "/pages/staff-home/staff-home" }))
+      .catch((err) => api.toast(err.message))
+      .finally(() => this.setData({ loading: false }));
+  },
+
+  bindAnother() {
+    wx.navigateTo({ url: "/pages/staff-bind/staff-bind" });
   },
 
   goParent() {

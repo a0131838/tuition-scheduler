@@ -39,3 +39,9 @@
 .work-badge.alert { background: #f8e5e2; color: #96392f; }
 .work-arrow { flex: 0 0 auto; color: #a2a6ac; font-size: 38rpx; line-height: 1; }
 .account-actions { margin-top: 38rpx; padding-top: 8rpx; }
+.account-switch-action { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 92rpx; margin: 0 0 22rpx; padding: 0; border-top: 1rpx solid #dcd9d4; border-bottom: 1rpx solid #dcd9d4; border-radius: 0; background: transparent; text-align: left; }
+.account-switch-action::after { border: 0; }
+.account-switch-action:active { background: rgba(255, 255, 255, 0.7); }
+.account-switch-label { color: #7a7f87; font-size: 21rpx; line-height: 1.3; }
+.account-switch-name { margin-top: 4rpx; color: #25282d; font-size: 25rpx; font-weight: 750; line-height: 1.35; }
+.account-switch-link { color: #963e0c; font-size: 23rpx; font-weight: 720; }

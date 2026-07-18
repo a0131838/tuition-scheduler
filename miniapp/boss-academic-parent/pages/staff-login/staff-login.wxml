@@ -3,11 +3,22 @@
     <view class="top staff-login-top">
       <image class="brand-logo" src="/assets/boss-logo.png" mode="widthFix" />
       <view class="eyebrow">员工入口</view>
-      <view class="title">员工登录</view>
-      <view class="subtitle">使用已绑定的微信继续。</view>
+      <view class="title">{{choosing ? "选择工作账号" : "员工登录"}}</view>
+      <view class="subtitle">{{choosing ? "同一微信已绑定多个身份，请选择本次进入的工作台。" : "使用已绑定的微信继续。"}}</view>
     </view>
 
-    <button class="btn staff staff-login-primary" loading="{{loading}}" bindtap="handleLogin">员工微信登录</button>
+    <button wx:if="{{!choosing}}" class="btn staff staff-login-primary" loading="{{loading}}" bindtap="handleLogin">员工微信登录</button>
+
+    <view wx:else class="account-choice-list">
+      <button class="account-choice-row" wx:for="{{accounts}}" wx:key="id" data-userid="{{item.id}}" bindtap="chooseAccount">
+        <view class="account-choice-copy">
+          <view class="account-choice-name">{{item.name}}</view>
+          <view class="account-choice-role">{{item.roleText}}</view>
+        </view>
+        <view class="account-choice-arrow">›</view>
+      </button>
+      <button class="account-bind-link" bindtap="bindAnother">绑定另一个员工账号</button>
+    </view>
   </view>
 
   <view class="parent-switch">

@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     });
     if (!user) return bad("User not found", 404);
 
-    const session = await createStaffMiniappSession(user.id);
+    const session = await createStaffMiniappSession(user.id, identity.openId);
     return ok({
       token: session.token,
       staff: staffMiniappUserDto(user),

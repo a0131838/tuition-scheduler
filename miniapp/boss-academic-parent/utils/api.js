@@ -72,7 +72,7 @@ function loginWithWeChat() {
   });
 }
 
-function loginStaffWithWeChat() {
+function loginStaffWithWeChat(userId) {
   return new Promise((resolve, reject) => {
     wx.login({
       success(res) {
@@ -80,7 +80,8 @@ function loginStaffWithWeChat() {
           method: "POST",
           data: {
             code: res.code,
-            mockOpenId: config.devMockStaffOpenId || undefined
+            mockOpenId: config.devMockStaffOpenId || undefined,
+            userId: userId || undefined
           }
         })
           .then((data) => {
