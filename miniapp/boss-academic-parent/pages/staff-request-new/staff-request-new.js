@@ -133,15 +133,66 @@ Page({
     this.setData({ latestDeadlineText: e.detail.value });
   },
 
-  chooseFiles() {
-    wx.chooseMessageFile({
-      count: 9,
-      type: "all",
+  appendFiles(nextFiles) {
+    const merged = this.data.files.slice();
+    (nextFiles || []).forEach((file) => {
+      if (!file.path || merged.some((item) => item.path === file.path)) return;
+      if (merged.length < 9) merged.push(file);
+    });
+    this.setData({ files: merged });
+  },
+
+  choosePhotos() {
+    const remaining = 9 - this.data.files.length;
+    if (remaining <= 0) return api.toast("最多上传 9 个附件");
+    wx.chooseMedia({
+      count: remaining,
+      mediaType: ["image"],
+      sourceType: ["album"],
       success: (res) => {
-        this.setData({ files: res.tempFiles || [] });
+        const photos = (res.tempFiles || []).map((file, index) => ({
+          path: file.tempFilePath,
+          name: `相册截图 ${this.data.files.length + index + 1}`,
+          size: file.size || 0,
+          isImage: true
+        }));
+        this.appendFiles(photos);
       },
       fail: () => {}
     });
+  },
+
+  chooseFiles() {
+    const remaining = 9 - this.data.files.length;
+    if (remaining <= 0) return api.toast("最多上传 9 个附件");
+    wx.chooseMessageFile({
+      count: remaining,
+      type: "all",
+      success: (res) => {
+        const files = (res.tempFiles || []).map((file) => ({
+          path: file.path,
+          name: file.name || "微信文件",
+          size: file.size || 0,
+          isImage: /\.(jpe?g|png|webp|gif)$/i.test(file.name || "")
+        }));
+        this.appendFiles(files);
+      },
+      fail: () => {}
+    });
+  },
+
+  previewFile(e) {
+    const index = Number(e.currentTarget.dataset.index || 0);
+    const file = this.data.files[index];
+    if (!file || !file.isImage) return;
+    const urls = this.data.files.filter((item) => item.isImage).map((item) => item.path);
+    wx.previewImage({ current: file.path, urls });
+  },
+
+  removeFile(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    if (!Number.isFinite(index)) return;
+    this.setData({ files: this.data.files.filter((_, itemIndex) => itemIndex !== index) });
   },
 
   submit() {

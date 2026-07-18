@@ -52,6 +52,10 @@ Page({
     teacherUpcomingCount: 0,
     teacherCompletedCount: 0,
     teacherExpenseCount: 0,
+    teacherTodoCount: 0,
+    teacherUrgentCount: 0,
+    teacherPayrollPending: 0,
+    teacherUnreadFeedbackCount: 0,
     nextTeacherSession: null,
     hasNextTeacherSession: false,
     nextTeacherSessionText: "",
@@ -70,16 +74,17 @@ Page({
     const data = this.data;
     if (data.isTeacher) {
       const next = data.nextTeacherSession;
+      const hasUrgent = data.teacherUrgentCount > 0;
       this.setData({
         workspaceSubtitle: "下一节课、课后反馈与个人教学事务",
         workSectionTitle: "教学事务",
         workSectionHint: "课程优先，课后及时完成点名与反馈",
-        priorityLabel: next ? "下一项教学" : "教学安排",
-        priorityTitle: next ? `${next.timeText} · ${next.courseLabel}` : "未来 30 天暂无已排课程",
-        priorityMeta: next ? `${next.studentText} · ${next.locationText}` : "如需更新可用时间，请进入教学事务设置",
-        priorityAction: next ? "打开课程" : "查看我的课表",
-        priorityTone: "tone-calm",
-        priorityTarget: next ? "next-session" : "schedule",
+        priorityLabel: hasUrgent ? "需要你处理" : next ? "下一项教学" : "教学安排",
+        priorityTitle: hasUrgent ? `${data.teacherUrgentCount} 项教学事务待完成` : next ? `${next.timeText} · ${next.courseLabel}` : "未来 30 天暂无已排课程",
+        priorityMeta: hasUrgent ? `工资 ${data.teacherPayrollPending} · 新交接反馈 ${data.teacherUnreadFeedbackCount}` : next ? `${next.studentText} · ${next.locationText}` : "如需更新可用时间，请进入教学事务设置",
+        priorityAction: hasUrgent ? "打开我的待办" : next ? "打开课程" : "查看我的课表",
+        priorityTone: hasUrgent ? "tone-risk" : "tone-calm",
+        priorityTarget: hasUrgent ? "teacher-todos" : next ? "next-session" : "schedule",
         hasNextTeacherSession: Boolean(next),
         nextTeacherSessionText: next ? `${next.timeText} · ${next.studentText}` : ""
       });
@@ -167,7 +172,23 @@ Page({
             this.setData({ teacherAvailabilityCount: 0, teacherUpcomingCount: 0, teacherCompletedCount: 0, teacherExpenseCount: 0, nextTeacherSession: null });
             this.refreshPresentation();
           });
-        return Promise.allSettled([scheduleTask, teacherTask]);
+        const todoTask = api.requestStaff("/api/miniapp/staff/teacher/todos", { timeout: 30000 })
+          .then((data) => {
+            const summary = data.summary || {};
+            const teacherUrgentCount = (summary.payrollPending || 0) + (summary.attendancePending || 0) + (summary.feedbackPending || 0) + (summary.rejectedExpenses || 0);
+            this.setData({
+              teacherTodoCount: data.total || 0,
+              teacherUrgentCount,
+              teacherPayrollPending: summary.payrollPending || 0,
+              teacherUnreadFeedbackCount: summary.unreadOtherFeedback || 0
+            });
+            this.refreshPresentation();
+          })
+          .catch(() => {
+            this.setData({ teacherTodoCount: 0, teacherUrgentCount: 0, teacherPayrollPending: 0, teacherUnreadFeedbackCount: 0 });
+            this.refreshPresentation();
+          });
+        return Promise.allSettled([scheduleTask, teacherTask, todoTask]);
       }
 
       const requestsTask = api.requestStaff("/api/miniapp/staff/parent-requests?limit=200", { timeout: 12000 })
@@ -220,6 +241,7 @@ Page({
 
   goPriority() {
     if (this.data.priorityTarget === "next-session") return this.goNextTeacherSession();
+    if (this.data.priorityTarget === "teacher-todos") return this.goTeacherTodos();
     if (this.data.priorityTarget === "coordination") return this.goCoordination();
     if (this.data.priorityTarget === "requests") return this.goRequests();
     return this.goSchedule();
@@ -240,6 +262,9 @@ Page({
   goTeacherAvailability() { wx.navigateTo({ url: "/pages/staff-teacher-availability/staff-teacher-availability" }); },
   goTeacherExpenses() { wx.navigateTo({ url: "/pages/staff-teacher-expenses/staff-teacher-expenses" }); },
   goTeacherHistory() { wx.navigateTo({ url: "/pages/staff-teacher-history/staff-teacher-history" }); },
+  goTeacherTodos() { wx.navigateTo({ url: "/pages/staff-teacher-todos/staff-teacher-todos" }); },
+  goTeacherPayroll() { wx.navigateTo({ url: "/pages/staff-teacher-payroll/staff-teacher-payroll" }); },
+  goTeacherFeedbacks() { wx.navigateTo({ url: "/pages/staff-teacher-feedbacks/staff-teacher-feedbacks" }); },
   goAccountSwitch() { wx.navigateTo({ url: "/pages/staff-account-switch/staff-account-switch" }); },
 
   logout() {

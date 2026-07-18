@@ -1,0 +1,8 @@
+<view class="page page-enter">
+  <view class="top"><view class="eyebrow">老师工作台</view><view class="title">我的待办</view><view class="subtitle">工资、点名、反馈和报销集中处理。</view></view>
+  <view class="todo-total {{total ? 'has-work' : ''}}"><view class="total-number">{{total}}</view><view><view class="total-title">{{total ? '项事务等待处理' : '当前没有待处理事务'}}</view><view class="total-hint">下拉刷新最新状态</view></view></view>
+  <view class="section-title">工作分类</view>
+  <view class="todo-row" wx:for="{{items}}" wx:key="key" data-target="{{item.target}}" bindtap="openItem"><view class="todo-mark {{item.urgent && item.count ? 'urgent' : ''}}">{{item.count || '✓'}}</view><view class="todo-copy"><view class="todo-title">{{item.title}}</view><view class="todo-detail">{{item.detail}}</view></view><view class="todo-arrow">›</view></view>
+  <view class="section-title" wx:if="{{sessionTodos.length}}">需要补齐的课程</view>
+  <view class="session-row" wx:for="{{sessionTodos}}" wx:key="id" data-id="{{item.id}}" bindtap="openSession"><view class="session-title">{{item.courseLabel}}</view><view class="session-meta">{{item.timeText}} · {{item.studentText}}</view><view class="session-flags"><text wx:if="{{item.attendancePending}}">待点名</text><text wx:if="{{item.feedbackPending}}">待反馈</text></view></view>
+</view>

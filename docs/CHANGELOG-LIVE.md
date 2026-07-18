@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-18-r263
+
+- Release ID: `2026-07-18-r263`
+- Date/Time (Asia/Shanghai): `2026-07-18`
+- Deployment status: `READY`
+- Scope: complete the teacher daily miniapp workspace with published-payroll acknowledgement, taught-student cross-teacher feedback history, unified teacher todos and explicit photo-album/WeChat-file Ticket attachments.
+- Key files:
+  - `app/api/miniapp/staff/teacher/payroll/route.ts`
+  - `app/api/miniapp/staff/teacher/student-feedbacks/route.ts`
+  - `app/api/miniapp/staff/teacher/todos/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-teacher-*/*`
+  - `miniapp/boss-academic-parent/pages/staff-home/*`
+  - `miniapp/boss-academic-parent/pages/staff-request-new/*`
+  - `tests/miniapp-teacher-daily-workspace.test.ts`
+  - `docs/tasks/TASK-20260718-miniapp-teacher-daily-workspace.md`
+- Risk impact (if any): Medium and restricted to the native employee miniapp plus teacher-scoped APIs. Payroll confirmation is allowed only for the logged-in teacher's existing published payroll and reuses the audited confirmation service. Feedback history is limited to students established by real teaching records. No `app/admin/**` page, migration, payroll calculation, approval rule, scheduling, attendance deduction, package, finance or parent permission changes.
+- Verification: TypeScript, 5 focused tests, all 46 miniapp tests, all 79 backend tests, the full 198-page production build, native JavaScript syntax, `git diff --check`, the no-`app/admin/**` diff check and a 378.9 KB WeChat Developer Tools preview pass. Read-only production inspection confirms Jasmine has 39 taught students and 1,136 visible historical feedbacks; July payroll is not published and therefore correctly remains unavailable without a confirm action.
+- Rollback point: `193000f` (`2026-07-18-r262` final production documentation head; runtime feature commit `960457f`).
+
+---
+
 ## 2026-07-18-r262
 
 - Release ID: `2026-07-18-r262`

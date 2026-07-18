@@ -17,8 +17,8 @@
 
   <view class="metric-strip" wx:if="{{isTeacher}}">
     <view class="metric-cell" bindtap="goSchedule"><view class="metric-value">{{todaySessionCount}}</view><view class="metric-name">今日课程</view></view>
-    <view class="metric-cell" bindtap="goTeacherHistory"><view class="metric-value">{{teacherCompletedCount}}</view><view class="metric-name">本月完成</view></view>
-    <view class="metric-cell" bindtap="goTeacherExpenses"><view class="metric-value">{{teacherExpenseCount}}</view><view class="metric-name">报销处理中</view></view>
+    <view class="metric-cell {{teacherUrgentCount ? 'metric-alert' : ''}}" bindtap="goTeacherTodos"><view class="metric-value">{{teacherTodoCount}}</view><view class="metric-name">我的待办</view></view>
+    <view class="metric-cell" bindtap="goTeacherPayroll"><view class="metric-value">{{teacherPayrollPending}}</view><view class="metric-name">工资确认</view></view>
   </view>
   <view class="metric-strip" wx:else>
     <view class="metric-cell" bindtap="goSchedule"><view class="metric-value">{{todaySessionCount}}</view><view class="metric-name">今日课程</view></view>
@@ -35,6 +35,11 @@
   </view>
 
   <view class="work-list" wx:if="{{isTeacher}}">
+    <view class="work-row" bindtap="goTeacherTodos">
+      <view class="work-icon icon-orange">办</view>
+      <view class="work-copy"><view class="work-title">我的待办</view><view class="work-detail">工资、点名、反馈和报销集中处理</view></view>
+      <view class="work-badge alert" wx:if="{{teacherTodoCount}}">{{teacherTodoCount}}</view><view class="work-arrow">›</view>
+    </view>
     <view class="work-row" wx:if="{{hasNextTeacherSession}}" bindtap="goNextTeacherSession">
       <view class="work-icon icon-orange">课</view>
       <view class="work-copy"><view class="work-title">下一节课</view><view class="work-detail">{{nextTeacherSessionText}}</view></view>
@@ -59,6 +64,16 @@
       <view class="work-icon">费</view>
       <view class="work-copy"><view class="work-title">我的报销</view><view class="work-detail">{{teacherExpenseCount}} 笔处理中或需补充</view></view>
       <view class="work-arrow">›</view>
+    </view>
+    <view class="work-row" bindtap="goTeacherPayroll">
+      <view class="work-icon">薪</view>
+      <view class="work-copy"><view class="work-title">我的工资单</view><view class="work-detail">查看工资明细与确认进度</view></view>
+      <view class="work-badge alert" wx:if="{{teacherPayrollPending}}">待确认</view><view class="work-arrow">›</view>
+    </view>
+    <view class="work-row" bindtap="goTeacherFeedbacks">
+      <view class="work-icon">评</view>
+      <view class="work-copy"><view class="work-title">学生历史反馈</view><view class="work-detail">查看所带学生的历任老师反馈</view></view>
+      <view class="work-badge" wx:if="{{teacherUnreadFeedbackCount}}">{{teacherUnreadFeedbackCount}}</view><view class="work-arrow">›</view>
     </view>
     <view class="work-row" bindtap="goTeacherHistory">
       <view class="work-icon">记</view>

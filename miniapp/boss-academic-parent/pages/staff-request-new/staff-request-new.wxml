@@ -80,8 +80,16 @@
 
     <view class="field">
       <view class="label">聊天截图/附件</view>
-      <button class="btn secondary" bindtap="chooseFiles">选择图片/文件</button>
-      <view class="hint" wx:if="{{files.length}}">已选择 {{files.length}} 个附件</view>
+      <button class="btn" bindtap="choosePhotos">从相册选择截图</button>
+      <button class="btn secondary" bindtap="chooseFiles">从微信聊天选择文件</button>
+      <view class="hint">支持相册截图、微信文件、PDF 和 Word；最多 9 个。</view>
+      <view class="file-list" wx:if="{{files.length}}">
+        <view class="file-row" wx:for="{{files}}" wx:key="path">
+          <view class="file-preview" data-index="{{index}}" bindtap="previewFile"><image wx:if="{{item.isImage}}" src="{{item.path}}" mode="aspectFill"/><view wx:else class="file-icon">文</view></view>
+          <view class="file-copy" data-index="{{index}}" bindtap="previewFile"><view class="file-name">{{item.name}}</view><view class="file-meta">{{item.isImage ? '点击预览' : '已选择文件'}}</view></view>
+          <button class="file-remove" data-index="{{index}}" bindtap="removeFile">删除</button>
+        </view>
+      </view>
     </view>
 
     <button class="btn" loading="{{loading}}" bindtap="submit">创建工单</button>

@@ -1,0 +1,12 @@
+@import "../../styles/teacher-tools.wxss";
+.filters { display: grid; grid-template-columns: 1fr 1fr; gap: 12rpx; }
+.status-band { margin-top: 20rpx; padding: 22rpx 0; border-bottom: 1rpx solid #d8d5d0; display: flex; justify-content: space-between; align-items: center; }
+.status-band.needs-action { color: #9b3d31; border-color: #d9a79f; }
+.status-kicker, .timeline-time, .toggle-hint { color: #73777e; font-size: 22rpx; }
+.status-title { margin-top: 6rpx; font-size: 34rpx; font-weight: 800; }.status-month { font-weight: 750; }
+.wide { grid-column: 1 / -1; }.money { font-size: 32rpx; }.period { margin-top: 14rpx; color: #656b73; font-size: 24rpx; }
+.notice { margin-top: 24rpx; padding: 30rpx 0; border-top: 1rpx solid #dedbd6; border-bottom: 1rpx solid #dedbd6; }.notice-title { font-size: 30rpx; font-weight: 800; }.notice-copy { margin-top: 8rpx; color: #6b6f76; }
+.reject { margin-top: 16rpx; padding: 16rpx; background: #f8ebe8; color: #9b3d31; border-radius: 8rpx; }
+.timeline { margin-top: 14rpx; }.timeline-row { display: flex; gap: 16rpx; padding: 15rpx 0; border-bottom: 1rpx solid #e4e1dc; }.timeline-dot { width: 18rpx; height: 18rpx; margin-top: 7rpx; border-radius: 50%; background: #c8c6c2; }.timeline-dot.done { background: #ec5e0a; }.timeline-label { font-weight: 750; }
+.confirm { margin-top: 22rpx; }.section-toggle { margin-top: 28rpx; padding: 22rpx 0; display: flex; justify-content: space-between; align-items: center; border-top: 1rpx solid #d8d5d0; border-bottom: 1rpx solid #d8d5d0; color: #9b3e08; }.toggle-title { color: #202124; font-size: 29rpx; font-weight: 800; }
+.list-row { padding: 22rpx 0; border-bottom: 1rpx solid #e4e1dc; }.row-head { display: flex; justify-content: space-between; gap: 16rpx; }.amount { color: #17663a; font-weight: 800; }.warning { margin-top: 10rpx; color: #8a4b12; font-size: 23rpx; }

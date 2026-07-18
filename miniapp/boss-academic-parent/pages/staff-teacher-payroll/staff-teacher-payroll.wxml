@@ -1,0 +1,19 @@
+<view class="page page-enter">
+  <view class="top"><view class="eyebrow">财务事务</view><view class="title">我的工资单</view><view class="subtitle">核对本人工资、处理状态和课程明细。</view></view>
+  <view class="filters"><picker mode="date" fields="month" value="{{month}}" bindchange="changeMonth"><view class="picker">{{month}}</view></picker><picker mode="selector" range="{{scopes}}" range-key="label" value="{{scopeIndex}}" bindchange="changeScope"><view class="picker">{{scopes[scopeIndex].label}}</view></picker></view>
+  <view class="empty" wx:if="{{loading && !payroll}}">正在加载工资单…</view>
+  <view wx:elif="{{payroll && !payroll.available}}" class="notice"><view class="notice-title">本月工资单暂未开放</view><view class="notice-copy">管理端尚未发送，你现在不需要确认。</view></view>
+  <block wx:elif="{{payroll && payroll.available}}">
+    <view class="status-band {{payroll.status.needsAction ? 'needs-action' : ''}}"><view><view class="status-kicker">当前状态</view><view class="status-title">{{payroll.status.text}}</view></view><view class="status-month">{{payroll.month}}</view></view>
+    <view class="summary"><view class="summary-item wide"><view class="summary-number money">{{payroll.summary.totalAmountText}}</view><view class="label">总工资</view></view><view class="summary-item"><view class="summary-number">{{payroll.summary.totalSessions}}</view><view class="label">周期课次</view></view><view class="summary-item"><view class="summary-number">{{payroll.summary.totalHours}}</view><view class="label">总课时</view></view></view>
+    <view class="period">统计周期：{{payroll.summary.periodText}}</view>
+    <view class="reject" wx:if="{{payroll.financeRejectReason}}">财务备注：{{payroll.financeRejectReason}}</view>
+    <view class="section-title">处理进度</view>
+    <view class="timeline"><view class="timeline-row" wx:for="{{payroll.timeline}}" wx:key="key"><view class="timeline-dot {{item.done ? 'done' : ''}}"></view><view class="timeline-copy"><view class="timeline-label">{{item.label}}</view><view class="timeline-time">{{item.atText || '待处理'}}</view></view></view></view>
+    <button wx:if="{{payroll.status.needsAction}}" class="primary confirm" loading="{{confirming}}" disabled="{{confirming}}" bindtap="confirmPayroll">我已核对，确认工资单</button>
+    <view class="section-toggle" bindtap="toggleCombos"><view><view class="toggle-title">课程组合汇总</view><view class="toggle-hint">{{payroll.combos.length}} 个计薪组合</view></view><view>{{showCombos ? '收起' : '展开'}} ›</view></view>
+    <view wx:if="{{showCombos}}"><view class="list-row" wx:for="{{payroll.combos}}" wx:key="key"><view class="item-title">{{item.label}}</view><view class="item-meta">{{item.sessionCount}} 节 · {{item.totalHours}} 小时 · {{item.hourlyRateText}}/小时</view><view class="amount">{{item.amountText}}</view><view class="warning" wx:if="{{item.usedRateFallback}}">当前使用回退课时费率，请与管理确认。</view></view></view>
+    <view class="section-toggle" bindtap="toggleSessions"><view><view class="toggle-title">逐课次明细</view><view class="toggle-hint">核对学生、时间和金额</view></view><view>{{showSessions ? '收起' : '展开'}} ›</view></view>
+    <view wx:if="{{showSessions}}"><view class="list-row" wx:for="{{payroll.sessions}}" wx:key="id"><view class="row-head"><view class="item-title">{{item.studentName}}</view><view class="amount">{{item.amountText}}</view></view><view class="item-meta">{{item.startText}} · {{item.totalHours}} 小时</view><view class="item-meta">{{item.comboLabel}}</view><view class="status">{{item.completed ? '已完成' : item.pendingReasonText}}</view></view></view>
+  </block>
+</view>

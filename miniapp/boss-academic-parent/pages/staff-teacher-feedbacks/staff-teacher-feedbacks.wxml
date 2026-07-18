@@ -1,0 +1,21 @@
+<view class="page page-enter">
+  <view class="top"><view class="eyebrow">教学交接</view><view class="title">学生历史反馈</view><view class="subtitle">查看你带过学生的历任老师正式课后反馈。</view></view>
+  <block wx:if="{{!selectedStudent}}">
+    <view class="summary-line"><view><text class="summary-strong">{{summary.students}}</text> 名关联学生</view><view class="unread" wx:if="{{summary.unreadOther}}">{{summary.unreadOther}} 条新反馈</view></view>
+    <view class="search-row"><view class="search-input-wrap"><input class="search-input" value="{{query}}" placeholder="搜索学生" bindinput="inputQuery" confirm-type="search" bindconfirm="search"/><view class="search-clear" wx:if="{{query}}" bindtap="clearSearch">×</view></view><button class="search-submit" bindtap="search">搜索</button></view>
+    <view class="student-row" wx:for="{{students}}" wx:key="id" data-id="{{item.id}}" bindtap="openStudent"><view class="student-main"><view class="student-name">{{item.name}}</view><view class="student-meta">{{item.feedbackCount}} 条反馈 · {{item.latestAtText || '暂无反馈日期'}}</view><view class="student-preview">{{item.latestText}}</view></view><view class="student-side"><view class="badge" wx:if="{{item.unreadOtherCount}}">{{item.unreadOtherCount}} 新</view><view class="arrow">›</view></view></view>
+    <view class="empty" wx:if="{{!loading && !students.length}}">暂时没有关联学生反馈</view>
+  </block>
+  <block wx:else>
+    <view class="student-detail-head"><button class="back" bindtap="backToStudents">‹ 学生列表</button><view class="detail-name">{{selectedStudent.name}}</view><view class="detail-count">共 {{timeline.length}} 条正式反馈</view></view>
+    <view class="feedback-row" wx:for="{{timeline}}" wx:key="id"><view class="feedback-head"><view><view class="feedback-course">{{item.courseLabel}}</view><view class="feedback-meta">{{item.sessionText}} · {{item.teacherName}}</view></view><view class="mine" wx:if="{{item.isMine}}">我的反馈</view></view>
+      <view class="feedback-section" wx:if="{{item.sections.lessonFocus}}"><view class="section-label">本节课重点</view><view>{{item.sections.lessonFocus}}</view></view>
+      <view class="feedback-section" wx:if="{{item.sections.currentFinding}}"><view class="section-label">目前发现</view><view>{{item.sections.currentFinding}}</view></view>
+      <view class="feedback-section" wx:if="{{item.sections.classPerformance}}"><view class="section-label">课堂表现</view><view>{{item.sections.classPerformance}}</view></view>
+      <view class="feedback-section" wx:if="{{item.sections.nextPlan}}"><view class="section-label">下一步计划</view><view>{{item.sections.nextPlan}}</view></view>
+      <view class="feedback-section" wx:if="{{item.sections.parentNote}}"><view class="section-label">家长需要知道</view><view>{{item.sections.parentNote}}</view></view>
+      <view class="homework" wx:if="{{item.homework}}"><view class="section-label">课后作业</view><view>{{item.homework}}</view><view class="previous">之前作业：{{item.previousHomeworkDone}}</view></view>
+    </view>
+    <view class="empty" wx:if="{{!loading && !timeline.length}}">该学生暂时没有正式反馈</view>
+  </block>
+</view>
