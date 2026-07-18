@@ -38,11 +38,13 @@ The scheduling work-order backend, web execution queue and native miniapp intake
 
 ## Release Gate
 
-- [ ] Guarded release preflight and server deployment.
-- [ ] Verify production commit alignment, PM2 and HTTP 200.
-- [ ] Verify an existing active token renders the guided intake without creating business data.
-- [ ] Verify unauthenticated operation logging returns 401.
-- [ ] Upload WeChat development version `1.0.6` and designate it manually only after review.
+- [x] Guarded release deployed at runtime feature commit `f7c78bb`.
+- [x] Production feature commit aligned; 109 migrations current; PM2 PID `2145519`; HTTP 200.
+- [x] Existing active token renders the guided intake without creating business data; action count remains zero.
+- [x] Invalid-token session lookup returns 403 and unauthenticated operation logging returns 401.
+- [x] WeChat development version `1.0.6` uploaded successfully (`403.0 KB`).
+- [ ] Designate `1.0.6` manually as the experience version after review.
+- [ ] Use the first controlled real intake to confirm exact action rows and the corresponding `MINIAPP` audit entry.
 
 ## Risk
 

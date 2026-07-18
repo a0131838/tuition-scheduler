@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-18-r266`
 - Date/Time (Asia/Shanghai): `2026-07-18`
-- Deployment status: `READY`
+- Deployment status: `LIVE` at runtime feature commit `f7c78bb`
 - Scope: finish the scheduling-work-order rollout by making the existing web intake link a guided multi-action form and adding automatic audit rows for every authenticated miniapp mutation and upload.
 - Key files:
   - `app/tickets/intake/GuidedIntakeForm.tsx`
@@ -33,7 +33,7 @@ This file is the single source of truth for what changed in production.
   - `tests/miniapp-operation-audit.test.ts`
   - `docs/tasks/TASK-20260718-guided-intake-miniapp-audit.md`
 - Risk impact (if any): Medium-low. The public token link now defaults to guided scheduling intake but retains the complete legacy form for non-scheduling work. Structured writes validate that every source lesson belongs to the selected student and do not bypass existing schedule execution gates. Miniapp operation logs reuse the existing AuditLog table, skip GET reads, redact authentication/signature fields and never block the original request. No schema, attendance, package, finance, payroll or settlement logic changes.
-- Verification: 8 focused tests, 64 miniapp/WeChat/scheduling tests, 79 backend tests, all native JavaScript syntax, 34-page miniapp audit, TypeScript, `git diff --check`, and the full 200-page production build pass.
+- Verification: 8 focused tests, 64 miniapp/WeChat/scheduling tests, 79 backend tests, all native JavaScript syntax, 34-page miniapp audit, TypeScript, `git diff --check`, and the full 200-page production build pass. Production is aligned at runtime feature commit `f7c78bb`; 109 migrations are current with none pending, PM2 is online at PID `2145519`, `/admin/login` returns `200`, an existing active intake token renders the guided title, invalid-token session lookup returns `403`, unauthenticated operation logging returns `401`, and read-only action count remains zero. WeChat development version `1.0.6` uploaded successfully at 403.0 KB.
 - Rollback point: `851eb11` (`2026-07-18-r265` final production documentation head; runtime feature commit `421b4e7`).
 
 ---
