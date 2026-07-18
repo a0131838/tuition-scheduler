@@ -21,13 +21,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
   const sessions = await prisma.session.findMany({
     where: {
       startAt: { gte: from, lte: to },
-      feedbacks: { some: { content: { not: "" } } },
+      feedbacks: { some: { publishedAt: { not: null } } },
       ...sessionBelongsToStudentWhere(studentId),
     },
     include: {
       class: { include: { course: true, subject: true, level: true } },
       feedbacks: {
-        where: { content: { not: "" } },
+        where: { publishedAt: { not: null } },
         include: { teacher: { select: { name: true } } },
         orderBy: { submittedAt: "desc" },
       },
@@ -39,7 +39,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
 
   const items = sessions.flatMap((session) =>
     session.feedbacks.map((feedback) => {
-      const sections = parseParentFeedbackSections(feedback.content);
+      const visibleContent = feedback.parentContent || feedback.content;
+      const sections = parseParentFeedbackSections(visibleContent);
       return {
         id: feedback.id,
         sessionId: session.id,
@@ -48,7 +49,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
         courseLabel: courseLabel(session.class),
         teacherName: feedback.teacher.name,
         submittedAt: feedback.submittedAt.toISOString(),
-        summary: compact(sections.classPerformance || sections.lessonFocus || feedback.content),
+        summary: compact(sections.classPerformance || sections.lessonFocus || visibleContent),
         sections,
         homework: feedback.homework,
         previousHomeworkDone: feedback.previousHomeworkDone,

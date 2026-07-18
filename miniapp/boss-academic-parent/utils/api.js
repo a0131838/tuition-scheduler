@@ -284,6 +284,24 @@ function uploadStaffForm(path, filePath, name, formData) {
   });
 }
 
+function saveStaffImage(path) {
+  return new Promise((resolve, reject) => {
+    wx.downloadFile({
+      url: config.apiBaseUrl + path,
+      header: staffToken() ? { Authorization: "Bearer " + staffToken() } : {},
+      success(res) {
+        if (res.statusCode !== 200) return reject(new Error("图片生成失败"));
+        wx.saveImageToPhotosAlbum({
+          filePath: res.tempFilePath,
+          success: resolve,
+          fail(err) { reject(new Error(err.errMsg || "无法保存到相册")); }
+        });
+      },
+      fail(err) { reject(new Error(err.errMsg || "图片下载失败")); }
+    });
+  });
+}
+
 module.exports = {
   request,
   requestStaff,
@@ -295,5 +313,6 @@ module.exports = {
   toast,
   downloadPdf,
   uploadFiles,
-  uploadStaffForm
+  uploadStaffForm,
+  saveStaffImage
 };

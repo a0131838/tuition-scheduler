@@ -1,12 +1,13 @@
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logAudit } from "@/lib/audit-log";
 
 function bad(message: string, status = 400) {
   return Response.json({ ok: false, message }, { status });
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const { id } = await params;
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") return bad("Invalid JSON");
@@ -26,6 +27,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       action === "skip"
         ? { status: "SKIPPED", error: String((body as any).reason ?? "Skipped by admin").slice(0, 500) }
         : { status: "PENDING", error: null, sentAt: null, scheduledAt: new Date() },
+  });
+  await logAudit({
+    actor: admin,
+    module: "NOTIFICATIONS",
+    action: action === "skip" ? "SKIP_NOTIFICATION" : "RESET_NOTIFICATION",
+    entityType: "MiniappNotificationOutbox",
+    entityId: id,
+    meta: { before: existing, after: { status: updated.status, error: updated.error, scheduledAt: updated.scheduledAt.toISOString() } },
   });
 
   return Response.json({

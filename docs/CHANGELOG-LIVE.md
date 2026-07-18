@@ -15,6 +15,35 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-18-r267
+
+- Release ID: `2026-07-18-r267`
+- Date/Time (Asia/Shanghai): `2026-07-18`
+- Deployment status: `READY`
+- Scope: add one shared Emily/Eva parent-communication center that separates feedback review, parent-miniapp publication, automatic notification and manual WeChat-group forwarding, with correction tasks and complete audit history.
+- Key files:
+  - `prisma/schema.prisma`
+  - `lib/parent-communication-center.ts`
+  - `app/admin/communications/*`
+  - `app/api/admin/communications/*`
+  - `app/api/miniapp/staff/communications/*`
+  - `miniapp/boss-academic-parent/pages/staff-communications/*`
+  - `scripts/queue-miniapp-course-reminders.ts`
+  - `scripts/sync-parent-communication-tasks.ts`
+  - `tests/parent-communication-center.test.ts`
+  - `docs/tasks/TASK-20260718-parent-communication-center.md`
+- Risk impact (if any): Medium. One additive communication-task table and nullable review/group metadata are added. Existing feedbacks are backfilled as already published so no historical parent record disappears. New teacher feedback waits for Emily/Eva review before parent visibility or notification. Stale course notifications are invalidated after cancellation/rescheduling. No Session time, attendance deduction, package balance, finance, payroll or settlement write rule changes.
+- Verification:
+  - `npx prisma validate`
+  - `npx tsc --noEmit`
+  - focused communication and feedback tests
+  - native miniapp JavaScript/JSON and cron shell syntax
+  - `npm run test:backend`
+  - `npm run build`
+- Rollback point: `ee9f658` (`2026-07-18-r266` final production documentation head; runtime feature commit `f7c78bb`).
+
+---
+
 ## 2026-07-18-r266
 
 - Release ID: `2026-07-18-r266`

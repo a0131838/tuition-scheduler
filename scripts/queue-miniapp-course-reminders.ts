@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { MINIAPP_TEMPLATE_KEYS, queueMiniappNotificationsForStudent } from "@/lib/miniapp-notifications";
+import { getVisibleSessionStudents } from "@/lib/session-students";
+import { logAudit } from "@/lib/audit-log";
 
 function addHours(d: Date, hours: number) {
   return new Date(d.getTime() + hours * 60 * 60 * 1000);
@@ -17,6 +19,33 @@ function courseLabel(session: {
 
 async function main() {
   const now = new Date();
+  const pendingRows = await prisma.miniappNotificationOutbox.findMany({
+    where: { status: "PENDING", templateKey: MINIAPP_TEMPLATE_KEYS.courseReminder24h, targetType: "Session" },
+    select: { id: true, studentId: true, targetId: true, payloadJson: true },
+    take: 3000,
+  });
+  const pendingSessionIds = Array.from(new Set(pendingRows.map((row) => {
+    const payload = row.payloadJson && typeof row.payloadJson === "object" ? row.payloadJson as any : {};
+    return String(payload.sessionId || row.targetId || "").split(":")[0];
+  }).filter(Boolean)));
+  const currentSessions = await prisma.session.findMany({
+    where: { id: { in: pendingSessionIds } },
+    select: { id: true, startAt: true, attendances: { select: { studentId: true, status: true } } },
+  });
+  const currentSessionMap = new Map(currentSessions.map((session) => [session.id, session]));
+  let invalidated = 0;
+  for (const row of pendingRows) {
+    const payload = row.payloadJson && typeof row.payloadJson === "object" ? row.payloadJson as any : {};
+    const sessionId = String(payload.sessionId || row.targetId || "").split(":")[0];
+    if (!sessionId) continue;
+    const current = currentSessionMap.get(sessionId);
+    const staleTime = !current || String(payload.startAt || "") !== current.startAt.toISOString();
+    const cancelledForStudent = Boolean(current?.attendances.some((attendance) => attendance.studentId === row.studentId && attendance.status === "EXCUSED"));
+    if (!staleTime && !cancelledForStudent) continue;
+    await prisma.miniappNotificationOutbox.update({ where: { id: row.id }, data: { status: "SKIPPED", error: staleTime ? "Session changed; stale reminder invalidated" : "Student session cancelled; reminder invalidated" } });
+    await logAudit({ actor: { email: "system-reminders@sgtmanage.local", name: "Automatic Reminder", role: "SYSTEM" }, module: "NOTIFICATIONS", action: "INVALIDATE_STALE_COURSE_REMINDER", entityType: "MiniappNotificationOutbox", entityId: row.id, meta: { sessionId, staleTime, cancelledForStudent } });
+    invalidated += 1;
+  }
   const windowEnd = addHours(now, 30);
   const sessions = await prisma.session.findMany({
     where: {
@@ -35,6 +64,7 @@ async function main() {
           room: { select: { name: true } },
         },
       },
+      attendances: { select: { studentId: true, status: true } },
       teacher: { select: { name: true } },
       student: { select: { id: true, name: true } },
     },
@@ -44,14 +74,7 @@ async function main() {
 
   let queued = 0;
   for (const session of sessions) {
-    const studentIds = Array.from(
-      new Set([
-        session.studentId,
-        session.student?.id,
-        session.class.oneOnOneStudent?.id,
-        ...session.class.enrollments.map((row) => row.studentId),
-      ].filter((id): id is string => Boolean(id)))
-    );
+    const studentIds = getVisibleSessionStudents(session).map((student) => student.id);
     if (studentIds.length === 0) continue;
     const studentNames = new Map<string, string>();
     if (session.student) studentNames.set(session.student.id, session.student.name);
@@ -102,6 +125,7 @@ async function main() {
         ok: true,
         scannedSessions: sessions.length,
         queuedNotifications: queued,
+        invalidatedNotifications: invalidated,
         generatedAt: new Date().toISOString(),
       },
       null,

@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { availableCourseTemplate, payloadWithDeliveredTemplate, sendCourseReminder } from "@/lib/wechat-miniapp-subscription";
+import { logAudit } from "@/lib/audit-log";
+
+const SYSTEM_ACTOR = { email: "system-reminders@sgtmanage.local", name: "Automatic Reminder", role: "SYSTEM" };
 
 function attemptNumber(error: string | null) {
   return Number(error?.match(/^attempt=(\d+)/)?.[1] ?? 0) + 1;
@@ -17,6 +20,7 @@ async function main() {
   for (const row of rows) {
     if (row.scheduledAt.getTime() < now.getTime() - 2 * 60 * 60 * 1000) {
       await prisma.miniappNotificationOutbox.update({ where: { id: row.id }, data: { status: "SKIPPED", error: "Reminder window expired" } });
+      await logAudit({ actor: SYSTEM_ACTOR, module: "NOTIFICATIONS", action: "AUTO_REMINDER_SKIPPED", entityType: "MiniappNotificationOutbox", entityId: row.id, meta: { reason: "Reminder window expired" } });
       summary.skipped += 1;
       continue;
     }
@@ -31,6 +35,7 @@ async function main() {
     try {
       await sendCourseReminder({ openId: row.openId, payload: row.payloadJson, template });
       await prisma.miniappNotificationOutbox.update({ where: { id: row.id }, data: { status: "SENT", sentAt: new Date(), error: null, payloadJson: payloadWithDeliveredTemplate(row.payloadJson, template.templateId) } });
+      await logAudit({ actor: SYSTEM_ACTOR, module: "NOTIFICATIONS", action: "AUTO_REMINDER_SENT", entityType: "MiniappNotificationOutbox", entityId: row.id, meta: { templateKey: row.templateKey, targetId: row.targetId } });
       summary.sent += 1;
     } catch (error: any) {
       const permanent = [40037, 43101].includes(Number(error?.errcode));
@@ -43,6 +48,7 @@ async function main() {
       });
       if (retry) summary.retried += 1;
       else summary.failed += 1;
+      await logAudit({ actor: SYSTEM_ACTOR, module: "NOTIFICATIONS", action: retry ? "AUTO_REMINDER_RETRY" : "AUTO_REMINDER_FAILED", entityType: "MiniappNotificationOutbox", entityId: row.id, meta: { attempt, error: String(error?.message ?? error).slice(0, 450) } });
     }
   }
   console.log(JSON.stringify({ ok: true, ...summary, generatedAt: new Date().toISOString() }, null, 2));

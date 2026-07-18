@@ -26,7 +26,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ feedback
       },
     },
   });
-  if (!feedback) return bad("Feedback not found", 404);
+  if (!feedback || !feedback.publishedAt) return bad("Feedback not found", 404);
 
   const studentIds = getSessionStudentIds(feedback.session);
   const link = await prisma.parentStudentLink.findFirst({
@@ -38,7 +38,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ feedback
   });
   if (!link) return bad("Forbidden", 403);
 
-  const sections = parseParentFeedbackSections(feedback.content);
+  const visibleContent = feedback.parentContent || feedback.content;
+  const sections = parseParentFeedbackSections(visibleContent);
   return ok({
     feedback: {
       id: feedback.id,
@@ -50,7 +51,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ feedback
       teacherName: feedback.teacher.name,
       submittedAt: feedback.submittedAt.toISOString(),
       sections,
-      rawContent: feedback.content,
+      rawContent: visibleContent,
       homework: feedback.homework,
       previousHomeworkDone: feedback.previousHomeworkDone,
     },

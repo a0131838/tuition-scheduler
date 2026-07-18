@@ -10,7 +10,7 @@ type Search = {
   days?: string;
 };
 
-const MODULE_OPTIONS = ["MINIAPP", "TICKETS", "ATTENDANCE", "PACKAGE_LEDGER", "TEACHER_PAYROLL", "PARTNER_SETTLEMENT"] as const;
+const MODULE_OPTIONS = ["MINIAPP", "COMMUNICATION", "NOTIFICATIONS", "TICKETS", "ATTENDANCE", "PACKAGE_LEDGER", "TEACHER_PAYROLL", "PARTNER_SETTLEMENT"] as const;
 
 function parseDays(v?: string) {
   const n = Number(v ?? "30");

@@ -111,7 +111,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     pathname === "/admin/leads/dashboard" ||
     pathname === "/admin/leads/export" ||
     (pathname.startsWith("/admin/leads/") && !pathname.startsWith("/admin/leads/owners")) ||
-    (user.role === "CS" && user.workspaces.includes("CARE") && pathname.startsWith("/admin/care"));
+    (user.role === "CS" && user.workspaces.includes("CARE") && pathname.startsWith("/admin/care")) ||
+    (user.role === "CS" && (pathname === "/admin/communications" || pathname === "/admin/mobile" || pathname === "/admin/mobile/parent-requests"));
 
   if (isResourceOnly && !resourceAllowedPath) {
     redirect("/admin/leads");
@@ -122,6 +123,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       title: t(lang, "Today", "今天"),
       summary: t(lang, "Start with the next task that blocks operations.", "先处理会阻塞运营的下一件事。"),
       items: [
+        ...((user.role === "ADMIN" || user.role === "CS" || user.workspaces.includes("CS"))
+          ? [{ href: "/admin/communications", label: t(lang, "Parent Communication", "家长沟通与通知"), description: t(lang, "Review feedback and complete manual WeChat follow-up.", "审核反馈并完成微信群人工通知。"), tone: "warning" as const }]
+          : []),
         {
           href: "/admin",
           label: t(lang, "Dashboard", "总览"),
@@ -411,6 +415,22 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           description: t(lang, "Review pipeline health and completion rates.", "查看资源管道和完成情况。"),
           tone: "neutral" as const,
         },
+        ...(user.role === "CS"
+          ? [
+              {
+                href: "/admin/communications",
+                label: t(lang, "Parent Communication", "家长沟通与通知"),
+                description: t(lang, "Review feedback and complete manual WeChat follow-up.", "审核反馈并完成微信群人工通知。"),
+                tone: "warning" as const,
+              },
+              {
+                href: "/admin/mobile",
+                label: t(lang, "Mobile Workbench", "员工移动端"),
+                description: t(lang, "Open compact parent-service actions.", "打开适合手机的家长服务操作。"),
+                tone: "accent" as const,
+              },
+            ]
+          : []),
         ...(user.role === "CS" && user.workspaces.includes("CARE")
           ? [
               {

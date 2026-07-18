@@ -89,6 +89,9 @@ Page({
     homework: "",
     previousHomeworkDone: "",
     previousHomeworkDoneChecked: false,
+    feedbackReviewStatus: "",
+    feedbackReviewStatusText: "",
+    feedbackReviewNote: "",
     submitDisabled: false,
     loading: false,
     saving: false,
@@ -256,6 +259,9 @@ Page({
                   homework: feedback.homework || "",
                   previousHomeworkDone: feedback.previousHomeworkDone || "",
                   previousHomeworkDoneChecked: feedback.previousHomeworkDone === "yes",
+                  feedbackReviewStatus: feedback.reviewStatus || "",
+                  feedbackReviewStatusText: feedback.reviewStatus === "PUBLISHED" ? "教务已审核并发布给家长" : feedback.reviewStatus === "RETURNED" ? "教务已退回，请按原因补充后重新提交" : feedback.submittedAt ? "已提交，等待教务审核" : "",
+                  feedbackReviewNote: feedback.reviewNote || "",
                   submitDisabled: false
                 });
               })
@@ -1025,7 +1031,7 @@ Page({
       }
     })
       .then(() => {
-        wx.showToast({ title: "已提交", icon: "success" });
+        wx.showModal({ title: "反馈已提交", content: "反馈已进入教务审核。Emily 或 Eva 审核发布后，家长才会在小程序中看到。", showCancel: false });
         this.load();
       })
       .catch((err) => api.toast(err.message))

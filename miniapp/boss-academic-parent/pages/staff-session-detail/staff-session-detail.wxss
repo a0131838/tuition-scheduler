@@ -232,3 +232,13 @@ textarea {
   flex: 1;
   min-width: 0;
 }
+.feedback-review-status {
+  margin: 16rpx 0 6rpx;
+  padding: 18rpx;
+  border-left: 6rpx solid #ec5e0a;
+  border-radius: 10rpx;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 24rpx;
+  line-height: 1.55;
+}

@@ -47,6 +47,8 @@ Page({
     canManageFirstScheduling: false,
     reminderAttentionCount: 0,
     hasReminderAttention: false,
+    communicationCount: 0,
+    hasCommunicationTasks: false,
     canViewReminderAttention: false,
     teacherAvailabilityCount: 0,
     teacherUpcomingCount: 0,
@@ -92,17 +94,17 @@ Page({
     }
 
     if (data.isManager) {
-      const hasRisk = data.coordinationOverdueCount > 0 || data.reminderAttentionCount > 0;
+      const hasRisk = data.coordinationOverdueCount > 0 || data.reminderAttentionCount > 0 || data.communicationCount > 0;
       this.setData({
         workspaceSubtitle: "先看异常，再看进度与分配",
         workSectionTitle: "运营入口",
         workSectionHint: "异常、排课与家长服务集中处理",
         priorityLabel: hasRisk ? "需要管理关注" : "今日运营",
-        priorityTitle: data.coordinationOverdueCount > 0 ? `${data.coordinationOverdueCount} 条排课工单已逾期` : "当前没有逾期排课工单",
-        priorityMeta: `${data.coordinationCount} 条开放排课 · ${data.reminderAttentionCount} 条提醒异常`,
-        priorityAction: data.coordinationOverdueCount > 0 ? "处理逾期" : "查看课程工作台",
+        priorityTitle: data.communicationCount > 0 ? `${data.communicationCount} 项家长沟通待完成` : data.coordinationOverdueCount > 0 ? `${data.coordinationOverdueCount} 条排课工单已逾期` : "当前没有逾期排课工单",
+        priorityMeta: `沟通 ${data.communicationCount} · 开放排课 ${data.coordinationCount} · 提醒异常 ${data.reminderAttentionCount}`,
+        priorityAction: data.communicationCount > 0 ? "打开沟通中心" : data.coordinationOverdueCount > 0 ? "处理逾期" : "查看课程工作台",
         priorityTone: hasRisk ? "tone-risk" : "tone-calm",
-        priorityTarget: data.coordinationOverdueCount > 0 ? "coordination" : "schedule"
+        priorityTarget: data.communicationCount > 0 ? "communications" : data.coordinationOverdueCount > 0 ? "coordination" : "schedule"
       });
       return;
     }
@@ -113,11 +115,11 @@ Page({
       workSectionTitle: data.isAcademic ? "教务处理" : "工作入口",
       workSectionHint: "从待办进入，处理结果留在系统",
       priorityLabel: hasRequest ? "优先处理" : "今日服务",
-      priorityTitle: hasRequest ? `${data.pendingCount} 条家长请求待查看` : "当前没有待处理家长请求",
-      priorityMeta: `${data.coordinationCount} 条开放排课 · ${data.firstSchedulingAttentionCount} 名学生需关注`,
-      priorityAction: hasRequest ? "处理家长请求" : "查看课程工作台",
+      priorityTitle: data.communicationCount > 0 ? `${data.communicationCount} 项家长沟通待完成` : hasRequest ? `${data.pendingCount} 条家长请求待查看` : "当前没有待处理家长请求",
+      priorityMeta: `沟通 ${data.communicationCount} · 开放排课 ${data.coordinationCount} · 学生关注 ${data.firstSchedulingAttentionCount}`,
+      priorityAction: data.communicationCount > 0 ? "打开沟通中心" : hasRequest ? "处理家长请求" : "查看课程工作台",
       priorityTone: data.coordinationOverdueCount > 0 ? "tone-watch" : "tone-calm",
-      priorityTarget: hasRequest ? "requests" : "schedule"
+      priorityTarget: data.communicationCount > 0 ? "communications" : hasRequest ? "requests" : "schedule"
     });
   },
 
@@ -221,6 +223,15 @@ Page({
         })
         .catch(() => this.setData({ canViewReminderAttention: false, reminderAttentionCount: 0, hasReminderAttention: false }));
 
+      const communicationTask = api.requestStaff("/api/miniapp/staff/communications?status=OPEN&limit=1", { timeout: 30000 })
+        .then((data) => {
+          const summary = data.summary || {};
+          const communicationCount = ["PENDING_REVIEW", "READY_TO_SEND", "CLAIMED", "RETURNED", "ATTENTION"].reduce((sum, key) => sum + (summary[key] || 0), 0);
+          this.setData({ communicationCount, hasCommunicationTasks: communicationCount > 0 });
+          this.refreshPresentation();
+        })
+        .catch(() => this.setData({ communicationCount: 0, hasCommunicationTasks: false }));
+
       const firstSchedulingTask = api.requestStaff("/api/miniapp/staff/first-scheduling?limit=1", { timeout: 12000 })
         .then((data) => {
           const summary = data.summary || {};
@@ -235,7 +246,7 @@ Page({
         })
         .catch(() => this.setData({ canManageFirstScheduling: false, firstSchedulingCount: 0, firstSchedulingReadyCount: 0, firstSchedulingFirstCount: 0, firstSchedulingAttentionCount: 0 }));
 
-      return Promise.allSettled([requestsTask, scheduleTask, coordinationTask, reminderTask, firstSchedulingTask]);
+      return Promise.allSettled([requestsTask, scheduleTask, coordinationTask, reminderTask, communicationTask, firstSchedulingTask]);
     }).finally(() => this.setData({ loading: false }));
   },
 
@@ -243,6 +254,7 @@ Page({
     if (this.data.priorityTarget === "next-session") return this.goNextTeacherSession();
     if (this.data.priorityTarget === "teacher-todos") return this.goTeacherTodos();
     if (this.data.priorityTarget === "coordination") return this.goCoordination();
+    if (this.data.priorityTarget === "communications") return this.goCommunications();
     if (this.data.priorityTarget === "requests") return this.goRequests();
     return this.goSchedule();
   },
@@ -258,6 +270,7 @@ Page({
   goCoordination() { wx.navigateTo({ url: "/pages/staff-coordination/staff-coordination" }); },
   goFirstScheduling() { wx.navigateTo({ url: "/pages/staff-first-scheduling/staff-first-scheduling" }); },
   goReminderAttention() { wx.navigateTo({ url: "/pages/staff-reminder-attention/staff-reminder-attention" }); },
+  goCommunications() { wx.navigateTo({ url: "/pages/staff-communications/staff-communications" }); },
   goTeacherLeave() { wx.navigateTo({ url: "/pages/staff-teacher-leave/staff-teacher-leave" }); },
   goTeacherAvailability() { wx.navigateTo({ url: "/pages/staff-teacher-availability/staff-teacher-availability" }); },
   goTeacherExpenses() { wx.navigateTo({ url: "/pages/staff-teacher-expenses/staff-teacher-expenses" }); },

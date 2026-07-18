@@ -1,12 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
+import { logAudit } from "@/lib/audit-log";
 
 function bad(message: string, status = 400) {
   return new Response(message, { status });
 }
 
 export async function POST(req: Request) {
-  await requireAdmin();
+  const admin = await requireAdmin();
 
   let body: any;
   try {
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
     data: ids.map((targetId) => ({ type, targetId, date })),
     skipDuplicates: true,
   });
+  await logAudit({ actor: admin, module: "COMMUNICATION", action: "CONFIRM_MANUAL_REMINDERS", entityType: "TodoReminderConfirm", entityId: `${type}:${dateStr}`, meta: { kind, date: dateStr, targetIds: ids } });
 
   return Response.json({ ok: true, confirmedCount: ids.length });
 }
-

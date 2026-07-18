@@ -814,6 +814,15 @@ model SessionFeedback {
   forwardedBy          String?
   forwardChannel       String?
   forwardNote          String?
+  parentContent        String?
+  reviewStatus         String         @default("PENDING_REVIEW")
+  reviewedAt           DateTime?
+  reviewedByUserId     String?
+  reviewedByName       String?
+  reviewNote           String?
+  publishedAt          DateTime?
+  publishedByUserId    String?
+  publishedByName      String?
   status               FeedbackStatus @default(ON_TIME)
   dueAt                DateTime?
   submittedByRole      String?
@@ -829,6 +838,8 @@ model SessionFeedback {
   @@unique([sessionId, teacherId])
   @@index([teacherId, submittedAt])
   @@index([status, dueAt])
+  @@index([reviewStatus, submittedAt])
+  @@index([publishedAt, submittedAt])
 }
 
 model MidtermReport {
@@ -1888,6 +1899,10 @@ model ParentStudentLink {
   canViewFinance    Boolean  @default(true)
   canViewReports    Boolean  @default(true)
   canCreateRequests Boolean  @default(true)
+  wechatGroupName   String?
+  communicationOwner String?
+  preferredLanguage String?  @default("BILINGUAL")
+  manualReminderEnabled Boolean @default(true)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -2029,6 +2044,51 @@ model MiniappNotificationOutbox {
   @@index([studentId, createdAt])
   @@index([templateKey, createdAt])
   @@index([targetType, targetId])
+}
+
+model ParentCommunicationTask {
+  id                  String    @id @default(uuid())
+  taskKey             String    @unique
+  kind                String
+  status              String    @default("PENDING")
+  priority            String    @default("NORMAL")
+  studentId           String?
+  sessionId           String?
+  feedbackId          String?
+  teacherId           String?
+  parentId            String?
+  title               String
+  messageText         String
+  contentFingerprint  String?
+  dueAt               DateTime?
+  ownerUserId         String?
+  ownerName           String?
+  claimedAt           DateTime?
+  publishedAt         DateTime?
+  publishedByUserId   String?
+  publishedByName     String?
+  copiedAt            DateTime?
+  copiedByUserId      String?
+  copiedByName        String?
+  manualSentAt        DateTime?
+  manualSentByUserId  String?
+  manualSentByName    String?
+  manualChannel       String?
+  wechatGroupName     String?
+  evidenceUrl         String?
+  note                String?
+  correctionOfTaskId  String?
+  supersededAt        DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([status, dueAt])
+  @@index([kind, status, createdAt])
+  @@index([studentId, createdAt])
+  @@index([sessionId, createdAt])
+  @@index([feedbackId, createdAt])
+  @@index([ownerUserId, status])
 }
 
 model Enrollment {

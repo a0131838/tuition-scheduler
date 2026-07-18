@@ -1,0 +1,39 @@
+<view class="page page-enter">
+  <view class="top">
+    <view class="eyebrow">教务家长沟通 / COMMUNICATION</view>
+    <view class="title">{{totalOpen}} 项待处理</view>
+    <view class="subtitle">Emily 与 Eva 共用：先审核，再发布小程序，最后人工转发微信群。</view>
+  </view>
+
+  <scroll-view class="filter-scroll" scroll-x>
+    <view class="filter-row"><button wx:for="{{filters}}" wx:key="value" class="filter {{filter === item.value ? 'active' : ''}}" data-value="{{item.value}}" bindtap="changeFilter">{{item.label}}</button></view>
+  </scroll-view>
+
+  <view class="task {{item.isAttention ? 'attention' : ''}}" wx:for="{{tasks}}" wx:key="id" wx:for-index="idx">
+    <view class="task-head">
+      <view><view class="task-kind">{{item.kindLabel}} · {{item.statusLabel}}</view><view class="task-title">{{item.title}}</view><view class="task-owner">负责人：{{item.ownerName || '未领取'}}</view></view>
+      <button class="mini-action" wx:if="{{!item.isCompleted}}" data-id="{{item.id}}" bindtap="claim">领取</button>
+    </view>
+    <view class="latest-history" wx:if="{{item.latestHistoryText}}">最近操作：{{item.latestHistoryText}}</view>
+    <view class="automatic-status">{{item.automaticStatusText}} · 人工微信：{{item.isCompleted ? '已发送' : '待处理'}}</view>
+
+    <view class="review" wx:if="{{item.isFeedback && item.feedback}}">
+      <view class="section-label">老师原文（只读）</view><view class="original">{{item.feedback.content}}</view>
+      <view class="section-label">家长展示版</view><textarea class="editor" value="{{item.parentContentDraft}}" data-index="{{idx}}" bindinput="inputParentContent" auto-height />
+      <view class="review-note" wx:if="{{item.feedback.reviewNote}}">退回原因：{{item.feedback.reviewNote}}</view>
+      <view class="action-row" wx:if="{{item.feedbackNeedsPublish}}"><button class="action primary" data-index="{{idx}}" bindtap="publish">审核并发布</button><button class="action" data-id="{{item.id}}" bindtap="returnFeedback">退回老师</button></view>
+      <view class="published" wx:else>已发布到家长小程序</view>
+    </view>
+
+    <view class="send" wx:if="{{item.canSend}}">
+      <view class="section-label">微信群/微信转发文案</view><view class="message">{{item.messageText}}</view>
+      <input class="input compact" value="{{item.groupDraft}}" data-index="{{idx}}" bindinput="inputGroup" placeholder="家长群名称或老师微信" />
+      <input class="input compact" value="{{item.noteDraft}}" data-index="{{idx}}" bindinput="inputNote" placeholder="备注（可选）" />
+      <view class="action-grid"><button class="action" data-index="{{idx}}" bindtap="copyMessage">复制文案</button><button class="action" data-id="{{item.id}}" bindtap="saveImage">保存转发图片</button><button class="action" data-id="{{item.id}}" bindtap="uploadEvidence">上传发送截图</button><button class="action" data-id="{{item.id}}" bindtap="retry">重试自动提醒</button></view>
+      <button class="confirm" wx:if="{{!item.isCompleted}}" data-index="{{idx}}" bindtap="markSent">确认已人工发送</button>
+      <view class="published" wx:else>已完成微信群/微信人工发送</view>
+      <view class="evidence" wx:if="{{item.evidenceUrl}}">已上传发送截图</view>
+    </view>
+  </view>
+  <view class="empty" wx:if="{{!loading && !tasks.length}}">当前没有需要处理的沟通任务</view>
+</view>

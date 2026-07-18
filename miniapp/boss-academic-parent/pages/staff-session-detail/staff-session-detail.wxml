@@ -291,6 +291,10 @@
 
   <view class="card" wx:if="{{canTeachSession}}">
     <view class="section-title">家长可见课后反馈</view>
+    <view class="feedback-review-status" wx:if="{{feedbackReviewStatusText}}">
+      <view>{{feedbackReviewStatusText}}</view>
+      <view wx:if="{{feedbackReviewNote}}">需要补充：{{feedbackReviewNote}}</view>
+    </view>
     <view wx:for="{{parentFeedbackSections}}" wx:key="key" class="field">
       <view class="label">{{item.label}}</view>
       <view class="hint">{{item.hint}}</view>

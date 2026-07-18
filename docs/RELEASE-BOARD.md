@@ -162,6 +162,34 @@
 - Tutor-Wise-payment-profile risk: `2026-05-29-r161` removes Bank Transfer as a new tutor payment method and adds Wise details plus finance review status; finance should verify PayNow/Wise details before payout exports are used.
 - Teacher-notice-attachment risk: `2026-05-30-r162` lets teachers open only the active Shared Docs file attached to an active teacher notice; verify the notice attachment is intentional before publishing because the full Shared Docs library remains manager/admin controlled.
 
+## 2026-07-18-r267 Ready
+
+- Scope: unify feedback review, parent publication, automatic reminders and manual WeChat follow-up for Emily and Eva.
+- Business impact:
+  - Emily and Eva share one claimable work queue for pending feedback, tomorrow's family/teacher reminders, failed automation and correction notices.
+  - Teacher submissions stay private until academic review; teacher original text remains read-only while the parent-facing version is separately editable.
+  - Parent-miniapp publication, automatic WeChat delivery and manual group forwarding are shown as independent statuses.
+  - Staff can copy bilingual group text, download a share image, upload an album screenshot and confirm the real group/direct-message send.
+  - A sent reminder that later changes or disappears automatically creates a high-priority correction task and invalidates the stale automatic notification.
+  - Each claim, transfer, review, return, publish, copy, manual send, screenshot, retry, skip and automated delivery outcome is retained in audit history.
+- Safety:
+  - existing formal feedback is backfilled as published and remains parent-visible
+  - new feedback notification moves from teacher-submit time to Emily/Eva publish time
+  - CS access is limited to the communication/mobile workspace; notification templates and global settings remain admin-only
+  - no existing Session schedule write, attendance deduction, package, invoice, receipt, payroll or settlement rule changes
+- Verification before deploy:
+  - Prisma validation and migration inspection
+  - focused communication/feedback tests
+  - TypeScript and native miniapp JavaScript/JSON syntax
+  - cron shell syntax and stale-reminder source checks
+  - full backend suite and production build
+- Post-deploy verification:
+  - migration count/schema/index checks
+  - authenticated ADMIN and CS communication-center access; TEACHER denial
+  - read-only parent feedback visibility checks
+  - PM2, HTTP health and exactly one expanded reminder cron
+  - WeChat development-version upload and physical-phone handoff
+
 ## 2026-07-18-r266 Live
 
 - Scope: close the remaining web-intake gap and add a uniform miniapp mutation audit trail.

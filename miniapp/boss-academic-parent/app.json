@@ -12,6 +12,7 @@
     "pages/staff-first-scheduling/staff-first-scheduling",
     "pages/staff-student-scheduling/staff-student-scheduling",
     "pages/staff-reminder-attention/staff-reminder-attention",
+    "pages/staff-communications/staff-communications",
     "pages/staff-requests/staff-requests",
     "pages/staff-request-detail/staff-request-detail",
     "pages/staff-request-new/staff-request-new",

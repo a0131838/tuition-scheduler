@@ -12,7 +12,7 @@ import {
   getMissingParentFeedbackSectionLabels,
   parseParentFeedbackSections,
 } from "@/lib/parent-feedback-format";
-import { queueFirstPublishedFeedback } from "@/lib/miniapp-feedback-notification";
+import { ensureFeedbackCommunicationTasks } from "@/lib/parent-communication-center";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -103,7 +103,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     `Previous homework done / 之前作业完成情况: ${previousHomeworkText}`,
   ].join("\n");
 
-  const existingFeedback = session.feedbacks[0] ?? null;
   const savedFeedback = await prisma.sessionFeedback.upsert({
     where: { sessionId_teacherId: { sessionId, teacherId: teacher.id } },
     update: {
@@ -121,6 +120,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       isProxyDraft: false,
       proxyNote: null,
       submittedAt: now,
+      reviewStatus: "PENDING_REVIEW",
+      reviewNote: null,
     },
     create: {
       sessionId,
@@ -139,15 +140,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       isProxyDraft: false,
       proxyNote: null,
       submittedAt: now,
+      reviewStatus: "PENDING_REVIEW",
     },
   });
-  if (!existingFeedback) {
-    await queueFirstPublishedFeedback({
-      sessionId,
-      feedbackId: savedFeedback.id,
-      submittedAt: now,
-    }).catch(() => null);
-  }
+  await ensureFeedbackCommunicationTasks(savedFeedback.id).catch(() => null);
 
   return Response.json({
     ok: true,
@@ -156,5 +152,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     dueAt: deadline.toISOString(),
     dueAtText: formatBusinessDateTime(deadline),
     windowHours: FEEDBACK_WINDOW_HOURS,
+    reviewStatus: "PENDING_REVIEW",
+    message: "反馈已提交，等待教务审核后发布给家长。",
   });
 }

@@ -4,6 +4,9 @@ import {
   sendServiceNotification,
   servicePayloadWithDeliveredTemplate,
 } from "@/lib/wechat-miniapp-service-subscription";
+import { logAudit } from "@/lib/audit-log";
+
+const SYSTEM_ACTOR = { email: "system-reminders@sgtmanage.local", name: "Automatic Reminder", role: "SYSTEM" };
 
 const TEMPLATE_KEYS = ["request_status_changed", "finance_unpaid", "invoice_issued", "receipt_issued", "feedback_published"];
 
@@ -22,6 +25,7 @@ async function main() {
   for (const row of rows) {
     if (row.scheduledAt.getTime() < now.getTime() - 7 * 24 * 60 * 60 * 1000) {
       await prisma.miniappNotificationOutbox.update({ where: { id: row.id }, data: { status: "SKIPPED", error: "Notification window expired" } });
+      await logAudit({ actor: SYSTEM_ACTOR, module: "NOTIFICATIONS", action: "AUTO_NOTIFICATION_SKIPPED", entityType: "MiniappNotificationOutbox", entityId: row.id, meta: { reason: "Notification window expired" } });
       summary.skipped += 1;
       continue;
     }
@@ -44,6 +48,7 @@ async function main() {
           payloadJson: servicePayloadWithDeliveredTemplate(row.payloadJson, template.templateId, template.groupKey),
         },
       });
+      await logAudit({ actor: SYSTEM_ACTOR, module: "NOTIFICATIONS", action: "AUTO_NOTIFICATION_SENT", entityType: "MiniappNotificationOutbox", entityId: row.id, meta: { templateKey: row.templateKey, targetId: row.targetId } });
       summary.sent += 1;
     } catch (error: any) {
       const permanent = [40037, 43101].includes(Number(error?.errcode));
@@ -56,6 +61,7 @@ async function main() {
       });
       if (retry) summary.retried += 1;
       else summary.failed += 1;
+      await logAudit({ actor: SYSTEM_ACTOR, module: "NOTIFICATIONS", action: retry ? "AUTO_NOTIFICATION_RETRY" : "AUTO_NOTIFICATION_FAILED", entityType: "MiniappNotificationOutbox", entityId: row.id, meta: { attempt, error: String(error?.message ?? error).slice(0, 450) } });
     }
   }
   console.log(JSON.stringify({ ok: true, ...summary, generatedAt: new Date().toISOString() }, null, 2));

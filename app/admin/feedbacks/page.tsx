@@ -568,6 +568,9 @@ export default async function AdminFeedbacksPage({
           </span>
         </div>
       </div>
+      <div style={{ borderLeft: "4px solid #ea580c", background: "#fff7ed", padding: "10px 12px", color: "#9a3412" }}>
+        新流程：老师提交后请到 <Link href="/admin/communications" style={{ fontWeight: 800 }}>家长沟通与通知中心</Link> 完成教务审核、发布到家长小程序和微信群人工发送。本页继续用于缺失反馈追踪和历史查询。
+      </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
         {feedbackSummaryCards.map((card) => (
           <div key={card.title} style={feedbackSummaryCardStyle(card.background, card.border)}>

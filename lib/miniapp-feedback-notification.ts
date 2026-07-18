@@ -22,6 +22,7 @@ export async function queueFirstPublishedFeedback(input: {
   sessionId: string;
   feedbackId: string;
   submittedAt: Date;
+  notificationTargetId?: string;
 }) {
   const session = await prisma.session.findUnique({
     where: { id: input.sessionId },
@@ -59,7 +60,7 @@ export async function queueFirstPublishedFeedback(input: {
     templateKey: MINIAPP_TEMPLATE_KEYS.feedbackPublished,
     eventType: "FEEDBACK_PUBLISHED",
     targetType: "SessionFeedback",
-    targetId: input.feedbackId,
+    targetId: input.notificationTargetId || input.feedbackId,
     permission: "canViewFeedback",
     payload: {
       feedbackId: input.feedbackId,

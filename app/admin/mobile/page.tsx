@@ -35,6 +35,10 @@ export default function AdminMobilePage() {
         <strong>家长请求</strong>
         <span style={{ color: "#64748b", fontSize: 13 }}>查看投诉、反馈、给老师的话、排课、请假和财务问题。</span>
       </Link>
+      <Link href="/admin/communications" style={cardStyle}>
+        <strong>家长沟通与通知</strong>
+        <span style={{ color: "#64748b", fontSize: 13 }}>Emily 与 Eva 共用：审核反馈、复制微信群文案、确认人工发送。</span>
+      </Link>
       <Link href="/admin/todos" style={cardStyle}>
         <strong>今日待办</strong>
         <span style={{ color: "#64748b", fontSize: 13 }}>点名、跟进、续费和修复队列。</span>

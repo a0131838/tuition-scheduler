@@ -50,12 +50,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
     auth.link.canViewFeedback ? prisma.session.findFirst({
       where: {
         startAt: { lte: now },
-        feedbacks: { some: { content: { not: "" } } },
+        feedbacks: { some: { publishedAt: { not: null } } },
         ...sessionBelongsToStudentWhere(studentId),
       },
       include: {
         feedbacks: {
-          where: { content: { not: "" } },
+          where: { publishedAt: { not: null } },
           include: { teacher: { select: { name: true } } },
           orderBy: { submittedAt: "desc" },
           take: 1,
@@ -102,7 +102,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
           id: latestFeedback.id,
           sessionStartAt: latestFeedbackSession!.startAt.toISOString(),
           teacherName: latestFeedback.teacher.name,
-          summary: summarizeFeedback(latestFeedback.content),
+          summary: summarizeFeedback(latestFeedback.parentContent || latestFeedback.content),
         }
       : null,
     financeSummary: {

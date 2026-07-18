@@ -93,6 +93,11 @@
   </view>
 
   <view class="work-list" wx:else>
+    <view class="work-row" bindtap="goCommunications">
+      <view class="work-icon icon-orange">讯</view>
+      <view class="work-copy"><view class="work-title">家长沟通与通知</view><view class="work-detail">审核反馈、转发微信群、提醒老师和家长</view></view>
+      <view class="work-badge alert" wx:if="{{hasCommunicationTasks}}">{{communicationCount}}</view><view class="work-arrow">›</view>
+    </view>
     <view class="work-row" bindtap="goSchedule">
       <view class="work-icon icon-orange">课</view>
       <view class="work-copy"><view class="work-title">课程工作台</view><view class="work-detail">月历、今日课程与待排课工单</view></view>
