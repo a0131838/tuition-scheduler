@@ -33,10 +33,13 @@ Read-only production inspection for Jasmine's TEACHER account on 2026-07-18 conf
 - Explicit no-`app/admin/**` diff check
 - WeChat Developer Tools CLI preview for AppID `wxe7017f8545e8ad49` (`378.9 KB`)
 - Read-only production check for Jasmine's TEACHER account: 39 taught students, 1,136 visible historical feedbacks, July payroll not published
+- Guarded production release aligned runtime feature commit `e0cdecb`; 108 migrations current; PM2 PID `2086282`; `/admin/login` returned `200`
+- Anonymous access to payroll, student-feedback and todo endpoints returned `401`
+- WeChat development version `1.0.3` uploaded successfully (`378.9 KB`)
 
 ## Rollout gate
 
-- Upload development version `1.0.3` and designate it as the experience version.
+- Designate uploaded development version `1.0.3` as the experience version.
 - Jasmine verifies ADMIN/TEACHER switching, the 39-student boundary, one cross-teacher timeline and the unavailable July payroll state on a physical phone.
 - After a real payroll is published through the existing web process, a teacher verifies the amount/session detail and completes one controlled acknowledgement.
 - Emily or Eva verifies both album screenshots and WeChat files in a temporary draft, then submits only a genuine Ticket or an explicitly approved test Ticket.

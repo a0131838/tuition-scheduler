@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-18-r262` at runtime feature commit `960457f`. Candidate `2026-07-18-r263` is ready with the teacher daily miniapp workspace and development version `1.0.3` still pending upload/deployment.
+- Current production release: `2026-07-18-r263` at runtime feature commit `e0cdecb`. The teacher daily miniapp workspace is live on the server and uploaded as WeChat development version `1.0.3`; experience-version designation and physical-phone checks remain the rollout gate.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
@@ -22,7 +22,7 @@
 
 ## Open Risks
 
-- Miniapp teacher-daily-workspace rollout: `2026-07-18-r263` is ready with teacher payroll acknowledgement, taught-student cross-teacher feedback, unified todos and photo-album Ticket attachments. Jasmine's July payroll is not published, so physical-phone testing must first verify the safe unavailable state and must not fabricate payroll data. After upload, designate `1.0.3` as the experience version and validate one real published payroll acknowledgement, the 39-student access boundary, one cross-teacher feedback timeline and both attachment sources.
+- Miniapp teacher-daily-workspace rollout: `2026-07-18-r263` is live at runtime feature commit `e0cdecb` and uploaded as WeChat development version `1.0.3` (378.9 KB). Jasmine's July payroll is not published, so physical-phone testing must first verify the safe unavailable state and must not fabricate payroll data. Designate `1.0.3` as the experience version and validate one real published payroll acknowledgement when available, the 39-student access boundary, one cross-teacher feedback timeline and both attachment sources.
 - Miniapp multi-account rollout: `2026-07-18-r262` is live at runtime feature commit `960457f` and uploaded as WeChat development version `1.0.2` (355.4 KB). Existing bindings are preserved, but sessions created before deployment must re-login once before account switching is available. Designate `1.0.2` as the experience version, bind Jasmine's currently unbound ADMIN account from her already-bound TEACHER WeChat, then confirm both directions preserve the correct workbench and permissions.
 - Miniapp role-home UI rollout: `2026-07-17-r261` is live at runtime feature commit `e4edbb4` and uploaded as WeChat development version `1.0.1` (345.8 KB). Shared native styles and the parent/employee entry pages changed, while web pages, APIs and business writes remained untouched. Before formal review, designate the upload as an experience version and validate a manager, CS/academic, teacher, normal-course parent and Full Care parent on physical phones; confirm long names, zero counts, overdue states, the teacher next-lesson link and return refresh.
 
@@ -157,7 +157,7 @@
 - Tutor-Wise-payment-profile risk: `2026-05-29-r161` removes Bank Transfer as a new tutor payment method and adds Wise details plus finance review status; finance should verify PayNow/Wise details before payout exports are used.
 - Teacher-notice-attachment risk: `2026-05-30-r162` lets teachers open only the active Shared Docs file attached to an active teacher notice; verify the notice attachment is intentional before publishing because the full Shared Docs library remains manager/admin controlled.
 
-## 2026-07-18-r263 Ready
+## 2026-07-18-r263 Live
 
 - Scope: complete the teacher's daily native-miniapp workbench without changing web pages.
 - Business impact:
@@ -173,7 +173,9 @@
 - Verification:
   - focused tests `5/5`; complete miniapp tests `46/46`; backend tests `79/79`
   - TypeScript, 198-page build, native JavaScript and diff checks pass
-  - WeChat Developer Tools preview passes at 378.9 KB
+  - guarded runtime alignment at `e0cdecb`; 108 current migrations; PM2 PID `2086282`; health 200
+  - all three anonymous teacher API checks return 401
+  - WeChat development version `1.0.3` uploaded at 378.9 KB
   - read-only Jasmine production scope: 39 students, 1,136 feedbacks, July payroll unavailable
 
 ## 2026-07-18-r262 Live
