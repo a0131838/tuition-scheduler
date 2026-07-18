@@ -14,8 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-18-r264` at runtime feature commit `21310b2`. Simplified Emily Ticket intake and narrowed CS final-close authority are live on the server and uploaded as WeChat development version `1.0.4`; experience-version designation and physical-phone checks remain.
-- Current release line on this branch: `2026-07-18-r265` READY. Scheduling Tickets gain additive multi-action work orders, exact source/result Session links, a web execution queue and Emily multi-action intake; production remains `r264` until the guarded release completes.
+- Current production release: `2026-07-18-r265` at runtime feature commit `421b4e7`. Scheduling Tickets now have additive multi-action work orders, exact source/result Session links, a web execution queue and Emily multi-action intake. WeChat development version `1.0.5` is uploaded; experience-version designation and physical-phone checks remain.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
@@ -23,7 +22,7 @@
 
 ## Open Risks
 
-- Scheduling work-order rollout: `2026-07-18-r265` adds one table and makes exact source-Session linkage the structured path for reschedule, cancellation and teacher replacement. Historical Tickets are not backfilled and will appear as `待结构化`; verify the first Emily multi-action Ticket and the first cancellation-plus-replacement flow on a physical phone. The Ticket must remain open after cancellation until replacement scheduling is applied.
+- Scheduling work-order rollout: `2026-07-18-r265` is live at runtime feature commit `421b4e7` and uploaded as WeChat development version `1.0.5` (401.3 KB). Historical Tickets are intentionally not backfilled and appear as `待结构化`; designate `1.0.5` as the experience version, then verify the first Emily multi-action Ticket and the first cancellation-plus-replacement flow on a physical phone. The Ticket must remain open after cancellation until replacement scheduling is applied.
 
 - Emily request-intake rollout: `2026-07-18-r264` is live at runtime feature commit `21310b2` and uploaded as WeChat development version `1.0.4` (388.1 KB). Historical low-risk Tickets whose owner text does not exactly match Emily's user display name will remain manager-closeable. Designate `1.0.4` as the experience version and verify the no-submit form flow plus one controlled real low-risk completion when available.
 - Miniapp teacher-daily-workspace rollout: `2026-07-18-r263` is live at runtime feature commit `e0cdecb` and uploaded as WeChat development version `1.0.3` (378.9 KB). Jasmine's July payroll is not published, so physical-phone testing must first verify the safe unavailable state and must not fabricate payroll data. Designate `1.0.3` as the experience version and validate one real published payroll acknowledgement when available, the 39-student access boundary, one cross-teacher feedback timeline and both attachment sources.
@@ -161,7 +160,7 @@
 - Tutor-Wise-payment-profile risk: `2026-05-29-r161` removes Bank Transfer as a new tutor payment method and adds Wise details plus finance review status; finance should verify PayNow/Wise details before payout exports are used.
 - Teacher-notice-attachment risk: `2026-05-30-r162` lets teachers open only the active Shared Docs file attached to an active teacher notice; verify the notice attachment is intentional before publishing because the full Shared Docs library remains manager/admin controlled.
 
-## 2026-07-18-r265 Ready
+## 2026-07-18-r265 Live
 
 - Scope: make scheduling Tickets executable multi-action work orders across the web desk and employee miniapp.
 - Business impact:
@@ -174,14 +173,13 @@
   - actual Session writes remain ADMIN-only and use existing package/finance, qualification, availability, conflict, preview and transaction checks
   - web list, web detail and miniapp all block manual Ticket completion while structured actions remain open
   - no historical Ticket or Session is automatically changed
-- Verification before deploy:
+- Verification:
   - focused tests `5/5`; miniapp/WeChat tests `56/56`; backend tests `79/79`
   - TypeScript, all native JavaScript, 34-page miniapp audit, Prisma validation, 199-page build and diff checks pass
-- Post-deploy verification:
-  - confirm migration `20260718143000_add_ticket_scheduling_actions` and database table/indexes
-  - confirm local/origin/server commit equality, PM2 online and `/admin/login` 200
-  - verify unauthenticated scheduling-action API returns 401 and web queue requires admin authentication
-  - create no production test Ticket; use read-only counts until Emily submits the first real request
+  - runtime feature commit `421b4e7`; 109 migrations current with none pending; all 6 expected new-table indexes present
+  - local/origin/server feature commits aligned; PM2 PID `2133958`; `/admin/login` 200
+  - unauthenticated scheduling-action write returns 401; no production test Ticket or synthetic action was created
+  - WeChat development version `1.0.5` uploaded at 401.3 KB
 
 ## 2026-07-18-r264 Live
 

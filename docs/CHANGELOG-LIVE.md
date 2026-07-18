@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-18-r265`
 - Date/Time (Asia/Shanghai): `2026-07-18`
-- Deployment status: `READY`
+- Deployment status: `LIVE` at runtime feature commit `421b4e7`
 - Scope: connect scheduling Tickets to exact source/result Sessions through multi-action work orders shared by Emily's miniapp intake and the web scheduling operations desk.
 - Key files:
   - `prisma/schema.prisma`
@@ -35,7 +35,7 @@ This file is the single source of truth for what changed in production.
   - `tests/ticket-scheduling-actions.test.ts`
   - `docs/tasks/TASK-20260718-ticket-scheduling-work-orders.md`
 - Risk impact (if any): Medium. One additive work-order table and transactional action-result writes are added around the existing scheduling flows. Existing Ticket/Session meanings and all Attendance, package, finance, payroll and settlement columns are unchanged. Legacy Tickets remain valid without backfill. Formal schedule writes stay ADMIN-only and continue through the existing preview, qualification, availability, package/finance and conflict gates.
-- Verification: 5 focused scheduling-action tests, 56 miniapp/WeChat tests, 79 backend tests, all native JavaScript syntax, 34-page miniapp audit, Prisma validation, TypeScript, `git diff --check`, and the full 199-page production build pass.
+- Verification: 5 focused scheduling-action tests, 56 miniapp/WeChat tests, 79 backend tests, all native JavaScript syntax, 34-page miniapp audit, Prisma validation, TypeScript, `git diff --check`, and the full 199-page production build pass. Production is aligned at runtime feature commit `421b4e7`; 109 migrations are current with none pending, the new table has all 6 expected indexes and zero synthetic/backfilled rows, PM2 is online at PID `2133958`, `/admin/login` returns `200`, and the unauthenticated scheduling-action write returns `401`. WeChat development version `1.0.5` uploaded successfully at 401.3 KB.
 - Rollback point: `6f1e602` (`2026-07-18-r264` final production documentation head; runtime feature commit `21310b2`).
 
 ---

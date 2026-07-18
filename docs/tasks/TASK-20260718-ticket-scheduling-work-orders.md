@@ -41,6 +41,10 @@ Connect scheduling-related Tickets to exact source and result Sessions without c
 
 ## Release Gate
 
-- Database migration and server deployment are not part of this implementation checkpoint.
-- Before production release: back up the database, apply `20260718143000_add_ticket_scheduling_actions`, deploy the matching server build, then upload a new WeChat experience version.
-- Physical-device acceptance covers Emily multi-action intake, Eva reschedule/cancel, Jasmine replacement approval, and cancellation-plus-replacement staying open after cancellation.
+- [x] Guarded server release deployed at runtime feature commit `421b4e7` after database backup.
+- [x] Migration `20260718143000_add_ticket_scheduling_actions` applied; 109 migrations are current and all 6 expected indexes exist.
+- [x] Local/origin/server feature commits aligned; PM2 PID `2133958`; `/admin/login` 200; anonymous action write 401.
+- [x] No production test Ticket, action backfill or synthetic business row was created.
+- [x] WeChat development version `1.0.5` uploaded successfully (`401.3 KB`).
+- [ ] In the WeChat public platform, designate `1.0.5` as the experience version.
+- [ ] Physical-device acceptance covers Emily multi-action intake, Eva reschedule/cancel, Jasmine replacement approval, and cancellation-plus-replacement staying open after cancellation.
