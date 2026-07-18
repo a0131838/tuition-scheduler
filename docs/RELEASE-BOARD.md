@@ -14,13 +14,15 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-18-r266` at runtime feature commit `f7c78bb`. The existing public web intake link now opens the guided multi-action workflow, and authenticated miniapp mutations/uploads emit searchable redacted operation logs. WeChat development version `1.0.6` is uploaded; experience-version designation and physical-phone checks remain.
+- Current production release: `2026-07-18-r267` at runtime feature commit `474e40c`. Feedback review, parent publication, automatic reminders and manual WeChat forwarding now share one audited communication center for Emily/Eva. WeChat development version `1.0.7` is uploaded; experience-version designation and physical-phone checks remain.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
+
+- Parent-communication rollout: `2026-07-18-r267` is live at `474e40c` and uploaded as WeChat development version `1.0.7` (416.7 KB). Designate `1.0.7` as the experience version, then complete one physical-phone pass with Emily, Eva and Jasmine: review/publish one controlled feedback, copy and manually send one family/teacher reminder, upload an album screenshot, confirm the audit trail, and verify a schedule change creates or refreshes the correction task. Do not fabricate payroll, feedback, family or schedule data solely for testing.
 
 - Guided-intake and miniapp-audit rollout: `2026-07-18-r266` is live at runtime feature commit `f7c78bb` and uploaded as WeChat development version `1.0.6` (403.0 KB). Emily's existing live token already renders the guided title without creating data. Designate `1.0.6` as the experience version, then use the first controlled real intake to confirm exact actions and the `MINIAPP` audit row. GET reads and pre-session login attempts are intentionally not logged.
 
@@ -162,7 +164,7 @@
 - Tutor-Wise-payment-profile risk: `2026-05-29-r161` removes Bank Transfer as a new tutor payment method and adds Wise details plus finance review status; finance should verify PayNow/Wise details before payout exports are used.
 - Teacher-notice-attachment risk: `2026-05-30-r162` lets teachers open only the active Shared Docs file attached to an active teacher notice; verify the notice attachment is intentional before publishing because the full Shared Docs library remains manager/admin controlled.
 
-## 2026-07-18-r267 Ready
+## 2026-07-18-r267 Live
 
 - Scope: unify feedback review, parent publication, automatic reminders and manual WeChat follow-up for Emily and Eva.
 - Business impact:
@@ -177,18 +179,11 @@
   - new feedback notification moves from teacher-submit time to Emily/Eva publish time
   - CS access is limited to the communication/mobile workspace; notification templates and global settings remain admin-only
   - no existing Session schedule write, attendance deduction, package, invoice, receipt, payroll or settlement rule changes
-- Verification before deploy:
-  - Prisma validation and migration inspection
-  - focused communication/feedback tests
-  - TypeScript and native miniapp JavaScript/JSON syntax
-  - cron shell syntax and stale-reminder source checks
-  - full backend suite and production build
-- Post-deploy verification:
-  - migration count/schema/index checks
-  - authenticated ADMIN and CS communication-center access; TEACHER denial
-  - read-only parent feedback visibility checks
-  - PM2, HTTP health and exactly one expanded reminder cron
-  - WeChat development-version upload and physical-phone handoff
+- Verification:
+  - Prisma validation, TypeScript, 8 focused tests, all 84 backend tests, 35-page miniapp audit, native JavaScript/cron checks and the 203-page production build passed.
+  - Standard release aligned local/GitHub/server at `474e40c`; all 110 migrations are applied, PM2 PID `2163400` is online, `/admin/login` returns `200`, and the existing five-minute cron now includes `communications:sync` exactly once.
+  - WeChat development version `1.0.7` uploaded successfully at 416.7 KB.
+  - Real production Playwright screenshots, red callouts and PDF validation passed for 13-page Teacher, 17-page Academic Operations and 14-page Management bilingual SOPs.
 
 ## 2026-07-18-r266 Live
 

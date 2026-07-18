@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-18-r267`
 - Date/Time (Asia/Shanghai): `2026-07-18`
-- Deployment status: `READY`
+- Deployment status: `LIVE` at commit `474e40c526f4118941553fd844dfe756b8c9e756`
 - Scope: add one shared Emily/Eva parent-communication center that separates feedback review, parent-miniapp publication, automatic notification and manual WeChat-group forwarding, with correction tasks and complete audit history.
 - Key files:
   - `prisma/schema.prisma`
@@ -32,14 +32,11 @@ This file is the single source of truth for what changed in production.
   - `scripts/sync-parent-communication-tasks.ts`
   - `tests/parent-communication-center.test.ts`
   - `docs/tasks/TASK-20260718-parent-communication-center.md`
+  - `docs/SOP-老师-课表反馈工资与学生历史-中英文培训版-20260718.html`
+  - `docs/SOP-教务-家长沟通与通知中心-中英文培训版-20260718.html`
+  - `docs/SOP-管理-家长沟通通知监督与审计-中英文培训版-20260718.html`
 - Risk impact (if any): Medium. One additive communication-task table and nullable review/group metadata are added. Existing feedbacks are backfilled as already published so no historical parent record disappears. New teacher feedback waits for Emily/Eva review before parent visibility or notification. Stale course notifications are invalidated after cancellation/rescheduling. No Session time, attendance deduction, package balance, finance, payroll or settlement write rule changes.
-- Verification:
-  - `npx prisma validate`
-  - `npx tsc --noEmit`
-  - focused communication and feedback tests
-  - native miniapp JavaScript/JSON and cron shell syntax
-  - `npm run test:backend`
-  - `npm run build`
+- Verification: Prisma validation, TypeScript, 8 focused tests, all 84 backend tests, 35-page miniapp release audit, native miniapp JavaScript and cron shell syntax, and the full 203-page production build passed. The standard release aligned local/GitHub/server at `474e40c`, applied all 110 migrations, started PM2 PID `2163400`, installed exactly one expanded five-minute reminder cron, and returned HTTP `200` from `/admin/login`. WeChat development version `1.0.7` uploaded successfully at 416.7 KB. Playwright production capture plus PDF text/render validation passed for the 13-page Teacher, 17-page Academic Operations, and 14-page Management bilingual SOPs.
 - Rollback point: `ee9f658` (`2026-07-18-r266` final production documentation head; runtime feature commit `f7c78bb`).
 
 ---
