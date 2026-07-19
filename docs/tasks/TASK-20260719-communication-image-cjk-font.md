@@ -31,7 +31,7 @@ Downloaded parent reminder images rendered Chinese characters as hexadecimal/tof
 - Re-rendered a current production reminder record locally; Chinese glyphs, English words, title, body and footer rendered correctly.
 - Focused parent-communication tests passed, including the two new regression checks.
 - Deployment-shell syntax and TypeScript checks passed; all 86 backend regression tests passed; the production build completed successfully with 208 routes/pages.
-- After deployment, production must report a Chinese Noto font, regenerate the same reminder image without tofu boxes, align local/GitHub/server commits, keep PM2 online and return `/admin/login` HTTP 200.
+- After deployment, production matched `Noto Sans CJK SC`; a real parent reminder generated a visually verified 1080×1440 PNG without tofu boxes or broken English words. Runtime feature commit `5aa3627` aligned across local/GitHub/server, PM2 PID `2400607` remained online and `/admin/login` returned HTTP 200.
 
 ## Risk
 

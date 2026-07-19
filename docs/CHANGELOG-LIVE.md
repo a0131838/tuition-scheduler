@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-19-r270`
 - Date/Time (Asia/Shanghai): `2026-07-19`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: fix parent reminder share images so production renders Chinese text with a verified Noto CJK font and wraps mixed Chinese/English copy without splitting words.
 - Key files:
   - `lib/communication-share-image.ts`
@@ -29,7 +29,7 @@ This file is the single source of truth for what changed in production.
   - `docs/CHANGELOG-LIVE.md`
   - `docs/RELEASE-BOARD.md`
 - Risk impact (if any): Low. This changes PNG rendering and conditionally installs an open-source CJK font on the production host. Reminder content, recipients, notifications and all business records remain unchanged.
-- Verification: root cause confirmed by production having no `:lang=zh` font; a current reminder record re-rendered locally with readable Chinese and intact English words; 7 focused tests, deployment-shell syntax, TypeScript, all 86 backend regression tests and the 208-route production build passed.
+- Verification: root cause confirmed by production having no `:lang=zh` font; 7 focused tests, deployment-shell syntax, TypeScript, all 86 backend regression tests and the 208-route production build passed. Production now matches `Noto Sans CJK SC`; a real `COURSE_REMINDER_PARENT` record (`Andrew · 明日家长群课程提醒`) generated a visually verified 1080×1440 PNG with readable Chinese and intact English words. Runtime feature commit `5aa3627`, PM2 PID `2400607`, `/admin/login` HTTP 200.
 - Rollback point: `79d8deec7ef793ea96846988004b0bf813ddb358` (`2026-07-19-r269`).
 
 ---

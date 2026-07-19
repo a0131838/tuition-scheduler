@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-19-r270` is ready to correct production Chinese-font and mixed-language wrapping failures in reminder share images. Current production remains `2026-07-19-r269` until the guarded release completes.
+- Current production release: `2026-07-19-r270` at runtime feature commit `5aa3627`. Production now has verified `Noto Sans CJK SC` support, and a real parent reminder PNG was visually checked with readable Chinese and intact English words.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
@@ -22,7 +22,7 @@
 
 ## Open Risks
 
-- Reminder share-image CJK rollout: production currently lacks a Chinese font, so existing downloaded PNGs show tofu boxes even though reminder text data is correct. `2026-07-19-r270` adds a verified Noto CJK deployment dependency and word-aware wrapping; after deploy, regenerate a real reminder image and visually confirm Chinese, title/body spacing and full English words before forwarding it.
+- Reminder share-image CJK rollout: `2026-07-19-r270` is live at runtime feature commit `5aa3627`; production font matching and a real parent-reminder render passed. Images downloaded before the release are static files and must be downloaded again to receive the corrected rendering.
 
 - Employee action-centre rollout: `2026-07-19-r269` is live at runtime feature commit `72e6695` and uploaded as WeChat development version `1.0.8` (463.5 KB). Designate `1.0.8` as the experience version and run one controlled physical-phone pass for Emily, Eva and both Jasmine accounts. Complex receipt/finance reconciliation remains on web; consultation screenshots are retained but are not OCR-parsed. Do not fabricate payroll, approval, lead, feedback or schedule data solely for testing.
 
@@ -168,7 +168,7 @@
 - Tutor-Wise-payment-profile risk: `2026-05-29-r161` removes Bank Transfer as a new tutor payment method and adds Wise details plus finance review status; finance should verify PayNow/Wise details before payout exports are used.
 - Teacher-notice-attachment risk: `2026-05-30-r162` lets teachers open only the active Shared Docs file attached to an active teacher notice; verify the notice attachment is intentional before publishing because the full Shared Docs library remains manager/admin controlled.
 
-## 2026-07-19-r270 Ready
+## 2026-07-19-r270 Live
 
 - Scope: make downloaded parent reminder images reliably readable on the Ubuntu production host.
 - Business impact:
@@ -185,9 +185,9 @@
   - current reminder data re-rendered locally with correct Chinese and wrapping
   - 7 focused tests, all 86 backend tests, TypeScript, shell syntax and the 208-route production build passed
 - Post-deploy verification:
-  - `fc-list :lang=zh` and `fc-match "Noto Sans CJK SC"`
-  - production render of the same reminder record visually checked
-  - local/GitHub/server commit equality, PM2 PID and `/admin/login` HTTP 200
+  - `fc-match "Noto Sans CJK SC"` returned `NotoSansCJK-Regular.ttc`
+  - a real `COURSE_REMINDER_PARENT` record generated a visually checked 1080×1440 PNG with readable Chinese, intact English words and correct title/body/footer spacing
+  - runtime feature commit `5aa3627`, PM2 PID `2400607` and `/admin/login` HTTP 200
 
 ## 2026-07-19-r269 Live
 
