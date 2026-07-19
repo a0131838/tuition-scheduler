@@ -110,6 +110,7 @@ export default function CommunicationCenterClient({ currentUser }: { currentUser
           <div style={{ color: "#c2410c", fontSize: 12, fontWeight: 900 }}>ACADEMIC COMMUNICATION DESK / 教务沟通台</div>
           <h1 style={{ margin: "5px 0", fontSize: 28 }}>沟通与提醒工作台</h1>
           <div style={{ color: "#64748b", fontSize: 13 }}>先选择审核反馈、发给家长、发给老师或更正通知，再处理对应任务。</div>
+          <div style={{ color: "#475569", fontSize: 12, marginTop: 5 }}>老师可从员工小程序或<a href="/teacher" target="_blank" rel="noreferrer" style={{ color: "#c2410c", fontWeight: 800, margin: "0 4px" }}>网页版老师端</a>查看课程；家长和学生从家长小程序查看。</div>
         </div>
         <button style={primary} disabled={loading} onClick={() => load(true)}>{loading ? "同步中…" : "同步反馈与明日提醒"}</button>
       </header>

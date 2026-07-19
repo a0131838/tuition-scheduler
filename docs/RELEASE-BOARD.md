@@ -14,13 +14,15 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-19-r271` is live with absolute reminder dates, separated communication queues, 7/7 feedback completeness and authenticated Ticket attachment preview; WeChat development version `1.0.9` is uploaded.
+- Current release line on this branch: `2026-07-19-r272` is ready to replace the English reminder-image placeholder with “博思学业管家” and add the existing teacher web schedule as an alternative access path. Current production remains `2026-07-19-r271` until the guarded release completes.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
+
+- Reminder brand/web-entry rollout: `2026-07-19-r272` is ready after 221 repository tests, the 208-route build and visual inspection of both reminder images. Existing downloaded images are static and need to be downloaded again; teachers may use employee miniapp or `sgtmanage.com/teacher`, while parents/students remain on the parent miniapp because there is no secure parent web portal.
 
 - Communication-workbench rollout: `2026-07-19-r271` is live at runtime feature commit `612ac05` and uploaded as WeChat development version `1.0.9` (471.7 KB). Server-side production verification passed for real date-explicit reminders, honorific normalization, false-correction prevention, attachment projection and authentication rejection. Designate `1.0.9` as the experience version, then complete a physical-phone pass for Emily, Eva and both Jasmine accounts, including opening one real Ticket attachment; do not create fabricated business records solely for testing.
 
@@ -169,6 +171,27 @@
 - Workspace-access-form risk: `2026-05-29-r160` lets the owner manager edit Sales/CS focused workspace access from System User Admin; verify non-owner managers cannot write this endpoint and that main roles remain unchanged.
 - Tutor-Wise-payment-profile risk: `2026-05-29-r161` removes Bank Transfer as a new tutor payment method and adds Wise details plus finance review status; finance should verify PayNow/Wise details before payout exports are used.
 - Teacher-notice-attachment risk: `2026-05-30-r162` lets teachers open only the active Shared Docs file attached to an active teacher notice; verify the notice attachment is intentional before publishing because the full Shared Docs library remains manager/admin controlled.
+
+## 2026-07-19-r272 Ready
+
+- Scope: Chinese reminder branding plus role-correct miniapp/web schedule access wording.
+- Business impact:
+  - parent and teacher reminder images show “博思学业管家” instead of `BOSS EDUCATION`
+  - teacher reminders provide both employee-miniapp and existing teacher-web access
+  - parent/student reminders explicitly point to the complete schedule in the parent miniapp
+  - the admin communication workspace displays the same access guidance and teacher-web link
+- Safety:
+  - no new parent web route or public schedule page
+  - no scheduling, reminder timing, recipient, permission, attendance, package, finance or payroll change
+  - unchanged lesson lines remain presentation-only updates and do not create false corrections
+- Verification before deploy:
+  - 12 focused tests and all 221 repository tests passed
+  - TypeScript, 41-page miniapp audit and 208-route production build passed
+  - both 1080×1440 audience images passed visual inspection
+- Post-deploy verification:
+  - local/GitHub/server commit equality, PM2 online and `/admin/login` HTTP 200
+  - controlled reminder sync updates brand/access presentation without creating correction tasks
+  - `/teacher` responds through the existing teacher web authentication flow
 
 ## 2026-07-19-r271 Live
 

@@ -53,8 +53,8 @@ export async function buildCommunicationShareImage(input: { title: string; messa
   const teacherAudience = input.kind === "COURSE_REMINDER_TEACHER";
   const headerLabel = teacherAudience ? "老师课程确认" : "家长沟通";
   const footerLabel = teacherAudience
-    ? "详细课程请进入员工小程序查看 / View full details in the staff miniapp"
-    : "详细记录请进入家长小程序查看 / View full details in the parent miniapp";
+    ? "员工小程序 / 网页老师端：sgtmanage.com/teacher"
+    : "完整课表请进入家长小程序查看 / View the full schedule in the parent miniapp";
   const titleLines = wrapCommunicationLine(input.title, 39).slice(0, 2);
   const titleTspans = titleLines.map((line, index) => `<tspan x="88" dy="${index === 0 ? 0 : 52}">${escapeXml(line || " ")}</tspan>`).join("");
   const separatorY = titleLines.length > 1 ? 298 : 248;
@@ -68,7 +68,7 @@ export async function buildCommunicationShareImage(input: { title: string; messa
     <rect width="1080" height="1440" fill="#f7f8f5"/>
     <rect x="48" y="48" width="984" height="1344" rx="38" fill="#ffffff" stroke="#e2e8f0" stroke-width="3"/>
     <rect x="48" y="48" width="984" height="18" rx="9" fill="#ea580c"/>
-    <text x="88" y="132" font-family="Noto Sans CJK SC, Noto Sans SC, sans-serif" font-size="27" font-weight="700" fill="#c2410c">BOSS EDUCATION · ${headerLabel}</text>
+    <text x="88" y="132" font-family="Noto Sans CJK SC, Noto Sans SC, sans-serif" font-size="27" font-weight="700" fill="#c2410c">博思学业管家 · ${headerLabel}</text>
     <text x="88" y="206" font-family="Noto Sans CJK SC, Noto Sans SC, sans-serif" font-size="43" font-weight="800" fill="#0f172a">${titleTspans}</text>
     <line x1="88" y1="${separatorY}" x2="992" y2="${separatorY}" stroke="#e2e8f0" stroke-width="2"/>
     <text x="88" y="${bodyY}" font-family="Noto Sans CJK SC, Noto Sans SC, sans-serif" font-size="30" fill="#334155">${tspans}</text>

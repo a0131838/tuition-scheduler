@@ -251,7 +251,7 @@ async function syncTomorrowReminderTasks() {
       `${formatBusinessTimeOnly(session.startAt)}–${formatBusinessTimeOnly(session.endAt)} ${courseLabel(session)} · ${session.teacher?.name || session.class.teacher.name} · ${locationLabel(session)}`
     );
     const messageText = [
-      `${link?.parent.name || "家长"}您好，温馨提醒，${student.name || "孩子"}在${fullDateLabel}的课程如下：`,
+      `${link?.parent.name || "家长"}您好，温馨提醒，${student.name || "孩子"}在${fullDateLabel}的课程如下，请进入家长小程序查看完整课表：`,
       ...lines,
       "如时间或安排有变化，请及时联系我们。 / Please contact us promptly if anything changes.",
     ].join("\n");
@@ -291,7 +291,8 @@ async function syncTomorrowReminderTasks() {
       teacherId: teacher.id,
       title: `${teacher.name} · ${shortDateLabel}课程确认`,
       messageText: [
-        `${teacherSalutation(teacher.name)}您好，以下是${fullDateLabel}的课程，请进入员工小程序核对并完成确认：`,
+        `${teacherSalutation(teacher.name)}您好，${fullDateLabel}的课程如下，请进入员工小程序或网页版老师端核对并确认：`,
+        "https://sgtmanage.com/teacher",
         ...lines,
         "如有时间、学生或地点问题，请立即联系教务。 / Please contact Academic Operations immediately if any detail is incorrect.",
       ].join("\n"),

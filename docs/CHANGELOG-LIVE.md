@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-19-r272
+
+- Release ID: `2026-07-19-r272`
+- Date/Time (Asia/Shanghai): `2026-07-19`
+- Deployment status: `READY`
+- Scope: align course-reminder images with the “博思学业管家” brand and add the existing teacher web schedule as an alternative to the employee miniapp.
+- Key files:
+  - `lib/communication-share-image.ts`
+  - `lib/parent-communication-center.ts`
+  - `app/admin/communications/CommunicationCenterClient.tsx`
+  - `tests/parent-communication-center.test.ts`
+  - `docs/tasks/TASK-20260719-reminder-brand-and-web-entry.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. Reminder presentation and one existing web link change; no schedule, attendance, package, finance, payroll, notification timing, recipient or permission logic changes. Parents/students remain on the authenticated parent miniapp because no parent web portal exists.
+- Verification: 12 focused tests, all 221 repository tests, TypeScript, the 41-page miniapp audit and the 208-route production build passed. Parent and teacher share images passed visual inspection with the Chinese brand, absolute date and role-correct access paths.
+- Rollback point: `921f2f5913ced880a734cfd5ee97228e851b6988` (`2026-07-19-r271`).
+
+---
+
 ## 2026-07-19-r271
 
 - Release ID: `2026-07-19-r271`

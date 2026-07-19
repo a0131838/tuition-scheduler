@@ -90,7 +90,9 @@ test("communication workbench separates feedback, parent, teacher and correction
 test("teacher reminder images use teacher-specific header and staff miniapp footer", async () => {
   const source = await readFile(new URL("../lib/communication-share-image.ts", import.meta.url), "utf8");
   assert.match(source, /老师课程确认/);
-  assert.match(source, /staff miniapp/);
+  assert.match(source, /sgtmanage\.com\/teacher/);
+  assert.match(source, /博思学业管家/);
+  assert.doesNotMatch(source, /BOSS EDUCATION/);
 });
 
 test("teacher reminder avoids duplicate teacher honorifics", async () => {
@@ -99,4 +101,14 @@ test("teacher reminder avoids duplicate teacher honorifics", async () => {
   assert.match(source, /value\.endsWith\("老师"\) \? value : `\$\{value\}老师`/);
   assert.match(source, /teacherSalutation\(teacher\.name\)/);
   assert.match(miniapp, /value\.endsWith\("老师"\) \? value : `\$\{value\}老师`/);
+});
+
+test("course reminders direct each audience to an available schedule surface", async () => {
+  const source = await readFile(new URL("../lib/parent-communication-center.ts", import.meta.url), "utf8");
+  const web = await readFile(new URL("../app/admin/communications/CommunicationCenterClient.tsx", import.meta.url), "utf8");
+  assert.match(source, /进入家长小程序查看完整课表/);
+  assert.match(source, /进入员工小程序或网页版老师端/);
+  assert.match(source, /https:\/\/sgtmanage\.com\/teacher/);
+  assert.match(web, /网页版老师端/);
+  assert.match(web, /家长和学生从家长小程序查看/);
 });
