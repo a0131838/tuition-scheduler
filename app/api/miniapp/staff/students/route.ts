@@ -14,12 +14,26 @@ export async function GET(req: Request) {
   const q = cleanQuery(url.searchParams.get("q"));
   if (q.length < 2) return ok({ students: [] });
 
+  const teacherStudentWhere = auth.user.role === "TEACHER"
+    ? auth.user.teacherId
+      ? {
+          OR: [
+            { sessions: { some: { OR: [{ teacherId: auth.user.teacherId }, { teacherId: null, class: { teacherId: auth.user.teacherId } }] } } },
+            { attendances: { some: { session: { OR: [{ teacherId: auth.user.teacherId }, { teacherId: null, class: { teacherId: auth.user.teacherId } }] } } } },
+          ],
+        }
+      : { id: "__NO_LINKED_TEACHER__" }
+    : {};
+
   const students = await prisma.student.findMany({
     where: {
-      OR: [
-        { name: { contains: q, mode: "insensitive" } },
-        { school: { contains: q, mode: "insensitive" } },
-        { targetSchool: { contains: q, mode: "insensitive" } },
+      AND: [
+        teacherStudentWhere,
+        { OR: [
+          { name: { contains: q, mode: "insensitive" } },
+          { school: { contains: q, mode: "insensitive" } },
+          { targetSchool: { contains: q, mode: "insensitive" } },
+        ] },
       ],
     },
     select: {

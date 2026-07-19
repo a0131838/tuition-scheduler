@@ -1,0 +1,4 @@
+@import "../../styles/mobile-ops.wxss";
+.lead-form { margin-top: 24rpx; padding: 24rpx; border-radius: 18rpx; background: #fff4ec; border: 1rpx solid #efc5aa; }
+.evidence-preview { margin-top: 12rpx; padding: 12rpx; border-radius: 10rpx; background: #eaf4ed; color: #24613a; font-size: 22rpx; }
+.lead-contact { margin-top: 8rpx; color: #5d626a; font-size: 22rpx; }

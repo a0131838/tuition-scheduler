@@ -49,8 +49,16 @@ Page({
     loading: false
   },
 
-  onLoad() {
-    this.setData({ schedulingActions: [this.newSchedulingAction(typeOptions[0].actionType)] });
+  onLoad(options) {
+    const studentId = (options && options.studentId) || "";
+    const studentLabel = decodeURIComponent((options && options.studentLabel) || "");
+    this.setData({
+      schedulingActions: [this.newSchedulingAction(typeOptions[0].actionType)],
+      selectedStudentId: studentId,
+      selectedStudentLabel: studentLabel,
+      studentQuery: studentLabel
+    });
+    if (studentId) this.loadSchedulingOptions(studentId);
   },
 
   onUnload() {

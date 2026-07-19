@@ -1,0 +1,7 @@
+<view class="page ops-page page-enter">
+  <view class="ops-hero"><view class="ops-kicker">今天先做什么</view><view class="ops-title">统一待办</view><view class="ops-subtitle">只显示需要当前账号立即处理的事情，处理后自动移出。</view></view>
+  <view class="summary-card"><view class="summary-number">{{total}}</view><view><view class="summary-title">{{summaryTitle}}</view><view class="summary-hint">下拉可刷新最新状态</view></view></view>
+  <view class="ops-section" wx:if="{{showItems}}"><view class="ops-section-title">需要我处理</view><view class="ops-card {{item.cardClass}}" wx:for="{{items}}" wx:key="key" data-target="{{item.target}}" bindtap="openItem"><view class="ops-card-head"><view><view class="ops-card-title">{{item.title}}</view><view class="ops-card-meta">{{item.detail}}</view></view><view class="ops-badge {{item.cardClass}}">{{item.countText}}</view></view></view></view>
+  <view class="empty-state" wx:if="{{showEmpty}}">今天没有需要当前账号处理的事务。</view>
+  <view class="ops-section"><view class="ops-section-title">快速查询</view><view class="ops-card" bindtap="openStudents"><view class="ops-card-title">学生360°工作台</view><view class="ops-card-meta">课程、课包、工单、家长沟通和历史反馈集中查看</view></view><view class="ops-card" wx:if="{{capabilities.operations}}" bindtap="openOperations"><view class="ops-card-title">操作日志与纠正</view><view class="ops-card-meta">查看谁在什么时候做了什么，必要时发起纠正工单</view></view></view>
+</view>

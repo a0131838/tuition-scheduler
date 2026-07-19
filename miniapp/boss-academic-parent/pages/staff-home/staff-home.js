@@ -56,8 +56,14 @@ Page({
     teacherExpenseCount: 0,
     teacherTodoCount: 0,
     teacherUrgentCount: 0,
+    teacherMetricClass: "",
     teacherPayrollPending: 0,
     teacherUnreadFeedbackCount: 0,
+    actionCenterCount: 0,
+    canOpenApprovals: false,
+    canOpenLeads: false,
+    canOpenStudentWorkspace: false,
+    canOpenOperations: false,
     nextTeacherSession: null,
     hasNextTeacherSession: false,
     nextTeacherSessionText: "",
@@ -150,6 +156,18 @@ Page({
       });
 
     return meTask.then(() => {
+      const actionCenterTask = api.requestStaff("/api/miniapp/staff/action-center", { timeout: 30000 })
+        .then((data) => {
+          const capabilities = data.capabilities || {};
+          this.setData({
+            actionCenterCount: data.total || 0,
+            canOpenApprovals: Boolean(capabilities.approvals),
+            canOpenLeads: Boolean(capabilities.leads),
+            canOpenStudentWorkspace: Boolean(capabilities.studentWorkspace),
+            canOpenOperations: Boolean(capabilities.operations)
+          });
+        })
+        .catch(() => this.setData({ actionCenterCount: 0, canOpenApprovals: false, canOpenLeads: false, canOpenStudentWorkspace: false, canOpenOperations: false }));
       const scheduleTask = api.requestStaff("/api/miniapp/staff/schedule", { timeout: 12000 })
         .then((schedule) => {
           this.setData({ todaySessionCount: schedule.summary ? schedule.summary.visibleSessions : 0 });
@@ -181,16 +199,17 @@ Page({
             this.setData({
               teacherTodoCount: data.total || 0,
               teacherUrgentCount,
+              teacherMetricClass: teacherUrgentCount ? "metric-alert" : "",
               teacherPayrollPending: summary.payrollPending || 0,
               teacherUnreadFeedbackCount: summary.unreadOtherFeedback || 0
             });
             this.refreshPresentation();
           })
           .catch(() => {
-            this.setData({ teacherTodoCount: 0, teacherUrgentCount: 0, teacherPayrollPending: 0, teacherUnreadFeedbackCount: 0 });
+            this.setData({ teacherTodoCount: 0, teacherUrgentCount: 0, teacherMetricClass: "", teacherPayrollPending: 0, teacherUnreadFeedbackCount: 0 });
             this.refreshPresentation();
           });
-        return Promise.allSettled([scheduleTask, teacherTask, todoTask]);
+        return Promise.allSettled([scheduleTask, teacherTask, todoTask, actionCenterTask]);
       }
 
       const requestsTask = api.requestStaff("/api/miniapp/staff/parent-requests?limit=200", { timeout: 12000 })
@@ -246,7 +265,7 @@ Page({
         })
         .catch(() => this.setData({ canManageFirstScheduling: false, firstSchedulingCount: 0, firstSchedulingReadyCount: 0, firstSchedulingFirstCount: 0, firstSchedulingAttentionCount: 0 }));
 
-      return Promise.allSettled([requestsTask, scheduleTask, coordinationTask, reminderTask, communicationTask, firstSchedulingTask]);
+      return Promise.allSettled([requestsTask, scheduleTask, coordinationTask, reminderTask, communicationTask, firstSchedulingTask, actionCenterTask]);
     }).finally(() => this.setData({ loading: false }));
   },
 
@@ -278,6 +297,12 @@ Page({
   goTeacherTodos() { wx.navigateTo({ url: "/pages/staff-teacher-todos/staff-teacher-todos" }); },
   goTeacherPayroll() { wx.navigateTo({ url: "/pages/staff-teacher-payroll/staff-teacher-payroll" }); },
   goTeacherFeedbacks() { wx.navigateTo({ url: "/pages/staff-teacher-feedbacks/staff-teacher-feedbacks" }); },
+  goActionCenter() { wx.navigateTo({ url: "/pages/staff-action-center/staff-action-center" }); },
+  goStudentWorkspace() { wx.navigateTo({ url: "/pages/staff-student-workspace/staff-student-workspace" }); },
+  goOperations() { wx.navigateTo({ url: "/pages/staff-operations/staff-operations" }); },
+  goApprovals() { wx.navigateTo({ url: "/pages/staff-approvals/staff-approvals" }); },
+  goLeads() { wx.navigateTo({ url: "/pages/staff-leads/staff-leads" }); },
+  goTeacherReports() { wx.navigateTo({ url: "/pages/staff-teacher-reports/staff-teacher-reports" }); },
   goAccountSwitch() { wx.navigateTo({ url: "/pages/staff-account-switch/staff-account-switch" }); },
 
   logout() {

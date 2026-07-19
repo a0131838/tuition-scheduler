@@ -1,0 +1,3 @@
+@import "../../styles/mobile-ops.wxss";
+.meta-row { margin-top: 8rpx; padding: 7rpx 10rpx; border-radius: 8rpx; background: #f4f2ef; color: #5f646b; font-size: 21rpx; overflow-wrap: anywhere; }
+.correction-panel { margin-top: 24rpx; padding: 24rpx; border: 2rpx solid #d79b91; border-radius: 16rpx; background: #fff8f6; }

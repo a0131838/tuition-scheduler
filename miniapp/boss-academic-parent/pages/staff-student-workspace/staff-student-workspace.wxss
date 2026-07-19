@@ -1,0 +1,7 @@
+@import "../../styles/mobile-ops.wxss";
+.student-result { padding: 20rpx 0; border-bottom: 1rpx solid #dfdcd7; }
+.student-name { font-size: 28rpx; font-weight: 800; }
+.workspace-headline { display: flex; align-items: flex-start; justify-content: space-between; gap: 16rpx; }
+.back-link { color: #9b420e; font-size: 23rpx; font-weight: 750; }
+.timeline-row { padding: 15rpx 0; border-bottom: 1rpx solid #e4e1dc; }
+.feedback-content { margin-top: 8rpx; color: #34383e; font-size: 24rpx; line-height: 1.6; white-space: pre-wrap; }

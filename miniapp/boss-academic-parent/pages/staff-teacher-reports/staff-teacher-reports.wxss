@@ -1,0 +1,6 @@
+@import "../../styles/mobile-ops.wxss";
+.tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8rpx; margin-top: 24rpx; padding: 6rpx; border-radius: 12rpx; background: #e9e6e1; }
+.tab { padding: 15rpx 6rpx; border-radius: 9rpx; color: #686d75; font-size: 22rpx; font-weight: 750; text-align: center; }
+.tab.active { background: #fff; color: #202328; box-shadow: 0 3rpx 10rpx rgba(30,33,38,.08); }
+.body-copy { margin-top: 12rpx; color: #34383e; font-size: 24rpx; line-height: 1.65; white-space: pre-wrap; }
+.report-editor { margin-top: 24rpx; padding: 24rpx; border: 1rpx solid #d4cec6; border-radius: 18rpx; background: #fff; }

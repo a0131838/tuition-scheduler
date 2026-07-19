@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-19-r269
+
+- Release ID: `2026-07-19-r269`
+- Date/Time (Asia/Shanghai): `2026-07-19`
+- Deployment status: `READY`
+- Scope: add six role-aware employee-miniapp workspaces for unified actions, Student 360, operation correction, management approvals, new-lead intake and Teacher communications/reports.
+- Key files:
+  - `app/api/miniapp/staff/action-center/*`
+  - `app/api/miniapp/staff/students/[studentId]/workspace/*`
+  - `app/api/miniapp/staff/operations/*`
+  - `app/api/miniapp/staff/approvals/*`
+  - `app/api/miniapp/staff/leads/*`
+  - `app/api/miniapp/staff/teacher/reports/*`
+  - `miniapp/boss-academic-parent/pages/staff-{action-center,student-workspace,operations,approvals,leads,teacher-reports}/*`
+  - `tests/miniapp-action-center.test.ts`
+  - `docs/tasks/TASK-20260719-miniapp-action-center.md`
+- Risk impact (if any): Medium-low. This adds authenticated employee-miniapp APIs and native pages with no schema migration. Approval writes reuse existing guarded services; scheduling and corrections create Tickets instead of directly changing Sessions. No existing web UI, attendance deduction, package balance, finance calculation, payroll calculation or settlement rule changes.
+- Verification: 34 focused tests, all 84 backend regression tests, native JavaScript syntax, WXML compatibility scan, TypeScript, the 208-page production build, the 41-page mini-program release audit, Management/Teacher read-only API smoke tests, guarded invalid-write checks and a 463.5 KB WeChat Developer Tools preview passed. All temporary test sessions were removed.
+- Rollback point: `eec567f` (`2026-07-18-r268` documentation head; application runtime remains the r267 feature set).
+
+---
+
 ## 2026-07-18-r268
 
 - Release ID: `2026-07-18-r268`
