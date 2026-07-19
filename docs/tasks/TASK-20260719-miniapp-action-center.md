@@ -34,6 +34,9 @@ The employee mini program already covered scheduling, staff-assisted Tickets, te
 - Read-only local API smoke tests passed for Management and Teacher action centres, approvals, operations, leads, student search, Teacher reports and both role-scoped Student 360 views. Invalid write payloads returned `400`, and all temporary staff-miniapp sessions were removed.
 - WeChat Developer Tools preview compilation passed at 463.5 KB (`474613` bytes).
 - The 41-page mini-program release audit passed with the production API base URL, AppID, source maps, mock login, brand colour and search-protection checks all valid.
+- The guarded release aligned the runtime feature commit at `72e6695`, started PM2 PID `2389459` and returned HTTP `200` from `/admin/login`.
+- Post-deploy authenticated read-only smoke checks returned `200` for all nine Management/Teacher endpoints, including both role-scoped Student 360 views; all temporary production test sessions were removed.
+- WeChat development version `1.0.8` uploaded successfully at 463.5 KB (`474613` bytes).
 
 ## Non-goals
 

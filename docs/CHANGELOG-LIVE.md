@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-19-r269`
 - Date/Time (Asia/Shanghai): `2026-07-19`
-- Deployment status: `READY`
+- Deployment status: `LIVE` at runtime feature commit `72e6695fa74ef38f3be0080adcf467e1bacbeaaf`
 - Scope: add six role-aware employee-miniapp workspaces for unified actions, Student 360, operation correction, management approvals, new-lead intake and Teacher communications/reports.
 - Key files:
   - `app/api/miniapp/staff/action-center/*`
@@ -32,7 +32,7 @@ This file is the single source of truth for what changed in production.
   - `tests/miniapp-action-center.test.ts`
   - `docs/tasks/TASK-20260719-miniapp-action-center.md`
 - Risk impact (if any): Medium-low. This adds authenticated employee-miniapp APIs and native pages with no schema migration. Approval writes reuse existing guarded services; scheduling and corrections create Tickets instead of directly changing Sessions. No existing web UI, attendance deduction, package balance, finance calculation, payroll calculation or settlement rule changes.
-- Verification: 34 focused tests, all 84 backend regression tests, native JavaScript syntax, WXML compatibility scan, TypeScript, the 208-page production build, the 41-page mini-program release audit, Management/Teacher read-only API smoke tests, guarded invalid-write checks and a 463.5 KB WeChat Developer Tools preview passed. All temporary test sessions were removed.
+- Verification: 34 focused tests, all 84 backend regression tests, native JavaScript syntax, WXML compatibility scan, TypeScript, the 208-page production build, the 41-page mini-program release audit, Management/Teacher read-only API smoke tests, guarded invalid-write checks and a 463.5 KB WeChat Developer Tools preview passed. The guarded release aligned runtime at `72e6695`, applied no new migration, started PM2 PID `2389459` and returned `/admin/login` HTTP `200`. All nine post-deploy Management/Teacher read-only endpoint checks returned `200`, temporary sessions remaining were zero, and WeChat development version `1.0.8` uploaded successfully at 463.5 KB.
 - Rollback point: `eec567f` (`2026-07-18-r268` documentation head; application runtime remains the r267 feature set).
 
 ---

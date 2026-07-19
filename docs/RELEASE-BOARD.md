@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-07-18`
+- Last checked: `2026-07-19`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-19-r269` is ready with six role-aware employee-miniapp workspaces. Current production remains `2026-07-18-r268` documentation / `2026-07-18-r267` runtime until the guarded release completes. WeChat development version `1.0.7` remains uploaded until version `1.0.8` is uploaded after server verification.
+- Current production release: `2026-07-19-r269` at runtime feature commit `72e6695`. Six role-aware employee-miniapp workspaces are live, and WeChat development version `1.0.8` is uploaded at 463.5 KB. Experience-version designation and controlled physical-phone checks remain.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
@@ -22,7 +22,7 @@
 
 ## Open Risks
 
-- Employee action-centre rollout: `2026-07-19-r269` adds six native workspaces without a migration or web UI changes. After deployment, designate WeChat development version `1.0.8` as the experience version and run one controlled physical-phone pass for Emily, Eva and both Jasmine accounts. Complex receipt/finance reconciliation remains on web; consultation screenshots are retained but are not OCR-parsed. Do not fabricate payroll, approval, lead, feedback or schedule data solely for testing.
+- Employee action-centre rollout: `2026-07-19-r269` is live at runtime feature commit `72e6695` and uploaded as WeChat development version `1.0.8` (463.5 KB). Designate `1.0.8` as the experience version and run one controlled physical-phone pass for Emily, Eva and both Jasmine accounts. Complex receipt/finance reconciliation remains on web; consultation screenshots are retained but are not OCR-parsed. Do not fabricate payroll, approval, lead, feedback or schedule data solely for testing.
 
 - Parent-communication rollout: `2026-07-18-r267` is live at `474e40c` and uploaded as WeChat development version `1.0.7` (416.7 KB). Designate `1.0.7` as the experience version, then complete one physical-phone pass with Emily, Eva and Jasmine: review/publish one controlled feedback, copy and manually send one family/teacher reminder, upload an album screenshot, confirm the audit trail, and verify a schedule change creates or refreshes the correction task. Do not fabricate payroll, feedback, family or schedule data solely for testing.
 
@@ -166,7 +166,7 @@
 - Tutor-Wise-payment-profile risk: `2026-05-29-r161` removes Bank Transfer as a new tutor payment method and adds Wise details plus finance review status; finance should verify PayNow/Wise details before payout exports are used.
 - Teacher-notice-attachment risk: `2026-05-30-r162` lets teachers open only the active Shared Docs file attached to an active teacher notice; verify the notice attachment is intentional before publishing because the full Shared Docs library remains manager/admin controlled.
 
-## 2026-07-19-r269 Ready
+## 2026-07-19-r269 Live
 
 - Scope: add unified actions, Student 360, operation correction, mobile management approvals, fast lead intake and Teacher communications/reports to the existing employee mini program.
 - Business impact:
@@ -185,9 +185,9 @@
   - Management and Teacher local API smoke tests returned 200 for all role-appropriate reads; invalid writes returned 400; temporary sessions remaining: 0
   - WeChat Developer Tools preview passed at 463.5 KB
 - Post-deploy verification:
-  - align local/GitHub/server commit, confirm PM2 online PID and `/admin/login` HTTP 200
-  - repeat authenticated read-only role smoke tests and remove temporary sessions
-  - upload WeChat development version `1.0.8`
+  - runtime feature commit aligned at `72e6695`; PM2 PID `2389459` online; `/admin/login` HTTP 200
+  - all nine authenticated read-only Management/Teacher role checks returned 200; temporary sessions remaining: 0
+  - WeChat development version `1.0.8` uploaded successfully at 463.5 KB
 
 ## 2026-07-18-r268 Live
 
