@@ -22,6 +22,9 @@ The first production sync after r272 added a teacher web URL as a new presentati
 - All 222 repository tests and the 208-route production build passed.
 - TypeScript passed.
 - Production repair is scoped to task `8afb9939-a85e-49f2-932d-febf7cad25a0` and requires the no-correction precondition.
+- Runtime commit `67e6add` aligned local/GitHub/server with PM2 PID `2516152` and admin health HTTP 200.
+- The exact repair confirmed zero correction children and cleared one accidental timestamp; the next sync completed for 20 reminders.
+- Production result: 12/12 parent reminders use the parent miniapp, 8/8 teacher reminders offer employee miniapp plus teacher web, with zero correction and zero superseded reminders.
 
 ## Risk
 

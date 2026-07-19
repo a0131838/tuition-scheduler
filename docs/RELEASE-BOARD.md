@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-19-r273` is an urgent roll-forward for r272 reminder-presentation synchronization. r272 branding/web-entry code is live, but communication sync must be restored before the release is considered complete.
+- Current release line on this branch: `2026-07-19-r273` is live; r272 “博思学业管家” branding and role-correct miniapp/web reminder access are protected by the presentation-sync guard, and production synchronization is healthy.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
@@ -22,7 +22,7 @@
 
 ## Open Risks
 
-- Reminder-presentation sync guard: r272 production sync rejected an internal control field after marking one completed teacher reminder superseded; no false correction row was inserted. r273 must deploy, repair only exact task `8afb9939-a85e-49f2-932d-febf7cad25a0` when it still has zero corrections, and prove a clean sync with zero false corrections.
+- Reminder brand/web-entry rollout: r273 is live at runtime commit `67e6add`; production sync is healthy with 12/12 parent reminders using the parent miniapp, 8/8 teacher reminders offering employee miniapp plus `sgtmanage.com/teacher`, zero false corrections and zero superseded reminders. Previously downloaded images remain static and must be downloaded again.
 
 - Reminder brand/web-entry rollout: `2026-07-19-r272` is ready after 221 repository tests, the 208-route build and visual inspection of both reminder images. Existing downloaded images are static and need to be downloaded again; teachers may use employee miniapp or `sgtmanage.com/teacher`, while parents/students remain on the parent miniapp because there is no secure parent web portal.
 
@@ -174,7 +174,7 @@
 - Tutor-Wise-payment-profile risk: `2026-05-29-r161` removes Bank Transfer as a new tutor payment method and adds Wise details plus finance review status; finance should verify PayNow/Wise details before payout exports are used.
 - Teacher-notice-attachment risk: `2026-05-30-r162` lets teachers open only the active Shared Docs file attached to an active teacher notice; verify the notice attachment is intentional before publishing because the full Shared Docs library remains manager/admin controlled.
 
-## 2026-07-19-r273 Ready
+## 2026-07-19-r273 Live
 
 - Scope: restore communication sync and distinguish reminder copy changes from real course changes.
 - Safety:
@@ -185,9 +185,11 @@
   - 13 focused communication tests, all 222 repository tests, TypeScript and the 208-route build passed
   - regression proves portal URL additions remain presentation-only and real time changes do not
 - Post-deploy verification:
-  - exact conditional repair updates one accidental `supersededAt`
-  - communication sync completes successfully
-  - reminder copy contains role-correct access paths and false correction count remains zero
+  - exact conditional repair cleared one accidental `supersededAt` after confirming zero correction children
+  - communication sync completed successfully for 20 reminders
+  - 12/12 parent and 8/8 teacher reminders contain their role-correct access paths
+  - false correction and superseded-reminder counts are both zero
+  - runtime commit `67e6add` aligned local/GitHub/server; PM2 PID `2516152`, admin health 200 and teacher authentication redirect 307
 
 ## 2026-07-19-r272 Ready
 

@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-19-r273`
 - Date/Time (Asia/Shanghai): `2026-07-19`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: make reminder presentation changes compare real course lines and prevent internal synchronization flags from entering Prisma writes.
 - Key files:
   - `lib/parent-communication-center.ts`
@@ -28,7 +28,7 @@ This file is the single source of truth for what changed in production.
   - `docs/CHANGELOG-LIVE.md`
   - `docs/RELEASE-BOARD.md`
 - Risk impact (if any): Low roll-forward for an active sync failure. No false correction was inserted; one completed reminder received an accidental `supersededAt` timestamp and will be repaired after deploy only under an exact no-correction precondition.
-- Verification: 13 focused communication tests, all 222 repository tests, TypeScript and the 208-route production build passed; the regression distinguishes portal-copy changes from real course-time changes and verifies control fields are excluded from Prisma data.
+- Verification: 13 focused communication tests, all 222 repository tests, TypeScript and the 208-route production build passed. Runtime commit `67e6adde72d79a3e3ecb66b4dc6e6f85b7ceb018` aligned locally, on GitHub and on the server with PM2 PID `2516152` and `/admin/login` HTTP 200. Exact conditional repair cleared the one accidental `supersededAt` only after confirming zero correction children. The subsequent production sync completed for 20 reminders: 12/12 parent reminders contained the parent-miniapp instruction, 8/8 teacher reminders contained employee-miniapp plus teacher-web access, correction count remained zero and no reminder retained a superseded timestamp. `/teacher` returned the expected authentication redirect (HTTP 307).
 - Rollback point: `921f2f5913ced880a734cfd5ee97228e851b6988` (`2026-07-19-r271`) if both r272 and r273 must be removed.
 
 ---
@@ -37,7 +37,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-19-r272`
 - Date/Time (Asia/Shanghai): `2026-07-19`
-- Deployment status: `READY`
+- Deployment status: `LIVE WITH r273 GUARD`
 - Scope: align course-reminder images with the “博思学业管家” brand and add the existing teacher web schedule as an alternative to the employee miniapp.
 - Key files:
   - `lib/communication-share-image.ts`
