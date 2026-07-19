@@ -22,7 +22,11 @@ The employee action centre counted every open non-archived Ticket, but its desti
 
 - `npx tsx --test tests/miniapp-action-center.test.ts tests/miniapp-emily-request-intake.test.ts tests/miniapp-first-scheduling.test.ts tests/ticket-scheduling-actions.test.ts` — 28/28 passed.
 - `npm run build` — passed with all 208 routes generated.
+- `npm run miniapp:audit-release` — passed for all 41 registered pages with the production API URL, source maps disabled and mock login disabled.
 - Read-only production query confirmed the live source distribution that caused the mismatch.
+- Runtime commit `ec0716a` aligned locally, on GitHub and on the server; PM2 PID `2544876` was online and `/admin/login` returned HTTP 200.
+- Anonymous default and `scope=all` staff-list requests both returned HTTP 401.
+- WeChat development version `1.0.10` uploaded successfully at 484,435 bytes (473.1 KB).
 
 ## Risk
 

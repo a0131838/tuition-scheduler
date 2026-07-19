@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-19-r274`
 - Date/Time (Asia/Shanghai): `2026-07-19`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: align the employee action-centre Ticket count with an all-source Ticket list and make each Ticket source explicit in the miniapp.
 - Key files:
   - `app/api/miniapp/staff/parent-requests/route.ts`
@@ -31,7 +31,7 @@ This file is the single source of truth for what changed in production.
   - `docs/CHANGELOG-LIVE.md`
   - `docs/RELEASE-BOARD.md`
 - Risk impact (if any): Low. Employee reads now include all Ticket sources only when the authenticated staff page explicitly requests `scope=all`; parent-facing reads, Ticket creation defaults, scheduling, attendance, package, finance and payroll logic are unchanged.
-- Verification: 28 focused miniapp/Ticket tests and the 208-route production build passed. Read-only production inspection confirmed the mismatch was caused by 8 open Tickets comprising 7 `自营学生` Tickets and 1 `家长小程序` Ticket.
+- Verification: 28 focused miniapp/Ticket tests, the 41-page miniapp audit and the 208-route production build passed. Runtime commit `ec0716ad5b9ef4c3fae7805eac9e9be3be6ec453` aligned locally, on GitHub and on the server with PM2 PID `2544876` and `/admin/login` HTTP 200. Both unauthenticated staff-list variants returned 401. Read-only production inspection confirmed the action-centre and unified-list open counts both equal 8, comprising 7 `自营学生` Tickets and 1 `家长小程序` Ticket. WeChat development version `1.0.10` uploaded successfully at 484,435 bytes (473.1 KB).
 - Rollback point: `b85577a849bd79b7b0fc930cca28db87c8e1b878` (`2026-07-19-r273` release lineage).
 
 ---

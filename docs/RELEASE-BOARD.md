@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-19-r274` is ready to align the employee action-centre Ticket count with an all-source Ticket list; r273 remains the current live release until deployment completes.
+- Current release line on this branch: `2026-07-19-r274` is live and aligns the employee action-centre Ticket count with an all-source Ticket list; WeChat development version `1.0.10` is uploaded for experience-version designation.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
@@ -22,7 +22,7 @@
 
 ## Open Risks
 
-- Unified Ticket-list rollout: `2026-07-19-r274` is ready after 28 focused tests and the 208-route build. The authenticated employee list deliberately includes `自营学生` and `家长小程序` Tickets, while parent-facing routes keep their original source boundary. Upload the updated native miniapp package after server deployment and verify one Ticket from each source on a physical phone.
+- Unified Ticket-list rollout: `2026-07-19-r274` is live at runtime commit `ec0716a` and uploaded as WeChat development version `1.0.10` (473.1 KB). Production read-only checks show matching action-centre/list counts of 8, while anonymous access remains 401. Designate `1.0.10` as the experience version and verify one `自营学生` Ticket and one `家长小程序` Ticket on a physical phone.
 
 - Reminder brand/web-entry rollout: r273 is live at runtime commit `67e6add`; production sync is healthy with 12/12 parent reminders using the parent miniapp, 8/8 teacher reminders offering employee miniapp plus `sgtmanage.com/teacher`, zero false corrections and zero superseded reminders. Previously downloaded images remain static and must be downloaded again.
 
@@ -193,7 +193,7 @@
   - false correction and superseded-reminder counts are both zero
   - runtime commit `67e6add` aligned local/GitHub/server; PM2 PID `2516152`, admin health 200 and teacher authentication redirect 307
 
-## 2026-07-19-r274 Ready
+## 2026-07-19-r274 Live
 
 - Scope: make the employee “工单待处理” count and destination use the same all-source Ticket scope.
 - Business impact:
@@ -212,8 +212,10 @@
   - `npx tsx --test tests/miniapp-action-center.test.ts tests/miniapp-emily-request-intake.test.ts tests/miniapp-first-scheduling.test.ts tests/ticket-scheduling-actions.test.ts`
   - `npm run build`
 - Post-deploy verification:
-  - Confirm local, GitHub and server commits align, PM2 is online and `/admin/login` returns HTTP 200.
-  - Confirm the production all-source open count equals the unified employee list count without mutating Ticket data.
+  - Runtime commit `ec0716a` aligned locally, on GitHub and on the server; PM2 PID `2544876` was online and `/admin/login` returned HTTP 200.
+  - Production action-centre and unified-list open counts both equal 8 without mutating Ticket data: 7 `自营学生` and 1 `家长小程序`.
+  - Both unauthenticated staff-list variants returned HTTP 401.
+  - WeChat development version `1.0.10` uploaded at 484,435 bytes (473.1 KB).
 
 ## 2026-07-19-r272 Ready
 
