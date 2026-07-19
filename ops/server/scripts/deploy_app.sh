@@ -63,6 +63,19 @@ else
   echo "WARNING: SKIP_RELEASE_DOC_CHECK=true (release doc gate bypassed)"
 fi
 
+# Share images are rendered server-side through librsvg/fontconfig. Keep a real
+# Simplified Chinese font available so Chinese reminder copy never becomes tofu boxes.
+if ! fc-list :lang=zh 2>/dev/null | grep -q .; then
+  echo "Installing production CJK font support..."
+  sudo -n apt-get update -qq
+  sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends fontconfig fonts-noto-cjk
+  fc-cache -f
+fi
+if ! fc-match "Noto Sans CJK SC" 2>/dev/null | grep -qi "NotoSansCJK"; then
+  echo "Production CJK font verification failed."
+  exit 1
+fi
+
 cat > .env <<EOF
 NODE_ENV=production
 NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL

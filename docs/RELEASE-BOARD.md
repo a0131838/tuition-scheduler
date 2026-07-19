@@ -14,13 +14,15 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-19-r269` at runtime feature commit `72e6695`. Six role-aware employee-miniapp workspaces are live, and WeChat development version `1.0.8` is uploaded at 463.5 KB. Experience-version designation and controlled physical-phone checks remain.
+- Current release line on this branch: `2026-07-19-r270` is ready to correct production Chinese-font and mixed-language wrapping failures in reminder share images. Current production remains `2026-07-19-r269` until the guarded release completes.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
+
+- Reminder share-image CJK rollout: production currently lacks a Chinese font, so existing downloaded PNGs show tofu boxes even though reminder text data is correct. `2026-07-19-r270` adds a verified Noto CJK deployment dependency and word-aware wrapping; after deploy, regenerate a real reminder image and visually confirm Chinese, title/body spacing and full English words before forwarding it.
 
 - Employee action-centre rollout: `2026-07-19-r269` is live at runtime feature commit `72e6695` and uploaded as WeChat development version `1.0.8` (463.5 KB). Designate `1.0.8` as the experience version and run one controlled physical-phone pass for Emily, Eva and both Jasmine accounts. Complex receipt/finance reconciliation remains on web; consultation screenshots are retained but are not OCR-parsed. Do not fabricate payroll, approval, lead, feedback or schedule data solely for testing.
 
@@ -165,6 +167,27 @@
 - Workspace-access-form risk: `2026-05-29-r160` lets the owner manager edit Sales/CS focused workspace access from System User Admin; verify non-owner managers cannot write this endpoint and that main roles remain unchanged.
 - Tutor-Wise-payment-profile risk: `2026-05-29-r161` removes Bank Transfer as a new tutor payment method and adds Wise details plus finance review status; finance should verify PayNow/Wise details before payout exports are used.
 - Teacher-notice-attachment risk: `2026-05-30-r162` lets teachers open only the active Shared Docs file attached to an active teacher notice; verify the notice attachment is intentional before publishing because the full Shared Docs library remains manager/admin controlled.
+
+## 2026-07-19-r270 Ready
+
+- Scope: make downloaded parent reminder images reliably readable on the Ubuntu production host.
+- Business impact:
+  - Chinese reminder text renders as Chinese instead of Unicode/tofu boxes.
+  - English words stay intact and use the available card width.
+  - Long titles can occupy two lines without colliding with the body.
+- Safety:
+  - no reminder content, recipient, timing or state transition change
+  - no mini-program/web UI change
+  - no database migration or business-data write
+  - deployment installs the Ubuntu Noto CJK package only when Chinese font coverage is absent and verifies the expected family before continuing
+- Verification before deploy:
+  - current production font inventory confirms the missing CJK dependency
+  - current reminder data re-rendered locally with correct Chinese and wrapping
+  - 7 focused tests, all 86 backend tests, TypeScript, shell syntax and the 208-route production build passed
+- Post-deploy verification:
+  - `fc-list :lang=zh` and `fc-match "Noto Sans CJK SC"`
+  - production render of the same reminder record visually checked
+  - local/GitHub/server commit equality, PM2 PID and `/admin/login` HTTP 200
 
 ## 2026-07-19-r269 Live
 

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import sharp from "sharp";
-import { buildCommunicationShareImage } from "@/lib/communication-share-image";
+import { buildCommunicationShareImage, wrapCommunicationLine } from "@/lib/communication-share-image";
 
 const migrationPath = new URL("../prisma/migrations/20260718190000_add_parent_communication_center/migration.sql", import.meta.url);
 
@@ -54,4 +54,18 @@ test("WeChat share image is a readable 1080 by 1440 PNG", async () => {
   assert.equal(metadata.width, 1080);
   assert.equal(metadata.height, 1440);
   assert.ok(image.length > 10_000);
+});
+
+test("WeChat share image wrapping preserves English words and fits mixed Chinese copy", () => {
+  const lines = wrapCommunicationLine("家长您好 Daisy，请及时联系我们 / Please contact us promptly if anything changes.", 34);
+  assert.ok(lines.length >= 2);
+  assert.equal(lines.join(" ").includes("cont act"), false);
+  assert.equal(lines.join(" ").includes("anythin g"), false);
+  assert.ok(lines.every((line) => Array.from(line).length <= 34));
+});
+
+test("production deploy guarantees a verified Simplified Chinese font", async () => {
+  const source = await readFile(new URL("../ops/server/scripts/deploy_app.sh", import.meta.url), "utf8");
+  assert.match(source, /fonts-noto-cjk/);
+  assert.match(source, /fc-match "Noto Sans CJK SC"/);
 });
