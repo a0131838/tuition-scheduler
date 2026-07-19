@@ -30,6 +30,7 @@
 
     <view class="task-detail" wx:if="{{expandedId === item.id}}">
       <view class="detail-title">{{item.title}}</view>
+      <view class="feedback-flow {{item.feedbackNeedsPublish ? 'review-step' : 'send-step'}}" wx:if="{{item.isFeedback}}">{{item.feedbackFlowLabel}}</view>
       <view class="latest-history" wx:if="{{item.latestHistoryText}}">最近操作：{{item.latestHistoryText}}</view>
       <view class="automatic-status">{{item.automaticStatusText}} · 人工微信：{{item.isCompleted ? '已发送' : '待处理'}}</view>
       <button class="claim" wx:if="{{!item.isCompleted}}" data-id="{{item.id}}" bindtap="claim">领取这项任务</button>
@@ -41,16 +42,18 @@
         <view class="section-label">家长最终展示版</view>
         <textarea class="editor" value="{{item.parentContentDraft}}" data-index="{{idx}}" bindinput="inputParentContent" auto-height maxlength="-1" />
         <view class="review-note" wx:if="{{item.feedback.reviewNote}}">退回原因：{{item.feedback.reviewNote}}</view>
-        <view class="action-row" wx:if="{{item.feedbackNeedsPublish}}"><button class="action primary" data-index="{{idx}}" bindtap="publish">审核并发布</button><button class="action" data-id="{{item.id}}" bindtap="returnFeedback">退回老师</button></view>
-        <view class="published" wx:else>已发布到家长小程序</view>
+        <view class="action-row" wx:if="{{item.feedbackNeedsPublish}}"><button class="action primary" data-index="{{idx}}" bindtap="publish">第1步：审核并发布</button><button class="action" data-id="{{item.id}}" bindtap="returnFeedback">退回老师</button></view>
+        <view class="published" wx:else>第1步已完成：已发布到家长小程序，请继续完成下方微信群发送。</view>
       </view>
 
       <view class="send" wx:if="{{item.canSend}}">
-        <view class="section-label">{{item.isTeacherReminder ? '发给老师的微信文案' : '发到家长群的微信文案'}}</view><view class="message">{{item.messageText}}</view>
+        <view class="send-heading">{{item.isFeedback ? '第2步：人工发送到家长微信群' : (item.isTeacherReminder ? '发给老师的微信文案' : '发到家长群的微信文案')}}</view>
+        <view class="send-instruction" wx:if="{{item.isFeedback}}">复制下面文案或保存图片，在微信中发到对应家长群。小程序发布不能代替人工发群。</view>
+        <view class="section-label">待发送文案</view><view class="message">{{item.messageText}}</view>
         <input class="input compact" value="{{item.groupDraft}}" data-index="{{idx}}" bindinput="inputGroup" placeholder="{{item.isTeacherReminder ? '老师微信' : '家长群名称'}}" />
         <input class="input compact" value="{{item.noteDraft}}" data-index="{{idx}}" bindinput="inputNote" placeholder="备注（可选）" />
-        <view class="action-grid"><button class="action" data-index="{{idx}}" bindtap="copyMessage">复制文案</button><button class="action" data-id="{{item.id}}" bindtap="saveImage">保存转发图片</button><button class="action" data-id="{{item.id}}" bindtap="uploadEvidence">上传发送截图</button><button class="action" data-id="{{item.id}}" bindtap="retry">重试自动提醒</button></view>
-        <button class="confirm" wx:if="{{!item.isCompleted}}" data-index="{{idx}}" bindtap="markSent">确认已人工发送</button>
+        <view class="action-grid"><button class="action primary-soft" data-index="{{idx}}" bindtap="copyMessage">① 复制微信群文案</button><button class="action" data-id="{{item.id}}" bindtap="saveImage">② 或保存转发图片</button><button class="action" data-id="{{item.id}}" bindtap="uploadEvidence">③ 上传发送截图</button><button class="action" data-id="{{item.id}}" bindtap="retry">重试自动提醒</button></view>
+        <button class="confirm" wx:if="{{!item.isCompleted}}" data-index="{{idx}}" bindtap="markSent">④ 确认已发到{{item.isTeacherReminder ? '老师微信' : '家长微信群'}}</button>
         <view class="published" wx:else>已完成人工发送</view>
         <view class="evidence" wx:if="{{item.evidenceUrl}}">发送截图已留档</view>
       </view>

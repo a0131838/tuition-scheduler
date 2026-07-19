@@ -83,9 +83,23 @@ test("course reminders use an absolute Singapore date with weekday", async () =>
 test("communication workbench separates feedback, parent, teacher and correction queues", async () => {
   const markup = await readFile(new URL("../miniapp/boss-academic-parent/pages/staff-communications/staff-communications.wxml", import.meta.url), "utf8");
   const script = await readFile(new URL("../miniapp/boss-academic-parent/pages/staff-communications/staff-communications.js", import.meta.url), "utf8");
-  for (const label of ["审核反馈", "发给家长", "发给老师", "更正通知"]) assert.match(markup + script, new RegExp(label));
+  for (const label of ["课后反馈", "发给家长", "发给老师", "更正通知"]) assert.match(markup + script, new RegExp(label));
   assert.match(markup, /反馈完整度/);
   assert.match(markup, /expandedId === item\.id/);
+});
+
+test("feedback publication visibly continues into manual WeChat group delivery", async () => {
+  const markup = await readFile(new URL("../miniapp/boss-academic-parent/pages/staff-communications/staff-communications.wxml", import.meta.url), "utf8");
+  const script = await readFile(new URL("../miniapp/boss-academic-parent/pages/staff-communications/staff-communications.js", import.meta.url), "utf8");
+  const service = await readFile(new URL("../lib/parent-communication-center.ts", import.meta.url), "utf8");
+  assert.match(markup, /第1步：审核并发布/);
+  assert.match(markup, /第2步：人工发送到家长微信群/);
+  assert.match(markup, /小程序发布不能代替人工发群/);
+  assert.match(markup, /确认已发到/);
+  assert.match(script, /filter: "READY_TO_SEND", expandedId: row\.id/);
+  assert.match(script, /channel: row\.isTeacherReminder \? "WECHAT_DIRECT" : "WECHAT_GROUP"/);
+  assert.match(service, /action === "manual_sent"/);
+  assert.match(service, /MARK_MANUAL_SENT/);
 });
 
 test("teacher reminder images use teacher-specific header and staff miniapp footer", async () => {

@@ -1,7 +1,7 @@
 const api = require("../../utils/api");
 
 const kindLabels = {
-  FEEDBACK: "审核反馈",
+  FEEDBACK: "课后反馈",
   COURSE_REMINDER_PARENT: "发给家长",
   COURSE_REMINDER_TEACHER: "发给老师",
   COURSE_CHANGE: "更正通知"
@@ -39,7 +39,7 @@ Page({
     kind: "FEEDBACK",
     expandedId: "",
     workstreams: [
-      { value: "FEEDBACK", label: "审核反馈", count: 0 },
+      { value: "FEEDBACK", label: "课后反馈", count: 0 },
       { value: "COURSE_REMINDER_PARENT", label: "发给家长", count: 0 },
       { value: "COURSE_REMINDER_TEACHER", label: "发给老师", count: 0 },
       { value: "COURSE_CHANGE", label: "更正通知", count: 0 }
@@ -77,6 +77,7 @@ Page({
             isTeacherReminder: item.kind === "COURSE_REMINDER_TEACHER",
             recipientLabel: item.kind === "COURSE_REMINDER_TEACHER" ? teacherRecipient(item.teacher && item.teacher.name) : (item.student && item.student.name ? `${item.student.name}家长` : "家长"),
             feedbackNeedsPublish: item.kind === "FEEDBACK" && item.feedback && item.feedback.reviewStatus !== "PUBLISHED",
+            feedbackFlowLabel: item.kind !== "FEEDBACK" ? "" : item.status === "COMPLETED" ? "已完成：小程序发布 + 微信群发送" : item.feedback && item.feedback.reviewStatus === "PUBLISHED" ? "第2步：发到家长微信群" : "第1步：审核并发布",
             needsReview: item.status === "PENDING_REVIEW" || item.status === "RETURNED",
             canSend: ["READY_TO_SEND", "CLAIMED", "ATTENTION", "COMPLETED"].includes(item.status),
             isCompleted: item.status === "COMPLETED",
@@ -104,11 +105,13 @@ Page({
   inputGroup(e) { this.setData({ [`tasks[${e.currentTarget.dataset.index}].groupDraft`]: e.detail.value }); },
   inputNote(e) { this.setData({ [`tasks[${e.currentTarget.dataset.index}].noteDraft`]: e.detail.value }); },
 
-  patch(id, action, data) {
+  patch(id, action, data, nextState) {
     this.setData({ loading: true });
     return api.requestStaff(`/api/miniapp/staff/communications/${id}`, { method: "PATCH", data: { action, data: data || {} }, timeout: 30000 })
+      .then(() => new Promise((resolve) => nextState ? this.setData(nextState, resolve) : resolve()))
       .then(() => this.load(false))
-      .catch((err) => api.toast(err.message))
+      .then(() => true)
+      .catch((err) => { api.toast(err.message); return false; })
       .finally(() => this.setData({ loading: false }));
   },
 
@@ -117,7 +120,15 @@ Page({
     const row = this.data.tasks[e.currentTarget.dataset.index];
     if (!row.parentContentDraft.trim()) return api.toast("请先填写完整的家长展示版反馈");
     if (row.missingText) return api.toast(row.missingText);
-    wx.showModal({ title: "确认发布", content: `${row.recipientLabel}\n${row.dateLabel || "课程日期待确认"}\n发布后家长可在小程序查看。`, success: (res) => res.confirm && this.patch(row.id, "publish_feedback", { parentContent: row.parentContentDraft }) });
+    wx.showModal({
+      title: "确认发布第1步",
+      content: `${row.recipientLabel}\n${row.dateLabel || "课程日期待确认"}\n发布后家长可在小程序查看；接下来仍要人工发送到家长微信群。`,
+      success: (res) => {
+        if (!res.confirm) return;
+        this.patch(row.id, "publish_feedback", { parentContent: row.parentContentDraft }, { filter: "READY_TO_SEND", expandedId: row.id })
+          .then((ok) => ok && wx.showModal({ title: "第1步已完成", content: "已自动切换到待发送。请继续复制文案或保存图片，发到家长微信群后确认已发送。", showCancel: false }));
+      }
+    });
   },
   returnFeedback(e) {
     const id = e.currentTarget.dataset.id;
