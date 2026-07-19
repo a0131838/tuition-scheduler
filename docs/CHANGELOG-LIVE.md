@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-19-r273
+
+- Release ID: `2026-07-19-r273`
+- Date/Time (Asia/Shanghai): `2026-07-19`
+- Deployment status: `READY`
+- Scope: make reminder presentation changes compare real course lines and prevent internal synchronization flags from entering Prisma writes.
+- Key files:
+  - `lib/parent-communication-center.ts`
+  - `tests/parent-communication-center.test.ts`
+  - `docs/tasks/TASK-20260719-reminder-presentation-sync-guard.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low roll-forward for an active sync failure. No false correction was inserted; one completed reminder received an accidental `supersededAt` timestamp and will be repaired after deploy only under an exact no-correction precondition.
+- Verification: 13 focused communication tests, all 222 repository tests, TypeScript and the 208-route production build passed; the regression distinguishes portal-copy changes from real course-time changes and verifies control fields are excluded from Prisma data.
+- Rollback point: `921f2f5913ced880a734cfd5ee97228e851b6988` (`2026-07-19-r271`) if both r272 and r273 must be removed.
+
+---
+
 ## 2026-07-19-r272
 
 - Release ID: `2026-07-19-r272`

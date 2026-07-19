@@ -20,6 +20,19 @@ function fingerprint(value: string) {
   return crypto.createHash("sha256").update(value).digest("hex");
 }
 
+export function reminderScheduleLines(value: string) {
+  return String(value ?? "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => /^\d{1,2}:\d{2}\s*[–-]\s*\d{1,2}:\d{2}\b/.test(line));
+}
+
+function hasSameReminderSchedule(existingText: string, nextText: string) {
+  const existingLines = reminderScheduleLines(existingText);
+  const nextLines = reminderScheduleLines(nextText);
+  return existingLines.length > 0 && JSON.stringify(existingLines) === JSON.stringify(nextLines);
+}
+
 function compact(value: string, max = 260) {
   const text = String(value ?? "").replace(/\s+/g, " ").trim();
   return text.length > max ? `${text.slice(0, max)}…` : text;
@@ -64,11 +77,12 @@ async function upsertCommunicationTask(input: {
   wechatGroupName?: string | null;
   presentationOnlyIfBodyUnchanged?: boolean;
 }) {
+  const { presentationOnlyIfBodyUnchanged = false, ...taskData } = input;
   const contentFingerprint = fingerprint(input.messageText);
   const existing = await prisma.parentCommunicationTask.findUnique({ where: { taskKey: input.taskKey } });
   if (!existing) {
     return prisma.parentCommunicationTask.create({
-      data: { ...input, priority: input.priority ?? "NORMAL", contentFingerprint },
+      data: { ...taskData, priority: input.priority ?? "NORMAL", contentFingerprint },
     });
   }
   if (existing.contentFingerprint === contentFingerprint) {
@@ -79,8 +93,8 @@ async function upsertCommunicationTask(input: {
   }
 
   if (
-    input.presentationOnlyIfBodyUnchanged &&
-    existing.messageText.split("\n").slice(1).join("\n") === input.messageText.split("\n").slice(1).join("\n")
+    presentationOnlyIfBodyUnchanged &&
+    hasSameReminderSchedule(existing.messageText, input.messageText)
   ) {
     return prisma.parentCommunicationTask.update({
       where: { id: existing.id },
@@ -98,7 +112,7 @@ async function upsertCommunicationTask(input: {
     return prisma.parentCommunicationTask.upsert({
       where: { taskKey: correctionKey },
       create: {
-        ...input,
+        ...taskData,
         taskKey: correctionKey,
         kind: feedbackRevision ? "FEEDBACK" : "COURSE_CHANGE",
         status: feedbackRevision ? input.status : "ATTENTION",

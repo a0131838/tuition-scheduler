@@ -4,6 +4,7 @@ import test from "node:test";
 import sharp from "sharp";
 import { buildCommunicationShareImage, wrapCommunicationLine } from "@/lib/communication-share-image";
 import { formatBusinessDateWithWeekday } from "@/lib/date-only";
+import { reminderScheduleLines } from "@/lib/parent-communication-center";
 
 const migrationPath = new URL("../prisma/migrations/20260718190000_add_parent_communication_center/migration.sql", import.meta.url);
 
@@ -111,4 +112,16 @@ test("course reminders direct each audience to an available schedule surface", a
   assert.match(source, /https:\/\/sgtmanage\.com\/teacher/);
   assert.match(web, /网页版老师端/);
   assert.match(web, /家长和学生从家长小程序查看/);
+});
+
+test("presentation-only reminder changes compare real course lines and never leak control fields", async () => {
+  const before = "老师您好，请进入员工小程序：\n10:00–12:00 English · Daisy · Online\n如有变化请联系教务。";
+  const after = "老师您好，请进入员工小程序或网页版老师端：\nhttps://sgtmanage.com/teacher\n10:00–12:00 English · Daisy · Online\n如有变化请联系教务。";
+  const changedCourse = after.replace("10:00–12:00", "11:00–13:00");
+  assert.deepEqual(reminderScheduleLines(before), reminderScheduleLines(after));
+  assert.notDeepEqual(reminderScheduleLines(before), reminderScheduleLines(changedCourse));
+  const source = await readFile(new URL("../lib/parent-communication-center.ts", import.meta.url), "utf8");
+  assert.match(source, /const \{ presentationOnlyIfBodyUnchanged = false, \.\.\.taskData \} = input/);
+  assert.match(source, /data: \{ \.\.\.taskData/);
+  assert.doesNotMatch(source, /data: \{ \.\.\.input/);
 });
