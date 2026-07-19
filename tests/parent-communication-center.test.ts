@@ -92,3 +92,11 @@ test("teacher reminder images use teacher-specific header and staff miniapp foot
   assert.match(source, /老师课程确认/);
   assert.match(source, /staff miniapp/);
 });
+
+test("teacher reminder avoids duplicate teacher honorifics", async () => {
+  const source = await readFile(new URL("../lib/parent-communication-center.ts", import.meta.url), "utf8");
+  const miniapp = await readFile(new URL("../miniapp/boss-academic-parent/pages/staff-communications/staff-communications.js", import.meta.url), "utf8");
+  assert.match(source, /value\.endsWith\("老师"\) \? value : `\$\{value\}老师`/);
+  assert.match(source, /teacherSalutation\(teacher\.name\)/);
+  assert.match(miniapp, /value\.endsWith\("老师"\) \? value : `\$\{value\}老师`/);
+});

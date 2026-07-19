@@ -29,6 +29,11 @@ function courseLabel(session: any) {
   return [session.class.course?.name, session.class.subject?.name, session.class.level?.name].filter(Boolean).join(" / ");
 }
 
+function teacherSalutation(name: string) {
+  const value = name.trim();
+  return value.endsWith("老师") ? value : `${value}老师`;
+}
+
 function locationLabel(session: any) {
   if (session.class.campus?.isOnline) return "线上课程 / Online";
   return [session.class.campus?.name, session.class.room?.name].filter(Boolean).join(" · ") || "待确认 / To confirm";
@@ -286,7 +291,7 @@ async function syncTomorrowReminderTasks() {
       teacherId: teacher.id,
       title: `${teacher.name} · ${shortDateLabel}课程确认`,
       messageText: [
-        `${teacher.name}老师您好，以下是${fullDateLabel}的课程，请进入员工小程序核对并完成确认：`,
+        `${teacherSalutation(teacher.name)}您好，以下是${fullDateLabel}的课程，请进入员工小程序核对并完成确认：`,
         ...lines,
         "如有时间、学生或地点问题，请立即联系教务。 / Please contact Academic Operations immediately if any detail is incorrect.",
       ].join("\n"),

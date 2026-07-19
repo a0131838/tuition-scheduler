@@ -21,6 +21,7 @@ This file is the single source of truth for what changed in production.
 - Date/Time (Asia/Shanghai): `2026-07-19`
 - Deployment status: `READY`
 - Scope: make communication tasks date-explicit and separated by workflow, make feedback review visibly complete, and make staff-uploaded Ticket attachments viewable through an authenticated audited miniapp flow.
+- Production-data compatibility: teacher names that already include the “老师” suffix are normalized so the generated salutation and miniapp recipient label do not duplicate the honorific.
 - Key files:
   - `lib/parent-communication-center.ts`
   - `app/admin/communications/CommunicationCenterClient.tsx`

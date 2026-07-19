@@ -175,6 +175,7 @@
 - Scope: date-explicit role-aware communication work queues, complete feedback review and authenticated staff Ticket attachments.
 - Business impact:
   - reminder cards, copy and images use an absolute Singapore date with weekday
+  - teacher names already ending in “老师” keep a single honorific in generated reminders and recipient labels
   - feedback review shows seven required items and blocks incomplete publication
   - Feedback, Parent, Teacher and Correction work no longer share one expanded list
   - existing staff-uploaded Ticket screenshots appear as previewable attachments and every upload/view is audited
@@ -184,7 +185,7 @@
   - unchanged reminder session lines are treated as presentation-only wording updates to avoid false corrections
   - old Ticket proof URLs remain compatible
 - Verification before deploy:
-  - 18 focused tests and all 219 repository tests passed
+  - focused regressions and all 220 repository tests passed
   - TypeScript, native miniapp JavaScript, 41-page miniapp audit and 208-route build passed
   - WeChat CLI preview passed at 483,000 bytes (471.7 KB)
   - production read-only compatibility check found 0 incomplete open feedback reviews and 2 attachment URLs on 1 Ticket

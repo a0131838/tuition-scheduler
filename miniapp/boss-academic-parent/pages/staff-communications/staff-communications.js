@@ -23,6 +23,12 @@ const feedbackSectionLabels = [
   ["parentNote", "家长需要知道"]
 ];
 
+function teacherRecipient(name) {
+  const value = String(name || "").trim();
+  if (!value) return "老师";
+  return value.endsWith("老师") ? value : `${value}老师`;
+}
+
 Page({
   data: {
     tasks: [],
@@ -69,7 +75,7 @@ Page({
             statusLabel: statusLabels[item.status] || item.status,
             isFeedback: item.kind === "FEEDBACK",
             isTeacherReminder: item.kind === "COURSE_REMINDER_TEACHER",
-            recipientLabel: item.kind === "COURSE_REMINDER_TEACHER" ? (item.teacher && item.teacher.name ? `${item.teacher.name}老师` : "老师") : (item.student && item.student.name ? `${item.student.name}家长` : "家长"),
+            recipientLabel: item.kind === "COURSE_REMINDER_TEACHER" ? teacherRecipient(item.teacher && item.teacher.name) : (item.student && item.student.name ? `${item.student.name}家长` : "家长"),
             feedbackNeedsPublish: item.kind === "FEEDBACK" && item.feedback && item.feedback.reviewStatus !== "PUBLISHED",
             needsReview: item.status === "PENDING_REVIEW" || item.status === "RETURNED",
             canSend: ["READY_TO_SEND", "CLAIMED", "ATTENTION", "COMPLETED"].includes(item.status),

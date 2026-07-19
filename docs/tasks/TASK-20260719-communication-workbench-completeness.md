@@ -17,6 +17,7 @@ Read-only production inspection found zero currently open feedback reviews that 
 - Format reminder titles and copy with the absolute Singapore business date and weekday while retaining “tomorrow” only as context outside the canonical date.
 - Treat the first date-only reminder wording migration as a presentation update when the underlying session lines are unchanged, avoiding false correction tasks for previously sent reminders.
 - Render teacher share images with a teacher-specific header and employee-miniapp footer.
+- Normalize teacher salutations so names already ending in “老师” never render as “老师老师”.
 - Split the miniapp and web communication desks into Feedback Review, Send to Parent, Send to Teacher and Correction queues with per-queue open counts.
 - Keep list rows compact and expand only the selected task.
 - Project five structured parent-feedback sections plus homework and previous-homework completion into the review workspace, show a 7/7 completeness result, and block publication when a required item is missing.
@@ -42,7 +43,8 @@ Read-only production inspection found zero currently open feedback reviews that 
 - The full production build generated all 208 routes/pages.
 - WeChat Developer Tools CLI preview passed for AppID `wxe7017f8545e8ad49`; package size is 483,000 bytes (471.7 KB).
 - Read-only production compatibility check: 0 incomplete open feedback reviews, 1 Ticket with proof and 2 historical attachment URLs.
-- Production deploy, authenticated endpoint checks, real reminder regeneration, old attachment read and development-version upload remain required.
+- The first guarded production deploy completed at `134d229`; read-only inspection confirmed real `2026年7月20日（周一）` reminders and historical Ticket attachment counts, and exposed one duplicate-honorific edge case that is covered by the follow-up regression test before final release.
+- Final guarded deploy, endpoint checks, corrected reminder regeneration and replacement development-version upload remain required.
 
 ## Risk
 
