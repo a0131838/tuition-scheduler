@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import sharp from "sharp";
 import { buildCommunicationShareImage, wrapCommunicationLine } from "@/lib/communication-share-image";
+import { formatBusinessDateWithWeekday } from "@/lib/date-only";
 
 const migrationPath = new URL("../prisma/migrations/20260718190000_add_parent_communication_center/migration.sql", import.meta.url);
 
@@ -68,4 +69,26 @@ test("production deploy guarantees a verified Simplified Chinese font", async ()
   const source = await readFile(new URL("../ops/server/scripts/deploy_app.sh", import.meta.url), "utf8");
   assert.match(source, /fonts-noto-cjk/);
   assert.match(source, /fc-match "Noto Sans CJK SC"/);
+});
+
+test("course reminders use an absolute Singapore date with weekday", async () => {
+  assert.equal(formatBusinessDateWithWeekday(new Date("2026-07-19T16:00:00.000Z")), "2026年7月20日（周一）");
+  assert.equal(formatBusinessDateWithWeekday(new Date("2026-07-19T16:00:00.000Z"), { short: true }), "7月20日（周一）");
+  const source = await readFile(new URL("../lib/parent-communication-center.ts", import.meta.url), "utf8");
+  assert.match(source, /的课程如下/);
+  assert.match(source, /presentationOnlyIfBodyUnchanged/);
+});
+
+test("communication workbench separates feedback, parent, teacher and correction queues", async () => {
+  const markup = await readFile(new URL("../miniapp/boss-academic-parent/pages/staff-communications/staff-communications.wxml", import.meta.url), "utf8");
+  const script = await readFile(new URL("../miniapp/boss-academic-parent/pages/staff-communications/staff-communications.js", import.meta.url), "utf8");
+  for (const label of ["审核反馈", "发给家长", "发给老师", "更正通知"]) assert.match(markup + script, new RegExp(label));
+  assert.match(markup, /反馈完整度/);
+  assert.match(markup, /expandedId === item\.id/);
+});
+
+test("teacher reminder images use teacher-specific header and staff miniapp footer", async () => {
+  const source = await readFile(new URL("../lib/communication-share-image.ts", import.meta.url), "utf8");
+  assert.match(source, /老师课程确认/);
+  assert.match(source, /staff miniapp/);
 });

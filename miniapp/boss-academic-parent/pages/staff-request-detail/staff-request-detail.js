@@ -5,6 +5,8 @@ Page({
     id: "",
     request: {},
     hasAttachments: false,
+    attachments: [],
+    attachmentLoading: false,
     loading: false,
     completionResult: "",
     canComplete: false,
@@ -25,7 +27,7 @@ Page({
       .then((data) => {
         const request = data.request || {};
         const capabilities = data.capabilities || {};
-        const attachmentUrls = request.attachmentUrls || [];
+        const attachments = request.attachments || [];
         this.setData({
           request: Object.assign({}, request, {
             ticketNoText: request.ticketNo || "请求处理",
@@ -41,7 +43,8 @@ Page({
             ownerText: request.owner || request.mainOwner || "-",
             closeOwnerText: request.closeOwner || "-"
           }),
-          hasAttachments: attachmentUrls.length > 0,
+          attachments: attachments.map((item) => Object.assign({}, item, { localPath: "" })),
+          hasAttachments: attachments.length > 0,
           completionResult: request.completionResult || "",
           schedulingActions: data.schedulingActions || [],
           hasSchedulingActions: Boolean(data.schedulingActions && data.schedulingActions.length),
@@ -49,12 +52,43 @@ Page({
           completionBlockReason: capabilities.completionBlockReason || "",
           isCompleted: request.status === "Completed" || request.status === "Cancelled"
         });
+        this.loadAttachmentThumbnails(attachments);
       })
       .catch((err) => api.toast(err.message));
   },
 
   onCompletionResultInput(e) {
     this.setData({ completionResult: e.detail.value });
+  },
+
+  loadAttachmentThumbnails(attachments) {
+    (attachments || []).forEach((attachment, index) => {
+      if (!attachment.isImage) return;
+      api.downloadStaffFile(attachment.previewUrl)
+        .then((localPath) => this.setData({ [`attachments[${index}].localPath`]: localPath }))
+        .catch(() => {});
+    });
+  },
+
+  previewAttachment(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const selected = this.data.attachments[index];
+    if (!selected || this.data.attachmentLoading) return;
+    this.setData({ attachmentLoading: true });
+    if (!selected.isImage) {
+      api.openStaffDocument(selected.previewUrl, selected.name)
+        .catch((err) => api.toast(err.message))
+        .finally(() => this.setData({ attachmentLoading: false }));
+      return;
+    }
+    const images = this.data.attachments.filter((item) => item.isImage);
+    Promise.all(images.map((item) => item.localPath ? Promise.resolve(item.localPath) : api.downloadStaffFile(item.previewUrl)))
+      .then((paths) => {
+        const selectedImageIndex = images.findIndex((item) => item.url === selected.url);
+        wx.previewImage({ current: paths[Math.max(0, selectedImageIndex)], urls: paths });
+      })
+      .catch((err) => api.toast(err.message))
+      .finally(() => this.setData({ attachmentLoading: false }));
   },
 
   updateStatus(e) {

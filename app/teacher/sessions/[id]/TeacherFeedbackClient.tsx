@@ -89,6 +89,10 @@ export default function TeacherFeedbackClient({
       setErr(labels.requiredHomework);
       return;
     }
+    if (!previousHomeworkDone) {
+      setErr("Previous homework completion is required / 请选择之前作业完成情况");
+      return;
+    }
 
     setSaving(true);
     try {

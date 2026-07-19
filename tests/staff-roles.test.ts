@@ -13,9 +13,9 @@ import {
   SYSTEM_USER_ROLES,
 } from "../lib/staff-roles";
 
-test("system roles include sales and cs", () => {
+test("system roles include sales, cs and care workspaces", () => {
   assert.deepEqual(SYSTEM_USER_ROLES, ["ADMIN", "FINANCE", "SALES", "CS", "TEACHER", "STUDENT"]);
-  assert.deepEqual(STAFF_WORKSPACES, ["SALES", "CS"]);
+  assert.deepEqual(STAFF_WORKSPACES, ["SALES", "CS", "CARE"]);
   assert.equal(pickSystemUserRole("SALES"), "SALES");
   assert.equal(pickSystemUserRole("CS"), "CS");
   assert.equal(pickSystemUserRole("UNKNOWN"), "ADMIN");
@@ -42,5 +42,5 @@ test("admin users can carry extra workspace access without changing role", () =>
   assert.equal(preferredResourceWorkspace("ADMIN", []), null);
   assert.equal(preferredResourceWorkspace("CS", []), "CS");
   assert.equal(preferredResourceWorkspace("SALES", []), "SALES");
-  assert.deepEqual(pickStaffWorkspaces(["sales", "CS", "BAD", "CS"]), ["SALES", "CS"]);
+  assert.deepEqual(pickStaffWorkspaces(["sales", "CS", "CARE", "BAD", "CS"]), ["SALES", "CS", "CARE"]);
 });

@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-19-r271
+
+- Release ID: `2026-07-19-r271`
+- Date/Time (Asia/Shanghai): `2026-07-19`
+- Deployment status: `READY`
+- Scope: make communication tasks date-explicit and separated by workflow, make feedback review visibly complete, and make staff-uploaded Ticket attachments viewable through an authenticated audited miniapp flow.
+- Key files:
+  - `lib/parent-communication-center.ts`
+  - `app/admin/communications/CommunicationCenterClient.tsx`
+  - `app/api/miniapp/staff/parent-requests/[id]/attachments/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-communications/*`
+  - `miniapp/boss-academic-parent/pages/staff-request-detail/*`
+  - `docs/tasks/TASK-20260719-communication-workbench-completeness.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Medium-low. Reminder presentation, workflow navigation, feedback publication completeness and staff attachment reads change; Session, attendance, finance, payroll, package, scheduling actions and historical records remain unchanged.
+- Verification: TypeScript, native miniapp JavaScript, 18 focused tests, all 219 repository tests, the 41-page miniapp audit, the 208-route production build and a 483,000-byte WeChat Developer Tools preview passed. Read-only production compatibility check found 0 incomplete open feedback reviews and retained 2 attachment URLs on 1 existing Ticket.
+- Rollback point: `e76abc1c47d4d391d0eb0b36aa99b197e5697916` (`2026-07-19-r270`).
+
+---
+
 ## 2026-07-19-r270
 
 - Release ID: `2026-07-19-r270`

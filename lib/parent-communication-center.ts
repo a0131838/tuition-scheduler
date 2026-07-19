@@ -1,8 +1,9 @@
 import crypto from "crypto";
 import { Prisma } from "@prisma/client";
-import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly, parseBusinessDateStart } from "@/lib/date-only";
+import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessDateWithWeekday, formatBusinessTimeOnly, parseBusinessDateStart } from "@/lib/date-only";
 import { logAudit } from "@/lib/audit-log";
 import { queueFirstPublishedFeedback } from "@/lib/miniapp-feedback-notification";
+import { getMissingParentFeedbackSections, parseParentFeedbackSections } from "@/lib/parent-feedback-format";
 import { prisma } from "@/lib/prisma";
 import { getVisibleSessionStudents } from "@/lib/session-students";
 
@@ -56,6 +57,7 @@ async function upsertCommunicationTask(input: {
   dueAt?: Date | null;
   ownerName?: string | null;
   wechatGroupName?: string | null;
+  presentationOnlyIfBodyUnchanged?: boolean;
 }) {
   const contentFingerprint = fingerprint(input.messageText);
   const existing = await prisma.parentCommunicationTask.findUnique({ where: { taskKey: input.taskKey } });
@@ -69,6 +71,16 @@ async function upsertCommunicationTask(input: {
       return prisma.parentCommunicationTask.update({ where: { id: existing.id }, data: { status: input.status, note: input.status === "PENDING_REVIEW" ? null : existing.note } });
     }
     return existing;
+  }
+
+  if (
+    input.presentationOnlyIfBodyUnchanged &&
+    existing.messageText.split("\n").slice(1).join("\n") === input.messageText.split("\n").slice(1).join("\n")
+  ) {
+    return prisma.parentCommunicationTask.update({
+      where: { id: existing.id },
+      data: { title: input.title, messageText: input.messageText, contentFingerprint, dueAt: input.dueAt ?? existing.dueAt },
+    });
   }
 
   if (existing.manualSentAt || existing.status === "COMPLETED") {
@@ -228,11 +240,13 @@ async function syncTomorrowReminderTasks() {
   for (const { student, sessions: studentSessions } of byStudent.values()) {
     const link = await primaryParentLink(student.id);
     if (link?.manualReminderEnabled === false) continue;
+    const fullDateLabel = formatBusinessDateWithWeekday(studentSessions[0].startAt);
+    const shortDateLabel = formatBusinessDateWithWeekday(studentSessions[0].startAt, { short: true });
     const lines = studentSessions.map((session) =>
       `${formatBusinessTimeOnly(session.startAt)}–${formatBusinessTimeOnly(session.endAt)} ${courseLabel(session)} · ${session.teacher?.name || session.class.teacher.name} · ${locationLabel(session)}`
     );
     const messageText = [
-      `${link?.parent.name || "家长"}您好，温馨提醒，${student.name || "孩子"}明日课程如下：`,
+      `${link?.parent.name || "家长"}您好，温馨提醒，${student.name || "孩子"}在${fullDateLabel}的课程如下：`,
       ...lines,
       "如时间或安排有变化，请及时联系我们。 / Please contact us promptly if anything changes.",
     ].join("\n");
@@ -245,17 +259,20 @@ async function syncTomorrowReminderTasks() {
       studentId: student.id,
       sessionId: studentSessions.length === 1 ? studentSessions[0].id : null,
       parentId: link?.parentId ?? null,
-      title: `${student.name || "学员"} · 明日家长群课程提醒`,
+      title: `${student.name || "学员"} · ${shortDateLabel}家长课程提醒`,
       messageText,
       dueAt: range.start,
       ownerName: link?.communicationOwner ?? null,
       wechatGroupName: link?.wechatGroupName ?? null,
+      presentationOnlyIfBodyUnchanged: true,
     });
     count += 1;
   }
 
   const activeTeacherKeys = new Set<string>();
   for (const { teacher, sessions: teacherSessions } of byTeacher.values()) {
+    const fullDateLabel = formatBusinessDateWithWeekday(teacherSessions[0].startAt);
+    const shortDateLabel = formatBusinessDateWithWeekday(teacherSessions[0].startAt, { short: true });
     const lines = teacherSessions.map((session) => {
       const names = getVisibleSessionStudents(session).map((item) => item.name).filter(Boolean).join("、") || "待确认学生";
       return `${formatBusinessTimeOnly(session.startAt)}–${formatBusinessTimeOnly(session.endAt)} ${courseLabel(session)} · ${names} · ${locationLabel(session)}`;
@@ -267,13 +284,14 @@ async function syncTomorrowReminderTasks() {
       kind: "COURSE_REMINDER_TEACHER",
       status: "READY_TO_SEND",
       teacherId: teacher.id,
-      title: `${teacher.name} · 明日课程确认`,
+      title: `${teacher.name} · ${shortDateLabel}课程确认`,
       messageText: [
-        `${teacher.name}老师您好，明日课程如下，请进入员工小程序核对并完成确认：`,
+        `${teacher.name}老师您好，以下是${fullDateLabel}的课程，请进入员工小程序核对并完成确认：`,
         ...lines,
         "如有时间、学生或地点问题，请立即联系教务。 / Please contact Academic Operations immediately if any detail is incorrect.",
       ].join("\n"),
       dueAt: range.start,
+      presentationOnlyIfBodyUnchanged: true,
     });
     count += 1;
   }
@@ -327,9 +345,10 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
   }
   if (input.kind && input.kind !== "ALL") where.kind = input.kind;
   const limit = Math.min(Math.max(input.limit ?? 200, 1), 500);
-  const [rows, summaryRows, staff] = await Promise.all([
+  const [rows, summaryRows, kindStatusRows, staff] = await Promise.all([
     prisma.parentCommunicationTask.findMany({ where, orderBy: [{ priority: "asc" }, { dueAt: "asc" }, { createdAt: "desc" }], take: limit }),
     prisma.parentCommunicationTask.groupBy({ by: ["status"], _count: { _all: true } }),
+    prisma.parentCommunicationTask.groupBy({ by: ["kind", "status"], _count: { _all: true } }),
     prisma.user.findMany({
       where: { role: { in: ["ADMIN", "CS"] } },
       select: { id: true, name: true, role: true },
@@ -339,10 +358,12 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
   const studentIds = Array.from(new Set(rows.map((row) => row.studentId).filter((id): id is string => Boolean(id))));
   const teacherIds = Array.from(new Set(rows.map((row) => row.teacherId).filter((id): id is string => Boolean(id))));
   const feedbackIds = Array.from(new Set(rows.map((row) => row.feedbackId).filter((id): id is string => Boolean(id))));
-  const [students, teachers, feedbacks, auditRows, notificationRows] = await Promise.all([
+  const sessionIds = Array.from(new Set(rows.map((row) => row.sessionId).filter((id): id is string => Boolean(id))));
+  const [students, teachers, sessions, feedbacks, auditRows, notificationRows] = await Promise.all([
     prisma.student.findMany({ where: { id: { in: studentIds } }, select: { id: true, name: true, school: true, grade: true } }),
     prisma.teacher.findMany({ where: { id: { in: teacherIds } }, select: { id: true, name: true } }),
-    prisma.sessionFeedback.findMany({ where: { id: { in: feedbackIds } }, select: { id: true, content: true, parentContent: true, reviewStatus: true, reviewNote: true, publishedAt: true, submittedAt: true } }),
+    prisma.session.findMany({ where: { id: { in: sessionIds } }, select: { id: true, startAt: true, endAt: true } }),
+    prisma.sessionFeedback.findMany({ where: { id: { in: feedbackIds } }, select: { id: true, content: true, parentContent: true, classPerformance: true, homework: true, previousHomeworkDone: true, actualStartAt: true, actualEndAt: true, reviewStatus: true, reviewNote: true, publishedAt: true, submittedAt: true } }),
     prisma.auditLog.findMany({ where: { entityType: "ParentCommunicationTask", entityId: { in: rows.map((row) => row.id) } }, select: { entityId: true, action: true, actorName: true, actorEmail: true, actorRole: true, createdAt: true, meta: true }, orderBy: { createdAt: "desc" }, take: 1500 }),
     prisma.miniappNotificationOutbox.findMany({
       where: {
@@ -355,6 +376,7 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
   ]);
   const studentMap = new Map(students.map((row) => [row.id, row]));
   const teacherMap = new Map(teachers.map((row) => [row.id, row]));
+  const sessionMap = new Map(sessions.map((row) => [row.id, row]));
   const feedbackMap = new Map(feedbacks.map((row) => [row.id, row]));
   const historyMap = new Map<string, typeof auditRows>();
   for (const audit of auditRows) {
@@ -376,8 +398,18 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
     return { status, counts, total: matches.length };
   }
   return {
-    tasks: rows.map((row) => ({
+    tasks: rows.map((row) => {
+      const session = row.sessionId ? sessionMap.get(row.sessionId) ?? null : null;
+      const taskDate = session?.startAt ?? row.dueAt;
+      const feedback = row.feedbackId ? feedbackMap.get(row.feedbackId) ?? null : null;
+      const sections = feedback ? parseParentFeedbackSections(feedback.classPerformance || feedback.content) : null;
+      const missingSections = feedback ? getMissingParentFeedbackSections(feedback.parentContent || feedback.content) : [];
+      const homeworkMissing = Boolean(feedback && !String(feedback.homework ?? "").trim());
+      const previousHomeworkMissing = Boolean(feedback && feedback.previousHomeworkDone === null);
+      return ({
       ...row,
+      dateLabel: taskDate ? formatBusinessDateWithWeekday(taskDate) : null,
+      shortDateLabel: taskDate ? formatBusinessDateWithWeekday(taskDate, { short: true }) : null,
       dueAt: row.dueAt?.toISOString() ?? null,
       claimedAt: row.claimedAt?.toISOString() ?? null,
       publishedAt: row.publishedAt?.toISOString() ?? null,
@@ -388,12 +420,32 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
       updatedAt: row.updatedAt.toISOString(),
       student: row.studentId ? studentMap.get(row.studentId) ?? null : null,
       teacher: row.teacherId ? teacherMap.get(row.teacherId) ?? null : null,
-      feedback: row.feedbackId ? feedbackMap.get(row.feedbackId) ?? null : null,
+      feedback: feedback ? {
+        ...feedback,
+        actualStartAt: feedback.actualStartAt?.toISOString() ?? null,
+        actualEndAt: feedback.actualEndAt?.toISOString() ?? null,
+        sections,
+        completeness: {
+          complete: missingSections.length === 0 && !homeworkMissing && !previousHomeworkMissing,
+          completed: 7 - missingSections.length - (homeworkMissing ? 1 : 0) - (previousHomeworkMissing ? 1 : 0),
+          total: 7,
+          missing: [...missingSections, ...(homeworkMissing ? ["课后作业 / Homework"] : []), ...(previousHomeworkMissing ? ["上次作业完成情况 / Previous homework"] : [])],
+        },
+      } : null,
       history: (historyMap.get(row.id) ?? []).map((audit) => ({ ...audit, createdAt: audit.createdAt.toISOString() })),
       automaticNotification: automaticSummary(row),
-    })),
+    });}),
     summary: summaryRows.reduce<Record<string, number>>((acc, row) => {
       acc[row.status] = row._count._all;
+      return acc;
+    }, {}),
+    kindSummary: kindStatusRows.reduce<Record<string, number>>((acc, row) => {
+      if (OPEN_STATUSES.includes(row.status)) acc[row.kind] = (acc[row.kind] || 0) + row._count._all;
+      return acc;
+    }, {}),
+    kindStatusSummary: kindStatusRows.reduce<Record<string, Record<string, number>>>((acc, row) => {
+      acc[row.kind] = acc[row.kind] || {};
+      acc[row.kind][row.status] = row._count._all;
       return acc;
     }, {}),
     staff,
@@ -451,6 +503,10 @@ export async function updateParentCommunicationTask(input: {
     if (!feedback) throw new Error("Feedback not found");
     const parentContent = String(data.parentContent ?? feedback.parentContent ?? feedback.content).trim();
     if (!parentContent) throw new Error("Parent-facing feedback is required");
+    const missingSections = getMissingParentFeedbackSections(parentContent);
+    if (missingSections.length) throw new Error(`家长展示版还缺少：${missingSections.join("、")}`);
+    if (!String(feedback.homework ?? "").trim()) throw new Error("家长展示版还缺少：课后作业 / Homework");
+    if (feedback.previousHomeworkDone === null) throw new Error("家长展示版还缺少：上次作业完成情况 / Previous homework");
     await prisma.$transaction([
       prisma.sessionFeedback.update({
         where: { id: feedback.id },

@@ -305,12 +305,10 @@
   <view class="card" wx:if="{{canTeachSession}}">
     <view class="label">课后作业</view>
     <textarea value="{{homework}}" bindinput="inputHomework" placeholder="请输入本次课后作业" />
-    <view class="switch-row">
-      <view>
-        <view class="label">之前作业完成</view>
-        <view class="hint">请根据实际情况选择</view>
-      </view>
-      <switch checked="{{previousHomeworkDoneChecked}}" bindchange="changePreviousHomework" />
+    <view class="field">
+      <view class="label">之前作业完成情况</view>
+      <view class="hint">必须明确选择，避免把“未填写”误认为“未完成”</view>
+      <radio-group class="homework-choice" bindchange="changePreviousHomework"><label><radio value="yes" checked="{{previousHomeworkDone === 'yes'}}" color="#ec5e0a" />已完成</label><label><radio value="no" checked="{{previousHomeworkDone === 'no'}}" color="#ec5e0a" />未完成</label></radio-group>
     </view>
   </view>
 

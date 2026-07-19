@@ -54,7 +54,15 @@
   </view>
 
   <view class="card" wx:if="{{hasAttachments}}">
-    <view class="label">附件</view>
-    <view wx:for="{{request.attachmentUrls}}" wx:key="*this" class="subtitle">{{item}}</view>
+    <view class="attachment-head"><view><view class="label">工单附件</view><view class="subtitle">共 {{attachments.length}} 个 · 点击查看</view></view><view class="attachment-loading" wx:if="{{attachmentLoading}}">读取中…</view></view>
+    <view class="attachment-grid">
+      <view class="attachment-item" wx:for="{{attachments}}" wx:key="url" data-index="{{index}}" bindtap="previewAttachment">
+        <image wx:if="{{item.isImage && item.localPath}}" class="attachment-image" src="{{item.localPath}}" mode="aspectFill" />
+        <view wx:elif="{{item.isImage}}" class="attachment-file">图片读取中</view>
+        <view wx:else class="attachment-file">文件</view>
+        <view class="attachment-name">{{item.name}}</view>
+      </view>
+    </view>
   </view>
+  <view class="card attachment-empty" wx:else><view class="label">工单附件</view><view class="subtitle">这张工单没有上传截图或文件。</view></view>
 </view>

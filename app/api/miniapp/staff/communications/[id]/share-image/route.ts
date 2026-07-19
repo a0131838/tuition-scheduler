@@ -11,7 +11,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (!auth.ok) return auth.response;
   if (!canManageMiniappSchedulingCoordination(auth.user)) return bad("Communication center permission required", 403);
   const { id } = await params;
-  const task = await prisma.parentCommunicationTask.findUnique({ where: { id }, select: { title: true, messageText: true } });
+  const task = await prisma.parentCommunicationTask.findUnique({ where: { id }, select: { title: true, messageText: true, kind: true } });
   if (!task) return bad("Communication task not found", 404);
   const image = await buildCommunicationShareImage(task);
   return new Response(new Uint8Array(image), { headers: { "content-type": "image/png", "cache-control": "no-store" } });

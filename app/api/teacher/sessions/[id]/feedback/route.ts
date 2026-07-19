@@ -56,6 +56,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     });
   }
   if (!homework) return bad("Homework is required", 409);
+  if (previousHomeworkDone === null) return bad("Previous homework completion is required", 409);
 
   const session = await prisma.session.findUnique({
     where: { id: sessionId },

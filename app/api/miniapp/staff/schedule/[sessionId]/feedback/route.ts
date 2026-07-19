@@ -97,6 +97,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sessionId: str
     });
   }
   if (!homework) return bad("Homework is required", 409);
+  if (previousHomeworkDone === null) return bad("Previous homework completion is required", 409);
 
   const now = new Date();
   const deadline = getFeedbackDueAt(session.endAt);

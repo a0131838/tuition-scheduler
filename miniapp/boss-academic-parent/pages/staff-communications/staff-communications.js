@@ -1,34 +1,49 @@
 const api = require("../../utils/api");
 
 const kindLabels = {
-  FEEDBACK: "课后反馈",
-  COURSE_REMINDER_PARENT: "家长课程提醒",
-  COURSE_REMINDER_TEACHER: "老师课程提醒",
-  COURSE_CHANGE: "课程更正"
+  FEEDBACK: "审核反馈",
+  COURSE_REMINDER_PARENT: "发给家长",
+  COURSE_REMINDER_TEACHER: "发给老师",
+  COURSE_CHANGE: "更正通知"
 };
 const statusLabels = {
   PENDING_REVIEW: "待审核",
-  READY_TO_SEND: "待发微信群",
+  READY_TO_SEND: "待发送",
   CLAIMED: "处理中",
   RETURNED: "已退回老师",
   ATTENTION: "需更正",
-  COMPLETED: "已人工发送",
+  COMPLETED: "已发送",
   WAIVED: "无需发送"
 };
+const feedbackSectionLabels = [
+  ["lessonFocus", "本节课重点"],
+  ["currentFinding", "当前发现"],
+  ["classPerformance", "课堂表现"],
+  ["nextPlan", "下一步计划"],
+  ["parentNote", "家长需要知道"]
+];
 
 Page({
   data: {
     tasks: [],
     summary: {},
-    totalOpen: 0,
+    kindSummary: {},
     loading: false,
     filter: "OPEN",
+    kind: "FEEDBACK",
+    expandedId: "",
+    workstreams: [
+      { value: "FEEDBACK", label: "审核反馈", count: 0 },
+      { value: "COURSE_REMINDER_PARENT", label: "发给家长", count: 0 },
+      { value: "COURSE_REMINDER_TEACHER", label: "发给老师", count: 0 },
+      { value: "COURSE_CHANGE", label: "更正通知", count: 0 }
+    ],
     filters: [
       { value: "OPEN", label: "待处理" },
       { value: "PENDING_REVIEW", label: "待审核" },
-      { value: "READY_TO_SEND", label: "待发群" },
+      { value: "READY_TO_SEND", label: "待发送" },
       { value: "ATTENTION", label: "需更正" },
-      { value: "COMPLETED", label: "已发送" }
+      { value: "COMPLETED", label: "已完成" }
     ]
   },
 
@@ -38,32 +53,47 @@ Page({
   load(sync) {
     this.setData({ loading: true });
     const syncTask = sync ? api.requestStaff("/api/miniapp/staff/communications", { method: "POST", timeout: 30000 }) : Promise.resolve();
-    return syncTask.then(() => api.requestStaff(`/api/miniapp/staff/communications?status=${this.data.filter}&limit=300`, { timeout: 30000 }))
+    return syncTask.then(() => api.requestStaff(`/api/miniapp/staff/communications?status=${this.data.filter}&kind=${this.data.kind}&limit=300`, { timeout: 30000 }))
       .then((data) => {
-        const summary = data.summary || {};
-        const tasks = (data.tasks || []).map((item) => Object.assign({}, item, {
-          kindLabel: kindLabels[item.kind] || item.kind,
-          statusLabel: statusLabels[item.status] || item.status,
-          isFeedback: item.kind === "FEEDBACK",
-          feedbackNeedsPublish: item.kind === "FEEDBACK" && item.feedback && item.feedback.reviewStatus !== "PUBLISHED",
-          needsReview: item.status === "PENDING_REVIEW" || item.status === "RETURNED",
-          canSend: ["READY_TO_SEND", "CLAIMED", "ATTENTION", "COMPLETED"].includes(item.status),
-          isCompleted: item.status === "COMPLETED",
-          isAttention: item.status === "ATTENTION",
-          parentContentDraft: item.feedback ? (item.feedback.parentContent || item.feedback.content || "") : "",
-          groupDraft: item.wechatGroupName || "",
-          noteDraft: item.note || "",
-          latestHistoryText: item.history && item.history[0] ? `${item.history[0].actorName || item.history[0].actorEmail} · ${item.history[0].action}` : "",
-          automaticStatusText: ({ SENT: "自动提醒已发送", PENDING: "自动提醒待发送/待授权", PROCESSING: "自动提醒发送中", FAILED: "自动提醒失败", SKIPPED: "旧自动提醒已失效", NOT_QUEUED: "自动提醒未入队" })[(item.automaticNotification || {}).status] || ""
-        }));
-        const totalOpen = ["PENDING_REVIEW", "READY_TO_SEND", "CLAIMED", "RETURNED", "ATTENTION"].reduce((sum, key) => sum + (summary[key] || 0), 0);
-        this.setData({ tasks, summary, totalOpen });
+        const kindSummary = data.kindSummary || {};
+        const workstreams = this.data.workstreams.map((item) => Object.assign({}, item, { count: kindSummary[item.value] || 0 }));
+        const tasks = (data.tasks || []).map((item) => {
+          const sections = item.feedback && item.feedback.sections ? item.feedback.sections : {};
+          const feedbackSectionRows = feedbackSectionLabels.map(([key, label]) => ({ key, label, value: sections[key] || "未填写" }));
+          if (item.feedback) {
+            feedbackSectionRows.push({ key: "homework", label: "本次作业", value: item.feedback.homework || "未填写" });
+            feedbackSectionRows.push({ key: "previousHomework", label: "上次作业完成情况", value: item.feedback.previousHomeworkDone === true ? "已完成" : item.feedback.previousHomeworkDone === false ? "未完成" : "未填写" });
+          }
+          return Object.assign({}, item, {
+            kindLabel: kindLabels[item.kind] || item.kind,
+            statusLabel: statusLabels[item.status] || item.status,
+            isFeedback: item.kind === "FEEDBACK",
+            isTeacherReminder: item.kind === "COURSE_REMINDER_TEACHER",
+            recipientLabel: item.kind === "COURSE_REMINDER_TEACHER" ? (item.teacher && item.teacher.name ? `${item.teacher.name}老师` : "老师") : (item.student && item.student.name ? `${item.student.name}家长` : "家长"),
+            feedbackNeedsPublish: item.kind === "FEEDBACK" && item.feedback && item.feedback.reviewStatus !== "PUBLISHED",
+            needsReview: item.status === "PENDING_REVIEW" || item.status === "RETURNED",
+            canSend: ["READY_TO_SEND", "CLAIMED", "ATTENTION", "COMPLETED"].includes(item.status),
+            isCompleted: item.status === "COMPLETED",
+            isAttention: item.status === "ATTENTION",
+            parentContentDraft: item.feedback ? (item.feedback.parentContent || item.feedback.content || "") : "",
+            groupDraft: item.wechatGroupName || "",
+            noteDraft: item.note || "",
+            feedbackSectionRows,
+            completenessLabel: item.feedback && item.feedback.completeness ? `${item.feedback.completeness.completed}/${item.feedback.completeness.total}` : "",
+            missingText: item.feedback && item.feedback.completeness && item.feedback.completeness.missing.length ? `缺少：${item.feedback.completeness.missing.join("、")}` : "",
+            latestHistoryText: item.history && item.history[0] ? `${item.history[0].actorName || item.history[0].actorEmail} · ${item.history[0].action}` : "",
+            automaticStatusText: ({ SENT: "自动提醒已发送", PENDING: "自动提醒待发送/待授权", PROCESSING: "自动提醒发送中", FAILED: "自动提醒失败", SKIPPED: "旧自动提醒已失效", NOT_QUEUED: "自动提醒未入队" })[(item.automaticNotification || {}).status] || ""
+          });
+        });
+        this.setData({ tasks, summary: data.summary || {}, kindSummary, workstreams });
       })
       .catch((err) => api.toast(err.message))
       .finally(() => this.setData({ loading: false }));
   },
 
-  changeFilter(e) { this.setData({ filter: e.currentTarget.dataset.value }, () => this.load(false)); },
+  changeKind(e) { this.setData({ kind: e.currentTarget.dataset.value, filter: "OPEN", expandedId: "" }, () => this.load(false)); },
+  changeFilter(e) { this.setData({ filter: e.currentTarget.dataset.value, expandedId: "" }, () => this.load(false)); },
+  toggleTask(e) { const id = e.currentTarget.dataset.id; this.setData({ expandedId: this.data.expandedId === id ? "" : id }); },
   inputParentContent(e) { this.setData({ [`tasks[${e.currentTarget.dataset.index}].parentContentDraft`]: e.detail.value }); },
   inputGroup(e) { this.setData({ [`tasks[${e.currentTarget.dataset.index}].groupDraft`]: e.detail.value }); },
   inputNote(e) { this.setData({ [`tasks[${e.currentTarget.dataset.index}].noteDraft`]: e.detail.value }); },
@@ -79,8 +109,9 @@ Page({
   claim(e) { this.patch(e.currentTarget.dataset.id, "claim"); },
   publish(e) {
     const row = this.data.tasks[e.currentTarget.dataset.index];
-    if (!row.parentContentDraft.trim()) return api.toast("请先填写家长展示版反馈");
-    wx.showModal({ title: "确认发布", content: "发布后家长可在小程序查看，并进入自动提醒和微信群转发流程。", success: (res) => res.confirm && this.patch(row.id, "publish_feedback", { parentContent: row.parentContentDraft }) });
+    if (!row.parentContentDraft.trim()) return api.toast("请先填写完整的家长展示版反馈");
+    if (row.missingText) return api.toast(row.missingText);
+    wx.showModal({ title: "确认发布", content: `${row.recipientLabel}\n${row.dateLabel || "课程日期待确认"}\n发布后家长可在小程序查看。`, success: (res) => res.confirm && this.patch(row.id, "publish_feedback", { parentContent: row.parentContentDraft }) });
   },
   returnFeedback(e) {
     const id = e.currentTarget.dataset.id;
@@ -108,8 +139,8 @@ Page({
   },
   markSent(e) {
     const row = this.data.tasks[e.currentTarget.dataset.index];
-    const target = row.kind === "COURSE_REMINDER_TEACHER" ? "老师微信" : "家长微信群";
-    wx.showModal({ title: `确认已发送到${target}`, content: "请只在实际发送完成后确认。系统会永久记录操作人和时间。", success: (res) => res.confirm && this.patch(row.id, "manual_sent", { wechatGroupName: row.groupDraft, note: row.noteDraft, channel: row.kind === "COURSE_REMINDER_TEACHER" ? "WECHAT_DIRECT" : "WECHAT_GROUP" }) });
+    const target = row.isTeacherReminder ? "老师微信" : "家长微信群";
+    wx.showModal({ title: `确认已发送到${target}`, content: `${row.dateLabel || "课程日期待确认"}\n请只在实际发送完成后确认，系统会记录操作人和时间。`, success: (res) => res.confirm && this.patch(row.id, "manual_sent", { wechatGroupName: row.groupDraft, note: row.noteDraft, channel: row.isTeacherReminder ? "WECHAT_DIRECT" : "WECHAT_GROUP" }) });
   },
   retry(e) { this.patch(e.currentTarget.dataset.id, "retry_auto"); }
 });

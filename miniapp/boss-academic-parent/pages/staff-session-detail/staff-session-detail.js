@@ -998,8 +998,8 @@ Page({
 
   changePreviousHomework(e) {
     this.setData({
-      previousHomeworkDone: e.detail.value ? "yes" : "no",
-      previousHomeworkDoneChecked: Boolean(e.detail.value)
+      previousHomeworkDone: e.detail.value,
+      previousHomeworkDoneChecked: e.detail.value === "yes"
     });
   },
 
@@ -1017,6 +1017,10 @@ Page({
     }
     if (!String(this.data.homework || "").trim()) {
       api.toast("请填写课后作业");
+      return;
+    }
+    if (!this.data.previousHomeworkDone) {
+      api.toast("请选择之前作业完成情况");
       return;
     }
 

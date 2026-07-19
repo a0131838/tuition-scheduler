@@ -38,3 +38,16 @@ test("CS can complete only own low-risk requests while managers retain final aut
   assert.match(detail, /wx:if="\{\{canComplete\}\}"/);
   assert.match(detail, /等待负责人或管理确认完成/);
 });
+
+test("staff request detail previews authenticated ticket attachments instead of raw URLs", () => {
+  const route = read("app/api/miniapp/staff/parent-requests/[id]/attachments/route.ts");
+  const detail = read("miniapp/boss-academic-parent/pages/staff-request-detail/staff-request-detail.wxml");
+  const script = read("miniapp/boss-academic-parent/pages/staff-request-detail/staff-request-detail.js");
+  assert.match(route, /requireMiniappStaff/);
+  assert.match(route, /VIEW_TICKET_ATTACHMENT/);
+  assert.match(route, /UPLOAD_TICKET_ATTACHMENT/);
+  assert.match(detail, /attachment-grid/);
+  assert.match(detail, /点击查看/);
+  assert.match(script, /wx\.previewImage/);
+  assert.match(script, /openStaffDocument/);
+});

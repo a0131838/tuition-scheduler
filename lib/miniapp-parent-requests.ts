@@ -108,6 +108,17 @@ export function miniappRequestDto(ticket: Pick<
     .split(/\n+/)
     .map((x) => x.trim())
     .filter((x) => x.startsWith("/"));
+  const attachments = attachmentUrls.map((url, index) => {
+    const rawName = decodeURIComponent(url.split("/").pop() || "").split("?")[0];
+    const extension = rawName.includes(".") ? `.${rawName.split(".").pop()!.toLowerCase()}` : "";
+    const isImage = [".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"].includes(extension);
+    return {
+      url,
+      name: `${isImage ? "工单截图" : "工单文件"} ${index + 1}${extension}`,
+      isImage,
+      previewUrl: `/api/miniapp/staff/parent-requests/${encodeURIComponent(ticket.id)}/attachments?file=${encodeURIComponent(url)}`,
+    };
+  });
   const parentContent = visibility.publicSummary || parsed.currentIssue;
   const title = parentContent || ticket.nextAction || ticket.type;
 
@@ -129,6 +140,7 @@ export function miniappRequestDto(ticket: Pick<
     completionResult: ticket.parentCompletionResult ?? ticket.finalSchedule,
     latestDeadlineText: parsed.latestDeadlineText,
     attachmentUrls: includeInternal || !assisted ? attachmentUrls : [],
+    attachments: includeInternal || !assisted ? attachments : [],
     createdByName: includeInternal ? ticket.parentAssistedByName || ticket.createdByName : null,
     isStaffAssisted: assisted,
     communicationSource: includeInternal ? visibility.communicationSource : null,

@@ -242,3 +242,4 @@ textarea {
   font-size: 24rpx;
   line-height: 1.55;
 }
+.homework-choice { display: flex; gap: 36rpx; margin-top: 18rpx; }.homework-choice label { display: flex; align-items: center; gap: 8rpx; color: #272a2f; font-size: 25rpx; }

@@ -302,6 +302,33 @@ function saveStaffImage(path) {
   });
 }
 
+function downloadStaffFile(path) {
+  return new Promise((resolve, reject) => {
+    wx.downloadFile({
+      url: config.apiBaseUrl + path,
+      header: staffToken() ? { Authorization: "Bearer " + staffToken() } : {},
+      success(res) {
+        if (res.statusCode !== 200) return reject(new Error("附件读取失败"));
+        resolve(res.tempFilePath);
+      },
+      fail(err) { reject(new Error(err.errMsg || "附件下载失败")); }
+    });
+  });
+}
+
+function openStaffDocument(path, name) {
+  return downloadStaffFile(path).then((filePath) => new Promise((resolve, reject) => {
+    const extension = String(name || "").split(".").pop().toLowerCase();
+    wx.openDocument({
+      filePath,
+      fileType: extension || undefined,
+      showMenu: true,
+      success: resolve,
+      fail(err) { reject(new Error(err.errMsg || "无法打开附件")); }
+    });
+  }));
+}
+
 module.exports = {
   request,
   requestStaff,
@@ -314,5 +341,7 @@ module.exports = {
   downloadPdf,
   uploadFiles,
   uploadStaffForm,
-  saveStaffImage
+  saveStaffImage,
+  downloadStaffFile,
+  openStaffDocument
 };

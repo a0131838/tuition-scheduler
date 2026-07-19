@@ -1,10 +1,49 @@
 import { bad, ok } from "@/app/api/miniapp/_lib";
 import { getParentRequestTicket, requireMiniappStaff } from "@/app/api/miniapp/staff/_lib";
-import { BUSINESS_UPLOAD_PREFIX, storeBusinessUpload } from "@/lib/business-file-storage";
+import { buildStoredBusinessFileResponse, BUSINESS_UPLOAD_PREFIX, storeBusinessUpload } from "@/lib/business-file-storage";
+import { logAudit } from "@/lib/audit-log";
 import { prisma } from "@/lib/prisma";
 import { TICKET_UPLOAD_ACCEPT, TICKET_UPLOAD_MAX_BYTES } from "@/lib/tickets";
 
 export const runtime = "nodejs";
+
+function ticketProofUrls(proof: string | null | undefined) {
+  return String(proof ?? "").split(/\n+/).map((item) => item.trim()).filter(Boolean);
+}
+
+function ticketFileName(url: string) {
+  if (url.startsWith("/api/tickets/files/")) return decodeURIComponent(url.split("/").pop() || "").trim();
+  if (url.startsWith(BUSINESS_UPLOAD_PREFIX.tickets)) return url.slice(BUSINESS_UPLOAD_PREFIX.tickets.length).trim();
+  return "";
+}
+
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireMiniappStaff(req);
+  if (!auth.ok) return auth.response;
+  const { id } = await params;
+  const ticket = await getParentRequestTicket(id);
+  if (!ticket) return bad("Parent request not found", 404);
+  const requestedUrl = new URL(req.url).searchParams.get("file")?.trim() || "";
+  if (!requestedUrl || !ticketProofUrls(ticket.proof).includes(requestedUrl)) return bad("Attachment not found", 404);
+  const filename = ticketFileName(requestedUrl);
+  if (!filename || filename.includes("/") || filename.includes("\\") || filename.includes("..")) return bad("Attachment not found", 404);
+  await logAudit({
+    actor: auth.user,
+    module: "TICKET",
+    action: "VIEW_TICKET_ATTACHMENT",
+    entityType: "Ticket",
+    entityId: ticket.id,
+    meta: { filename },
+  });
+  return buildStoredBusinessFileResponse(req, {
+    allowedPrefix: BUSINESS_UPLOAD_PREFIX.tickets,
+    relativePath: `${BUSINESS_UPLOAD_PREFIX.tickets}${filename}`,
+    originalFileName: filename,
+    fallbackFileName: "ticket-file",
+    inlineFileName: filename,
+    cacheControl: "private, no-store",
+  });
+}
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireMiniappStaff(req);
@@ -40,6 +79,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       proof: nextProof,
       lastUpdateAt: new Date(),
     },
+  });
+
+  await logAudit({
+    actor: auth.user,
+    module: "TICKET",
+    action: "UPLOAD_TICKET_ATTACHMENT",
+    entityType: "Ticket",
+    entityId: ticket.id,
+    meta: { count: urls.length, urls },
   });
 
   return ok({ urls, requestId: ticket.id });

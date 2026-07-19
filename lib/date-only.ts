@@ -67,6 +67,19 @@ export function formatBusinessTimeOnly(value: Date, withSeconds = false) {
   return `${base}:${pad2(shifted.getUTCSeconds())}`;
 }
 
+const BUSINESS_WEEKDAYS_ZH = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+
+export function formatBusinessDateWithWeekday(value: Date, options?: { short?: boolean }) {
+  const shifted = new Date(value.getTime() + BUSINESS_TIMEZONE_OFFSET_MINUTES * 60_000);
+  const year = shifted.getUTCFullYear();
+  const month = shifted.getUTCMonth() + 1;
+  const day = shifted.getUTCDate();
+  const weekday = BUSINESS_WEEKDAYS_ZH[shifted.getUTCDay()];
+  return options?.short
+    ? `${month}月${day}日（${weekday}）`
+    : `${year}年${month}月${day}日（${weekday}）`;
+}
+
 export function normalizeDateOnly(value: string | Date | null | undefined, fallback?: Date | null) {
   if (value instanceof Date) {
     return Number.isNaN(+value) ? (fallback ? formatDateOnly(fallback) : null) : formatBusinessDateOnly(value);
