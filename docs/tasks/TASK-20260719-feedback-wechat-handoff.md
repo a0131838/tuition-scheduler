@@ -25,6 +25,9 @@ Teacher feedback must still be manually forwarded to family WeChat groups becaus
 - The 41-page miniapp release audit passed.
 - The production build generated all 208 routes.
 - Read-only production inspection found 1 pending-review feedback task and 4 completed feedback tasks; no business records were changed.
+- Runtime commit `93a042d` aligned locally, on GitHub and on the server; PM2 PID `2570983` was online and `/admin/login` returned HTTP 200.
+- Anonymous communication reads and writes both returned HTTP 401.
+- WeChat development version `1.0.11` uploaded successfully at 486,190 bytes (474.8 KB).
 
 ## Risk
 

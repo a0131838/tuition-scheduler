@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-19-r275` is ready to make feedback publication continue visibly into manual WeChat-group delivery; r274 remains live until deployment completes.
+- Current release line on this branch: `2026-07-19-r275` is live and makes feedback publication continue visibly into manual WeChat-group delivery; WeChat development version `1.0.11` is uploaded for experience-version designation.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
@@ -22,7 +22,7 @@
 
 ## Open Risks
 
-- Feedback-to-WeChat handoff rollout: `2026-07-19-r275` is ready after 22 focused tests, the 41-page audit and the 208-route build. Publication will switch to and expand the `待发送` feedback task, but the operator must still actually send through WeChat and confirm it; the system does not automate WeChat-group posting.
+- Feedback-to-WeChat handoff rollout: `2026-07-19-r275` is live at runtime commit `93a042d` and uploaded as WeChat development version `1.0.11` (474.8 KB). Publication switches to and expands the `待发送` task, but the operator must still actually send through WeChat and confirm it. Designate `1.0.11` as the experience version and test the existing real pending feedback without fabricating a task.
 
 - Unified Ticket-list rollout: `2026-07-19-r274` is live at runtime commit `ec0716a` and uploaded as WeChat development version `1.0.10` (473.1 KB). Production read-only checks show matching action-centre/list counts of 8, while anonymous access remains 401. Designate `1.0.10` as the experience version and verify one `自营学生` Ticket and one `家长小程序` Ticket on a physical phone.
 
@@ -195,7 +195,7 @@
   - false correction and superseded-reminder counts are both zero
   - runtime commit `67e6add` aligned local/GitHub/server; PM2 PID `2516152`, admin health 200 and teacher authentication redirect 307
 
-## 2026-07-19-r275 Ready
+## 2026-07-19-r275 Live
 
 - Scope: make teacher-feedback publication a visible two-stage workflow: publish to parent miniapp, then manually send to the family WeChat group.
 - Business impact:
@@ -212,8 +212,9 @@
   - `npm run miniapp:audit-release`
   - `npm run build`
 - Post-deploy verification:
-  - Confirm local, GitHub and server commits align, PM2 is online and `/admin/login` returns HTTP 200.
-  - Confirm anonymous communication routes remain private and the new native miniapp package uploads successfully.
+  - Runtime commit `93a042d` aligned locally, on GitHub and on the server; PM2 PID `2570983` was online and `/admin/login` returned HTTP 200.
+  - Anonymous communication reads and writes both returned HTTP 401.
+  - WeChat development version `1.0.11` uploaded at 486,190 bytes (474.8 KB).
 
 ## 2026-07-19-r274 Live
 

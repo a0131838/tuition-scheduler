@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-19-r275`
 - Date/Time (Asia/Shanghai): `2026-07-19`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: make teacher-feedback publication continue visibly into the required manual WeChat-group delivery workflow.
 - Key files:
   - `miniapp/boss-academic-parent/pages/staff-communications/staff-communications.js`
@@ -30,7 +30,7 @@ This file is the single source of truth for what changed in production.
   - `docs/CHANGELOG-LIVE.md`
   - `docs/RELEASE-BOARD.md`
 - Risk impact (if any): Low. This is a staff-miniapp workflow presentation and post-publish navigation change; feedback review rules, parent-miniapp publication, manual-send audit writes, scheduling, attendance, package, finance and payroll logic are unchanged.
-- Verification: 22 focused communication/action-centre tests, native JavaScript syntax, the 41-page miniapp audit and the 208-route production build passed. Read-only production inspection found 1 `PENDING_REVIEW` feedback task and 4 completed feedback tasks; no real feedback was changed.
+- Verification: 22 focused communication/action-centre tests, native JavaScript syntax, the 41-page miniapp audit and the 208-route production build passed. Runtime commit `93a042dd80a8b14bc04abd453072f3d614f01aa0` aligned locally, on GitHub and on the server with PM2 PID `2570983` and `/admin/login` HTTP 200. Anonymous communication reads and writes both returned 401. Read-only production inspection found 1 `PENDING_REVIEW` feedback task and 4 completed feedback tasks; no real feedback was changed. WeChat development version `1.0.11` uploaded successfully at 486,190 bytes (474.8 KB).
 - Rollback point: `6eb9da9622d59989f8d13cc68ef650429e0ea73a` (`2026-07-19-r274`).
 
 ---
