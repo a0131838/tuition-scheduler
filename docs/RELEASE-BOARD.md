@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-19-r271` is ready to add absolute reminder dates, separated communication queues, 7/7 feedback completeness and authenticated Ticket attachment preview. Current production remains `2026-07-19-r270` until the guarded release completes.
+- Current release line on this branch: `2026-07-19-r271` is live with absolute reminder dates, separated communication queues, 7/7 feedback completeness and authenticated Ticket attachment preview; WeChat development version `1.0.9` is uploaded.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
@@ -22,7 +22,7 @@
 
 ## Open Risks
 
-- Communication-workbench rollout: `2026-07-19-r271` is ready after 219 repository tests, the 208-route build and a 471.7 KB WeChat preview. Deploy the server first, verify a real date-explicit parent and teacher reminder plus the existing two-attachment Ticket, then upload development version `1.0.9`; experience-version designation and physical-phone checks for Emily, Eva and both Jasmine accounts remain manual.
+- Communication-workbench rollout: `2026-07-19-r271` is live at runtime feature commit `612ac05` and uploaded as WeChat development version `1.0.9` (471.7 KB). Server-side production verification passed for real date-explicit reminders, honorific normalization, false-correction prevention, attachment projection and authentication rejection. Designate `1.0.9` as the experience version, then complete a physical-phone pass for Emily, Eva and both Jasmine accounts, including opening one real Ticket attachment; do not create fabricated business records solely for testing.
 
 - Reminder share-image CJK rollout: `2026-07-19-r270` is live at runtime feature commit `5aa3627`; production font matching and a real parent-reminder render passed. Images downloaded before the release are static files and must be downloaded again to receive the corrected rendering.
 
@@ -170,7 +170,7 @@
 - Tutor-Wise-payment-profile risk: `2026-05-29-r161` removes Bank Transfer as a new tutor payment method and adds Wise details plus finance review status; finance should verify PayNow/Wise details before payout exports are used.
 - Teacher-notice-attachment risk: `2026-05-30-r162` lets teachers open only the active Shared Docs file attached to an active teacher notice; verify the notice attachment is intentional before publishing because the full Shared Docs library remains manager/admin controlled.
 
-## 2026-07-19-r271 Ready
+## 2026-07-19-r271 Live
 
 - Scope: date-explicit role-aware communication work queues, complete feedback review and authenticated staff Ticket attachments.
 - Business impact:
@@ -190,11 +190,12 @@
   - WeChat CLI preview passed at 483,000 bytes (471.7 KB)
   - production read-only compatibility check found 0 incomplete open feedback reviews and 2 attachment URLs on 1 Ticket
 - Post-deploy verification:
-  - local/GitHub/server commit equality, PM2 online and `/admin/login` HTTP 200
-  - authenticated employee communication and Ticket detail endpoints return the new projections
-  - real parent/teacher reminders contain absolute dates without creating a false correction
-  - existing Ticket attachment opens through the authenticated route and creates a view audit row
-  - WeChat development version `1.0.9` upload and package-size record
+  - runtime feature commit `612ac05` matched local/GitHub/server, PM2 PID `2478563` was online and `/admin/login` returned HTTP 200
+  - all 20 inspected real parent/teacher reminders contained `2026年7月20日（周一）`; duplicate honorific and false correction counts were both zero
+  - employee communication, Ticket detail and Ticket attachment routes rejected unauthenticated requests with HTTP 401
+  - existing production Tickets retained their attachment projections without rewriting proof data
+  - WeChat development version `1.0.9` uploaded at 483,043 bytes (471.7 KB)
+  - generated parent and teacher reminder images passed visual inspection with readable Chinese and audience-correct footers
 
 ## 2026-07-19-r270 Live
 

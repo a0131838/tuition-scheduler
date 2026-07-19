@@ -43,8 +43,11 @@ Read-only production inspection found zero currently open feedback reviews that 
 - The full production build generated all 208 routes/pages.
 - WeChat Developer Tools CLI preview passed for AppID `wxe7017f8545e8ad49`; package size is 483,000 bytes (471.7 KB).
 - Read-only production compatibility check: 0 incomplete open feedback reviews, 1 Ticket with proof and 2 historical attachment URLs.
-- The first guarded production deploy completed at `134d229`; read-only inspection confirmed real `2026年7月20日（周一）` reminders and historical Ticket attachment counts, and exposed one duplicate-honorific edge case that is covered by the follow-up regression test before final release.
-- Final guarded deploy, endpoint checks, corrected reminder regeneration and replacement development-version upload remain required.
+- The final guarded runtime deploy completed at `612ac05`; local/GitHub/server hashes matched, PM2 PID `2478563` was online and `/admin/login` returned HTTP 200.
+- A controlled production sync inspected 20 real reminders: 20 contained `2026年7月20日（周一）`, no `老师老师` salutation remained, and the correction-task count stayed at zero.
+- Unauthenticated employee communication, Ticket detail and Ticket attachment requests returned HTTP 401, confirming the private routes remain protected without writing a fake attachment-view audit row.
+- Parent and teacher reminder images passed visual inspection with readable Chinese, absolute dates and the correct parent/staff miniapp footer.
+- WeChat development version `1.0.9` uploaded successfully at 483,043 bytes (471.7 KB).
 
 ## Risk
 

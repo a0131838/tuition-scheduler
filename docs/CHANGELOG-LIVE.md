@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-19-r271`
 - Date/Time (Asia/Shanghai): `2026-07-19`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: make communication tasks date-explicit and separated by workflow, make feedback review visibly complete, and make staff-uploaded Ticket attachments viewable through an authenticated audited miniapp flow.
 - Production-data compatibility: teacher names that already include the “老师” suffix are normalized so the generated salutation and miniapp recipient label do not duplicate the honorific.
 - Key files:
@@ -32,7 +32,7 @@ This file is the single source of truth for what changed in production.
   - `docs/CHANGELOG-LIVE.md`
   - `docs/RELEASE-BOARD.md`
 - Risk impact (if any): Medium-low. Reminder presentation, workflow navigation, feedback publication completeness and staff attachment reads change; Session, attendance, finance, payroll, package, scheduling actions and historical records remain unchanged.
-- Verification: TypeScript, native miniapp JavaScript, 18 focused tests, all 219 repository tests, the 41-page miniapp audit, the 208-route production build and a 483,000-byte WeChat Developer Tools preview passed. Read-only production compatibility check found 0 incomplete open feedback reviews and retained 2 attachment URLs on 1 existing Ticket.
+- Verification: TypeScript, native miniapp JavaScript, focused regressions, all 220 repository tests, the 41-page miniapp audit and the 208-route production build passed. Runtime feature commit `612ac05789a5c9d60c9250e709647ee11dcfe977` was aligned locally, on GitHub and on the server with PM2 PID `2478563` and `/admin/login` HTTP 200. A controlled sync produced 20/20 date-explicit real reminders, 0 duplicate “老师老师” salutations and 0 false correction tasks. Unauthenticated employee communication, Ticket detail and Ticket attachment routes each returned 401. WeChat development version `1.0.9` uploaded successfully at 483,043 bytes (471.7 KB), and parent/teacher share images were visually inspected with readable Chinese, absolute dates and audience-correct footers.
 - Rollback point: `e76abc1c47d4d391d0eb0b36aa99b197e5697916` (`2026-07-19-r270`).
 
 ---
