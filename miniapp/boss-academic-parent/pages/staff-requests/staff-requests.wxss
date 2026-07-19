@@ -4,3 +4,8 @@
   gap: 16rpx;
   margin-bottom: 20rpx;
 }
+
+.source-pill {
+  background: #1f242b;
+  color: #ffffff;
+}

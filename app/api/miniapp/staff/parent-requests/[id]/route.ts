@@ -1,5 +1,5 @@
 import { bad, ok } from "@/app/api/miniapp/_lib";
-import { getParentRequestTicket, requireMiniappStaff } from "@/app/api/miniapp/staff/_lib";
+import { getStaffRequestTicket, requireMiniappStaff } from "@/app/api/miniapp/staff/_lib";
 import { prisma } from "@/lib/prisma";
 import { MINIAPP_TEMPLATE_KEYS, queueMiniappNotificationsForStudent } from "@/lib/miniapp-notifications";
 import { miniappRequestDto } from "@/lib/miniapp-parent-requests";
@@ -46,12 +46,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (!auth.ok) return auth.response;
 
   const { id } = await params;
-  const ticket = await getParentRequestTicket(id);
-  if (!ticket) return bad("Parent request not found", 404);
+  const includeAllSources = new URL(req.url).searchParams.get("scope") === "all";
+  const ticket = await getStaffRequestTicket(id, { includeAllSources });
+  if (!ticket) return bad(includeAllSources ? "Ticket not found" : "Parent request not found", 404);
   const capability = completionCapability(auth.user, ticket);
   const schedulingBlock = schedulingCompletionBlock(ticket.schedulingActions);
   return ok({
-    request: miniappRequestDto(ticket, { includeInternal: true }),
+    request: miniappRequestDto(ticket, { includeInternal: true, attachmentScopeAll: includeAllSources }),
     schedulingActions: ticket.schedulingActions.map(schedulingActionDto),
     capabilities: schedulingBlock ? { canComplete: false, completionBlockReason: schedulingBlock } : capability,
   });
@@ -62,11 +63,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!auth.ok) return auth.response;
 
   const { id } = await params;
+  const includeAllSources = new URL(req.url).searchParams.get("scope") === "all";
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") return bad("Invalid JSON");
 
-  const ticket = await getParentRequestTicket(id);
-  if (!ticket) return bad("Parent request not found", 404);
+  const ticket = await getStaffRequestTicket(id, { includeAllSources });
+  if (!ticket) return bad(includeAllSources ? "Ticket not found" : "Parent request not found", 404);
 
   const nextStatus = normalizeOption((body as any).status, TICKET_STATUS_OPTIONS);
   const nextOwner = normalizeOption((body as any).owner, TICKET_OWNER_OPTIONS);
@@ -99,13 +101,17 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       ...(nextOwner ? { owner: nextOwner } : {}),
       ...(nextAction !== undefined ? { nextAction } : {}),
       ...(risksNotes !== undefined ? { risksNotes } : {}),
-      ...(completionResult !== undefined ? { finalSchedule: completionResult, parentCompletionResult: completionResult } : {}),
+      ...(completionResult !== undefined
+        ? ticket.source === "家长小程序"
+          ? { finalSchedule: completionResult, parentCompletionResult: completionResult }
+          : { finalSchedule: completionResult }
+        : {}),
       lastUpdateAt: new Date(),
       ...(nextStatus === "Completed" ? { completedAt: new Date(), completedByUserId: auth.user.id } : {}),
     },
   });
 
-  if (nextStatus && updated.studentId) {
+  if (nextStatus && updated.studentId && updated.source === "家长小程序") {
     await queueMiniappNotificationsForStudent({
       studentId: updated.studentId,
       templateKey: MINIAPP_TEMPLATE_KEYS.requestStatusChanged,
@@ -126,8 +132,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   return ok({
-    request: miniappRequestDto(updated, { includeInternal: true }),
+    request: miniappRequestDto(updated, { includeInternal: true, attachmentScopeAll: includeAllSources }),
     capabilities: completionCapability(auth.user, updated),
-    notifyParent: Boolean(nextStatus),
+    notifyParent: Boolean(nextStatus && updated.studentId && updated.source === "家长小程序"),
   });
 }

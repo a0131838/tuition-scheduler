@@ -23,7 +23,7 @@ Page({
 
   load() {
     if (!this.data.id) return Promise.resolve();
-    return api.requestStaff("/api/miniapp/staff/parent-requests/" + this.data.id)
+    return api.requestStaff("/api/miniapp/staff/parent-requests/" + this.data.id + "?scope=all")
       .then((data) => {
         const request = data.request || {};
         const capabilities = data.capabilities || {};
@@ -41,7 +41,11 @@ Page({
             requestedActionText: request.requestedAction || "-",
             completionResultText: request.completionResult || "",
             ownerText: request.owner || request.mainOwner || "-",
-            closeOwnerText: request.closeOwner || "-"
+            closeOwnerText: request.closeOwner || "-",
+            contentLabelText: request.isParentRequest ? "对家长可见摘要" : "工单内容",
+            completionLabelText: request.isParentRequest ? "处理结果（家长可见）" : "处理结果",
+            completionPlaceholderText: request.isParentRequest ? "填写家长可以直接看到的处理结果。" : "填写本工单的处理结果。",
+            waitingLabelText: request.isParentRequest ? "等家长补充" : "等待补充信息"
           }),
           attachments: attachments.map((item) => Object.assign({}, item, { localPath: "" })),
           hasAttachments: attachments.length > 0,
@@ -100,7 +104,7 @@ Page({
       return;
     }
     this.setData({ loading: true });
-    api.requestStaff("/api/miniapp/staff/parent-requests/" + this.data.id, {
+    api.requestStaff("/api/miniapp/staff/parent-requests/" + this.data.id + "?scope=all", {
       method: "PATCH",
       data: status === "Completed" ? { status, completionResult } : { status }
     })
@@ -120,7 +124,11 @@ Page({
             requestedActionText: request.requestedAction || "-",
             completionResultText: request.completionResult || "",
             ownerText: request.owner || request.mainOwner || "-",
-            closeOwnerText: request.closeOwner || "-"
+            closeOwnerText: request.closeOwner || "-",
+            contentLabelText: request.isParentRequest ? "对家长可见摘要" : "工单内容",
+            completionLabelText: request.isParentRequest ? "处理结果（家长可见）" : "处理结果",
+            completionPlaceholderText: request.isParentRequest ? "填写家长可以直接看到的处理结果。" : "填写本工单的处理结果。",
+            waitingLabelText: request.isParentRequest ? "等家长补充" : "等待补充信息"
           }),
           canComplete: capabilities.canComplete === true,
           completionBlockReason: capabilities.completionBlockReason || "",

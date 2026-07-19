@@ -1,5 +1,5 @@
 import { bad, ok } from "@/app/api/miniapp/_lib";
-import { getParentRequestTicket, requireMiniappStaff } from "@/app/api/miniapp/staff/_lib";
+import { getStaffRequestTicket, requireMiniappStaff } from "@/app/api/miniapp/staff/_lib";
 import { buildStoredBusinessFileResponse, BUSINESS_UPLOAD_PREFIX, storeBusinessUpload } from "@/lib/business-file-storage";
 import { logAudit } from "@/lib/audit-log";
 import { prisma } from "@/lib/prisma";
@@ -21,9 +21,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const auth = await requireMiniappStaff(req);
   if (!auth.ok) return auth.response;
   const { id } = await params;
-  const ticket = await getParentRequestTicket(id);
-  if (!ticket) return bad("Parent request not found", 404);
-  const requestedUrl = new URL(req.url).searchParams.get("file")?.trim() || "";
+  const url = new URL(req.url);
+  const includeAllSources = url.searchParams.get("scope") === "all";
+  const ticket = await getStaffRequestTicket(id, { includeAllSources });
+  if (!ticket) return bad(includeAllSources ? "Ticket not found" : "Parent request not found", 404);
+  const requestedUrl = url.searchParams.get("file")?.trim() || "";
   if (!requestedUrl || !ticketProofUrls(ticket.proof).includes(requestedUrl)) return bad("Attachment not found", 404);
   const filename = ticketFileName(requestedUrl);
   if (!filename || filename.includes("/") || filename.includes("\\") || filename.includes("..")) return bad("Attachment not found", 404);
@@ -50,8 +52,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!auth.ok) return auth.response;
 
   const { id } = await params;
-  const ticket = await getParentRequestTicket(id);
-  if (!ticket) return bad("Parent request not found", 404);
+  const includeAllSources = new URL(req.url).searchParams.get("scope") === "all";
+  const ticket = await getStaffRequestTicket(id, { includeAllSources });
+  if (!ticket) return bad(includeAllSources ? "Ticket not found" : "Parent request not found", 404);
 
   const form = await req.formData().catch(() => null);
   if (!form) return bad("Invalid form data");

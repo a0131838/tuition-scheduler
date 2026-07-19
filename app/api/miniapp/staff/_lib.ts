@@ -11,11 +11,15 @@ export async function requireMiniappStaff(req: Request) {
   return { ok: true as const, session, user: session.user };
 }
 
-export async function getParentRequestTicket(id: string) {
+export async function getStaffRequestTicket(id: string, options?: { includeAllSources?: boolean }) {
   const ticket = await prisma.ticket.findUnique({
     where: { id },
     include: { schedulingActions: { include: schedulingActionInclude, orderBy: { sequence: "asc" } } },
   });
-  if (!ticket || ticket.source !== "家长小程序") return null;
+  if (!ticket || (!options?.includeAllSources && ticket.source !== "家长小程序")) return null;
   return ticket;
+}
+
+export async function getParentRequestTicket(id: string) {
+  return getStaffRequestTicket(id);
 }

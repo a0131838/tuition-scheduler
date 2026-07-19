@@ -39,11 +39,12 @@ export async function GET(req: Request) {
   const type = String(url.searchParams.get("type") ?? "").trim();
   const includeDoneRaw = String(url.searchParams.get("includeDone") ?? "false").toLowerCase();
   const includeDone = includeDoneRaw === "1" || includeDoneRaw === "true";
+  const includeAllSources = url.searchParams.get("scope") === "all";
   const limit = Math.min(Math.max(toInt(url.searchParams.get("limit"), 50), 1), 200);
 
   const tickets = await prisma.ticket.findMany({
     where: {
-      source: "家长小程序",
+      ...(includeAllSources ? {} : { source: "家长小程序" }),
       isArchived: false,
       ...(owner ? { owner } : {}),
       ...(type ? { type } : {}),
@@ -56,7 +57,7 @@ export async function GET(req: Request) {
   return ok({
     generatedAt: new Date().toISOString(),
     total: tickets.length,
-    requests: tickets.map((ticket) => miniappRequestDto(ticket, { includeInternal: true })),
+    requests: tickets.map((ticket) => miniappRequestDto(ticket, { includeInternal: true, attachmentScopeAll: includeAllSources })),
   });
 }
 

@@ -73,6 +73,22 @@ test("unified teacher action center includes existing payroll and lesson obligat
   assert.match(route, /unreadOtherFeedback/);
 });
 
+test("staff ticket action count opens a list with the same all-source scope", () => {
+  const actionRoute = readProject("app/api/miniapp/staff/action-center/route.ts");
+  const listRoute = readProject("app/api/miniapp/staff/parent-requests/route.ts");
+  const detailRoute = readProject("app/api/miniapp/staff/parent-requests/[id]/route.ts");
+  const listScript = readMiniapp("pages/staff-requests/staff-requests.js");
+  const listTemplate = readMiniapp("pages/staff-requests/staff-requests.wxml");
+
+  assert.match(actionRoute, /status: \{ in: OPEN_TICKET_STATUSES \}/);
+  assert.match(listRoute, /includeAllSources/);
+  assert.match(listRoute, /includeAllSources \? \{\} : \{ source: "家长小程序" \}/);
+  assert.match(detailRoute, /getStaffRequestTicket/);
+  assert.match(listScript, /scope=all/);
+  assert.match(listTemplate, /全部工单/);
+  assert.match(listTemplate, /sourceLabelText/);
+});
+
 test("teacher student search and report writes are scoped by linked teacher", () => {
   const studentSearch = readProject("app/api/miniapp/staff/students/route.ts");
   const studentWorkspace = readProject("app/api/miniapp/staff/students/[studentId]/workspace/route.ts");

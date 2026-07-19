@@ -14,13 +14,15 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-19-r273` is live; r272 “博思学业管家” branding and role-correct miniapp/web reminder access are protected by the presentation-sync guard, and production synchronization is healthy.
+- Current release line on this branch: `2026-07-19-r274` is ready to align the employee action-centre Ticket count with an all-source Ticket list; r273 remains the current live release until deployment completes.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
+
+- Unified Ticket-list rollout: `2026-07-19-r274` is ready after 28 focused tests and the 208-route build. The authenticated employee list deliberately includes `自营学生` and `家长小程序` Tickets, while parent-facing routes keep their original source boundary. Upload the updated native miniapp package after server deployment and verify one Ticket from each source on a physical phone.
 
 - Reminder brand/web-entry rollout: r273 is live at runtime commit `67e6add`; production sync is healthy with 12/12 parent reminders using the parent miniapp, 8/8 teacher reminders offering employee miniapp plus `sgtmanage.com/teacher`, zero false corrections and zero superseded reminders. Previously downloaded images remain static and must be downloaded again.
 
@@ -190,6 +192,28 @@
   - 12/12 parent and 8/8 teacher reminders contain their role-correct access paths
   - false correction and superseded-reminder counts are both zero
   - runtime commit `67e6add` aligned local/GitHub/server; PM2 PID `2516152`, admin health 200 and teacher authentication redirect 307
+
+## 2026-07-19-r274 Ready
+
+- Scope: make the employee “工单待处理” count and destination use the same all-source Ticket scope.
+- Business impact:
+  - Emily, Eva and management can see every open Ticket counted by the unified action centre, with source, type, status, owner and readable update time.
+  - Parent-facing request reads and notifications remain restricted to `家长小程序` Tickets; no scheduling, attendance, package, finance or payroll write changes are included.
+- Files:
+  - `app/api/miniapp/staff/_lib.ts`
+  - `app/api/miniapp/staff/parent-requests/route.ts`
+  - `app/api/miniapp/staff/parent-requests/[id]/route.ts`
+  - `app/api/miniapp/staff/parent-requests/[id]/attachments/route.ts`
+  - `lib/miniapp-parent-requests.ts`
+  - `miniapp/boss-academic-parent/pages/staff-requests/*`
+  - `miniapp/boss-academic-parent/pages/staff-request-detail/*`
+  - `tests/miniapp-action-center.test.ts`
+- Verification before deploy:
+  - `npx tsx --test tests/miniapp-action-center.test.ts tests/miniapp-emily-request-intake.test.ts tests/miniapp-first-scheduling.test.ts tests/ticket-scheduling-actions.test.ts`
+  - `npm run build`
+- Post-deploy verification:
+  - Confirm local, GitHub and server commits align, PM2 is online and `/admin/login` returns HTTP 200.
+  - Confirm the production all-source open count equals the unified employee list count without mutating Ticket data.
 
 ## 2026-07-19-r272 Ready
 

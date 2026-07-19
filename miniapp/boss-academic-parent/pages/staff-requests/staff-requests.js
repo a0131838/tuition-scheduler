@@ -7,9 +7,17 @@ const statuses = [
   { label: "等老师", value: "Waiting Teacher" },
   { label: "等家长", value: "Waiting Parent" },
   { label: "已确认", value: "Confirmed" },
+  { label: "已升级", value: "Exception" },
   { label: "已完成", value: "Completed" }
 ];
-const types = ["全部类型", "排课要求", "新排课", "补课加课", "请假/取消", "给老师的话", "投诉", "普通反馈", "财务问题", "学校事务", "其他"];
+const types = ["全部类型", "排课要求", "新排课", "补课加课", "改课程时间", "改上课老师", "临时取消&请假课程", "排课协调", "请假/取消", "给老师的话", "投诉", "普通反馈", "财务问题", "学校事务", "其他"];
+
+function formatDateTime(value) {
+  const date = new Date(value || "");
+  if (Number.isNaN(date.getTime())) return value || "-";
+  const pad = (number) => String(number).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
 
 Page({
   data: {
@@ -20,6 +28,7 @@ Page({
     statusIndex: 0,
     typeIndex: 0,
     requests: [],
+    total: 0,
     loading: false
   },
 
@@ -35,7 +44,7 @@ Page({
     const owner = this.data.ownerIndex > 0 ? owners[this.data.ownerIndex] : "";
     const status = statuses[this.data.statusIndex].value;
     const type = this.data.typeIndex > 0 ? types[this.data.typeIndex] : "";
-    const query = [];
+    const query = ["scope=all"];
     if (owner) query.push("owner=" + encodeURIComponent(owner));
     if (status) query.push("status=" + encodeURIComponent(status));
     if (type) query.push("type=" + encodeURIComponent(type));
@@ -48,9 +57,11 @@ Page({
         const requests = (data.requests || []).map((item) => Object.assign({}, item, {
           displayTitle: item.title || item.ticketNo || "-",
           displayOwner: item.owner || item.mainOwner || "-",
-          studentNameText: item.studentName || "-"
+          studentNameText: item.studentName || "-",
+          sourceLabelText: item.sourceLabel || "内部工单",
+          updatedAtText: formatDateTime(item.updatedAt)
         }));
-        this.setData({ requests });
+        this.setData({ requests, total: Number(data.total || requests.length) });
       })
       .catch((err) => api.toast(err.message))
       .finally(() => this.setData({ loading: false }));

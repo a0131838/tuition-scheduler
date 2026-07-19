@@ -71,6 +71,7 @@ export function miniappRequestStatusLabel(status: string) {
 export function miniappRequestDto(ticket: Pick<
   Ticket,
   | "id"
+  | "source"
   | "ticketNo"
   | "studentId"
   | "studentName"
@@ -93,7 +94,7 @@ export function miniappRequestDto(ticket: Pick<
   | "createdAt"
   | "updatedAt"
   | "completedAt"
->, options?: { includeInternal?: boolean }) {
+>, options?: { includeInternal?: boolean; attachmentScopeAll?: boolean }) {
   const parsed = parseTicketSituationSummary(ticket.summary);
   const cfg = miniappRequestConfig(ticket.type);
   const includeInternal = Boolean(options?.includeInternal);
@@ -116,7 +117,7 @@ export function miniappRequestDto(ticket: Pick<
       url,
       name: `${isImage ? "工单截图" : "工单文件"} ${index + 1}${extension}`,
       isImage,
-      previewUrl: `/api/miniapp/staff/parent-requests/${encodeURIComponent(ticket.id)}/attachments?file=${encodeURIComponent(url)}`,
+      previewUrl: `/api/miniapp/staff/parent-requests/${encodeURIComponent(ticket.id)}/attachments?${options?.attachmentScopeAll ? "scope=all&" : ""}file=${encodeURIComponent(url)}`,
     };
   });
   const parentContent = visibility.publicSummary || parsed.currentIssue;
@@ -124,6 +125,9 @@ export function miniappRequestDto(ticket: Pick<
 
   return {
     id: ticket.id,
+    source: ticket.source,
+    sourceLabel: ticket.source === "家长小程序" ? "家长请求" : ticket.source || "内部工单",
+    isParentRequest: ticket.source === "家长小程序",
     ticketNo: ticket.ticketNo,
     studentId: ticket.studentId,
     studentName: ticket.studentName,

@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-19-r274
+
+- Release ID: `2026-07-19-r274`
+- Date/Time (Asia/Shanghai): `2026-07-19`
+- Deployment status: `READY`
+- Scope: align the employee action-centre Ticket count with an all-source Ticket list and make each Ticket source explicit in the miniapp.
+- Key files:
+  - `app/api/miniapp/staff/parent-requests/route.ts`
+  - `app/api/miniapp/staff/parent-requests/[id]/route.ts`
+  - `app/api/miniapp/staff/parent-requests/[id]/attachments/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-requests/*`
+  - `miniapp/boss-academic-parent/pages/staff-request-detail/*`
+  - `docs/tasks/TASK-20260719-miniapp-unified-ticket-scope.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. Employee reads now include all Ticket sources only when the authenticated staff page explicitly requests `scope=all`; parent-facing reads, Ticket creation defaults, scheduling, attendance, package, finance and payroll logic are unchanged.
+- Verification: 28 focused miniapp/Ticket tests and the 208-route production build passed. Read-only production inspection confirmed the mismatch was caused by 8 open Tickets comprising 7 `自营学生` Tickets and 1 `家长小程序` Ticket.
+- Rollback point: `b85577a849bd79b7b0fc930cca28db87c8e1b878` (`2026-07-19-r273` release lineage).
+
+---
+
 ## 2026-07-19-r273
 
 - Release ID: `2026-07-19-r273`
