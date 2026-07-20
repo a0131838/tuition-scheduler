@@ -28,3 +28,11 @@ The existing r267 SOP set explains the web workflows. Staff also need equally de
 ## Safety
 
 Documentation only. No application source, database schema, business permissions, scheduling, attendance, packages, finance, payroll, notification behavior or production business record was changed.
+
+## 2026-07-19 update (miniapp v1.0.11)
+
+- Academic Operations SOP expanded from 18 to 19 pages. Added Unified Tasks, All Tickets scope/filter reconciliation, Student 360, operation correction, the two-stage feedback workflow, exact numbered WeChat handoff buttons, explicit lesson dates in reminders, and an updated daily checklist.
+- Management SOP expanded from 14 to 17 pages. Added Unified Tasks/All Tickets oversight, Management Approval Center, Student 360, new-lead routing, operation correction, and a separate control for feedback publication versus manual WeChat delivery.
+- Teacher SOP expanded from 14 to 16 pages. Added Unified Tasks, notices, manager feedback, teaching reports, Student 360 usage, and the current homework limitation: homework is a text field rather than a file-upload action.
+- Re-exported all three A4-landscape bilingual PDFs. Verified 52 pages in total, key v1.0.11 text/button labels, image references, and contact-sheet previews; no blank pages, clipping, or garbled Chinese text were found.
+- Documentation update only; no miniapp, web application, database, permission, or production data was changed.
