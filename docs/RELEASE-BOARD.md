@@ -22,7 +22,7 @@
 
 ## Open Risks
 
-- Course-change resend rollout: r277 is ready with explicit cancellation/reschedule comparison and mandatory evidence. After deploy, sync and inspect the existing Steven and 刘妍书 tasks without changing their schedules, then upload WeChat development version `1.0.13`. Physical-phone testing should use an existing task; do not fabricate a cancellation.
+- Course-change resend rollout: r277 is ready with explicit cancellation/reschedule comparison, automatic upgrade of still-open historical generic corrections and mandatory evidence. After deploy, sync and inspect the existing Steven and 刘妍书 tasks without changing their schedules, then upload WeChat development version `1.0.13`. Physical-phone testing should use an existing task; do not fabricate a cancellation.
 
 - Seven-upgrade miniapp rollout: `2026-07-20-r276` is live at runtime feature commit `839a459`; PM2 and health checks pass, the additive attachment table was verified directly, and WeChat development version `1.0.12` uploaded successfully at 508,918 bytes (497.0 KB). Designate it as the experience version and test Emily, Eva, Jasmine ADMIN and Jasmine TEACHER on physical phones. Direct Mini Program cards are recommended for exact deep links, but WeChat still requires the employee to choose a group/person and tap Send; retain text/image fallbacks and the manual send evidence step.
 

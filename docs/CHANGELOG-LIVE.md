@@ -20,7 +20,7 @@ This file is the single source of truth for what changed in production.
 - Release ID: `2026-07-20-r277`
 - Date/Time (Asia/Shanghai): `2026-07-20`
 - Deployment status: `READY`
-- Scope: replace ambiguous generic course corrections with an auditable Course Change Resend workflow that identifies the actual change, compares previous and current arrangements, gives explicit cancellation/no-replacement wording and requires WeChat evidence before completion.
+- Scope: replace ambiguous generic course corrections with an auditable Course Change Resend workflow that identifies the actual change, compares previous and current arrangements, upgrades still-open historical generic tasks, gives explicit cancellation/no-replacement wording and requires WeChat evidence before completion.
 - Key files:
   - `lib/parent-communication-center.ts`
   - `miniapp/boss-academic-parent/pages/staff-communications/*`

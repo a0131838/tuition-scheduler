@@ -20,6 +20,7 @@ The communication centre previously called every stale, already-sent lesson remi
 - No Session, Ticket, attendance, package, finance, payroll or parent-permission record is rewritten by the UI change.
 - No database migration is introduced; correction context is reconstructed from existing immutable reminder and audit records.
 - Completed resend tasks stay completed during later syncs and are not reopened.
+- Open historical generic corrections are upgraded during sync even after their original reminder date has passed; completed history remains untouched.
 - The change does not post directly into WeChat. Staff still choose the original group/person, send, upload evidence and confirm.
 
 ## Verification

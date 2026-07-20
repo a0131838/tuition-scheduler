@@ -443,18 +443,48 @@ async function syncTomorrowReminderTasks() {
   return count;
 }
 
+async function refreshLegacyCourseChangeTasks() {
+  const legacyRows = await prisma.parentCommunicationTask.findMany({
+    where: { kind: "COURSE_CHANGE", status: { in: OPEN_STATUSES }, correctionOfTaskId: { not: null } },
+    orderBy: { createdAt: "asc" },
+    take: 500,
+  });
+  let count = 0;
+  for (const row of legacyRows) {
+    if (extractCourseChangeType(row.messageText)) continue;
+    const source = await prisma.parentCommunicationTask.findUnique({ where: { id: row.correctionOfTaskId! } });
+    if (!source) continue;
+    const courseChange = buildCourseChangeMessage({
+      kind: source.kind,
+      previousMessageText: source.messageText,
+      currentMessageText: row.messageText,
+      forceCancelled: true,
+    });
+    await prisma.parentCommunicationTask.update({
+      where: { id: row.id },
+      data: {
+        title: row.title.replace(/^【更正通知】/, `【${courseChange.label}】`),
+        messageText: courseChange.messageText,
+      },
+    });
+    count += 1;
+  }
+  return count;
+}
+
 export async function syncParentCommunicationCenter(actor?: CommunicationActor) {
   const [feedbackCount, reminderCount] = await Promise.all([syncFeedbackTasks(), syncTomorrowReminderTasks()]);
+  const legacyCourseChangeCount = await refreshLegacyCourseChangeTasks();
   if (actor) {
     await logAudit({
       actor,
       module: "COMMUNICATION",
       action: "SYNC_COMMUNICATION_TASKS",
       entityType: "ParentCommunicationTask",
-      meta: { feedbackCount, reminderCount },
+      meta: { feedbackCount, reminderCount, legacyCourseChangeCount },
     });
   }
-  return { feedbackCount, reminderCount };
+  return { feedbackCount, reminderCount, legacyCourseChangeCount };
 }
 
 export async function listParentCommunicationTasks(input: { status?: string; kind?: string; limit?: number }) {

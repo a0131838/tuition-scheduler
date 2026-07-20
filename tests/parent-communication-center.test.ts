@@ -122,6 +122,8 @@ test("course change completion requires a WeChat evidence screenshot", async () 
   assert.match(markup, /原安排 · 不再有效/);
   assert.match(markup, /当前安排 · 请以此为准/);
   assert.match(markup, /上传发送截图/);
+  assert.match(service, /refreshLegacyCourseChangeTasks/);
+  assert.match(service, /replace\(\/\^【更正通知】\//);
 });
 
 test("feedback publication visibly continues into manual WeChat group delivery", async () => {
