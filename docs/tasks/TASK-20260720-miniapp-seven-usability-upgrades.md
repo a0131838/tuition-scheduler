@@ -37,6 +37,6 @@ The existing manual WeChat workflow remains mandatory: staff choose the recipien
 
 - The additive migration and server endpoints are live at runtime feature commit `839a459`; the guarded deployment aligned local, GitHub and server, PM2 is online and `/admin/login` returned HTTP 200.
 - A direct production Prisma query confirmed `SessionFeedbackAttachment` exists and contains zero rows before real use.
-- Upload Mini Program development version `1.0.12`.
+- Mini Program development version `1.0.12` uploaded successfully at 508,918 bytes (497.0 KB).
 - In WeChat Public Platform, manually designate `1.0.12` as the experience version.
 - Test one real, controlled flow for Emily, Eva, Jasmine ADMIN and Jasmine TEACHER. Do not fabricate payroll, feedback or family records solely for testing.
