@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-20-r276`
 - Date/Time (Asia/Shanghai): `2026-07-20`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: deliver seven employee-miniapp usability upgrades: teacher homework/class attachments, contextual issue reporting, simplified role navigation, resilient drafts and retry, exact Mini Program card sharing, a manager health dashboard, and stronger read-side privacy auditing.
 - Key files:
   - `prisma/migrations/20260720090000_add_session_feedback_attachments/migration.sql`
@@ -34,7 +34,7 @@ This file is the single source of truth for what changed in production.
   - `tests/miniapp-resilience-share.test.ts`
   - `docs/tasks/TASK-20260720-miniapp-seven-usability-upgrades.md`
 - Risk impact (if any): Medium-low. The release adds one isolated attachment table and authenticated endpoints. It does not rewrite existing teaching, scheduling, attendance, package, finance or payroll records. Direct card sharing still requires the employee to select a WeChat recipient and tap Send; evidence/confirmation remains a separate audited business step.
-- Verification: 93 backend tests and 21 focused tests passed; native JavaScript syntax, Mini Program JSON, the 43-page release audit, Prisma generation, `git diff --check` and the full 210-route production build passed. Experience-version physical-phone checks remain after uploading `1.0.12`.
+- Verification: 93 backend tests and 21 focused tests passed; native JavaScript syntax, Mini Program JSON, the 43-page release audit, Prisma generation, `git diff --check` and the full 210-route production build passed. Runtime commit `839a459d265037ebddda9ad4c2d4d539cac5b843` aligned locally, on GitHub and on the server with PM2 PID `2843727` and `/admin/login` HTTP 200. A direct production Prisma query confirmed the attachment table exists with zero rows, and anonymous health/attachment reads plus direct-server issue writes were rejected. WeChat development upload `1.0.12` remains pending because the local Developer Tools service port is disabled; enabling that security setting requires user confirmation.
 - Rollback point: `43d67a3` (`2026-07-19-r275` release lineage).
 
 ---
