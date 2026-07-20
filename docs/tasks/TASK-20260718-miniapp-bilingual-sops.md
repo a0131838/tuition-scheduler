@@ -36,3 +36,11 @@ Documentation only. No application source, database schema, business permissions
 - Teacher SOP expanded from 14 to 16 pages. Added Unified Tasks, notices, manager feedback, teaching reports, Student 360 usage, and the current homework limitation: homework is a text field rather than a file-upload action.
 - Re-exported all three A4-landscape bilingual PDFs. Verified 52 pages in total, key v1.0.11 text/button labels, image references, and contact-sheet previews; no blank pages, clipping, or garbled Chinese text were found.
 - Documentation update only; no miniapp, web application, database, permission, or production data was changed.
+
+## 2026-07-20 update (miniapp v1.0.13)
+
+- Renamed the ambiguous “更正通知” queue to “课程变更补发 / Course Change Resend”.
+- Added the real trigger rule: an unsent reminder is updated in place; a resend task is created only when an already-sent reminder later becomes stale.
+- Added the Previous → Current comparison, explicit cancellation/no-replacement wording, original sender and lesson-change audit context, and the exact operational sequence.
+- Added the management control that a course-change resend cannot be completed without a WeChat evidence screenshot.
+- Updated the Academic Operations and Management bilingual SOPs and versioned the three-role miniapp SOP set to v1.0.13.

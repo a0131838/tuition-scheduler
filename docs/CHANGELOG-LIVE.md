@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-20-r277
+
+- Release ID: `2026-07-20-r277`
+- Date/Time (Asia/Shanghai): `2026-07-20`
+- Deployment status: `READY`
+- Scope: replace ambiguous generic course corrections with an auditable Course Change Resend workflow that identifies the actual change, compares previous and current arrangements, gives explicit cancellation/no-replacement wording and requires WeChat evidence before completion.
+- Key files:
+  - `lib/parent-communication-center.ts`
+  - `miniapp/boss-academic-parent/pages/staff-communications/*`
+  - `app/admin/communications/CommunicationCenterClient.tsx`
+  - `tests/parent-communication-center.test.ts`
+  - `docs/SOP-小程序-教务-完整操作-中英文培训版-20260718.html`
+  - `docs/SOP-小程序-管理-监督与账号-中英文培训版-20260718.html`
+  - `docs/tasks/TASK-20260720-course-change-resend-clarity.md`
+- Risk impact (if any): Medium-low. The change affects communication-task presentation and completion validation but does not alter Session, Ticket, attendance, package, finance, payroll or permission records. There is no migration. Staff must still send through WeChat manually.
+- Verification: 96 backend regression tests (including 17 focused communication tests), TypeScript, `git diff --check`, the 43-page miniapp release audit and the 210-route production build passed. Three v1.0.13 bilingual SOP PDFs (54 pages total) passed text extraction and contact-sheet visual review. Guarded deployment, production task verification and WeChat `1.0.13` upload remain pending.
+- Rollback point: `66a0059b66b57e8c52098a25ba5388c9f93d52b7` (`2026-07-20-r276` release lineage).
+
+---
+
 ## 2026-07-20-r276
 
 - Release ID: `2026-07-20-r276`

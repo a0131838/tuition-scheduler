@@ -2,7 +2,7 @@
   <view class="top">
     <view class="eyebrow">教务沟通与提醒 / COMMUNICATION</view>
     <view class="title">沟通与提醒工作台</view>
-    <view class="subtitle">先选工作队列，再处理审核、发送或更正。</view>
+    <view class="subtitle">先选工作队列，再处理审核、发送或课程变更补发。</view>
   </view>
 
   <scroll-view class="workflow-scroll" scroll-x>
@@ -35,6 +35,32 @@
       <view class="automatic-status">{{item.automaticStatusText}} · 人工微信：{{item.isCompleted ? '已发送' : '待处理'}}</view>
       <button class="claim" wx:if="{{!item.isCompleted}}" data-id="{{item.id}}" bindtap="claim">领取这项任务</button>
 
+      <view class="change-card" wx:if="{{item.isCourseChange && item.correction}}">
+        <view class="change-purpose">
+          <view class="change-purpose-label">为什么要补发</view>
+          <view class="change-purpose-text">{{item.correction.reason}}</view>
+        </view>
+        <view class="change-type-row"><text class="change-type">{{item.correction.typeLabel}}</text><text class="change-state">旧提醒已经失效</text></view>
+        <view class="schedule-compare">
+          <view class="schedule-box previous">
+            <view class="schedule-kicker">原安排 · 不再有效</view>
+            <view class="schedule-line" wx:for="{{item.correction.previousLines}}" wx:key="*this" wx:for-item="line">{{line}}</view>
+          </view>
+          <view class="change-arrow">↓</view>
+          <view class="schedule-box current {{item.correction.noReplacement ? 'cancelled' : ''}}">
+            <view class="schedule-kicker">当前安排 · 请以此为准</view>
+            <view class="schedule-line" wx:for="{{item.correction.currentLines}}" wx:key="*this" wx:for-item="line">{{line}}</view>
+            <view class="no-replacement" wx:if="{{item.correction.noReplacement}}">课程已取消，暂无替代课程</view>
+          </view>
+        </view>
+        <view class="change-trace">
+          <view>原提醒：{{item.correction.originalSentByName || '操作人未记录'}}于 {{item.originalSentText || '时间未记录'}}发送</view>
+          <view wx:if="{{item.correction.originalGroupName}}">发送对象：{{item.correction.originalGroupName}}</view>
+          <view>课程变更：{{item.correction.changedByName || '系统检测'}}于 {{item.changeDetectedText}}</view>
+        </view>
+        <view class="change-next">现在要做：领取任务 → 把下方补发文案或小程序卡片发到原微信群 → 上传发送截图 → 确认已发送。</view>
+      </view>
+
       <view class="review" wx:if="{{item.isFeedback && item.feedback}}">
         <view class="completeness {{item.missingText ? 'incomplete' : 'complete'}}"><text>反馈完整度 {{item.completenessLabel}}</text><text>{{item.missingText || '内容完整，可以审核'}}</text></view>
         <view class="feedback-section" wx:for="{{item.feedbackSectionRows}}" wx:key="key"><view class="section-label">{{item.label}}</view><view class="section-value">{{item.value}}</view></view>
@@ -47,7 +73,8 @@
       </view>
 
       <view class="send" wx:if="{{item.canSend}}">
-        <view class="send-heading">{{item.isFeedback ? '第2步：人工发送到家长微信群' : (item.isTeacherReminder ? '发给老师的微信文案' : '发到家长群的微信文案')}}</view>
+        <view class="send-heading">{{item.isFeedback ? '第2步：人工发送到家长微信群' : (item.isCourseChange ? '必须补发到原微信会话' : (item.isTeacherReminder ? '发给老师的微信文案' : '发到家长群的微信文案'))}}</view>
+        <view class="send-instruction urgent-copy" wx:if="{{item.isCourseChange}}">这是对已发送旧提醒的纠正。请将本条发到原家长群或老师微信，不能只在系统里点完成。</view>
         <view class="send-instruction" wx:if="{{item.isFeedback}}">复制下面文案或保存图片，在微信中发到对应家长群。小程序发布不能代替人工发群。</view>
         <view class="section-label">待发送文案</view><view class="message">{{item.messageText}}</view>
         <view class="share-card-note" wx:if="{{item.canShareCard}}">推荐：分享小程序卡片后，家长或老师点击即可直达对应内容；仍需人工选择微信群并点击发送。</view>

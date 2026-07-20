@@ -28,6 +28,94 @@ export function reminderScheduleLines(value: string) {
     .filter((line) => /^\d{1,2}:\d{2}\s*[–-]\s*\d{1,2}:\d{2}\b/.test(line));
 }
 
+type CourseChangeType = "CANCELLED" | "TIME_CHANGED" | "TEACHER_CHANGED" | "LOCATION_CHANGED" | "STUDENTS_CHANGED" | "MULTIPLE_CHANGED" | "UPDATED";
+
+const courseChangeLabels: Record<CourseChangeType, string> = {
+  CANCELLED: "课程取消",
+  TIME_CHANGED: "上课时间变更",
+  TEACHER_CHANGED: "授课老师变更",
+  LOCATION_CHANGED: "上课地点变更",
+  STUDENTS_CHANGED: "上课学生变更",
+  MULTIPLE_CHANGED: "多项安排变更",
+  UPDATED: "课程安排变更",
+};
+
+function parseScheduleLine(line: string) {
+  const match = line.match(/^(\d{1,2}:\d{2})\s*[–-]\s*(\d{1,2}:\d{2})\s+(.+)$/);
+  if (!match) return null;
+  const parts = match[3].split(/\s+·\s+/).map((part) => part.trim());
+  return { time: `${match[1]}–${match[2]}`, subject: parts[0] ?? "", person: parts[1] ?? "", location: parts.slice(2).join(" · ") };
+}
+
+function detectCourseChangeType(kind: string, previousLines: string[], currentLines: string[]): CourseChangeType {
+  if (!currentLines.length) return "CANCELLED";
+  if (previousLines.length !== currentLines.length) return kind === "COURSE_REMINDER_TEACHER" ? "STUDENTS_CHANGED" : "MULTIPLE_CHANGED";
+  const changes = new Set<CourseChangeType>();
+  for (let index = 0; index < previousLines.length; index += 1) {
+    const previous = parseScheduleLine(previousLines[index]);
+    const current = parseScheduleLine(currentLines[index]);
+    if (!previous || !current) return "UPDATED";
+    if (previous.time !== current.time) changes.add("TIME_CHANGED");
+    if (previous.subject !== current.subject) changes.add("UPDATED");
+    if (previous.person !== current.person) changes.add(kind === "COURSE_REMINDER_PARENT" ? "TEACHER_CHANGED" : "STUDENTS_CHANGED");
+    if (previous.location !== current.location) changes.add("LOCATION_CHANGED");
+  }
+  if (changes.size === 0) return "UPDATED";
+  if (changes.size > 1 || changes.has("UPDATED")) return "MULTIPLE_CHANGED";
+  return Array.from(changes)[0];
+}
+
+function recipientGreeting(messageText: string, kind: string) {
+  const firstLine = String(messageText ?? "").split(/\r?\n/)[0]?.trim() ?? "";
+  const greeting = firstLine.match(/^(.{1,40}?您好)[，,]/)?.[1];
+  if (greeting) return `${greeting}，`;
+  return kind === "COURSE_REMINDER_TEACHER" ? "老师您好，" : "家长您好，";
+}
+
+export function buildCourseChangeMessage(input: {
+  kind: string;
+  previousMessageText: string;
+  currentMessageText?: string | null;
+  forceCancelled?: boolean;
+}) {
+  const previousLines = reminderScheduleLines(input.previousMessageText);
+  const currentLines = input.forceCancelled ? [] : reminderScheduleLines(input.currentMessageText ?? "");
+  const type = detectCourseChangeType(input.kind, previousLines, currentLines);
+  const label = courseChangeLabels[type];
+  const audience = input.kind === "COURSE_REMINDER_TEACHER" ? "老师" : "家长";
+  const greeting = recipientGreeting(input.currentMessageText || input.previousMessageText, input.kind);
+  const currentBlock = currentLines.length
+    ? currentLines.map((line) => `• ${line}`).join("\n")
+    : "• 该课程已取消，暂无替代课程。 / This class has been cancelled. No replacement class is currently scheduled.";
+  const messageText = [
+    `【课程变更补发｜${label}｜请以本条为准】`,
+    greeting,
+    `此前发出的${audience}课程提醒已发生变化，请忽略上一条提醒。`,
+    "",
+    "原安排 / Previous",
+    ...(previousLines.length ? previousLines.map((line) => `• ${line}`) : ["• 原安排详情请查看上一条提醒"]),
+    "",
+    "当前安排 / Current",
+    currentBlock,
+    "",
+    currentLines.length
+      ? "请以本条及小程序最新课表为准；如有疑问，请联系教务。 / Please follow this update and the latest miniapp schedule."
+      : "目前无需按原时间上课；如后续安排补课，教务会另行通知。 / No class is required at the original time. Any replacement will be announced separately.",
+  ].join("\n");
+  return { type, label, previousLines, currentLines, messageText };
+}
+
+function extractCourseChangeType(messageText: string): CourseChangeType | null {
+  const label = messageText.match(/^【课程变更补发｜([^｜]+)｜/m)?.[1];
+  if (!label) return null;
+  return (Object.keys(courseChangeLabels) as CourseChangeType[]).find((key) => courseChangeLabels[key] === label) ?? null;
+}
+
+function extractCurrentScheduleLines(messageText: string) {
+  const block = messageText.split("当前安排 / Current")[1]?.split(/\n\s*\n/)[0] ?? "";
+  return block.split(/\r?\n/).map((line) => line.replace(/^•\s*/, "").trim()).filter((line) => /^\d{1,2}:\d{2}\s*[–-]\s*\d{1,2}:\d{2}\b/.test(line));
+}
+
 function hasSameReminderSchedule(existingText: string, nextText: string) {
   const existingLines = reminderScheduleLines(existingText);
   const nextLines = reminderScheduleLines(nextText);
@@ -77,8 +165,9 @@ async function upsertCommunicationTask(input: {
   ownerName?: string | null;
   wechatGroupName?: string | null;
   presentationOnlyIfBodyUnchanged?: boolean;
+  forceCourseCancelled?: boolean;
 }) {
-  const { presentationOnlyIfBodyUnchanged = false, ...taskData } = input;
+  const { presentationOnlyIfBodyUnchanged = false, forceCourseCancelled = false, ...taskData } = input;
   const contentFingerprint = fingerprint(input.messageText);
   const existing = await prisma.parentCommunicationTask.findUnique({ where: { taskKey: input.taskKey } });
   if (!existing) {
@@ -106,6 +195,13 @@ async function upsertCommunicationTask(input: {
   if (existing.manualSentAt || existing.status === "COMPLETED") {
     const correctionKey = `${input.taskKey}:correction:${contentFingerprint.slice(0, 12)}`;
     const feedbackRevision = input.kind === "FEEDBACK";
+    const existingCorrection = await prisma.parentCommunicationTask.findUnique({ where: { taskKey: correctionKey } });
+    const courseChange = feedbackRevision ? null : buildCourseChangeMessage({
+      kind: input.kind,
+      previousMessageText: existing.messageText,
+      currentMessageText: input.messageText,
+      forceCancelled: forceCourseCancelled,
+    });
     await prisma.parentCommunicationTask.update({
       where: { id: existing.id },
       data: { supersededAt: existing.supersededAt ?? new Date() },
@@ -118,15 +214,16 @@ async function upsertCommunicationTask(input: {
         kind: feedbackRevision ? "FEEDBACK" : "COURSE_CHANGE",
         status: feedbackRevision ? input.status : "ATTENTION",
         priority: "HIGH",
-        title: feedbackRevision ? `【反馈修订】${input.title}` : `【更正通知】${input.title}`,
-        messageText: feedbackRevision ? input.messageText : `【课程安排有更新，请以本条为准】\n${input.messageText}`,
+        title: feedbackRevision ? `【反馈修订】${input.title}` : `【${courseChange!.label}】${input.title}`,
+        messageText: feedbackRevision ? input.messageText : courseChange!.messageText,
         contentFingerprint,
         correctionOfTaskId: existing.id,
       },
       update: {
-        messageText: feedbackRevision ? input.messageText : `【课程安排有更新，请以本条为准】\n${input.messageText}`,
+        title: feedbackRevision ? `【反馈修订】${input.title}` : `【${courseChange!.label}】${input.title}`,
+        messageText: feedbackRevision ? input.messageText : courseChange!.messageText,
         contentFingerprint,
-        status: feedbackRevision ? input.status : "ATTENTION",
+        status: existingCorrection?.manualSentAt || existingCorrection?.status === "COMPLETED" ? "COMPLETED" : feedbackRevision ? input.status : "ATTENTION",
         priority: "HIGH",
       },
     });
@@ -337,6 +434,7 @@ async function syncTomorrowReminderTasks() {
         dueAt: prior.dueAt,
         ownerName: prior.ownerName,
         wechatGroupName: prior.wechatGroupName,
+        forceCourseCancelled: true,
       });
     } else {
       await prisma.parentCommunicationTask.update({ where: { id: prior.id }, data: { status: "WAIVED", note: "原课程已取消、改期或不再属于明日提醒范围。", completedAt: new Date(), supersededAt: new Date() } });
@@ -380,6 +478,7 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
   const teacherIds = Array.from(new Set(rows.map((row) => row.teacherId).filter((id): id is string => Boolean(id))));
   const feedbackIds = Array.from(new Set(rows.map((row) => row.feedbackId).filter((id): id is string => Boolean(id))));
   const sessionIds = Array.from(new Set(rows.map((row) => row.sessionId).filter((id): id is string => Boolean(id))));
+  const correctionSourceIds = Array.from(new Set(rows.map((row) => row.correctionOfTaskId).filter((id): id is string => Boolean(id))));
   const [students, teachers, sessions, feedbacks, auditRows, notificationRows] = await Promise.all([
     prisma.student.findMany({ where: { id: { in: studentIds } }, select: { id: true, name: true, school: true, grade: true } }),
     prisma.teacher.findMany({ where: { id: { in: teacherIds } }, select: { id: true, name: true } }),
@@ -395,6 +494,23 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
       take: 3000,
     }),
   ]);
+  const correctionSources = correctionSourceIds.length
+    ? await prisma.parentCommunicationTask.findMany({ where: { id: { in: correctionSourceIds } } })
+    : [];
+  const correctionSourceMap = new Map(correctionSources.map((row) => [row.id, row]));
+  const correctionSessionIds = Array.from(new Set(correctionSources.map((row) => row.sessionId).filter((id): id is string => Boolean(id))));
+  const correctionSourceAudits = correctionSessionIds.length
+    ? await prisma.auditLog.findMany({
+      where: { entityType: "Session", entityId: { in: correctionSessionIds } },
+      select: { entityId: true, action: true, actorName: true, actorEmail: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+      take: 1000,
+    })
+    : [];
+  const correctionSourceAuditMap = new Map<string, (typeof correctionSourceAudits)[number]>();
+  for (const audit of correctionSourceAudits) {
+    if (audit.entityId && !correctionSourceAuditMap.has(audit.entityId)) correctionSourceAuditMap.set(audit.entityId, audit);
+  }
   const studentMap = new Map(students.map((row) => [row.id, row]));
   const teacherMap = new Map(teachers.map((row) => [row.id, row]));
   const sessionMap = new Map(sessions.map((row) => [row.id, row]));
@@ -427,6 +543,26 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
       const missingSections = feedback ? getMissingParentFeedbackSections(feedback.parentContent || feedback.content) : [];
       const homeworkMissing = Boolean(feedback && !String(feedback.homework ?? "").trim());
       const previousHomeworkMissing = Boolean(feedback && feedback.previousHomeworkDone === null);
+      const correctionSource = row.correctionOfTaskId ? correctionSourceMap.get(row.correctionOfTaskId) ?? null : null;
+      const parsedChangeType = row.kind === "COURSE_CHANGE" ? extractCourseChangeType(row.messageText) : null;
+      const correctionAudit = correctionSource?.sessionId ? correctionSourceAuditMap.get(correctionSource.sessionId) ?? null : null;
+      const correction = correctionSource && row.kind === "COURSE_CHANGE" ? {
+        type: parsedChangeType ?? "CANCELLED",
+        typeLabel: courseChangeLabels[parsedChangeType ?? "CANCELLED"],
+        previousLines: reminderScheduleLines(correctionSource.messageText),
+        currentLines: parsedChangeType ? extractCurrentScheduleLines(row.messageText) : [],
+        noReplacement: !parsedChangeType || extractCurrentScheduleLines(row.messageText).length === 0,
+        reason: correctionSource.manualSentAt
+          ? "上一条课程提醒已经人工发出，之后课程安排发生变化，所以必须补发本条，避免家长或老师继续按旧安排上课。"
+          : "上一条课程提醒已经完成发送，之后课程安排发生变化，所以必须补发本条。",
+        originalSentAt: correctionSource.manualSentAt?.toISOString() ?? null,
+        originalSentByName: correctionSource.manualSentByName,
+        originalChannel: correctionSource.manualChannel,
+        originalGroupName: correctionSource.wechatGroupName,
+        changedAt: correctionAudit?.createdAt.toISOString() ?? row.createdAt.toISOString(),
+        changedByName: correctionAudit?.actorName || correctionAudit?.actorEmail || null,
+        changeAction: correctionAudit?.action || null,
+      } : null;
       return ({
       ...row,
       dateLabel: taskDate ? formatBusinessDateWithWeekday(taskDate) : null,
@@ -459,6 +595,7 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
       } : null,
       history: (historyMap.get(row.id) ?? []).map((audit) => ({ ...audit, createdAt: audit.createdAt.toISOString() })),
       automaticNotification: automaticSummary(row),
+      correction,
     });}),
     summary: summaryRows.reduce<Record<string, number>>((acc, row) => {
       acc[row.status] = row._count._all;
@@ -577,6 +714,9 @@ export async function updateParentCommunicationTask(input: {
   }
 
   if (input.action === "manual_sent") {
+    if (task.kind === "COURSE_CHANGE" && !task.evidenceUrl) {
+      throw new Error("课程变更补发必须先上传微信发送截图，再确认已发送");
+    }
     const groupName = String(data.wechatGroupName ?? task.wechatGroupName ?? "").trim();
     const note = String(data.note ?? "").trim().slice(0, 1000);
     const channel = String(data.channel ?? (task.kind === "COURSE_REMINDER_TEACHER" ? "WECHAT_DIRECT" : "WECHAT_GROUP")).trim();

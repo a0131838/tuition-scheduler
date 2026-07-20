@@ -4,14 +4,14 @@ const kindLabels = {
   FEEDBACK: "课后反馈",
   COURSE_REMINDER_PARENT: "发给家长",
   COURSE_REMINDER_TEACHER: "发给老师",
-  COURSE_CHANGE: "更正通知"
+  COURSE_CHANGE: "课程变更补发"
 };
 const statusLabels = {
   PENDING_REVIEW: "待审核",
   READY_TO_SEND: "待发送",
   CLAIMED: "处理中",
   RETURNED: "已退回老师",
-  ATTENTION: "需更正",
+  ATTENTION: "待补发",
   COMPLETED: "已发送",
   WAIVED: "无需发送"
 };
@@ -29,15 +29,22 @@ function teacherRecipient(name) {
   return value.endsWith("老师") ? value : `${value}老师`;
 }
 
+function formatDateTime(value) {
+  const date = new Date(value || "");
+  if (Number.isNaN(date.getTime())) return "时间未记录";
+  const pad = (number) => String(number).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 function shareInfo(item) {
   if (item.kind === "FEEDBACK" && item.feedbackId && item.studentId) {
     return { canShareCard: Boolean(item.feedback && item.feedback.reviewStatus === "PUBLISHED"), shareTitle: `${item.student && item.student.name ? item.student.name : "学生"}课后反馈`, sharePath: `/pages/feedbacks/feedbacks?studentId=${encodeURIComponent(item.studentId)}&feedbackId=${encodeURIComponent(item.feedbackId)}` };
   }
-  if (item.kind === "COURSE_REMINDER_TEACHER") {
+  if (item.kind === "COURSE_REMINDER_TEACHER" || (item.kind === "COURSE_CHANGE" && item.teacherId && !item.studentId)) {
     const date = item.dueAt ? String(item.dueAt).slice(0, 10) : "";
     return { canShareCard: true, shareTitle: item.title || "老师课程提醒", sharePath: `/pages/staff-schedule/staff-schedule${date ? `?date=${date}` : ""}` };
   }
-  if (item.studentId) return { canShareCard: true, shareTitle: item.title || "课程安排提醒", sharePath: `/pages/schedule/schedule?studentId=${encodeURIComponent(item.studentId)}` };
+  if (item.studentId) return { canShareCard: true, shareTitle: item.kind === "COURSE_CHANGE" ? "课程安排已变更，请以最新安排为准" : (item.title || "课程安排提醒"), sharePath: `/pages/schedule/schedule?studentId=${encodeURIComponent(item.studentId)}` };
   return { canShareCard: false, shareTitle: "", sharePath: "" };
 }
 
@@ -54,7 +61,7 @@ Page({
       { value: "FEEDBACK", label: "课后反馈", count: 0 },
       { value: "COURSE_REMINDER_PARENT", label: "发给家长", count: 0 },
       { value: "COURSE_REMINDER_TEACHER", label: "发给老师", count: 0 },
-      { value: "COURSE_CHANGE", label: "更正通知", count: 0 }
+      { value: "COURSE_CHANGE", label: "课程变更补发", count: 0 }
     ],
     filters: [
       { value: "OPEN", label: "待处理" },
@@ -102,8 +109,9 @@ Page({
             kindLabel: kindLabels[item.kind] || item.kind,
             statusLabel: statusLabels[item.status] || item.status,
             isFeedback: item.kind === "FEEDBACK",
-            isTeacherReminder: item.kind === "COURSE_REMINDER_TEACHER",
-            recipientLabel: item.kind === "COURSE_REMINDER_TEACHER" ? teacherRecipient(item.teacher && item.teacher.name) : (item.student && item.student.name ? `${item.student.name}家长` : "家长"),
+            isCourseChange: item.kind === "COURSE_CHANGE",
+            isTeacherReminder: item.kind === "COURSE_REMINDER_TEACHER" || (item.kind === "COURSE_CHANGE" && item.teacherId && !item.studentId),
+            recipientLabel: item.kind === "COURSE_REMINDER_TEACHER" || (item.kind === "COURSE_CHANGE" && item.teacherId && !item.studentId) ? teacherRecipient(item.teacher && item.teacher.name) : (item.student && item.student.name ? `${item.student.name}家长` : "家长"),
             feedbackNeedsPublish: item.kind === "FEEDBACK" && item.feedback && item.feedback.reviewStatus !== "PUBLISHED",
             feedbackFlowLabel: item.kind !== "FEEDBACK" ? "" : item.status === "COMPLETED" ? "已完成：小程序发布 + 微信群发送" : item.feedback && item.feedback.reviewStatus === "PUBLISHED" ? "第2步：发到家长微信群" : "第1步：审核并发布",
             needsReview: item.status === "PENDING_REVIEW" || item.status === "RETURNED",
@@ -117,7 +125,9 @@ Page({
             completenessLabel: item.feedback && item.feedback.completeness ? `${item.feedback.completeness.completed}/${item.feedback.completeness.total}` : "",
             missingText: item.feedback && item.feedback.completeness && item.feedback.completeness.missing.length ? `缺少：${item.feedback.completeness.missing.join("、")}` : "",
             latestHistoryText: item.history && item.history[0] ? `${item.history[0].actorName || item.history[0].actorEmail} · ${item.history[0].action}` : "",
-            automaticStatusText: ({ SENT: "自动提醒已发送", PENDING: "自动提醒待发送/待授权", PROCESSING: "自动提醒发送中", FAILED: "自动提醒失败", SKIPPED: "旧自动提醒已失效", NOT_QUEUED: "自动提醒未入队" })[(item.automaticNotification || {}).status] || ""
+            automaticStatusText: ({ SENT: "自动提醒已发送", PENDING: "自动提醒待发送/待授权", PROCESSING: "自动提醒发送中", FAILED: "自动提醒失败", SKIPPED: "旧自动提醒已失效", NOT_QUEUED: "自动提醒未入队" })[(item.automaticNotification || {}).status] || "",
+            changeDetectedText: item.correction ? formatDateTime(item.correction.changedAt) : "",
+            originalSentText: item.correction && item.correction.originalSentAt ? formatDateTime(item.correction.originalSentAt) : ""
           });
         });
         this.setData({ tasks, summary: data.summary || {}, kindSummary, workstreams });
@@ -184,6 +194,7 @@ Page({
   },
   markSent(e) {
     const row = this.data.tasks[e.currentTarget.dataset.index];
+    if (row.isCourseChange && !row.evidenceUrl) return api.toast("请先上传本次补发的微信发送截图");
     const target = row.isTeacherReminder ? "老师微信" : "家长微信群";
     wx.showModal({ title: `确认已发送到${target}`, content: `${row.dateLabel || "课程日期待确认"}\n请只在实际发送完成后确认，系统会记录操作人和时间。`, success: (res) => res.confirm && this.patch(row.id, "manual_sent", { wechatGroupName: row.groupDraft, note: row.noteDraft, channel: row.isTeacherReminder ? "WECHAT_DIRECT" : "WECHAT_GROUP" }) });
   },

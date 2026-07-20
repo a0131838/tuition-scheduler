@@ -4,7 +4,7 @@ import test from "node:test";
 import sharp from "sharp";
 import { buildCommunicationShareImage, wrapCommunicationLine } from "@/lib/communication-share-image";
 import { formatBusinessDateWithWeekday } from "@/lib/date-only";
-import { reminderScheduleLines } from "@/lib/parent-communication-center";
+import { buildCourseChangeMessage, reminderScheduleLines } from "@/lib/parent-communication-center";
 
 const migrationPath = new URL("../prisma/migrations/20260718190000_add_parent_communication_center/migration.sql", import.meta.url);
 
@@ -83,9 +83,45 @@ test("course reminders use an absolute Singapore date with weekday", async () =>
 test("communication workbench separates feedback, parent, teacher and correction queues", async () => {
   const markup = await readFile(new URL("../miniapp/boss-academic-parent/pages/staff-communications/staff-communications.wxml", import.meta.url), "utf8");
   const script = await readFile(new URL("../miniapp/boss-academic-parent/pages/staff-communications/staff-communications.js", import.meta.url), "utf8");
-  for (const label of ["课后反馈", "发给家长", "发给老师", "更正通知"]) assert.match(markup + script, new RegExp(label));
+  for (const label of ["课后反馈", "发给家长", "发给老师", "课程变更补发"]) assert.match(markup + script, new RegExp(label));
   assert.match(markup, /反馈完整度/);
   assert.match(markup, /expandedId === item\.id/);
+});
+
+test("course change resend states cancellation precisely and preserves the previous arrangement", () => {
+  const result = buildCourseChangeMessage({
+    kind: "COURSE_REMINDER_PARENT",
+    previousMessageText: "Steven苏家长您好，课程如下：\n10:00–11:00 英语口语 / 数学 · Joel lam · 线上课程 / Online",
+    currentMessageText: "旧提醒不再适用",
+    forceCancelled: true,
+  });
+  assert.equal(result.type, "CANCELLED");
+  assert.deepEqual(result.previousLines, ["10:00–11:00 英语口语 / 数学 · Joel lam · 线上课程 / Online"]);
+  assert.deepEqual(result.currentLines, []);
+  assert.match(result.messageText, /课程已取消，暂无替代课程/);
+  assert.match(result.messageText, /目前无需按原时间上课/);
+  assert.doesNotMatch(result.messageText, /取消、改期或不再适用/);
+});
+
+test("course change resend identifies one changed field and shows previous to current", () => {
+  const result = buildCourseChangeMessage({
+    kind: "COURSE_REMINDER_PARENT",
+    previousMessageText: "家长您好，\n10:00–11:00 数学 · Jasmine · Online",
+    currentMessageText: "家长您好，\n11:00–12:00 数学 · Jasmine · Online",
+  });
+  assert.equal(result.type, "TIME_CHANGED");
+  assert.match(result.messageText, /上课时间变更/);
+  assert.match(result.messageText, /原安排 \/ Previous/);
+  assert.match(result.messageText, /当前安排 \/ Current/);
+});
+
+test("course change completion requires a WeChat evidence screenshot", async () => {
+  const service = await readFile(new URL("../lib/parent-communication-center.ts", import.meta.url), "utf8");
+  const markup = await readFile(new URL("../miniapp/boss-academic-parent/pages/staff-communications/staff-communications.wxml", import.meta.url), "utf8");
+  assert.match(service, /task\.kind === "COURSE_CHANGE" && !task\.evidenceUrl/);
+  assert.match(markup, /原安排 · 不再有效/);
+  assert.match(markup, /当前安排 · 请以此为准/);
+  assert.match(markup, /上传发送截图/);
 });
 
 test("feedback publication visibly continues into manual WeChat group delivery", async () => {
@@ -135,7 +171,7 @@ test("presentation-only reminder changes compare real course lines and never lea
   assert.deepEqual(reminderScheduleLines(before), reminderScheduleLines(after));
   assert.notDeepEqual(reminderScheduleLines(before), reminderScheduleLines(changedCourse));
   const source = await readFile(new URL("../lib/parent-communication-center.ts", import.meta.url), "utf8");
-  assert.match(source, /const \{ presentationOnlyIfBodyUnchanged = false, \.\.\.taskData \} = input/);
+  assert.match(source, /const \{ presentationOnlyIfBodyUnchanged = false, forceCourseCancelled = false, \.\.\.taskData \} = input/);
   assert.match(source, /data: \{ \.\.\.taskData/);
   assert.doesNotMatch(source, /data: \{ \.\.\.input/);
 });

@@ -14,15 +14,16 @@ type Task = {
   feedback: { content: string; parentContent: string | null; homework: string | null; previousHomeworkDone: boolean | null; reviewStatus: string; reviewNote: string | null; publishedAt: string | null; sections: Record<string, string>; completeness: { complete: boolean; completed: number; total: number; missing: string[] } } | null;
   history: Array<{ action: string; actorName: string | null; actorEmail: string; actorRole: string | null; createdAt: string }>;
   automaticNotification: { status: string; total: number; counts: Record<string, number> };
+  correction: { type: string; typeLabel: string; previousLines: string[]; currentLines: string[]; noReplacement: boolean; reason: string; originalSentAt: string | null; originalSentByName: string | null; originalGroupName: string | null; changedAt: string; changedByName: string | null } | null;
 };
 
 const statusLabels: Record<string, string> = {
   OPEN: "全部待处理", PENDING_REVIEW: "待审核反馈", READY_TO_SEND: "待发微信群", CLAIMED: "处理中",
-  RETURNED: "已退回老师", ATTENTION: "需更正", COMPLETED: "已人工发送", WAIVED: "无需发送", ALL: "全部记录",
+  RETURNED: "已退回老师", ATTENTION: "待补发", COMPLETED: "已人工发送", WAIVED: "无需发送", ALL: "全部记录",
 };
 const kindLabels: Record<string, string> = {
   ALL: "全部类型", FEEDBACK: "课后反馈", COURSE_REMINDER_PARENT: "家长课程提醒",
-  COURSE_REMINDER_TEACHER: "老师课程提醒", COURSE_CHANGE: "课程更正通知",
+  COURSE_REMINDER_TEACHER: "老师课程提醒", COURSE_CHANGE: "课程变更补发",
 };
 const statuses = ["OPEN", "PENDING_REVIEW", "READY_TO_SEND", "ATTENTION", "RETURNED", "COMPLETED", "ALL"];
 const kinds = ["FEEDBACK", "COURSE_REMINDER_PARENT", "COURSE_REMINDER_TEACHER", "COURSE_CHANGE"];
@@ -109,7 +110,7 @@ export default function CommunicationCenterClient({ currentUser }: { currentUser
         <div>
           <div style={{ color: "#c2410c", fontSize: 12, fontWeight: 900 }}>ACADEMIC COMMUNICATION DESK / 教务沟通台</div>
           <h1 style={{ margin: "5px 0", fontSize: 28 }}>沟通与提醒工作台</h1>
-          <div style={{ color: "#64748b", fontSize: 13 }}>先选择审核反馈、发给家长、发给老师或更正通知，再处理对应任务。</div>
+          <div style={{ color: "#64748b", fontSize: 13 }}>先选择审核反馈、发给家长、发给老师或课程变更补发，再处理对应任务。</div>
           <div style={{ color: "#475569", fontSize: 12, marginTop: 5 }}>老师可从员工小程序或<a href="/teacher" target="_blank" rel="noreferrer" style={{ color: "#c2410c", fontWeight: 800, margin: "0 4px" }}>网页版老师端</a>查看课程；家长和学生从家长小程序查看。</div>
         </div>
         <button style={primary} disabled={loading} onClick={() => load(true)}>{loading ? "同步中…" : "同步反馈与明日提醒"}</button>
@@ -118,7 +119,7 @@ export default function CommunicationCenterClient({ currentUser }: { currentUser
       <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 1, background: "#e2e8f0", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
         {[
           ["审核反馈", kindSummary.FEEDBACK || 0], ["发给家长", kindSummary.COURSE_REMINDER_PARENT || 0],
-          ["发给老师", kindSummary.COURSE_REMINDER_TEACHER || 0], ["更正通知", kindSummary.COURSE_CHANGE || 0],
+          ["发给老师", kindSummary.COURSE_REMINDER_TEACHER || 0], ["课程变更补发", kindSummary.COURSE_CHANGE || 0],
         ].map(([label, value]) => <div key={String(label)} style={{ background: "#fff", padding: 14 }}><div style={{ color: "#64748b", fontSize: 12 }}>{label}</div><div style={{ fontSize: 26, fontWeight: 850, marginTop: 4 }}>{value}</div></div>)}
       </section>
 
@@ -156,18 +157,28 @@ export default function CommunicationCenterClient({ currentUser }: { currentUser
               {row.feedback.reviewStatus !== "PUBLISHED" ? <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}><button style={primary} onClick={() => act(row, "publish_feedback", { parentContent: draft.parentContent })}>审核并发布到家长端</button><button style={button} onClick={() => { const note = window.prompt("请输入退回老师补充的原因 / Return reason"); if (note) act(row, "return_feedback", { note }); }}>退回老师补充</button></div> : <div style={{ color: "#166534", fontWeight: 750, marginTop: 8 }}>已发布到家长小程序 / Published to parent miniapp</div>}
             </details> : null}
 
+            {row.kind === "COURSE_CHANGE" && row.correction ? <section style={{ display: "grid", gap: 10, padding: 14, background: "#fff7ed", borderLeft: "4px solid #ea580c", borderRadius: 8 }}>
+              <div><strong>为什么要补发：</strong>{row.correction.reason}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 10 }}>
+                <div style={{ padding: 12, background: "#f5f2ef", border: "1px solid #ddd7d1", borderRadius: 8 }}><strong>原安排 · 已失效</strong>{row.correction.previousLines.map((line) => <div key={line} style={{ marginTop: 6 }}>{line}</div>)}</div>
+                <div style={{ padding: 12, background: row.correction.noReplacement ? "#fef2f2" : "#f0fdf4", border: `1px solid ${row.correction.noReplacement ? "#dc2626" : "#65a877"}`, borderRadius: 8 }}><strong>当前安排 · {row.correction.typeLabel}</strong>{row.correction.currentLines.map((line) => <div key={line} style={{ marginTop: 6 }}>{line}</div>)}{row.correction.noReplacement ? <div style={{ marginTop: 6, color: "#991b1b", fontWeight: 800 }}>课程已取消，暂无替代课程</div> : null}</div>
+              </div>
+              <div style={{ color: "#64748b", fontSize: 12 }}>原提醒：{row.correction.originalSentByName || "操作人未记录"} · {row.correction.originalSentAt ? new Date(row.correction.originalSentAt).toLocaleString("zh-SG") : "时间未记录"}；课程变更：{row.correction.changedByName || "系统检测"} · {new Date(row.correction.changedAt).toLocaleString("zh-SG")}</div>
+              <div style={{ fontWeight: 800 }}>下一步：发到原微信会话，上传发送截图，再确认已发送。</div>
+            </section> : null}
+
             {(row.status === "READY_TO_SEND" || row.status === "CLAIMED" || row.status === "ATTENTION" || row.status === "COMPLETED") ? <div style={{ display: "grid", gap: 9 }}>
               <div style={{ fontWeight: 800 }}>微信群/微信人工转发 / Manual WeChat forwarding</div>
               <pre style={{ whiteSpace: "pre-wrap", margin: 0, padding: 12, background: "#f8fafc", borderLeft: "4px solid #ea580c", fontFamily: "inherit", lineHeight: 1.65 }}>{row.messageText}</pre>
               <div style={{ display: "grid", gridTemplateColumns: "minmax(220px,1fr) minmax(260px,2fr)", gap: 8 }}>
-                <input value={draft.group} onChange={(event) => updateDraft(row.id, { group: event.target.value })} placeholder={row.kind === "COURSE_REMINDER_TEACHER" ? "老师微信 / Teacher WeChat" : "家长群名称 / Parent group name"} style={{ padding: 9, border: "1px solid #cbd5e1", borderRadius: 8 }} />
+                <input value={draft.group} onChange={(event) => updateDraft(row.id, { group: event.target.value })} placeholder={row.kind === "COURSE_REMINDER_TEACHER" || (row.kind === "COURSE_CHANGE" && row.teacherId && !row.studentId) ? "老师微信 / Teacher WeChat" : "家长群名称 / Parent group name"} style={{ padding: 9, border: "1px solid #cbd5e1", borderRadius: 8 }} />
                 <input value={draft.note} onChange={(event) => updateDraft(row.id, { note: event.target.value })} placeholder="备注（可选）/ Note (optional)" style={{ padding: 9, border: "1px solid #cbd5e1", borderRadius: 8 }} />
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button style={button} onClick={() => copy(row)}>复制微信群文案</button>
                 <a href={`/api/admin/communications/${row.id}/share-image`} download style={{ ...button, textDecoration: "none", color: "#0f172a" }}>下载转发图片</a>
                 <label style={{ ...button, display: "inline-flex", alignItems: "center" }}>上传发送截图<input type="file" accept="image/*" hidden onChange={(event) => uploadEvidence(row, event.target.files?.[0] || null)} /></label>
-                {!row.manualSentAt ? <button style={primary} onClick={() => act(row, "manual_sent", { wechatGroupName: draft.group, note: draft.note, channel: row.kind === "COURSE_REMINDER_TEACHER" ? "WECHAT_DIRECT" : "WECHAT_GROUP" })}>确认已人工发送</button> : <span style={{ color: "#166534", fontWeight: 800, padding: 8 }}>已由 {row.ownerName || "教务"} 完成人工发送</span>}
+                {!row.manualSentAt ? <button style={primary} onClick={() => row.kind === "COURSE_CHANGE" && !row.evidenceUrl ? setMessage("课程变更补发必须先上传微信发送截图。") : act(row, "manual_sent", { wechatGroupName: draft.group, note: draft.note, channel: row.kind === "COURSE_REMINDER_TEACHER" || (row.kind === "COURSE_CHANGE" && row.teacherId && !row.studentId) ? "WECHAT_DIRECT" : "WECHAT_GROUP" })}>确认已人工发送</button> : <span style={{ color: "#166534", fontWeight: 800, padding: 8 }}>已由 {row.ownerName || "教务"} 完成人工发送</span>}
                 <button style={button} onClick={() => act(row, "retry_auto")}>重试自动提醒</button>
                 {!row.manualSentAt ? <button style={button} onClick={() => { const note = window.prompt("请输入无需发送的原因 / Waive reason"); if (note) act(row, "waive", { note }); }}>无需发送</button> : null}
               </div>
