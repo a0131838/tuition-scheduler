@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-20-r276
+
+- Release ID: `2026-07-20-r276`
+- Date/Time (Asia/Shanghai): `2026-07-20`
+- Deployment status: `READY`
+- Scope: deliver seven employee-miniapp usability upgrades: teacher homework/class attachments, contextual issue reporting, simplified role navigation, resilient drafts and retry, exact Mini Program card sharing, a manager health dashboard, and stronger read-side privacy auditing.
+- Key files:
+  - `prisma/migrations/20260720090000_add_session_feedback_attachments/migration.sql`
+  - `app/api/miniapp/staff/schedule/[sessionId]/feedback/attachments/*`
+  - `app/api/miniapp/students/[studentId]/feedbacks/[feedbackId]/attachments/[attachmentId]/route.ts`
+  - `app/api/miniapp/staff/issues/route.ts`
+  - `app/api/miniapp/staff/health/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
+  - `miniapp/boss-academic-parent/pages/staff-communications/*`
+  - `miniapp/boss-academic-parent/pages/staff-issue-report/*`
+  - `miniapp/boss-academic-parent/pages/staff-health/*`
+  - `tests/miniapp-resilience-share.test.ts`
+  - `docs/tasks/TASK-20260720-miniapp-seven-usability-upgrades.md`
+- Risk impact (if any): Medium-low. The release adds one isolated attachment table and authenticated endpoints. It does not rewrite existing teaching, scheduling, attendance, package, finance or payroll records. Direct card sharing still requires the employee to select a WeChat recipient and tap Send; evidence/confirmation remains a separate audited business step.
+- Verification: 93 backend tests and 21 focused tests passed; native JavaScript syntax, Mini Program JSON, the 43-page release audit, Prisma generation, `git diff --check` and the full 210-route production build passed. Experience-version physical-phone checks remain after uploading `1.0.12`.
+- Rollback point: `43d67a3` (`2026-07-19-r275` release lineage).
+
+---
+
 ## 2026-07-19-r275
 
 - Release ID: `2026-07-19-r275`

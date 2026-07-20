@@ -5,6 +5,7 @@ import { logAudit } from "@/lib/audit-log";
 import { queueFirstPublishedFeedback } from "@/lib/miniapp-feedback-notification";
 import { getMissingParentFeedbackSections, parseParentFeedbackSections } from "@/lib/parent-feedback-format";
 import { prisma } from "@/lib/prisma";
+import { feedbackAttachmentDto } from "@/lib/feedback-attachments";
 import { getVisibleSessionStudents } from "@/lib/session-students";
 
 export type CommunicationActor = {
@@ -383,7 +384,7 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
     prisma.student.findMany({ where: { id: { in: studentIds } }, select: { id: true, name: true, school: true, grade: true } }),
     prisma.teacher.findMany({ where: { id: { in: teacherIds } }, select: { id: true, name: true } }),
     prisma.session.findMany({ where: { id: { in: sessionIds } }, select: { id: true, startAt: true, endAt: true } }),
-    prisma.sessionFeedback.findMany({ where: { id: { in: feedbackIds } }, select: { id: true, content: true, parentContent: true, classPerformance: true, homework: true, previousHomeworkDone: true, actualStartAt: true, actualEndAt: true, reviewStatus: true, reviewNote: true, publishedAt: true, submittedAt: true } }),
+    prisma.sessionFeedback.findMany({ where: { id: { in: feedbackIds } }, select: { id: true, sessionId: true, content: true, parentContent: true, classPerformance: true, homework: true, previousHomeworkDone: true, actualStartAt: true, actualEndAt: true, reviewStatus: true, reviewNote: true, publishedAt: true, submittedAt: true, attachments: { orderBy: { createdAt: "asc" } } } }),
     prisma.auditLog.findMany({ where: { entityType: "ParentCommunicationTask", entityId: { in: rows.map((row) => row.id) } }, select: { entityId: true, action: true, actorName: true, actorEmail: true, actorRole: true, createdAt: true, meta: true }, orderBy: { createdAt: "desc" }, take: 1500 }),
     prisma.miniappNotificationOutbox.findMany({
       where: {
@@ -445,6 +446,10 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
         actualStartAt: feedback.actualStartAt?.toISOString() ?? null,
         actualEndAt: feedback.actualEndAt?.toISOString() ?? null,
         sections,
+        attachments: feedback.attachments.map((attachment) => feedbackAttachmentDto(
+          attachment,
+          `/api/miniapp/staff/schedule/${encodeURIComponent(feedback.sessionId)}/feedback/attachments/${encodeURIComponent(attachment.id)}`,
+        )),
         completeness: {
           complete: missingSections.length === 0 && !homeworkMissing && !previousHomeworkMissing,
           completed: 7 - missingSections.length - (homeworkMissing ? 1 : 0) - (previousHomeworkMissing ? 1 : 0),
@@ -494,6 +499,17 @@ export async function updateParentCommunicationTask(input: {
     });
     await auditTask(input.actor, "CLAIM_TASK", task.id, { previousOwner: task.ownerName });
     return updated;
+  }
+
+  if (input.action === "share_card") {
+    await auditTask(input.actor, "SHARE_MINIAPP_CARD", task.id, {
+      kind: task.kind,
+      feedbackId: task.feedbackId,
+      sessionId: task.sessionId,
+      studentId: task.studentId,
+      destination: String(data.destination ?? "WECHAT").slice(0, 60),
+    });
+    return task;
   }
 
   if (input.action === "transfer") {

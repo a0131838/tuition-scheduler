@@ -1,5 +1,6 @@
 import { bad, ok } from "@/app/api/miniapp/_lib";
 import { requireMiniappTeacher } from "@/app/api/miniapp/staff/teacher/_lib";
+import { logAudit } from "@/lib/audit-log";
 import { areAllApproversConfirmed, getApprovalRoleConfig } from "@/lib/approval-flow";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
 import {
@@ -65,6 +66,15 @@ export async function GET(req: Request) {
     WAITING_PAYMENT: "等待发薪",
     PAID: "已发薪",
   };
+
+  await logAudit({
+    actor: access.user,
+    module: "teacher-payroll",
+    action: "VIEW_MINIAPP_PAYROLL",
+    entityType: "TeacherPayrollPublish",
+    entityId: `${access.teacherId}:${month}:${scope}`,
+    meta: { month, scope },
+  });
 
   return ok({
     month,

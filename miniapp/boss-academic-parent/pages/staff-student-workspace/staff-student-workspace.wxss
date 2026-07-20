@@ -5,3 +5,4 @@
 .back-link { color: #9b420e; font-size: 23rpx; font-weight: 750; }
 .timeline-row { padding: 15rpx 0; border-bottom: 1rpx solid #e4e1dc; }
 .feedback-content { margin-top: 8rpx; color: #34383e; font-size: 24rpx; line-height: 1.6; white-space: pre-wrap; }
+.privacy-watermark { position: sticky; top: 0; z-index: 8; padding: 12rpx 18rpx; border-radius: 12rpx; background: rgba(255,247,239,.94); color: #9a4b1d; font-size: 22rpx; text-align: center; }

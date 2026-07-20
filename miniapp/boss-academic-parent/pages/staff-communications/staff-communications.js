@@ -29,6 +29,18 @@ function teacherRecipient(name) {
   return value.endsWith("老师") ? value : `${value}老师`;
 }
 
+function shareInfo(item) {
+  if (item.kind === "FEEDBACK" && item.feedbackId && item.studentId) {
+    return { canShareCard: Boolean(item.feedback && item.feedback.reviewStatus === "PUBLISHED"), shareTitle: `${item.student && item.student.name ? item.student.name : "学生"}课后反馈`, sharePath: `/pages/feedbacks/feedbacks?studentId=${encodeURIComponent(item.studentId)}&feedbackId=${encodeURIComponent(item.feedbackId)}` };
+  }
+  if (item.kind === "COURSE_REMINDER_TEACHER") {
+    const date = item.dueAt ? String(item.dueAt).slice(0, 10) : "";
+    return { canShareCard: true, shareTitle: item.title || "老师课程提醒", sharePath: `/pages/staff-schedule/staff-schedule${date ? `?date=${date}` : ""}` };
+  }
+  if (item.studentId) return { canShareCard: true, shareTitle: item.title || "课程安排提醒", sharePath: `/pages/schedule/schedule?studentId=${encodeURIComponent(item.studentId)}` };
+  return { canShareCard: false, shareTitle: "", sharePath: "" };
+}
+
 Page({
   data: {
     tasks: [],
@@ -53,8 +65,24 @@ Page({
     ]
   },
 
+  onLoad(options) {
+    const allowedKinds = this.data.workstreams.map((item) => item.value);
+    const allowedStatuses = this.data.filters.map((item) => item.value);
+    const kind = options && allowedKinds.includes(options.kind) ? options.kind : this.data.kind;
+    const filter = options && allowedStatuses.includes(options.status) ? options.status : this.data.filter;
+    this.setData({ kind, filter });
+  },
+
   onShow() { this.load(true); },
   onPullDownRefresh() { this.load(true).finally(() => wx.stopPullDownRefresh()); },
+
+  onShareAppMessage(options) {
+    const index = options && options.target && options.target.dataset ? Number(options.target.dataset.index || 0) : -1;
+    const row = index >= 0 ? this.data.tasks[index] : null;
+    if (!row || !row.canShareCard) return { title: "博思学业管家", path: "/pages/home/home" };
+    api.requestStaff(`/api/miniapp/staff/communications/${row.id}`, { method: "PATCH", data: { action: "share_card", data: { destination: row.groupDraft || (row.isTeacherReminder ? "老师微信" : "家长微信群") } } }).catch(() => null);
+    return { title: row.shareTitle, path: row.sharePath };
+  },
 
   load(sync) {
     this.setData({ loading: true });
@@ -70,7 +98,7 @@ Page({
             feedbackSectionRows.push({ key: "homework", label: "本次作业", value: item.feedback.homework || "未填写" });
             feedbackSectionRows.push({ key: "previousHomework", label: "上次作业完成情况", value: item.feedback.previousHomeworkDone === true ? "已完成" : item.feedback.previousHomeworkDone === false ? "未完成" : "未填写" });
           }
-          return Object.assign({}, item, {
+          return Object.assign({}, item, shareInfo(item), {
             kindLabel: kindLabels[item.kind] || item.kind,
             statusLabel: statusLabels[item.status] || item.status,
             isFeedback: item.kind === "FEEDBACK",

@@ -2,6 +2,7 @@ import { parseParentFeedbackSections } from "@/lib/parent-feedback-format";
 import { prisma } from "@/lib/prisma";
 import { sessionBelongsToStudentWhere } from "@/lib/session-students";
 import { courseLabel, ok, parseDateRange, requireMiniappStudentAccess } from "../../../_lib";
+import { feedbackAttachmentDto } from "@/lib/feedback-attachments";
 
 function compact(value: string, max = 100) {
   const text = String(value ?? "").replace(/\s+/g, " ").trim();
@@ -28,7 +29,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       class: { include: { course: true, subject: true, level: true } },
       feedbacks: {
         where: { publishedAt: { not: null } },
-        include: { teacher: { select: { name: true } } },
+        include: { teacher: { select: { name: true } }, attachments: { where: { visibility: "PARENT" }, orderBy: { createdAt: "asc" } } },
         orderBy: { submittedAt: "desc" },
       },
     },
@@ -53,6 +54,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
         sections,
         homework: feedback.homework,
         previousHomeworkDone: feedback.previousHomeworkDone,
+        attachments: feedback.attachments.map((row) => feedbackAttachmentDto(
+          row,
+          `/api/miniapp/students/${encodeURIComponent(studentId)}/feedbacks/${encodeURIComponent(feedback.id)}/attachments/${encodeURIComponent(row.id)}`,
+        )),
       };
     })
   );

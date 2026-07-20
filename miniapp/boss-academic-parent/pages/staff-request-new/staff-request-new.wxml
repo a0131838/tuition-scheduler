@@ -1,4 +1,5 @@
 <view class="page page-enter request-page">
+  <view class="draft-restored" wx:if="{{draftRestored}}">已恢复上次未提交的工单草稿；截图或文件需要重新选择。</view>
   <view class="top request-head">
     <view class="eyebrow">教务代录</view>
     <view class="title">把家长消息变成工单</view>

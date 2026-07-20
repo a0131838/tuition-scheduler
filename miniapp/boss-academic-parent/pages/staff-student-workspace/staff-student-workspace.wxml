@@ -1,4 +1,5 @@
 <view class="page ops-page page-enter">
+  <view class="privacy-watermark" wx:if="{{workspace && workspace.privacyNotice}}">{{workspace.privacyNotice}}</view>
   <view class="ops-hero"><view class="ops-kicker">一个学生·一个页面</view><view class="ops-title">学生360°工作台</view><view class="ops-subtitle">查看课程、课包、工单、家长联系和历史反馈。老师只能查看自己教过的学生。</view></view>
   <view class="search-row"><input value="{{query}}" bindinput="inputQuery" bindconfirm="search" placeholder="搜索学生姓名 / 学校" /><button loading="{{searching}}" bindtap="search">搜索</button></view>
   <view wx:if="{{noWorkspace}}"><view class="student-result" wx:for="{{results}}" wx:key="id" data-id="{{item.id}}" bindtap="selectStudent"><view class="student-name">{{item.name}}</view><view class="ops-card-meta">{{item.gradeDisplay}} · {{item.schoolDisplay}}</view></view><view class="empty-state" wx:if="{{showSearchEmpty}}">没有找到可查看的学生。</view></view>

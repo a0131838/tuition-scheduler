@@ -834,12 +834,31 @@ model SessionFeedback {
 
   session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  attachments SessionFeedbackAttachment[]
 
   @@unique([sessionId, teacherId])
   @@index([teacherId, submittedAt])
   @@index([status, dueAt])
   @@index([reviewStatus, submittedAt])
   @@index([publishedAt, submittedAt])
+}
+
+model SessionFeedbackAttachment {
+  id                 String   @id @default(uuid())
+  feedbackId         String
+  storedPath         String
+  originalFileName   String
+  mimeType           String?
+  sizeBytes          Int
+  visibility         String   @default("PARENT")
+  uploadedByUserId   String
+  uploadedByName     String
+  createdAt          DateTime @default(now())
+
+  feedback SessionFeedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+
+  @@index([feedbackId, visibility, createdAt])
+  @@index([uploadedByUserId, createdAt])
 }
 
 model MidtermReport {

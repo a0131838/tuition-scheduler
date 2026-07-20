@@ -20,6 +20,7 @@ const owners = ["自动分配", "Jasmine", "Eva", "Emily"];
 
 let searchTimer = null;
 let studentSearchSeq = 0;
+const REQUEST_DRAFT_KEY = "staff_request_new_draft_v2";
 
 Page({
   data: {
@@ -46,24 +47,49 @@ Page({
     files: [],
     advancedOpen: false,
     searching: false,
-    loading: false
+    loading: false,
+    draftRestored: false,
+    submitted: false,
+    createdRequestId: "",
+    createdTicketNo: ""
   },
 
   onLoad(options) {
     const studentId = (options && options.studentId) || "";
     const studentLabel = decodeURIComponent((options && options.studentLabel) || "");
+    const draft = wx.getStorageSync(REQUEST_DRAFT_KEY);
     this.setData({
       schedulingActions: [this.newSchedulingAction(typeOptions[0].actionType)],
       selectedStudentId: studentId,
       selectedStudentLabel: studentLabel,
       studentQuery: studentLabel
     });
-    if (studentId) this.loadSchedulingOptions(studentId);
+    if (!studentId && draft && typeof draft === "object" && draft.savedAt) this.setData(Object.assign({}, draft, { files: [], loading: false, searching: false, draftRestored: true }));
+    const activeStudentId = studentId || (draft && draft.selectedStudentId) || "";
+    if (activeStudentId) this.loadSchedulingOptions(activeStudentId);
   },
 
+  onHide() { this.saveDraft(); },
+
   onUnload() {
+    if (!this.data.loading && !this.data.submitted) this.saveDraft();
     if (searchTimer) clearTimeout(searchTimer);
     studentSearchSeq += 1;
+  },
+
+  saveDraft() {
+    if (!this.data.originalContent && !this.data.publicSummary && !this.data.selectedStudentId) return;
+    wx.setStorageSync(REQUEST_DRAFT_KEY, {
+      typeIndex: this.data.typeIndex, communicationSourceIndex: this.data.communicationSourceIndex,
+      priorityIndex: this.data.priorityIndex, ownerIndex: this.data.ownerIndex,
+      studentQuery: this.data.studentQuery, selectedStudentId: this.data.selectedStudentId,
+      selectedStudentLabel: this.data.selectedStudentLabel, schedulingActions: this.data.schedulingActions,
+      sourceDetail: this.data.sourceDetail, originalContent: this.data.originalContent,
+      publicSummary: this.data.publicSummary, requiredAction: this.data.requiredAction,
+      latestDeadlineText: this.data.latestDeadlineText, advancedOpen: this.data.advancedOpen,
+      createdRequestId: this.data.createdRequestId, createdTicketNo: this.data.createdTicketNo,
+      savedAt: new Date().toISOString()
+    });
   },
 
   onTypeChange(e) {
@@ -367,7 +393,9 @@ Page({
 
   createRequest() {
     this.setData({ loading: true });
-    api.requestStaff("/api/miniapp/staff/parent-requests", {
+    const existing = this.data.createdRequestId
+      ? Promise.resolve({ request: { id: this.data.createdRequestId, ticketNo: this.data.createdTicketNo } })
+      : api.requestStaff("/api/miniapp/staff/parent-requests", {
       method: "POST",
       data: {
         studentId: this.data.selectedStudentId,
@@ -389,21 +417,29 @@ Page({
         }))
       },
       timeout: 20000
-    })
+    });
+    existing
       .then((data) => {
         const req = data.request;
+        if (req && req.id) this.setData({ createdRequestId: req.id, createdTicketNo: req.ticketNo || this.data.createdTicketNo });
         const paths = this.data.files.map((file) => file.path).filter(Boolean);
         if (!req || !req.id || paths.length === 0) return data;
         return api.uploadFiles(`/api/miniapp/staff/parent-requests/${req.id}/attachments`, paths, { staff: true }).then(() => data);
       })
       .then((data) => {
+        wx.removeStorageSync(REQUEST_DRAFT_KEY);
+        this.setData({ draftRestored: false, submitted: true });
         wx.showToast({ title: "已创建", icon: "success" });
         setTimeout(() => {
           const id = data.request && data.request.id;
           wx.redirectTo({ url: id ? `/pages/staff-request-detail/staff-request-detail?id=${id}` : "/pages/staff-requests/staff-requests" });
         }, 500);
       })
-      .catch((err) => api.toast(err.message))
+      .catch((err) => {
+        this.saveDraft();
+        const prefix = this.data.createdTicketNo ? `${this.data.createdTicketNo} 已创建，附件未传完；可直接重试。` : "";
+        api.toast(prefix || err.message);
+      })
       .finally(() => this.setData({ loading: false }));
   }
 });

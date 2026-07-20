@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-07-19`
+- Last checked: `2026-07-20`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,13 +14,15 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-19-r275` is live and makes feedback publication continue visibly into manual WeChat-group delivery; WeChat development version `1.0.11` is uploaded for experience-version designation.
+- Current release line on this branch: `2026-07-20-r276` is ready with seven employee-miniapp usability, resilience, sharing and privacy improvements; development version `1.0.12` must be uploaded after the guarded server deploy.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
+
+- Seven-upgrade miniapp rollout: `2026-07-20-r276` adds an isolated feedback-attachment migration and new authenticated read/write paths. After server deploy and the `1.0.12` upload, designate it as the experience version and test Emily, Eva, Jasmine ADMIN and Jasmine TEACHER on physical phones. Direct Mini Program cards are recommended for exact deep links, but WeChat still requires the employee to choose a group/person and tap Send; retain text/image fallbacks and the manual send evidence step.
 
 - Feedback-to-WeChat handoff rollout: `2026-07-19-r275` is live at runtime commit `93a042d` and uploaded as WeChat development version `1.0.11` (474.8 KB). Publication switches to and expands the `待发送` task, but the operator must still actually send through WeChat and confirm it. Designate `1.0.11` as the experience version and test the existing real pending feedback without fabricating a task.
 

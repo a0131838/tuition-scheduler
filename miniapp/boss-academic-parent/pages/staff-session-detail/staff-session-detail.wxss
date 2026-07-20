@@ -243,3 +243,14 @@ textarea {
   line-height: 1.55;
 }
 .homework-choice { display: flex; gap: 36rpx; margin-top: 18rpx; }.homework-choice label { display: flex; align-items: center; gap: 8rpx; color: #272a2f; font-size: 25rpx; }
+.draft-restored { margin: 0 0 18rpx; padding: 14rpx 18rpx; border-radius: 8rpx; background: #ecfdf3; color: #176b3a; font-weight: 700; font-size: 24rpx; }
+.attachment-area { border-top: 1rpx solid #e3e5e8; margin-top: 24rpx; padding-top: 24rpx; }
+.attachment-picker { margin-top: 18rpx; }
+.attachment-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12rpx; }
+.attachment-actions .secondary-action { margin-top: 14rpx; font-size: 24rpx; }
+.attachment-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; padding: 16rpx 0; border-bottom: 1rpx solid #eceef0; }
+.attachment-row.pending { color: #9a3412; }
+.attachment-name { font-weight: 700; overflow-wrap: anywhere; }
+.attachment-inline-actions { display: flex; gap: 8rpx; }
+.mini-action { margin: 0; min-width: 90rpx; padding: 8rpx 14rpx; border-radius: 8rpx; background: #f0f1f3; color: #272a2f; font-size: 22rpx; line-height: 1.5; }
+.danger-mini { color: #b42318; }

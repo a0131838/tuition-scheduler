@@ -9,6 +9,11 @@ Page({
     subscriptionLoading: false
   },
 
+  onLoad(query) {
+    const studentId = String(query.studentId || "");
+    if (studentId) getApp().setCurrentStudent({ id: studentId, name: getApp().globalData.currentStudentName || "当前学生" });
+  },
+
   onShow() {
     this.load();
   },

@@ -10,6 +10,7 @@ export const BUSINESS_UPLOAD_PREFIX = {
   sharedDocs: "/uploads/shared-docs/",
   tickets: "/uploads/tickets/",
   communications: "/uploads/communications/",
+  feedbackAttachments: "/uploads/feedback-attachments/",
   contracts: "/uploads/contracts/",
   contractSignatures: "/uploads/contract-signatures/",
 } as const;

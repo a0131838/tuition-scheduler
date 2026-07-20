@@ -57,6 +57,15 @@ function sectionList(values) {
   return sections.map((item) => Object.assign({}, item, { value: source[item.key] || "" }));
 }
 
+function feedbackDraftKey(sessionId) {
+  return "staff_feedback_draft_" + String(sessionId || "");
+}
+
+function fileLabel(path, fallback) {
+  const parts = String(path || "").split("/");
+  return parts[parts.length - 1] || fallback || "附件";
+}
+
 function attendanceList(rows) {
   return (rows || []).map((row) => {
     const statusIndex = Math.max(0, attendanceStatusOptions.findIndex((item) => item.value === row.status));
@@ -92,6 +101,14 @@ Page({
     feedbackReviewStatus: "",
     feedbackReviewStatusText: "",
     feedbackReviewNote: "",
+    feedbackAttachments: [],
+    pendingFeedbackAttachments: [],
+    attachmentVisibility: "PARENT",
+    attachmentVisibilityIndex: 0,
+    attachmentVisibilityText: "家长可见",
+    attachmentVisibilityOptions: ["家长可见", "仅员工可见"],
+    feedbackDraftRestored: false,
+    attachmentUploading: false,
     submitDisabled: false,
     loading: false,
     saving: false,
@@ -201,6 +218,17 @@ Page({
     this.load();
   },
 
+  saveFeedbackDraft() {
+    if (!this.data.sessionId) return;
+    wx.setStorageSync(feedbackDraftKey(this.data.sessionId), {
+      focusStudentName: this.data.focusStudentName,
+      parentFeedbackSections: this.data.parentFeedbackSections,
+      homework: this.data.homework,
+      previousHomeworkDone: this.data.previousHomeworkDone,
+      savedAt: new Date().toISOString()
+    });
+  },
+
   load() {
     if (!this.data.sessionId) return Promise.resolve();
     this.setData({ loading: true });
@@ -253,15 +281,19 @@ Page({
             api.requestStaff(basePath + "/feedback")
               .then((feedbackData) => {
                 const feedback = feedbackData.feedback || {};
+                const localDraft = wx.getStorageSync(feedbackDraftKey(this.data.sessionId));
+                const useDraft = localDraft && typeof localDraft === "object" && localDraft.savedAt;
                 this.setData({
-                  focusStudentName: feedback.focusStudentName || "",
-                  parentFeedbackSections: sectionList(feedback.parentFeedbackSections),
-                  homework: feedback.homework || "",
-                  previousHomeworkDone: feedback.previousHomeworkDone || "",
-                  previousHomeworkDoneChecked: feedback.previousHomeworkDone === "yes",
+                  focusStudentName: useDraft ? (localDraft.focusStudentName || "") : (feedback.focusStudentName || ""),
+                  parentFeedbackSections: useDraft && Array.isArray(localDraft.parentFeedbackSections) ? localDraft.parentFeedbackSections : sectionList(feedback.parentFeedbackSections),
+                  homework: useDraft ? (localDraft.homework || "") : (feedback.homework || ""),
+                  previousHomeworkDone: useDraft ? (localDraft.previousHomeworkDone || "") : (feedback.previousHomeworkDone || ""),
+                  previousHomeworkDoneChecked: (useDraft ? localDraft.previousHomeworkDone : feedback.previousHomeworkDone) === "yes",
                   feedbackReviewStatus: feedback.reviewStatus || "",
                   feedbackReviewStatusText: feedback.reviewStatus === "PUBLISHED" ? "教务已审核并发布给家长" : feedback.reviewStatus === "RETURNED" ? "教务已退回，请按原因补充后重新提交" : feedback.submittedAt ? "已提交，等待教务审核" : "",
                   feedbackReviewNote: feedback.reviewNote || "",
+                  feedbackAttachments: feedback.attachments || [],
+                  feedbackDraftRestored: Boolean(useDraft),
                   submitDisabled: false
                 });
               })
@@ -982,25 +1014,88 @@ Page({
   },
 
   inputFocusStudent(e) {
-    this.setData({ focusStudentName: e.detail.value });
+    this.setData({ focusStudentName: e.detail.value }, () => this.saveFeedbackDraft());
   },
 
   inputSection(e) {
     const index = Number(e.currentTarget.dataset.index || 0);
     const list = this.data.parentFeedbackSections.slice();
     list[index].value = e.detail.value;
-    this.setData({ parentFeedbackSections: list });
+    this.setData({ parentFeedbackSections: list }, () => this.saveFeedbackDraft());
   },
 
   inputHomework(e) {
-    this.setData({ homework: e.detail.value });
+    this.setData({ homework: e.detail.value }, () => this.saveFeedbackDraft());
   },
 
   changePreviousHomework(e) {
     this.setData({
       previousHomeworkDone: e.detail.value,
       previousHomeworkDoneChecked: e.detail.value === "yes"
+    }, () => this.saveFeedbackDraft());
+  },
+
+  changeAttachmentVisibility(e) {
+    const index = Number(e.detail.value || 0);
+    this.setData({ attachmentVisibilityIndex: index, attachmentVisibility: index === 1 ? "INTERNAL" : "PARENT", attachmentVisibilityText: index === 1 ? "仅员工可见" : "家长可见" });
+  },
+
+  addPendingAttachments(files) {
+    const remaining = Math.max(0, 9 - this.data.feedbackAttachments.length - this.data.pendingFeedbackAttachments.length);
+    const rows = (files || []).slice(0, remaining).map((file) => ({
+      path: file.tempFilePath || file.path,
+      name: file.name || fileLabel(file.tempFilePath || file.path, "作业附件"),
+      visibility: this.data.attachmentVisibility,
+      visibilityText: this.data.attachmentVisibility === "INTERNAL" ? "仅员工可见" : "家长可见"
+    })).filter((file) => file.path);
+    this.setData({ pendingFeedbackAttachments: this.data.pendingFeedbackAttachments.concat(rows) });
+    if (!remaining) api.toast("最多上传 9 个附件");
+  },
+
+  chooseFeedbackImages() {
+    wx.chooseMedia({ count: 9, mediaType: ["image"], sourceType: ["album", "camera"], success: (res) => this.addPendingAttachments(res.tempFiles || []) });
+  },
+
+  chooseFeedbackFiles() {
+    wx.chooseMessageFile({ count: 9, type: "all", success: (res) => this.addPendingAttachments(res.tempFiles || []) });
+  },
+
+  removePendingAttachment(e) {
+    const index = Number(e.currentTarget.dataset.index || 0);
+    const rows = this.data.pendingFeedbackAttachments.slice();
+    rows.splice(index, 1);
+    this.setData({ pendingFeedbackAttachments: rows });
+  },
+
+  openFeedbackAttachment(e) {
+    const row = this.data.feedbackAttachments[Number(e.currentTarget.dataset.index || 0)];
+    if (!row) return;
+    api.openStaffDocument(row.viewUrl, row.name).catch((err) => api.toast(err.message));
+  },
+
+  deleteFeedbackAttachment(e) {
+    const row = this.data.feedbackAttachments[Number(e.currentTarget.dataset.index || 0)];
+    if (!row) return;
+    wx.showModal({ title: "删除附件", content: "只允许在反馈发布前删除。删除后会保留操作日志。", success: (res) => {
+      if (!res.confirm) return;
+      api.requestStaff(row.viewUrl, { method: "DELETE" }).then(() => this.load()).catch((err) => api.toast(err.message));
+    }});
+  },
+
+  uploadPendingFeedbackAttachments() {
+    const rows = this.data.pendingFeedbackAttachments.slice();
+    if (!rows.length) return Promise.resolve();
+    this.setData({ attachmentUploading: true });
+    let chain = Promise.resolve();
+    rows.forEach((row) => {
+      chain = chain.then(() => api.uploadStaffForm(
+        "/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/feedback/attachments",
+        row.path,
+        "file",
+        { visibility: row.visibility }
+      ));
     });
+    return chain.then(() => this.setData({ pendingFeedbackAttachments: [] })).finally(() => this.setData({ attachmentUploading: false }));
   },
 
   submit() {
@@ -1034,11 +1129,16 @@ Page({
         previousHomeworkDone: this.data.previousHomeworkDone
       }
     })
-      .then(() => {
-        wx.showModal({ title: "反馈已提交", content: "反馈已进入教务审核。Emily 或 Eva 审核发布后，家长才会在小程序中看到。", showCancel: false });
-        this.load();
+      .then((data) => this.uploadPendingFeedbackAttachments().then(() => data))
+      .then((data) => {
+        wx.removeStorageSync(feedbackDraftKey(this.data.sessionId));
+        this.setData({ feedbackDraftRestored: false });
+        wx.showModal({ title: "反馈已提交", content: "业务编号：" + (data.feedbackId || "已生成") + "\n反馈和附件已进入教务审核。教务发布后仍会人工发送到家长微信群。", showCancel: false });
+        return this.load();
       })
-      .catch((err) => api.toast(err.message))
+      .catch((err) => {
+        api.toast(err.message + "；草稿和待上传附件已保留，可重新提交");
+      })
       .finally(() => this.setData({ saving: false, submitDisabled: false }));
   }
 });

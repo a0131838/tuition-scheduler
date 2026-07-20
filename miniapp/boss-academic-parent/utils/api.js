@@ -33,6 +33,10 @@ function logOperation(path, method, opts, result) {
   if (!path || path === "/api/miniapp/operation-log" || method === "GET") return;
   const authToken = opts.staff ? staffToken() : token();
   if (!authToken) return;
+  const recent = wx.getStorageSync("miniapp_recent_operations");
+  const recentRows = Array.isArray(recent) ? recent : [];
+  recentRows.unshift({ path, method, outcome: result.ok ? "SUCCESS" : "FAILED", statusCode: result.statusCode || 0, error: String(result.error || "").slice(0, 300), clientAt: new Date().toISOString() });
+  wx.setStorageSync("miniapp_recent_operations", recentRows.slice(0, 10));
   wx.request({
     url: config.apiBaseUrl + "/api/miniapp/operation-log",
     method: "POST",
@@ -51,6 +55,11 @@ function logOperation(path, method, opts, result) {
     success() {},
     fail() {}
   });
+}
+
+function recentOperations() {
+  const rows = wx.getStorageSync("miniapp_recent_operations");
+  return Array.isArray(rows) ? rows : [];
 }
 
 function request(path, options) {
@@ -329,6 +338,21 @@ function openStaffDocument(path, name) {
   }));
 }
 
+function openParentDocument(path, name) {
+  return new Promise((resolve, reject) => {
+    wx.downloadFile({
+      url: config.apiBaseUrl + path,
+      header: token() ? { Authorization: "Bearer " + token() } : {},
+      success(res) {
+        if (res.statusCode !== 200) return reject(new Error("附件读取失败"));
+        const extension = String(name || "").split(".").pop().toLowerCase();
+        wx.openDocument({ filePath: res.tempFilePath, fileType: extension || undefined, showMenu: true, success: resolve, fail(err) { reject(new Error(err.errMsg || "无法打开附件")); } });
+      },
+      fail(err) { reject(new Error(err.errMsg || "附件下载失败")); }
+    });
+  });
+}
+
 module.exports = {
   request,
   requestStaff,
@@ -343,5 +367,7 @@ module.exports = {
   uploadStaffForm,
   saveStaffImage,
   downloadStaffFile,
-  openStaffDocument
+  openStaffDocument,
+  openParentDocument,
+  recentOperations
 };

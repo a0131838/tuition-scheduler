@@ -8,6 +8,8 @@
     "pages/staff-action-center/staff-action-center",
     "pages/staff-student-workspace/staff-student-workspace",
     "pages/staff-operations/staff-operations",
+    "pages/staff-health/staff-health",
+    "pages/staff-issue-report/staff-issue-report",
     "pages/staff-approvals/staff-approvals",
     "pages/staff-leads/staff-leads",
     "pages/staff-teacher-reports/staff-teacher-reports",

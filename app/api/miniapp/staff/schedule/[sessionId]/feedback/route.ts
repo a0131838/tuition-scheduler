@@ -10,6 +10,7 @@ import {
 } from "@/lib/parent-feedback-format";
 import { prisma } from "@/lib/prisma";
 import { ensureFeedbackCommunicationTasks } from "@/lib/parent-communication-center";
+import { feedbackAttachmentDto } from "@/lib/feedback-attachments";
 
 function previousHomeworkValue(value: boolean | null | undefined) {
   if (value === true) return "yes";
@@ -23,7 +24,7 @@ async function getAllowedSession(sessionId: string, teacherId: string) {
     include: {
       class: { include: { course: true, subject: true, teacher: true } },
       teacher: true,
-      feedbacks: { where: { teacherId } },
+      feedbacks: { where: { teacherId }, include: { attachments: { orderBy: { createdAt: "asc" } } } },
     },
   });
   if (!session) return null;
@@ -50,6 +51,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ sessionId: stri
       teacherName: session.teacher?.name ?? session.class.teacher?.name ?? auth.user.name,
     },
     feedback: {
+      id: feedback?.id ?? null,
       focusStudentName: feedback?.focusStudentName ?? "",
       parentFeedbackSections: parseParentFeedbackSections(feedback?.classPerformance ?? ""),
       homework: feedback?.homework ?? "",
@@ -59,6 +61,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ sessionId: stri
       reviewStatus: feedback?.reviewStatus ?? null,
       reviewNote: feedback?.reviewNote ?? null,
       publishedAt: feedback?.publishedAt?.toISOString() ?? null,
+      attachments: (feedback?.attachments ?? []).map((row) => feedbackAttachmentDto(
+        row,
+        `/api/miniapp/staff/schedule/${encodeURIComponent(session.id)}/feedback/attachments/${encodeURIComponent(row.id)}`,
+      )),
     },
   });
 }
@@ -158,6 +164,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sessionId: str
   await ensureFeedbackCommunicationTasks(savedFeedback.id).catch(() => null);
 
   return ok({
+    feedbackId: savedFeedback.id,
     status,
     submittedAt: now.toISOString(),
     dueAt: deadline.toISOString(),

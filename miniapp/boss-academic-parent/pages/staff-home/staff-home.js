@@ -67,7 +67,8 @@ Page({
     nextTeacherSession: null,
     hasNextTeacherSession: false,
     nextTeacherSessionText: "",
-    loading: false
+    loading: false,
+    showAllTools: false
   },
 
   onShow() {
@@ -300,9 +301,12 @@ Page({
   goActionCenter() { wx.navigateTo({ url: "/pages/staff-action-center/staff-action-center" }); },
   goStudentWorkspace() { wx.navigateTo({ url: "/pages/staff-student-workspace/staff-student-workspace" }); },
   goOperations() { wx.navigateTo({ url: "/pages/staff-operations/staff-operations" }); },
+  goHealth() { wx.navigateTo({ url: "/pages/staff-health/staff-health" }); },
   goApprovals() { wx.navigateTo({ url: "/pages/staff-approvals/staff-approvals" }); },
   goLeads() { wx.navigateTo({ url: "/pages/staff-leads/staff-leads" }); },
   goTeacherReports() { wx.navigateTo({ url: "/pages/staff-teacher-reports/staff-teacher-reports" }); },
+  goIssueReport() { wx.navigateTo({ url: "/pages/staff-issue-report/staff-issue-report?page=staff-home" }); },
+  toggleAllTools() { this.setData({ showAllTools: !this.data.showAllTools }); },
   goAccountSwitch() { wx.navigateTo({ url: "/pages/staff-account-switch/staff-account-switch" }); },
 
   logout() {

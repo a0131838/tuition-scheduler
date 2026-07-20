@@ -1,3 +1,9 @@
 .subtitle {
   white-space: pre-wrap;
 }
+.page { height: 100vh; box-sizing: border-box; }
+.card.focused { border: 2rpx solid #ec5e0a; box-shadow: 0 0 0 6rpx rgba(236,94,10,.08); }
+.homework { margin-top: 18rpx; padding: 16rpx; border-left: 6rpx solid #ec5e0a; background: #fff7ed; white-space: pre-wrap; }
+.attachments { border-top: 1rpx solid #e5e7eb; margin-top: 20rpx; padding-top: 18rpx; }
+.attachment-title { font-weight: 800; margin-bottom: 10rpx; }
+.attachment { margin: 10rpx 0 0; background: #f0f1f3; color: #272a2f; text-align: left; font-size: 24rpx; }

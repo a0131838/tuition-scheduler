@@ -48,6 +48,8 @@
 .work-badge.alert { background: #f8e5e2; color: #96392f; }
 .work-arrow { flex: 0 0 auto; color: #a2a6ac; font-size: 38rpx; line-height: 1; }
 .account-actions { margin-top: 38rpx; padding-top: 8rpx; }
+.tool-toggle { margin: 18rpx 0 0; border: 1rpx solid #d9dce0; border-radius: 10rpx; background: #fff; color: #4b5563; font-weight: 700; }
+.issue-action { margin-bottom: 18rpx; border: 1rpx solid #f1c7b0; border-radius: 10rpx; background: #fff7ed; color: #9a3412; font-weight: 800; }
 .account-switch-action { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 92rpx; margin: 0 0 22rpx; padding: 0; border-top: 1rpx solid #dcd9d4; border-bottom: 1rpx solid #dcd9d4; border-radius: 0; background: transparent; text-align: left; }
 .account-switch-action::after { border: 0; }
 .account-switch-action:active { background: rgba(255, 255, 255, 0.7); }

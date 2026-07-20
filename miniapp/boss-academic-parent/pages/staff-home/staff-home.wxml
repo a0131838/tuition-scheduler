@@ -22,7 +22,7 @@
   </view>
   <view class="metric-strip" wx:else>
     <view class="metric-cell" bindtap="goSchedule"><view class="metric-value">{{todaySessionCount}}</view><view class="metric-name">今日课程</view></view>
-    <view class="metric-cell" bindtap="goRequests"><view class="metric-value">{{pendingCount}}</view><view class="metric-name">家长请求</view></view>
+    <view class="metric-cell" bindtap="goRequests"><view class="metric-value">{{pendingCount}}</view><view class="metric-name">全部工单</view></view>
     <view class="metric-cell metric-alert" wx:if="{{canManageCoordination}}" bindtap="goCoordination"><view class="metric-value">{{coordinationOverdueCount}}</view><view class="metric-name">排课逾期</view></view>
     <view class="metric-cell" wx:else><view class="metric-value">—</view><view class="metric-name">按角色开放</view></view>
   </view>
@@ -65,6 +65,12 @@
       <view class="work-copy"><view class="work-title">我的课表</view><view class="work-detail">查看课程、点名与课后反馈</view></view>
       <view class="work-arrow">›</view>
     </view>
+    <view class="work-row" wx:if="{{isManager}}" bindtap="goHealth">
+      <view class="work-icon icon-orange">健</view>
+      <view class="work-copy"><view class="work-title">运营健康看板</view><view class="work-detail">异常、逾期、漏反馈和通知失败集中检查</view></view>
+      <view class="work-arrow">›</view>
+    </view>
+    <block wx:if="{{showAllTools}}">
     <view class="work-row" bindtap="goTeacherAvailability">
       <view class="work-icon">时</view>
       <view class="work-copy"><view class="work-title">我的可用时间</view><view class="work-detail">未来 30 天 {{teacherAvailabilityCount}} 个时段</view></view>
@@ -105,6 +111,8 @@
       <view class="work-copy"><view class="work-title">教学记录</view><view class="work-detail">本月已完成 {{teacherCompletedCount}} 节</view></view>
       <view class="work-arrow">›</view>
     </view>
+    </block>
+    <button class="tool-toggle" bindtap="toggleAllTools">{{showAllTools ? '收起其他工具' : '展开教学、工资与行政工具'}}</button>
   </view>
 
   <view class="work-list" wx:else>
@@ -128,6 +136,7 @@
       <view class="work-copy"><view class="work-title">课程工作台</view><view class="work-detail">月历、今日课程与待排课工单</view></view>
       <view class="work-badge">{{todaySessionCount}}</view><view class="work-arrow">›</view>
     </view>
+    <block wx:if="{{showAllTools}}">
     <view class="work-row" wx:if="{{canManageCoordination}}" bindtap="goCoordination">
       <view class="work-icon">排</view>
       <view class="work-copy"><view class="work-title">排课与调课</view><view class="work-detail">{{coordinationCount}} 条开放 · {{coordinationOverdueCount}} 条逾期</view></view>
@@ -135,7 +144,7 @@
     </view>
     <view class="work-row" bindtap="goRequests">
       <view class="work-icon">家</view>
-      <view class="work-copy"><view class="work-title">家长请求</view><view class="work-detail">集中处理咨询、安排与服务跟进</view></view>
+      <view class="work-copy"><view class="work-title">全部工单</view><view class="work-detail">包含家长请求和内部教务工单</view></view>
       <view class="work-badge" wx:if="{{hasPendingRequests}}">{{pendingCount}}</view><view class="work-arrow">›</view>
     </view>
     <view class="work-row" wx:if="{{canManageFirstScheduling}}" bindtap="goFirstScheduling">
@@ -168,9 +177,12 @@
       <view class="work-copy"><view class="work-title">代录服务请求</view><view class="work-detail">把微信群消息整理成可追踪工单</view></view>
       <view class="work-arrow">›</view>
     </view>
+    </block>
+    <button class="tool-toggle" bindtap="toggleAllTools">{{showAllTools ? '收起其他工具' : '展开排课、审批与行政工具'}}</button>
   </view>
 
   <view class="account-actions">
+    <button class="issue-action" bindtap="goIssueReport">遇到问题？一键上报</button>
     <button class="account-switch-action" bindtap="goAccountSwitch">
       <view><view class="account-switch-label">当前身份</view><view class="account-switch-name">{{roleText}}</view></view>
       <view class="account-switch-link">账号管理 ›</view>

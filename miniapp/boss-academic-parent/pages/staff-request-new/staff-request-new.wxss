@@ -1,4 +1,5 @@
 .request-page { padding-bottom: 80rpx; }
+.draft-restored { margin-bottom: 20rpx; padding: 18rpx; border-left: 6rpx solid #2f6b4f; border-radius: 10rpx; background: #ecfdf3; color: #176b3a; font-weight: 700; }
 .request-head { padding-bottom: 20rpx; }
 .progress-line { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8rpx; margin: 4rpx 0 18rpx; }
 .progress-item { display: flex; align-items: center; justify-content: center; gap: 8rpx; min-height: 52rpx; color: #777c83; font-size: 21rpx; font-weight: 700; border-bottom: 3rpx solid #d9d6d1; }

@@ -1,5 +1,6 @@
 import { bad, ok } from "@/app/api/miniapp/_lib";
 import { requireMiniappStaff } from "@/app/api/miniapp/staff/_lib";
+import { logAudit } from "@/lib/audit-log";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
 import { canUseMiniappAcademicDesk } from "@/lib/miniapp-staff-action-center";
 import { prisma } from "@/lib/prisma";
@@ -106,6 +107,15 @@ export async function GET(req: Request, context: { params: Promise<{ studentId: 
     ...(student.academicRiskLevel && student.academicRiskLevel !== "LOW" ? [`学术风险：${student.academicRiskLevel}`] : []),
   ];
 
+  await logAudit({
+    actor: auth.user,
+    module: "miniapp-student-workspace",
+    action: "VIEW_STUDENT_360",
+    entityType: "Student",
+    entityId: student.id,
+    meta: { role: auth.user.role, parentContactsIncluded: canAcademic },
+  });
+
   return ok({
     student: {
       id: student.id,
@@ -130,5 +140,6 @@ export async function GET(req: Request, context: { params: Promise<{ studentId: 
     recent: recent.map(sessionDto),
     feedbacks: feedbacks.map((row) => ({ id: row.id, teacherName: row.teacher.name, courseName: row.session.class.course.name, lessonDate: formatBusinessDateOnly(row.session.startAt), content: row.parentContent || row.content, homework: row.homework || "" })),
     riskFlags,
+    privacyNotice: `仅限工作使用 · ${auth.user.name || auth.user.email} · 查看行为已记录`,
   });
 }
