@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-20-r277` is ready to replace generic correction notices with auditable Course Change Resends; production remains on r276 until the guarded deploy completes.
+- Current release line on this branch: `2026-07-20-r277` is live at runtime feature commit `95cbda7`; production Course Change Resends now show previous/current arrangements and mandatory evidence, and WeChat development version `1.0.13` is uploaded at 513,286 bytes (501.3 KB).
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
@@ -22,7 +22,7 @@
 
 ## Open Risks
 
-- Course-change resend rollout: r277 is ready with explicit cancellation/reschedule comparison, automatic upgrade of still-open historical generic corrections and mandatory evidence. After deploy, sync and inspect the existing Steven and 刘妍书 tasks without changing their schedules, then upload WeChat development version `1.0.13`. Physical-phone testing should use an existing task; do not fabricate a cancellation.
+- Course-change resend rollout: r277 is live at runtime feature commit `95cbda7` with PM2/health checks passing. Production sync upgraded Steven's historical generic notice; Steven and 刘妍书 now explicitly say cancelled/no replacement, while Zack shows the real old/new time. WeChat development version `1.0.13` uploaded at 513,286 bytes (501.3 KB). Designate it as the experience version and test Emily/Eva on an existing task; do not fabricate a cancellation.
 
 - Seven-upgrade miniapp rollout: `2026-07-20-r276` is live at runtime feature commit `839a459`; PM2 and health checks pass, the additive attachment table was verified directly, and WeChat development version `1.0.12` uploaded successfully at 508,918 bytes (497.0 KB). Designate it as the experience version and test Emily, Eva, Jasmine ADMIN and Jasmine TEACHER on physical phones. Direct Mini Program cards are recommended for exact deep links, but WeChat still requires the employee to choose a group/person and tap Send; retain text/image fallbacks and the manual send evidence step.
 

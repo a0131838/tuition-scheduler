@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-20-r277`
 - Date/Time (Asia/Shanghai): `2026-07-20`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: replace ambiguous generic course corrections with an auditable Course Change Resend workflow that identifies the actual change, compares previous and current arrangements, upgrades still-open historical generic tasks, gives explicit cancellation/no-replacement wording and requires WeChat evidence before completion.
 - Key files:
   - `lib/parent-communication-center.ts`
@@ -30,7 +30,7 @@ This file is the single source of truth for what changed in production.
   - `docs/SOP-小程序-管理-监督与账号-中英文培训版-20260718.html`
   - `docs/tasks/TASK-20260720-course-change-resend-clarity.md`
 - Risk impact (if any): Medium-low. The change affects communication-task presentation and completion validation but does not alter Session, Ticket, attendance, package, finance, payroll or permission records. There is no migration. Staff must still send through WeChat manually.
-- Verification: 96 backend regression tests (including 17 focused communication tests), TypeScript, `git diff --check`, the 43-page miniapp release audit and the 210-route production build passed. Three v1.0.13 bilingual SOP PDFs (54 pages total) passed text extraction and contact-sheet visual review. Guarded deployment, production task verification and WeChat `1.0.13` upload remain pending.
+- Verification: 96 backend regression tests (including 17 focused communication tests), TypeScript, `git diff --check`, the 43-page miniapp release audit and the 210-route production build passed. Three v1.0.13 bilingual SOP PDFs (54 pages total) passed text extraction and contact-sheet visual review. Runtime feature commit `95cbda72a7a84dd890a750d746edf620c71d578b` aligned locally, on GitHub and on the server with PM2 PID `2916026` and health 200. A production sync upgraded 1 historical generic task; Steven and 刘妍书 now show explicit cancellation/no-replacement, while Zack shows a real time change with previous/current blocks. WeChat development version `1.0.13` uploaded successfully at 513,286 bytes (501.3 KB); experience-version designation and physical-phone acceptance remain manual.
 - Rollback point: `66a0059b66b57e8c52098a25ba5388c9f93d52b7` (`2026-07-20-r276` release lineage).
 
 ---

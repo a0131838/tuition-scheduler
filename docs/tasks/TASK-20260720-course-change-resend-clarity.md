@@ -31,6 +31,7 @@ The communication centre previously called every stale, already-sent lesson remi
 
 ## Rollout
 
-- Run the guarded release preflight, deploy the exact feature commit, sync communication tasks once, and verify the two real open course-change tasks are rendered with explicit cancellation/no-replacement wording.
-- Upload Mini Program development version `1.0.13`, then designate it as the experience version manually in WeChat Public Platform.
+- Guarded release completed at runtime feature commit `95cbda72a7a84dd890a750d746edf620c71d578b`; PM2 PID `2916026` is online and production health returned 200.
+- Production sync upgraded one historical generic task. Steven and 刘妍书 render as cancellation/no replacement, while Zack renders as a real time change with Previous and Current blocks.
+- Mini Program development version `1.0.13` uploaded successfully at 513,286 bytes (501.3 KB); designate it as the experience version manually in WeChat Public Platform.
 - Test Emily and Eva on one existing course-change resend. Do not cancel or create a real Session solely to manufacture a test case.
