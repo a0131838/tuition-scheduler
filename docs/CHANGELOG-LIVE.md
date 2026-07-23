@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-23-r280
+
+- Release ID: `2026-07-23-r280`
+- Date/Time (Asia/Shanghai): `2026-07-23`
+- Deployment status: `READY`
+- Scope: remove implementation commentary, permission explanations and repeated queue guidance from the renewal workbench so web and employee miniapp show only the title, source queues, counts, risk, owner and next actions.
+- Key files:
+  - `app/admin/renewals/page.tsx`
+  - `app/admin/renewals/RenewalWorkbenchClient.tsx`
+  - `app/admin/renewals/renewals.module.css`
+  - `miniapp/boss-academic-parent/pages/staff-renewals/*`
+  - `tests/renewal-management.test.ts`
+  - `docs/tasks/TASK-20260723-renewal-copy-cleanup.md`
+- Risk impact (if any): Low and presentation-only. No renewal data, permissions, task status, evidence, package, scheduling, finance, payroll or partner-settlement behavior changes.
+- Verification: TypeScript, 7 focused renewal tests, native miniapp JavaScript syntax, the 44-page miniapp release audit, `git diff --check`, explicit removed-copy search and the 213-route production build passed.
+- Rollback point: `7b7cc546934cdc2dfc61529b5be6f4e80f3fdeb5` (`2026-07-23-r279` documentation-aligned production lineage).
+
+---
+
 ## 2026-07-23-r279
 
 - Release ID: `2026-07-23-r279`

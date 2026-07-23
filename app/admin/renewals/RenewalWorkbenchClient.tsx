@@ -217,7 +217,6 @@ export default function RenewalWorkbenchClient({
         <button data-active={cohort === "XDF"} onClick={() => load(filter, "XDF").catch((error) => setMessage(error.message))}>
           <span>新东方学生</span><strong>{cohortCounts.XDF}</strong>
         </button>
-        <p>{cohort === "XDF" ? "单独对接新东方项目负责人，不与普通家长续费混合。" : "当前队列不包含新东方学生。"}</p>
       </section>
 
       <section className={styles.toolbar}>

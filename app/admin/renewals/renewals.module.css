@@ -16,12 +16,11 @@
 .metrics [data-tone="danger"] { border-color: #fecaca; background: #fff7f7; }
 .metrics [data-tone="warning"] { border-color: #fed7aa; background: #fffaf5; }
 .metrics [data-tone="success"] { border-color: #bbf7d0; background: #f7fff9; }
-.cohorts { display: grid; grid-template-columns: repeat(2, minmax(180px, 260px)) 1fr; gap: 10px; align-items: stretch; }
+.cohorts { display: grid; grid-template-columns: repeat(2, minmax(180px, 260px)); gap: 10px; align-items: stretch; }
 .cohorts button { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 13px 16px; border: 1px solid #d8dee8; border-radius: 12px; background: #fff; color: #334155; cursor: pointer; font-weight: 800; }
 .cohorts button strong { min-width: 32px; font-size: 20px; color: #0f172a; }
 .cohorts button[data-active="true"] { background: #202328; border-color: #202328; color: #fff; }
 .cohorts button[data-active="true"] strong { color: #fff; }
-.cohorts p { margin: 0; align-self: center; color: #64748b; line-height: 1.5; }
 .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .filters { display: flex; flex-wrap: wrap; gap: 8px; }
 .filters button, .toolbar button, .communication button {
@@ -68,7 +67,6 @@
 @media (max-width: 900px) {
   .metrics, .forecast { grid-template-columns: repeat(2, 1fr); }
   .cohorts { grid-template-columns: repeat(2, 1fr); }
-  .cohorts p { grid-column: 1 / -1; }
   .columns { grid-template-columns: 1fr; }
   .communication { border-left: 0; padding-left: 0; border-top: 1px solid #e2e8f0; padding-top: 18px; }
 }

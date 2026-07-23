@@ -1,8 +1,6 @@
 <view class="page ops-page page-enter">
   <view class="ops-hero">
-    <view class="ops-kicker">学生续费 / RENEWAL</view>
-    <view class="ops-title">续费跟进工作台</view>
-    <view class="ops-subtitle">博思及其他学生与新东方学生分队列处理。老师端不显示本页面和学生余额。</view>
+    <view class="ops-title">续费跟进</view>
   </view>
 
   <view class="metrics">
@@ -16,7 +14,6 @@
       <text>{{item.label}}</text><strong>{{item.count}}</strong>
     </button>
   </view>
-  <view class="cohort-hint">{{cohortHint}}</view>
 
   <view class="filter-row"><button class="filter {{item.className}}" wx:for="{{filterOptions}}" wx:key="value" data-value="{{item.value}}" bindtap="changeFilter">{{item.label}}</button></view>
 

@@ -71,9 +71,9 @@ function present(tasks) {
       hasEvidence: Boolean(row.evidenceUrl),
       ownerDisplay: row.ownerName || "未分配",
       lessonsDisplay: row.lessonsRemaining === null ? "-" : row.lessonsRemaining,
-      uploadLabel: row.evidenceUrl ? "重新上传微信群截图" : "从相册上传微信群截图",
+      uploadLabel: row.evidenceUrl ? "重新上传截图" : "从相册上传截图",
       evidenceClass: row.evidenceUrl ? "done" : "",
-      evidenceText: row.evidenceUrl ? "已上传发送截图" : "确认已提醒家长前必须上传截图",
+      evidenceText: row.evidenceUrl ? "已上传截图" : "请先上传发送截图",
       showDetail: false,
       cardClass: ["RED", "EXHAUSTED"].includes(row.riskLevel) ? "danger" : row.riskLevel === "ORANGE" ? "warning" : ""
     });
@@ -91,7 +91,6 @@ Page({
       { value: "BOSS_OTHER", label: "博思及其他", count: 0, className: "active" },
       { value: "XDF", label: "新东方学生", count: 0, className: "" }
     ],
-    cohortHint: "当前队列不包含新东方学生。",
     filterOptions: [
       { value: "OPEN", label: "待跟进", className: "active" },
       { value: "COMPLETED", label: "已结束", className: "" }
@@ -142,11 +141,7 @@ Page({
   },
   changeCohort(e) {
     const cohort = e.currentTarget.dataset.value;
-    this.setData({
-      cohort,
-      expandedId: "",
-      cohortHint: cohort === "XDF" ? "单独对接新东方项目负责人，不与普通家长续费混合。" : "当前队列不包含新东方学生。"
-    }, () => this.load().catch((err) => api.toast(err.message)));
+    this.setData({ cohort, expandedId: "" }, () => this.load().catch((err) => api.toast(err.message)));
   },
   toggle(e) {
     const expandedId = this.data.expandedId === e.currentTarget.dataset.id ? "" : e.currentTarget.dataset.id;

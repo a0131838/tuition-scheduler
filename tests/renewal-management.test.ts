@@ -34,7 +34,7 @@ test("renewal APIs and miniapp expose separate cohort controls", () => {
   assert.match(service, /LEGACY_XDF_SOURCE_CHANNEL_NAME/);
   assert.match(service, /buildXdfMessage/);
   assert.match(miniapp, /cohort:\s*"BOSS_OTHER"/);
-  assert.match(miniapp, /新东方项目负责人/);
+  assert.match(miniapp, /新东方项目对接群/);
   assert.match(web, /新东方学生/);
 });
 
