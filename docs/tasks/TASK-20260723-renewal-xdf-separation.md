@@ -31,6 +31,16 @@
 - 213-route production build
 - `git diff --check`
 
+## Production result
+
+- Runtime feature commit `6700864719d5b16b2351f6f17ebe2adb36f0ab69` aligned locally, on GitHub and on the server.
+- PM2 PID `3981337` is online and `/admin/login` returns HTTP 200.
+- The production service returned 11 Boss/other tasks and 9 New Oriental tasks, with zero rows in the wrong cohort.
+- Anonymous miniapp renewal access returned 401; teacher exclusion remains covered by the renewal access tests.
+- A controlled sync updated all 9 New Oriental messages to start with `新东方项目负责人您好`; no task was created, resolved or moved to another status.
+- WeChat development version `1.0.15` uploaded successfully for AppID `wxe7017f8545e8ad49` at 530,450 bytes (518.0 KB).
+- Experience-version designation and physical-phone tab verification remain manual rollout gates.
+
 ## Risk
 
 Low. Classification reads the canonical source-channel relation. A student whose source is missing or not exactly `新东方学生` remains in “博思及其他” until management corrects that student's source through the existing student-source workflow.

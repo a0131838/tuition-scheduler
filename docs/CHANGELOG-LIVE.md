@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-23-r279`
 - Date/Time (Asia/Shanghai): `2026-07-23`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: separate New Oriental students from Boss/other renewal work on web and employee miniapp, use the existing `新东方学生` source channel instead of name matching, and give the New Oriental queue partner-facing labels and WeChat copy.
 - Key files:
   - `lib/renewal-management.ts`
@@ -33,7 +33,7 @@ This file is the single source of truth for what changed in production.
   - `tests/renewal-management.test.ts`
   - `docs/tasks/TASK-20260723-renewal-xdf-separation.md`
 - Risk impact (if any): Low. This is a read/presentation split over the existing student source relation. It does not change student source assignments, renewal task statuses, package balances, sessions, attendance, contracts, invoices, receipts, payroll or partner settlement. Existing audit and evidence rules remain.
-- Verification: production read-only inspection found 9 open New Oriental tasks and 11 open Boss/other tasks. Prisma generation, TypeScript, 15 focused tests, 103 backend regression tests, native miniapp JavaScript syntax, the 44-page miniapp release audit, `git diff --check` and the 213-route production build passed. Post-deploy verification must confirm the two production cohort counts, authentication boundary, commit alignment, PM2 and health 200.
+- Verification: production read-only inspection found 9 open New Oriental tasks and 11 open Boss/other tasks. Prisma generation, TypeScript, 15 focused tests, 103 backend regression tests, native miniapp JavaScript syntax, the 44-page miniapp release audit, `git diff --check` and the 213-route production build passed. Runtime feature commit `6700864719d5b16b2351f6f17ebe2adb36f0ab69` aligned locally, on GitHub and on the server with PM2 PID `3981337` and `/admin/login` HTTP 200. Production service queries returned exactly 11 Boss/other and 9 New Oriental tasks with zero cross-cohort rows; anonymous renewal access returned 401. A controlled sync updated all 9 New Oriental messages to the project-contact template without changing task status. WeChat development version `1.0.15` uploaded successfully at 530,450 bytes (518.0 KB); experience-version designation and physical-phone acceptance remain manual.
 - Rollback point: `5748c44056024c9bb2264caccc56aec73fdb9e91` (`2026-07-23-r278` documentation-aligned production lineage).
 
 ---
