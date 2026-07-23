@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-23-r280`
 - Date/Time (Asia/Shanghai): `2026-07-23`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: remove implementation commentary, permission explanations and repeated queue guidance from the renewal workbench so web and employee miniapp show only the title, source queues, counts, risk, owner and next actions.
 - Key files:
   - `app/admin/renewals/page.tsx`
@@ -29,7 +29,7 @@ This file is the single source of truth for what changed in production.
   - `tests/renewal-management.test.ts`
   - `docs/tasks/TASK-20260723-renewal-copy-cleanup.md`
 - Risk impact (if any): Low and presentation-only. No renewal data, permissions, task status, evidence, package, scheduling, finance, payroll or partner-settlement behavior changes.
-- Verification: TypeScript, 7 focused renewal tests, native miniapp JavaScript syntax, the 44-page miniapp release audit, `git diff --check`, explicit removed-copy search and the 213-route production build passed.
+- Verification: TypeScript, 7 focused renewal tests, native miniapp JavaScript syntax, the 44-page miniapp release audit, `git diff --check`, explicit removed-copy search and the 213-route production build passed. Runtime feature commit `371f5471d995a438e70e640d1917f66f5a91d06a` aligned locally, on GitHub and on the server with PM2 PID `3996895` and `/admin/login` HTTP 200. WeChat development version `1.0.16` uploaded successfully at 529,892 bytes (517.5 KB); experience-version designation and physical-phone visual acceptance remain manual.
 - Rollback point: `7b7cc546934cdc2dfc61529b5be6f4e80f3fdeb5` (`2026-07-23-r279` documentation-aligned production lineage).
 
 ---

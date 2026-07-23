@@ -22,6 +22,13 @@
 - 213-route production build
 - `git diff --check`
 
+## Production result
+
+- Runtime feature commit `371f5471d995a438e70e640d1917f66f5a91d06a` aligned locally, on GitHub and on the server.
+- PM2 PID `3996895` is online and `/admin/login` returns HTTP 200.
+- WeChat development version `1.0.16` uploaded successfully at 529,892 bytes (517.5 KB).
+- Experience-version designation and physical-phone visual confirmation remain manual.
+
 ## Risk
 
 Low. Presentation only; no business logic or production data changes.
