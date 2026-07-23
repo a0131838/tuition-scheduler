@@ -64,7 +64,7 @@
 ## 6) Verification
 
 - Build: TypeScript and the 213-route production build passed.
-- Runtime: pending deployment.
+- Runtime: feature commit `a654dd1d4cbe89677d59b1d047a917af7cbca0a6` aligned locally, on GitHub and on the production server; PM2 PID `4053092` is online and `/admin/login` returns HTTP 200.
 - Key manual checks:
   - 108 backend regression tests passed.
   - 5 focused package-course transition tests passed.
@@ -78,5 +78,5 @@
 ## 8) Release Record
 
 - Release ID: `2026-07-23-r281`
-- Deploy time: pending
+- Deploy time: `2026-07-23` (Asia/Singapore)
 - Rollback command/point: `662fa7c1ce00599a32e34556ffb1e9c8dbc1fec2`
