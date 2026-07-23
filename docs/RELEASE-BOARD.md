@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-23-r282` is ready for deployment; it limits shared-package course transitions to one explicitly selected student and source course.
+- Current release line on this branch: `2026-07-23-r282` is live at runtime feature commit `8a4ed64`; it limits shared-package course transitions to one explicitly selected student and source course.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
@@ -22,7 +22,7 @@
 
 ## Open Risks
 
-- Shared-package student-course scope: `2026-07-23-r282` is ready after TypeScript, 6 focused tests, 109 backend regression tests and the 213-route production build. Shared group sessions remain exceptions because their Class is common to every enrolled student; operators must review the preview before saving.
+- Shared-package student-course scope: `2026-07-23-r282` is live at runtime feature commit `8a4ed64`, with all 112 migrations current, PM2 PID `4063677` and health 200. Shared group sessions remain exceptions because their Class is common to every enrolled student; operators must review the preview before saving.
 
 - Package-course transition rollout: `2026-07-23-r281` is live at runtime feature commit `a654dd1`, with all 112 migrations current, PM2 PID `4053092` and health 200. Academic Operations must review the preview counts before saving. Completed/protected lessons and shared group lessons remain unchanged; group lessons require individual handling because changing their shared Class would affect other students.
 

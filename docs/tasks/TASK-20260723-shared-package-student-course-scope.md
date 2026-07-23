@@ -57,5 +57,5 @@
 ## 7) Release Record
 
 - Release ID: `2026-07-23-r282`
-- Deployment status: ready
+- Deployment status: live at feature commit `8a4ed640d17ca75e9dde0fc04fb429de7b306ccd`; PM2 PID `4063677` is online and `/admin/login` returns HTTP 200.
 - Rollback point: `8fa1c15a35e4fb52c581b974eb79ffcdef5802cc`
