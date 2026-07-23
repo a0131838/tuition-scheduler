@@ -29,6 +29,15 @@
 - `npm run test:backend`（100/100）
 - `npm run build`（213 routes）
 
+## Production result
+
+- Runtime feature commit `c431f094dc65b83fa993d9feda1bce0dda6e34ea` is aligned locally, on GitHub and on the server.
+- Production has all 112 migrations current; PM2 PID `3971356` is online and `/admin/login` returns HTTP 200.
+- The first controlled renewal sync created 20 open tasks: 8 `EXHAUSTED`, 4 `RED`, 8 `YELLOW`; 18 are `PENDING_CONTACT` and 2 are `PAYMENT_PENDING`.
+- Anonymous miniapp renewal access returns 401. Automated access-boundary tests confirm teachers cannot access renewal or Student360 operational data.
+- WeChat development version `1.0.14` uploaded successfully for AppID `wxe7017f8545e8ad49` at 527,564 bytes (515.2 KB).
+- Experience-version designation and physical-phone acceptance for Emily, Eva and Jasmine's management account remain manual rollout gates. No teacher renewal test is required because the feature is intentionally absent from teacher accounts.
+
 ## Risk
 
 Medium. The release adds one isolated workflow table and read-side forecasting across existing package/session data. It never mutates package balances, sessions, attendance, invoices, receipts, payroll, or partner settlement. Forecasts guide human follow-up only; operators must verify special cases such as shared packages, pauses, gifts, and refunds before contacting parents.

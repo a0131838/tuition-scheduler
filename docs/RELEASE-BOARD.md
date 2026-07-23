@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-07-20`
+- Last checked: `2026-07-23`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-23-r278` is ready; it adds one-task-per-package renewal forecasting and follow-up on web and employee miniapp, keeps manual WeChat evidence, and removes teacher access to student balance/renewal operations.
+- Current release line on this branch: `2026-07-23-r278` is live at runtime feature commit `c431f09`; it adds one-task-per-package renewal forecasting and follow-up on web and employee miniapp, keeps manual WeChat evidence, and removes teacher access to student balance/renewal operations.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
@@ -22,7 +22,7 @@
 
 ## Open Risks
 
-- Renewal follow-up rollout: `2026-07-23-r278` is ready after 31 focused tests, 100 backend regressions, TypeScript and the 213-route build. Forecasts are operational signals, not billing decisions: Emily/Eva/Jasmine must verify shared packages, paused study, gift hours, refunds and future scheduling before contacting a parent. After deployment, inspect real task counts and upload the next employee-miniapp development version; teachers must receive 403 for renewal and student360 operational APIs.
+- Renewal follow-up rollout: `2026-07-23-r278` is live at runtime feature commit `c431f09`, with 112 migrations current, PM2 PID `3971356`, health 200 and WeChat development version `1.0.14` uploaded at 527,564 bytes (515.2 KB). The first controlled sync created 20 open tasks: 8 exhausted, 4 red and 8 yellow; 18 await first contact and 2 are already at payment-pending. Forecasts are operational signals, not billing decisions: Emily/Eva/Jasmine must verify shared packages, paused study, gift hours, refunds and future scheduling before contacting a parent. Teachers are excluded from renewal and Student360 operations. Designate `1.0.14` as the experience version and complete an Emily/Eva/Jasmine-management physical-phone pass before broad daily use.
 
 - Course-change resend rollout: r277 is live at runtime feature commit `95cbda7` with PM2/health checks passing. Production sync upgraded Steven's historical generic notice; Steven and 刘妍书 now explicitly say cancelled/no replacement, while Zack shows the real old/new time. WeChat development version `1.0.13` uploaded at 513,286 bytes (501.3 KB). Designate it as the experience version and test Emily/Eva on an existing task; do not fabricate a cancellation.
 

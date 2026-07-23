@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-23-r278`
 - Date/Time (Asia/Shanghai): `2026-07-23`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: add a complete renewal follow-up center that forecasts package depletion, creates one auditable open task per package, guides Emily/Eva/Jasmine from parent contact through contract, payment and package activation, and fully excludes teachers from student balance and renewal information.
 - Key files:
   - `prisma/migrations/20260723090000_add_renewal_followup_center/migration.sql`
@@ -33,7 +33,7 @@ This file is the single source of truth for what changed in production.
   - `tests/renewal-management.test.ts`
   - `docs/tasks/TASK-20260723-renewal-followup-center.md`
 - Risk impact (if any): Medium. One additive workflow table is introduced and forecasts read existing packages, sessions and package transactions. The release does not change package balances, attendance deduction, scheduling, contracts, invoices, receipts, payroll or partner settlement. WeChat communication remains manual and requires screenshot evidence before the task can be marked as parent-notified.
-- Verification: Prisma generation and TypeScript passed; 31 focused renewal/miniapp/communication tests and 100 backend regression tests passed; the production build completed with 213 routes. Post-deploy verification must confirm migration count, renewal task counts by risk, teacher 403 boundaries, local/GitHub/server commit equality, PM2 PID and HTTP 200.
+- Verification: Prisma generation and TypeScript passed; 31 focused renewal/miniapp/communication tests and 100 backend regression tests passed; the production build completed with 213 routes. Runtime feature commit `c431f094dc65b83fa993d9feda1bce0dda6e34ea` aligned locally, on GitHub and on the server with PM2 PID `3971356` and `/admin/login` HTTP 200. Production reports all 112 migrations current. The first controlled sync created 20 open tasks: 8 `EXHAUSTED`, 4 `RED`, 8 `YELLOW`; 18 are `PENDING_CONTACT` and 2 are `PAYMENT_PENDING`. Anonymous renewal API access returned 401, and automated permission tests confirm teacher renewal and Student360 operational access is denied. WeChat development version `1.0.14` uploaded successfully at 527,564 bytes (515.2 KB); experience-version designation and physical-phone acceptance remain manual.
 - Rollback point: `61a3e6edca833d8dce80c6f94646477a13c1080b` (`2026-07-20-r277` documentation-aligned production lineage).
 
 ---
