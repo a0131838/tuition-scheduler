@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-23-r282
+
+- Release ID: `2026-07-23-r282`
+- Date/Time (Asia/Shanghai): `2026-07-23`
+- Deployment status: `READY`
+- Scope: make shared-package course changes student-specific. Operators select one package-linked student, the source course and the new course; only that student's safe future one-to-one lessons are migrated, while the package remains one shared balance pool.
+- Key files:
+  - `app/admin/_components/PackageEditModal.tsx`
+  - `app/api/admin/packages/[id]/route.ts`
+  - `lib/package-course-transition.ts`
+  - `tests/package-course-transition.test.ts`
+  - `docs/tasks/TASK-20260723-shared-package-student-course-scope.md`
+- Risk impact (if any): Medium and operator-triggered. Shared-package primary course, other shared students, completed/protected lessons, group sessions, balances, attendance deductions, contracts, invoices, receipts, payroll and partner settlement remain unchanged.
+- Verification: TypeScript, 6 focused tests, 109 backend regression tests, `git diff --check` and the 213-route production build passed. Production deployment and runtime checks are pending.
+- Rollback point: `8fa1c15a35e4fb52c581b974eb79ffcdef5802cc` (`2026-07-23-r281` production lineage).
+
+---
+
 ## 2026-07-23-r281
 
 - Release ID: `2026-07-23-r281`

@@ -102,7 +102,9 @@ export default function PackageEditModal({
   const [contentKey, setContentKey] = useState(0);
   const [mode, setMode] = useState<"edit" | "topup">("edit");
   const [editPaidValue, setEditPaidValue] = useState(pkg.paid);
+  const [editSourceCourseId, setEditSourceCourseId] = useState(pkg.courseId ?? "");
   const [editCourseId, setEditCourseId] = useState(pkg.courseId ?? "");
+  const [transitionStudentId, setTransitionStudentId] = useState(pkg.studentId ?? "");
   const [courseChangeReason, setCourseChangeReason] = useState("");
   const [courseTransitionPreview, setCourseTransitionPreview] = useState<any>(null);
   const [courseTransitionPreviewBusy, setCourseTransitionPreviewBusy] = useState(false);
@@ -130,6 +132,7 @@ export default function PackageEditModal({
   const settlementOfflineLabel = labels.settlementOffline ?? "Offline: Monthly";
   const isXdfPartner = isKnownPartnerSource(pkg.sourceChannelName);
   const isDirectBillingPackage = pkg.settlementMode == null;
+  const hasSharedStudents = pkg.sharedStudents.length > 0;
   const topUpPresets = isXdfPartner ? XDF_TOP_UP_PRESETS : STANDARD_PACKAGE_HOUR_PRESETS;
   const currentRemaining = pkg.remainingMinutes ?? 0;
   const currentTotal = pkg.totalMinutes ?? null;
@@ -197,6 +200,28 @@ export default function PackageEditModal({
     () => courses.filter((course) => editSharedCourseIds.includes(course.id)),
     [courses, editSharedCourseIds]
   );
+  const packageStudentOptions = useMemo(() => {
+    const ids = Array.from(
+      new Set([pkg.studentId, ...pkg.sharedStudents.map((row) => row.studentId)].filter(Boolean))
+    ) as string[];
+    return ids.map((studentId) => {
+      const student = students.find((row) => row.id === studentId);
+      return {
+        id: studentId,
+        name:
+          student?.name ??
+          (studentId === pkg.studentId ? pkg.studentName : null) ??
+          studentId,
+        isOwner: studentId === pkg.studentId,
+      };
+    });
+  }, [pkg.sharedStudents, pkg.studentId, pkg.studentName, students]);
+  const packageCourseOptions = useMemo(() => {
+    const ids = new Set(
+      [pkg.courseId, ...pkg.sharedCourses.map((row) => row.courseId)].filter(Boolean)
+    );
+    return courses.filter((course) => ids.has(course.id));
+  }, [courses, pkg.courseId, pkg.sharedCourses]);
   const editSharedStudentsSameCourse = useMemo(
     () =>
       pkg.courseId
@@ -229,17 +254,26 @@ export default function PackageEditModal({
       : "Regular top-ups follow 15h / 50h / 100h package sizes. / 常规增购按 15 / 50 / 100 小时录入。";
 
   useEffect(() => {
-    if (!pkg.courseId || !editCourseId || editCourseId === pkg.courseId) {
+    if (
+      !editSourceCourseId ||
+      !editCourseId ||
+      editCourseId === editSourceCourseId ||
+      !transitionStudentId
+    ) {
       setCourseTransitionPreview(null);
       setCourseTransitionPreviewBusy(false);
       return;
     }
     const controller = new AbortController();
     setCourseTransitionPreviewBusy(true);
-    fetch(
-      `/api/admin/packages/${encodeURIComponent(pkg.id)}?previewCourseId=${encodeURIComponent(editCourseId)}`,
-      { signal: controller.signal }
-    )
+    const params = new URLSearchParams({
+      previewCourseId: editCourseId,
+      sourceCourseId: editSourceCourseId,
+      transitionStudentId,
+    });
+    fetch(`/api/admin/packages/${encodeURIComponent(pkg.id)}?${params.toString()}`, {
+      signal: controller.signal,
+    })
       .then(async (response) => {
         const data = await response.json().catch(() => null);
         if (!response.ok || !data?.ok) throw new Error(data?.message ?? `Request failed (${response.status})`);
@@ -253,7 +287,7 @@ export default function PackageEditModal({
         if (!controller.signal.aborted) setCourseTransitionPreviewBusy(false);
       });
     return () => controller.abort();
-  }, [editCourseId, pkg.courseId, pkg.id]);
+  }, [editCourseId, editSourceCourseId, pkg.id, transitionStudentId]);
 
   const preserveRefresh = (
     okMsg?: string,
@@ -307,7 +341,9 @@ export default function PackageEditModal({
           setMsg("");
           setMode("edit");
           setEditPaidValue(pkg.paid);
+          setEditSourceCourseId(pkg.courseId ?? "");
           setEditCourseId(pkg.courseId ?? "");
+          setTransitionStudentId(pkg.studentId ?? "");
           setCourseChangeReason("");
           setCourseTransitionPreview(null);
           setShowEditAdvanced(false);
@@ -424,7 +460,9 @@ export default function PackageEditModal({
                 paidAt: String(fd.get("paidAt") ?? ""),
                 paidAmount: String(fd.get("paidAmount") ?? ""),
                 paidNote: String(fd.get("paidNote") ?? ""),
+                sourceCourseId: String(fd.get("sourceCourseId") ?? ""),
                 courseId: String(fd.get("courseId") ?? ""),
+                transitionStudentId: String(fd.get("transitionStudentId") ?? ""),
                 courseChangeReason: String(fd.get("courseChangeReason") ?? ""),
                 sharedStudentIds: fd.getAll("sharedStudentIds").map((v) => String(v)),
                 sharedCourseIds: fd.getAll("sharedCourseIds").map((v) => String(v)),
@@ -461,10 +499,61 @@ export default function PackageEditModal({
           </div>
           <div style={{ border: "1px solid #86efac", borderRadius: 12, padding: 12, background: "#f0fdf4", display: "grid", gap: 10 }}>
             <div style={{ fontWeight: 700, color: "#166534" }}>
-              Course for this package and all not-started lessons / 课包课程及全部未开始课次
+              {hasSharedStudents
+                ? "Change one shared-package student's future course / 修改一名共享课包学生的未来课程"
+                : "Course for this package and all not-started lessons / 课包课程及全部未开始课次"}
             </div>
+            {hasSharedStudents ? (
+              <>
+                <div style={{ color: "#166534", fontSize: 13 }}>
+                  The package remains one shared balance pool. Only the selected student's safe future 1-to-1 lessons will change; other students stay unchanged. / 课包继续作为共享余额池；只修改所选学生安全的未来1对1课次，其他学生保持不变。
+                </div>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span>Student to change / 要修改的学生</span>
+                  <select
+                    name="transitionStudentId"
+                    value={transitionStudentId}
+                    onChange={(event) => {
+                      setTransitionStudentId(event.target.value);
+                      setCourseChangeReason("");
+                    }}
+                    required
+                    style={{ minHeight: 40 }}
+                  >
+                    {packageStudentOptions.map((student) => (
+                      <option key={student.id} value={student.id}>
+                        {student.name}{student.isOwner ? " · Package owner / 课包归属" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span>Current course to replace / 要替换的原课程</span>
+                  <select
+                    name="sourceCourseId"
+                    value={editSourceCourseId}
+                    onChange={(event) => {
+                      setEditSourceCourseId(event.target.value);
+                      setEditCourseId(event.target.value);
+                      setCourseChangeReason("");
+                    }}
+                    required
+                    style={{ minHeight: 40 }}
+                  >
+                    {packageCourseOptions.map((course) => (
+                      <option key={course.id} value={course.id}>{course.name}</option>
+                    ))}
+                  </select>
+                </label>
+              </>
+            ) : (
+              <>
+                <input type="hidden" name="transitionStudentId" value={pkg.studentId ?? ""} />
+                <input type="hidden" name="sourceCourseId" value={pkg.courseId ?? ""} />
+              </>
+            )}
             <label style={{ display: "grid", gap: 6 }}>
-              <span>Change course / 修改课程</span>
+              <span>New course / 新课程</span>
               <select
                 name="courseId"
                 value={editCourseId}
@@ -479,7 +568,7 @@ export default function PackageEditModal({
                 ))}
               </select>
             </label>
-            {editCourseId && editCourseId !== pkg.courseId ? (
+            {editCourseId && editCourseId !== editSourceCourseId ? (
               <>
                 <label style={{ display: "grid", gap: 6 }}>
                   <span>Reason / 修改原因</span>
@@ -498,7 +587,7 @@ export default function PackageEditModal({
                     : courseTransitionPreview?.error
                       ? `Preview unavailable / 预览失败: ${courseTransitionPreview.error}`
                       : courseTransitionPreview
-                        ? `Will update ${courseTransitionPreview.futureOneOnOneSessions} not-started 1-to-1 lesson(s). ${courseTransitionPreview.futureGroupSessions} group lesson(s), ${courseTransitionPreview.protectedSessions} lesson(s) with attendance/feedback, and ${courseTransitionPreview.ambiguousSessions} ambiguous lesson(s) will stay unchanged. / 将同步修改 ${courseTransitionPreview.futureOneOnOneSessions} 节未开始1对1课程；${courseTransitionPreview.futureGroupSessions} 节班课、${courseTransitionPreview.protectedSessions} 节已有签到/反馈课程及 ${courseTransitionPreview.ambiguousSessions} 节无法唯一识别学生的课程保持不变。`
+                        ? `Will update ${courseTransitionPreview.futureOneOnOneSessions} not-started 1-to-1 lesson(s) for the selected student only. ${courseTransitionPreview.futureGroupSessions} group lesson(s), ${courseTransitionPreview.protectedSessions} lesson(s) with attendance/feedback, and ${courseTransitionPreview.ambiguousSessions} ambiguous lesson(s) will stay unchanged. / 只同步修改所选学生的 ${courseTransitionPreview.futureOneOnOneSessions} 节未开始1对1课程；${courseTransitionPreview.futureGroupSessions} 节班课、${courseTransitionPreview.protectedSessions} 节已有签到/反馈课程及 ${courseTransitionPreview.ambiguousSessions} 节无法唯一识别学生的课程保持不变。`
                         : "All not-started 1-to-1 lessons will move to the new course. Completed lessons stay unchanged. / 所有未开始1对1课程将切换到新课程，已完成课程保持不变。"}
                 </div>
               </>

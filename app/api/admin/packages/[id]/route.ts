@@ -9,8 +9,8 @@ import {
 } from "@/lib/package-finance-gate";
 import { logAudit } from "@/lib/audit-log";
 import {
+  packageCourseAccessAfterTransition,
   previewPackageCourseTransition,
-  sharedCourseIdsAfterTransition,
   transitionPackageCourse,
   type PackageCourseTransitionResult,
 } from "@/lib/package-course-transition";
@@ -59,18 +59,26 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   const { id } = await ctx.params;
   if (!id) return bad("Missing id", 409);
 
-  const previewCourseId = new URL(req.url).searchParams.get("previewCourseId")?.trim();
+  const searchParams = new URL(req.url).searchParams;
+  const previewCourseId = searchParams.get("previewCourseId")?.trim();
+  const sourceCourseId = searchParams.get("sourceCourseId")?.trim();
+  const transitionStudentId = searchParams.get("transitionStudentId")?.trim();
   if (!previewCourseId) return bad("Missing previewCourseId", 409);
 
   try {
     const preview = await previewPackageCourseTransition(prisma, {
       packageId: id,
+      sourceCourseId,
       targetCourseId: previewCourseId,
+      studentIds: transitionStudentId ? [transitionStudentId] : undefined,
     });
     return Response.json({ ok: true, preview });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Preview failed";
     if (message === "PACKAGE_NOT_FOUND") return bad("Package not found", 404);
+    if (message === "SOURCE_COURSE_NOT_FOUND") return bad("Source course not found", 404);
+    if (message === "SOURCE_COURSE_NOT_ALLOWED") return bad("Source course is not allowed by this package", 409);
+    if (message === "STUDENT_SCOPE_NOT_ALLOWED") return bad("Student is not linked to this package", 409);
     if (message === "TARGET_COURSE_NOT_FOUND") return bad("Target course not found", 404);
     return bad(message, 500);
   }
@@ -99,6 +107,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const paidAmountRaw = body?.paidAmount;
   const paidNote = String(body?.paidNote ?? "");
   const requestedCourseId = String(body?.courseId ?? "").trim();
+  const requestedSourceCourseId = String(body?.sourceCourseId ?? "").trim();
+  const requestedTransitionStudentId = String(body?.transitionStudentId ?? "").trim();
   const courseChangeReason = String(body?.courseChangeReason ?? "").trim();
   const sharedStudentIdsRaw: string[] = Array.isArray(body?.sharedStudentIds)
     ? (body.sharedStudentIds as any[]).map((v) => String(v)).filter(Boolean)
@@ -119,13 +129,33 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       type: true,
       studentId: true,
       courseId: true,
-      course: { select: { name: true } },
+      sharedStudents: { select: { studentId: true } },
+      sharedCourses: { select: { courseId: true } },
       financeGateStatus: true,
     },
   });
   if (!pkg) return bad("Package not found", 404);
+  const sourceCourseId = requestedSourceCourseId || pkg.courseId;
   const targetCourseId = requestedCourseId || pkg.courseId;
-  const courseChanged = targetCourseId !== pkg.courseId;
+  const courseChanged = targetCourseId !== sourceCourseId;
+  const packageStudentIds = Array.from(
+    new Set([pkg.studentId, ...pkg.sharedStudents.map((row) => row.studentId)])
+  );
+  const hasSharedStudents = pkg.sharedStudents.length > 0;
+  const transitionStudentId = requestedTransitionStudentId || pkg.studentId;
+  if (courseChanged && hasSharedStudents && !requestedTransitionStudentId) {
+    return bad("Select which shared-package student should change course", 409);
+  }
+  if (courseChanged && !packageStudentIds.includes(transitionStudentId)) {
+    return bad("Selected student is not linked to this package", 409);
+  }
+  const allowedSourceCourseIds = new Set([
+    pkg.courseId,
+    ...pkg.sharedCourses.map((row) => row.courseId),
+  ]);
+  if (courseChanged && !allowedSourceCourseIds.has(sourceCourseId)) {
+    return bad("Source course is not allowed by this package", 409);
+  }
   if (courseChanged && !courseChangeReason) {
     return bad("Course change reason is required", 409);
   }
@@ -140,14 +170,30 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   if (!targetCourse) return bad("Target course not found", 404);
 
   const sharedStudentIds = Array.from(new Set(sharedStudentIdsRaw)).filter((sid) => sid !== pkg.studentId);
+  if (
+    courseChanged &&
+    transitionStudentId !== pkg.studentId &&
+    !sharedStudentIds.includes(transitionStudentId)
+  ) {
+    return bad("Keep the selected student linked to the shared package while changing course", 409);
+  }
   const selectedSharedCourseIds = Array.from(new Set(sharedCourseIdsRaw));
-  const sharedCourseIds = courseChanged
-    ? sharedCourseIdsAfterTransition({
+  const courseAccess = courseChanged
+    ? packageCourseAccessAfterTransition({
+        primaryCourseId: pkg.courseId,
         selectedSharedCourseIds,
-        oldCourseId: pkg.courseId,
+        sourceCourseId,
         targetCourseId,
+        hasSharedStudents,
       })
-    : selectedSharedCourseIds.filter((cid) => cid !== targetCourseId);
+    : {
+        changePrimaryCourse: false,
+        primaryCourseId: pkg.courseId,
+        sharedCourseIds: selectedSharedCourseIds.filter((courseId) => courseId !== pkg.courseId),
+      };
+  const changePrimaryCourse = courseAccess.changePrimaryCourse;
+  const resultingPrimaryCourseId = courseAccess.primaryCourseId;
+  const sharedCourseIds = courseAccess.sharedCourseIds;
 
   const validFrom = parseBusinessDateStart(validFromStr);
   const validTo = validToStr ? parseBusinessDateEnd(validToStr) : null;
@@ -191,7 +237,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       where: {
         id: { not: id },
         studentId: pkg.studentId,
-        courseId: targetCourseId,
+        courseId: resultingPrimaryCourseId,
         ...sameModeWhere(updateMode),
         status: "ACTIVE",
         validFrom: { lte: overlapCheckTo },
@@ -233,7 +279,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         if (courseChanged) {
           completedTransition = await transitionPackageCourse(tx, {
             packageId: id,
+            sourceCourseId,
             targetCourseId,
+            studentIds: [transitionStudentId],
             now: editAt,
           });
         }
@@ -241,7 +289,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         await tx.coursePackage.update({
           where: { id },
           data: {
-            courseId: targetCourseId,
+            courseId: resultingPrimaryCourseId,
             status: (status as any) || undefined,
             settlementMode: settlementMode as any,
             validFrom,
@@ -298,6 +346,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       );
     }
     if (message === "PACKAGE_NOT_FOUND") return bad("Package not found", 404);
+    if (message === "SOURCE_COURSE_NOT_FOUND") return bad("Source course not found", 404);
+    if (message === "SOURCE_COURSE_NOT_ALLOWED") return bad("Source course is not allowed by this package", 409);
+    if (message === "STUDENT_SCOPE_NOT_ALLOWED") return bad("Student is not linked to this package", 409);
     if (message === "TARGET_COURSE_NOT_FOUND") return bad("Target course not found", 404);
     return bad(message, 500);
   }
@@ -306,14 +357,16 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     await logAudit({
       actor: admin,
       module: "PACKAGE",
-      action: "CHANGE_COURSE",
+      action: hasSharedStudents ? "CHANGE_SHARED_STUDENT_COURSE" : "CHANGE_COURSE",
       entityType: "CoursePackage",
       entityId: id,
       meta: {
-        oldCourseId: pkg.courseId,
-        oldCourseName: pkg.course.name,
+        oldCourseId: transitionResult.oldCourseId,
+        oldCourseName: transitionResult.oldCourseName,
         targetCourseId,
         targetCourseName: targetCourse.name,
+        transitionStudentId,
+        packagePrimaryCourseChanged: changePrimaryCourse,
         reason: courseChangeReason,
         futureOneOnOneSessions: transitionResult.futureOneOnOneSessions,
         migratedSessionIds: transitionResult.migratedSessionIds,
@@ -333,10 +386,11 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
           entityId: sessionId,
           meta: {
             packageId: id,
-            oldCourseId: pkg.courseId,
-            oldCourseName: pkg.course.name,
+            oldCourseId: transitionResult.oldCourseId,
+            oldCourseName: transitionResult.oldCourseName,
             targetCourseId,
             targetCourseName: targetCourse.name,
+            transitionStudentId,
             reason: courseChangeReason,
           },
         })

@@ -116,15 +116,57 @@ export function sharedCourseIdsAfterTransition(input: {
   return Array.from(ids);
 }
 
+export function packageCourseAccessAfterTransition(input: {
+  primaryCourseId: string;
+  selectedSharedCourseIds: string[];
+  sourceCourseId: string;
+  targetCourseId: string;
+  hasSharedStudents: boolean;
+}) {
+  const changePrimaryCourse =
+    !input.hasSharedStudents && input.sourceCourseId === input.primaryCourseId;
+  const resultingPrimaryCourseId = changePrimaryCourse
+    ? input.targetCourseId
+    : input.primaryCourseId;
+
+  if (changePrimaryCourse) {
+    return {
+      changePrimaryCourse,
+      primaryCourseId: resultingPrimaryCourseId,
+      sharedCourseIds: sharedCourseIdsAfterTransition({
+        selectedSharedCourseIds: input.selectedSharedCourseIds,
+        oldCourseId: input.sourceCourseId,
+        targetCourseId: input.targetCourseId,
+      }),
+    };
+  }
+
+  const sharedCourseIds = new Set(input.selectedSharedCourseIds.filter(Boolean));
+  sharedCourseIds.delete(resultingPrimaryCourseId);
+  if (input.sourceCourseId !== resultingPrimaryCourseId) {
+    sharedCourseIds.add(input.sourceCourseId);
+  }
+  if (input.targetCourseId !== resultingPrimaryCourseId) {
+    sharedCourseIds.add(input.targetCourseId);
+  }
+  return {
+    changePrimaryCourse,
+    primaryCourseId: resultingPrimaryCourseId,
+    sharedCourseIds: Array.from(sharedCourseIds),
+  };
+}
+
 function sessionStudentId(session: TransitionSession, eligibleStudentIds: Set<string>) {
-  const ids = new Set(
+  const linkedStudentIds = new Set(
     [
       session.studentId,
       session.class.oneOnOneStudentId,
       ...session.class.enrollments.map((row) => row.studentId),
-    ].filter((id): id is string => Boolean(id) && eligibleStudentIds.has(id as string))
+    ].filter((id): id is string => Boolean(id))
   );
-  return ids.size === 1 ? Array.from(ids)[0] : null;
+  if (linkedStudentIds.size !== 1) return null;
+  const studentId = Array.from(linkedStudentIds)[0];
+  return eligibleStudentIds.has(studentId) ? studentId : null;
 }
 
 function isProtectedSession(session: TransitionSession) {
@@ -139,7 +181,13 @@ function isProtectedSession(session: TransitionSession) {
 
 async function loadTransitionContext(
   db: CourseTransitionDb,
-  input: { packageId: string; targetCourseId: string; now: Date }
+  input: {
+    packageId: string;
+    sourceCourseId?: string;
+    targetCourseId: string;
+    studentIds?: string[];
+    now: Date;
+  }
 ) {
   const pkg = await db.coursePackage.findUnique({
     where: { id: input.packageId },
@@ -149,9 +197,23 @@ async function loadTransitionContext(
       courseId: true,
       course: { select: { name: true } },
       sharedStudents: { select: { studentId: true } },
+      sharedCourses: { select: { courseId: true } },
     },
   });
   if (!pkg) throw new Error("PACKAGE_NOT_FOUND");
+
+  const sourceCourseId = input.sourceCourseId || pkg.courseId;
+  const allowedCourseIds = new Set([
+    pkg.courseId,
+    ...pkg.sharedCourses.map((row) => row.courseId),
+  ]);
+  if (!allowedCourseIds.has(sourceCourseId)) throw new Error("SOURCE_COURSE_NOT_ALLOWED");
+
+  const sourceCourse = await db.course.findUnique({
+    where: { id: sourceCourseId },
+    select: { id: true, name: true },
+  });
+  if (!sourceCourse) throw new Error("SOURCE_COURSE_NOT_FOUND");
 
   const targetCourse = await db.course.findUnique({
     where: { id: input.targetCourseId },
@@ -169,15 +231,25 @@ async function loadTransitionContext(
   });
   if (!targetCourse) throw new Error("TARGET_COURSE_NOT_FOUND");
 
-  const eligibleStudentIds = Array.from(
+  const packageStudentIds = Array.from(
     new Set([pkg.studentId, ...pkg.sharedStudents.map((row) => row.studentId)])
   );
+  const requestedStudentIds = Array.from(
+    new Set((input.studentIds?.length ? input.studentIds : [pkg.studentId]).filter(Boolean))
+  );
+  if (
+    requestedStudentIds.length === 0 ||
+    requestedStudentIds.some((studentId) => !packageStudentIds.includes(studentId))
+  ) {
+    throw new Error("STUDENT_SCOPE_NOT_ALLOWED");
+  }
+  const eligibleStudentIds = requestedStudentIds;
 
   const sessions = (await db.session.findMany({
     where: {
       startAt: { gt: input.now },
       class: {
-        courseId: pkg.courseId,
+        courseId: sourceCourse.id,
         capacity: 1,
         OR: [
           { oneOnOneStudentId: { in: eligibleStudentIds } },
@@ -224,7 +296,7 @@ async function loadTransitionContext(
     where: {
       startAt: { gt: input.now },
       class: {
-        courseId: pkg.courseId,
+        courseId: sourceCourse.id,
         capacity: { gt: 1 },
         enrollments: { some: { studentId: { in: eligibleStudentIds } } },
       },
@@ -242,6 +314,7 @@ async function loadTransitionContext(
 
   return {
     pkg,
+    sourceCourse,
     targetCourse,
     eligibleStudentIds,
     sessions,
@@ -254,17 +327,25 @@ async function loadTransitionContext(
 
 export async function previewPackageCourseTransition(
   db: CourseTransitionDb,
-  input: { packageId: string; targetCourseId: string; now?: Date }
+  input: {
+    packageId: string;
+    sourceCourseId?: string;
+    targetCourseId: string;
+    studentIds?: string[];
+    now?: Date;
+  }
 ): Promise<PackageCourseTransitionPreview> {
   const context = await loadTransitionContext(db, {
     packageId: input.packageId,
+    sourceCourseId: input.sourceCourseId,
     targetCourseId: input.targetCourseId,
+    studentIds: input.studentIds,
     now: input.now ?? new Date(),
   });
   return {
     packageId: context.pkg.id,
-    oldCourseId: context.pkg.courseId,
-    oldCourseName: context.pkg.course.name,
+    oldCourseId: context.sourceCourse.id,
+    oldCourseName: context.sourceCourse.name,
     targetCourseId: context.targetCourse.id,
     targetCourseName: context.targetCourse.name,
     eligibleStudentIds: context.eligibleStudentIds,
@@ -277,12 +358,20 @@ export async function previewPackageCourseTransition(
 
 export async function transitionPackageCourse(
   db: CourseTransitionDb,
-  input: { packageId: string; targetCourseId: string; now?: Date }
+  input: {
+    packageId: string;
+    sourceCourseId?: string;
+    targetCourseId: string;
+    studentIds?: string[];
+    now?: Date;
+  }
 ): Promise<PackageCourseTransitionResult> {
   const now = input.now ?? new Date();
   const context = await loadTransitionContext(db, {
     packageId: input.packageId,
+    sourceCourseId: input.sourceCourseId,
     targetCourseId: input.targetCourseId,
+    studentIds: input.studentIds,
     now,
   });
   const eligibleIds = new Set(context.eligibleStudentIds);
@@ -377,8 +466,8 @@ export async function transitionPackageCourse(
 
   return {
     packageId: context.pkg.id,
-    oldCourseId: context.pkg.courseId,
-    oldCourseName: context.pkg.course.name,
+    oldCourseId: context.sourceCourse.id,
+    oldCourseName: context.sourceCourse.name,
     targetCourseId: context.targetCourse.id,
     targetCourseName: context.targetCourse.name,
     eligibleStudentIds: context.eligibleStudentIds,
@@ -391,4 +480,3 @@ export async function transitionPackageCourse(
     invalidatedReminderCount,
   };
 }
-

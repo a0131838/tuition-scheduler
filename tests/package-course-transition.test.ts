@@ -6,6 +6,7 @@ import {
   COURSE_CHANGE_REMINDER_REQUEUE_ERROR,
   matchCourseTransitionLevel,
   matchCourseTransitionSubject,
+  packageCourseAccessAfterTransition,
   sharedCourseIdsAfterTransition,
   transitionPackageCourse,
 } from "../lib/package-course-transition";
@@ -51,12 +52,30 @@ test("old primary course remains available for historical deductions after trans
   );
 });
 
-test("transition moves only safe future one-to-one sessions and invalidates pending reminders", async () => {
+test("shared-package student transition keeps the balance pool primary course unchanged", () => {
+  assert.deepEqual(
+    packageCourseAccessAfterTransition({
+      primaryCourseId: "course-admission",
+      selectedSharedCourseIds: ["course-english"],
+      sourceCourseId: "course-admission",
+      targetCourseId: "course-math",
+      hasSharedStudents: true,
+    }),
+    {
+      changePrimaryCourse: false,
+      primaryCourseId: "course-admission",
+      sharedCourseIds: ["course-english", "course-math"],
+    }
+  );
+});
+
+test("transition moves only the selected shared student's safe future one-to-one sessions", async () => {
   const now = new Date("2026-07-23T00:00:00.000Z");
   const movedSessions: Array<{ id: string; classId: string }> = [];
   const createdClasses: any[] = [];
   const enrollments: any[] = [];
   const reminderUpdates: any[] = [];
+  let sessionFindWhere: any = null;
   const classBase = {
     id: "class-old",
     teacherId: "teacher-1",
@@ -85,55 +104,77 @@ test("transition moves only safe future one-to-one sessions and invalidates pend
         courseId: "course-old",
         course: { name: "International School Admission" },
         sharedStudents: [{ studentId: "student-2" }],
+        sharedCourses: [],
       }),
     },
     course: {
-      findUnique: async () => ({
-        id: "course-target",
-        name: "Academic Subject Bridging",
-        subjects: [
-          {
-            id: "subject-target",
-            name: "数学 / Math",
-            levels: [{ id: "level-target", name: "Grade 6 / 六年级" }],
-          },
-        ],
-      }),
+      findUnique: async ({ where }: any) =>
+        where.id === "course-old"
+          ? {
+              id: "course-old",
+              name: "International School Admission",
+            }
+          : {
+              id: "course-target",
+              name: "Academic Subject Bridging",
+              subjects: [
+                {
+                  id: "subject-target",
+                  name: "数学 / Math",
+                  levels: [{ id: "level-target", name: "Grade 6 / 六年级" }],
+                },
+              ],
+            },
     },
     session: {
-      findMany: async () => [
-        {
-          ...sessionBase,
-          id: "session-movable",
-          feedbacks: [],
-          attendances: [
-            {
-              studentId: "student-1",
-              status: AttendanceStatus.UNMARKED,
-              deductedMinutes: 0,
-              deductedCount: 0,
-            },
-          ],
-        },
-        {
-          ...sessionBase,
-          id: "session-protected",
-          feedbacks: [{ id: "feedback-1" }],
-          attendances: [],
-        },
-        {
-          ...sessionBase,
-          id: "session-ambiguous",
-          studentId: null,
-          class: {
-            ...classBase,
-            oneOnOneStudentId: null,
-            enrollments: [{ studentId: "student-1" }, { studentId: "student-2" }],
+      findMany: async ({ where }: any) => {
+        sessionFindWhere = where;
+        return [
+          {
+            ...sessionBase,
+            id: "session-movable",
+            feedbacks: [],
+            attendances: [
+              {
+                studentId: "student-1",
+                status: AttendanceStatus.UNMARKED,
+                deductedMinutes: 0,
+                deductedCount: 0,
+              },
+            ],
           },
-          feedbacks: [],
-          attendances: [],
-        },
-      ],
+          {
+            ...sessionBase,
+            id: "session-protected",
+            feedbacks: [{ id: "feedback-1" }],
+            attendances: [],
+          },
+          {
+            ...sessionBase,
+            id: "session-ambiguous",
+            studentId: null,
+            class: {
+              ...classBase,
+              oneOnOneStudentId: null,
+              enrollments: [{ studentId: "student-1" }, { studentId: "student-2" }],
+            },
+            feedbacks: [],
+            attendances: [],
+          },
+          {
+            ...sessionBase,
+            id: "session-other-student",
+            studentId: "student-2",
+            class: {
+              ...classBase,
+              oneOnOneStudentId: "student-2",
+              enrollments: [{ studentId: "student-2" }],
+            },
+            feedbacks: [],
+            attendances: [],
+          },
+        ];
+      },
       count: async () => 2,
       findFirst: async () => null,
       update: async ({ where, data }: any) => {
@@ -164,14 +205,21 @@ test("transition moves only safe future one-to-one sessions and invalidates pend
 
   const result = await transitionPackageCourse(fakeDb as any, {
     packageId: "package-1",
+    sourceCourseId: "course-old",
     targetCourseId: "course-target",
+    studentIds: ["student-1"],
     now,
   });
 
   assert.deepEqual(result.migratedSessionIds, ["session-movable"]);
+  assert.deepEqual(result.eligibleStudentIds, ["student-1"]);
   assert.equal(result.futureGroupSessions, 2);
   assert.equal(result.protectedSessions, 1);
-  assert.equal(result.ambiguousSessions, 1);
+  assert.equal(result.ambiguousSessions, 2);
+  assert.deepEqual(
+    sessionFindWhere.class.OR[0].oneOnOneStudentId.in,
+    ["student-1"]
+  );
   assert.deepEqual(movedSessions, [{ id: "session-movable", classId: "class-target" }]);
   assert.equal(createdClasses[0].courseId, "course-target");
   assert.equal(createdClasses[0].subjectId, "subject-target");
@@ -196,9 +244,11 @@ test("package edit API keeps course migration and reminder refresh in one contro
   );
 
   assert.match(apiSource, /transitionPackageCourse\(tx/);
-  assert.match(apiSource, /courseId:\s*targetCourseId/);
-  assert.match(apiSource, /action:\s*"CHANGE_COURSE"/);
+  assert.match(apiSource, /studentIds:\s*\[transitionStudentId\]/);
+  assert.match(apiSource, /packageCourseAccessAfterTransition/);
   assert.match(modalSource, /previewCourseId/);
+  assert.match(modalSource, /Student to change \/ 要修改的学生/);
+  assert.match(modalSource, /Current course to replace \/ 要替换的原课程/);
   assert.match(modalSource, /Reason \/ 修改原因/);
   assert.match(notificationSource, /COURSE_CHANGE_REMINDER_REQUEUE_ERROR/);
 });
