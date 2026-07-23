@@ -23,14 +23,22 @@ function presentWorkspace(data) {
     ownerDisplay: valueOr(item.owner, "未分配"),
     nextActionDisplay: valueOr(item.nextAction, "待跟进")
   }));
+  const renewalTasks = (data.renewalTasks || []).map((item) => Object.assign({}, item, {
+    ownerDisplay: valueOr(item.ownerName, "未分配"),
+    nextFollowUpDisplay: valueOr(item.nextFollowUpAt, "待设置跟进时间")
+  }));
   return Object.assign({}, data, {
     student,
     parents,
     packages,
     openTickets,
+    renewalTasks,
+    showRenewals: Boolean(data.capabilities && data.capabilities.canViewRenewals && renewalTasks.length),
+    hasPrivacyNotice: Boolean(data.privacyNotice),
     hasRisks: (data.riskFlags || []).length > 0,
     hasParents: parents.length > 0,
     noPackages: packages.length === 0,
+    noRenewals: renewalTasks.length === 0,
     noUpcoming: (data.upcoming || []).length === 0,
     noOpenTickets: openTickets.length === 0,
     noFeedbacks: (data.feedbacks || []).length === 0
@@ -77,5 +85,6 @@ Page({
   createRequest() {
     const student = this.data.workspace.student;
     wx.navigateTo({ url: "/pages/staff-request-new/staff-request-new?studentId=" + encodeURIComponent(student.id) + "&studentLabel=" + encodeURIComponent([student.name, student.grade].filter(Boolean).join(" / ")) });
-  }
+  },
+  openRenewals() { wx.navigateTo({ url: "/pages/staff-renewals/staff-renewals" }); }
 });

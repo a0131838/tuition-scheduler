@@ -89,14 +89,14 @@ test("staff ticket action count opens a list with the same all-source scope", ()
   assert.match(listTemplate, /sourceLabelText/);
 });
 
-test("teacher student search and report writes are scoped by linked teacher", () => {
+test("teacher student operations are denied while report writes stay scoped by linked teacher", () => {
   const studentSearch = readProject("app/api/miniapp/staff/students/route.ts");
   const studentWorkspace = readProject("app/api/miniapp/staff/students/[studentId]/workspace/route.ts");
   const reports = readProject("app/api/miniapp/staff/teacher/reports/route.ts");
 
-  assert.match(studentSearch, /auth\.user\.role === "TEACHER"/);
-  assert.match(studentSearch, /auth\.user\.teacherId/);
-  assert.match(studentWorkspace, /Student not assigned to this teacher/);
+  assert.match(studentSearch, /canUseMiniappAcademicDesk/);
+  assert.match(studentSearch, /Student operations workspace permission required/);
+  assert.match(studentWorkspace, /Student operations workspace permission required/);
   assert.match(reports, /requireMiniappTeacher/);
   assert.match(reports, /teacherId: access\.teacherId/);
   assert.match(reports, /Report is read only/);

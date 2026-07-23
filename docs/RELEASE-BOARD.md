@@ -14,13 +14,15 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-20-r277` is live at runtime feature commit `95cbda7`; production Course Change Resends now show previous/current arrangements and mandatory evidence, and WeChat development version `1.0.13` is uploaded at 513,286 bytes (501.3 KB).
+- Current release line on this branch: `2026-07-23-r278` is ready; it adds one-task-per-package renewal forecasting and follow-up on web and employee miniapp, keeps manual WeChat evidence, and removes teacher access to student balance/renewal operations.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
+
+- Renewal follow-up rollout: `2026-07-23-r278` is ready after 31 focused tests, 100 backend regressions, TypeScript and the 213-route build. Forecasts are operational signals, not billing decisions: Emily/Eva/Jasmine must verify shared packages, paused study, gift hours, refunds and future scheduling before contacting a parent. After deployment, inspect real task counts and upload the next employee-miniapp development version; teachers must receive 403 for renewal and student360 operational APIs.
 
 - Course-change resend rollout: r277 is live at runtime feature commit `95cbda7` with PM2/health checks passing. Production sync upgraded Steven's historical generic notice; Steven and 刘妍书 now explicitly say cancelled/no replacement, while Zack shows the real old/new time. WeChat development version `1.0.13` uploaded at 513,286 bytes (501.3 KB). Designate it as the experience version and test Emily/Eva on an existing task; do not fabricate a cancellation.
 
@@ -181,6 +183,33 @@
 - Workspace-access-form risk: `2026-05-29-r160` lets the owner manager edit Sales/CS focused workspace access from System User Admin; verify non-owner managers cannot write this endpoint and that main roles remain unchanged.
 - Tutor-Wise-payment-profile risk: `2026-05-29-r161` removes Bank Transfer as a new tutor payment method and adds Wise details plus finance review status; finance should verify PayNow/Wise details before payout exports are used.
 - Teacher-notice-attachment risk: `2026-05-30-r162` lets teachers open only the active Shared Docs file attached to an active teacher notice; verify the notice attachment is intentional before publishing because the full Shared Docs library remains manager/admin controlled.
+
+## 2026-07-23-r278 Ready
+
+- Scope: forecast low-balance/expiry risk and carry each package through one auditable renewal follow-up task.
+- Business impact:
+  - Emily, Eva and Jasmine receive a visible miniapp/web queue with owner, next follow-up, parent response, WeChat evidence, contract, payment and activation stages.
+  - Student360 and the manager health dashboard show the same open renewal source of truth.
+  - Teachers receive no renewal notification and cannot access student balance, family contact or renewal operations.
+  - Existing package deduction, scheduling, attendance, contract signing, invoice, receipt, payroll and settlement writes are unchanged.
+- Files:
+  - `prisma/migrations/20260723090000_add_renewal_followup_center/migration.sql`
+  - `lib/renewal-management.ts`
+  - `scripts/sync-renewal-tasks.ts`
+  - `ops/server/scripts/setup_renewal_followup_cron.sh`
+  - `app/admin/renewals/*`
+  - `app/api/miniapp/staff/renewals/*`
+  - `miniapp/boss-academic-parent/pages/staff-renewals/*`
+  - `tests/renewal-management.test.ts`
+- Verification before deploy:
+  - `npx tsc --noEmit`
+  - 31 focused tests and 100 backend regression tests
+  - `npm run build` (213 routes)
+- Post-deploy verification:
+  - Confirm the additive migration and unique open-task index.
+  - Run one real read/sync and report task counts by risk/status without changing packages or schedules.
+  - Confirm anonymous and teacher renewal/student-operations requests are rejected.
+  - Confirm local/GitHub/server commit equality, PM2 online and `/admin/login` HTTP 200.
 
 ## 2026-07-19-r273 Live
 

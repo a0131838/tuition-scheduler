@@ -15,33 +15,27 @@ function sessionStudentWhere(studentId: string) {
   };
 }
 
-function teacherSessionWhere(teacherId: string) {
-  return { OR: [{ teacherId }, { teacherId: null, class: { teacherId } }] };
-}
-
 export async function GET(req: Request, context: { params: Promise<{ studentId: string }> }) {
   const auth = await requireMiniappStaff(req);
   if (!auth.ok) return auth.response;
   const { studentId } = await context.params;
   const canAcademic = canUseMiniappAcademicDesk(auth.user);
-  const teacherId = auth.user.role === "TEACHER" ? auth.user.teacherId : null;
-  if (!canAcademic && !teacherId) return bad("Student workspace permission required", 403);
-
-  if (teacherId) {
-    const linked = await prisma.session.findFirst({
-      where: { AND: [sessionStudentWhere(studentId), teacherSessionWhere(teacherId)] },
-      select: { id: true },
-    });
-    if (!linked) return bad("Student not assigned to this teacher", 403);
-  }
+  if (!canAcademic) return bad("Student operations workspace permission required", 403);
 
   const now = new Date();
-  const sessionScope = teacherId ? { AND: [sessionStudentWhere(studentId), teacherSessionWhere(teacherId)] } : sessionStudentWhere(studentId);
+  const sessionScope = sessionStudentWhere(studentId);
   const [student, upcoming, recent, feedbacks] = await Promise.all([
     prisma.student.findUnique({
       where: { id: studentId },
       include: {
         packages: { include: { course: { select: { name: true } } }, orderBy: { createdAt: "desc" } },
+        renewalTasks: canAcademic
+          ? {
+              where: { completedAt: null },
+              include: { package: { include: { course: { select: { name: true } } } } },
+              orderBy: { updatedAt: "desc" },
+            }
+          : false,
         tickets: { where: { isArchived: false }, orderBy: { updatedAt: "desc" }, take: 30 },
         parentLinks: canAcademic
           ? { include: { parent: { select: { name: true, phone: true, status: true } } }, orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }] }
@@ -70,7 +64,7 @@ export async function GET(req: Request, context: { params: Promise<{ studentId: 
     prisma.sessionFeedback.findMany({
       where: {
         content: { not: "" },
-        ...(teacherId ? {} : { reviewStatus: "PUBLISHED" }),
+        reviewStatus: "PUBLISHED",
         session: sessionStudentWhere(studentId),
       },
       include: { teacher: { select: { name: true } }, session: { select: { startAt: true, class: { select: { course: { select: { name: true } } } } } } },
@@ -80,7 +74,7 @@ export async function GET(req: Request, context: { params: Promise<{ studentId: 
   ]);
   if (!student) return bad("Student not found", 404);
 
-  const packages = student.packages.map((pkg) => ({
+  const packages = canAcademic ? student.packages.map((pkg) => ({
     id: pkg.id,
     courseName: pkg.course.name,
     status: pkg.status,
@@ -88,7 +82,18 @@ export async function GET(req: Request, context: { params: Promise<{ studentId: 
     remainingHours: pkg.remainingMinutes == null ? null : Math.round((pkg.remainingMinutes / 60) * 10) / 10,
     validTo: pkg.validTo ? formatBusinessDateOnly(pkg.validTo) : null,
     lowBalance: pkg.status === "ACTIVE" && pkg.remainingMinutes != null && pkg.remainingMinutes <= 180,
-  }));
+  })) : [];
+  const renewalTasks = canAcademic
+    ? (student.renewalTasks as any[]).map((task) => ({
+        id: task.id,
+        packageId: task.packageId,
+        courseName: task.package.course.name,
+        riskLevel: task.riskLevel,
+        status: task.status,
+        ownerName: task.ownerName,
+        nextFollowUpAt: task.nextFollowUpAt ? formatBusinessDateTime(task.nextFollowUpAt) : "",
+      }))
+    : [];
   const openTickets = student.tickets
     .filter((row) => !["Completed", "Cancelled"].includes(row.status))
     .map((row) => ({ id: row.id, ticketNo: row.ticketNo, type: row.type, status: row.status, owner: row.owner, nextAction: row.nextAction, dueText: row.nextActionDue ? formatBusinessDateTime(row.nextActionDue) : "" }));
@@ -101,7 +106,8 @@ export async function GET(req: Request, context: { params: Promise<{ studentId: 
     attendanceStatus: row.attendances?.[0]?.status ?? null,
   });
   const riskFlags = [
-    ...(packages.some((row) => row.lowBalance) ? ["课包余额偏低"] : []),
+    ...(canAcademic && packages.some((row) => row.lowBalance) ? ["课包余额偏低"] : []),
+    ...(canAcademic && renewalTasks.length ? [`续费待跟进：${renewalTasks.length}`] : []),
     ...(upcoming.length === 0 ? ["暂无未来课程"] : []),
     ...(openTickets.some((row) => row.dueText && new Date(student.tickets.find((ticket) => ticket.id === row.id)?.nextActionDue ?? 0) < now) ? ["存在逾期工单"] : []),
     ...(student.academicRiskLevel && student.academicRiskLevel !== "LOW" ? [`学术风险：${student.academicRiskLevel}`] : []),
@@ -113,7 +119,7 @@ export async function GET(req: Request, context: { params: Promise<{ studentId: 
     action: "VIEW_STUDENT_360",
     entityType: "Student",
     entityId: student.id,
-    meta: { role: auth.user.role, parentContactsIncluded: canAcademic },
+    meta: { role: auth.user.role, parentContactsIncluded: true },
   });
 
   return ok({
@@ -130,11 +136,18 @@ export async function GET(req: Request, context: { params: Promise<{ studentId: 
       nextActionDue: student.nextActionDue ? formatBusinessDateTime(student.nextActionDue) : "",
       advisorOwner: student.advisorOwner,
     },
-    capabilities: { canViewOperations: canAcademic, canViewParentContacts: canAcademic, canCreateRequest: canAcademic },
+    capabilities: {
+      canViewOperations: canAcademic,
+      canViewParentContacts: canAcademic,
+      canViewPackages: canAcademic,
+      canViewRenewals: canAcademic,
+      canCreateRequest: canAcademic,
+    },
     parents: canAcademic
       ? (student.parentLinks as any[]).map((link) => ({ name: link.parent.name || "家长", phone: link.parent.phone || "", relationship: link.relationship || "", groupName: link.wechatGroupName || "", owner: link.communicationOwner || "", primary: link.isPrimary }))
       : [],
     packages,
+    renewalTasks,
     openTickets,
     upcoming: upcoming.map(sessionDto),
     recent: recent.map(sessionDto),

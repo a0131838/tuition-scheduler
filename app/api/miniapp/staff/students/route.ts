@@ -1,6 +1,7 @@
-import { ok } from "@/app/api/miniapp/_lib";
+import { bad, ok } from "@/app/api/miniapp/_lib";
 import { requireMiniappStaff } from "@/app/api/miniapp/staff/_lib";
 import { prisma } from "@/lib/prisma";
+import { canUseMiniappAcademicDesk } from "@/lib/miniapp-staff-action-center";
 
 function cleanQuery(value: string | null) {
   return String(value ?? "").trim().slice(0, 80);
@@ -9,26 +10,15 @@ function cleanQuery(value: string | null) {
 export async function GET(req: Request) {
   const auth = await requireMiniappStaff(req);
   if (!auth.ok) return auth.response;
+  if (!canUseMiniappAcademicDesk(auth.user)) return bad("Student operations workspace permission required", 403);
 
   const url = new URL(req.url);
   const q = cleanQuery(url.searchParams.get("q"));
   if (q.length < 2) return ok({ students: [] });
 
-  const teacherStudentWhere = auth.user.role === "TEACHER"
-    ? auth.user.teacherId
-      ? {
-          OR: [
-            { sessions: { some: { OR: [{ teacherId: auth.user.teacherId }, { teacherId: null, class: { teacherId: auth.user.teacherId } }] } } },
-            { attendances: { some: { session: { OR: [{ teacherId: auth.user.teacherId }, { teacherId: null, class: { teacherId: auth.user.teacherId } }] } } } },
-          ],
-        }
-      : { id: "__NO_LINKED_TEACHER__" }
-    : {};
-
   const students = await prisma.student.findMany({
     where: {
       AND: [
-        teacherStudentWhere,
         { OR: [
           { name: { contains: q, mode: "insensitive" } },
           { school: { contains: q, mode: "insensitive" } },

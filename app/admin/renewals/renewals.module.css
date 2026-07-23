@@ -1,0 +1,65 @@
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 12px;
+}
+.metrics > div {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+}
+.metrics span { color: #64748b; font-size: 12px; font-weight: 700; }
+.metrics strong { color: #0f172a; font-size: 28px; }
+.metrics [data-tone="danger"] { border-color: #fecaca; background: #fff7f7; }
+.metrics [data-tone="warning"] { border-color: #fed7aa; background: #fffaf5; }
+.metrics [data-tone="success"] { border-color: #bbf7d0; background: #f7fff9; }
+.toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.filters button, .toolbar button, .communication button {
+  border: 1px solid #cbd5e1; border-radius: 999px; background: #fff; padding: 8px 12px; cursor: pointer; font-weight: 700;
+}
+.filters button[data-active="true"] { background: #111827; color: #fff; border-color: #111827; }
+.scan { border-radius: 10px !important; color: #fff; background: #f45b05 !important; border-color: #f45b05 !important; }
+.message { padding: 12px 14px; border-left: 4px solid #f45b05; background: #fff7ed; color: #9a3412; font-weight: 700; }
+.list { display: grid; gap: 12px; }
+.task { background: #fff; border: 1px solid #e2e8f0; border-left: 5px solid #facc15; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 22px rgba(15,23,42,.05); }
+.task[data-risk="ORANGE"] { border-left-color: #f97316; }
+.task[data-risk="RED"], .task[data-risk="EXHAUSTED"] { border-left-color: #dc2626; }
+.taskHeader { width: 100%; border: 0; background: transparent; padding: 18px 20px; display: flex; justify-content: space-between; gap: 18px; text-align: left; cursor: pointer; }
+.risk { color: #c2410c; font-size: 12px; font-weight: 900; }
+.taskHeader h2 { margin: 5px 0; font-size: 20px; color: #111827; }
+.taskHeader p { margin: 0; color: #64748b; }
+.balance { min-width: 120px; display: grid; align-content: center; justify-items: end; }
+.balance strong { font-size: 20px; color: #111827; }
+.balance span { color: #64748b; font-size: 12px; }
+.detail { border-top: 1px solid #e2e8f0; padding: 18px 20px 22px; display: grid; gap: 18px; }
+.forecast { display: grid; grid-template-columns: repeat(4, minmax(140px, 1fr)); gap: 10px; }
+.forecast > div { display: grid; gap: 5px; padding: 12px; background: #f8fafc; border-radius: 10px; }
+.forecast span { color: #64748b; font-size: 12px; }
+.forecast strong { color: #111827; }
+.columns { display: grid; grid-template-columns: minmax(280px, .9fr) minmax(340px, 1.1fr); gap: 20px; }
+.workflow, .communication { display: grid; gap: 12px; align-content: start; }
+.workflow label, .upload { display: grid; gap: 5px; font-size: 12px; font-weight: 800; color: #475569; }
+.workflow input, .workflow select, .workflow textarea {
+  width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 9px; padding: 10px; background: #fff; color: #111827;
+}
+.workflow textarea { min-height: 72px; resize: vertical; }
+.primary { border: 0; border-radius: 10px; padding: 11px 14px; background: #111827; color: #fff; cursor: pointer; font-weight: 800; }
+.communication { padding-left: 20px; border-left: 1px solid #e2e8f0; }
+.communication h3 { margin: 0; }
+.communication pre { margin: 0; white-space: pre-wrap; font: inherit; line-height: 1.7; padding: 14px; border-radius: 10px; background: #f8fafc; border-left: 4px solid #f45b05; }
+.communication a { color: #1d4ed8; font-weight: 800; }
+.required { color: #b91c1c; font-size: 12px; font-weight: 800; }
+.quickActions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.history { border-top: 1px solid #e2e8f0; padding-top: 12px; color: #64748b; }
+.history summary { color: #111827; cursor: pointer; font-weight: 800; margin-bottom: 8px; }
+.history div { padding: 4px 0; font-size: 12px; }
+.empty { padding: 30px; text-align: center; background: #fff; border-radius: 14px; color: #64748b; }
+@media (max-width: 900px) {
+  .metrics, .forecast { grid-template-columns: repeat(2, 1fr); }
+  .columns { grid-template-columns: 1fr; }
+  .communication { border-left: 0; padding-left: 0; border-top: 1px solid #e2e8f0; padding-top: 18px; }
+}

@@ -96,11 +96,6 @@
       <view class="work-copy"><view class="work-title">学生历史反馈</view><view class="work-detail">查看所带学生的历任老师反馈</view></view>
       <view class="work-badge" wx:if="{{teacherUnreadFeedbackCount}}">{{teacherUnreadFeedbackCount}}</view><view class="work-arrow">›</view>
     </view>
-    <view class="work-row" bindtap="goStudentWorkspace">
-      <view class="work-icon">生</view>
-      <view class="work-copy"><view class="work-title">学生360°</view><view class="work-detail">查看自己所带学生的课程、课包和反馈</view></view>
-      <view class="work-arrow">›</view>
-    </view>
     <view class="work-row" bindtap="goTeacherReports">
       <view class="work-icon">报</view>
       <view class="work-copy"><view class="work-title">通知与教学报告</view><view class="work-detail">确认管理反馈，填写阶段和结课报告</view></view>
@@ -130,6 +125,11 @@
       <view class="work-icon icon-orange">讯</view>
       <view class="work-copy"><view class="work-title">家长沟通与通知</view><view class="work-detail">审核反馈、转发微信群、提醒老师和家长</view></view>
       <view class="work-badge alert" wx:if="{{hasCommunicationTasks}}">{{communicationCount}}</view><view class="work-arrow">›</view>
+    </view>
+    <view class="work-row" bindtap="goRenewals">
+      <view class="work-icon icon-orange">续</view>
+      <view class="work-copy"><view class="work-title">续费跟进</view><view class="work-detail">课时预警、家长沟通、付款与新课包生效</view></view>
+      <view class="work-badge alert" wx:if="{{hasRenewalTasks}}">{{renewalCount}}</view><view class="work-arrow">›</view>
     </view>
     <view class="work-row" bindtap="goSchedule">
       <view class="work-icon icon-orange">课</view>

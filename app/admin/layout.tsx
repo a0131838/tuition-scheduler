@@ -89,6 +89,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     pathname === "/admin/finance/student-package-balances" ||
     pathname === "/admin/finance/transport-billing" ||
     pathname === "/admin/finance/business-accounts" ||
+    pathname === "/admin/renewals" ||
     pathname === "/admin/reports/teacher-payroll" ||
     pathname.startsWith("/admin/reports/teacher-payroll/") ||
     pathname.startsWith("/admin/reports/partner-settlement") ||
@@ -144,6 +145,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           description: t(lang, "Attendance, follow-up, renewal, and repair queues.", "点名、跟进、续费和修复队列。"),
           tone: "warning" as const,
         },
+        ...((user.role === "ADMIN" || user.role === "CS" || user.role === "FINANCE" || user.workspaces.includes("CS") || showManagerConsole)
+          ? [{
+              href: "/admin/renewals",
+              label: t(lang, "Renewal Follow-up", "续费跟进"),
+              description: t(lang, "Track low balances from parent contact through package activation.", "从低余额预警跟进到新课包生效。"),
+              tone: "warning" as const,
+            }]
+          : []),
         {
           href: "/admin/mobile",
           label: t(lang, "Mobile Workbench", "员工移动端"),

@@ -1661,6 +1661,7 @@ export default async function StudentDetailPage({
   const [
     enrollCount,
     packageCount,
+    renewalTasks,
     unpaidPackageCount,
     excusedCount,
     openSchedulingTickets,
@@ -1680,6 +1681,11 @@ export default async function StudentDetailPage({
   ] = await Promise.all([
     prisma.enrollment.count({ where: { studentId } }),
     prisma.coursePackage.count({ where: { ...coursePackageAccessibleByStudent(studentId) } }),
+    prisma.renewalTask.findMany({
+      where: { studentId, completedAt: null },
+      include: { package: { include: { course: { select: { name: true } } } } },
+      orderBy: [{ nextFollowUpAt: "asc" }, { updatedAt: "desc" }],
+    }),
     prisma.coursePackage.count({ where: { ...coursePackageAccessibleByStudent(studentId), paid: false } }),
     prisma.attendance.count({ where: { studentId, status: "EXCUSED" } }),
     prisma.ticket.findMany({
@@ -4233,6 +4239,26 @@ export default async function StudentDetailPage({
         </div>
       )}
       </details>
+
+      <section style={{ marginBottom: 14, padding: 14, border: renewalTasks.length ? "1px solid #fdba74" : "1px solid #e2e8f0", borderRadius: 12, background: renewalTasks.length ? "#fff7ed" : "#f8fafc" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <div>
+            <div style={{ color: "#9a3412", fontSize: 12, fontWeight: 800 }}>{t(lang, "HOURS & RENEWAL", "课时与续费")}</div>
+            <div style={{ marginTop: 4, fontWeight: 800 }}>
+              {renewalTasks.length
+                ? t(lang, `${renewalTasks.length} open renewal follow-up task(s)`, `${renewalTasks.length} 条续费任务待跟进`)
+                : t(lang, "No open renewal task", "当前没有开放续费任务")}
+            </div>
+          </div>
+          <a href="/admin/renewals" style={{ fontWeight: 800 }}>{t(lang, "Open renewal workbench", "打开续费工作台")}</a>
+        </div>
+        {renewalTasks.map((task) => (
+          <div key={task.id} style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #fed7aa", color: "#7c2d12" }}>
+            <strong>{task.package.course.name}</strong> · {task.riskLevel} · {task.status} · {task.ownerName || "未分配"}
+            {task.nextFollowUpAt ? ` · ${formatBusinessDateTime(task.nextFollowUpAt)}` : ""}
+          </div>
+        ))}
+      </section>
 
       <details id="packages" open={packagesOpen} style={{ marginBottom: 14 }}>
         <summary style={{ fontWeight: 700 }}>{tl(lang, "Packages")} ({packageCount})</summary>

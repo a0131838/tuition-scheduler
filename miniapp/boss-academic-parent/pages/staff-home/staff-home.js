@@ -49,6 +49,8 @@ Page({
     hasReminderAttention: false,
     communicationCount: 0,
     hasCommunicationTasks: false,
+    renewalCount: 0,
+    hasRenewalTasks: false,
     canViewReminderAttention: false,
     teacherAvailabilityCount: 0,
     teacherUpcomingCount: 0,
@@ -162,6 +164,8 @@ Page({
           const capabilities = data.capabilities || {};
           this.setData({
             actionCenterCount: data.total || 0,
+            renewalCount: ((data.items || []).find((item) => item.key === "renewals") || {}).count || 0,
+            hasRenewalTasks: Boolean(((data.items || []).find((item) => item.key === "renewals") || {}).count),
             canOpenApprovals: Boolean(capabilities.approvals),
             canOpenLeads: Boolean(capabilities.leads),
             canOpenStudentWorkspace: Boolean(capabilities.studentWorkspace),
@@ -291,6 +295,7 @@ Page({
   goFirstScheduling() { wx.navigateTo({ url: "/pages/staff-first-scheduling/staff-first-scheduling" }); },
   goReminderAttention() { wx.navigateTo({ url: "/pages/staff-reminder-attention/staff-reminder-attention" }); },
   goCommunications() { wx.navigateTo({ url: "/pages/staff-communications/staff-communications" }); },
+  goRenewals() { wx.navigateTo({ url: "/pages/staff-renewals/staff-renewals" }); },
   goTeacherLeave() { wx.navigateTo({ url: "/pages/staff-teacher-leave/staff-teacher-leave" }); },
   goTeacherAvailability() { wx.navigateTo({ url: "/pages/staff-teacher-availability/staff-teacher-availability" }); },
   goTeacherExpenses() { wx.navigateTo({ url: "/pages/staff-teacher-expenses/staff-teacher-expenses" }); },

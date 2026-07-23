@@ -1036,6 +1036,7 @@ model Student {
   careParentQuestions        CareParentQuestion[]
   careRiskCases              CareRiskCase[]
   careServiceReviews         CareServiceReview[]
+  renewalTasks               RenewalTask[]
 
   @@index([sourceChannelId])
   @@index([studentTypeId])
@@ -2292,12 +2293,55 @@ model CoursePackage {
   eduTrustRecords    EduTrustStudentCourseRecord[]
   parentIntakes      StudentParentIntake[]
   schoolApplications SchoolApplicationService[]
+  renewalTasks       RenewalTask[]
 
   @@index([studentId, courseId])
   @@index([studentId, courseId, status, validFrom, validTo])
   @@index([courseId, status, validFrom, validTo])
   @@index([settlementMode, status])
   @@index([financeGateStatus, status])
+}
+
+model RenewalTask {
+  id                    String    @id @default(uuid())
+  packageId             String
+  studentId             String
+  status                String    @default("PENDING_CONTACT")
+  riskLevel             String
+  remainingMinutes      Int
+  scheduledMinutes      Int       @default(0)
+  recentWeeklyMinutes   Int       @default(0)
+  lessonsRemaining      Int?
+  expectedDepletionAt   DateTime?
+  packageValidTo        DateTime?
+  ownerUserId           String?
+  ownerName             String?
+  parentWechatGroupName String?
+  parentMessage         String?
+  parentResponse        String?
+  nextFollowUpAt        DateTime?
+  contactAt             DateTime?
+  contractId            String?
+  invoiceId             String?
+  paymentConfirmedAt    DateTime?
+  activatedPackageId    String?
+  evidenceUrl           String?
+  note                  String?
+  snoozedUntil          DateTime?
+  completedAt           DateTime?
+  completedByUserId     String?
+  completedByName       String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  package CoursePackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  student Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextFollowUpAt])
+  @@index([riskLevel, status, createdAt])
+  @@index([studentId, status, createdAt])
+  @@index([packageId, status, createdAt])
+  @@index([ownerUserId, status, nextFollowUpAt])
 }
 
 model PackageInvoiceApproval {

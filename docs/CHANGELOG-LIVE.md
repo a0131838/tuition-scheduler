@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-23-r278
+
+- Release ID: `2026-07-23-r278`
+- Date/Time (Asia/Shanghai): `2026-07-23`
+- Deployment status: `READY`
+- Scope: add a complete renewal follow-up center that forecasts package depletion, creates one auditable open task per package, guides Emily/Eva/Jasmine from parent contact through contract, payment and package activation, and fully excludes teachers from student balance and renewal information.
+- Key files:
+  - `prisma/migrations/20260723090000_add_renewal_followup_center/migration.sql`
+  - `lib/renewal-management.ts`
+  - `scripts/sync-renewal-tasks.ts`
+  - `ops/server/scripts/setup_renewal_followup_cron.sh`
+  - `app/admin/renewals/*`
+  - `app/api/admin/renewals/*`
+  - `app/api/miniapp/staff/renewals/*`
+  - `miniapp/boss-academic-parent/pages/staff-renewals/*`
+  - `tests/renewal-management.test.ts`
+  - `docs/tasks/TASK-20260723-renewal-followup-center.md`
+- Risk impact (if any): Medium. One additive workflow table is introduced and forecasts read existing packages, sessions and package transactions. The release does not change package balances, attendance deduction, scheduling, contracts, invoices, receipts, payroll or partner settlement. WeChat communication remains manual and requires screenshot evidence before the task can be marked as parent-notified.
+- Verification: Prisma generation and TypeScript passed; 31 focused renewal/miniapp/communication tests and 100 backend regression tests passed; the production build completed with 213 routes. Post-deploy verification must confirm migration count, renewal task counts by risk, teacher 403 boundaries, local/GitHub/server commit equality, PM2 PID and HTTP 200.
+- Rollback point: `61a3e6edca833d8dce80c6f94646477a13c1080b` (`2026-07-20-r277` documentation-aligned production lineage).
+
+---
+
 ## 2026-07-20-r277
 
 - Release ID: `2026-07-20-r277`
