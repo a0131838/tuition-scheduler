@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { COURSE_CHANGE_REMINDER_REQUEUE_ERROR } from "@/lib/package-course-transition";
 
 export const MINIAPP_TEMPLATE_KEYS = {
   courseReminder24h: "course_reminder_24h",
@@ -36,7 +37,13 @@ export async function queueMiniappNotification(input: {
     },
   };
   const existing = await prisma.miniappNotificationOutbox.findUnique({ where: uniqueWhere });
-  if (existing && ["SENT", "SKIPPED", "PROCESSING"].includes(existing.status)) return existing;
+  if (
+    existing &&
+    (["SENT", "PROCESSING"].includes(existing.status) ||
+      (existing.status === "SKIPPED" && existing.error !== COURSE_CHANGE_REMINDER_REQUEUE_ERROR))
+  ) {
+    return existing;
+  }
 
   return prisma.miniappNotificationOutbox.upsert({
     where: uniqueWhere,

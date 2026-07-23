@@ -14,13 +14,15 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-23-r280` is live at runtime feature commit `371f547`; it removes non-operational explanatory copy from the renewal workbench without changing renewal behavior or permissions.
+- Current release line on this branch: `2026-07-23-r281` is ready for deployment; it adds a controlled package-course transition for future safe one-to-one lessons and standard 15/50/100-hour package suggestions.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
+
+- Package-course transition rollout: `2026-07-23-r281` is ready after TypeScript, 5 focused tests, 108 backend regression tests and the 213-route production build. Academic Operations must review the preview counts before saving. Completed/protected lessons and shared group lessons remain unchanged; group lessons require individual handling because changing their shared Class would affect other students.
 
 - Renewal-copy cleanup: `2026-07-23-r280` is live at runtime feature commit `371f547`, with PM2 PID `3996895`, health 200 and WeChat development version `1.0.16` uploaded at 529,892 bytes (517.5 KB). The page now starts directly with the title, two source queues and task metrics. Designate `1.0.16` as the experience version for physical-phone visual confirmation.
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import SearchableMultiSelect from "./SearchableMultiSelect";
 import PurchaseBatchEditor, {
@@ -9,6 +9,10 @@ import PurchaseBatchEditor, {
 } from "./PurchaseBatchEditor";
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
 import { formatBusinessDateOnly } from "@/lib/date-only";
+import {
+  STANDARD_PACKAGE_DEFAULT_MINUTES,
+  STANDARD_PACKAGE_HOUR_PRESETS,
+} from "@/lib/package-hour-presets";
 
 type Labels = {
   edit: string;
@@ -60,13 +64,6 @@ type PackageRow = {
   note: string | null;
 };
 
-const STANDARD_TOP_UP_PRESETS = [
-  { minutes: 600, label: "10h / 10小时" },
-  { minutes: 1200, label: "20h / 20小时" },
-  { minutes: 2400, label: "40h / 40小时" },
-  { minutes: 6000, label: "100h / 100小时" },
-] as const;
-
 const XDF_TOP_UP_PRESETS = [
   { minutes: 270, label: "6 lessons / 6课时" },
   { minutes: 360, label: "8 lessons / 8课时" },
@@ -105,9 +102,13 @@ export default function PackageEditModal({
   const [contentKey, setContentKey] = useState(0);
   const [mode, setMode] = useState<"edit" | "topup">("edit");
   const [editPaidValue, setEditPaidValue] = useState(pkg.paid);
+  const [editCourseId, setEditCourseId] = useState(pkg.courseId ?? "");
+  const [courseChangeReason, setCourseChangeReason] = useState("");
+  const [courseTransitionPreview, setCourseTransitionPreview] = useState<any>(null);
+  const [courseTransitionPreviewBusy, setCourseTransitionPreviewBusy] = useState(false);
   const [showEditAdvanced, setShowEditAdvanced] = useState(false);
   const [topUpMinutesValue, setTopUpMinutesValue] = useState(
-    () => (isKnownPartnerSource(pkg.sourceChannelName) ? "270" : "600")
+    () => (isKnownPartnerSource(pkg.sourceChannelName) ? "270" : String(STANDARD_PACKAGE_DEFAULT_MINUTES))
   );
   const [useTopUpBatches, setUseTopUpBatches] = useState(false);
   const [topUpBatchRows, setTopUpBatchRows] = useState(() => buildXdfBatchDraftsFromTotalMinutes(270));
@@ -129,7 +130,7 @@ export default function PackageEditModal({
   const settlementOfflineLabel = labels.settlementOffline ?? "Offline: Monthly";
   const isXdfPartner = isKnownPartnerSource(pkg.sourceChannelName);
   const isDirectBillingPackage = pkg.settlementMode == null;
-  const topUpPresets = isXdfPartner ? XDF_TOP_UP_PRESETS : STANDARD_TOP_UP_PRESETS;
+  const topUpPresets = isXdfPartner ? XDF_TOP_UP_PRESETS : STANDARD_PACKAGE_HOUR_PRESETS;
   const currentRemaining = pkg.remainingMinutes ?? 0;
   const currentTotal = pkg.totalMinutes ?? null;
   const topUpBatchTotalMinutes = useMemo(() => sumPurchaseBatchDraftMinutes(topUpBatchRows), [topUpBatchRows]);
@@ -225,7 +226,34 @@ export default function PackageEditModal({
     ? "Direct-billing renewals should normally be signed first so the system can auto-create the invoice and add the renewal hours for you. / 直客续费正常应先签续费合同，让系统自动开票并自动增加续费课时。"
     : isXdfPartner
       ? "Partner packages usually follow 45-minute lesson bundles. / 合作方课包通常按 45 分钟课时打包。"
-      : "Regular top-ups usually follow 10h / 20h / 40h / 100h package sizes. / 常规增购通常按 10 / 20 / 40 / 100 小时录入。";
+      : "Regular top-ups follow 15h / 50h / 100h package sizes. / 常规增购按 15 / 50 / 100 小时录入。";
+
+  useEffect(() => {
+    if (!pkg.courseId || !editCourseId || editCourseId === pkg.courseId) {
+      setCourseTransitionPreview(null);
+      setCourseTransitionPreviewBusy(false);
+      return;
+    }
+    const controller = new AbortController();
+    setCourseTransitionPreviewBusy(true);
+    fetch(
+      `/api/admin/packages/${encodeURIComponent(pkg.id)}?previewCourseId=${encodeURIComponent(editCourseId)}`,
+      { signal: controller.signal }
+    )
+      .then(async (response) => {
+        const data = await response.json().catch(() => null);
+        if (!response.ok || !data?.ok) throw new Error(data?.message ?? `Request failed (${response.status})`);
+        setCourseTransitionPreview(data.preview);
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        setCourseTransitionPreview({ error: String(error?.message ?? error) });
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setCourseTransitionPreviewBusy(false);
+      });
+    return () => controller.abort();
+  }, [editCourseId, pkg.courseId, pkg.id]);
 
   const preserveRefresh = (
     okMsg?: string,
@@ -279,8 +307,11 @@ export default function PackageEditModal({
           setMsg("");
           setMode("edit");
           setEditPaidValue(pkg.paid);
+          setEditCourseId(pkg.courseId ?? "");
+          setCourseChangeReason("");
+          setCourseTransitionPreview(null);
           setShowEditAdvanced(false);
-          setTopUpMinutesValue(String(topUpPresets[0]?.minutes ?? 600));
+          setTopUpMinutesValue(String(topUpPresets[0]?.minutes ?? STANDARD_PACKAGE_DEFAULT_MINUTES));
           setUseTopUpBatches(false);
           setTopUpBatchRows(buildXdfBatchDraftsFromTotalMinutes(topUpPresets[0]?.minutes ?? 600));
           setTopUpNoteValue("");
@@ -393,6 +424,8 @@ export default function PackageEditModal({
                 paidAt: String(fd.get("paidAt") ?? ""),
                 paidAmount: String(fd.get("paidAmount") ?? ""),
                 paidNote: String(fd.get("paidNote") ?? ""),
+                courseId: String(fd.get("courseId") ?? ""),
+                courseChangeReason: String(fd.get("courseChangeReason") ?? ""),
                 sharedStudentIds: fd.getAll("sharedStudentIds").map((v) => String(v)),
                 sharedCourseIds: fd.getAll("sharedCourseIds").map((v) => String(v)),
                 note: String(fd.get("note") ?? ""),
@@ -425,6 +458,53 @@ export default function PackageEditModal({
             <div style={{ marginTop: 4, color: "#92400e" }}>
               Remaining balance is read-only here. If recorded incorrectly, delete and recreate the package. / 课时包剩余课时不可在此编辑；如录入错误，请删除后重新录入。
             </div>
+          </div>
+          <div style={{ border: "1px solid #86efac", borderRadius: 12, padding: 12, background: "#f0fdf4", display: "grid", gap: 10 }}>
+            <div style={{ fontWeight: 700, color: "#166534" }}>
+              Course for this package and all not-started lessons / 课包课程及全部未开始课次
+            </div>
+            <label style={{ display: "grid", gap: 6 }}>
+              <span>Change course / 修改课程</span>
+              <select
+                name="courseId"
+                value={editCourseId}
+                onChange={(event) => {
+                  setEditCourseId(event.target.value);
+                  setCourseChangeReason("");
+                }}
+                style={{ minHeight: 40 }}
+              >
+                {courses.map((course) => (
+                  <option key={course.id} value={course.id}>{course.name}</option>
+                ))}
+              </select>
+            </label>
+            {editCourseId && editCourseId !== pkg.courseId ? (
+              <>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span>Reason / 修改原因</span>
+                  <input
+                    name="courseChangeReason"
+                    value={courseChangeReason}
+                    onChange={(event) => setCourseChangeReason(event.target.value)}
+                    required
+                    maxLength={500}
+                    placeholder="Student entered school and moved to subject learning / 学生入学后转为学科学习"
+                  />
+                </label>
+                <div style={{ border: "1px solid #bbf7d0", borderRadius: 10, padding: 10, background: "#fff", color: "#166534", fontSize: 13 }}>
+                  {courseTransitionPreviewBusy
+                    ? "Checking arranged lessons... / 正在核对已排课程..."
+                    : courseTransitionPreview?.error
+                      ? `Preview unavailable / 预览失败: ${courseTransitionPreview.error}`
+                      : courseTransitionPreview
+                        ? `Will update ${courseTransitionPreview.futureOneOnOneSessions} not-started 1-to-1 lesson(s). ${courseTransitionPreview.futureGroupSessions} group lesson(s), ${courseTransitionPreview.protectedSessions} lesson(s) with attendance/feedback, and ${courseTransitionPreview.ambiguousSessions} ambiguous lesson(s) will stay unchanged. / 将同步修改 ${courseTransitionPreview.futureOneOnOneSessions} 节未开始1对1课程；${courseTransitionPreview.futureGroupSessions} 节班课、${courseTransitionPreview.protectedSessions} 节已有签到/反馈课程及 ${courseTransitionPreview.ambiguousSessions} 节无法唯一识别学生的课程保持不变。`
+                        : "All not-started 1-to-1 lessons will move to the new course. Completed lessons stay unchanged. / 所有未开始1对1课程将切换到新课程，已完成课程保持不变。"}
+                </div>
+              </>
+            ) : (
+              <input type="hidden" name="courseChangeReason" value="" />
+            )}
           </div>
           <label>
             {labels.validFrom}:
@@ -681,11 +761,11 @@ export default function PackageEditModal({
                   const next = e.target.checked;
                   setUseTopUpBatches(next);
                   if (next) {
-                    const baseMinutes = Math.round(Number(topUpMinutesValue || topUpPresets[0]?.minutes || 600));
+                    const baseMinutes = Math.round(Number(topUpMinutesValue || topUpPresets[0]?.minutes || STANDARD_PACKAGE_DEFAULT_MINUTES));
                     setTopUpBatchRows(buildXdfBatchDraftsFromTotalMinutes(baseMinutes));
                     setTopUpMinutesValue(String(baseMinutes));
                   } else {
-                    setTopUpMinutesValue(String(topUpBatchTotalMinutes || topUpPresets[0]?.minutes || 600));
+                    setTopUpMinutesValue(String(topUpBatchTotalMinutes || topUpPresets[0]?.minutes || STANDARD_PACKAGE_DEFAULT_MINUTES));
                   }
                 }}
               />

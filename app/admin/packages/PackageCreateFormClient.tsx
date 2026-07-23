@@ -10,6 +10,10 @@ import PurchaseBatchEditor, {
   sumPurchaseBatchDraftMinutes,
 } from "../_components/PurchaseBatchEditor";
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
+import {
+  STANDARD_PACKAGE_DEFAULT_MINUTES,
+  STANDARD_PACKAGE_HOUR_PRESETS,
+} from "@/lib/package-hour-presets";
 
 type StudentOpt = {
   id: string;
@@ -20,13 +24,6 @@ type StudentOpt = {
   sourceChannelName?: string;
 };
 type CourseOpt = { id: string; name: string };
-
-const STANDARD_HOUR_PRESETS = [
-  { minutes: 600, label: "10h / 10小时" },
-  { minutes: 1200, label: "20h / 20小时" },
-  { minutes: 2400, label: "40h / 40小时" },
-  { minutes: 6000, label: "100h / 100小时" },
-] as const;
 
 const XDF_LESSON_PRESETS = [
   { minutes: 270, label: "6 lessons / 6课时" },
@@ -79,7 +76,6 @@ function rowCardStyle(active: boolean) {
 type PackageCreateFormClientProps = {
   students: StudentOpt[];
   courses: CourseOpt[];
-  defaultMinutesByCourseId: Record<string, number>;
   defaultYmd: string;
   labels: {
     student: string;
@@ -116,7 +112,6 @@ type PackageCreateFormClientProps = {
 export default function PackageCreateFormClient({
   students,
   courses,
-  defaultMinutesByCourseId,
   defaultYmd,
   labels,
   close,
@@ -130,7 +125,7 @@ export default function PackageCreateFormClient({
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const [selectedCourseId, setSelectedCourseId] = useState(courses[0]?.id ?? "");
   const [typeValue, setTypeValue] = useState("HOURS");
-  const [totalMinutesValue, setTotalMinutesValue] = useState("20");
+  const [totalMinutesValue, setTotalMinutesValue] = useState(String(STANDARD_PACKAGE_DEFAULT_MINUTES));
   const [minutesTouched, setMinutesTouched] = useState(false);
   const [validFromValue, setValidFromValue] = useState(defaultYmd);
   const [validToValue, setValidToValue] = useState("");
@@ -166,10 +161,8 @@ export default function PackageCreateFormClient({
     selectedStudent && selectedCourseId
       ? (selectedStudent.courseIds ?? []).filter((id) => id === selectedCourseId).length
       : 0;
-  const presetOptions = isXdfPartnerStudent ? XDF_LESSON_PRESETS : STANDARD_HOUR_PRESETS;
-  const suggestedMinutes =
-    defaultMinutesByCourseId[selectedCourseId] ??
-    (isXdfPartnerStudent ? 450 : 600);
+  const presetOptions = isXdfPartnerStudent ? XDF_LESSON_PRESETS : STANDARD_PACKAGE_HOUR_PRESETS;
+  const suggestedMinutes = isXdfPartnerStudent ? 450 : STANDARD_PACKAGE_DEFAULT_MINUTES;
   const purchaseBatchTotalMinutes = useMemo(
     () => sumPurchaseBatchDraftMinutes(purchaseBatchRows),
     [purchaseBatchRows]
@@ -608,7 +601,7 @@ export default function PackageCreateFormClient({
                       </div>
                     ) : (
                       <div style={{ color: "#475569", fontSize: 13 }}>
-                        Standard package defaults usually follow 10h / 20h / 40h / 100h. / 常规课时包通常按 10 / 20 / 40 / 100 小时录入。
+                        Standard package defaults follow 15h / 50h / 100h. / 常规课时包按 15 / 50 / 100 小时录入。
                       </div>
                     )}
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>

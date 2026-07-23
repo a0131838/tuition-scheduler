@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-23-r281
+
+- Release ID: `2026-07-23-r281`
+- Date/Time (Asia/Shanghai): `2026-07-23`
+- Deployment status: `READY`
+- Scope: add a controlled package-course transition that updates the package and safe future one-to-one sessions together, preserves completed lesson history, refreshes pending course reminders, and standardizes normal package suggestions at 15, 50 and 100 hours.
+- Key files:
+  - `app/admin/_components/PackageEditModal.tsx`
+  - `app/admin/packages/PackageCreateFormClient.tsx`
+  - `app/api/admin/packages/[id]/route.ts`
+  - `lib/package-course-transition.ts`
+  - `lib/package-hour-presets.ts`
+  - `lib/miniapp-notifications.ts`
+  - `tests/package-course-transition.test.ts`
+  - `docs/tasks/TASK-20260723-package-course-transition.md`
+- Risk impact (if any): Medium and operator-triggered. The transaction changes the package primary course and eligible future one-to-one Session class links only. Completed lessons, sessions with attendance/feedback, shared group sessions, balances, deductions, contracts, invoices, receipts, payroll and partner settlement remain unchanged.
+- Verification: TypeScript, 5 focused transition tests, 108 backend regression tests, `git diff --check` and the 213-route production build passed. Production deployment and runtime checks are pending.
+- Rollback point: `662fa7c1ce00599a32e34556ffb1e9c8dbc1fec2` (`2026-07-23-r280` production lineage).
+
+---
+
 ## 2026-07-23-r280
 
 - Release ID: `2026-07-23-r280`

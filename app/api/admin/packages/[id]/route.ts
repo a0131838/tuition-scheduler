@@ -7,6 +7,13 @@ import {
   getLatestPackageInvoiceApproval,
   shouldRequirePackageInvoiceGate,
 } from "@/lib/package-finance-gate";
+import { logAudit } from "@/lib/audit-log";
+import {
+  previewPackageCourseTransition,
+  sharedCourseIdsAfterTransition,
+  transitionPackageCourse,
+  type PackageCourseTransitionResult,
+} from "@/lib/package-course-transition";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -47,8 +54,30 @@ function sameModeWhere(mode: PackageModeKey) {
   };
 }
 
-export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   await requireAdmin();
+  const { id } = await ctx.params;
+  if (!id) return bad("Missing id", 409);
+
+  const previewCourseId = new URL(req.url).searchParams.get("previewCourseId")?.trim();
+  if (!previewCourseId) return bad("Missing previewCourseId", 409);
+
+  try {
+    const preview = await previewPackageCourseTransition(prisma, {
+      packageId: id,
+      targetCourseId: previewCourseId,
+    });
+    return Response.json({ ok: true, preview });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Preview failed";
+    if (message === "PACKAGE_NOT_FOUND") return bad("Package not found", 404);
+    if (message === "TARGET_COURSE_NOT_FOUND") return bad("Target course not found", 404);
+    return bad(message, 500);
+  }
+}
+
+export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const admin = await requireAdmin();
   const { id } = await ctx.params;
   if (!id) return bad("Missing id", 409);
 
@@ -69,6 +98,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const paidAtStr = String(body?.paidAt ?? "");
   const paidAmountRaw = body?.paidAmount;
   const paidNote = String(body?.paidNote ?? "");
+  const requestedCourseId = String(body?.courseId ?? "").trim();
+  const courseChangeReason = String(body?.courseChangeReason ?? "").trim();
   const sharedStudentIdsRaw: string[] = Array.isArray(body?.sharedStudentIds)
     ? (body.sharedStudentIds as any[]).map((v) => String(v)).filter(Boolean)
     : [];
@@ -88,12 +119,35 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       type: true,
       studentId: true,
       courseId: true,
+      course: { select: { name: true } },
       financeGateStatus: true,
     },
   });
   if (!pkg) return bad("Package not found", 404);
+  const targetCourseId = requestedCourseId || pkg.courseId;
+  const courseChanged = targetCourseId !== pkg.courseId;
+  if (courseChanged && !courseChangeReason) {
+    return bad("Course change reason is required", 409);
+  }
+  if (courseChangeReason.length > 500) {
+    return bad("Course change reason must be 500 characters or fewer", 409);
+  }
+
+  const targetCourse = await prisma.course.findUnique({
+    where: { id: targetCourseId },
+    select: { id: true, name: true },
+  });
+  if (!targetCourse) return bad("Target course not found", 404);
+
   const sharedStudentIds = Array.from(new Set(sharedStudentIdsRaw)).filter((sid) => sid !== pkg.studentId);
-  const sharedCourseIds = Array.from(new Set(sharedCourseIdsRaw)).filter((cid) => cid !== pkg.courseId);
+  const selectedSharedCourseIds = Array.from(new Set(sharedCourseIdsRaw));
+  const sharedCourseIds = courseChanged
+    ? sharedCourseIdsAfterTransition({
+        selectedSharedCourseIds,
+        oldCourseId: pkg.courseId,
+        targetCourseId,
+      })
+    : selectedSharedCourseIds.filter((cid) => cid !== targetCourseId);
 
   const validFrom = parseBusinessDateStart(validFromStr);
   const validTo = validToStr ? parseBusinessDateEnd(validToStr) : null;
@@ -137,7 +191,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       where: {
         id: { not: id },
         studentId: pkg.studentId,
-        courseId: pkg.courseId,
+        courseId: targetCourseId,
         ...sameModeWhere(updateMode),
         status: "ACTIVE",
         validFrom: { lte: overlapCheckTo },
@@ -169,56 +223,139 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     rejectReason: latestApproval?.managerRejectReason ?? null,
   });
 
-  await prisma.$transaction(async (tx) => {
-    await tx.coursePackage.update({
-      where: { id },
-      data: {
-        status: (status as any) || undefined,
-        settlementMode: settlementMode as any,
-        validFrom,
-        validTo,
-        paid,
-        paidAt: paid ? paidAt : null,
-        paidAmount: paid ? paidAmount : null,
-        paidNote: paid ? paidNote || null : null,
-        note: note || null,
-        financeGateStatus: nextFinanceGateStatus as any,
-        financeGateReason: nextFinanceGateReason,
-        financeGateUpdatedAt: new Date(),
-        financeGateUpdatedBy: "system.package-edit@sgtmanage.local",
-        sharedStudents: {
-          deleteMany: {},
-          ...(sharedStudentIds.length
-            ? { createMany: { data: sharedStudentIds.map((studentId) => ({ studentId })) } }
-            : {}),
-        },
-        sharedCourses: {
-          deleteMany: {},
-          ...(sharedCourseIds.length
-            ? { createMany: { data: sharedCourseIds.map((courseId) => ({ courseId })) } }
-            : {}),
-        },
+  const editAt = new Date();
+  let transitionResult: PackageCourseTransitionResult | null = null;
+
+  try {
+    transitionResult = await prisma.$transaction(
+      async (tx) => {
+        let completedTransition: PackageCourseTransitionResult | null = null;
+        if (courseChanged) {
+          completedTransition = await transitionPackageCourse(tx, {
+            packageId: id,
+            targetCourseId,
+            now: editAt,
+          });
+        }
+
+        await tx.coursePackage.update({
+          where: { id },
+          data: {
+            courseId: targetCourseId,
+            status: (status as any) || undefined,
+            settlementMode: settlementMode as any,
+            validFrom,
+            validTo,
+            paid,
+            paidAt: paid ? paidAt : null,
+            paidAmount: paid ? paidAmount : null,
+            paidNote: paid ? paidNote || null : null,
+            note: note || null,
+            financeGateStatus: nextFinanceGateStatus as any,
+            financeGateReason: nextFinanceGateReason,
+            financeGateUpdatedAt: editAt,
+            financeGateUpdatedBy: admin.email,
+            sharedStudents: {
+              deleteMany: {},
+              ...(sharedStudentIds.length
+                ? { createMany: { data: sharedStudentIds.map((studentId) => ({ studentId })) } }
+                : {}),
+            },
+            sharedCourses: {
+              deleteMany: {},
+              ...(sharedCourseIds.length
+                ? { createMany: { data: sharedCourseIds.map((courseId) => ({ courseId })) } }
+                : {}),
+            },
+          },
+        });
+
+        // If this package still has a single purchase record, keep its financial basis aligned
+        // with the edited paid amount so future month-end reports can use ledger-based history.
+        if (pkg.type === "HOURS" && paid && paidAmount != null) {
+          const purchaseTxns = await tx.packageTxn.findMany({
+            where: { packageId: id, kind: "PURCHASE" },
+            select: { id: true },
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          });
+          if (purchaseTxns.length === 1) {
+            await tx.packageTxn.update({
+              where: { id: purchaseTxns[0].id },
+              data: { deltaAmount: paidAmount },
+            });
+          }
+        }
+        return completedTransition;
+      },
+      { timeout: 30_000 }
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Package update failed";
+    if (message === "TARGET_SESSION_CONFLICT") {
+      return bad(
+        "A matching future session already exists under the target course. No changes were saved.",
+        409
+      );
+    }
+    if (message === "PACKAGE_NOT_FOUND") return bad("Package not found", 404);
+    if (message === "TARGET_COURSE_NOT_FOUND") return bad("Target course not found", 404);
+    return bad(message, 500);
+  }
+
+  if (courseChanged && transitionResult) {
+    await logAudit({
+      actor: admin,
+      module: "PACKAGE",
+      action: "CHANGE_COURSE",
+      entityType: "CoursePackage",
+      entityId: id,
+      meta: {
+        oldCourseId: pkg.courseId,
+        oldCourseName: pkg.course.name,
+        targetCourseId,
+        targetCourseName: targetCourse.name,
+        reason: courseChangeReason,
+        futureOneOnOneSessions: transitionResult.futureOneOnOneSessions,
+        migratedSessionIds: transitionResult.migratedSessionIds,
+        futureGroupSessions: transitionResult.futureGroupSessions,
+        protectedSessions: transitionResult.protectedSessions,
+        ambiguousSessions: transitionResult.ambiguousSessions,
+        invalidatedReminderCount: transitionResult.invalidatedReminderCount,
       },
     });
+    await Promise.all(
+      transitionResult.migratedSessionIds.map((sessionId) =>
+        logAudit({
+          actor: admin,
+          module: "SCHEDULING",
+          action: "PACKAGE_COURSE_TRANSITION",
+          entityType: "Session",
+          entityId: sessionId,
+          meta: {
+            packageId: id,
+            oldCourseId: pkg.courseId,
+            oldCourseName: pkg.course.name,
+            targetCourseId,
+            targetCourseName: targetCourse.name,
+            reason: courseChangeReason,
+          },
+        })
+      )
+    );
+  }
 
-    // If this package still has a single purchase record, keep its financial basis aligned
-    // with the edited paid amount so future month-end reports can use ledger-based history.
-    if (pkg.type === "HOURS" && paid && paidAmount != null) {
-      const purchaseTxns = await tx.packageTxn.findMany({
-        where: { packageId: id, kind: "PURCHASE" },
-        select: { id: true },
-        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-      });
-      if (purchaseTxns.length === 1) {
-        await tx.packageTxn.update({
-          where: { id: purchaseTxns[0].id },
-          data: { deltaAmount: paidAmount },
-        });
-      }
-    }
+  return Response.json({
+    ok: true,
+    transition: transitionResult
+      ? {
+          migratedSessionCount: transitionResult.migratedSessionIds.length,
+          futureGroupSessions: transitionResult.futureGroupSessions,
+          protectedSessions: transitionResult.protectedSessions,
+          ambiguousSessions: transitionResult.ambiguousSessions,
+          invalidatedReminderCount: transitionResult.invalidatedReminderCount,
+        }
+      : null,
   });
-
-  return Response.json({ ok: true });
 }
 
 export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }> }) {
