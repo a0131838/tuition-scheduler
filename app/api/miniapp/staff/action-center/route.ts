@@ -13,6 +13,7 @@ import { getTeacherNoticeState } from "@/lib/teacher-notices";
 import { getTeacherPayrollPublishForTeacher, monthKey } from "@/lib/teacher-payroll";
 import { getVisibleSessionStudentNames, isSessionFullyCancelled } from "@/lib/session-students";
 import { syncRenewalTasks } from "@/lib/renewal-management";
+import { LEGACY_XDF_SOURCE_CHANNEL_NAME } from "@/lib/partners";
 
 const OPEN_COMMUNICATION_STATUSES = ["PENDING_REVIEW", "READY_TO_SEND", "CLAIMED", "RETURNED", "ATTENTION"];
 const OPEN_TICKET_STATUSES = ["Need Info", "Waiting Teacher", "Waiting Parent", "Confirmed", "Exception"];
@@ -182,7 +183,7 @@ export async function GET(req: Request) {
   const canLeads = canUseMiniappLeadDesk(user);
   const canApprovals = await canUseMiniappApprovalDesk(user);
   if (canAcademic) await syncRenewalTasks(user);
-  const [openTickets, overdueTickets, communications, renewalTasks, overdueRenewals, dueLeads, approvalData] = await Promise.all([
+  const [openTickets, overdueTickets, communications, renewalTasks, renewalXdf, overdueRenewals, dueLeads, approvalData] = await Promise.all([
     canAcademic ? prisma.ticket.count({ where: { isArchived: false, status: { in: OPEN_TICKET_STATUSES } } }) : 0,
     canAcademic
       ? prisma.ticket.count({ where: { isArchived: false, status: { in: OPEN_TICKET_STATUSES }, nextActionDue: { lt: now } } })
@@ -192,6 +193,9 @@ export async function GET(req: Request) {
       : 0,
     canAcademic
       ? prisma.renewalTask.count({ where: { completedAt: null } })
+      : 0,
+    canAcademic
+      ? prisma.renewalTask.count({ where: { completedAt: null, student: { sourceChannel: { name: LEGACY_XDF_SOURCE_CHANNEL_NAME } } } })
       : 0,
     canAcademic
       ? prisma.renewalTask.count({ where: { completedAt: null, nextFollowUpAt: { lte: now } } })
@@ -207,7 +211,7 @@ export async function GET(req: Request) {
       ? [
           { key: "tickets", title: "工单待处理", detail: `${overdueTickets} 条已逾期`, count: openTickets, target: "requests", urgent: overdueTickets > 0 },
           { key: "communications", title: "家长沟通待完成", detail: "审核、转发微信群并留下发送记录", count: communications, target: "communications", urgent: communications > 0 },
-          { key: "renewals", title: "续费待跟进", detail: `${overdueRenewals} 条已到跟进时间`, count: renewalTasks, target: "renewals", urgent: overdueRenewals > 0 },
+          { key: "renewals", title: "续费待跟进", detail: `博思及其他 ${renewalTasks - renewalXdf} · 新东方 ${renewalXdf} · ${overdueRenewals} 条到期`, count: renewalTasks, target: "renewals", urgent: overdueRenewals > 0 },
         ]
       : []),
     ...(canApprovals

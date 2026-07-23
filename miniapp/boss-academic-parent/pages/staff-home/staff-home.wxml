@@ -128,7 +128,7 @@
     </view>
     <view class="work-row" bindtap="goRenewals">
       <view class="work-icon icon-orange">续</view>
-      <view class="work-copy"><view class="work-title">续费跟进</view><view class="work-detail">课时预警、家长沟通、付款与新课包生效</view></view>
+      <view class="work-copy"><view class="work-title">续费跟进</view><view class="work-detail">{{renewalDetail}}</view></view>
       <view class="work-badge alert" wx:if="{{hasRenewalTasks}}">{{renewalCount}}</view><view class="work-arrow">›</view>
     </view>
     <view class="work-row" bindtap="goSchedule">

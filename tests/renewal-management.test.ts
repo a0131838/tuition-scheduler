@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
-import { classifyRenewalRisk } from "../lib/renewal-management";
+import { classifyRenewalRisk, renewalCohortForSourceName } from "../lib/renewal-management";
 
 test("renewal risk uses scheduled overrun as exhausted", () => {
   assert.equal(classifyRenewalRisk({
@@ -18,6 +18,24 @@ test("renewal thresholds classify red orange yellow and safe", () => {
   assert.equal(classifyRenewalRisk({ remainingMinutes: 600, scheduledMinutes: 0, daysToDepletion: 10, lessonsRemaining: 5, expiryDays: 30 }), "ORANGE");
   assert.equal(classifyRenewalRisk({ remainingMinutes: 600, scheduledMinutes: 0, daysToDepletion: 21, lessonsRemaining: 5, expiryDays: 30 }), "YELLOW");
   assert.equal(classifyRenewalRisk({ remainingMinutes: 600, scheduledMinutes: 0, daysToDepletion: 22, lessonsRemaining: 5, expiryDays: 30 }), null);
+});
+
+test("New Oriental students use a dedicated renewal cohort", () => {
+  assert.equal(renewalCohortForSourceName("新东方学生"), "XDF");
+  assert.equal(renewalCohortForSourceName(" 新东方学生 "), "XDF");
+  assert.equal(renewalCohortForSourceName("上海新卓思 （Sister Company)"), "BOSS_OTHER");
+  assert.equal(renewalCohortForSourceName(null), "BOSS_OTHER");
+});
+
+test("renewal APIs and miniapp expose separate cohort controls", () => {
+  const service = readFileSync("lib/renewal-management.ts", "utf8");
+  const miniapp = readFileSync("miniapp/boss-academic-parent/pages/staff-renewals/staff-renewals.js", "utf8");
+  const web = readFileSync("app/admin/renewals/RenewalWorkbenchClient.tsx", "utf8");
+  assert.match(service, /LEGACY_XDF_SOURCE_CHANNEL_NAME/);
+  assert.match(service, /buildXdfMessage/);
+  assert.match(miniapp, /cohort:\s*"BOSS_OTHER"/);
+  assert.match(miniapp, /新东方项目负责人/);
+  assert.match(web, /新东方学生/);
 });
 
 test("teacher miniapp has no renewal or student operations capability", () => {

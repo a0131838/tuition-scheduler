@@ -2,7 +2,7 @@
   <view class="ops-hero">
     <view class="ops-kicker">学生续费 / RENEWAL</view>
     <view class="ops-title">续费跟进工作台</view>
-    <view class="ops-subtitle">一个课包一条任务，从课时预警跟进到新课包生效。老师端不显示本页面和学生余额。</view>
+    <view class="ops-subtitle">博思及其他学生与新东方学生分队列处理。老师端不显示本页面和学生余额。</view>
   </view>
 
   <view class="metrics">
@@ -11,13 +11,20 @@
     <view class="warning"><text>到期跟进</text><strong>{{due}}</strong></view>
   </view>
 
+  <view class="cohort-row">
+    <button class="cohort {{item.className}}" wx:for="{{cohortOptions}}" wx:key="value" data-value="{{item.value}}" bindtap="changeCohort">
+      <text>{{item.label}}</text><strong>{{item.count}}</strong>
+    </button>
+  </view>
+  <view class="cohort-hint">{{cohortHint}}</view>
+
   <view class="filter-row"><button class="filter {{item.className}}" wx:for="{{filterOptions}}" wx:key="value" data-value="{{item.value}}" bindtap="changeFilter">{{item.label}}</button></view>
 
   <view class="empty-state" wx:if="{{showEmpty}}">当前没有续费跟进任务。</view>
   <view class="renewal-card {{item.cardClass}}" wx:for="{{tasks}}" wx:key="id">
     <view class="renewal-head" data-id="{{item.id}}" bindtap="toggle">
       <view class="renewal-main">
-        <view class="risk">{{item.riskLabel}}</view>
+        <view><text class="risk">{{item.riskLabel}}</text><text class="source-badge">{{item.sourceBadge}}</text></view>
         <view class="name">{{item.studentName}} · {{item.courseName}}</view>
         <view class="meta">{{item.statusLabel}} · {{item.ownerDisplay}}</view>
         <view class="meta">下次跟进：{{item.followUpText}}</view>
@@ -32,7 +39,7 @@
         <view><text>预计用完</text><strong>{{item.depletionText}}</strong></view>
       </view>
 
-      <view class="section-title">发到家长微信群的文案</view>
+      <view class="section-title">{{item.communicationTitle}}</view>
       <view class="parent-message">{{item.parentMessage}}</view>
       <button class="secondary" data-index="{{index}}" bindtap="copyMessage">复制家长文案</button>
       <button class="secondary" data-index="{{index}}" bindtap="uploadEvidence">{{item.uploadLabel}}</button>
@@ -40,17 +47,17 @@
 
       <view class="section-title">更新跟进进度</view>
       <view class="field-label">当前状态</view>
-      <picker mode="selector" range="{{statuses}}" range-key="label" value="{{item.statusIndex}}" data-index="{{index}}" bindchange="changeStatus">
-        <view class="picker-field">{{statuses[item.statusIndex].label}} ›</view>
+      <picker mode="selector" range="{{item.statusOptions}}" range-key="label" value="{{item.statusIndex}}" data-index="{{index}}" bindchange="changeStatus">
+        <view class="picker-field">{{item.statusOptions[item.statusIndex].label}} ›</view>
       </picker>
       <view class="field-label">负责人</view>
       <input class="field" value="{{item.ownerDraft}}" data-index="{{index}}" data-field="ownerDraft" bindinput="inputField" placeholder="Emily / Eva / Jasmine" />
       <view class="field-label">下次跟进时间（YYYY-MM-DDTHH:mm）</view>
       <input class="field" value="{{item.nextFollowUpDraft}}" data-index="{{index}}" data-field="nextFollowUpDraft" bindinput="inputField" placeholder="2026-07-24T18:00" />
-      <view class="field-label">家长微信群</view>
-      <input class="field" value="{{item.groupDraft}}" data-index="{{index}}" data-field="groupDraft" bindinput="inputField" placeholder="填写实际群名" />
-      <view class="field-label">家长回复</view>
-      <textarea class="field textarea" value="{{item.responseDraft}}" data-index="{{index}}" data-field="responseDraft" bindinput="inputField" placeholder="记录家长原意、顾虑和下一步" />
+      <view class="field-label">{{item.groupFieldLabel}}</view>
+      <input class="field" value="{{item.groupDraft}}" data-index="{{index}}" data-field="groupDraft" bindinput="inputField" placeholder="{{item.groupPlaceholder}}" />
+      <view class="field-label">{{item.responseFieldLabel}}</view>
+      <textarea class="field textarea" value="{{item.responseDraft}}" data-index="{{index}}" data-field="responseDraft" bindinput="inputField" placeholder="{{item.responsePlaceholder}}" />
       <view class="field-label">内部备注</view>
       <textarea class="field textarea" value="{{item.noteDraft}}" data-index="{{index}}" data-field="noteDraft" bindinput="inputField" placeholder="折扣、停课、共享课包等特殊情况" />
       <button class="primary" loading="{{loading}}" data-index="{{index}}" bindtap="save">保存进度并记录日志</button>

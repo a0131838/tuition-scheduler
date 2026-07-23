@@ -50,6 +50,7 @@ Page({
     communicationCount: 0,
     hasCommunicationTasks: false,
     renewalCount: 0,
+    renewalDetail: "博思及其他与新东方分开处理",
     hasRenewalTasks: false,
     canViewReminderAttention: false,
     teacherAvailabilityCount: 0,
@@ -165,6 +166,7 @@ Page({
           this.setData({
             actionCenterCount: data.total || 0,
             renewalCount: ((data.items || []).find((item) => item.key === "renewals") || {}).count || 0,
+            renewalDetail: ((data.items || []).find((item) => item.key === "renewals") || {}).detail || "博思及其他与新东方分开处理",
             hasRenewalTasks: Boolean(((data.items || []).find((item) => item.key === "renewals") || {}).count),
             canOpenApprovals: Boolean(capabilities.approvals),
             canOpenLeads: Boolean(capabilities.leads),

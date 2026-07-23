@@ -12,6 +12,14 @@ const statuses = [
   { value: "NOT_RENEWING", label: "暂不续费" },
   { value: "PAUSED_SPECIAL", label: "停课/特殊处理" }
 ];
+const xdfStatuses = statuses.map((item) => Object.assign({}, item, {
+  label: {
+    PENDING_CONTACT: "待联系新东方",
+    PARENT_NOTIFIED: "已通知新东方",
+    PARENT_CONSIDERING: "新东方确认中",
+    RENEWAL_CONFIRMED: "已确认续课"
+  }[item.value] || item.label
+}));
 
 const riskLabels = {
   YELLOW: "提前关注",
@@ -38,10 +46,18 @@ function formatDate(value) {
 
 function present(tasks) {
   return (tasks || []).map((row) => {
-    const statusIndex = Math.max(0, statuses.findIndex((item) => item.value === row.status));
+    const statusOptions = row.cohort === "XDF" ? xdfStatuses : statuses;
+    const statusIndex = Math.max(0, statusOptions.findIndex((item) => item.value === row.status));
     return Object.assign({}, row, {
       statusIndex,
+      statusOptions,
       riskLabel: riskLabels[row.riskLevel] || row.riskLevel,
+      sourceBadge: row.cohort === "XDF" ? "新东方" : row.sourceLabel,
+      communicationTitle: row.cohort === "XDF" ? "发到新东方对接群的文案" : "发到家长微信群的文案",
+      groupFieldLabel: row.cohort === "XDF" ? "新东方对接群" : "家长微信群",
+      responseFieldLabel: row.cohort === "XDF" ? "新东方回复" : "家长回复",
+      groupPlaceholder: row.cohort === "XDF" ? "填写新东方项目对接群" : "填写实际群名",
+      responsePlaceholder: row.cohort === "XDF" ? "记录项目负责人回复和下一步" : "记录家长原意、顾虑和下一步",
       balanceText: row.packageType === "MONTHLY" ? "有效期预警" : formatMinutes(row.remainingMinutes),
       scheduledText: formatMinutes(row.scheduledMinutes),
       weeklyText: formatMinutes(row.recentWeeklyMinutes),
@@ -70,6 +86,12 @@ Page({
     statuses,
     loading: false,
     filter: "OPEN",
+    cohort: "BOSS_OTHER",
+    cohortOptions: [
+      { value: "BOSS_OTHER", label: "博思及其他", count: 0, className: "active" },
+      { value: "XDF", label: "新东方学生", count: 0, className: "" }
+    ],
+    cohortHint: "当前队列不包含新东方学生。",
     filterOptions: [
       { value: "OPEN", label: "待跟进", className: "active" },
       { value: "COMPLETED", label: "已结束", className: "" }
@@ -93,14 +115,20 @@ Page({
   },
 
   load() {
-    return api.requestStaff(`/api/miniapp/staff/renewals?status=${this.data.filter}&limit=300`, { timeout: 30000 })
+    return api.requestStaff(`/api/miniapp/staff/renewals?status=${this.data.filter}&cohort=${this.data.cohort}&limit=300`, { timeout: 30000 })
       .then((data) => {
         const tasks = present(data.tasks);
         const now = Date.now();
         const filterOptions = this.data.filterOptions.map((item) => Object.assign({}, item, { className: item.value === this.data.filter ? "active" : "" }));
+        const counts = data.cohortCounts || {};
+        const cohortOptions = this.data.cohortOptions.map((item) => Object.assign({}, item, {
+          count: Number(counts[item.value] || 0),
+          className: item.value === this.data.cohort ? "active" : ""
+        }));
         this.setData({
           tasks,
           filterOptions,
+          cohortOptions,
           total: tasks.length,
           urgent: tasks.filter((row) => ["RED", "EXHAUSTED"].includes(row.riskLevel)).length,
           due: tasks.filter((row) => row.nextFollowUpAt && new Date(row.nextFollowUpAt).getTime() <= now).length,
@@ -111,6 +139,14 @@ Page({
 
   changeFilter(e) {
     this.setData({ filter: e.currentTarget.dataset.value, expandedId: "" }, () => this.load().catch((err) => api.toast(err.message)));
+  },
+  changeCohort(e) {
+    const cohort = e.currentTarget.dataset.value;
+    this.setData({
+      cohort,
+      expandedId: "",
+      cohortHint: cohort === "XDF" ? "单独对接新东方项目负责人，不与普通家长续费混合。" : "当前队列不包含新东方学生。"
+    }, () => this.load().catch((err) => api.toast(err.message)));
   },
   toggle(e) {
     const expandedId = this.data.expandedId === e.currentTarget.dataset.id ? "" : e.currentTarget.dataset.id;
@@ -123,7 +159,7 @@ Page({
   },
   copyMessage(e) {
     const row = this.data.tasks[e.currentTarget.dataset.index];
-    wx.setClipboardData({ data: row.parentMessage || "", success: () => api.toast("文案已复制，请核对后发到家长群") });
+    wx.setClipboardData({ data: row.parentMessage || "", success: () => api.toast(`文案已复制，请核对后发给${row.communicationAudience}`) });
   },
   uploadEvidence(e) {
     const row = this.data.tasks[e.currentTarget.dataset.index];
@@ -142,8 +178,8 @@ Page({
   },
   save(e) {
     const row = this.data.tasks[e.currentTarget.dataset.index];
-    const status = statuses[row.statusIndex].value;
-    if (status === "PARENT_NOTIFIED" && !row.hasEvidence) return api.toast("请先上传微信群发送截图");
+    const status = row.statusOptions[row.statusIndex].value;
+    if (status === "PARENT_NOTIFIED" && !row.hasEvidence) return api.toast(`请先上传通知${row.communicationAudience}的微信群截图`);
     this.setData({ loading: true });
     api.requestStaff(`/api/miniapp/staff/renewals/${row.id}`, {
       method: "PATCH",

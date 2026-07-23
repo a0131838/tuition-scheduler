@@ -1,5 +1,5 @@
 import { getLang, t } from "@/lib/i18n";
-import { listRenewalTasks, renewalTaskDto, syncRenewalTasks } from "@/lib/renewal-management";
+import { getRenewalCohortCounts, listRenewalTasks, renewalTaskDto, syncRenewalTasks } from "@/lib/renewal-management";
 import { requireRenewalCenterUser } from "@/lib/renewal-access";
 import RenewalWorkbenchClient from "./RenewalWorkbenchClient";
 
@@ -7,7 +7,10 @@ export default async function RenewalWorkbenchPage() {
   const user = await requireRenewalCenterUser();
   const lang = await getLang();
   await syncRenewalTasks(user);
-  const rows = await listRenewalTasks({ status: "OPEN", limit: 300 });
+  const [rows, cohortCounts] = await Promise.all([
+    listRenewalTasks({ status: "OPEN", cohort: "BOSS_OTHER", limit: 300 }),
+    getRenewalCohortCounts("OPEN"),
+  ]);
   return (
     <div style={{ display: "grid", gap: 18 }}>
       <section
@@ -28,12 +31,12 @@ export default async function RenewalWorkbenchPage() {
         <p style={{ margin: 0, color: "#64748b", lineHeight: 1.6 }}>
           {t(
             lang,
-            "One package creates one open task. Academic operations owns parent follow-up; teachers cannot see this workbench or student balance.",
-            "一个课包只生成一条开放任务。教务负责家长跟进；老师看不到本工作台，也看不到学生课时余额。"
+            "Boss/other students and New Oriental students are handled in separate queues. Teachers cannot see this workbench or student balance.",
+            "博思及其他学生与新东方学生分队列处理。新东方先对接项目负责人；老师看不到本工作台，也看不到学生课时余额。"
           )}
         </p>
       </section>
-      <RenewalWorkbenchClient initialTasks={rows.map(renewalTaskDto)} />
+      <RenewalWorkbenchClient initialTasks={rows.map(renewalTaskDto)} initialCohortCounts={cohortCounts} />
     </div>
   );
 }

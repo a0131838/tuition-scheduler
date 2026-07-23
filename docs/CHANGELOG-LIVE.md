@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-23-r279
+
+- Release ID: `2026-07-23-r279`
+- Date/Time (Asia/Shanghai): `2026-07-23`
+- Deployment status: `READY`
+- Scope: separate New Oriental students from Boss/other renewal work on web and employee miniapp, use the existing `新东方学生` source channel instead of name matching, and give the New Oriental queue partner-facing labels and WeChat copy.
+- Key files:
+  - `lib/renewal-management.ts`
+  - `app/admin/renewals/*`
+  - `app/api/admin/renewals/route.ts`
+  - `app/api/miniapp/staff/renewals/route.ts`
+  - `app/api/miniapp/staff/action-center/route.ts`
+  - `app/api/miniapp/staff/health/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-renewals/*`
+  - `miniapp/boss-academic-parent/pages/staff-home/*`
+  - `tests/renewal-management.test.ts`
+  - `docs/tasks/TASK-20260723-renewal-xdf-separation.md`
+- Risk impact (if any): Low. This is a read/presentation split over the existing student source relation. It does not change student source assignments, renewal task statuses, package balances, sessions, attendance, contracts, invoices, receipts, payroll or partner settlement. Existing audit and evidence rules remain.
+- Verification: production read-only inspection found 9 open New Oriental tasks and 11 open Boss/other tasks. Prisma generation, TypeScript, 15 focused tests, 103 backend regression tests, native miniapp JavaScript syntax, the 44-page miniapp release audit, `git diff --check` and the 213-route production build passed. Post-deploy verification must confirm the two production cohort counts, authentication boundary, commit alignment, PM2 and health 200.
+- Rollback point: `5748c44056024c9bb2264caccc56aec73fdb9e91` (`2026-07-23-r278` documentation-aligned production lineage).
+
+---
+
 ## 2026-07-23-r278
 
 - Release ID: `2026-07-23-r278`

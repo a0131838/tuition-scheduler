@@ -14,13 +14,15 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-23-r278` is live at runtime feature commit `c431f09`; it adds one-task-per-package renewal forecasting and follow-up on web and employee miniapp, keeps manual WeChat evidence, and removes teacher access to student balance/renewal operations.
+- Current release line on this branch: `2026-07-23-r279` is ready; it separates New Oriental renewal tasks from Boss/other tasks using the existing student-source relation, while keeping teacher exclusion and all original renewal audit/evidence controls.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
+
+- New Oriental renewal separation rollout: `2026-07-23-r279` is ready after read-only production inspection found 9 New Oriental and 11 Boss/other open tasks. New Oriental is detected only from the canonical `新东方学生` source channel; no names or package records are rewritten. After deployment, verify both cohort counts and upload the next employee-miniapp development version.
 
 - Renewal follow-up rollout: `2026-07-23-r278` is live at runtime feature commit `c431f09`, with 112 migrations current, PM2 PID `3971356`, health 200 and WeChat development version `1.0.14` uploaded at 527,564 bytes (515.2 KB). The first controlled sync created 20 open tasks: 8 exhausted, 4 red and 8 yellow; 18 await first contact and 2 are already at payment-pending. Forecasts are operational signals, not billing decisions: Emily/Eva/Jasmine must verify shared packages, paused study, gift hours, refunds and future scheduling before contacting a parent. Teachers are excluded from renewal and Student360 operations. Designate `1.0.14` as the experience version and complete an Emily/Eva/Jasmine-management physical-phone pass before broad daily use.
 

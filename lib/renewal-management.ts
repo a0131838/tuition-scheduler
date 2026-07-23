@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { logAudit } from "@/lib/audit-log";
 import { formatBusinessDateOnly } from "@/lib/date-only";
+import { LEGACY_XDF_SOURCE_CHANNEL_NAME } from "@/lib/partners";
 import { prisma } from "@/lib/prisma";
 
 export const RENEWAL_OPEN_STATUSES = [
@@ -27,6 +28,7 @@ export const RENEWAL_STATUS_LABELS: Record<string, string> = {
 };
 
 export type RenewalRiskLevel = "YELLOW" | "ORANGE" | "RED" | "EXHAUSTED";
+export type RenewalCohort = "BOSS_OTHER" | "XDF";
 
 type RenewalActor = {
   id?: string | null;
@@ -44,6 +46,20 @@ function endOfDayFromNow(days: number) {
 
 function riskRank(level: RenewalRiskLevel) {
   return { YELLOW: 1, ORANGE: 2, RED: 3, EXHAUSTED: 4 }[level];
+}
+
+export function renewalCohortForSourceName(sourceName: string | null | undefined): RenewalCohort {
+  return String(sourceName ?? "").trim() === LEGACY_XDF_SOURCE_CHANNEL_NAME ? "XDF" : "BOSS_OTHER";
+}
+
+function cohortStatusLabel(status: string, cohort: RenewalCohort) {
+  if (cohort !== "XDF") return RENEWAL_STATUS_LABELS[status] ?? status;
+  return {
+    PENDING_CONTACT: "待联系新东方",
+    PARENT_NOTIFIED: "已通知新东方",
+    PARENT_CONSIDERING: "新东方确认中",
+    RENEWAL_CONFIRMED: "已确认续课",
+  }[status] ?? RENEWAL_STATUS_LABELS[status] ?? status;
 }
 
 function dateDiffDays(target: Date | null, now: Date) {
@@ -83,6 +99,24 @@ function buildParentMessage(input: {
     : "";
   const urgency = input.riskLevel === "EXHAUSTED" || input.riskLevel === "RED" ? "为避免影响后续课程安排，" : "";
   return `${input.studentName}家长您好，${input.courseName}${balance}${forecast}。${urgency}请您方便时回复是否继续安排下一阶段课程，我们会根据您的计划准备续费合同与课时安排。谢谢。`;
+}
+
+function buildXdfMessage(input: {
+  studentName: string;
+  courseName: string;
+  remainingMinutes: number | null;
+  lessonsRemaining: number | null;
+  expectedDepletionAt: Date | null;
+  validTo: Date | null;
+}) {
+  const balance =
+    input.remainingMinutes == null
+      ? `当前课包有效期至 ${input.validTo ? formatBusinessDateOnly(input.validTo) : "待确认"}`
+      : `当前剩余约 ${(input.remainingMinutes / 60).toFixed(input.remainingMinutes % 60 === 0 ? 0 : 1)} 小时${input.lessonsRemaining == null ? "" : `（约 ${input.lessonsRemaining} 节）`}`;
+  const forecast = input.expectedDepletionAt
+    ? `，按当前排课预计在 ${formatBusinessDateOnly(input.expectedDepletionAt)} 前后用完`
+    : "";
+  return `新东方项目负责人您好，${input.studentName}的${input.courseName}${balance}${forecast}。请协助确认后续是否继续安排及补充课时计划，我们会据此衔接后续课程。谢谢。`;
 }
 
 export function classifyRenewalRisk(input: {
@@ -125,6 +159,7 @@ export async function getRenewalForecasts(now = new Date()) {
     include: {
       student: {
         include: {
+          sourceChannel: { select: { name: true } },
           parentLinks: {
             include: { parent: { select: { name: true } } },
             orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
@@ -222,6 +257,7 @@ export async function getRenewalForecasts(now = new Date()) {
       if (!riskLevel) return null;
 
       const primaryLink = pkg.student.parentLinks[0] ?? null;
+      const cohort = renewalCohortForSourceName(pkg.student.sourceChannel?.name);
       const latestRenewalContract = pkg.contracts[0] ?? null;
       const workflowStatus =
         latestRenewalContract?.signedAt
@@ -233,6 +269,8 @@ export async function getRenewalForecasts(now = new Date()) {
         packageId: pkg.id,
         studentId: pkg.studentId,
         studentName: pkg.student.name,
+        cohort,
+        sourceLabel: pkg.student.sourceChannel?.name || "未设置来源",
         courseName: pkg.course.name,
         type: pkg.type,
         riskLevel,
@@ -245,16 +283,26 @@ export async function getRenewalForecasts(now = new Date()) {
         nextLessonAt: scheduled[0]?.startAt ?? null,
         ownerName: primaryLink?.communicationOwner?.trim() || "Emily",
         parentWechatGroupName: primaryLink?.wechatGroupName?.trim() || null,
-        parentName: primaryLink?.parent?.name || "家长",
-        parentMessage: buildParentMessage({
-          studentName: pkg.student.name,
-          courseName: pkg.course.name,
-          riskLevel,
-          remainingMinutes,
-          lessonsRemaining,
-          expectedDepletionAt,
-          validTo: pkg.validTo,
-        }),
+        parentName: cohort === "XDF" ? "新东方项目负责人" : primaryLink?.parent?.name || "家长",
+        parentMessage:
+          cohort === "XDF"
+            ? buildXdfMessage({
+                studentName: pkg.student.name,
+                courseName: pkg.course.name,
+                remainingMinutes,
+                lessonsRemaining,
+                expectedDepletionAt,
+                validTo: pkg.validTo,
+              })
+            : buildParentMessage({
+                studentName: pkg.student.name,
+                courseName: pkg.course.name,
+                riskLevel,
+                remainingMinutes,
+                lessonsRemaining,
+                expectedDepletionAt,
+                validTo: pkg.validTo,
+              }),
         workflowStatus,
         contractId: latestRenewalContract?.id ?? null,
         invoiceId: latestRenewalContract?.invoiceId ?? null,
@@ -394,6 +442,7 @@ export async function listRenewalTasks(input?: {
   status?: string;
   ownerUserId?: string | null;
   limit?: number;
+  cohort?: RenewalCohort;
 }) {
   const status = String(input?.status ?? "OPEN");
   const where: Prisma.RenewalTaskWhereInput = {};
@@ -401,10 +450,15 @@ export async function listRenewalTasks(input?: {
   else if (status === "COMPLETED") where.completedAt = { not: null };
   else where.status = status;
   if (input?.ownerUserId) where.OR = [{ ownerUserId: input.ownerUserId }, { ownerUserId: null }];
+  if (input?.cohort === "XDF") {
+    where.student = { sourceChannel: { name: LEGACY_XDF_SOURCE_CHANNEL_NAME } };
+  } else if (input?.cohort === "BOSS_OTHER") {
+    where.NOT = { student: { sourceChannel: { name: LEGACY_XDF_SOURCE_CHANNEL_NAME } } };
+  }
   const rows = await prisma.renewalTask.findMany({
     where,
     include: {
-      student: { select: { id: true, name: true } },
+      student: { select: { id: true, name: true, sourceChannel: { select: { name: true } } } },
       package: { include: { course: { select: { name: true } } } },
     },
     orderBy: [{ completedAt: "asc" }, { nextFollowUpAt: "asc" }, { updatedAt: "desc" }],
@@ -432,6 +486,30 @@ export async function listRenewalTasks(input?: {
   }));
 }
 
+export async function getRenewalCohortCounts(status = "OPEN") {
+  const statusWhere: Prisma.RenewalTaskWhereInput =
+    status === "OPEN"
+      ? { completedAt: null }
+      : status === "COMPLETED"
+        ? { completedAt: { not: null } }
+        : { status };
+  const [bossOther, xdf] = await Promise.all([
+    prisma.renewalTask.count({
+      where: {
+        ...statusWhere,
+        NOT: { student: { sourceChannel: { name: LEGACY_XDF_SOURCE_CHANNEL_NAME } } },
+      },
+    }),
+    prisma.renewalTask.count({
+      where: {
+        ...statusWhere,
+        student: { sourceChannel: { name: LEGACY_XDF_SOURCE_CHANNEL_NAME } },
+      },
+    }),
+  ]);
+  return { BOSS_OTHER: bossOther, XDF: xdf };
+}
+
 export async function updateRenewalTask(input: {
   id: string;
   actor: RenewalActor;
@@ -445,12 +523,16 @@ export async function updateRenewalTask(input: {
   invoiceId?: string;
   activatedPackageId?: string;
 }) {
-  const task = await prisma.renewalTask.findUnique({ where: { id: input.id } });
+  const task = await prisma.renewalTask.findUnique({
+    where: { id: input.id },
+    include: { student: { select: { sourceChannel: { select: { name: true } } } } },
+  });
   if (!task) throw new Error("Renewal task not found");
+  const cohort = renewalCohortForSourceName(task.student.sourceChannel?.name);
   const status = String(input.status ?? task.status);
   if (!RENEWAL_STATUS_LABELS[status]) throw new Error("Invalid renewal status");
   if (status === "PARENT_NOTIFIED" && !task.evidenceUrl) {
-    throw new Error("请先上传微信群发送截图，再确认已提醒家长");
+    throw new Error(cohort === "XDF" ? "请先上传对接群发送截图，再确认已通知新东方" : "请先上传微信群发送截图，再确认已提醒家长");
   }
   const completed = ["PACKAGE_ACTIVE", "NOT_RENEWING", "PAUSED_SPECIAL"].includes(status);
   const nextFollowUpAt = input.nextFollowUpAt ? new Date(input.nextFollowUpAt) : null;
@@ -503,15 +585,19 @@ export async function updateRenewalTask(input: {
 }
 
 export function renewalTaskDto(row: Awaited<ReturnType<typeof listRenewalTasks>>[number]) {
+  const cohort = renewalCohortForSourceName(row.student.sourceChannel?.name);
   return {
     id: row.id,
     packageId: row.packageId,
     packageType: row.package.type,
     studentId: row.studentId,
     studentName: row.student.name,
+    cohort,
+    sourceLabel: row.student.sourceChannel?.name || "未设置来源",
+    communicationAudience: cohort === "XDF" ? "新东方项目负责人" : "家长",
     courseName: row.package.course.name,
     status: row.status,
-    statusLabel: row.statusLabel,
+    statusLabel: cohortStatusLabel(row.status, cohort),
     riskLevel: row.riskLevel,
     remainingMinutes: row.remainingMinutes,
     scheduledMinutes: row.scheduledMinutes,
