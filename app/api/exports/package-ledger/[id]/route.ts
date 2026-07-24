@@ -8,10 +8,18 @@ import { setPdfBoldFont, setPdfFont } from "@/lib/pdf-font";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 import { isDirectBillingStudentTypeName } from "@/lib/student-type-semantics";
 import { formatPackageLedgerMinutes } from "@/lib/package-ledger-format";
+import {
+  cleanPackageLedgerNote,
+  parsePackageLedgerReferences,
+  resolvePackageLedgerStudentId,
+} from "@/lib/package-ledger-detail";
 
 type PDFDoc = InstanceType<typeof PDFDocument>;
 
-const LOGO_PATH = path.join(process.cwd(), "public", "logo.png");
+const LOGO_PATH = path.join(process.cwd(), "public", "GTI2.png");
+const LOGO_FALLBACK_PATH = path.join(process.cwd(), "public", "invoice-org.png");
+const LOGO_MAX_WIDTH = 300;
+const LOGO_MAX_HEIGHT = 64;
 const COMPANY_LINES = [
   "Company: GT Educational Institute Pte. Ltd.",
   "150 Orchard Road, Orchard Plaza, #08-15/16, S238841",
@@ -70,22 +78,32 @@ function shouldShowLogoByStudentTypeName(typeName?: string | null) {
   return isDirectBillingStudentTypeName(typeName);
 }
 
+function drawCompanyLogo(doc: PDFDoc, imagePath: string, left: number, top: number) {
+  const logo = (doc as any).openImage(imagePath);
+  const sourceWidth = Number(logo?.width) || LOGO_MAX_WIDTH;
+  const sourceHeight = Number(logo?.height) || LOGO_MAX_HEIGHT;
+  const scale = Math.min(LOGO_MAX_WIDTH / sourceWidth, LOGO_MAX_HEIGHT / sourceHeight);
+  const width = Math.round(sourceWidth * scale);
+  const height = Math.round(sourceHeight * scale);
+
+  doc.image(logo, left, top, { width, height });
+  return height;
+}
+
 function drawCompanyHeader(doc: PDFDoc, showBrand: boolean) {
   if (!showBrand) return;
   const left = doc.page.margins.left;
   const right = doc.page.width - doc.page.margins.right;
   const top = doc.y;
 
-  const logoW = 255;
   let logoH = 0;
   try {
-    const logo = (doc as any).openImage(LOGO_PATH);
-    if (logo?.width && logo?.height) {
-      logoH = Math.round((logoW * logo.height) / logo.width);
-    }
-    // Prefer passing the opened image object, so pdfkit doesn't have to re-open it.
-    doc.image(logo, left, top, { width: logoW });
-  } catch {}
+    logoH = drawCompanyLogo(doc, LOGO_PATH, left, top);
+  } catch {
+    try {
+      logoH = drawCompanyLogo(doc, LOGO_FALLBACK_PATH, left, top);
+    } catch {}
+  }
 
   // Per ops requirement: company text must be below the logo, left-aligned.
   const textX = left;
@@ -210,7 +228,11 @@ export async function GET(
 
   const pkg = await prisma.coursePackage.findUnique({
     where: { id: packageId },
-    include: { student: { include: { studentType: true } }, course: true },
+    include: {
+      student: { include: { studentType: true } },
+      course: true,
+      sharedStudents: { include: { student: true } },
+    },
   });
 
   if (!pkg) {
@@ -223,19 +245,62 @@ export async function GET(
   });
 
   const sessionIds = txns.map((t) => t.sessionId).filter(Boolean) as string[];
-  const sessions = sessionIds.length
-    ? await prisma.session.findMany({
-        where: { id: { in: sessionIds } },
-        include: { class: { include: { course: true, subject: true, level: true, teacher: true } } },
+  const attendanceIds = Array.from(
+    new Set(
+      txns
+        .map((txn) => parsePackageLedgerReferences(txn.note).attendanceId)
+        .filter(Boolean) as string[],
+    ),
+  );
+  const [sessions, attendanceReferences] = await Promise.all([
+    sessionIds.length
+      ? prisma.session.findMany({
+          where: { id: { in: sessionIds } },
+          include: { class: { include: { course: true, subject: true, level: true, teacher: true } } },
+        })
+      : [],
+    attendanceIds.length
+      ? prisma.attendance.findMany({
+          where: { id: { in: attendanceIds } },
+          select: { id: true, studentId: true },
+        })
+      : [],
+  ]);
+  const sessionMap = new Map(sessions.map((s) => [s.id, s]));
+  const attendanceStudentIdById = new Map(
+    attendanceReferences.map((attendance) => [attendance.id, attendance.studentId]),
+  );
+  const txnStudentIds = Array.from(
+    new Set(
+      [
+        ...txns.map((txn) => resolvePackageLedgerStudentId(txn.note, attendanceStudentIdById)),
+        ...sessions.map((session) => session.studentId),
+      ].filter(Boolean) as string[],
+    ),
+  );
+  const txnStudents = txnStudentIds.length
+    ? await prisma.student.findMany({
+        where: { id: { in: txnStudentIds } },
+        select: { id: true, name: true },
       })
     : [];
-  const sessionMap = new Map(sessions.map((s) => [s.id, s]));
+  const txnStudentNameById = new Map(txnStudents.map((student) => [student.id, student.name]));
 
   let running = 0;
   const rows = txns.map((t) => {
     running += t.deltaMinutes;
     const sess = t.sessionId ? sessionMap.get(t.sessionId) : null;
-    return { txn: t, running, sess };
+    const studentId =
+      resolvePackageLedgerStudentId(t.note, attendanceStudentIdById) ??
+      sess?.studentId ??
+      null;
+    return {
+      txn: t,
+      running,
+      sess,
+      studentName: studentId ? txnStudentNameById.get(studentId) ?? null : null,
+      shouldShowStudent: Boolean(studentId) || t.kind === "DEDUCT" || t.kind === "ROLLBACK",
+    };
   });
 
   const openingBalance =
@@ -280,6 +345,24 @@ export async function GET(
     },
   ];
   drawInfoGrid(doc, lang, infoItems, 4, infoLeft, infoWidth);
+  if (pkg.sharedStudents.length > 0) {
+    const packageStudentNames = Array.from(
+      new Set(
+        [
+          pkg.student?.name,
+          ...pkg.sharedStudents.map((item) => item.student.name),
+        ].filter(Boolean),
+      ),
+    );
+    const packageStudentsLabel = choose(lang, "Shared package students", "共享课包学生");
+    doc.fontSize(9).text(
+      `${packageStudentsLabel}: ${packageStudentNames.join(" / ")}`,
+      leftX,
+      doc.y,
+      { width: pageWidth },
+    );
+    doc.moveDown(0.4);
+  }
 
   doc.y += 6;
   doc.moveTo(leftX, doc.y).lineTo(leftX + pageWidth, doc.y).stroke();
@@ -306,7 +389,7 @@ export async function GET(
       doc.text("余额", leftX + col[0] + col[1] + col[2] + 2, rowY + 3, {
         width: col[3] - 4,
       });
-      doc.text("课程备注", leftX + col[0] + col[1] + col[2] + col[3] + 2, rowY + 3, {
+      doc.text("学生 / 课程备注", leftX + col[0] + col[1] + col[2] + col[3] + 2, rowY + 3, {
         width: col[4] - 4,
       });
     } else if (lang === "EN") {
@@ -316,7 +399,7 @@ export async function GET(
       doc.text("Balance", leftX + col[0] + col[1] + col[2] + 2, rowY + 3, {
         width: col[3] - 4,
       });
-      doc.text("Session / Note", leftX + col[0] + col[1] + col[2] + col[3] + 2, rowY + 3, {
+      doc.text("Student / Session / Note", leftX + col[0] + col[1] + col[2] + col[3] + 2, rowY + 3, {
         width: col[4] - 4,
       });
     } else {
@@ -326,7 +409,7 @@ export async function GET(
       doc.text("Balance", leftX + col[0] + col[1] + col[2] + 2, rowY + 3, {
         width: col[3] - 4,
       });
-      doc.text("Session / Note", leftX + col[0] + col[1] + col[2] + col[3] + 2, rowY + 3, {
+      doc.text("Student / Session / Note", leftX + col[0] + col[1] + col[2] + col[3] + 2, rowY + 3, {
         width: col[4] - 4,
       });
       setChineseFont(doc);
@@ -337,7 +420,7 @@ export async function GET(
       doc.text("余额", leftX + col[0] + col[1] + col[2] + 2, rowY + 13, {
         width: col[3] - 4,
       });
-      doc.text("课程备注", leftX + col[0] + col[1] + col[2] + col[3] + 2, rowY + 13, {
+      doc.text("学生 / 课程备注", leftX + col[0] + col[1] + col[2] + col[3] + 2, rowY + 13, {
         width: col[4] - 4,
       });
     }
@@ -351,18 +434,18 @@ export async function GET(
 
   drawTableHeader();
 
+  function startTransactionContinuationPage() {
+    doc.addPage();
+    setupFont(doc);
+    drawHeader(doc, lang, "Package Ledger", "课包对账单", showBrand, showTitle);
+    doc.moveDown(0.4);
+    drawSectionTitle(doc, lang, "Transactions", "交易流水");
+    doc.moveDown(0.4);
+    drawTableHeader();
+  }
+
   doc.fontSize(9);
   for (const r of rows) {
-    if (doc.y > 740) {
-      doc.addPage();
-      setupFont(doc);
-      drawHeader(doc, lang, "Package Ledger", "课包对账单", showBrand, showTitle);
-      doc.moveDown(0.4);
-      drawSectionTitle(doc, lang, "Transactions", "交易流水");
-      doc.moveDown(0.4);
-      drawTableHeader();
-    }
-
     const time = formatDateTime(new Date(r.txn.createdAt));
     const delta = fmtMinutes(r.txn.deltaMinutes);
     const balance = fmtMinutes(r.running);
@@ -375,15 +458,14 @@ export async function GET(
           r.sess.class.teacher.name
         }`
       : "-";
-    const noteRaw = r.txn.note ?? "";
-    const cleanedNote = noteRaw
-      .replace(/studentId=\\S+/g, "")
-      .replace(/studentId:\\s*\\S+/g, "")
-      .replace(/\\s{2,}/g, " ")
-      .trim();
-    const detail = cleanedNote ? `${sess}\n${cleanedNote}` : sess;
+    const cleanedNote = cleanPackageLedgerNote(r.txn.note);
+    const studentLine = r.studentName
+      ? choose(lang, `Student: ${r.studentName}`, `学生：${r.studentName}`)
+      : r.shouldShowStudent
+        ? choose(lang, "Student: Unresolved", "学生：未匹配")
+        : "";
+    const detail = [studentLine, sess, cleanedNote].filter(Boolean).join("\n");
 
-    const rowY = doc.y;
     const h = Math.max(
       doc.heightOfString(time, { width: col[0] }),
       doc.heightOfString(r.txn.kind, { width: col[1] }),
@@ -392,6 +474,12 @@ export async function GET(
       doc.heightOfString(detail, { width: col[4] })
     );
 
+    const pageBottom = doc.page.height - doc.page.margins.bottom;
+    if (doc.y + h + 8 > pageBottom) {
+      startTransactionContinuationPage();
+    }
+
+    const rowY = doc.y;
     doc.text(time, leftX, rowY, { width: col[0] });
     doc.text(r.txn.kind, leftX + col[0], rowY, { width: col[1] });
     doc.text(delta, leftX + col[0] + col[1], rowY, { width: col[2] });

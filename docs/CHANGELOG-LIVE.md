@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-24-r284
+
+- Release ID: `2026-07-24-r284`
+- Date/Time (Asia/Shanghai): `2026-07-24`
+- Deployment status: `READY`
+- Scope: update the package-ledger PDF to use the approved `GTI2.png` brand asset and identify the student responsible for each deduction or rollback, including shared-package and historical attendance-repair rows.
+- Key files:
+  - `app/api/exports/package-ledger/[id]/route.ts`
+  - `lib/package-ledger-detail.ts`
+  - `public/GTI2.png`
+  - `tests/package-ledger-detail.test.ts`
+  - `docs/tasks/TASK-20260724-package-ledger-student-attribution.md`
+- Risk impact (if any): Low and read-only. This changes only package-ledger PDF rendering and read-side student-name resolution. Package ownership, sharing, balances, transaction rows, attendance deductions, scheduling, invoices, receipts, payroll and partner settlement are unchanged.
+- Verification: 5 focused package-ledger tests and all 260 repository tests passed; TypeScript, `git diff --check` and the 213-route production build passed.
+- Rollback point: `539cc82715dd8c1d4af5dfd69409eae178fcd31f` (`2026-07-24-r283` documentation-aligned production lineage).
+
+---
+
 ## 2026-07-24-r283
 
 - Release ID: `2026-07-24-r283`

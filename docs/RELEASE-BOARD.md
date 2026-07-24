@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-07-23`
+- Last checked: `2026-07-24`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,13 +14,15 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-24-r283` is live at runtime feature commit `c22e7f3`; it simplifies the Ticket desk and atomically links admin web scheduling results to the exact Ticket action.
+- Current release line on this branch: `2026-07-24-r284` is ready; it updates the package-ledger PDF branding and adds per-transaction student attribution for shared packages.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
+
+- Package-ledger student-attribution rollout: `2026-07-24-r284` is read-only and changes only PDF rendering. Historical rows are resolved from explicit student metadata or attendance references; a deduction that cannot be matched is visibly labelled `Unresolved / 未匹配` instead of being silently attributed to the package owner. Previously downloaded PDFs are static and must be downloaded again after deployment.
 
 - Ticket-action workflow rollout: `2026-07-24-r283` is live at runtime feature commit `c22e7f3`, with all 112 migrations current, PM2 PID `90247` and health 200. Anonymous Ticket access redirects to login, and three existing structured Tickets retained their unresolved action states after deployment. The exact action ID and source lesson are validated inside the existing schedule transaction, so a mismatch rolls back the operation. Use the next real scheduling request for the first controlled write; do not fabricate or cancel a real lesson solely for testing.
 
@@ -193,6 +195,31 @@
 - Workspace-access-form risk: `2026-05-29-r160` lets the owner manager edit Sales/CS focused workspace access from System User Admin; verify non-owner managers cannot write this endpoint and that main roles remain unchanged.
 - Tutor-Wise-payment-profile risk: `2026-05-29-r161` removes Bank Transfer as a new tutor payment method and adds Wise details plus finance review status; finance should verify PayNow/Wise details before payout exports are used.
 - Teacher-notice-attachment risk: `2026-05-30-r162` lets teachers open only the active Shared Docs file attached to an active teacher notice; verify the notice attachment is intentional before publishing because the full Shared Docs library remains manager/admin controlled.
+
+## 2026-07-24-r284 Ready
+
+- Scope: use the approved GTI2 logo in package-ledger PDFs and identify the student associated with each shared-package deduction or rollback.
+- Business impact:
+  - Finance and Academic Operations can distinguish siblings or other students sharing one balance pool on every deducted transaction row.
+  - Current deduction metadata and historical attendance-repair references both resolve to the matching student name.
+  - Shared-package summaries list the package owner and shared students without duplicate names.
+  - Internal `studentId` and `attendanceId` metadata are removed from the displayed note; unmatched deductions are explicitly labelled instead of silently assigned.
+  - Package transactions, balances, attendance deductions, scheduling, invoices, receipts, payroll and partner settlement remain unchanged.
+- Files:
+  - `app/api/exports/package-ledger/[id]/route.ts`
+  - `lib/package-ledger-detail.ts`
+  - `public/GTI2.png`
+  - `tests/package-ledger-detail.test.ts`
+- Verification before deploy:
+  - 5 focused package-ledger tests
+  - 260 repository tests
+  - `npx tsc --noEmit`
+  - `git diff --check`
+  - `npm run build` (213 routes)
+- Post-deploy verification:
+  - Confirm local, GitHub and server commits are identical, PM2 is online and `/admin/login` returns HTTP 200.
+  - Confirm the server contains `public/GTI2.png` and the deployed route references it.
+  - Download a fresh shared-package ledger and confirm the header logo and per-row student labels.
 
 ## 2026-07-24-r283 Ready
 
