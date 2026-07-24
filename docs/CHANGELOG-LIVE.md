@@ -15,6 +15,31 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-24-r283
+
+- Release ID: `2026-07-24-r283`
+- Date/Time (Asia/Shanghai): `2026-07-24`
+- Deployment status: `READY`
+- Scope: simplify the admin Ticket workflow into request, action and advanced layers, and make web scheduling actions atomically update the exact linked Ticket action.
+- Key files:
+  - `app/admin/tickets/[id]/page.tsx`
+  - `app/admin/tickets/page.tsx`
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/_components/QuickScheduleModal.tsx`
+  - `app/api/admin/students/[id]/quick-appointment/route.ts`
+  - `app/api/admin/classes/[id]/sessions/reschedule/route.ts`
+  - `app/api/admin/students/[id]/sessions/cancel/route.ts`
+  - `app/api/admin/students/[id]/sessions/replace-teacher/route.ts`
+  - `lib/ticket-scheduling-action-write.ts`
+  - `tests/ticket-scheduling-action-write.test.ts`
+  - `tests/ticket-scheduling-actions.test.ts`
+  - `docs/tasks/TASK-20260724-ticket-action-workflow.md`
+- Risk impact (if any): Medium and limited to operator-triggered Ticket-linked scheduling. Existing standalone scheduling keeps its current behavior; finance, contracts, package balances, attendance deduction rules, receipts, payroll, partner settlement and miniapp scheduling paths are unchanged.
+- Verification: 16 focused Ticket tests and all 257 repository tests passed; TypeScript, `git diff --check` and the 213-route production build passed. No migration is included.
+- Rollback point: `f50f60f438dd81185430c584da2cb0a378a305c9` (`2026-07-23-r282` documentation-aligned production lineage).
+
+---
+
 ## 2026-07-23-r282
 
 - Release ID: `2026-07-23-r282`

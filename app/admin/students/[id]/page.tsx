@@ -1590,6 +1590,33 @@ export default async function StudentDetailPage({
   const quickCampusId = sp?.quickCampusId ?? "";
   const quickRoomId = sp?.quickRoomId ?? "";
   const quickTeacherId = sp?.quickTeacherId ?? "";
+  const quickMode = sp?.quickMode === "reschedule" ? "reschedule" : "create";
+  const ticketId = String(sp?.ticketId ?? "").trim();
+  const ticketActionId = String(sp?.ticketActionId ?? "").trim();
+  const ticketActionTypeRaw = String(sp?.ticketActionType ?? "").trim();
+  const ticketActionType = [
+    "CREATE_SESSION",
+    "RESCHEDULE_SESSION",
+    "CANCEL_SESSION",
+    "REPLACE_TEACHER",
+    "COORDINATE_ONLY",
+  ].includes(ticketActionTypeRaw)
+    ? ticketActionTypeRaw
+    : "";
+  const ticketSessionId = String(sp?.ticketSessionId ?? "").trim();
+  const ticketRequestedTeacherId = String(sp?.ticketRequestedTeacherId ?? "").trim();
+  const ticketReturnRaw = String(sp?.ticketReturn ?? "").trim();
+  const ticketReturn = ticketReturnRaw.startsWith("/admin/tickets/") ? ticketReturnRaw : "";
+  const ticketExecutionContext =
+    ticketId && ticketActionId && ticketActionType && ticketReturn
+      ? {
+          ticketId,
+          actionId: ticketActionId,
+          actionType: ticketActionType,
+          sourceSessionId: ticketSessionId || undefined,
+          returnHref: ticketReturn,
+        }
+      : null;
   const monthParam = sp?.month ?? "";
   const attendanceMonthParam = sp?.attendanceMonth ?? "";
   const quickOpen = sp?.quickOpen === "1";
@@ -4594,6 +4621,11 @@ export default async function StudentDetailPage({
 
       <details id="upcoming-sessions" open style={{ marginBottom: 14 }}>
         <summary style={{ fontWeight: 700 }}>{tl(lang, "Upcoming Sessions")} ({upcomingSessions.length})</summary>
+      {ticketExecutionContext && ["CANCEL_SESSION", "REPLACE_TEACHER"].includes(ticketExecutionContext.actionType) ? (
+        <div style={{ margin: "10px 0", padding: 10, border: "1px solid #fdba74", background: "#fff7ed", color: "#9a3412", fontWeight: 750 }}>
+          正在处理工单中的指定课程。完成下面高亮课程的正式操作后，系统会自动更新工单并返回。 / Complete the highlighted lesson action to update the ticket automatically.
+        </div>
+      ) : null}
       {sectionReturnBar(lang, {
         hint: t(lang, "Use this section for the next real lesson, then return to the workbench bar if you need packages, attendance, or edit tools.", "这里适合处理下一节真实课次；如果还要看课包、点名或学生资料，就从这里回到工作条。"),
         links: [
@@ -4609,8 +4641,28 @@ export default async function StudentDetailPage({
             const att = upcomingAttendanceMap.get(s.id);
             const teacherChange = latestTeacherChangeMap.get(s.id);
             const cancelled = att?.status === "EXCUSED";
+            const isTicketTarget = Boolean(ticketExecutionContext && ticketSessionId === s.id);
+            const ticketSessionContext = isTicketTarget && ticketExecutionContext
+              ? {
+                  ticketId: ticketExecutionContext.ticketId,
+                  actionId: ticketExecutionContext.actionId,
+                  returnHref: ticketExecutionContext.returnHref,
+                }
+              : null;
             return (
-              <div key={s.id} data-session-ui={s.id} style={{ border: "1px solid #eee", borderRadius: 8, padding: 10, background: "#fff" }}>
+              <div
+                id={`session-${s.id}`}
+                key={s.id}
+                data-session-ui={s.id}
+                style={{
+                  border: isTicketTarget ? "2px solid #ea580c" : "1px solid #eee",
+                  borderRadius: 8,
+                  padding: 10,
+                  background: isTicketTarget ? "#fff7ed" : "#fff",
+                  scrollMarginTop: 96,
+                }}
+              >
+                {isTicketTarget ? <div style={{ color: "#9a3412", fontSize: 12, fontWeight: 850, marginBottom: 6 }}>当前工单指定课程 / Ticket target</div> : null}
                 <div style={{ fontWeight: 700 }}>
                   {formatBusinessDateTime(new Date(s.startAt))} - {formatBusinessTimeOnly(new Date(s.endAt))}
                 </div>
@@ -4679,6 +4731,8 @@ export default async function StudentDetailPage({
                         error: tl(lang, "Error"),
                       }}
                       returnHash="#upcoming-sessions"
+                      initialTeacherId={isTicketTarget ? ticketRequestedTeacherId : ""}
+                      ticketExecutionContext={ticketExecutionContext?.actionType === "REPLACE_TEACHER" ? ticketSessionContext : null}
                     />
                   <a
                     href={buildStudentDetailHref(
@@ -4717,6 +4771,7 @@ export default async function StudentDetailPage({
                       note: tl(lang, "Note"),
                     }}
                     returnHash="#upcoming-sessions"
+                    ticketExecutionContext={ticketExecutionContext?.actionType === "CANCEL_SESSION" ? ticketSessionContext : null}
                   />
                 </div>
               </div>
@@ -4765,6 +4820,20 @@ export default async function StudentDetailPage({
           sessionOptions={quickRescheduleSessionOptions}
           scheduleUrl={`/api/admin/students/${encodeURIComponent(studentId)}/quick-appointment`}
           returnHash="#quick-schedule"
+          quickMode={quickMode}
+          quickSessionId={ticketSessionId}
+          ticketExecutionContext={
+            ticketExecutionContext &&
+            (ticketExecutionContext.actionType === "CREATE_SESSION" || ticketExecutionContext.actionType === "RESCHEDULE_SESSION")
+              ? {
+                  ticketId: ticketExecutionContext.ticketId,
+                  actionId: ticketExecutionContext.actionId,
+                  actionType: ticketExecutionContext.actionType,
+                  sourceSessionId: ticketExecutionContext.sourceSessionId,
+                  returnHref: ticketExecutionContext.returnHref,
+                }
+              : null
+          }
           warning={quickPackageWarn}
           labels={{
             title: tl(lang, "Quick Schedule"),

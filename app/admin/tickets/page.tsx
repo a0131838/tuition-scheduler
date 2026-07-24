@@ -20,6 +20,10 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { formatSchedulingCoordinationSystemText } from "@/lib/scheduling-coordination";
+import {
+  isTicketSchedulingActionResolved,
+  schedulingActionStatusLabel,
+} from "@/lib/ticket-scheduling-actions";
 import TicketStatusSubmitButton from "@/app/admin/_components/TicketStatusSubmitButton";
 import RememberedWorkbenchQueryClient from "../_components/RememberedWorkbenchQueryClient";
 import WorkbenchActionBanner from "../_components/WorkbenchActionBanner";
@@ -157,8 +161,8 @@ async function updateStatusAction(formData: FormData) {
   if (nextStatus === "Completed" && !completionNote) {
     redirect(`${back}${back.includes("?") ? "&" : "?"}err=need-note`);
   }
-  if (nextStatus === "Completed" && row.schedulingActions.length > 0 && row.schedulingActions.some((action) => !["APPLIED", "CANCELLED"].includes(action.status))) {
-    redirect(`${back}${back.includes("?") ? "&" : "?"}err=scheduling-actions-open`);
+  if (nextStatus === "Completed" && row.schedulingActions.some((action) => !isTicketSchedulingActionResolved(action))) {
+    redirect(appendQuery(back, { err: "scheduling-actions-open", blockedTicket: id }));
   }
 
   await prisma.ticket.update({
@@ -272,7 +276,7 @@ async function deleteTokenAction(formData: FormData) {
 export default async function AdminTicketsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ q?: string; status?: string; owner?: string; type?: string; err?: string; tok?: string; focus?: string; ok?: string; fields?: string; clearDesk?: string }>;
+  searchParams?: Promise<{ q?: string; status?: string; owner?: string; type?: string; err?: string; tok?: string; focus?: string; ok?: string; fields?: string; clearDesk?: string; blockedTicket?: string }>;
 }) {
   const adminUser = await requireAdmin();
   const lang = await getLang();
@@ -286,6 +290,7 @@ export default async function AdminTicketsPage({
   const err = String(sp?.err ?? "").trim();
   const ok = String(sp?.ok ?? "").trim();
   const fields = String(sp?.fields ?? "").trim();
+  const blockedTicket = String(sp?.blockedTicket ?? "").trim();
   const tokenSaved = sp?.tok === "1";
   const cookieStore = await cookies();
   const canResumeRememberedDesk =
@@ -341,6 +346,12 @@ export default async function AdminTicketsPage({
               ],
             }
           : {}),
+      },
+      include: {
+        schedulingActions: {
+          select: { id: true, actionType: true, status: true, sequence: true },
+          orderBy: { sequence: "asc" },
+        },
       },
       orderBy: [{ createdAt: "desc" }],
       take: 200,
@@ -755,8 +766,18 @@ export default async function AdminTicketsPage({
           <tbody>
             {rows.map((r) => {
               const situation = situationLines(r.summary, r.nextAction, r.nextActionDue);
+              const unresolvedActions = r.schedulingActions.filter((action) => !isTicketSchedulingActionResolved(action));
+              const rowHasBlockingError = blockedTicket === r.id && err === "scheduling-actions-open";
               return (
-              <tr id={`ticket-row-${r.id}`} key={r.id} style={{ borderTop: "1px solid #e2e8f0", verticalAlign: "top" }}>
+              <tr
+                id={`ticket-row-${r.id}`}
+                key={r.id}
+                style={{
+                  borderTop: "1px solid #e2e8f0",
+                  verticalAlign: "top",
+                  background: rowHasBlockingError ? "#fff7ed" : undefined,
+                }}
+              >
                 <td>
                   <Link scroll={false} href={`/admin/tickets/${r.id}?back=${encodeURIComponent(`${backHref}#ticket-row-${r.id}`)}`}>
                     {r.ticketNo}
@@ -833,28 +854,53 @@ export default async function AdminTicketsPage({
                       ) : null}
                     </div>
                   ) : (
-                    <form action={updateStatusAction} style={{ display: "grid", gap: 6, maxWidth: 210 }}>
-                      <input type="hidden" name="id" value={r.id} />
-                      <input type="hidden" name="back" value={`${backHref}#ticket-row-${r.id}`} />
-                      <select name="nextStatus" defaultValue={r.status} style={{ width: "100%", boxSizing: "border-box" }}>
-                        {TICKET_STATUS_OPTIONS.filter((o) => canTransitionTicketStatus(r.status, o.value)).map((o) => (
-                          <option key={o.value} value={o.value}>
-                            {t(lang, o.en, o.zh)}
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        name="completionNote"
-                        placeholder={t(lang, "Completion note (required only when marking completed)", "完成说明（仅标记完成时必填）")}
-                        style={{ width: "100%", boxSizing: "border-box" }}
-                      />
-                      <TicketStatusSubmitButton
-                        label={t(lang, "Save", "保存")}
-                        promptLabel={t(lang, "Please add a completion note before marking this ticket completed.", "标记完成前请先填写完成说明。")}
-                        missingNoteAlert={t(lang, "Completion note is required. Nothing was submitted.", "完成说明不能为空，本次未提交。")}
-                        style={{ width: "100%", boxSizing: "border-box" }}
-                      />
-                    </form>
+                    <div style={{ display: "grid", gap: 8, maxWidth: 210 }}>
+                      {unresolvedActions.length > 0 ? (
+                        <div style={{ display: "grid", gap: 6, border: "1px solid #fdba74", background: "#fff7ed", padding: 8 }}>
+                          <div style={{ color: "#9a3412", fontWeight: 800 }}>
+                            {t(lang, `${unresolvedActions.length} scheduling action(s) pending`, `${unresolvedActions.length} 个排课动作待执行`)}
+                          </div>
+                          <div style={{ color: "#7c2d12", fontSize: 12 }}>
+                            {unresolvedActions.map((action) => schedulingActionStatusLabel(action.status)).join(" · ")}
+                          </div>
+                          {rowHasBlockingError ? (
+                            <div role="alert" style={{ color: "#b91c1c", fontSize: 12, fontWeight: 800 }}>
+                              {t(lang, "Complete or cancel these actions before closing the ticket.", "请先执行或取消这些动作，才能完成工单。")}
+                            </div>
+                          ) : null}
+                          <Link
+                            href={`/admin/tickets/${r.id}?back=${encodeURIComponent(`${backHref}#ticket-row-${r.id}`)}#scheduling-actions`}
+                            style={{ fontWeight: 800 }}
+                          >
+                            {t(lang, "Process scheduling actions →", "前往处理排课动作 →")}
+                          </Link>
+                        </div>
+                      ) : null}
+                      {unresolvedActions.length === 0 ? (
+                        <form action={updateStatusAction} style={{ display: "grid", gap: 6 }}>
+                          <input type="hidden" name="id" value={r.id} />
+                          <input type="hidden" name="back" value={`${backHref}#ticket-row-${r.id}`} />
+                          <select name="nextStatus" defaultValue={r.status} style={{ width: "100%", boxSizing: "border-box" }}>
+                            {TICKET_STATUS_OPTIONS.filter((o) => canTransitionTicketStatus(r.status, o.value)).map((o) => (
+                              <option key={o.value} value={o.value}>
+                                {t(lang, o.en, o.zh)}
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            name="completionNote"
+                            placeholder={t(lang, "Completion note (required only when marking completed)", "完成说明（仅标记完成时必填）")}
+                            style={{ width: "100%", boxSizing: "border-box" }}
+                          />
+                          <TicketStatusSubmitButton
+                            label={t(lang, "Save", "保存")}
+                            promptLabel={t(lang, "Please add a completion note before marking this ticket completed.", "标记完成前请先填写完成说明。")}
+                            missingNoteAlert={t(lang, "Completion note is required. Nothing was submitted.", "完成说明不能为空，本次未提交。")}
+                            style={{ width: "100%", boxSizing: "border-box" }}
+                          />
+                        </form>
+                      ) : null}
+                    </div>
                   )}
                 </td>
               </tr>

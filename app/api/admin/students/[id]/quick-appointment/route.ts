@@ -15,6 +15,11 @@ import { runRejectQuickScheduleBatch, runSkipQuickScheduleBatch } from "@/lib/qu
 import { isSessionDuplicateError } from "@/lib/session-unique";
 import { checkTeacherSchedulingAvailability } from "@/lib/teacher-scheduling-availability";
 import { formatStudentQuickScheduleConflictReason } from "@/lib/quick-schedule-messages";
+import { formatBusinessDateTime } from "@/lib/date-only";
+import {
+  applyAdminLinkedTicketSchedulingAction,
+  TicketSchedulingActionContextError,
+} from "@/lib/ticket-scheduling-action-write";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -260,12 +265,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const repeatWeeksRaw = Number(body?.repeatWeeks ?? 1);
   const repeatWeeks = Number.isFinite(repeatWeeksRaw) ? Math.max(1, Math.min(16, Math.floor(repeatWeeksRaw))) : 1;
   const onConflict = String(body?.onConflict ?? "reject");
+  const ticketId = String(body?.ticketId ?? "").trim();
+  const ticketActionId = String(body?.ticketActionId ?? "").trim();
 
   if (!teacherId || !subjectId || !campusId || !startAtStr || !Number.isFinite(durationMin) || durationMin < 15) {
     return bad("Invalid input");
   }
   if (mode !== "create" && mode !== "preview") return bad("Invalid mode");
   if (onConflict !== "reject" && onConflict !== "skip") return bad("Invalid onConflict");
+  if (Boolean(ticketId) !== Boolean(ticketActionId)) return bad("Invalid ticket action context", 409);
+  if (mode === "create" && ticketId && onConflict !== "reject") {
+    return bad("Ticket work orders require reject-on-conflict mode", 409);
+  }
 
   const roomId = roomIdRaw || null;
   const campus = await prisma.campus.findUnique({ where: { id: campusId } });
@@ -327,7 +338,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!cls) return bad("Failed to create class", 500);
 
   const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
-  const rows: Array<{ index: number; startAt: string; endAt: string; ok: boolean; reason?: string; created?: boolean }> = [];
+  const rows: Array<{ index: number; startAt: string; endAt: string; ok: boolean; reason?: string; created?: boolean; sessionId?: string }> = [];
   let created = 0;
   let skipped = 0;
 
@@ -382,7 +393,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
                 bypassAvailabilityCheck,
               });
               if (txReason) return { reason: txReason, created: null as never };
-              await tx.session.create({
+              const createdSession = await tx.session.create({
                 data: {
                   classId: cls.id,
                   startAt: txStart,
@@ -398,17 +409,37 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
                   endAt: txEnd.toISOString(),
                   ok: true,
                   created: true,
+                  sessionId: createdSession.id,
                 },
               };
             },
           });
           if (!txResult.ok) throw new QuickScheduleConflictError(txResult.reason);
+          if (ticketId && ticketActionId) {
+            const resultSessionId = txResult.createdRows[0]?.sessionId;
+            if (!resultSessionId) throw new TicketSchedulingActionContextError("No created lesson was available to link");
+            await applyAdminLinkedTicketSchedulingAction(tx, {
+              ticketId,
+              actionId: ticketActionId,
+              actionType: "CREATE_SESSION",
+              resultSessionId,
+              resultText: `已完成排课：${formatBusinessDateTime(new Date(txResult.createdRows[0]!.startAt))}；老师：${teacher.name}${repeatWeeks > 1 ? `；连续 ${repeatWeeks} 周` : ""}。`,
+              appliedByUserId: user.id,
+              actorEmail: user.email,
+              actorName: user.name,
+              actorRole: user.role,
+              auditAction: "ADMIN_TICKET_NEW_SESSION_APPLIED",
+            });
+          }
           return txResult.createdRows;
         }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
         created += createdRows.length;
         rows.push(...createdRows);
       } catch (error) {
         if (error instanceof QuickScheduleConflictError) return bad(error.message, error.status);
+        if (error instanceof TicketSchedulingActionContextError) {
+          return bad(error.message, 409, { code: "TICKET_ACTION_CONTEXT" });
+        }
         if (isSessionDuplicateError(error)) return bad("Session already exists at this time", 409);
         throw error;
       }
@@ -486,5 +517,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     skipped,
     total: repeatWeeks,
     rows,
+    ticketActionApplied: mode === "create" && Boolean(ticketId && ticketActionId),
   });
 }

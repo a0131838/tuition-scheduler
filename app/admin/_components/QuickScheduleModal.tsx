@@ -85,6 +85,14 @@ type SessionOption = {
   durationMin: number;
 };
 
+type TicketExecutionContext = {
+  ticketId: string;
+  actionId: string;
+  actionType: "CREATE_SESSION" | "RESCHEDULE_SESSION";
+  sourceSessionId?: string;
+  returnHref: string;
+};
+
 export default function QuickScheduleModal({
   studentId,
   month,
@@ -106,6 +114,9 @@ export default function QuickScheduleModal({
   openOnLoad,
   warning,
   returnHash,
+  quickMode,
+  quickSessionId,
+  ticketExecutionContext,
 }: {
   studentId: string;
   month: string;
@@ -127,6 +138,9 @@ export default function QuickScheduleModal({
   openOnLoad: boolean;
   warning?: string;
   returnHash?: string;
+  quickMode?: "create" | "reschedule";
+  quickSessionId?: string;
+  ticketExecutionContext?: TicketExecutionContext | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -150,11 +164,15 @@ export default function QuickScheduleModal({
   const [roomId, setRoomId] = useState(quickRoomId || "");
   const [startAt, setStartAt] = useState(quickStartAt || "");
   const [durationMin, setDurationMin] = useState(String(quickDurationMin || 60));
-  const [mode, setMode] = useState<"create" | "reschedule">("create");
+  const [mode, setMode] = useState<"create" | "reschedule">(quickMode === "reschedule" ? "reschedule" : "create");
   const [repeatWeeks, setRepeatWeeks] = useState("1");
   const [onConflict, setOnConflict] = useState<"reject" | "skip">("reject");
   const [previewRows, setPreviewRows] = useState<Array<{ index: number; startAt: string; endAt: string; ok: boolean; reason?: string }>>([]);
-  const [selectedSessionId, setSelectedSessionId] = useState(sessionOptions[0]?.id ?? "");
+  const [selectedSessionId, setSelectedSessionId] = useState(
+    quickSessionId && sessionOptions.some((item) => item.id === quickSessionId)
+      ? quickSessionId
+      : sessionOptions[0]?.id ?? ""
+  );
   const [rescheduleScope, setRescheduleScope] = useState<"single" | "future">("single");
   const baseHref = useMemo(() => {
     const params = new URLSearchParams();
@@ -181,6 +199,10 @@ export default function QuickScheduleModal({
   };
   const closeAndClear = () => {
     dialogRef.current?.close();
+    if (ticketExecutionContext?.returnHref) {
+      router.push(ticketExecutionContext.returnHref);
+      return;
+    }
     resetFormState();
     setScheduleErr("");
     setScheduleMsg("");
@@ -211,6 +233,8 @@ export default function QuickScheduleModal({
             mode: "create",
             repeatWeeks: Number(repeatWeeks),
             onConflict,
+            ticketId: ticketExecutionContext?.ticketId,
+            ticketActionId: ticketExecutionContext?.actionId,
           }),
         });
         const raw = await res.text();
@@ -231,6 +255,10 @@ export default function QuickScheduleModal({
         }
         setScheduleMsg(`OK (${data?.created ?? 0}/${data?.total ?? Number(repeatWeeks)})`);
         dialogRef.current?.close();
+        if (ticketExecutionContext?.returnHref) {
+          router.push(ticketExecutionContext.returnHref);
+          return;
+        }
         const params = new URLSearchParams(searchParams?.toString() ?? "");
         params.delete("err");
         params.delete("quickOpen");
@@ -277,6 +305,8 @@ export default function QuickScheduleModal({
             mode: "preview",
             repeatWeeks: Number(repeatWeeks),
             onConflict,
+            ticketId: ticketExecutionContext?.ticketId,
+            ticketActionId: ticketExecutionContext?.actionId,
           }),
         });
         const data = (await res.json().catch(() => null)) as any;
@@ -310,6 +340,8 @@ export default function QuickScheduleModal({
           startAt,
           durationMin: Number(durationMin),
           scope: rescheduleScope,
+          ticketId: ticketExecutionContext?.ticketId,
+          ticketActionId: ticketExecutionContext?.actionId,
         }),
       });
       const data = (await res.json().catch(() => null)) as any;
@@ -319,6 +351,10 @@ export default function QuickScheduleModal({
       }
       setScheduleMsg(`OK (${data?.rescheduled ?? 0})`);
       dialogRef.current?.close();
+      if (ticketExecutionContext?.returnHref) {
+        router.push(ticketExecutionContext.returnHref);
+        return;
+      }
       const params = new URLSearchParams(searchParams?.toString() ?? "");
       params.set("msg", "Rescheduled");
       const target = `${params.toString() ? `${pathname}?${params.toString()}` : pathname}${sectionHash}`;
@@ -382,6 +418,14 @@ export default function QuickScheduleModal({
   }, [sessionOptions, selectedSessionId]);
 
   useEffect(() => {
+    setMode(quickMode === "reschedule" ? "reschedule" : "create");
+    if (ticketExecutionContext) setOnConflict("reject");
+    if (quickSessionId && sessionOptions.some((session) => session.id === quickSessionId)) {
+      setSelectedSessionId(quickSessionId);
+    }
+  }, [quickMode, quickSessionId, sessionOptions, ticketExecutionContext]);
+
+  useEffect(() => {
     if (!courseId) return;
     const options = subjects.filter((s) => s.courseId === courseId);
     if (options.length === 0) {
@@ -430,6 +474,15 @@ export default function QuickScheduleModal({
     if (roomId) params.set("quickRoomId", roomId);
     if (startAt) params.set("quickStartAt", startAt);
     if (durationMin) params.set("quickDurationMin", durationMin);
+    if (quickMode) params.set("quickMode", quickMode);
+    if (quickSessionId) params.set("ticketSessionId", quickSessionId);
+    if (ticketExecutionContext) {
+      params.set("ticketId", ticketExecutionContext.ticketId);
+      params.set("ticketActionId", ticketExecutionContext.actionId);
+      params.set("ticketActionType", ticketExecutionContext.actionType);
+      if (ticketExecutionContext.sourceSessionId) params.set("ticketSessionId", ticketExecutionContext.sourceSessionId);
+      params.set("ticketReturn", ticketExecutionContext.returnHref);
+    }
     const target = `/admin/students/${studentId}?${params.toString()}`;
     startFinding(() => {
       router.replace(target, { scroll: false });
@@ -625,7 +678,7 @@ export default function QuickScheduleModal({
                 {labels.onConflict}:
                 <select value={onConflict} onChange={(e) => setOnConflict(e.target.value === "skip" ? "skip" : "reject")} style={{ marginLeft: 6, minWidth: 220 }}>
                   <option value="reject">{labels.rejectImmediately}</option>
-                  <option value="skip">{labels.skipConflicts}</option>
+                  {!ticketExecutionContext ? <option value="skip">{labels.skipConflicts}</option> : null}
                 </select>
               </label>
             </>

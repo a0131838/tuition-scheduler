@@ -14,13 +14,15 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-23-r282` is live at runtime feature commit `8a4ed64`; it limits shared-package course transitions to one explicitly selected student and source course.
+- Current release line on this branch: `2026-07-24-r283` is ready; it simplifies the Ticket desk and atomically links admin web scheduling results to the exact Ticket action.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
+
+- Ticket-action workflow rollout: `2026-07-24-r283` changes the operator path for Ticket-linked new lessons, reschedules, cancellations and teacher replacements. The exact action ID and source lesson are validated inside the existing schedule transaction, so a mismatch rolls back the operation. Standalone schedule work is intentionally unchanged. After deployment, verify one existing Ticket detail read and use the next real scheduling request for the first controlled write; do not fabricate or cancel a real lesson solely for testing.
 
 - Shared-package student-course scope: `2026-07-23-r282` is live at runtime feature commit `8a4ed64`, with all 112 migrations current, PM2 PID `4063677` and health 200. Shared group sessions remain exceptions because their Class is common to every enrolled student; operators must review the preview before saving.
 
@@ -191,6 +193,37 @@
 - Workspace-access-form risk: `2026-05-29-r160` lets the owner manager edit Sales/CS focused workspace access from System User Admin; verify non-owner managers cannot write this endpoint and that main roles remain unchanged.
 - Tutor-Wise-payment-profile risk: `2026-05-29-r161` removes Bank Transfer as a new tutor payment method and adds Wise details plus finance review status; finance should verify PayNow/Wise details before payout exports are used.
 - Teacher-notice-attachment risk: `2026-05-30-r162` lets teachers open only the active Shared Docs file attached to an active teacher notice; verify the notice attachment is intentional before publishing because the full Shared Docs library remains manager/admin controlled.
+
+## 2026-07-24-r283 Ready
+
+- Scope: reduce the admin Ticket detail page to one request summary, one primary action per structured scheduling item and one collapsed advanced area, while keeping schedule mutation and Ticket-action completion in the same database transaction.
+- Business impact:
+  - Academic Operations can process each parent request from one visible action list instead of switching between duplicate status and edit panels.
+  - New lesson, reschedule, cancellation and teacher-replacement actions return to the originating Ticket and record the exact result and audit event.
+  - Multi-action Tickets remain open until every action is applied or cancelled; closed Tickets and mismatched lessons/actions reject the write.
+  - Existing standalone scheduling, miniapp execution, finance, contracts, package balances, attendance deduction rules, receipts, payroll and partner settlement remain unchanged.
+- Files:
+  - `app/admin/tickets/[id]/page.tsx`
+  - `app/admin/tickets/page.tsx`
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/_components/QuickScheduleModal.tsx`
+  - `app/api/admin/students/[id]/quick-appointment/route.ts`
+  - `app/api/admin/classes/[id]/sessions/reschedule/route.ts`
+  - `app/api/admin/students/[id]/sessions/cancel/route.ts`
+  - `app/api/admin/students/[id]/sessions/replace-teacher/route.ts`
+  - `lib/ticket-scheduling-action-write.ts`
+  - `tests/ticket-scheduling-action-write.test.ts`
+  - `tests/ticket-scheduling-actions.test.ts`
+- Verification before deploy:
+  - 16 focused Ticket tests
+  - 257 repository tests
+  - `npx tsc --noEmit`
+  - `git diff --check`
+  - `npm run build` (213 routes)
+- Post-deploy verification:
+  - Confirm local, GitHub and server commits are identical, PM2 is online and `/admin/login` returns HTTP 200.
+  - Confirm anonymous Ticket routes redirect to login and the Ticket list/detail routes return normally after authentication.
+  - Read one existing structured multi-action Ticket and confirm unresolved actions remain visible without changing production data.
 
 ## 2026-07-23-r278 Ready
 

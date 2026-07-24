@@ -3,6 +3,11 @@ import { requireAdmin } from "@/lib/auth";
 import { pickTeacherSessionConflict } from "@/lib/session-conflict";
 import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 import { checkTeacherSchedulingAvailability } from "@/lib/teacher-scheduling-availability";
+import { formatBusinessDateTime } from "@/lib/date-only";
+import {
+  applyAdminLinkedTicketSchedulingAction,
+  TicketSchedulingActionContextError,
+} from "@/lib/ticket-scheduling-action-write";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -26,7 +31,7 @@ async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt:
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  const user = await requireAdmin();
   const { id: classId } = await params;
   if (!classId) return bad("Missing classId");
 
@@ -41,11 +46,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const startAtStr = String(body?.startAt ?? "");
   const durationMin = Number(body?.durationMin ?? 60);
   const scope = String(body?.scope ?? "single");
+  const ticketId = String(body?.ticketId ?? "").trim();
+  const ticketActionId = String(body?.ticketActionId ?? "").trim();
 
   if (!sessionId || !startAtStr || !Number.isFinite(durationMin) || durationMin < 15) {
     return bad("Invalid input");
   }
   if (scope !== "single" && scope !== "future") return bad("Invalid scope");
+  if (Boolean(ticketId) !== Boolean(ticketActionId)) return bad("Invalid ticket action context", 409);
 
   const newAnchorStart = new Date(startAtStr);
   if (Number.isNaN(newAnchorStart.getTime())) return bad("Invalid startAt");
@@ -211,14 +219,40 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
   }
 
-  await prisma.$transaction(
-    planned.map((item) =>
-      prisma.session.update({
-        where: { id: item.session.id },
-        data: { startAt: item.startAt, endAt: item.endAt },
-      })
-    )
-  );
+  try {
+    await prisma.$transaction(async (tx) => {
+      for (const item of planned) {
+        await tx.session.update({
+          where: { id: item.session.id },
+          data: { startAt: item.startAt, endAt: item.endAt },
+        });
+      }
+      if (ticketId && ticketActionId) {
+        await applyAdminLinkedTicketSchedulingAction(tx, {
+          ticketId,
+          actionId: ticketActionId,
+          actionType: "RESCHEDULE_SESSION",
+          sourceSessionId: sessionId,
+          resultSessionId: sessionId,
+          resultText: `已完成改课：${formatBusinessDateTime(anchor.startAt)} → ${formatBusinessDateTime(newAnchorStart)}${scope === "future" ? "（含后续课程）" : ""}。`,
+          appliedByUserId: user.id,
+          actorEmail: user.email,
+          actorName: user.name,
+          actorRole: user.role,
+          auditAction: "ADMIN_TICKET_SESSION_RESCHEDULE_APPLIED",
+        });
+      }
+    });
+  } catch (error) {
+    if (error instanceof TicketSchedulingActionContextError) {
+      return bad(error.message, 409, { code: "TICKET_ACTION_CONTEXT" });
+    }
+    throw error;
+  }
 
-  return Response.json({ ok: true, rescheduled: planned.length });
+  return Response.json({
+    ok: true,
+    rescheduled: planned.length,
+    ticketActionApplied: Boolean(ticketId && ticketActionId),
+  });
 }

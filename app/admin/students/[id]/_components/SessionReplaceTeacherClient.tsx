@@ -13,6 +13,8 @@ export default function SessionReplaceTeacherClient({
   teachers,
   labels,
   returnHash,
+  initialTeacherId,
+  ticketExecutionContext,
 }: {
   studentId: string;
   sessionId: string;
@@ -26,9 +28,15 @@ export default function SessionReplaceTeacherClient({
     error: string;
   };
   returnHash?: string;
+  initialTeacherId?: string;
+  ticketExecutionContext?: {
+    ticketId: string;
+    actionId: string;
+    returnHref: string;
+  } | null;
 }) {
   const router = useRouter();
-  const [newTeacherId, setNewTeacherId] = useState("");
+  const [newTeacherId, setNewTeacherId] = useState(initialTeacherId || "");
   const [reason, setReason] = useState("");
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
@@ -41,7 +49,13 @@ export default function SessionReplaceTeacherClient({
     const res = await fetch(`/api/admin/students/${encodeURIComponent(studentId)}/sessions/replace-teacher`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId, newTeacherId, reason }),
+      body: JSON.stringify({
+        sessionId,
+        newTeacherId,
+        reason,
+        ticketId: ticketExecutionContext?.ticketId,
+        ticketActionId: ticketExecutionContext?.actionId,
+      }),
     });
     const data = await res.json().catch(() => null);
     if (!res.ok || !data?.ok) {
@@ -51,6 +65,10 @@ export default function SessionReplaceTeacherClient({
     setMsg("OK");
     setNewTeacherId("");
     setReason("");
+    if (ticketExecutionContext?.returnHref) {
+      router.push(ticketExecutionContext.returnHref);
+      return;
+    }
     restoreStudentDetailHashAfterRefresh(returnHash);
     router.refresh();
   }

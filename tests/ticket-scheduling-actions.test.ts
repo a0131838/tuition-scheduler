@@ -2,10 +2,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
+  existingResultSessionIdForAction,
+  isTicketSchedulingActionResolved,
   normalizeSchedulingActionInput,
   schedulingActionCanBeReady,
   schedulingActionDefinition,
   TICKET_SCHEDULING_ACTION_TYPES,
+  unresolvedTicketSchedulingActions,
 } from "../lib/ticket-scheduling-actions";
 
 test("source-session actions require exact lessons and action-specific execution details", () => {
@@ -45,6 +48,67 @@ test("ticket completion paths guard unresolved scheduling actions", () => {
   assert.match(miniappRoute, /schedulingCompletionBlock/);
 });
 
+test("only applied or cancelled scheduling actions are resolved", () => {
+  assert.equal(isTicketSchedulingActionResolved({ status: "APPLIED" }), true);
+  assert.equal(isTicketSchedulingActionResolved({ status: "CANCELLED" }), true);
+  assert.equal(isTicketSchedulingActionResolved({ status: "READY" }), false);
+  assert.equal(isTicketSchedulingActionResolved({ status: "NEED_INFO" }), false);
+  assert.deepEqual(
+    unresolvedTicketSchedulingActions([
+      { id: "a", status: "APPLIED" },
+      { id: "b", status: "READY" },
+      { id: "c", status: "NEED_INFO" },
+      { id: "d", status: "CANCELLED" },
+    ]).map((action) => action.id),
+    ["b", "c"]
+  );
+});
+
+test("existing-result links require an actual lesson result", () => {
+  assert.equal(
+    existingResultSessionIdForAction({
+      actionType: "CREATE_SESSION",
+      sourceSessionId: "source-session",
+      resultSessionId: "result-session",
+    }),
+    "result-session"
+  );
+  assert.equal(
+    existingResultSessionIdForAction({
+      actionType: "CREATE_SESSION",
+      sourceSessionId: "source-session",
+    }),
+    null
+  );
+  assert.equal(
+    existingResultSessionIdForAction({
+      actionType: "CANCEL_SESSION",
+      sourceSessionId: "source-session",
+      resultSessionId: "different-session",
+    }),
+    "source-session"
+  );
+  assert.equal(
+    existingResultSessionIdForAction({
+      actionType: "COORDINATE_ONLY",
+      sourceSessionId: "source-session",
+      resultSessionId: "result-session",
+    }),
+    null
+  );
+});
+
+test("ticket workbench exposes blockers and audited existing-result recovery", () => {
+  const webDetail = readFileSync("app/admin/tickets/[id]/page.tsx", "utf8");
+  const webList = readFileSync("app/admin/tickets/page.tsx", "utf8");
+  assert.match(webList, /个排课动作待执行/);
+  assert.match(webList, /前往处理排课动作/);
+  assert.match(webList, /blockedTicket/);
+  assert.match(webDetail, /ADMIN_LINK_EXISTING_SCHEDULING_RESULT/);
+  assert.match(webDetail, /existingResultVerified/);
+  assert.match(webDetail, /关联已有结果并写入审计/);
+});
+
 test("execution services write structured action results inside their existing transactions", () => {
   for (const file of [
     "lib/miniapp-session-scheduling.ts",
@@ -54,6 +118,57 @@ test("execution services write structured action results inside their existing t
   ]) {
     assert.match(readFileSync(file, "utf8"), /applyLinkedTicketSchedulingAction/);
   }
+});
+
+test("admin schedule execution carries exact ticket action context through every supported path", () => {
+  const files = [
+    "app/api/admin/students/[id]/quick-appointment/route.ts",
+    "app/api/admin/classes/[id]/sessions/reschedule/route.ts",
+    "app/api/admin/students/[id]/sessions/cancel/route.ts",
+    "app/api/admin/students/[id]/sessions/replace-teacher/route.ts",
+  ];
+  for (const file of files) {
+    const source = readFileSync(file, "utf8");
+    assert.match(source, /ticketActionId/);
+    assert.match(source, /applyAdminLinkedTicketSchedulingAction/);
+    assert.match(source, /TICKET_ACTION_CONTEXT/);
+  }
+
+  const writer = readFileSync("lib/ticket-scheduling-action-write.ts", "utf8");
+  assert.match(writer, /actionId\?: string/);
+  assert.match(writer, /matchedActionId !== input\.actionId/);
+  assert.match(writer, /completedAt: actionState\.allResolved/);
+  assert.match(writer, /auditLog\.create/);
+});
+
+test("simplified ticket desk keeps one execution path and moves legacy controls to advanced disclosure", () => {
+  const detail = readFileSync("app/admin/tickets/[id]/page.tsx", "utf8");
+  const list = readFileSync("app/admin/tickets/page.tsx", "utf8");
+  assert.match(detail, /Request \/ 家长需求/);
+  assert.match(detail, /Actions \/ 执行动作/);
+  assert.match(detail, /History & advanced \/ 历史与高级操作/);
+  assert.match(detail, /ticketActionType/);
+  assert.match(detail, /安排新课程 \/ Schedule lesson/);
+  assert.match(detail, /处理取消或请假 \/ Process cancellation/);
+  assert.match(detail, /历史、状态与高级修改/);
+  assert.doesNotMatch(detail, /href=\{`\/admin\/schedule\?sessionId=/);
+  assert.match(list, /unresolvedActions\.length === 0 \? \(/);
+});
+
+test("student schedule clients return to the originating ticket after an atomic action update", () => {
+  for (const file of [
+    "app/admin/_components/QuickScheduleModal.tsx",
+    "app/admin/students/[id]/_components/SessionCancelRestoreClient.tsx",
+    "app/admin/students/[id]/_components/SessionReplaceTeacherClient.tsx",
+  ]) {
+    const source = readFileSync(file, "utf8");
+    assert.match(source, /ticketExecutionContext/);
+    assert.match(source, /ticketActionId/);
+    assert.match(source, /returnHref/);
+  }
+  const studentPage = readFileSync("app/admin/students/[id]/page.tsx", "utf8");
+  assert.match(studentPage, /ticketSessionId/);
+  assert.match(studentPage, /Ticket target/);
 });
 
 test("public web intake defaults to the guided multi-action workflow", () => {

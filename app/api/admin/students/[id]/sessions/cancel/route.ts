@@ -1,13 +1,18 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/lib/package-sharing";
+import { formatBusinessDateTime } from "@/lib/date-only";
+import {
+  applyAdminLinkedTicketSchedulingAction,
+  TicketSchedulingActionContextError,
+} from "@/lib/ticket-scheduling-action-write";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  const user = await requireAdmin();
   const { id: studentId } = await params;
   if (!studentId) return bad("Missing studentId");
 
@@ -21,8 +26,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const sessionId = String(body?.sessionId ?? "");
   const charge = Boolean(body?.charge);
   const note = String(body?.note ?? "").trim();
+  const ticketId = String(body?.ticketId ?? "").trim();
+  const ticketActionId = String(body?.ticketActionId ?? "").trim();
 
   if (!sessionId) return bad("Missing sessionId");
+  if (Boolean(ticketId) !== Boolean(ticketActionId)) return bad("Invalid ticket action context", 409);
 
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
@@ -142,8 +150,25 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           excusedCharge: charge,
         },
       });
+      if (ticketId && ticketActionId) {
+        await applyAdminLinkedTicketSchedulingAction(tx, {
+          ticketId,
+          actionId: ticketActionId,
+          actionType: "CANCEL_SESSION",
+          sourceSessionId: sessionId,
+          resultSessionId: sessionId,
+          chargePolicy: charge ? "CHARGE" : "NO_CHARGE",
+          resultText: `已处理请假/取消：${formatBusinessDateTime(session.startAt)}；${charge ? "保留扣课" : "不扣课"}。`,
+          appliedByUserId: user.id,
+          actorEmail: user.email,
+          actorName: user.name,
+          actorRole: user.role,
+          auditAction: "ADMIN_TICKET_SESSION_CANCEL_APPLIED",
+        });
+      }
     });
   } catch (e: any) {
+    if (e instanceof TicketSchedulingActionContextError) return bad(e.message, 409, { code: "TICKET_ACTION_CONTEXT" });
     const code = String(e?.code ?? "");
     if (code === "NO_ACTIVE_HOURS_PACKAGE") return bad("No active HOURS package", 409, { code });
     if (code === "PKG_NOT_FOUND") return bad("Package not found", 409, { code });
@@ -153,5 +178,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return bad(e?.message ?? "Cancel failed", 500);
   }
 
-  return Response.json({ ok: true, status: "EXCUSED", excusedCharge: charge, deductedMinutes: desiredDeductedMinutes });
+  return Response.json({
+    ok: true,
+    status: "EXCUSED",
+    excusedCharge: charge,
+    deductedMinutes: desiredDeductedMinutes,
+    ticketActionApplied: Boolean(ticketId && ticketActionId),
+  });
 }

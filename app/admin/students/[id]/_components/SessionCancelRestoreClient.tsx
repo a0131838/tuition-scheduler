@@ -66,9 +66,14 @@ export default function SessionCancelRestoreClient(props: {
     note: string;
   };
   returnHash?: string;
+  ticketExecutionContext?: {
+    ticketId: string;
+    actionId: string;
+    returnHref: string;
+  } | null;
 }) {
   const router = useRouter();
-  const { studentId, sessionId, initialCancelled, initialCharge, variant, labels, returnHash } = props;
+  const { studentId, sessionId, initialCancelled, initialCharge, variant, labels, returnHash, ticketExecutionContext } = props;
   const [cancelled, setCancelled] = useState(initialCancelled);
   const [charge, setCharge] = useState(Boolean(initialCharge));
   const [note, setNote] = useState("");
@@ -85,13 +90,23 @@ export default function SessionCancelRestoreClient(props: {
       const res = await fetch(`/api/admin/students/${encodeURIComponent(studentId)}/sessions/cancel`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sessionId, charge, note }),
+        body: JSON.stringify({
+          sessionId,
+          charge,
+          note,
+          ticketId: ticketExecutionContext?.ticketId,
+          ticketActionId: ticketExecutionContext?.actionId,
+        }),
       });
       const data = await jsonOrNull(res);
       if (!res.ok || !data?.ok) throw new Error(String(data?.message ?? "Cancel failed"));
       setCancelled(true);
       applySessionVisualState(sessionId, true);
       setDoneMsg("OK");
+      if (ticketExecutionContext?.returnHref) {
+        router.push(ticketExecutionContext.returnHref);
+        return;
+      }
       restoreStudentDetailHashAfterRefresh(returnHash);
       router.refresh();
     } catch (e: any) {

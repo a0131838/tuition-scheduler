@@ -18,6 +18,28 @@ export const TICKET_SCHEDULING_ACTION_STATUSES = [
   { value: "CANCELLED", label: "无需执行" },
 ] as const;
 
+const RESOLVED_SCHEDULING_ACTION_STATUSES = new Set(["APPLIED", "CANCELLED"]);
+
+export function isTicketSchedulingActionResolved(action: { status: string }) {
+  return RESOLVED_SCHEDULING_ACTION_STATUSES.has(action.status);
+}
+
+export function unresolvedTicketSchedulingActions<T extends { status: string }>(actions: T[]) {
+  return actions.filter((action) => !isTicketSchedulingActionResolved(action));
+}
+
+export function existingResultSessionIdForAction(input: {
+  actionType: string;
+  sourceSessionId?: string | null;
+  resultSessionId?: string | null;
+}) {
+  if (input.actionType === "CREATE_SESSION") return input.resultSessionId || null;
+  if (["RESCHEDULE_SESSION", "CANCEL_SESSION", "REPLACE_TEACHER"].includes(input.actionType)) {
+    return input.sourceSessionId || null;
+  }
+  return null;
+}
+
 export type TicketSchedulingActionInput = {
   actionType: string;
   sourceSessionId?: string | null;

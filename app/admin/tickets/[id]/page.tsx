@@ -60,6 +60,8 @@ import {
 } from "@/lib/scheduling-coordination";
 import { sessionBelongsToStudentWhere } from "@/lib/session-students";
 import {
+  existingResultSessionIdForAction,
+  isTicketSchedulingActionResolved,
   normalizeSchedulingActionInput,
   schedulingActionCanBeReady,
   schedulingActionDefinition,
@@ -235,8 +237,7 @@ async function updateStatusAction(formData: FormData) {
   }
   if (
     nextStatus === "Completed" &&
-    row.schedulingActions.length > 0 &&
-    row.schedulingActions.some((action) => !["APPLIED", "CANCELLED"].includes(action.status))
+    row.schedulingActions.some((action) => !isTicketSchedulingActionResolved(action))
   ) {
     redirect(appendQuery(back, { err: "scheduling-actions-open" }));
   }
@@ -634,6 +635,156 @@ async function updateTicketSchedulingActionAction(formData: FormData) {
   redirect(appendQuery(back, { ok: "scheduling-action-updated" }));
 }
 
+async function linkExistingSchedulingResultAction(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  const ticketId = trimValue(formData, "id", 80);
+  const actionId = trimValue(formData, "actionId", 80);
+  const resultSessionId = trimValue(formData, "existingResultSessionId", 80) || null;
+  const resolutionNote = trimValue(formData, "existingResultNote", 1000);
+  const verified = trimValue(formData, "existingResultVerified", 10) === "1";
+  const back = sanitizeAdminBack(trimValue(formData, "back", 1000), `/admin/tickets/${ticketId}#scheduling-actions`);
+
+  if (!resolutionNote) redirect(appendQuery(back, { err: "existing-result-note" }));
+  if (!verified) redirect(appendQuery(back, { err: "existing-result-verification" }));
+
+  const current = await prisma.ticketSchedulingAction.findFirst({
+    where: { id: actionId, ticketId },
+    include: {
+      ticket: {
+        select: {
+          studentId: true,
+          status: true,
+          isArchived: true,
+        },
+      },
+    },
+  });
+  if (!current || current.ticket.isArchived || ["Completed", "Cancelled"].includes(current.ticket.status)) {
+    redirect(appendQuery(back, { err: "scheduling-action-closed" }));
+  }
+  if (isTicketSchedulingActionResolved(current)) {
+    redirect(appendQuery(back, { err: "scheduling-action-resolved" }));
+  }
+  if (!current.ticket.studentId) {
+    redirect(appendQuery(back, { err: "scheduling-action-student" }));
+  }
+
+  const linkedSessionId = existingResultSessionIdForAction({
+    actionType: current.actionType,
+    sourceSessionId: current.sourceSessionId,
+    resultSessionId,
+  });
+  if (!linkedSessionId) {
+    redirect(appendQuery(back, { err: "existing-result-session" }));
+  }
+  const linkedSession = await prisma.session.findFirst({
+    where: {
+      id: linkedSessionId,
+      ...sessionBelongsToStudentWhere(current.ticket.studentId),
+    },
+    select: { id: true },
+  });
+  if (!linkedSession) {
+    redirect(appendQuery(back, { err: "existing-result-session" }));
+  }
+
+  const now = new Date();
+  const actorName = user.name?.trim() || user.email;
+  const visibleLog = `[${formatBusinessDateTime(now)}] ${actorName} · 关联已有排课结果\n${resolutionNote}`;
+
+  const linked = await prisma.$transaction(async (tx) => {
+    const latestTicket = await tx.ticket.findUnique({
+      where: { id: ticketId },
+      select: {
+        status: true,
+        summary: true,
+        risksNotes: true,
+        isArchived: true,
+      },
+    });
+    if (!latestTicket || latestTicket.isArchived || ["Completed", "Cancelled"].includes(latestTicket.status)) {
+      return false;
+    }
+    const applied = await tx.ticketSchedulingAction.updateMany({
+      where: {
+        id: actionId,
+        ticketId,
+        status: { notIn: ["APPLIED", "CANCELLED"] },
+      },
+      data: {
+        status: "APPLIED",
+        resultSessionId: linkedSession.id,
+        appliedAt: now,
+        appliedByUserId: user.id,
+        notes: current.notes
+          ? `${current.notes}\n\n[Existing result linked] ${resolutionNote}`
+          : `[Existing result linked] ${resolutionNote}`,
+      },
+    });
+    if (applied.count !== 1) return false;
+
+    const unresolved = await tx.ticketSchedulingAction.count({
+      where: { ticketId, status: { notIn: ["APPLIED", "CANCELLED"] } },
+    });
+    const allResolved = unresolved === 0;
+    await tx.ticket.update({
+      where: { id: ticketId },
+      data: {
+        status: allResolved ? "Completed" : undefined,
+        systemUpdated: "Y",
+        completedAt: allResolved ? now : undefined,
+        completedByUserId: allResolved ? user.id : undefined,
+        nextAction: allResolved
+          ? "所有排课动作已核验完成，无需继续跟进。"
+          : `已有结果已关联，仍有 ${unresolved} 个排课动作待执行。`,
+        nextActionDue: allResolved ? null : undefined,
+        summary: allResolved
+          ? `${latestTicket.summary ? `${latestTicket.summary}\n` : ""}[Completed Note] ${resolutionNote}`
+          : undefined,
+        risksNotes: latestTicket.risksNotes
+          ? `${latestTicket.risksNotes}\n\n${visibleLog}`
+          : visibleLog,
+        lastUpdateAt: now,
+      },
+    });
+    if (allResolved) {
+      await tx.parentAvailabilityRequest.updateMany({
+        where: { ticketId },
+        data: { isActive: false },
+      });
+    }
+    await tx.auditLog.create({
+      data: {
+        actorEmail: user.email.trim().toLowerCase(),
+        actorName: user.name?.trim() || null,
+        actorRole: user.role,
+        module: "TICKETS",
+        action: "ADMIN_LINK_EXISTING_SCHEDULING_RESULT",
+        entityType: "TicketSchedulingAction",
+        entityId: actionId,
+        meta: {
+          ticketId,
+          actionType: current.actionType,
+          fromStatus: current.status,
+          resultSessionId: linkedSession.id,
+          resolutionNote,
+          allResolved,
+        },
+      },
+    });
+    return true;
+  });
+  if (!linked) {
+    redirect(appendQuery(back, { err: "scheduling-action-resolved" }));
+  }
+
+  revalidatePath("/admin/tickets");
+  revalidatePath(`/admin/tickets/${ticketId}`);
+  revalidatePath("/teacher/tickets");
+  redirect(appendQuery(back, { ok: "existing-result-linked" }));
+}
+
 export default async function AdminTicketDetailPage({
   params,
   searchParams,
@@ -688,17 +839,35 @@ export default async function AdminTicketDetailPage({
   if (!row) notFound();
 
   const isSchedulingTicket = TICKET_SCHEDULING_ACTION_TYPES.some((item) => item.ticketType === row.type) || row.type === "新排课";
-  const upcomingSessions = isSchedulingTicket && row.studentId
-    ? await prisma.session.findMany({
-        where: { startAt: { gte: new Date() }, ...sessionBelongsToStudentWhere(row.studentId) },
-        include: {
-          teacher: { select: { name: true } },
-          class: { include: { course: { select: { name: true } }, subject: { select: { name: true } }, level: { select: { name: true } }, teacher: { select: { name: true } } } },
-        },
-        orderBy: { startAt: "asc" },
-        take: 30,
-      })
-    : [];
+  const sessionInclude = {
+    teacher: { select: { name: true } },
+    class: {
+      include: {
+        course: { select: { name: true } },
+        subject: { select: { name: true } },
+        level: { select: { name: true } },
+        teacher: { select: { name: true } },
+      },
+    },
+  } as const;
+  const existingResultStart = new Date();
+  existingResultStart.setDate(existingResultStart.getDate() - 180);
+  const [upcomingSessions, existingResultSessions] = isSchedulingTicket && row.studentId
+    ? await Promise.all([
+        prisma.session.findMany({
+          where: { startAt: { gte: new Date() }, ...sessionBelongsToStudentWhere(row.studentId) },
+          include: sessionInclude,
+          orderBy: { startAt: "asc" },
+          take: 30,
+        }),
+        prisma.session.findMany({
+          where: { startAt: { gte: existingResultStart }, ...sessionBelongsToStudentWhere(row.studentId) },
+          include: sessionInclude,
+          orderBy: { startAt: "desc" },
+          take: 80,
+        }),
+      ])
+    : [[], []];
 
   const parsed = parseTicketSituationSummary(row.summary);
   const template = getTicketTypeTemplate(row.type);
@@ -819,6 +988,25 @@ export default async function AdminTicketDetailPage({
     { key: "Exception", label: "异常升级", caption: "Exception" },
     { key: "Cancelled", label: "已取消", caption: "Cancelled" },
   ];
+  const unresolvedSchedulingActions = row.schedulingActions.filter((action) => !isTicketSchedulingActionResolved(action));
+  const businessStatusLabel = row.isArchived
+    ? "已归档"
+    : row.status === "Completed"
+      ? "已完成"
+      : row.status === "Cancelled"
+        ? "已取消"
+        : unresolvedSchedulingActions.some((action) => action.status === "WAITING_PARENT")
+          ? "等待家长"
+          : unresolvedSchedulingActions.some((action) => action.status === "WAITING_TEACHER")
+            ? "等待老师"
+            : unresolvedSchedulingActions.some((action) => action.status === "NEED_INFO")
+              ? "资料待补充"
+              : unresolvedSchedulingActions.length > 0
+                ? `处理中（${unresolvedSchedulingActions.length} 个动作）`
+                : row.status === "Confirmed"
+                  ? "处理中"
+                  : row.status;
+  const proofItems = proofItemsAll(row.proof);
   const nextActionLabel = row.nextAction?.trim() || (row.status === "Completed" ? "Closed / 已闭环" : "Need manual follow-up / 需要人工跟进");
 
   return (
@@ -845,7 +1033,7 @@ export default async function AdminTicketDetailPage({
             <div style={{ fontSize: 12, color: "#2563eb", fontWeight: 700, marginBottom: 4 }}>后台工单详情 / Ticket Detail</div>
             <h2 style={{ margin: 0 }}>{row.ticketNo}</h2>
             <div style={{ color: "#475569", marginTop: 6 }}>
-              当前先看摘要和流程，再直接跳去状态动作、排课控制台或工单编辑区。
+              先确认家长需求，再逐项完成正式课表动作；系统会自动更新动作和工单状态。
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -866,7 +1054,7 @@ export default async function AdminTicketDetailPage({
           </div>
           <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
             <div style={{ fontSize: 12, color: "#64748b" }}>Status / 当前状态</div>
-            <div style={{ fontWeight: 800, marginTop: 8 }}>{row.status}</div>
+            <div style={{ fontWeight: 800, marginTop: 8 }}>{businessStatusLabel}</div>
           </div>
           <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
             <div style={{ fontSize: 12, color: "#64748b" }}>Owner / 负责人</div>
@@ -894,12 +1082,9 @@ export default async function AdminTicketDetailPage({
           flexWrap: "wrap",
         }}
       >
-        <a href="#ticket-overview">Overview / 概览</a>
-        <a href="#ticket-workflow">Workflow / 流程</a>
-        {isSchedulingTicket ? <a href="#scheduling-actions">Scheduling actions / 排课动作</a> : null}
-        <a href="#status-action">Status action / 状态动作</a>
-        <a href="#coordination-console">Coordination / 排课控制台</a>
-        <a href="#ticket-edit">Edit / 编辑</a>
+        <a href="#ticket-request">Request / 家长需求</a>
+        {isSchedulingTicket ? <a href="#scheduling-actions">Actions / 执行动作</a> : null}
+        <a href="#ticket-advanced">History & advanced / 历史与高级操作</a>
       </div>
 
       {sourceWorkflow === "todo" ? (
@@ -927,6 +1112,9 @@ export default async function AdminTicketDetailPage({
           {err === "scheduling-action-resolved" && "已执行的动作不能手工改写 / Applied action is locked."}
           {err === "scheduling-action-student" && "请先给工单关联学生 / Link the ticket to a student first."}
           {err === "scheduling-action-source" && "所选原课程不属于该学生 / Selected lesson does not belong to this student."}
+          {err === "existing-result-note" && "关联已有结果时必须填写核验备注 / Verification note is required."}
+          {err === "existing-result-verification" && "请先确认正式课表已经完成对应处理 / Confirm the formal schedule was already updated."}
+          {err === "existing-result-session" && "请选择属于该学生的实际处理课程 / Select the student's actual result lesson."}
           {err === "completed-locked" && "已完成工单不可修改，请使用归档 / Completed ticket is locked. Use archive."}
           {err === "archived-locked" && "已归档工单不可修改 / Archived ticket is locked."}
           {err === "need-closed-archive" && "仅已完成或已取消工单可归档 / Only completed or cancelled tickets can be archived."}
@@ -980,34 +1168,65 @@ export default async function AdminTicketDetailPage({
           排课动作已保存 / Scheduling action saved
         </div>
       ) : null}
+      {ok === "existing-result-linked" ? (
+        <div style={{ color: "#166534", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: 10 }}>
+          已关联正式课表中的处理结果，并写入审计记录 / Existing schedule result linked and audited
+        </div>
+      ) : null}
 
-      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))" }}>
-        <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
-              <div style={{ fontSize: 12, color: "#64748b" }}>学生 / Student</div>
-              <div style={{ fontWeight: 700, marginTop: 4 }}>{row.studentName}</div>
-              {row.studentId ? (
-                <Link scroll={false} href={`/admin/students/${row.studentId}#scheduling-coordination`} style={{ marginTop: 8, fontSize: 12 }}>
-                  打开学生详情 / Open student
-                </Link>
-              ) : null}
-            </div>
-        <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
-          <div style={{ fontSize: 12, color: "#64748b" }}>负责人 / Owner</div>
-          <div style={{ fontWeight: 700, marginTop: 4 }}>{asText(row.owner)}</div>
-        </div>
-        <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
-          <div style={{ fontSize: 12, color: "#64748b" }}>当前状态 / Status</div>
-          <div style={{ fontWeight: 700, marginTop: 4 }}>{row.status}</div>
-        </div>
-        <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: overdue ? "#fff1f2" : "#fff" }}>
-          <div style={{ fontSize: 12, color: "#64748b" }}>下一步截止 / Due</div>
-          <div style={{ fontWeight: 700, marginTop: 4, color: overdue ? "#b91c1c" : "#0f172a" }}>
-            {row.nextActionDue ? formatBusinessDateTime(row.nextActionDue) : "-"}
+      <section
+        id="ticket-request"
+        style={{
+          border: "1px solid #cbd5e1",
+          borderRadius: 14,
+          padding: 16,
+          background: "#fff",
+          display: "grid",
+          gap: 12,
+          scrollMarginTop: 96,
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <div>
+            <div style={{ color: "#475569", fontSize: 12, fontWeight: 800 }}>Request / 家长需求</div>
+            <div style={{ fontSize: 20, fontWeight: 850, marginTop: 4 }}>{row.studentName} · {normalizeTicketTypeValue(row.type)}</div>
+          </div>
+          <div style={{ color: overdue ? "#b91c1c" : "#475569", fontWeight: 750 }}>
+            {row.nextActionDue ? `截止 ${formatBusinessDateTime(row.nextActionDue)}` : "无单独截止时间"}
           </div>
         </div>
-      </div>
+        <div style={{ borderLeft: "4px solid #2563eb", paddingLeft: 12 }}>
+          <div style={{ fontSize: 12, color: "#64748b", marginBottom: 5 }}>家长原话或问题摘要</div>
+          <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.65 }}>
+            {formatSchedulingCoordinationSystemText(asText(parsed.currentIssue || row.summary))}
+          </div>
+        </div>
+        <div style={{ borderLeft: "4px solid #94a3b8", paddingLeft: 12 }}>
+          <div style={{ fontSize: 12, color: "#64748b", marginBottom: 5 }}>希望处理</div>
+          <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.65 }}>
+            {formatSchedulingCoordinationSystemText(asText(parsed.requiredAction || row.nextAction))}
+          </div>
+        </div>
+        {proofItems.length > 0 ? (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <span style={{ color: "#64748b", fontSize: 12, fontWeight: 750 }}>附件 {proofItems.length} 个：</span>
+            {proofItems.map((item, index) => {
+              const href = normalizeProofUrl(item);
+              const isLink = href.startsWith("/") || href.startsWith("http://") || href.startsWith("https://");
+              return isLink ? (
+                <a key={`${row.id}-request-proof-${index}`} href={href} target="_blank" rel="noreferrer">
+                  查看附件 {index + 1}
+                </a>
+              ) : (
+                <span key={`${row.id}-request-proof-${index}`}>{item}</span>
+              );
+            })}
+          </div>
+        ) : null}
+      </section>
 
-      <div id="ticket-workflow" style={{ border: "1px solid #e2e8f0", borderRadius: 14, padding: 14, background: "#fff", scrollMarginTop: 96 }}>
+      <details id="ticket-workflow" style={{ border: "1px solid #e2e8f0", borderRadius: 14, padding: 14, background: "#fff", scrollMarginTop: 96 }}>
+        <summary style={{ cursor: "pointer", fontWeight: 800 }}>内部流程状态（高级）/ Internal workflow state</summary>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
           <div style={{ fontWeight: 700 }}>流程图 / Workflow</div>
           <div style={{ fontSize: 12, color: "#64748b" }}>
@@ -1076,7 +1295,7 @@ export default async function AdminTicketDetailPage({
             </div>
           </div>
         </div>
-      </div>
+      </details>
 
       {isSchedulingTicket ? (
         <div id="scheduling-actions" style={{ border: "1px solid #fed7aa", borderRadius: 16, padding: 16, background: "#fffaf5", display: "grid", gap: 14, scrollMarginTop: 96 }}>
@@ -1094,8 +1313,44 @@ export default async function AdminTicketDetailPage({
               {row.schedulingActions.map((action, index) => {
                 const definition = schedulingActionDefinition(action.actionType);
                 const locked = ["APPLIED", "CANCELLED"].includes(action.status) || row.isArchived || ["Completed", "Cancelled"].includes(row.status);
+                const executionParams = new URLSearchParams({
+                  ticketId: row.id,
+                  ticketActionId: action.id,
+                  ticketActionType: action.actionType,
+                  ticketReturn: `${selfHref}#scheduling-actions`,
+                });
+                if (action.sourceSessionId) executionParams.set("ticketSessionId", action.sourceSessionId);
+                if (action.requestedTeacherId) executionParams.set("ticketRequestedTeacherId", action.requestedTeacherId);
+                if (action.requestedStartAt) executionParams.set("quickStartAt", formatBusinessDateTime(action.requestedStartAt).replace(" ", "T"));
+                if (action.durationMin) executionParams.set("quickDurationMin", String(action.durationMin));
+                let executionHref = "";
+                let executionLabel = "";
+                if (!locked && row.studentId) {
+                  if (action.actionType === "CREATE_SESSION") {
+                    executionParams.set("focus", "quick-schedule");
+                    executionParams.set("quickOpen", "1");
+                    executionParams.set("quickMode", "create");
+                    executionHref = `/admin/students/${row.studentId}?${executionParams.toString()}#quick-schedule`;
+                    executionLabel = "安排新课程 / Schedule lesson";
+                  } else if (action.actionType === "RESCHEDULE_SESSION" && action.sourceSessionId) {
+                    executionParams.set("focus", "quick-schedule");
+                    executionParams.set("quickOpen", "1");
+                    executionParams.set("quickMode", "reschedule");
+                    executionHref = `/admin/students/${row.studentId}?${executionParams.toString()}#quick-schedule`;
+                    executionLabel = "修改这节课 / Reschedule lesson";
+                  } else if (action.actionType === "CANCEL_SESSION" && action.sourceSessionId) {
+                    executionHref = `/admin/students/${row.studentId}?${executionParams.toString()}#session-${action.sourceSessionId}`;
+                    executionLabel = "处理取消或请假 / Process cancellation";
+                  } else if (action.actionType === "REPLACE_TEACHER" && action.sourceSessionId) {
+                    executionHref = `/admin/students/${row.studentId}?${executionParams.toString()}#session-${action.sourceSessionId}`;
+                    executionLabel = "更换本节课老师 / Replace teacher";
+                  } else if (action.actionType === "COORDINATE_ONLY") {
+                    executionHref = studentCoordinationHref;
+                    executionLabel = "进入排课协调 / Open coordination";
+                  }
+                }
                 return (
-                  <form key={action.id} action={updateTicketSchedulingActionAction} style={{ borderTop: "3px solid #292524", paddingTop: 12, display: "grid", gap: 10 }}>
+                  <form key={action.id} action={updateTicketSchedulingActionAction} style={{ borderTop: "3px solid #292524", paddingTop: 12, display: "grid", gap: 12 }}>
                     <input type="hidden" name="id" value={row.id} />
                     <input type="hidden" name="actionId" value={action.id} />
                     <input type="hidden" name="back" value={`${selfHref}#scheduling-actions`} />
@@ -1106,22 +1361,100 @@ export default async function AdminTicketDetailPage({
                     {action.sourceSession ? (
                       <div style={{ borderLeft: "4px solid #ea580c", paddingLeft: 10 }}><div style={{ fontWeight: 750 }}>原课程：{formatBusinessDateTime(action.sourceSession.startAt)}–{formatBusinessTimeOnly(action.sourceSession.endAt)}</div><div style={{ color: "#57534e", fontSize: 13 }}>{action.sourceSession.class.course.name} · {action.sourceSession.teacher?.name ?? action.sourceSession.class.teacher.name}</div></div>
                     ) : definition?.needsSource ? <div style={{ color: "#b91c1c", fontWeight: 750 }}>还缺：选择要修改的原课程</div> : null}
+                    {action.requestedStartAt || action.courseLabel || action.notes ? (
+                      <div style={{ display: "grid", gap: 4, color: "#57534e", fontSize: 13 }}>
+                        {action.requestedStartAt ? <div><b>希望时间：</b>{formatBusinessDateTime(action.requestedStartAt)}</div> : null}
+                        {action.courseLabel ? <div><b>课程：</b>{action.courseLabel}</div> : null}
+                        {action.notes ? <div style={{ whiteSpace: "pre-wrap" }}><b>补充说明：</b>{action.notes}</div> : null}
+                      </div>
+                    ) : null}
                     {!locked ? (
-                      <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
-                        <label>原课程
-                          <select name="sourceSessionId" defaultValue={action.sourceSessionId ?? ""} style={{ width: "100%" }}>
-                            <option value="">{definition?.needsSource ? "请选择原课程" : "无需原课程"}</option>
-                            {upcomingSessions.map((session) => <option key={session.id} value={session.id}>{formatBusinessDateTime(session.startAt)} · {session.class.course.name} · {session.teacher?.name ?? session.class.teacher.name}</option>)}
-                          </select>
-                        </label>
-                        <label>执行状态
-                          <select name="actionStatus" defaultValue={action.status} style={{ width: "100%" }}>
-                            {TICKET_SCHEDULING_ACTION_STATUSES.filter((item) => item.value !== "APPLIED").map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-                          </select>
-                        </label>
-                        <label style={{ gridColumn: "1 / -1" }}>动作说明<textarea name="notes" rows={2} defaultValue={action.notes ?? ""} style={{ width: "100%", boxSizing: "border-box" }} /></label>
-                        <button type="submit">保存动作 / Save action</button>
-                        {action.sourceSessionId ? <a href={`/admin/schedule?sessionId=${encodeURIComponent(action.sourceSessionId)}`} style={{ alignSelf: "center", fontWeight: 750 }}>在正式课表中处理 →</a> : null}
+                      <div style={{ display: "grid", gap: 10 }}>
+                        {executionHref ? (
+                          <a
+                            href={executionHref}
+                            style={{
+                              justifySelf: "start",
+                              padding: "10px 14px",
+                              borderRadius: 8,
+                              background: "#ea580c",
+                              color: "#fff",
+                              fontWeight: 850,
+                              textDecoration: "none",
+                            }}
+                          >
+                            {executionLabel} →
+                          </a>
+                        ) : (
+                          <div style={{ color: "#b91c1c", fontWeight: 750 }}>
+                            {row.studentId ? "请先在下方补充原课程或动作资料。" : "请先给工单关联正确学生。"}
+                          </div>
+                        )}
+                        <details open={Boolean(definition?.needsSource && !action.sourceSessionId)} style={{ borderTop: "1px solid #fdba74", paddingTop: 10 }}>
+                          <summary style={{ cursor: "pointer", color: "#7c2d12", fontWeight: 800 }}>
+                            补充资料或设置等待状态 / Update details
+                          </summary>
+                          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", marginTop: 10 }}>
+                            <label>原课程
+                              <select name="sourceSessionId" defaultValue={action.sourceSessionId ?? ""} style={{ width: "100%" }}>
+                                <option value="">{definition?.needsSource ? "请选择原课程" : "无需原课程"}</option>
+                                {upcomingSessions.map((session) => <option key={session.id} value={session.id}>{formatBusinessDateTime(session.startAt)} · {session.class.course.name} · {session.teacher?.name ?? session.class.teacher.name}</option>)}
+                              </select>
+                            </label>
+                            <label>当前等待状态
+                              <select name="actionStatus" defaultValue={action.status} style={{ width: "100%" }}>
+                                {TICKET_SCHEDULING_ACTION_STATUSES.filter((item) => item.value !== "APPLIED").map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                              </select>
+                            </label>
+                            <label style={{ gridColumn: "1 / -1" }}>动作说明<textarea name="notes" rows={2} defaultValue={action.notes ?? ""} style={{ width: "100%", boxSizing: "border-box" }} /></label>
+                            <button type="submit" formNoValidate>保存补充资料 / Save details</button>
+                          </div>
+                        </details>
+                        {["CREATE_SESSION", "RESCHEDULE_SESSION", "CANCEL_SESSION", "REPLACE_TEACHER"].includes(action.actionType) ? (
+                          <details style={{ borderTop: "1px solid #fdba74", paddingTop: 10 }}>
+                            <summary style={{ cursor: "pointer", color: "#9a3412", fontWeight: 800 }}>
+                              已在其他页面处理？关联已有结果
+                            </summary>
+                            <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+                              <div style={{ color: "#7c2d12", fontSize: 12 }}>
+                                仅当正式课表已经完成对应操作时使用。系统会记录操作者、课程和核验备注；不要用它跳过尚未执行的改课或取消。
+                              </div>
+                              {action.actionType === "CREATE_SESSION" ? (
+                                <label>
+                                  实际新增课程
+                                  <select name="existingResultSessionId" defaultValue="" style={{ width: "100%" }}>
+                                    <option value="">请选择正式课表中的对应课程</option>
+                                    {existingResultSessions.map((session) => (
+                                      <option key={session.id} value={session.id}>
+                                        {formatBusinessDateTime(session.startAt)} · {session.class.course.name} · {session.teacher?.name ?? session.class.teacher.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                              ) : (
+                                <div style={{ color: "#57534e", fontSize: 13 }}>
+                                  核验对象固定为上方原课程，系统不会允许改选该学生的其他课程。
+                                </div>
+                              )}
+                              <label>
+                                核验备注
+                                <textarea
+                                  name="existingResultNote"
+                                  rows={3}
+                                  placeholder="说明在哪个页面、由谁、何时完成了处理，以及核对结果"
+                                  style={{ width: "100%", boxSizing: "border-box" }}
+                                />
+                              </label>
+                              <label style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                                <input name="existingResultVerified" type="checkbox" value="1" style={{ marginTop: 3 }} />
+                                <span>我已核对正式课表，确认该动作已经实际完成，不会造成重复排课、重复取消或重复改课。</span>
+                              </label>
+                              <button type="submit" formAction={linkExistingSchedulingResultAction}>
+                                关联已有结果并写入审计
+                              </button>
+                            </div>
+                          </details>
+                        ) : null}
                       </div>
                     ) : (
                       <div style={{ color: "#57534e", fontSize: 13 }}>该动作已经锁定；执行结果必须来自正式排课操作。</div>
@@ -1134,18 +1467,30 @@ export default async function AdminTicketDetailPage({
           ) : <div style={{ color: "#9a3412", fontWeight: 750 }}>这是一张旧工单，还没有结构化动作。请先添加一个动作；不会自动猜测历史文字。</div>}
 
           {!row.isArchived && !["Completed", "Cancelled"].includes(row.status) ? (
-            <form action={addTicketSchedulingActionAction} style={{ borderTop: "1px solid #fdba74", paddingTop: 14, display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
-              <input type="hidden" name="id" value={row.id} /><input type="hidden" name="back" value={`${selfHref}#scheduling-actions`} />
-              <label>添加动作<select name="actionType" style={{ width: "100%" }}>{TICKET_SCHEDULING_ACTION_TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
-              <label>原课程（改课/取消/换老师必选）<select name="sourceSessionId" style={{ width: "100%" }}><option value="">稍后补充</option>{upcomingSessions.map((session) => <option key={session.id} value={session.id}>{formatBusinessDateTime(session.startAt)} · {session.class.course.name}</option>)}</select></label>
-              <label style={{ gridColumn: "1 / -1" }}>补充说明<textarea name="notes" rows={2} style={{ width: "100%", boxSizing: "border-box" }} /></label>
-              <button type="submit">＋ 添加排课动作</button>
-            </form>
+            <details style={{ borderTop: "1px solid #fdba74", paddingTop: 12 }}>
+              <summary style={{ cursor: "pointer", color: "#9a3412", fontWeight: 800 }}>
+                发现遗漏？补充另一个动作 / Add missing action
+              </summary>
+              <form action={addTicketSchedulingActionAction} style={{ marginTop: 12, display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
+                <input type="hidden" name="id" value={row.id} /><input type="hidden" name="back" value={`${selfHref}#scheduling-actions`} />
+                <label>添加动作<select name="actionType" style={{ width: "100%" }}>{TICKET_SCHEDULING_ACTION_TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
+                <label>原课程（改课/取消/换老师必选）<select name="sourceSessionId" style={{ width: "100%" }}><option value="">稍后补充</option>{upcomingSessions.map((session) => <option key={session.id} value={session.id}>{formatBusinessDateTime(session.startAt)} · {session.class.course.name}</option>)}</select></label>
+                <label style={{ gridColumn: "1 / -1" }}>补充说明<textarea name="notes" rows={2} style={{ width: "100%", boxSizing: "border-box" }} /></label>
+                <button type="submit">＋ 添加排课动作</button>
+              </form>
+            </details>
           ) : null}
         </div>
       ) : null}
 
-      <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))" }}>
+      <details id="ticket-advanced" style={{ border: "1px solid #cbd5e1", borderRadius: 14, padding: 14, background: "#f8fafc", scrollMarginTop: 96 }}>
+        <summary style={{ cursor: "pointer", fontWeight: 850, fontSize: 16 }}>
+          历史、状态与高级修改 / History, status and advanced edits
+        </summary>
+        <div style={{ marginTop: 14, color: "#475569", fontSize: 13 }}>
+          日常排课不需要打开这里。仅用于查看完整资料、协调历史、修正录入错误、归档或处理例外。
+        </div>
+        <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", marginTop: 14 }}>
         <div style={{ border: "1px solid #e2e8f0", borderRadius: 14, padding: 14, background: "#fff", display: "grid", gap: 12 }}>
           <div style={{ fontWeight: 700 }}>详细信息 / Details</div>
           <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", fontSize: 14 }}>
@@ -1440,17 +1785,27 @@ export default async function AdminTicketDetailPage({
                 <label>
                   下一状态 / Next Status
                   <select name="nextStatus" defaultValue={row.status} style={{ width: "100%", boxSizing: "border-box" }}>
-                    {TICKET_STATUS_OPTIONS.filter((o) => canTransitionTicketStatus(row.status, o.value)).map((o) => (
+                    {TICKET_STATUS_OPTIONS.filter(
+                      (o) =>
+                        canTransitionTicketStatus(row.status, o.value) &&
+                        !(o.value === "Completed" && unresolvedSchedulingActions.length > 0)
+                    ).map((o) => (
                       <option key={o.value} value={o.value}>
                         {o.zh} / {o.en}
                       </option>
                     ))}
                   </select>
                 </label>
-                <label>
-                  完成说明（仅完成时必填）/ Completion note
-                  <textarea name="completionNote" rows={3} style={{ width: "100%", boxSizing: "border-box" }} />
-                </label>
+                {unresolvedSchedulingActions.length === 0 ? (
+                  <label>
+                    完成说明（仅完成时必填）/ Completion note
+                    <textarea name="completionNote" rows={3} style={{ width: "100%", boxSizing: "border-box" }} />
+                  </label>
+                ) : (
+                  <div style={{ color: "#9a3412", fontSize: 12, fontWeight: 750 }}>
+                    仍有 {unresolvedSchedulingActions.length} 个动作待执行，完成状态由正式课表自动回写。
+                  </div>
+                )}
                 <TicketStatusSubmitButton
                   label="保存状态 / Save Status"
                   promptLabel="标记完成前请先填写完成说明。 / Please add a completion note before marking this ticket completed."
@@ -1643,7 +1998,8 @@ export default async function AdminTicketDetailPage({
             </form>
           ) : null}
         </div>
-      </div>
+        </div>
+      </details>
     </div>
   );
 }
