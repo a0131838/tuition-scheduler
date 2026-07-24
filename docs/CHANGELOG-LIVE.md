@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-24-r283`
 - Date/Time (Asia/Shanghai): `2026-07-24`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: simplify the admin Ticket workflow into request, action and advanced layers, and make web scheduling actions atomically update the exact linked Ticket action.
 - Key files:
   - `app/admin/tickets/[id]/page.tsx`
@@ -35,7 +35,7 @@ This file is the single source of truth for what changed in production.
   - `tests/ticket-scheduling-actions.test.ts`
   - `docs/tasks/TASK-20260724-ticket-action-workflow.md`
 - Risk impact (if any): Medium and limited to operator-triggered Ticket-linked scheduling. Existing standalone scheduling keeps its current behavior; finance, contracts, package balances, attendance deduction rules, receipts, payroll, partner settlement and miniapp scheduling paths are unchanged.
-- Verification: 16 focused Ticket tests and all 257 repository tests passed; TypeScript, `git diff --check` and the 213-route production build passed. No migration is included.
+- Verification: 16 focused Ticket tests and all 257 repository tests passed; TypeScript, `git diff --check` and the 213-route production build passed. Runtime feature commit `c22e7f3d77c2d28f2ea282bc44a16693ecc4d1db` aligned locally, on GitHub and on the server with PM2 PID `90247` and `/admin/login` HTTP 200. All 112 database migrations remained current. Anonymous `/admin/tickets` access redirected to `/admin/login`, and a read-only production query confirmed three existing structured Tickets retained their unresolved action states without deployment-time writes.
 - Rollback point: `f50f60f438dd81185430c584da2cb0a378a305c9` (`2026-07-23-r282` documentation-aligned production lineage).
 
 ---

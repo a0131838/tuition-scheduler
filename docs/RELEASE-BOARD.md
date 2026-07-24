@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-24-r283` is ready; it simplifies the Ticket desk and atomically links admin web scheduling results to the exact Ticket action.
+- Current release line on this branch: `2026-07-24-r283` is live at runtime feature commit `c22e7f3`; it simplifies the Ticket desk and atomically links admin web scheduling results to the exact Ticket action.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
@@ -22,7 +22,7 @@
 
 ## Open Risks
 
-- Ticket-action workflow rollout: `2026-07-24-r283` changes the operator path for Ticket-linked new lessons, reschedules, cancellations and teacher replacements. The exact action ID and source lesson are validated inside the existing schedule transaction, so a mismatch rolls back the operation. Standalone schedule work is intentionally unchanged. After deployment, verify one existing Ticket detail read and use the next real scheduling request for the first controlled write; do not fabricate or cancel a real lesson solely for testing.
+- Ticket-action workflow rollout: `2026-07-24-r283` is live at runtime feature commit `c22e7f3`, with all 112 migrations current, PM2 PID `90247` and health 200. Anonymous Ticket access redirects to login, and three existing structured Tickets retained their unresolved action states after deployment. The exact action ID and source lesson are validated inside the existing schedule transaction, so a mismatch rolls back the operation. Use the next real scheduling request for the first controlled write; do not fabricate or cancel a real lesson solely for testing.
 
 - Shared-package student-course scope: `2026-07-23-r282` is live at runtime feature commit `8a4ed64`, with all 112 migrations current, PM2 PID `4063677` and health 200. Shared group sessions remain exceptions because their Class is common to every enrolled student; operators must review the preview before saving.
 

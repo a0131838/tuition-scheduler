@@ -33,3 +33,10 @@ Academic Operations primarily receives parent requests through the employee mini
 ## Risk
 
 Medium and operator-triggered. Ticket-linked schedule writes now also update the exact Ticket action in the same transaction. Invalid, closed or mismatched Ticket context aborts the schedule transaction. The first production write should use the next real request and should confirm the action result, remaining-action count and audit trail before broader daily use.
+
+## Release Record
+
+- Release ID: `2026-07-24-r283`
+- Deployment status: live at feature commit `c22e7f3d77c2d28f2ea282bc44a16693ecc4d1db`; PM2 PID `90247` is online and `/admin/login` returns HTTP 200.
+- Production read-only checks: anonymous Ticket access redirects to login; three existing structured Tickets retained their unresolved action states.
+- Rollback point: `f50f60f438dd81185430c584da2cb0a378a305c9`
