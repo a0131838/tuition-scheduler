@@ -36,5 +36,6 @@ Low and read-only. Student names are resolved at export time from existing trans
 ## Release Record
 
 - Release ID: `2026-07-24-r284`
-- Deployment status: ready.
+- Deployment status: live at feature commit `b324c089be8eb11ddf1306ea26786a43423c3000`; PM2 PID `99894` is online and `/admin/login` returns HTTP 200.
+- Production read-only checks: local, GitHub and server commits aligned; the deployed `GTI2.png` SHA-256 matched the approved source; the deployed export route referenced the student-resolution helper and unresolved-row label.
 - Rollback point: `539cc82715dd8c1d4af5dfd69409eae178fcd31f`
