@@ -15,6 +15,19 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-27-r287
+
+- Release ID: `2026-07-27-r287`
+- Date/Time (Asia/Shanghai): `2026-07-27`
+- Deployment status: `READY`
+- Scope: remove internal names, process explanations and repeated disclaimer copy from the public School Guide on web and miniapp.
+- Key changes: shorter task-led copy; no employee name in public UI; no IB source-page filter; no decorative compass; concise empty, comparison, consultation and plan states.
+- Risk impact: Low and presentation-only. School facts, matching, inquiries, permissions, roles, scheduling, billing and all existing business workflows are unchanged.
+- Verification: 225-page production build, 10 focused School Guide tests, all 270 repository tests, 54-page miniapp audit, diff check and 390px mobile visual review passed.
+- Rollback point: `1beeda8829181cc1efa44fb40ef18581983f31d2` (`2026-07-27-r286` live lineage).
+
+---
+
 ## 2026-07-27-r286
 
 - Release ID: `2026-07-27-r286`

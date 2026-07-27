@@ -1,5 +1,5 @@
 <view class="guide-page">
-  <view class="guide-hero"><view class="guide-kicker">我的方案</view><view class="guide-title">把“感兴趣”变成下一步行动。</view><view class="guide-subtitle">集中保存学校、费用依据、当前状态和待确认问题。数据仅保存在本机。</view></view>
+  <view class="guide-hero"><view class="guide-kicker">我的方案</view><view class="guide-title">已选学校</view><view class="guide-subtitle">保存学校和下一步。</view></view>
   <view class="guide-plan-list" wx:if="{{schools.length}}">
     <view class="guide-plan-card" wx:for="{{schools}}" wx:key="slug">
       <view class="guide-tier-label {{item.editorialTier === 1 ? 'first' : ''}}">{{item.editorialTier === 1 ? "第一梯队 · 编辑分类" : "已加入方案"}}</view>
@@ -11,6 +11,6 @@
     </view>
     <button class="guide-action" bindtap="goConsult">提交人工评估</button>
   </view>
-  <view class="guide-empty-card" wx:else><view class="guide-section-title">你的选校方案还是空的。</view><view class="guide-section-note">在学校目录或智能选校结果中点击“加入方案”。</view><button class="guide-action" bindtap="goAssessment">开始智能选校</button></view>
+  <view class="guide-empty-card" wx:else><view class="guide-section-title">还没有学校</view><button class="guide-action" bindtap="goAssessment">开始智能选校</button></view>
 </view>
 <guide-nav active="plan" />

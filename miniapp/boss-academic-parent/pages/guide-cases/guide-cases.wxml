@@ -1,6 +1,5 @@
 <view class="guide-page">
-  <view class="guide-hero"><view class="guide-kicker">真实案例</view><view class="guide-title">看相似家庭如何形成选择。</view><view class="guide-subtitle">案例帮助理解决策过程，不包装结果，也不推导个人录取概率。</view></view>
-  <view class="guide-empty-card"><view class="guide-kicker">案例库准备中</view><view class="guide-section-title">目前没有达到发布标准的真实案例。</view><view class="guide-section-note">不会使用虚构案例填充。只有取得明确授权、完成匿名化并经人工审核的案例才会出现。</view><button class="guide-action" bindtap="goAssessment">先做智能选校</button></view>
-  <view class="guide-standard-grid"><view><b>明确授权</b><text>确认公开范围和用途</text></view><view><b>彻底匿名</b><text>移除可识别细节</text></view><view><b>人工复核</b><text>逐项检查事实和措辞</text></view></view>
+  <view class="guide-hero"><view class="guide-kicker">真实案例</view><view class="guide-title">看看相似家庭怎么选</view></view>
+  <view class="guide-empty-card"><view class="guide-section-title">暂无案例</view><button class="guide-action" bindtap="goAssessment">开始智能选校</button></view>
 </view>
 <guide-nav active="cases" />

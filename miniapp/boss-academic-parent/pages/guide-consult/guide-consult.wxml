@@ -1,8 +1,8 @@
 <view class="guide-page">
   <view class="guide-hero">
-    <view class="guide-kicker">HUMAN REVIEW</view>
-    <view class="guide-title">人工核对不确定的问题。</view>
-    <view class="guide-subtitle">提交后进入博思现有资源跟进系统，不用自动测评代替正式结论。</view>
+    <view class="guide-kicker">人工评估</view>
+    <view class="guide-title">告诉我们你的问题</view>
+    <view class="guide-subtitle">我们会联系你。</view>
   </view>
   <form bindsubmit="submit">
     <view class="guide-field">

@@ -56,14 +56,12 @@ export default function CompareSchools({ schools }: { schools: SchoolGuideSchool
           <div className="sg-result-item">
             <div className="sg-eyebrow">当前比较</div>
             <h3>{compared.length}所学校</h3>
-            <p>比较字段只来自学校官网或官方费用文件。首年费用为不同年级与课程的固定费用范围，不含未选择的可选项目。</p>
           </div>
           <div className="sg-compare-grid">
             {compared.map((school) => (
               <article className="sg-compare-card" key={school.slug}>
                 <div className="sg-compare-card-head">
                   <div>
-                    <span>{school.dataStatus === "VERIFIED" ? "官网已核实" : "部分核实"}</span>
                     <h3>{school.name}</h3>
                   </div>
                   <small>{school.applicableYear ?? "年份待核实"}</small>
@@ -87,11 +85,7 @@ export default function CompareSchools({ schools }: { schools: SchoolGuideSchool
                     <small>{school.costProfile.note}</small>
                   </div>
                 ) : null}
-                <div className="sg-review-meta">
-                  <span>核实：{school.verifiedAt ?? "待核实"}</span>
-                  <span>下次复核：{school.nextReviewAt ?? "待安排"}</span>
-                </div>
-                <a href={`/school-guide/schools/${school.slug}`}>查看完整资料 →</a>
+                <a href={`/school-guide/schools/${school.slug}`}>查看学校 →</a>
               </article>
             ))}
           </div>

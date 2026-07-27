@@ -7,8 +7,8 @@ export default function SchoolGuideAssessmentPage() {
       <section className="sg-page-head">
         <div className="sg-shell">
           <div className="sg-eyebrow">智能选校</div>
-          <h1>先看路径，再形成学校候选清单。</h1>
-          <p>结果按官方可核实信息解释“为什么适合”和“还要确认什么”，不预测录取率，也不代替学校审核。</p>
+          <h1>生成你的候选学校</h1>
+          <p>填写基本条件，查看匹配学校。</p>
         </div>
       </section>
       <section className="sg-section">

@@ -2,7 +2,6 @@
   <view class="guide-hero">
     <view class="guide-kicker">PRIVACY NOTICE</view>
     <view class="guide-title">隐私说明</view>
-    <view class="guide-subtitle">适用于新加坡学校指南的公开测评与人工咨询。</view>
   </view>
 
   <view class="guide-section">
@@ -15,17 +14,16 @@
   </view>
   <view class="guide-section">
     <view class="guide-section-title">为什么收集</view>
-    <view class="guide-section-note">用于回复本次咨询、核对官方入学路径、安排后续择校或申请服务，并保留必要的跟进记录。</view>
+    <view class="guide-section-note">用于回复咨询和提供后续服务。</view>
   </view>
   <view class="guide-section">
     <view class="guide-section-title">访问、更正与撤回</view>
-    <view class="guide-section-note">资料保护负责人：赵宏伟</view>
     <view class="guide-section-note">邮箱：zhaohongwei0880@163.com</view>
     <view class="guide-section-note">电话：19117252846</view>
   </view>
   <view class="guide-section">
     <view class="guide-section-title">儿童资料</view>
-    <view class="guide-section-note">本指南面向家长或监护人。请勿在公开咨询中提交证件号码、护照、医疗资料或其他不必要的敏感信息。</view>
+    <view class="guide-section-note">请勿提交证件号码、护照或医疗资料。</view>
   </view>
   <view class="guide-notice">更新日期：2026年7月27日</view>
 </view>

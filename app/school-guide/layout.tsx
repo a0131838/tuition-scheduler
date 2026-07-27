@@ -26,16 +26,8 @@ export default function SchoolGuideLayout({ children }: { children: React.ReactN
       {children}
       <footer className="sg-footer">
         <div className="sg-shell sg-footer-inner">
-          <div>
-            <strong>新加坡学校指南</strong>
-            <br />
-            关键事实只采用官方来源，并显示核实日期。
-          </div>
-          <div>
-            本指南不保证录取。申请资格、学额、费用和日期以MOE、IB及学校当期官方页面为准。
-            <br />
-            <Link href="/school-guide/privacy">隐私说明</Link>
-          </div>
+          <strong>新加坡学校指南</strong>
+          <div>信息以学校及MOE最新公布为准 · <Link href="/school-guide/privacy">隐私说明</Link></div>
         </div>
       </footer>
       <nav className="sg-mobile-dock" aria-label="学校指南移动导航">

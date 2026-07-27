@@ -8,7 +8,6 @@ const FAVORITES_KEY = "school-guide-favorites";
 
 export default function SchoolExplorer({ schools }: { schools: SchoolGuideSchool[] }) {
   const [query, setQuery] = useState("");
-  const [page, setPage] = useState("all");
   const [tier, setTier] = useState("all");
   const [favorites, setFavorites] = useState<string[]>([]);
 
@@ -32,28 +31,18 @@ export default function SchoolExplorer({ schools }: { schools: SchoolGuideSchool
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     return schools.filter((school) => {
-      if (page !== "all" && String(school.sourcePage) !== page) return false;
       if (tier === "first" && school.editorialTier !== 1) return false;
       if (tier === "unassigned" && school.editorialTier !== null) return false;
       return !q || school.name.toLowerCase().includes(q);
     }).sort((a, b) => (a.editorialTier === 1 ? 0 : 1) - (b.editorialTier === 1 ? 0 : 1));
-  }, [page, query, schools, tier]);
+  }, [query, schools, tier]);
 
   return (
     <>
-      <div className="sg-filter-grid">
+      <div className="sg-filter-grid is-compact">
         <label className="sg-field">
           搜索学校英文名
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="例如 Canadian、Stamford、UWCSEA" />
-        </label>
-        <label className="sg-field">
-          IB官方目录页
-          <select value={page} onChange={(event) => setPage(event.target.value)}>
-            <option value="all">全部目录记录</option>
-            <option value="1">第1页</option>
-            <option value="2">第2页</option>
-            <option value="3">第3页</option>
-          </select>
         </label>
         <label className="sg-field">
           学校梯队
@@ -64,9 +53,6 @@ export default function SchoolExplorer({ schools }: { schools: SchoolGuideSchool
           </select>
         </label>
       </div>
-      <div className="sg-notice">
-        第一梯队由业务负责人确认，包括SAS、德威、UWCSEA、东陵信托和北伦敦；属于择校工作分类，不是官方排名或录取承诺。
-      </div>
       <div className="sg-school-list">
         {rows.map((school) => (
           <div className="sg-school-row" key={school.slug}>
@@ -75,7 +61,7 @@ export default function SchoolExplorer({ schools }: { schools: SchoolGuideSchool
               {school.editorialTier === 1 ? <span className="sg-tier-badge">第一梯队</span> : <span className="sg-tier-muted">待分梯队</span>}
               <p>{school.verifiedFacts[0]}</p>
             </div>
-            <span className="sg-badge">{school.sourcePage ? `IB官方目录 · 第${school.sourcePage}页` : "学校官网"}</span>
+            <span className="sg-badge">{school.category}</span>
             <button
               className="sg-favorite"
               type="button"
@@ -89,7 +75,7 @@ export default function SchoolExplorer({ schools }: { schools: SchoolGuideSchool
           </div>
         ))}
       </div>
-      {rows.length === 0 ? <div className="sg-notice">没有匹配记录，请调整学校名称或目录页。</div> : null}
+      {rows.length === 0 ? <div className="sg-notice">没有匹配学校。</div> : null}
     </>
   );
 }

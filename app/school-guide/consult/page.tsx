@@ -17,9 +17,9 @@ export default async function SchoolGuideConsultPage({
     <main>
       <section className="sg-page-head">
         <div className="sg-shell">
-          <div className="sg-eyebrow">Human review</div>
-          <h1>把不确定的问题交给人工核对。</h1>
-          <p>提交后会进入现有资源跟进系统。顾问核对官方资格、目标学校和时间，不以自动测评代替正式结论。</p>
+          <div className="sg-eyebrow">人工评估</div>
+          <h1>告诉我们你的问题</h1>
+          <p>我们会联系你。</p>
         </div>
       </section>
       <section className="sg-section">

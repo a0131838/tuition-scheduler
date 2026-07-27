@@ -99,7 +99,7 @@ export default function AssessmentForm({ pathways, schools }: { pathways: School
           </label>
         </div>
         <div className="sg-actions">
-          <button className="sg-primary" type="submit">查看可能路径</button>
+          <button className="sg-primary" type="submit">查看结果</button>
         </div>
       </form>
 
@@ -108,19 +108,18 @@ export default function AssessmentForm({ pathways, schools }: { pathways: School
           <div className="sg-result-item">
             <div className="sg-eyebrow">年龄参考</div>
             <h3>入学年份1月1日：{result.ageOnEntryYearStart === null ? "无法计算" : `${result.ageOnEntryYearStart}岁`}</h3>
-            <p>这是日期计算结果，不等于MOE或学校已经确认报考年级。</p>
+            <p>年龄仅供初步筛选。</p>
           </div>
           {matched.map((pathway) => (
             <div className="sg-result-item" key={pathway.slug}>
               <h3>{pathway.title}</h3>
               <p>{pathway.summary}</p>
-              <Link className="sg-secondary" href={`/school-guide/pathways/${pathway.slug}`}>查看官方依据</Link>
+              <Link className="sg-secondary" href={`/school-guide/pathways/${pathway.slug}`}>查看路径</Link>
             </div>
           ))}
           <div className="sg-result-item">
             <div className="sg-eyebrow">学校候选清单</div>
-            <h3>先比较前6所，再决定是否咨询。</h3>
-            <p>分层表示与当前条件的匹配程度，不代表录取概率或学校排名。</p>
+            <h3>建议先比较这6所</h3>
           </div>
           {schoolMatches.slice(0, 6).map((item) => (
             <div className="sg-match-card" key={item.school.slug}>
@@ -137,7 +136,7 @@ export default function AssessmentForm({ pathways, schools }: { pathways: School
             </div>
           ))}
           <div className="sg-result-item">
-            <h3>需要注意</h3>
+            <h3>提醒</h3>
             <ul>{result.notices.map((notice) => <li key={notice}>{notice}</li>)}</ul>
             <div className="sg-actions">
               <Link

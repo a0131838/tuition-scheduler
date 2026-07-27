@@ -13,7 +13,6 @@ export default async function SchoolGuideSchoolDetailPage({ params }: { params: 
         <div className="sg-shell">
           <div className="sg-eyebrow">{school.category} · {school.editorialTier === 1 ? "第一梯队" : "待分梯队"}</div>
           <h1>{school.name}</h1>
-          <p>本页只展示已经从官方来源核实的事实。空白字段不会用第三方文章或推测补齐。</p>
         </div>
       </section>
       <section className="sg-section">
@@ -21,10 +20,7 @@ export default async function SchoolGuideSchoolDetailPage({ params }: { params: 
           <article className="sg-copy">
             {school.verifiedAt ? (
               <div className="sg-data-meta">
-                <span>{school.dataStatus === "VERIFIED" ? "官网已核实" : "部分核实"}</span>
                 <span>适用：{school.applicableYear ?? "以官网当前页面为准"}</span>
-                <span>核实：{school.verifiedAt}</span>
-                <span>下次复核：{school.nextReviewAt ?? "待安排"}</span>
               </div>
             ) : null}
             <h2>学校概览</h2>
@@ -35,12 +31,6 @@ export default async function SchoolGuideSchoolDetailPage({ params }: { params: 
                 <ul>{section.items.map((item) => <li key={item}>{item}</li>)}</ul>
               </section>
             ))}
-            {!school.detailSections?.length ? (
-              <>
-                <h2>尚待逐项核实</h2>
-                <p>入学年龄、年级、学费、申请费、校车、EAL、SEN、考试和面试要求，需要继续核对学校当期官方招生与费用页面。</p>
-              </>
-            ) : null}
             {school.costProfile ? (
               <section className="sg-cost-box">
                 <span>{school.costProfile.academicYear}首年固定费用估算</span>
@@ -66,7 +56,7 @@ export default async function SchoolGuideSchoolDetailPage({ params }: { params: 
             {sources.map((source) => source ? (
               <div className="sg-source" key={source.id}>
                 <a href={source.url} target="_blank" rel="noreferrer">{source.title} ↗</a>
-                <small>{source.authority}<br />核实于 {source.checkedAt}</small>
+                <small>{source.authority}</small>
               </div>
             ) : null)}
           </aside>
