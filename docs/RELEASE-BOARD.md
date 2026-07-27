@@ -15,7 +15,7 @@
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
 - Current release line: `2026-07-27-r285` is live at commit `463b680d1c0c397b96edf48a849b0c92087c48e1`; WeChat development version `1.0.17` was uploaded successfully.
-- Next release line: `2026-07-27-r286` upgrades only the public School Guide into a five-entry decision workspace and adds matching miniapp pages. Existing business roles and workflows remain isolated.
+- Current release line: `2026-07-27-r286` is live at runtime feature commit `085ddd03ed79ac830ad9586ae2152161926ae747`; WeChat development version `1.0.18` was uploaded successfully. Existing business roles and workflows remain isolated.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
@@ -27,7 +27,7 @@
 
 - Package-ledger student-attribution rollout: `2026-07-24-r284` is live at runtime feature commit `b324c08`, with PM2 PID `99894`, health 200 and the deployed logo hash matching the approved `GTI2.png`. The release is read-only and changes only PDF rendering. Historical rows are resolved from explicit student metadata or attendance references; a deduction that cannot be matched is visibly labelled `Unresolved / 未匹配` instead of being silently attributed to the package owner. Previously downloaded PDFs are static and must be downloaded again.
 
-## 2026-07-27-r286 Ready
+## 2026-07-27-r286 Live
 
 - Scope: upgrade the Singapore School Guide into a task-led decision workspace inspired by established study-planning products without copying their branding or data.
 - Business impact:
@@ -41,9 +41,11 @@
   - 225-page Next production build.
   - TypeScript and diff checks.
   - 54-page miniapp release audit and JavaScript syntax checks.
-- Post-deploy:
-  - verify `/school-guide`, `/school-guide/assessment`, `/school-guide/cases`, `/school-guide/plan` and catalog HTTP 200.
-  - upload WeChat development version `1.0.18`; experience-version designation remains a manual WeChat security action if the CLI is denied.
+- Production verification:
+  - `/school-guide`, `/school-guide/assessment`, `/school-guide/cases`, `/school-guide/plan` and catalog returned HTTP 200.
+  - Catalog exposed 43 school records and zero unpublished cases.
+  - Runtime feature commit `085ddd03ed79ac830ad9586ae2152161926ae747` ran as PM2 PID `1466219`.
+  - WeChat development version `1.0.18` uploaded at 577,499 bytes; experience-version designation remains a manual WeChat security action.
 
 ## 2026-07-27-r285 Live
 

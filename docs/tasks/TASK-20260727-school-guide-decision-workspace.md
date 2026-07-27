@@ -29,3 +29,11 @@ Make the Singapore School Guide behave like a practical family decision workspac
 ## Rollback
 
 Revert the r286 commit and redeploy through the standard release script. There is no database migration or external data write to roll back; local browser/miniapp plan data can remain harmlessly stored.
+
+## Completion
+
+- Status: complete and live on 2026-07-27.
+- Runtime feature commit: `085ddd03ed79ac830ad9586ae2152161926ae747`.
+- Production: five School Guide routes and catalog HTTP 200; PM2 PID `1466219`.
+- WeChat: development version `1.0.18` uploaded at 577,499 bytes.
+- Manual follow-up: designate `1.0.18` as the experience version in WeChat and complete a physical-phone pass.

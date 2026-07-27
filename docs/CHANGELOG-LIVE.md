@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-27-r286`
 - Date/Time (Asia/Shanghai): `2026-07-27`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: convert the public Singapore School Guide into a five-entry family decision workspace on web and WeChat miniapp.
 - Key files:
   - `app/school-guide/*`
@@ -29,7 +29,7 @@ This file is the single source of truth for what changed in production.
   - `docs/tasks/TASK-20260727-school-guide-decision-workspace.md`
 - Risk impact: Low and isolated. This release changes only public School Guide presentation, deterministic matching and local plan storage. It does not alter authentication, roles, student records, scheduling, billing, payroll, communications or Tickets.
 - Data safeguards: no admission probability is generated; matching includes only verified schools; real cases require consent, anonymization and human review; existing favorite storage keys remain compatible.
-- Verification: 10 focused tests, 109 backend tests and 270 complete repository tests passed. The 225-page build, TypeScript, visual mobile/desktop browser checks and the 54-page miniapp audit passed.
+- Verification: 10 focused tests, 109 backend tests and 270 complete repository tests passed. The 225-page build, TypeScript, visual mobile/desktop browser checks and the 54-page miniapp audit passed. Runtime feature commit `085ddd03ed79ac830ad9586ae2152161926ae747` deployed with PM2 PID `1466219`; five production routes returned HTTP 200 and the catalog returned 43 schools with zero unpublished cases. WeChat development version `1.0.18` uploaded successfully at 577,499 bytes.
 - Rollback point: `463b680d1c0c397b96edf48a849b0c92087c48e1` (`2026-07-27-r285` production lineage).
 
 ---
