@@ -79,11 +79,11 @@ export default function SchoolExplorer({ schools }: { schools: SchoolGuideSchool
             <button
               className="sg-favorite"
               type="button"
-              aria-label={`${favorites.includes(school.slug) ? "取消收藏" : "收藏"}${school.name}`}
+              aria-label={`${favorites.includes(school.slug) ? "移出方案" : "加入方案"}${school.name}`}
               aria-pressed={favorites.includes(school.slug)}
               onClick={() => toggleFavorite(school.slug)}
             >
-              {favorites.includes(school.slug) ? "已收藏" : "收藏"}
+              {favorites.includes(school.slug) ? "已加入" : "加入方案"}
             </button>
             <Link href={`/school-guide/schools/${school.slug}`} aria-label={`查看${school.name}`}>→</Link>
           </div>

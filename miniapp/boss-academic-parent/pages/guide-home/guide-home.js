@@ -5,11 +5,18 @@ Page({
     loading: true,
     version: "",
     schools: [],
-    pathways: []
+    pathways: [],
+    popularSchools: [],
+    planCount: 0
   },
 
   onLoad() {
     this.loadData();
+  },
+
+  onShow() {
+    const favorites = wx.getStorageSync("schoolGuideFavorites");
+    this.setData({ planCount: Array.isArray(favorites) ? favorites.length : 0 });
   },
 
   onPullDownRefresh() {
@@ -22,7 +29,8 @@ Page({
       .then((data) => this.setData({
         version: data.version || "",
         schools: data.schools || [],
-        pathways: data.pathways || []
+        pathways: data.pathways || [],
+        popularSchools: (data.schools || []).filter((item) => item.editorialTier === 1 && item.dataStatus === "VERIFIED").slice(0, 5)
       }))
       .catch((err) => api.toast(err.message))
       .finally(() => this.setData({ loading: false }));
@@ -42,6 +50,18 @@ Page({
 
   goConsult() {
     wx.navigateTo({ url: "/pages/guide-consult/guide-consult" });
+  },
+
+  goCases() {
+    wx.navigateTo({ url: "/pages/guide-cases/guide-cases" });
+  },
+
+  goPlan() {
+    wx.navigateTo({ url: "/pages/guide-plan/guide-plan" });
+  },
+
+  openSchool(event) {
+    wx.navigateTo({ url: "/pages/guide-school-detail/guide-school-detail?slug=" + encodeURIComponent(event.currentTarget.dataset.slug) });
   },
 
   openPathway(event) {

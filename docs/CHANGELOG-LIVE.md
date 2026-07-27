@@ -15,11 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-27-r286
+
+- Release ID: `2026-07-27-r286`
+- Date/Time (Asia/Shanghai): `2026-07-27`
+- Deployment status: `READY`
+- Scope: convert the public Singapore School Guide into a five-entry family decision workspace on web and WeChat miniapp.
+- Key files:
+  - `app/school-guide/*`
+  - `lib/school-guide-match.ts`
+  - `miniapp/boss-academic-parent/components/guide-nav/*`
+  - `miniapp/boss-academic-parent/pages/guide-{home,assessment,cases,plan,schools}/*`
+  - `docs/tasks/TASK-20260727-school-guide-decision-workspace.md`
+- Risk impact: Low and isolated. This release changes only public School Guide presentation, deterministic matching and local plan storage. It does not alter authentication, roles, student records, scheduling, billing, payroll, communications or Tickets.
+- Data safeguards: no admission probability is generated; matching includes only verified schools; real cases require consent, anonymization and human review; existing favorite storage keys remain compatible.
+- Verification: 10 focused tests, 109 backend tests and 270 complete repository tests passed. The 225-page build, TypeScript, visual mobile/desktop browser checks and the 54-page miniapp audit passed.
+- Rollback point: `463b680d1c0c397b96edf48a849b0c92087c48e1` (`2026-07-27-r285` production lineage).
+
+---
+
 ## 2026-07-27-r285
 
 - Release ID: `2026-07-27-r285`
 - Date/Time (Asia/Shanghai): `2026-07-27`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: add the public Singapore School Guide to the web and existing parent/staff miniapp, with official-source school profiles, pathway assessment, comparison, first-year cost ranges, privacy notice and inquiry handoff.
 - Key files:
   - `app/school-guide/*`
@@ -31,7 +50,7 @@ This file is the single source of truth for what changed in production.
   - `tests/school-guide-*.test.ts`
   - `docs/tasks/TASK-20260727-singapore-school-guide-release.md`
 - Risk impact (if any): Low-to-medium and isolated to new public read pages plus an explicitly submitted inquiry write. No database migration is added. Existing parent, employee, scheduling, attendance, package, payroll, finance, feedback, renewal and Ticket behavior is unchanged; the new miniapp pages are additive and preserve all 44 existing latest-branch pages.
-- Verification: 8 school-guide tests, all 109 backend regression tests and all 268 repository tests passed; TypeScript, `git diff --check`, the 223-page production build and the 52-page miniapp release audit passed on top of the latest remote production lineage. Post-deploy checks will cover health, public catalog, school detail and anonymous validation.
+- Verification: 8 school-guide tests, all 109 backend regression tests and all 268 repository tests passed; TypeScript, `git diff --check`, the 223-page production build and the 52-page miniapp release audit passed. Deployed as commit `463b680d1c0c397b96edf48a849b0c92087c48e1`; PM2 PID `1443604`, public route checks and catalog checks passed. WeChat development version `1.0.17` uploaded at 562,793 bytes.
 - Rollback point: `fab321420da02cc59f3fadc20d0b9de1d210459e` (`2026-07-24-r284` documentation-aligned production lineage).
 
 ---

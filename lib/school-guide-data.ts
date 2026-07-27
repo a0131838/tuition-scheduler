@@ -51,6 +51,15 @@ export type SchoolGuidePathway = {
   sourceIds: string[];
 };
 
+export type SchoolGuideCase = {
+  id: string;
+  published: boolean;
+  consentRecorded: boolean;
+  anonymized: boolean;
+  title: string;
+  summary: string;
+};
+
 export const SCHOOL_GUIDE_DATA_VERSION = "2026-07-27";
 
 export const officialSources: OfficialSource[] = [
@@ -777,6 +786,9 @@ export const schoolGuideSchools: SchoolGuideSchool[] = [
   ...ibPage2.map((name, index) => makeSchool(name, 2, ibPage1.length + index)),
   ...ibPage3.map((name, index) => makeSchool(name, 3, ibPage1.length + ibPage2.length + index)),
 ];
+
+// Public cases remain empty until written consent, anonymisation and human review are all recorded.
+export const schoolGuideCases: SchoolGuideCase[] = [];
 
 export const schoolGuidePathways: SchoolGuidePathway[] = [
   {

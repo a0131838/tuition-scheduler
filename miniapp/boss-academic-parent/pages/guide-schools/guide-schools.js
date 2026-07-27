@@ -74,7 +74,7 @@ Page({
     this.setData({
       schools: this.buildVisibleSchools(this.data.allSchools, this.data.query, next, this.data.tier)
     });
-    api.toast(next.includes(slug) ? "已收藏" : "已取消收藏");
+    api.toast(next.includes(slug) ? "已加入我的方案" : "已移出方案");
   },
 
   onShareAppMessage() {

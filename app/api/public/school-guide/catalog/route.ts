@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   SCHOOL_GUIDE_DATA_VERSION,
   officialSources,
+  schoolGuideCases,
   schoolGuidePathways,
   schoolGuideSchools,
 } from "@/lib/school-guide-data";
@@ -12,6 +13,7 @@ export async function GET() {
       ok: true,
       version: SCHOOL_GUIDE_DATA_VERSION,
       schools: schoolGuideSchools,
+      cases: schoolGuideCases.filter((item) => item.published && item.consentRecorded && item.anonymized),
       pathways: schoolGuidePathways,
       sources: officialSources,
     },

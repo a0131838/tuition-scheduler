@@ -1,8 +1,8 @@
 <view class="guide-page">
   <view class="guide-hero">
     <view class="guide-kicker">2-MINUTE ASSESSMENT</view>
-    <view class="guide-title">先判断可能路径。</view>
-    <view class="guide-subtitle">测评不代替MOE或学校的正式资格确认。</view>
+    <view class="guide-title">先看路径，再形成学校候选清单。</view>
+    <view class="guide-subtitle">只解释匹配依据和风险，不预测录取率。</view>
   </view>
 
   <view class="guide-field">
@@ -11,6 +11,10 @@
       <view class="guide-picker">{{birthDate || "请选择出生日期"}}</view>
     </picker>
   </view>
+  <view class="guide-field"><view class="guide-label">每年预算上限</view><picker range="{{budgetOptions}}" value="{{budgetIndex}}" bindchange="setBudget"><view class="guide-picker">{{budgetOptions[budgetIndex]}}</view></picker></view>
+  <view class="guide-field"><view class="guide-label">课程偏好</view><picker range="{{curriculumOptions}}" value="{{curriculumIndex}}" bindchange="setCurriculum"><view class="guide-picker">{{curriculumOptions[curriculumIndex]}}</view></picker></view>
+  <view class="guide-switch-row"><text>孩子需要英语支持</text><switch color="#ec5e0a" checked="{{englishSupportNeeded}}" bindchange="setEnglishSupport" /></view>
+  <view class="guide-switch-row"><text>家庭必须考虑寄宿</text><switch color="#ec5e0a" checked="{{boardingNeeded}}" bindchange="setBoarding" /></view>
   <view class="guide-field">
     <view class="guide-label">目标入学年份</view>
     <input class="guide-input" type="number" value="{{targetEntryYear}}" bindinput="setYear" />
@@ -35,6 +39,14 @@
       <view class="guide-result-title">入学年份1月1日：{{result.ageOnEntryYearStart}}岁</view>
       <view class="guide-result-note">这是日期计算结果，不等于官方已经确认报考年级。</view>
     </view>
+    <view class="guide-result-block"><view class="guide-kicker">学校候选清单</view><view class="guide-result-title">先比较前6所，再决定是否咨询</view><view class="guide-result-note">分层不是排名，也不是录取概率。</view></view>
+    <view class="guide-match-card" wx:for="{{result.schoolMatches}}" wx:key="slug">
+      <view class="guide-match-band">{{item.band}}</view>
+      <view class="guide-result-title">{{item.name}}</view>
+      <view class="guide-match-reason" wx:for="{{item.reasons}}" wx:for-item="reason" wx:key="*this">✓ {{reason}}</view>
+      <view class="guide-match-caution" wx:for="{{item.cautions}}" wx:for-item="caution" wx:key="*this">! {{caution}}</view>
+      <view class="guide-action-row"><button class="guide-action secondary" data-slug="{{item.slug}}" bindtap="openSchool">查看学校</button><button class="guide-action" data-slug="{{item.slug}}" bindtap="addToPlan">加入方案</button></view>
+    </view>
     <view class="guide-result-block" wx:for="{{result.matchedPathways}}" wx:key="slug" data-slug="{{item.slug}}" bindtap="openPathway">
       <view class="guide-result-title">{{item.title}}</view>
       <view class="guide-result-note">{{item.summary}}</view>
@@ -47,3 +59,4 @@
     <button class="guide-action" bindtap="goConsult">提交人工评估</button>
   </view>
 </view>
+<guide-nav active="assessment" />

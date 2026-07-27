@@ -14,7 +14,8 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-27-r285` is ready to add the public Singapore School Guide and the matching additive miniapp pages on top of the latest `2026-07-24-r284` production lineage.
+- Current release line: `2026-07-27-r285` is live at commit `463b680d1c0c397b96edf48a849b0c92087c48e1`; WeChat development version `1.0.17` was uploaded successfully.
+- Next release line: `2026-07-27-r286` upgrades only the public School Guide into a five-entry decision workspace and adds matching miniapp pages. Existing business roles and workflows remain isolated.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
@@ -26,7 +27,25 @@
 
 - Package-ledger student-attribution rollout: `2026-07-24-r284` is live at runtime feature commit `b324c08`, with PM2 PID `99894`, health 200 and the deployed logo hash matching the approved `GTI2.png`. The release is read-only and changes only PDF rendering. Historical rows are resolved from explicit student metadata or attendance references; a deduction that cannot be matched is visibly labelled `Unresolved / 未匹配` instead of being silently attributed to the package owner. Previously downloaded PDFs are static and must be downloaded again.
 
-## 2026-07-27-r285 Ready
+## 2026-07-27-r286 Ready
+
+- Scope: upgrade the Singapore School Guide into a task-led decision workspace inspired by established study-planning products without copying their branding or data.
+- Business impact:
+  - Families enter through Find schools, Smart matching, Real cases, My plan and Human review.
+  - Smart matching explains verified fit and cautions instead of inventing admission probabilities.
+  - Favorites remain compatible and become an actionable local plan.
+  - The case library stays empty until consent, anonymization and human review are complete.
+- Isolation: no parent, employee, teacher, scheduling, finance, package, payroll, feedback or Ticket code paths are changed.
+- Verification:
+  - 10 focused school-guide tests.
+  - 225-page Next production build.
+  - TypeScript and diff checks.
+  - 54-page miniapp release audit and JavaScript syntax checks.
+- Post-deploy:
+  - verify `/school-guide`, `/school-guide/assessment`, `/school-guide/cases`, `/school-guide/plan` and catalog HTTP 200.
+  - upload WeChat development version `1.0.18`; experience-version designation remains a manual WeChat security action if the CLI is denied.
+
+## 2026-07-27-r285 Live
 
 - Scope: publish the official-source Singapore School Guide on web and add its public pages to the existing WeChat miniapp.
 - Business impact:
@@ -49,7 +68,7 @@
   - `/admin/login`, `/school-guide`, `/school-guide/compare` and `/api/public/school-guide/catalog` return HTTP 200.
   - Catalog exposes verified cost and review fields.
   - Anonymous incomplete inquiry is rejected without creating data.
-  - WeChat development version `1.0.17` is uploaded and then designated as the experience version.
+  - WeChat development version `1.0.17` uploaded successfully at 562,793 bytes; experience-version designation requires the administrator's manual action.
 
 - Ticket-action workflow rollout: `2026-07-24-r283` is live at runtime feature commit `c22e7f3`, with all 112 migrations current, PM2 PID `90247` and health 200. Anonymous Ticket access redirects to login, and three existing structured Tickets retained their unresolved action states after deployment. The exact action ID and source lesson are validated inside the existing schedule transaction, so a mismatch rolls back the operation. Use the next real scheduling request for the first controlled write; do not fabricate or cancel a real lesson solely for testing.
 

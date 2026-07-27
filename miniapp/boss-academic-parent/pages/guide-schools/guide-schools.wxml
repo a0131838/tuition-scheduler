@@ -25,10 +25,11 @@
         </view>
       </view>
       <button class="guide-favorite" data-slug="{{item.slug}}" bindtap="toggleFavorite">
-        {{item.favorite ? "已收藏" : "收藏"}}
+        {{item.favorite ? "已加入" : "加入方案"}}
       </button>
       <view class="guide-arrow" data-slug="{{item.slug}}" bindtap="openSchool">›</view>
     </view>
   </view>
   <view class="guide-empty" wx:if="{{!loading && schools.length === 0}}">没有匹配的官方目录记录</view>
 </view>
+<guide-nav active="schools" />

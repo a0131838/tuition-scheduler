@@ -6,6 +6,8 @@
     "pages/guide-school-detail/guide-school-detail",
     "pages/guide-pathway/guide-pathway",
     "pages/guide-assessment/guide-assessment",
+    "pages/guide-cases/guide-cases",
+    "pages/guide-plan/guide-plan",
     "pages/guide-compare/guide-compare",
     "pages/guide-consult/guide-consult",
     "pages/guide-privacy/guide-privacy",
@@ -53,6 +55,9 @@
     "pages/request-detail/request-detail",
     "pages/request-new/request-new"
   ],
+  "usingComponents": {
+    "guide-nav": "/components/guide-nav/guide-nav"
+  },
   "window": {
     "navigationBarTitleText": "博思学业管家",
     "navigationBarBackgroundColor": "#EC5E0A",

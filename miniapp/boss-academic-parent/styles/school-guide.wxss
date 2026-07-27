@@ -1,9 +1,32 @@
 .guide-page {
   min-height: 100vh;
-  padding: 0 28rpx 64rpx;
+  padding: 0 28rpx 160rpx;
   box-sizing: border-box;
   background: #f6f4ef;
 }
+
+.guide-task-list { margin-top: 28rpx; border-top: 3rpx solid #18202a; }
+.guide-task { min-height: 126rpx; display: grid; grid-template-columns: 52rpx 1fr 28rpx; align-items: center; gap: 18rpx; border-bottom: 1rpx solid #d9dcdf; }
+.guide-task > text { color: #7a838c; font-size: 22rpx; }
+.guide-task b { display: block; color: #18202a; font-size: 29rpx; line-height: 1.4; }
+.guide-task small { display: block; margin-top: 7rpx; color: #69737d; font-size: 22rpx; line-height: 1.5; }
+.guide-task i { color: #a83c05; font-size: 34rpx; font-style: normal; }
+.guide-switch-row { min-height: 94rpx; display: flex; align-items: center; justify-content: space-between; margin-top: 18rpx; padding: 0 20rpx; border: 1rpx solid #cfd4d9; background: white; color: #3e4852; font-size: 24rpx; font-weight: 750; }
+.guide-match-card { padding: 30rpx 0; border-bottom: 1rpx solid #d9dcdf; }
+.guide-match-band { display: inline-flex; margin-bottom: 14rpx; padding: 6rpx 13rpx; border-radius: 999rpx; color: #6d4100; background: #fff0ce; font-size: 20rpx; font-weight: 850; }
+.guide-match-reason,.guide-match-caution { margin-top: 9rpx; font-size: 23rpx; line-height: 1.55; }
+.guide-match-reason { color: #35624a; }
+.guide-match-caution { color: #8e4b30; }
+.guide-empty-card { margin-top: 40rpx; padding: 34rpx; border: 1rpx solid #d9dcdf; background: rgba(255,255,255,.65); }
+.guide-empty-card .guide-action { margin-top: 28rpx; }
+.guide-standard-grid { margin-top: 34rpx; border-top: 2rpx solid #18202a; }
+.guide-standard-grid > view { padding: 24rpx 0; border-bottom: 1rpx solid #d9dcdf; }
+.guide-standard-grid b,.guide-standard-grid text { display: block; }
+.guide-standard-grid b { color: #18202a; font-size: 28rpx; }
+.guide-standard-grid text { margin-top: 7rpx; color: #66707c; font-size: 23rpx; }
+.guide-plan-list { padding-top: 16rpx; }
+.guide-plan-card { padding: 34rpx 0; border-bottom: 2rpx solid #18202a; }
+.guide-plan-card .guide-picker,.guide-plan-card .guide-input { margin-top: 18rpx; }
 
 .guide-hero {
   margin: 0 -28rpx;

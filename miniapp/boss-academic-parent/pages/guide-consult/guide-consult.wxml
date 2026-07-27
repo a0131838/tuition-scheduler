@@ -33,3 +33,4 @@
     <button class="guide-action" style="margin-top: 30rpx;" form-type="submit" loading="{{loading}}">提交人工评估</button>
   </form>
 </view>
+<guide-nav active="plan" />

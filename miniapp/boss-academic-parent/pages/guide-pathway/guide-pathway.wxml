@@ -32,3 +32,4 @@
     </view>
   </view>
 </view>
+<guide-nav active="assessment" />

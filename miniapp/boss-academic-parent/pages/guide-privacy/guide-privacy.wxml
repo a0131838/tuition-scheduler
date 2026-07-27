@@ -29,3 +29,4 @@
   </view>
   <view class="guide-notice">更新日期：2026年7月27日</view>
 </view>
+<guide-nav active="home" />

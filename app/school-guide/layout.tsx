@@ -16,10 +16,10 @@ export default function SchoolGuideLayout({ children }: { children: React.ReactN
           </Link>
           <nav className="sg-nav-links" aria-label="学校指南导航">
             <Link href="/school-guide/schools">找学校</Link>
-            <Link href="/school-guide#pathways">看路径</Link>
-            <Link href="/school-guide/assessment">做测评</Link>
-            <Link href="/school-guide/compare">比学校</Link>
-            <Link href="/school-guide/consult">找顾问</Link>
+            <Link href="/school-guide/assessment">智能选校</Link>
+            <Link href="/school-guide/cases">真实案例</Link>
+            <Link href="/school-guide/plan">我的方案</Link>
+            <Link href="/school-guide/consult">人工评估</Link>
           </nav>
         </div>
       </header>
@@ -38,6 +38,13 @@ export default function SchoolGuideLayout({ children }: { children: React.ReactN
           </div>
         </div>
       </footer>
+      <nav className="sg-mobile-dock" aria-label="学校指南移动导航">
+        <Link href="/school-guide"><span>⌂</span>首页</Link>
+        <Link href="/school-guide/schools"><span>⌕</span>找学校</Link>
+        <Link href="/school-guide/assessment"><span>◎</span>选校</Link>
+        <Link href="/school-guide/cases"><span>▤</span>案例</Link>
+        <Link href="/school-guide/plan"><span>◇</span>我的</Link>
+      </nav>
     </div>
   );
 }

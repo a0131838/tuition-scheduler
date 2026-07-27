@@ -50,3 +50,4 @@
     <button class="guide-action" wx:if="{{school.officialWebsiteUrl}}" style="margin-top: 24rpx;" data-url="{{school.officialWebsiteUrl}}" bindtap="copyLink">复制学校官网</button>
   </view>
 </view>
+<guide-nav active="schools" />
