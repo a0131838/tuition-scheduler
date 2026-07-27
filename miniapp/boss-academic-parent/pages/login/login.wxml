@@ -8,6 +8,7 @@
     </view>
 
     <button class="btn login-primary" loading="{{loading}}" bindtap="handleLogin">家长微信登录</button>
+    <button class="btn secondary" bindtap="goSchoolGuide">无需登录：新加坡学校指南</button>
   </view>
 
   <view class="portal-switch">

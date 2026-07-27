@@ -1,0 +1,35 @@
+<view class="guide-page">
+  <view class="guide-hero">
+    <view class="guide-kicker">HUMAN REVIEW</view>
+    <view class="guide-title">人工核对不确定的问题。</view>
+    <view class="guide-subtitle">提交后进入博思现有资源跟进系统，不用自动测评代替正式结论。</view>
+  </view>
+  <form bindsubmit="submit">
+    <view class="guide-field">
+      <view class="guide-label">家长称呼</view>
+      <input class="guide-input" name="parentName" maxlength="80" placeholder="请输入" />
+    </view>
+    <view class="guide-field">
+      <view class="guide-label">孩子称呼或昵称</view>
+      <input class="guide-input" name="studentName" maxlength="80" placeholder="请输入" />
+    </view>
+    <view class="guide-field">
+      <view class="guide-label">微信号</view>
+      <input class="guide-input" name="parentWechat" maxlength="80" placeholder="微信或电话至少填写一项" />
+    </view>
+    <view class="guide-field">
+      <view class="guide-label">联系电话</view>
+      <input class="guide-input" name="parentPhone" type="number" maxlength="40" placeholder="微信或电话至少填写一项" />
+    </view>
+    <view class="guide-field">
+      <view class="guide-label">目前最想解决的问题</view>
+      <textarea class="guide-textarea" name="needs" maxlength="1800" placeholder="请说明当前年级、目标入学时间和主要问题" />
+    </view>
+    <checkbox-group class="guide-check" bindchange="toggleConsent">
+      <checkbox value="yes" color="#ec5e0a" />
+      <text>我同意GT Educational Institute Pte. Ltd.使用以上资料联系我并进行择校评估；资料只用于本次咨询和后续服务跟进。</text>
+    </checkbox-group>
+    <view class="guide-text-link" bindtap="openPrivacy">查看隐私说明</view>
+    <button class="guide-action" style="margin-top: 30rpx;" form-type="submit" loading="{{loading}}">提交人工评估</button>
+  </form>
+</view>

@@ -1,0 +1,371 @@
+.guide-page {
+  min-height: 100vh;
+  padding: 0 28rpx 64rpx;
+  box-sizing: border-box;
+  background: #f6f4ef;
+}
+
+.guide-hero {
+  margin: 0 -28rpx;
+  padding: 62rpx 28rpx 54rpx;
+  border-bottom: 1rpx solid #d9dcdf;
+  background:
+    linear-gradient(90deg, rgba(24, 32, 42, 0.055) 1rpx, transparent 1rpx),
+    linear-gradient(rgba(24, 32, 42, 0.055) 1rpx, transparent 1rpx),
+    #f6f4ef;
+  background-size: 80rpx 80rpx;
+}
+
+.guide-kicker {
+  color: #a83c05;
+  font-size: 22rpx;
+  font-weight: 800;
+  letter-spacing: 2rpx;
+}
+
+.guide-title {
+  margin-top: 20rpx;
+  color: #18202a;
+  font-size: 62rpx;
+  font-weight: 850;
+  line-height: 1.06;
+  letter-spacing: -2rpx;
+}
+
+.guide-subtitle {
+  margin-top: 24rpx;
+  color: #5d6873;
+  font-size: 28rpx;
+  line-height: 1.7;
+}
+
+.guide-action-row {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 34rpx;
+}
+
+.guide-action {
+  flex: 1;
+  min-width: 0;
+  min-height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  border-radius: 6rpx;
+  background: #ec5e0a;
+  color: white;
+  font-size: 26rpx;
+  font-weight: 800;
+}
+
+.guide-action.secondary {
+  border: 1rpx solid #aeb4ba;
+  background: rgba(255, 255, 255, 0.55);
+  color: #18202a;
+}
+
+.guide-section {
+  padding: 54rpx 0 0;
+}
+
+.guide-section-title {
+  color: #18202a;
+  font-size: 38rpx;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.guide-section-note {
+  margin-top: 12rpx;
+  color: #66707c;
+  font-size: 25rpx;
+  line-height: 1.65;
+}
+
+.guide-list {
+  margin-top: 30rpx;
+  border-top: 2rpx solid #18202a;
+}
+
+.guide-row {
+  min-height: 132rpx;
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid #d9dcdf;
+}
+
+.guide-row-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.guide-row-title {
+  color: #18202a;
+  font-size: 29rpx;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.guide-row-note {
+  margin-top: 8rpx;
+  color: #69737d;
+  font-size: 23rpx;
+  line-height: 1.55;
+}
+
+.guide-arrow {
+  color: #a83c05;
+  font-size: 34rpx;
+  font-weight: 700;
+}
+
+.guide-favorite {
+  flex: none;
+  min-width: 112rpx;
+  min-height: 62rpx;
+  margin: 0;
+  padding: 0 14rpx;
+  border: 1rpx solid #aeb4ba;
+  border-radius: 999rpx;
+  background: transparent;
+  color: #18202a;
+  font-size: 21rpx;
+  font-weight: 800;
+  line-height: 60rpx;
+}
+
+.guide-text-link {
+  margin-top: 18rpx;
+  color: #a83c05;
+  font-size: 23rpx;
+  font-weight: 800;
+  text-decoration: underline;
+}
+
+.guide-tier-tabs {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 22rpx;
+}
+
+.guide-tier-tab {
+  flex: 1;
+  padding: 18rpx 8rpx;
+  border: 1rpx solid #c7c9ca;
+  border-radius: 999rpx;
+  color: #5d6873;
+  background: rgba(255, 255, 255, 0.55);
+  font-size: 22rpx;
+  font-weight: 800;
+  text-align: center;
+}
+
+.guide-tier-tab.active {
+  border-color: #ec5e0a;
+  color: #fff;
+  background: #ec5e0a;
+}
+
+.guide-tier-label {
+  display: inline-flex;
+  margin-top: 10rpx;
+  padding: 5rpx 11rpx;
+  border-radius: 999rpx;
+  color: #68727c;
+  background: #e7e5e0;
+  font-size: 20rpx;
+  font-weight: 800;
+}
+
+.guide-tier-label.first {
+  color: #fff;
+  background: #ec5e0a;
+}
+
+.guide-source-tag {
+  display: inline-flex;
+  margin-top: 12rpx;
+  padding: 6rpx 12rpx;
+  border: 1rpx solid #dab59c;
+  border-radius: 999rpx;
+  background: #fff7f0;
+  color: #8d3507;
+  font-size: 20rpx;
+  font-weight: 750;
+}
+
+.guide-notice {
+  margin-top: 24rpx;
+  padding: 22rpx;
+  border-left: 6rpx solid #ec5e0a;
+  background: #fff8f1;
+  color: #6c3413;
+  font-size: 24rpx;
+  line-height: 1.65;
+}
+
+.guide-fact {
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid #d9dcdf;
+  color: #46515d;
+  font-size: 27rpx;
+  line-height: 1.7;
+}
+
+.guide-source {
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid #d9dcdf;
+}
+
+.guide-source-title {
+  color: #9a3806;
+  font-size: 26rpx;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.guide-source-meta {
+  margin-top: 7rpx;
+  color: #6c7680;
+  font-size: 22rpx;
+  line-height: 1.55;
+}
+
+.guide-field {
+  margin-top: 24rpx;
+}
+
+.guide-label {
+  margin-bottom: 9rpx;
+  color: #3e4852;
+  font-size: 24rpx;
+  font-weight: 750;
+}
+
+.guide-input,
+.guide-picker,
+.guide-textarea {
+  width: 100%;
+  min-height: 88rpx;
+  box-sizing: border-box;
+  padding: 20rpx;
+  border: 1rpx solid #cfd4d9;
+  border-radius: 6rpx;
+  background: white;
+  color: #18202a;
+  font-size: 27rpx;
+}
+
+.guide-textarea {
+  min-height: 220rpx;
+}
+
+.guide-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+  margin-top: 24rpx;
+  color: #66707c;
+  font-size: 22rpx;
+  line-height: 1.55;
+}
+
+.guide-result {
+  margin-top: 34rpx;
+  border-top: 3rpx solid #18202a;
+}
+
+.guide-result-block {
+  padding: 28rpx 0;
+  border-bottom: 1rpx solid #d9dcdf;
+}
+
+.guide-result-title {
+  color: #18202a;
+  font-size: 31rpx;
+  font-weight: 850;
+}
+
+.guide-result-note {
+  margin-top: 10rpx;
+  color: #66707c;
+  font-size: 24rpx;
+  line-height: 1.65;
+}
+
+.guide-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx 20rpx;
+  margin-bottom: 22rpx;
+  color: #9a3806;
+  font-size: 21rpx;
+  font-weight: 800;
+}
+
+.guide-cost-box {
+  margin-top: 42rpx;
+  padding: 26rpx;
+  border-left: 7rpx solid #ec5e0a;
+  background: #fff4eb;
+}
+
+.guide-cost-box.compact {
+  margin-top: 24rpx;
+}
+
+.guide-cost-label {
+  color: #9a3806;
+  font-size: 23rpx;
+  font-weight: 850;
+}
+
+.guide-cost-value {
+  margin-top: 10rpx;
+  color: #18202a;
+  font-size: 37rpx;
+  font-weight: 850;
+}
+
+.guide-cost-note,
+.guide-cost-foot,
+.guide-review-meta {
+  margin-top: 10rpx;
+  color: #66707c;
+  font-size: 22rpx;
+  line-height: 1.6;
+}
+
+.guide-compare-facts {
+  margin-top: 20rpx;
+  border-top: 1rpx solid #d9dcdf;
+}
+
+.guide-compare-facts view {
+  padding: 15rpx 0;
+  border-bottom: 1rpx solid #d9dcdf;
+  color: #38434e;
+  font-size: 23rpx;
+  line-height: 1.55;
+}
+
+.guide-compare-facts text {
+  display: inline-block;
+  width: 140rpx;
+  color: #7a838c;
+  font-size: 21rpx;
+}
+
+.guide-search {
+  margin-top: 30rpx;
+}
+
+.guide-empty {
+  padding: 64rpx 0;
+  color: #717b85;
+  text-align: center;
+}

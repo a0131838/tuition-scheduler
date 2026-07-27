@@ -1,0 +1,34 @@
+<view class="guide-page">
+  <view class="guide-hero">
+    <view class="guide-kicker">INTERNATIONAL SCHOOLS</view>
+    <view class="guide-title">国际学校目录</view>
+    <view class="guide-subtitle">按已确认的业务梯队浏览；梯队不是官方排名，招生事实仍只采用官方来源。</view>
+  </view>
+  <view class="guide-search">
+    <input class="guide-input" value="{{query}}" bindinput="inputQuery" placeholder="搜索学校英文名" />
+  </view>
+  <view class="guide-tier-tabs">
+    <view class="guide-tier-tab {{tier === 'ALL' ? 'active' : ''}}" data-tier="ALL" bindtap="setTier">全部</view>
+    <view class="guide-tier-tab {{tier === 'FIRST' ? 'active' : ''}}" data-tier="FIRST" bindtap="setTier">第一梯队</view>
+    <view class="guide-tier-tab {{tier === 'UNASSIGNED' ? 'active' : ''}}" data-tier="UNASSIGNED" bindtap="setTier">待分梯队</view>
+  </view>
+  <view class="guide-notice">第一梯队：SAS、德威、UWCSEA、东陵信托、北伦敦。属于择校工作分类，不是官方排名或录取承诺。</view>
+  <view class="guide-list">
+    <view class="guide-row" wx:for="{{schools}}" wx:key="slug">
+      <view class="guide-row-main">
+        <view data-slug="{{item.slug}}" bindtap="openSchool">
+          <view class="guide-row-title">{{item.name}}</view>
+          <view class="guide-tier-label {{item.editorialTier === 1 ? 'first' : ''}}">{{item.editorialTier === 1 ? "第一梯队" : "待分梯队"}}</view>
+          <view class="guide-row-note">{{item.verifiedFacts[0]}}</view>
+          <view class="guide-source-tag" wx:if="{{item.sourcePage}}">IB官方目录 · 第{{item.sourcePage}}页</view>
+          <view class="guide-source-tag" wx:else>学校官网</view>
+        </view>
+      </view>
+      <button class="guide-favorite" data-slug="{{item.slug}}" bindtap="toggleFavorite">
+        {{item.favorite ? "已收藏" : "收藏"}}
+      </button>
+      <view class="guide-arrow" data-slug="{{item.slug}}" bindtap="openSchool">›</view>
+    </view>
+  </view>
+  <view class="guide-empty" wx:if="{{!loading && schools.length === 0}}">没有匹配的官方目录记录</view>
+</view>

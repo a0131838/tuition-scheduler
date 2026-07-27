@@ -1,6 +1,14 @@
 {
   "pages": [
     "pages/login/login",
+    "pages/guide-home/guide-home",
+    "pages/guide-schools/guide-schools",
+    "pages/guide-school-detail/guide-school-detail",
+    "pages/guide-pathway/guide-pathway",
+    "pages/guide-assessment/guide-assessment",
+    "pages/guide-compare/guide-compare",
+    "pages/guide-consult/guide-consult",
+    "pages/guide-privacy/guide-privacy",
     "pages/staff-login/staff-login",
     "pages/staff-bind/staff-bind",
     "pages/staff-account-switch/staff-account-switch",

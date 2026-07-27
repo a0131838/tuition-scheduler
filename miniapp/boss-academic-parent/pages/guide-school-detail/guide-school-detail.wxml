@@ -1,0 +1,52 @@
+<view class="guide-page" wx:if="{{school}}">
+  <view class="guide-hero">
+    <view class="guide-kicker">{{school.category}} · {{school.editorialTier === 1 ? "第一梯队" : "待分梯队"}}</view>
+    <view class="guide-title" style="font-size: 48rpx;">{{school.name}}</view>
+    <view class="guide-subtitle">只展示已经核实的事实。空白字段不会用第三方文章补齐。</view>
+  </view>
+
+  <view class="guide-section">
+    <view class="guide-meta-row" wx:if="{{school.verifiedAt}}">
+      <text>{{school.dataStatus === "VERIFIED" ? "官网已核实" : "部分核实"}}</text>
+      <text>适用 {{school.applicableYear}}</text>
+      <text>核实 {{school.verifiedAt}}</text>
+      <text>复核 {{school.nextReviewAt}}</text>
+    </view>
+    <view class="guide-section-title">学校概览</view>
+    <view class="guide-list">
+      <view class="guide-fact" wx:for="{{school.verifiedFacts}}" wx:key="*this">{{item}}</view>
+    </view>
+  </view>
+
+  <view class="guide-section" wx:for="{{school.detailSections}}" wx:key="title" wx:for-item="section">
+    <view class="guide-section-title">{{section.title}}</view>
+    <view class="guide-list">
+      <view class="guide-fact" wx:for="{{section.items}}" wx:key="*this" wx:for-item="fact">{{fact}}</view>
+    </view>
+  </view>
+
+  <view class="guide-section" wx:if="{{!school.detailSections || !school.detailSections.length}}">
+    <view class="guide-section-title">尚待逐项核实</view>
+    <view class="guide-section-note">入学年龄、年级、学费、申请费、校车、EAL、SEN、考试和面试要求，需要继续核对学校当期官方页面。</view>
+  </view>
+
+  <view class="guide-cost-box" wx:if="{{school.costProfile}}">
+    <view class="guide-cost-label">{{school.costProfile.academicYear}}首年固定费用估算</view>
+    <view class="guide-cost-value">{{school.costProfile.rangeText}}</view>
+    <view class="guide-cost-note">已计：{{school.costProfile.includesText}}</view>
+    <view class="guide-cost-note">未计：{{school.costProfile.optionalText}}</view>
+    <view class="guide-cost-foot">{{school.costProfile.note}}</view>
+  </view>
+
+  <view class="guide-section">
+    <view class="guide-section-title">官方来源</view>
+    <view class="guide-list">
+      <view class="guide-source" wx:for="{{sources}}" wx:key="id">
+        <view class="guide-source-title">{{item.title}}</view>
+        <view class="guide-source-meta">{{item.authority}} · 核实于 {{item.checkedAt}}</view>
+        <button class="guide-action secondary" style="margin-top: 16rpx;" data-url="{{item.url}}" bindtap="copyLink">复制官方链接</button>
+      </view>
+    </view>
+    <button class="guide-action" wx:if="{{school.officialWebsiteUrl}}" style="margin-top: 24rpx;" data-url="{{school.officialWebsiteUrl}}" bindtap="copyLink">复制学校官网</button>
+  </view>
+</view>

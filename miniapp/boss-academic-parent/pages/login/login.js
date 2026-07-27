@@ -55,5 +55,9 @@ Page({
   goStaff() {
     getApp().setCurrentPortal("staff");
     wx.redirectTo({ url: "/pages/staff-login/staff-login" });
+  },
+
+  goSchoolGuide() {
+    wx.navigateTo({ url: "/pages/guide-home/guide-home" });
   }
 });

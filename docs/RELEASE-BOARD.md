@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-07-24`
+- Last checked: `2026-07-27`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-24-r284` is live at runtime feature commit `b324c08`; it updates the package-ledger PDF branding and adds per-transaction student attribution for shared packages.
+- Current release line on this branch: `2026-07-27-r285` is ready to add the public Singapore School Guide and the matching additive miniapp pages on top of the latest `2026-07-24-r284` production lineage.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
@@ -22,7 +22,34 @@
 
 ## Open Risks
 
+- Singapore School Guide rollout: `2026-07-27-r285` is additive and has no migration, but official school fees and admissions details remain time-sensitive. Fifteen priority schools show an applicable year, verification date and next review date; partially verified directory entries must continue to display their limitation. After server deployment, upload miniapp development version `1.0.17`, designate it as the experience version, and check the public entry, one school detail, four-school comparison, copied official link and test inquiry without exposing real child data.
+
 - Package-ledger student-attribution rollout: `2026-07-24-r284` is live at runtime feature commit `b324c08`, with PM2 PID `99894`, health 200 and the deployed logo hash matching the approved `GTI2.png`. The release is read-only and changes only PDF rendering. Historical rows are resolved from explicit student metadata or attendance references; a deduction that cannot be matched is visibly labelled `Unresolved / 未匹配` instead of being silently attributed to the package owner. Previously downloaded PDFs are static and must be downloaded again.
+
+## 2026-07-27-r285 Ready
+
+- Scope: publish the official-source Singapore School Guide on web and add its public pages to the existing WeChat miniapp.
+- Business impact:
+  - Families can browse verified pathways and schools, compare up to four schools, estimate first-year fixed costs and submit an inquiry.
+  - Existing parent, employee, scheduling, attendance, package, payroll, finance, feedback, renewal and Ticket workflows are unchanged.
+- Files:
+  - `app/school-guide/*`
+  - `app/api/public/school-guide/*`
+  - `lib/school-guide-data.ts`
+  - `miniapp/boss-academic-parent/pages/guide-*`
+  - `miniapp/boss-academic-parent/app.json`
+- Verification before deploy:
+  - 8 focused school-guide tests.
+  - 109 backend regression tests.
+  - 268 complete repository tests.
+  - TypeScript and `git diff --check`.
+  - 223-page Next production build.
+  - 52-page miniapp release audit.
+- Post-deploy verification:
+  - `/admin/login`, `/school-guide`, `/school-guide/compare` and `/api/public/school-guide/catalog` return HTTP 200.
+  - Catalog exposes verified cost and review fields.
+  - Anonymous incomplete inquiry is rejected without creating data.
+  - WeChat development version `1.0.17` is uploaded and then designated as the experience version.
 
 - Ticket-action workflow rollout: `2026-07-24-r283` is live at runtime feature commit `c22e7f3`, with all 112 migrations current, PM2 PID `90247` and health 200. Anonymous Ticket access redirects to login, and three existing structured Tickets retained their unresolved action states after deployment. The exact action ID and source lesson are validated inside the existing schedule transaction, so a mismatch rolls back the operation. Use the next real scheduling request for the first controlled write; do not fabricate or cancel a real lesson solely for testing.
 

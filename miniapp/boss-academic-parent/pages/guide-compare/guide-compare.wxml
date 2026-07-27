@@ -1,0 +1,45 @@
+<view class="guide-page">
+  <view class="guide-hero">
+    <view class="guide-kicker">COMPARE SCHOOLS</view>
+    <view class="guide-title">只比较核实过的事实。</view>
+    <view class="guide-subtitle">最多选择4所，比较年龄、课程、评估、英语支持、寄宿和首年固定费用。</view>
+  </view>
+  <input class="guide-input guide-search" value="{{query}}" bindinput="inputQuery" placeholder="搜索学校英文名" />
+  <view class="guide-list">
+    <view class="guide-row" wx:for="{{schools}}" wx:key="slug">
+      <view class="guide-row-main">
+        <view class="guide-row-title">{{item.name}}</view>
+        <view class="guide-row-note">{{item.verifiedFacts[0]}}</view>
+      </view>
+      <button class="guide-action secondary" style="width: 130rpx; flex: none;" data-slug="{{item.slug}}" bindtap="toggle">
+        {{item.selected ? "移除" : "加入"}}
+      </button>
+    </view>
+  </view>
+  <view class="guide-result" wx:if="{{compared.length}}">
+    <view class="guide-result-block">
+      <view class="guide-result-title">当前比较 {{compared.length}} 所</view>
+      <view class="guide-result-note">所有字段来自学校官网或官方费用文件；可选费用另列，不混入固定费用。</view>
+    </view>
+    <view class="guide-result-block" wx:for="{{compared}}" wx:key="slug">
+      <view class="guide-result-title">{{item.name}}</view>
+      <view class="guide-result-note">{{item.verifiedFacts[0]}}</view>
+      <view class="guide-compare-facts" wx:if="{{item.comparison}}">
+        <view><text>年龄年级</text>{{item.comparison.ageAndGrades}}</view>
+        <view><text>课程</text>{{item.comparison.curriculum}}</view>
+        <view><text>校区</text>{{item.comparison.campuses}}</view>
+        <view><text>招生评估</text>{{item.comparison.admissions}}</view>
+        <view><text>英语支持</text>{{item.comparison.englishSupport}}</view>
+        <view><text>寄宿</text>{{item.comparison.boarding}}</view>
+      </view>
+      <view class="guide-cost-box compact" wx:if="{{item.costProfile}}">
+        <view class="guide-cost-label">{{item.costProfile.academicYear}}首年固定费用</view>
+        <view class="guide-cost-value">{{item.costRangeText}}</view>
+        <view class="guide-cost-note">已计：{{item.costIncludesText}}</view>
+        <view class="guide-cost-note">未计：{{item.costOptionalText}}</view>
+        <view class="guide-cost-foot">{{item.costProfile.note}}</view>
+      </view>
+      <view class="guide-review-meta">核实 {{item.verifiedAt || "待核实"}} · 下次复核 {{item.nextReviewAt || "待安排"}}</view>
+    </view>
+  </view>
+</view>

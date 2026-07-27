@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-27-r285
+
+- Release ID: `2026-07-27-r285`
+- Date/Time (Asia/Shanghai): `2026-07-27`
+- Deployment status: `READY`
+- Scope: add the public Singapore School Guide to the web and existing parent/staff miniapp, with official-source school profiles, pathway assessment, comparison, first-year cost ranges, privacy notice and inquiry handoff.
+- Key files:
+  - `app/school-guide/*`
+  - `app/api/public/school-guide/*`
+  - `lib/school-guide-data.ts`
+  - `lib/school-guide-assessment.ts`
+  - `miniapp/boss-academic-parent/pages/guide-*`
+  - `miniapp/boss-academic-parent/app.json`
+  - `tests/school-guide-*.test.ts`
+  - `docs/tasks/TASK-20260727-singapore-school-guide-release.md`
+- Risk impact (if any): Low-to-medium and isolated to new public read pages plus an explicitly submitted inquiry write. No database migration is added. Existing parent, employee, scheduling, attendance, package, payroll, finance, feedback, renewal and Ticket behavior is unchanged; the new miniapp pages are additive and preserve all 44 existing latest-branch pages.
+- Verification: 8 school-guide tests, all 109 backend regression tests and all 268 repository tests passed; TypeScript, `git diff --check`, the 223-page production build and the 52-page miniapp release audit passed on top of the latest remote production lineage. Post-deploy checks will cover health, public catalog, school detail and anonymous validation.
+- Rollback point: `fab321420da02cc59f3fadc20d0b9de1d210459e` (`2026-07-24-r284` documentation-aligned production lineage).
+
+---
+
 ## 2026-07-24-r284
 
 - Release ID: `2026-07-24-r284`
