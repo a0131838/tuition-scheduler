@@ -22,3 +22,11 @@ Make the public School Guide feel like a concise decision tool instead of an int
 - No employee name or internal owner/review language remains in School Guide UI.
 - Mobile first screen reaches the main actions without a large decorative block.
 - Build, focused tests and miniapp audit pass.
+
+## Completion
+
+- Status: complete and live on `2026-07-27`.
+- Runtime commit: `0c2c431f8cb65f3d5741f18eae14f83a0800b3da`.
+- Production: PM2 PID `1492457`; five School Guide routes and API checks returned HTTP 200.
+- WeChat: development version `1.0.19` uploaded successfully at 573,860 bytes.
+- Regression: 225-page build, 10 focused tests, all 270 repository tests, 54-page miniapp audit, diff check and mobile visual review passed.

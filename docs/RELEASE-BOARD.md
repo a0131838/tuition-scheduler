@@ -16,7 +16,7 @@
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
 - Current release line: `2026-07-27-r285` is live at commit `463b680d1c0c397b96edf48a849b0c92087c48e1`; WeChat development version `1.0.17` was uploaded successfully.
 - Current release line: `2026-07-27-r286` is live at runtime feature commit `085ddd03ed79ac830ad9586ae2152161926ae747`; WeChat development version `1.0.18` was uploaded successfully. Existing business roles and workflows remain isolated.
-- Next release line: `2026-07-27-r287` is a presentation-only cleanup of public School Guide copy and mobile density. It removes employee names and internal process explanations without changing data or workflows.
+- Current release line: `2026-07-27-r287` is live at runtime commit `0c2c431f8cb65f3d5741f18eae14f83a0800b3da`; WeChat development version `1.0.19` was uploaded successfully. It removes employee names and internal process explanations without changing data or workflows.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
@@ -26,13 +26,17 @@
 
 - Singapore School Guide rollout: `2026-07-27-r285` is additive and has no migration, but official school fees and admissions details remain time-sensitive. Fifteen priority schools show an applicable year, verification date and next review date; partially verified directory entries must continue to display their limitation. After server deployment, upload miniapp development version `1.0.17`, designate it as the experience version, and check the public entry, one school detail, four-school comparison, copied official link and test inquiry without exposing real child data.
 
-## 2026-07-27-r287 Ready
+## 2026-07-27-r287 Live
 
 - Scope: simplify all public School Guide surfaces on web and miniapp.
 - Removed: employee name, internal ownership and review language, repeated disclaimers, source-page filter, decorative compass and verbose empty states.
 - Preserved: official school facts, pathways, matching reasons/cautions, plan storage, comparison, inquiry consent and privacy contact channels.
 - Isolation: no database migration and no changes to parent, staff, teacher or admin workflows.
 - Verification: production build, focused School Guide tests, miniapp release audit, diff check and 390px visual review.
+- Production verification:
+  - Runtime commit `0c2c431f8cb65f3d5741f18eae14f83a0800b3da` runs as PM2 PID `1492457`.
+  - `/school-guide`, `/school-guide/assessment`, `/school-guide/cases`, `/school-guide/plan` and `/api/public/school-guide/catalog` returned HTTP 200.
+  - WeChat development version `1.0.19` uploaded at 573,860 bytes; experience-version designation remains a manual WeChat security action.
 
 - Package-ledger student-attribution rollout: `2026-07-24-r284` is live at runtime feature commit `b324c08`, with PM2 PID `99894`, health 200 and the deployed logo hash matching the approved `GTI2.png`. The release is read-only and changes only PDF rendering. Historical rows are resolved from explicit student metadata or attendance references; a deduction that cannot be matched is visibly labelled `Unresolved / 未匹配` instead of being silently attributed to the package owner. Previously downloaded PDFs are static and must be downloaded again.
 
