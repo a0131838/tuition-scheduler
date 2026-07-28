@@ -2,7 +2,7 @@
   <view class="guide-hero">
     <view class="guide-kicker">SINGAPORE SCHOOL GUIDE</view>
     <view class="guide-title">找到适合孩子的新加坡学校。</view>
-    <view class="guide-subtitle">筛选、比较、保存，形成自己的选校方案。</view>
+    <view class="guide-subtitle">从学前、政府学校到国际学校、专上院校和大学，按官方资料查找。</view>
     <view class="guide-action-row">
       <button class="guide-action" bindtap="goAssessment">开始智能选校</button>
       <button class="guide-action secondary" bindtap="goSchools">找学校</button>
@@ -12,7 +12,7 @@
   <view class="guide-section">
     <view class="guide-section-title">你想先做什么？</view>
     <view class="guide-task-list">
-      <view class="guide-task" bindtap="goSchools"><text>01</text><view><b>找学校</b><small>按课程与梯队筛选</small></view><i>›</i></view>
+      <view class="guide-task" bindtap="goSchools"><text>01</text><view><b>找学校</b><small>按教育阶段和学校类型查找</small></view><i>›</i></view>
       <view class="guide-task" bindtap="goAssessment"><text>02</text><view><b>智能选校</b><small>生成候选清单</small></view><i>›</i></view>
       <view class="guide-task" bindtap="goCases"><text>03</text><view><b>真实案例</b><small>了解相似家庭的选择</small></view><i>›</i></view>
       <view class="guide-task" bindtap="goPlan"><text>04</text><view><b>我的方案</b><small>已加入 {{planCount}} 所学校</small></view><i>›</i></view>

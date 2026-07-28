@@ -15,6 +15,19 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-28-r288
+
+- Release ID: `2026-07-28-r288`
+- Date/Time (Asia/Shanghai): `2026-07-28`
+- Deployment status: `READY`
+- Scope: expand the School Guide from an international-school-first directory into a complete Singapore education-system directory on web and miniapp.
+- Key changes: add 13 official-source sectors covering preschool, MOE primary and secondary schools, independent and specialised pathways, JC/MI, SPED, private schools, PEIs, full-time madrasahs, ITE, polytechnics, arts institutions and autonomous universities; retain the existing international-school detail directory below.
+- Risk impact: Low and isolated to public School Guide content and navigation. No database migration; no changes to authentication, parent, staff, teacher, scheduling, billing, package, payroll, communications or Ticket workflows.
+- Verification: 13 focused School Guide tests, all 273 repository tests, 225-page production build, 54-page miniapp audit, diff check and 390px mobile browser review passed.
+- Rollback point: `1228583bfb4bd28b131cbb14ea6ae0fc8381c038` (`2026-07-27-r287` live lineage).
+
+---
+
 ## 2026-07-27-r287
 
 - Release ID: `2026-07-27-r287`

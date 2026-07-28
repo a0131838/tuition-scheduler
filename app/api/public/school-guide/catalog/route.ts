@@ -4,6 +4,7 @@ import {
   officialSources,
   schoolGuideCases,
   schoolGuidePathways,
+  schoolGuideSectors,
   schoolGuideSchools,
 } from "@/lib/school-guide-data";
 
@@ -13,6 +14,7 @@ export async function GET() {
       ok: true,
       version: SCHOOL_GUIDE_DATA_VERSION,
       schools: schoolGuideSchools,
+      sectors: schoolGuideSectors,
       cases: schoolGuideCases.filter((item) => item.published && item.consentRecorded && item.anonymized),
       pathways: schoolGuidePathways,
       sources: officialSources,

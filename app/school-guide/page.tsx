@@ -13,7 +13,7 @@ export default function SchoolGuideHomePage() {
           <div>
             <div className="sg-eyebrow">新加坡学校指南</div>
             <h1>找到适合孩子的新加坡学校。</h1>
-            <p>筛选、比较、保存，形成自己的选校方案。</p>
+            <p>从学前、政府学校到国际学校、专上院校和大学，按官方资料查找。</p>
             <div className="sg-actions">
               <Link className="sg-primary" href="/school-guide/assessment">开始智能选校</Link>
               <Link className="sg-secondary" href="/school-guide/schools">直接找学校</Link>
@@ -32,7 +32,7 @@ export default function SchoolGuideHomePage() {
           </div>
           <div className="sg-task-list">
             {[
-              ["01", "找学校", `${verifiedSchools.length}所学校，按课程与梯队筛选`, "/school-guide/schools"],
+              ["01", "找学校", "按教育阶段和学校类型查找", "/school-guide/schools"],
               ["02", "智能选校", "按家庭条件生成候选清单", "/school-guide/assessment"],
               ["03", "真实案例", "了解相似家庭的选择", "/school-guide/cases"],
               ["04", "我的方案", "继续整理已选学校", "/school-guide/plan"],

@@ -3,7 +3,7 @@ import "./school-guide.css";
 
 export const metadata = {
   title: "新加坡学校指南",
-  description: "使用官方资料了解新加坡政府学校、AEIS与IB学校，并找到适合孩子的申请路径。",
+  description: "使用官方资料了解新加坡学前、政府学校、国际学校、私立教育、专上院校与大学。",
 };
 
 export default function SchoolGuideLayout({ children }: { children: React.ReactNode }) {
@@ -27,7 +27,7 @@ export default function SchoolGuideLayout({ children }: { children: React.ReactN
       <footer className="sg-footer">
         <div className="sg-shell sg-footer-inner">
           <strong>新加坡学校指南</strong>
-          <div>信息以学校及MOE最新公布为准 · <Link href="/school-guide/privacy">隐私说明</Link></div>
+          <div>信息以MOE、ECDA、SSG及学校最新公布为准 · <Link href="/school-guide/privacy">隐私说明</Link></div>
         </div>
       </footer>
       <nav className="sg-mobile-dock" aria-label="学校指南移动导航">

@@ -51,6 +51,17 @@ export type SchoolGuidePathway = {
   sourceIds: string[];
 };
 
+export type SchoolGuideSector = {
+  id: string;
+  title: string;
+  stage: "学前" | "小学" | "中学" | "高中与专上" | "特殊与其他";
+  summary: string;
+  includes: string[];
+  officialUrl?: string;
+  internalHref?: string;
+  authority: string;
+};
+
 export type SchoolGuideCase = {
   id: string;
   published: boolean;
@@ -60,7 +71,7 @@ export type SchoolGuideCase = {
   summary: string;
 };
 
-export const SCHOOL_GUIDE_DATA_VERSION = "2026-07-27";
+export const SCHOOL_GUIDE_DATA_VERSION = "2026-07-28";
 
 export const officialSources: OfficialSource[] = [
   {
@@ -70,6 +81,78 @@ export const officialSources: OfficialSource[] = [
     url: "https://www.moe.gov.sg/schoolfinder",
     checkedAt: "2026-07-27",
     appliesTo: "MOE学校、地点、课程、CCA及官方学校资料",
+  },
+  {
+    id: "moe-school-types",
+    title: "Types of schools",
+    authority: "Singapore Ministry of Education",
+    url: "https://www.moe.gov.sg/education-in-sg/our-schools/types-of-schools",
+    checkedAt: "2026-07-28",
+    appliesTo: "政府、政府辅助、自主、特选、独立及专科学校类型",
+  },
+  {
+    id: "moe-kindergarten",
+    title: "MOE Kindergarten",
+    authority: "Singapore Ministry of Education",
+    url: "https://www.moe.gov.sg/preschool/moe-kindergarten",
+    checkedAt: "2026-07-28",
+    appliesTo: "MOE Kindergarten与KCare",
+  },
+  {
+    id: "ecda-preschool-search",
+    title: "Preschool Search",
+    authority: "Early Childhood Development Agency",
+    url: "https://www.ecda.gov.sg/parents/preschool-search",
+    checkedAt: "2026-07-28",
+    appliesTo: "持牌幼儿园与托儿中心官方查询入口",
+  },
+  {
+    id: "moe-post-secondary",
+    title: "Post-secondary education institutions",
+    authority: "Singapore Ministry of Education",
+    url: "https://www.moe.gov.sg/post-secondary/overview",
+    checkedAt: "2026-07-28",
+    appliesTo: "JC、MI、ITE、理工学院、艺术院校及大学路径",
+  },
+  {
+    id: "moe-autonomous-universities",
+    title: "Autonomous universities",
+    authority: "Singapore Ministry of Education",
+    url: "https://www.moe.gov.sg/post-secondary/overview/autonomous-universities",
+    checkedAt: "2026-07-28",
+    appliesTo: "六所新加坡自治大学",
+  },
+  {
+    id: "moe-sped",
+    title: "Special educational needs",
+    authority: "Singapore Ministry of Education",
+    url: "https://www.moe.gov.sg/special-educational-needs",
+    checkedAt: "2026-07-28",
+    appliesTo: "主流学校支持与政府资助SPED学校",
+  },
+  {
+    id: "moe-private-schools",
+    title: "List of private schools",
+    authority: "Singapore Ministry of Education",
+    url: "https://www.moe.gov.sg/private-education/private-schools",
+    checkedAt: "2026-07-28",
+    appliesTo: "MOE注册私立学校",
+  },
+  {
+    id: "ssg-pei-listing",
+    title: "PEI Listing",
+    authority: "SkillsFuture Singapore / TPGateway",
+    url: "https://www.tpgateway.gov.sg/resources/information-for-private-education-institutions-%28peis%29/pei-listing",
+    checkedAt: "2026-07-28",
+    appliesTo: "注册私立教育机构及获准课程",
+  },
+  {
+    id: "muis-madrasahs",
+    title: "Full-time madrasahs",
+    authority: "Majlis Ugama Islam Singapura",
+    url: "https://www.muis.gov.sg/education/full-time-madrasahs",
+    checkedAt: "2026-07-28",
+    appliesTo: "新加坡六所全日制回教学校",
   },
   {
     id: "moe-international-admission",
@@ -406,6 +489,126 @@ export const officialSources: OfficialSource[] = [
     url: "https://www.ofs.edu.sg/admissions/fees/",
     checkedAt: "2026-07-27",
     appliesTo: "OFS 2026/27申请、注册和各学段费用",
+  },
+];
+
+export const schoolGuideSectors: SchoolGuideSector[] = [
+  {
+    id: "moe-kindergarten",
+    title: "MOE Kindergarten",
+    stage: "学前",
+    summary: "MOE开办的K1、K2及KCare。",
+    includes: ["K1与K2", "KCare", "MK–Early Years Centre衔接"],
+    officialUrl: "https://www.moe.gov.sg/preschool/moe-kindergarten",
+    authority: "MOE",
+  },
+  {
+    id: "licensed-preschools",
+    title: "持牌幼儿园与托儿中心",
+    stage: "学前",
+    summary: "通过ECDA与LifeSG按地点查询学前教育中心。",
+    includes: ["Child Care", "Kindergarten", "Infant Care"],
+    officialUrl: "https://www.ecda.gov.sg/parents/preschool-search",
+    authority: "ECDA",
+  },
+  {
+    id: "primary-schools",
+    title: "政府与政府辅助小学",
+    stage: "小学",
+    summary: "按距离、母语、课程和学校类型查询MOE小学。",
+    includes: ["Government", "Government-aided", "Autonomous与SAP"],
+    officialUrl: "https://www.moe.gov.sg/schoolfinder?journey=Primary%20school",
+    authority: "MOE SchoolFinder",
+  },
+  {
+    id: "secondary-schools",
+    title: "政府与政府辅助中学",
+    stage: "中学",
+    summary: "查询中学课程、科目、CCA、SAP、IP及DSA相关信息。",
+    includes: ["Government", "Government-aided", "Autonomous与SAP"],
+    officialUrl: "https://www.moe.gov.sg/schoolfinder?journey=Secondary%20school",
+    authority: "MOE SchoolFinder",
+  },
+  {
+    id: "independent-specialised",
+    title: "独立与专科路线",
+    stage: "中学",
+    summary: "覆盖独立、专科独立、专科学校及实践型中学。",
+    includes: ["Independent", "Specialised Independent", "NorthLight与APS", "Crest与Spectra"],
+    officialUrl: "https://www.moe.gov.sg/education-in-sg/our-schools/types-of-schools",
+    authority: "MOE",
+  },
+  {
+    id: "jc-mi",
+    title: "初级学院与Millennia Institute",
+    stage: "高中与专上",
+    summary: "查询A-Level、IB、课程、科目和CCA。",
+    includes: ["Junior Colleges", "Millennia Institute", "A-Level与部分IB路径"],
+    officialUrl: "https://www.moe.gov.sg/schoolfinder?journey=Post-secondary%20education",
+    authority: "MOE SchoolFinder",
+  },
+  {
+    id: "international-schools",
+    title: "国际学校与私立资助学校",
+    stage: "特殊与其他",
+    summary: "查看已接入的IB、美式、英式、法式及其他国际课程学校。",
+    includes: ["International Schools", "Privately Funded Schools", "IB World Schools"],
+    internalHref: "/school-guide/schools#international-directory",
+    authority: "学校官网与IB",
+  },
+  {
+    id: "sped-schools",
+    title: "特殊教育与主流学校支持",
+    stage: "特殊与其他",
+    summary: "按孩子的支持需要了解主流学校支持与政府资助SPED学校。",
+    includes: ["Mainstream SEN support", "SPED schools", "申请路径"],
+    officialUrl: "https://www.moe.gov.sg/special-educational-needs",
+    authority: "MOE",
+  },
+  {
+    id: "private-schools",
+    title: "MOE注册私立学校",
+    stage: "特殊与其他",
+    summary: "查询向MOE注册的私立学校；注册不等于质量认可。",
+    includes: ["Private schools", "课程与教师许可核对"],
+    officialUrl: "https://www.moe.gov.sg/private-education/private-schools",
+    authority: "MOE",
+  },
+  {
+    id: "private-education-institutions",
+    title: "私立教育机构（PEI）",
+    stage: "高中与专上",
+    summary: "核对SkillsFuture Singapore注册机构及获准课程。",
+    includes: ["PEI", "获准课程", "EduTrust相关核对"],
+    officialUrl: "https://www.tpgateway.gov.sg/resources/information-for-private-education-institutions-%28peis%29/pei-listing",
+    authority: "SSG / TPGateway",
+  },
+  {
+    id: "madrasahs",
+    title: "全日制回教学校",
+    stage: "特殊与其他",
+    summary: "查看新加坡六所全日制Madrasah及其招生信息。",
+    includes: ["Primary", "Secondary", "Pre-university religious education"],
+    officialUrl: "https://www.muis.gov.sg/education/full-time-madrasahs",
+    authority: "MUIS",
+  },
+  {
+    id: "ite-poly-arts",
+    title: "ITE、理工学院与艺术院校",
+    stage: "高中与专上",
+    summary: "查看职业技术、Diploma及艺术教育路径。",
+    includes: ["ITE", "5所Polytechnics", "LASALLE与NAFA"],
+    officialUrl: "https://www.moe.gov.sg/post-secondary/overview",
+    authority: "MOE",
+  },
+  {
+    id: "autonomous-universities",
+    title: "自治大学",
+    stage: "高中与专上",
+    summary: "查看新加坡六所自治大学及官方介绍。",
+    includes: ["NUS", "NTU", "SMU", "SUTD", "SIT", "SUSS"],
+    officialUrl: "https://www.moe.gov.sg/post-secondary/overview/autonomous-universities",
+    authority: "MOE",
   },
 ];
 

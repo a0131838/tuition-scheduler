@@ -6,6 +6,7 @@ Page({
     loading: true,
     query: "",
     tier: "ALL",
+    sectorGroups: [],
     allSchools: [],
     schools: []
   },
@@ -15,6 +16,7 @@ Page({
       .then((data) => {
         const schools = data.schools || [];
         this.setData({
+          sectorGroups: this.buildSectorGroups(data.sectors || []),
           allSchools: schools,
           schools: this.buildVisibleSchools(schools, "", this.loadFavorites(), "ALL")
         });
@@ -33,6 +35,17 @@ Page({
   loadFavorites() {
     const favorites = wx.getStorageSync(FAVORITES_KEY);
     return Array.isArray(favorites) ? favorites : [];
+  },
+
+  buildSectorGroups(sectors) {
+    return ["学前", "小学", "中学", "高中与专上", "特殊与其他"]
+      .map((stage) => ({
+        stage,
+        sectors: sectors
+          .filter((item) => item.stage === stage)
+          .map((item) => ({ ...item, includesText: (item.includes || []).join(" · ") }))
+      }))
+      .filter((group) => group.sectors.length);
   },
 
   buildVisibleSchools(allSchools, query, favorites, tier) {
@@ -60,6 +73,20 @@ Page({
     });
   },
 
+  openSector(event) {
+    const id = event.currentTarget.dataset.id;
+    const url = event.currentTarget.dataset.url;
+    if (id === "international-schools") {
+      wx.pageScrollTo({ selector: "#international-directory", duration: 300 });
+      return;
+    }
+    if (!url) return;
+    wx.setClipboardData({
+      data: url,
+      success: () => api.toast("官方链接已复制，请在浏览器打开")
+    });
+  },
+
   openSchool(event) {
     wx.navigateTo({ url: "/pages/guide-school-detail/guide-school-detail?slug=" + encodeURIComponent(event.currentTarget.dataset.slug) });
   },
@@ -78,6 +105,6 @@ Page({
   },
 
   onShareAppMessage() {
-    return { title: "新加坡国际学校梯队与官方资料", path: "/pages/guide-schools/guide-schools" };
+    return { title: "新加坡学校与教育机构官方指南", path: "/pages/guide-schools/guide-schools" };
   }
 });

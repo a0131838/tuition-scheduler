@@ -1,8 +1,35 @@
 <view class="guide-page">
   <view class="guide-hero">
     <view class="guide-kicker">找学校</view>
-    <view class="guide-title">新加坡国际学校</view>
-    <view class="guide-subtitle">搜索或按梯队筛选。</view>
+    <view class="guide-title">新加坡学校与教育机构</view>
+    <view class="guide-subtitle">按教育阶段和学校类型选择。</view>
+  </view>
+
+  <view class="guide-section">
+    <view class="guide-section-title">从学前到大学</view>
+    <view class="guide-section-note">政府学校以MOE为准，学前教育以ECDA为准，私立教育机构以SSG为准。</view>
+    <view class="guide-sector-group" wx:for="{{sectorGroups}}" wx:key="stage" wx:for-item="group">
+      <view class="guide-sector-stage">{{group.stage}}</view>
+      <view
+        class="guide-sector-card"
+        wx:for="{{group.sectors}}"
+        wx:key="id"
+        data-id="{{item.id}}"
+        data-url="{{item.officialUrl}}"
+        bindtap="openSector"
+      >
+        <view class="guide-sector-authority">{{item.authority}}</view>
+        <view class="guide-sector-title">{{item.title}}</view>
+        <view class="guide-sector-summary">{{item.summary}}</view>
+        <view class="guide-sector-includes">{{item.includesText}}</view>
+        <view class="guide-sector-action">{{item.id === "international-schools" ? "查看详细目录" : "复制官方链接"}} ›</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="guide-section" id="international-directory">
+    <view class="guide-section-title">国际学校详细目录</view>
+    <view class="guide-section-note">已核实学校显示详细资料，其余记录只保留官方目录事实。</view>
   </view>
   <view class="guide-search">
     <input class="guide-input" value="{{query}}" bindinput="inputQuery" placeholder="搜索学校英文名" />

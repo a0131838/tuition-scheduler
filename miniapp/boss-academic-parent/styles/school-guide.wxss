@@ -112,6 +112,57 @@
   border-top: 2rpx solid #18202a;
 }
 
+.guide-sector-group {
+  margin-top: 40rpx;
+}
+
+.guide-sector-stage {
+  padding-bottom: 12rpx;
+  border-bottom: 3rpx solid #18202a;
+  color: #69737d;
+  font-size: 22rpx;
+  font-weight: 800;
+  letter-spacing: 2rpx;
+}
+
+.guide-sector-card {
+  padding: 28rpx 0;
+  border-bottom: 1rpx solid #d9dcdf;
+}
+
+.guide-sector-authority {
+  color: #a83c05;
+  font-size: 20rpx;
+  font-weight: 850;
+}
+
+.guide-sector-title {
+  margin-top: 12rpx;
+  color: #18202a;
+  font-size: 31rpx;
+  font-weight: 850;
+  line-height: 1.4;
+}
+
+.guide-sector-summary,
+.guide-sector-includes {
+  margin-top: 9rpx;
+  color: #66707c;
+  font-size: 23rpx;
+  line-height: 1.55;
+}
+
+.guide-sector-includes {
+  font-size: 21rpx;
+}
+
+.guide-sector-action {
+  margin-top: 18rpx;
+  color: #a83c05;
+  font-size: 22rpx;
+  font-weight: 850;
+}
+
 .guide-row {
   min-height: 132rpx;
   display: flex;
