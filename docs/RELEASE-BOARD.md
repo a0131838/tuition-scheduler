@@ -24,6 +24,25 @@
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
+## 2026-07-28-r292 Ready
+
+- Scope: Chinese-English bilingual staff training across the full system.
+- Business impact:
+  - account language `EN` shows English, `ZH` shows Chinese, and `BILINGUAL` shows both;
+  - training module names, categories, five-question quizzes, answer choices, practical tasks, manager sign-off, coverage map, and training-role assignment follow the same language;
+  - all 23 modules now open a bilingual PDF, including 17 newly generated editions and six existing bilingual SOPs;
+  - a new bilingual staff-training catalogue provides the controlled entry point;
+  - the training release version is unified as `20260728`, so employees re-confirm the current bilingual edition.
+- Isolation:
+  - training roles remain learning assignments only and do not grant operational permissions;
+  - no schema migration or business-data mutation;
+  - no changes to scheduling, attendance, packages, contracts, finance, payroll, settlement, Full Care state, or parent visibility.
+- Validation:
+  - 68 new module PDF pages plus a 4-page bilingual catalogue passed text and full-page visual checks;
+  - all 117 backend tests, TypeScript, and the 228-page production build passed;
+  - guarded release, PM2, and login health remain required.
+- Task doc: `docs/tasks/TASK-20260728-bilingual-staff-training.md`.
+
 ## 2026-07-28-r291 Live
 
 - Scope: production-build packaging correction for the r290 operation-map generator.

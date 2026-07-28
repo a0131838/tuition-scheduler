@@ -18,12 +18,22 @@ test("training module codes and versions are unique", () => {
   assert.equal(new Set(keys).size, keys.length);
 });
 
-test("every module has five questions and a PDF", () => {
+test("every module has complete Chinese and English training content and a PDF", () => {
   for (const item of TRAINING_MODULES) {
     assert.equal(item.questions.length, 5);
     assert.match(item.pdfFile, /\.pdf$/);
+    assert.match(item.pdfFile, /中英文/);
     assert.equal(fs.existsSync(path.join(process.cwd(), "output", "pdf", item.pdfFile)), true, item.pdfFile);
     assert.ok(item.practicalTask.length >= 10);
+    assert.ok(item.practicalTaskEn.length >= 10);
+    assert.ok(item.title.length >= 2);
+    assert.ok(item.titleEn.length >= 2);
+    assert.ok(item.category.length >= 2);
+    assert.ok(item.categoryEn.length >= 2);
+    for (const question of item.questions) {
+      assert.ok(question.promptEn.length >= 10);
+      assert.equal(question.optionsEn.length, question.options.length);
+    }
   }
 });
 

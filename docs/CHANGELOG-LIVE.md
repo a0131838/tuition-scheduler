@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-28-r292
+
+- Release ID: `2026-07-28-r292`
+- Date/Time (Asia/Singapore): `2026-07-28`
+- Deployment status: `READY`
+- Scope: make the complete staff training experience language-aware and give all 23 role modules a current Chinese-English training PDF.
+- Key files:
+  - `app/training/*`
+  - `app/admin/manager/users/_components/UserTrainingRoleFormClient.tsx`
+  - `lib/training-center.ts`
+  - `docs/培训中心/*`
+  - `docs/SOP-*-中英文*-20260728.html`
+  - `output/pdf/*中英文*-20260728.pdf`
+  - `scripts/build-bilingual-training-sops.mjs`
+  - `docs/tasks/TASK-20260728-bilingual-staff-training.md`
+- Risk impact (if any): Low and isolated to training presentation and training-version completion. The release changes no primary role, operational permission, scheduling, attendance, package, contract, finance, payroll, settlement, Full Care data, or parent-visible workflow. The unified `20260728` module release version intentionally requires affected staff to acknowledge the new bilingual edition.
+- Verification: 17 new bilingual module PDFs produced 68 A4 landscape pages; all passed page-count, English/Chinese text, and full-page contact-sheet checks. The bilingual catalogue is 4 A4 landscape pages and passed text and full-page visual checks. All 117 backend tests, TypeScript, and the complete 228-page production build pass.
+- Rollback point: `b9d9124f7120ffb36e4b92e211abdcbf402db22f` (`2026-07-28-r291` production-aligned documentation head).
+
+---
+
 ## 2026-07-28-r291
 
 - Release ID: `2026-07-28-r291`

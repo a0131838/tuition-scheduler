@@ -386,6 +386,7 @@ export default async function ManagerUsersPage({
                         userId={u.id}
                         primaryRole={u.role}
                         current={u.trainingRoleAssignments.map((item) => item.role).filter((role) => role !== "STUDENT")}
+                        language={lang}
                       />
                     ) : (
                       [u.role, ...u.trainingRoleAssignments.map((item) => item.role).filter((role) => role !== u.role)].join(" / ")
