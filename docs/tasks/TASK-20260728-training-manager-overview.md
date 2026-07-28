@@ -34,3 +34,11 @@ The manager sign-off page queried only `StaffTrainingProgress`. Production had 5
 ## Risk
 
 Low. The page performs a larger read and renders more collapsed employee summaries, but it does not write data. Existing approval/rework server actions are unchanged and remain available only after the same readiness conditions.
+
+## Production verification
+
+- Runtime feature commit `29d2d5f13e0dc4bfe22579faf3df459822b663c6` deployed with PM2 PID `1953887`.
+- `/admin/login` returned HTTP 200 after deployment.
+- An authenticated production request to `/training/manage` returned HTTP 200.
+- The production page rendered 56 employee detail cards and included the overview heading, staff-not-started metric, and manager account record.
+- The short-lived production verification sessions were deleted; remaining matching sessions: 0.

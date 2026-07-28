@@ -24,7 +24,7 @@
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
-## 2026-07-28-r293 Ready
+## 2026-07-28-r293 Live
 
 - Scope: make `/training/manage` a complete staff training overview instead of an empty submission-only queue.
 - Business impact:
@@ -36,9 +36,12 @@
   - no database migration and no automatic progress creation;
   - no training completion or approval state changes during page load;
   - no system permission, scheduling, finance, package, payroll, Full Care, or parent workflow changes.
-- Verification before deploy:
+- Verification:
   - production data: 56 staff, 0 training-progress rows;
   - local authenticated render: 56 employee cards and 378 assigned modules, temporary session cleanup 0;
+  - production runtime feature commit: `29d2d5f13e0dc4bfe22579faf3df459822b663c6`, PM2 PID `1953887`;
+  - production authenticated `/training/manage`: HTTP 200, 56 employee cards, overview heading, staff-not-started metric, and manager record present;
+  - production temporary manager-session cleanup: 0 remaining;
   - 118 backend tests, TypeScript, and 228-page production build passed.
 - Task doc: `docs/tasks/TASK-20260728-training-manager-overview.md`.
 
