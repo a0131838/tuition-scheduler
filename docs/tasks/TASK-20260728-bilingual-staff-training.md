@@ -35,3 +35,12 @@ SGT Manage already supports `EN`, `ZH`, and `BILINGUAL` account languages, but t
 ## Risk
 
 Low and isolated to training. The module release version changes to `20260728`, so an employee who completed an older module version must acknowledge and pass the current bilingual edition. This is intentional versioned retraining and does not change operational permissions or business data.
+
+## Production verification
+
+- Runtime commit `b048612d250e9842467763c68411dd847f939134` deployed through the guarded release workflow.
+- Production completed the 228-page build, PM2 runs as PID `1939220`, and `/admin/login` returned HTTP 200.
+- Existing EN, ZH, and BILINGUAL staff accounts each opened `/training` with HTTP 200.
+- EN rendered English without the Chinese heading; ZH rendered Chinese without the English heading; BILINGUAL rendered both.
+- All three language modes opened `SYSTEM_OPERATION_MAP` as `application/pdf` with HTTP 200.
+- Temporary verification sessions were deleted; remaining test sessions: 0.

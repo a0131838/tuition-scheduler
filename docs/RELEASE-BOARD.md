@@ -24,7 +24,7 @@
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
-## 2026-07-28-r292 Ready
+## 2026-07-28-r292 Live
 
 - Scope: Chinese-English bilingual staff training across the full system.
 - Business impact:
@@ -40,7 +40,10 @@
 - Validation:
   - 68 new module PDF pages plus a 4-page bilingual catalogue passed text and full-page visual checks;
   - all 117 backend tests, TypeScript, and the 228-page production build passed;
-  - guarded release, PM2, and login health remain required.
+  - guarded release deployed runtime commit `b048612d250e9842467763c68411dd847f939134`;
+  - production PM2 PID `1939220` is online and `/admin/login` returned HTTP 200;
+  - EN, ZH, and BILINGUAL staff sessions each returned `/training` 200 with the correct language combination and the common bilingual PDF returned 200;
+  - temporary verification sessions were deleted with zero remaining.
 - Task doc: `docs/tasks/TASK-20260728-bilingual-staff-training.md`.
 
 ## 2026-07-28-r291 Live

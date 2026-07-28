@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-28-r292`
 - Date/Time (Asia/Singapore): `2026-07-28`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: make the complete staff training experience language-aware and give all 23 role modules a current Chinese-English training PDF.
 - Key files:
   - `app/training/*`
@@ -31,7 +31,7 @@ This file is the single source of truth for what changed in production.
   - `scripts/build-bilingual-training-sops.mjs`
   - `docs/tasks/TASK-20260728-bilingual-staff-training.md`
 - Risk impact (if any): Low and isolated to training presentation and training-version completion. The release changes no primary role, operational permission, scheduling, attendance, package, contract, finance, payroll, settlement, Full Care data, or parent-visible workflow. The unified `20260728` module release version intentionally requires affected staff to acknowledge the new bilingual edition.
-- Verification: 17 new bilingual module PDFs produced 68 A4 landscape pages; all passed page-count, English/Chinese text, and full-page contact-sheet checks. The bilingual catalogue is 4 A4 landscape pages and passed text and full-page visual checks. All 117 backend tests, TypeScript, and the complete 228-page production build pass.
+- Verification: 17 new bilingual module PDFs produced 68 A4 landscape pages; all passed page-count, English/Chinese text, and full-page contact-sheet checks. The bilingual catalogue is 4 A4 landscape pages and passed text and full-page visual checks. All 117 backend tests, TypeScript, and the complete 228-page local and production builds passed. Runtime commit `b048612d250e9842467763c68411dd847f939134` deployed with PM2 PID `1939220`; `/admin/login` returned HTTP 200. Existing EN, ZH, and BILINGUAL staff accounts each returned `/training` 200 with the correct language combination and opened the common bilingual PDF with HTTP 200; all temporary verification sessions were deleted.
 - Rollback point: `b9d9124f7120ffb36e4b92e211abdcbf402db22f` (`2026-07-28-r291` production-aligned documentation head).
 
 ---
