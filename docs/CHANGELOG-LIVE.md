@@ -15,6 +15,23 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-28-r291
+
+- Release ID: `2026-07-28-r291`
+- Date/Time (Asia/Singapore): `2026-07-28`
+- Deployment status: `READY`
+- Scope: correct the r290 PDF-generator packaging so production type checking ignores the optional Playwright-only documentation tool.
+- Key files:
+  - `scripts/build-training-operation-map.mjs`
+  - `docs/tasks/TASK-20260728-training-map-build-packaging.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This renames a documentation generator from TypeScript to MJS; runtime training pages, database schema, permissions and business workflows are unchanged.
+- Verification: the 228-page production build passes with the generator excluded from application type checking. The failed deployment stopped before PM2 restart, so the existing production process remained available.
+- Rollback point: `e8b137dca7ee6804ddfc4f5ed14db0a3b6b514c2` remains the last confirmed live application commit before r290/r291.
+
+---
+
 ## 2026-07-28-r290
 
 - Release ID: `2026-07-28-r290`

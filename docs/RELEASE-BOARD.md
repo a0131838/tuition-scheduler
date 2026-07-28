@@ -24,6 +24,21 @@
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
+## 2026-07-28-r291 Ready
+
+- Scope: production-build packaging correction for the r290 operation-map generator.
+- Business impact:
+  - The optional PDF build tool is no longer scanned as application TypeScript on servers that intentionally omit Playwright.
+  - The r290 multi-role training and operation-coverage functionality is unchanged.
+  - The first r290 deploy stopped before PM2 restart; the previously live process remained available.
+- Files:
+  - `scripts/build-training-operation-map.mjs`
+- Verification before deploy:
+  - 228-page production build passes.
+- Post-deploy verification:
+  - local/GitHub/server aligned, PM2 online and `/admin/login` 200.
+  - complete the r290 multi-role assignment, protected PDF and permission-isolation smoke checks.
+
 ## 2026-07-28-r290 Ready
 
 - Scope: independent multi-role training assignments plus the complete SGT employee-operation coverage map.

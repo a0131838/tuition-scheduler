@@ -1,21 +1,21 @@
 import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
-import { OPERATION_AREAS, operationAreaForRoute } from "../lib/training-operation-coverage";
+import { OPERATION_AREAS, operationAreaForRoute } from "../lib/training-operation-coverage.ts";
 
 const root = process.cwd();
 const htmlPath = path.join(root, "docs", "SOP-全系统操作流程地图-培训版-20260728.html");
 const pdfPath = path.join(root, "output", "pdf", "00-SGT全系统操作流程地图-培训版-20260728.pdf");
 const matrixPath = path.join(root, "docs", "培训中心", "系统操作流程覆盖矩阵-20260728.md");
 
-function walk(dir: string): string[] {
+function walk(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = path.join(dir, entry.name);
     return entry.isDirectory() ? walk(full) : [full];
   });
 }
 
-function pageRoute(file: string) {
+function pageRoute(file) {
   const relative = path.relative(path.join(root, "app"), file).replaceAll(path.sep, "/");
   const withoutPage = relative.replace(/\/?page\.tsx$/, "");
   return withoutPage ? `/${withoutPage}` : "/";
@@ -27,14 +27,14 @@ const webRoutes = walk(path.join(root, "app"))
   .sort();
 const miniappConfig = JSON.parse(
   fs.readFileSync(path.join(root, "miniapp", "boss-academic-parent", "app.json"), "utf8")
-) as { pages?: string[] };
+);
 const miniappRoutes = (miniappConfig.pages ?? []).map((page) => `/miniapp/${page}`).sort();
 const routes = [...webRoutes, ...miniappRoutes];
 
 const unmapped = routes.filter((route) => !operationAreaForRoute(route));
 if (unmapped.length) throw new Error(`Unmapped page routes: ${unmapped.join(", ")}`);
 
-const screenshots: Record<string, string> = {
+const screenshots = {
   ACCESS: "assets/sop-resource-followup-20260529/annotated/admin-users.png",
   TRAINING: "assets/sop-resource-followup-20260529/annotated/admin-users.png",
   SCHOOL_APPLICATION: "assets/sop-school-application-service-20260605/annotated/01-student-entry.png",
@@ -53,7 +53,7 @@ const screenshots: Record<string, string> = {
   DASHBOARD: "assets/sop-小程序员工工作台-20260718/annotated/13-management-account-switch.png",
 };
 
-const esc = (value: string) =>
+const esc = (value) =>
   value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 
 const areaPages = OPERATION_AREAS.map((area, index) => {
