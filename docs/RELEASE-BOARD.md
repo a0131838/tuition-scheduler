@@ -24,6 +24,24 @@
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
+## 2026-07-28-r293 Ready
+
+- Scope: make `/training/manage` a complete staff training overview instead of an empty submission-only queue.
+- Business impact:
+  - all non-student employees appear before they start training;
+  - managers see staff count, assigned-module count, pending sign-off, completed modules, and staff not started;
+  - every employee shows primary role, training roles, language, completion percentage, and module-level status;
+  - approval and rework controls remain available only for a module that has completed reading, passed the quiz, and submitted practical evidence.
+- Isolation:
+  - no database migration and no automatic progress creation;
+  - no training completion or approval state changes during page load;
+  - no system permission, scheduling, finance, package, payroll, Full Care, or parent workflow changes.
+- Verification before deploy:
+  - production data: 56 staff, 0 training-progress rows;
+  - local authenticated render: 56 employee cards and 378 assigned modules, temporary session cleanup 0;
+  - 118 backend tests, TypeScript, and 228-page production build passed.
+- Task doc: `docs/tasks/TASK-20260728-training-manager-overview.md`.
+
 ## 2026-07-28-r292 Live
 
 - Scope: Chinese-English bilingual staff training across the full system.

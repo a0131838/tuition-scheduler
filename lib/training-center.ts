@@ -26,6 +26,14 @@ export type TrainingModule = {
   questions: TrainingQuestion[];
 };
 
+export type TrainingModuleProgressState = "NOT_STARTED" | "IN_PROGRESS" | "PENDING_REVIEW" | "COMPLETED";
+
+export type TrainingProgressSnapshot = {
+  readAt: Date | null;
+  quizPassedAt: Date | null;
+  practicalStatus: "NOT_STARTED" | "SUBMITTED" | "APPROVED" | "NEEDS_REWORK";
+} | null | undefined;
+
 const safetyQuestions: TrainingQuestion[] = [
   { prompt: "发现页面与 SOP 截图不同，第一步应该做什么？", promptEn: "What should you do first when the page differs from the SOP screenshot?", options: ["继续尝试", "停止高风险操作并向主管确认", "直接修改数据"], optionsEn: ["Keep trying", "Stop the high-risk action and confirm with a manager", "Edit the data directly"], answer: 1 },
   { prompt: "哪一种情况代表培训完成？", promptEn: "Which situation means the training is complete?", options: ["打开 PDF", "阅读后口头说明", "阅读、测验、实操并由主管验收"], optionsEn: ["The PDF was opened", "The employee explained it after reading", "Reading, quiz, practical task, and manager approval are all complete"], answer: 2 },
@@ -139,4 +147,11 @@ export function gradeTrainingQuiz(moduleCode: string, answers: number[]) {
   if (!item || answers.length !== item.questions.length) return null;
   const correct = item.questions.filter((question, index) => question.answer === answers[index]).length;
   return Math.round((correct / item.questions.length) * 100);
+}
+
+export function trainingModuleProgressState(progress: TrainingProgressSnapshot): TrainingModuleProgressState {
+  if (!progress) return "NOT_STARTED";
+  if (progress.readAt && progress.quizPassedAt && progress.practicalStatus === "APPROVED") return "COMPLETED";
+  if (progress.readAt && progress.quizPassedAt && progress.practicalStatus === "SUBMITTED") return "PENDING_REVIEW";
+  return "IN_PROGRESS";
 }

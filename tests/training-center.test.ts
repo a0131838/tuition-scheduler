@@ -9,6 +9,7 @@ import {
   TRAINING_MODULES,
   trainingModulesForRole,
   trainingModulesForUser,
+  trainingModuleProgressState,
   trainingRolesForUser,
 } from "../lib/training-center";
 import { operationAreaForRoute, OPERATION_AREAS } from "../lib/training-operation-coverage";
@@ -58,6 +59,30 @@ test("quiz grading requires every answer and passes correct answers", () => {
   assert.ok(item);
   assert.equal(gradeTrainingQuiz(item.code, item.questions.map((question) => question.answer)), 100);
   assert.equal(gradeTrainingQuiz(item.code, [0]), null);
+});
+
+test("manager overview distinguishes not started, active, pending review, and complete modules", () => {
+  assert.equal(trainingModuleProgressState(null), "NOT_STARTED");
+  assert.equal(trainingModuleProgressState({
+    readAt: new Date(),
+    quizPassedAt: null,
+    practicalStatus: "NOT_STARTED",
+  }), "IN_PROGRESS");
+  assert.equal(trainingModuleProgressState({
+    readAt: new Date(),
+    quizPassedAt: new Date(),
+    practicalStatus: "NEEDS_REWORK",
+  }), "IN_PROGRESS");
+  assert.equal(trainingModuleProgressState({
+    readAt: new Date(),
+    quizPassedAt: new Date(),
+    practicalStatus: "SUBMITTED",
+  }), "PENDING_REVIEW");
+  assert.equal(trainingModuleProgressState({
+    readAt: new Date(),
+    quizPassedAt: new Date(),
+    practicalStatus: "APPROVED",
+  }), "COMPLETED");
 });
 
 test("every visible app page is assigned to an operation flow", () => {

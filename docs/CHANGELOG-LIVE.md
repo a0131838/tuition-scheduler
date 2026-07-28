@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-28-r293
+
+- Release ID: `2026-07-28-r293`
+- Date/Time (Asia/Singapore): `2026-07-28`
+- Deployment status: `READY`
+- Scope: replace the submission-only training sign-off list with a complete staff training overview that includes employees who have not started.
+- Key files:
+  - `app/training/manage/page.tsx`
+  - `lib/training-center.ts`
+  - `tests/training-center.test.ts`
+  - `docs/培训中心/README.md`
+  - `docs/tasks/TASK-20260728-training-manager-overview.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low and read-only except for the existing manager approve/rework forms. No training rows are created automatically, no employee is marked complete, and no role, permission, business workflow, or operational data changes.
+- Verification: production data confirms 56 staff and 0 current training-progress rows. The new page rendered all 56 staff and 378 assigned modules from those existing accounts, with temporary manager-session cleanup at 0. All 118 backend tests, TypeScript, and the 228-page production build passed.
+- Rollback point: `d2c76f75e3972a94c4f6b631d25bd3734b281775` (`2026-07-28-r292` live).
+
+---
+
 ## 2026-07-28-r292
 
 - Release ID: `2026-07-28-r292`
