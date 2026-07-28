@@ -24,7 +24,7 @@
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
-## 2026-07-28-r291 Ready
+## 2026-07-28-r291 Live
 
 - Scope: production-build packaging correction for the r290 operation-map generator.
 - Business impact:
@@ -33,13 +33,11 @@
   - The first r290 deploy stopped before PM2 restart; the previously live process remained available.
 - Files:
   - `scripts/build-training-operation-map.mjs`
-- Verification before deploy:
-  - 228-page production build passes.
-- Post-deploy verification:
-  - local/GitHub/server aligned, PM2 online and `/admin/login` 200.
-  - complete the r290 multi-role assignment, protected PDF and permission-isolation smoke checks.
+- Verification:
+  - 228-page production build passed.
+  - Runtime commit `d2de30effed602d6a5d44614a76a213d5513d67d` ran as PM2 PID `1880000`; `/admin/login` returned 200.
 
-## 2026-07-28-r290 Ready
+## 2026-07-28-r290 Live
 
 - Scope: independent multi-role training assignments plus the complete SGT employee-operation coverage map.
 - Business impact:
@@ -54,13 +52,13 @@
   - `lib/training-operation-coverage.ts`
   - `prisma/schema.prisma`
   - `docs/培训中心/*`
-- Verification before deploy:
+- Verification:
   - TypeScript, 117 backend tests, 228-page production build.
   - 144 web pages plus 54 WeChat miniapp pages, 16 operation areas, zero unmapped routes.
   - 19-page A4 landscape PDF text and full-page visual checks.
-- Post-deploy verification:
-  - migration current, local/GitHub/server aligned, PM2 online and `/admin/login` 200.
-  - assign and remove a temporary additional training role, verify the added module/PDF becomes available and actual non-training permissions remain unchanged.
+  - Migration current, local/GitHub/server aligned, PM2 online and `/admin/login` 200.
+  - A temporary CS + Finance training assignment returned 200 and unlocked the protected Finance training PDF while the Finance workbench remained denied with a 307 redirect.
+  - The original assignment state was restored and temporary sessions were removed.
 
 ## 2026-07-28-r289 Live
 

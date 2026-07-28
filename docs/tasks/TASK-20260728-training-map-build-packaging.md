@@ -23,3 +23,8 @@ The first r290 server build type-checked the TypeScript PDF generator. Productio
 ## Risk
 
 Low and limited to maintainers regenerating the operation-map PDF. The committed HTML and PDF artifacts are unchanged.
+
+## Production verification
+
+- Runtime commit `d2de30effed602d6a5d44614a76a213d5513d67d` deployed successfully.
+- PM2 PID `1880000` is online and `/admin/login` returned HTTP 200.

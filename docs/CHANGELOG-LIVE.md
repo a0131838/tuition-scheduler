@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-28-r291`
 - Date/Time (Asia/Singapore): `2026-07-28`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: correct the r290 PDF-generator packaging so production type checking ignores the optional Playwright-only documentation tool.
 - Key files:
   - `scripts/build-training-operation-map.mjs`
@@ -27,7 +27,7 @@ This file is the single source of truth for what changed in production.
   - `docs/CHANGELOG-LIVE.md`
   - `docs/RELEASE-BOARD.md`
 - Risk impact (if any): Low. This renames a documentation generator from TypeScript to MJS; runtime training pages, database schema, permissions and business workflows are unchanged.
-- Verification: the 228-page production build passes with the generator excluded from application type checking. The failed deployment stopped before PM2 restart, so the existing production process remained available.
+- Verification: the 228-page production build passes with the generator excluded from application type checking. Runtime commit `d2de30effed602d6a5d44614a76a213d5513d67d` deployed with PM2 PID `1880000`; `/admin/login` returned HTTP 200.
 - Rollback point: `e8b137dca7ee6804ddfc4f5ed14db0a3b6b514c2` remains the last confirmed live application commit before r290/r291.
 
 ---
@@ -36,7 +36,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-28-r290`
 - Date/Time (Asia/Singapore): `2026-07-28`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: add independent multi-role training assignments and a complete employee-operation coverage map for every visible SGT page.
 - Key files:
   - `app/api/admin/manager/users/[id]/training-roles/route.ts`
@@ -48,7 +48,7 @@ This file is the single source of truth for what changed in production.
   - `docs/培训中心/*`
   - `docs/tasks/TASK-20260728-multi-role-operation-coverage.md`
 - Risk impact (if any): Medium and isolated to training assignment. Additional training roles grant courses only and do not alter the user's primary role, workspace access or any operational permission. Teaching, scheduling, attendance, packages, finance, payroll, settlement and parent workflows are unchanged.
-- Verification: TypeScript, all 117 backend tests and the 228-page production build pass. The operation-map audit classifies all 144 web pages and 54 WeChat miniapp pages (198 total) into 16 business-result flows with zero unmapped routes; the 19-page PDF passed text extraction and full-page contact-sheet review.
+- Verification: TypeScript, all 117 backend tests and the 228-page production build pass. The operation-map audit classifies all 144 web pages and 54 WeChat miniapp pages (198 total) into 16 business-result flows with zero unmapped routes; the 19-page PDF passed text extraction and full-page contact-sheet review. In production, a CS account received temporary Finance training: assignment returned 200, the Finance training PDF returned 200, but the actual Finance workbench remained denied with a 307 redirect to the resource workspace. The assignment was restored and temporary sessions were removed.
 - Rollback point: `e8b137dca7ee6804ddfc4f5ed14db0a3b6b514c2` (`2026-07-28-r289` documentation-aligned production head).
 
 ---
