@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-28-r290
+
+- Release ID: `2026-07-28-r290`
+- Date/Time (Asia/Singapore): `2026-07-28`
+- Deployment status: `READY`
+- Scope: add independent multi-role training assignments and a complete employee-operation coverage map for every visible SGT page.
+- Key files:
+  - `app/api/admin/manager/users/[id]/training-roles/route.ts`
+  - `app/admin/manager/users/_components/UserTrainingRoleFormClient.tsx`
+  - `app/training/coverage/page.tsx`
+  - `lib/training-center.ts`
+  - `lib/training-operation-coverage.ts`
+  - `prisma/migrations/20260728190000_add_staff_training_roles/migration.sql`
+  - `docs/培训中心/*`
+  - `docs/tasks/TASK-20260728-multi-role-operation-coverage.md`
+- Risk impact (if any): Medium and isolated to training assignment. Additional training roles grant courses only and do not alter the user's primary role, workspace access or any operational permission. Teaching, scheduling, attendance, packages, finance, payroll, settlement and parent workflows are unchanged.
+- Verification: TypeScript, all 117 backend tests and the 228-page production build pass. The operation-map audit classifies all 144 web pages and 54 WeChat miniapp pages (198 total) into 16 business-result flows with zero unmapped routes; the 19-page PDF passed text extraction and full-page contact-sheet review.
+- Rollback point: `e8b137dca7ee6804ddfc4f5ed14db0a3b6b514c2` (`2026-07-28-r289` documentation-aligned production head).
+
+---
+
 ## 2026-07-28-r289
 
 - Release ID: `2026-07-28-r289`

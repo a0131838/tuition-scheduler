@@ -18,6 +18,7 @@ type AuthUser = {
   language: "BILINGUAL" | "ZH" | "EN";
   teacherId: string | null;
   workspaces: StaffWorkspace[];
+  trainingRoles: SystemUserRole[];
 };
 
 function managerEmailSet() {
@@ -151,6 +152,10 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
             where: { isActive: true },
             select: { workspace: true },
           },
+          trainingRoleAssignments: {
+            where: { isActive: true },
+            select: { role: true },
+          },
         },
       },
     },
@@ -171,6 +176,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     language: u.language as AuthUser["language"],
     teacherId: u.teacherId ?? null,
     workspaces: u.workspaceAccesses.map((item) => item.workspace as StaffWorkspace),
+    trainingRoles: u.trainingRoleAssignments.map((item) => item.role as SystemUserRole),
   };
 }
 

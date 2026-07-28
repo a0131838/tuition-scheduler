@@ -15,7 +15,7 @@ export default async function TrainingManagePage() {
   return (
     <main style={{ maxWidth: 1180, margin: "0 auto", padding: 24, background: "#f6f8fb", minHeight: "100vh" }}>
       <h1>培训主管验收台</h1>
-      <p><a href="/training">返回我的培训</a></p>
+      <p><a href="/training">返回我的培训</a> · <a href="/training/coverage">查看全系统操作覆盖图</a></p>
       <div style={{ display: "grid", gap: 12 }}>
         {rows.map((row) => {
           const item = findTrainingModule(row.moduleCode);

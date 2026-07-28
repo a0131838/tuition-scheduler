@@ -2,7 +2,16 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
-import { findTrainingModule, gradeTrainingQuiz, TRAINING_MODULES, trainingModulesForRole } from "../lib/training-center";
+import {
+  canAccessTrainingModule,
+  findTrainingModule,
+  gradeTrainingQuiz,
+  TRAINING_MODULES,
+  trainingModulesForRole,
+  trainingModulesForUser,
+  trainingRolesForUser,
+} from "../lib/training-center";
+import { operationAreaForRoute, OPERATION_AREAS } from "../lib/training-operation-coverage";
 
 test("training module codes and versions are unique", () => {
   const keys = TRAINING_MODULES.map((item) => `${item.code}:${item.version}`);
@@ -24,9 +33,43 @@ test("role filtering keeps teacher and finance training isolated", () => {
   assert.equal(trainingModulesForRole("STUDENT").length, 0);
 });
 
+test("additional training roles combine modules without changing the primary role", () => {
+  assert.deepEqual(trainingRolesForUser("CS", ["FINANCE", "CS", "STUDENT"]), ["FINANCE", "CS"]);
+  const combined = trainingModulesForUser("CS", ["FINANCE"]);
+  assert.ok(combined.some((item) => item.code === "ACADEMIC_SCHEDULING_MASTER"));
+  assert.ok(combined.some((item) => item.code === "FINANCE_MASTER"));
+  assert.equal(canAccessTrainingModule("CS", ["FINANCE"], "FINANCE_MASTER"), true);
+  assert.equal(canAccessTrainingModule("CS", [], "FINANCE_MASTER"), false);
+  assert.deepEqual(trainingModulesForUser("STUDENT", ["ADMIN"]), []);
+});
+
 test("quiz grading requires every answer and passes correct answers", () => {
   const item = findTrainingModule("TEACHER_MINIAPP");
   assert.ok(item);
   assert.equal(gradeTrainingQuiz(item.code, item.questions.map((question) => question.answer)), 100);
   assert.equal(gradeTrainingQuiz(item.code, [0]), null);
+});
+
+test("every visible app page is assigned to an operation flow", () => {
+  const walk = (dir: string): string[] =>
+    fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const full = path.join(dir, entry.name);
+      return entry.isDirectory() ? walk(full) : [full];
+    });
+  const webRoutes = walk(path.join(process.cwd(), "app"))
+    .filter((file) => file.endsWith("page.tsx"))
+    .map((file) => {
+      const relative = path.relative(path.join(process.cwd(), "app"), file).replaceAll(path.sep, "/");
+      const route = relative.replace(/\/?page\.tsx$/, "");
+      return route ? `/${route}` : "/";
+    });
+  const miniapp = JSON.parse(
+    fs.readFileSync(path.join(process.cwd(), "miniapp", "boss-academic-parent", "app.json"), "utf8")
+  ) as { pages: string[] };
+  const routes = [...webRoutes, ...miniapp.pages.map((page) => `/miniapp/${page}`)];
+  assert.ok(webRoutes.length >= 140);
+  assert.equal(miniapp.pages.length, 54);
+  assert.ok(routes.length >= 198);
+  assert.equal(routes.filter((route) => !operationAreaForRoute(route)).length, 0);
+  assert.ok(OPERATION_AREAS.length >= 15);
 });

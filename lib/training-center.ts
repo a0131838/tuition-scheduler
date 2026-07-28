@@ -1,5 +1,8 @@
 import type { SystemUserRole } from "@/lib/staff-roles";
 
+export const TRAINING_ASSIGNABLE_ROLES = ["ADMIN", "FINANCE", "SALES", "CS", "TEACHER"] as const satisfies readonly SystemUserRole[];
+export type TrainingAssignableRole = (typeof TRAINING_ASSIGNABLE_ROLES)[number];
+
 export type TrainingQuestion = {
   prompt: string;
   options: string[];
@@ -30,6 +33,7 @@ function module(input: Omit<TrainingModule, "questions">): TrainingModule {
 }
 
 export const TRAINING_MODULES: TrainingModule[] = [
+  module({ code: "SYSTEM_OPERATION_MAP", title: "SGT 全系统操作流程地图", version: "20260728", roles: ["ADMIN", "FINANCE", "SALES", "CS", "TEACHER"], category: "共同必修", pdfFile: "00-SGT全系统操作流程地图-培训版-20260728.pdf", practicalTask: "从本人岗位选取三个日常任务，指出正确入口、对应详细 SOP、最终完成状态和异常升级对象。" }),
   module({ code: "ACADEMIC_SCHEDULING_MASTER", title: "排课、工单与每日交接完整流程", version: "20260728", roles: ["ADMIN", "CS"], category: "教务必修", pdfFile: "SOP-教务-排课工单与每日交接完整流程-培训版-20260728.pdf", practicalTask: "使用培训数据从请求建工单、排课预览到完成结果和交接记录走完闭环。" }),
   module({ code: "CONTRACT_PACKAGE_GATE_MASTER", title: "首购续费、合同课包与财务门禁", version: "20260728", roles: ["ADMIN", "FINANCE"], category: "合同课包", pdfFile: "SOP-教务-新生首购续费合同课包财务门禁-培训版-20260728.pdf", practicalTask: "使用培训学生判断首购/续费，核对合同、发票审批和允许排课状态。" }),
   module({ code: "FINANCE_MASTER", title: "财务审批、发票收据、工资报销与合作方", version: "20260728", roles: ["FINANCE", "ADMIN"], category: "财务必修", pdfFile: "SOP-财务-审批发票收据工资报销合作方完整流程-培训版-20260728.pdf", practicalTask: "选择一组培训财务记录，说明发票、凭证、收据、审批和审计的完整关系。" }),
@@ -56,6 +60,28 @@ export const TRAINING_MODULES: TrainingModule[] = [
 
 export function trainingModulesForRole(role: SystemUserRole) {
   return TRAINING_MODULES.filter((item) => item.roles.includes(role));
+}
+
+export function trainingRolesForUser(primaryRole: SystemUserRole, assignedRoles: readonly string[] = []): TrainingAssignableRole[] {
+  if (primaryRole === "STUDENT") return [];
+  const selected = new Set<string>([primaryRole, ...assignedRoles]);
+  return TRAINING_ASSIGNABLE_ROLES.filter((role) => selected.has(role));
+}
+
+export function trainingModulesForUser(primaryRole: SystemUserRole, assignedRoles: readonly string[] = []) {
+  const roles = new Set<SystemUserRole>(trainingRolesForUser(primaryRole, assignedRoles));
+  return TRAINING_MODULES.filter((item) => item.roles.some((role) => roles.has(role)));
+}
+
+export function canAccessTrainingModule(
+  primaryRole: SystemUserRole,
+  assignedRoles: readonly string[],
+  moduleCode: string
+) {
+  const item = findTrainingModule(moduleCode);
+  if (!item) return false;
+  const roles = new Set<SystemUserRole>(trainingRolesForUser(primaryRole, assignedRoles));
+  return item.roles.some((role) => roles.has(role));
 }
 
 export function findTrainingModule(code: string) {

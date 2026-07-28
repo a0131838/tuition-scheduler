@@ -24,6 +24,29 @@
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
+## 2026-07-28-r290 Ready
+
+- Scope: independent multi-role training assignments plus the complete SGT employee-operation coverage map.
+- Business impact:
+  - Managers can add Finance, Sales, CS, Teacher or Admin training responsibilities to an employee without changing that employee's actual system permissions.
+  - Every visible app page is automatically mapped to one of 16 complete business-result flows and its existing detailed or master SOP.
+  - All staff receive the common operation-map module; managers can inspect coverage at `/training/coverage`.
+  - No operational workflow, primary role, workspace permission or protected business data is changed.
+- Files:
+  - `app/admin/manager/users/*`
+  - `app/training/*`
+  - `lib/training-center.ts`
+  - `lib/training-operation-coverage.ts`
+  - `prisma/schema.prisma`
+  - `docs/培训中心/*`
+- Verification before deploy:
+  - TypeScript, 117 backend tests, 228-page production build.
+  - 144 web pages plus 54 WeChat miniapp pages, 16 operation areas, zero unmapped routes.
+  - 19-page A4 landscape PDF text and full-page visual checks.
+- Post-deploy verification:
+  - migration current, local/GitHub/server aligned, PM2 online and `/admin/login` 200.
+  - assign and remove a temporary additional training role, verify the added module/PDF becomes available and actual non-training permissions remain unchanged.
+
 ## 2026-07-28-r289 Live
 
 - Scope: controlled SOP library plus authenticated role-aware employee Training Center.
@@ -46,6 +69,7 @@
 
 ## Open Risks
 
+- Multi-role training assignments intentionally do not grant business permissions. Managers must still change the primary role or workspace access separately when the employee genuinely needs operational access.
 - Training-center rollout: no employee is automatically marked complete. Management must review the first practical evidence and establish who is responsible for each role's sign-off.
 - Singapore School Guide rollout: `2026-07-27-r285` is additive and has no migration, but official school fees and admissions details remain time-sensitive. Fifteen priority schools show an applicable year, verification date and next review date; partially verified directory entries must continue to display their limitation. After server deployment, upload miniapp development version `1.0.17`, designate it as the experience version, and check the public entry, one school detail, four-school comparison, copied official link and test inquiry without exposing real child data.
 

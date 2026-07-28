@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>SGT 全系统操作流程地图</title>
+<style>
+@page { size: A4 landscape; margin: 14mm 12mm; }
+* { box-sizing: border-box; } body { margin: 0; color: #172033; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; }
+.page { height: 181mm; page-break-after: always; position: relative; overflow: hidden; break-inside: avoid; }
+.page:last-child { page-break-after: auto; } header { display: flex; justify-content: space-between; color: #64748b; font-size: 10pt; border-bottom: 1px solid #dbe5ef; padding-bottom: 3mm; }
+h1 { font-size: 25pt; margin: 8mm 0 5mm; } h2 { font-size: 13pt; margin: 4mm 0 1.5mm; } p { margin: 0 0 3mm; line-height: 1.55; }
+.cover { display: grid; align-content: center; background: linear-gradient(135deg,#ecfdf5,#eff6ff); padding: 16mm; border-radius: 8mm; }
+.cover h1 { font-size: 34pt; color: #0f766e; }.cover .meta { font-size: 15pt; line-height: 1.8; }
+.grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 8mm; }
+.green,.amber,.danger { border-radius: 4mm; padding: 4mm; line-height: 1.55; margin-bottom: 3mm; }
+.green { background: #ecfdf5; border: 1px solid #86efac; }.amber { background: #fffbeb; border: 1px solid #fcd34d; }.danger { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; }
+.routes { display: grid; grid-template-columns: 1fr 1fr; gap: .7mm 1mm; }
+code { background: #f1f5f9; border: 1px solid #dbe5ef; padding: .45mm .8mm; border-radius: 1mm; font-size: 6.2pt; line-height: 1.15; overflow-wrap: anywhere; }
+.shot { border: 1px solid #cbd5e1; border-radius: 4mm; overflow: hidden; align-self: start; background: #fff; }
+.shot img { display: block; width: 100%; max-height: 82mm; object-fit: contain; background: #f8fafc; }.caption { padding: 2.5mm; color: #475569; font-size: 9pt; }
+ol { line-height: 1.7; }.summary { display: grid; grid-template-columns: repeat(4,1fr); gap: 4mm; margin-top: 8mm; }.metric { padding: 5mm; border-radius: 4mm; background: #fff; border: 1px solid #dbe5ef; }.metric b { display:block;font-size:25pt;color:#0f766e; }
+</style></head><body>
+<section class="page cover">
+  <div><b>SGT TRAINING CENTER / 共同必修</b><h1>全系统操作流程地图</h1>
+  <div class="meta">适用：Admin / Finance / Sales / CS / Teacher<br>版本：2026-07-28<br>截图：来自当前 SGT 系统的真实角色页面，已使用既有红框标注素材</div>
+  <div class="summary"><div class="metric"><b>198</b>网页＋小程序页面</div><div class="metric"><b>16</b>主操作流程</div><div class="metric"><b>23</b>培训模块</div><div class="metric"><b>0</b>未归类页面</div></div></div>
+</section>
+<section class="page">
+  <header><span>使用方法</span><span>先地图，后详细 SOP</span></header><h1>不是一个页面一份 SOP，而是一个业务结果一条完整流程</h1>
+  <div class="grid"><div>
+  <div class="green"><b>正确使用顺序</b><ol><li>先在本地图找到业务目标。</li><li>确认负责人、系统入口和最终完成结果。</li><li>打开列出的详细培训模块，按步骤操作。</li><li>遇到停止条件，记录当前状态并升级主管。</li><li>完成后按检查表和系统最终状态验收。</li></ol></div>
+  <div class="amber">页面数量不等于流程数量：创建、查看、审批、导出和历史页可能属于同一业务流程；系统自动任务不要求员工逐页操作。</div></div>
+  <div><h2>覆盖等级</h2><p><b>DETAILED_SOP</b>：已有专项逐步 SOP。</p><p><b>MASTER_SOP</b>：由岗位主 SOP 覆盖多个关联页面。</p><p><b>SYSTEM_GUIDE</b>：登录、导航、工作台等系统使用说明。</p>
+  <div class="danger">本地图负责“所有入口不遗漏”；详细 SOP 负责“关键操作不出错”。两者必须配套使用。</div></div></div>
+</section>
+
+    <section class="page">
+      <header><span>01 / 16</span><span>SYSTEM_GUIDE</span></header>
+      <h1>登录、首页与系统入口</h1>
+      <div class="grid">
+        <div>
+          <div class="green"><b>最终完成结果</b><br>使用正确员工账号进入对应工作台；学生和未登录用户不能进入内部培训。</div>
+          <h2>谁负责</h2><p>全体员工</p>
+          <h2>对应培训模块</h2><p>SYSTEM_OPERATION_MAP、MANAGEMENT_CONTROL_MASTER</p>
+          <h2>系统入口（8 个页面）</h2>
+          <div class="routes"><code>/</code><code>/admin/login</code><code>/admin/setup</code><code>/miniapp/pages/bind/bind</code><code>/miniapp/pages/login/login</code><code>/miniapp/pages/staff-account-switch/staff-account-switch</code><code>/miniapp/pages/staff-bind/staff-bind</code><code>/miniapp/pages/staff-login/staff-login</code></div>
+          <div class="danger"><b>停止条件：</b>页面、权限、按钮或状态与现行 SOP 不一致，或操作会影响合同、课包、财务、工资、家长可见内容时，停止并找主管确认。</div>
+        </div>
+        <div class="shot"><img src="assets/sop-resource-followup-20260529/annotated/admin-users.png"><div class="caption">真实系统截图示例；具体步骤以对应详细 SOP 为准。</div></div>
+      </div>
+    </section>
+
+    <section class="page">
+      <header><span>02 / 16</span><span>DETAILED_SOP</span></header>
+      <h1>员工培训、考试与主管验收</h1>
+      <div class="grid">
+        <div>
+          <div class="green"><b>最终完成结果</b><br>完成当前版本阅读、80 分测验、实操证据和主管验收。</div>
+          <h2>谁负责</h2><p>全体员工 / 主管</p>
+          <h2>对应培训模块</h2><p>SYSTEM_OPERATION_MAP、MANAGEMENT_CONTROL_MASTER</p>
+          <h2>系统入口（3 个页面）</h2>
+          <div class="routes"><code>/training</code><code>/training/coverage</code><code>/training/manage</code></div>
+          <div class="danger"><b>停止条件：</b>页面、权限、按钮或状态与现行 SOP 不一致，或操作会影响合同、课包、财务、工资、家长可见内容时，停止并找主管确认。</div>
+        </div>
+        <div class="shot"><img src="assets/sop-resource-followup-20260529/annotated/admin-users.png"><div class="caption">真实系统截图示例；具体步骤以对应详细 SOP 为准。</div></div>
+      </div>
+    </section>
+
+    <section class="page">
+      <header><span>03 / 16</span><span>DETAILED_SOP</span></header>
+      <h1>学校申请服务与外部签署</h1>
+      <div class="grid">
+        <div>
+          <div class="green"><b>最终完成结果</b><br>申请服务从建档、资料、协议签署、收费到归档形成完整状态链。</div>
+          <h2>谁负责</h2><p>教务 / 管理</p>
+          <h2>对应培训模块</h2><p>SCHOOL_APPLICATION</p>
+          <h2>系统入口（4 个页面）</h2>
+          <div class="routes"><code>/admin/school-applications</code><code>/admin/students/[id]/school-applications</code><code>/school-application-info/[token]</code><code>/school-application/[token]</code></div>
+          <div class="danger"><b>停止条件：</b>页面、权限、按钮或状态与现行 SOP 不一致，或操作会影响合同、课包、财务、工资、家长可见内容时，停止并找主管确认。</div>
+        </div>
+        <div class="shot"><img src="assets/sop-school-application-service-20260605/annotated/01-student-entry.png"><div class="caption">真实系统截图示例；具体步骤以对应详细 SOP 为准。</div></div>
+      </div>
+    </section>
+
+    <section class="page">
+      <header><span>04 / 16</span><span>DETAILED_SOP</span></header>
+      <h1>家长沟通、老师通知与反馈监督</h1>
+      <div class="grid">
+        <div>
+          <div class="green"><b>最终完成结果</b><br>内部反馈经审核后发布给正确对象，并保留转发、更正、确认和审计记录。</div>
+          <h2>谁负责</h2><p>教务 / 老师 / 管理</p>
+          <h2>对应培训模块</h2><p>PARENT_COMMUNICATION、MANAGEMENT_COMMUNICATION、MANAGER_FEEDBACK、TEACHER_DAILY</p>
+          <h2>系统入口（11 个页面）</h2>
+          <div class="routes"><code>/admin/communications</code><code>/admin/feedbacks</code><code>/admin/miniapp-notifications</code><code>/admin/teacher-notices</code><code>/teacher/alerts</code><code>/teacher/manager-feedback</code><code>/teacher/notices</code><code>/teacher/student-feedbacks</code><code>/miniapp/pages/feedbacks/feedbacks</code><code>/miniapp/pages/staff-communications/staff-communications</code><code>/miniapp/pages/staff-teacher-feedbacks/staff-teacher-feedbacks</code></div>
+          <div class="danger"><b>停止条件：</b>页面、权限、按钮或状态与现行 SOP 不一致，或操作会影响合同、课包、财务、工资、家长可见内容时，停止并找主管确认。</div>
+        </div>
+        <div class="shot"><img src="assets/sop-家长沟通通知中心-20260718/annotated/05-admin-communication-monitor.png"><div class="caption">真实系统截图示例；具体步骤以对应详细 SOP 为准。</div></div>
+      </div>
+    </section>
+
+    <section class="page">
+      <header><span>05 / 16</span><span>MASTER_SOP</span></header>
+      <h1>教学报告、质量与审计报表</h1>
+      <div class="grid">
+        <div>
+          <div class="green"><b>最终完成结果</b><br>报告按责任人准备、复核、发布或导出；异常记录可追溯。</div>
+          <h2>谁负责</h2><p>老师 / 教务 / 管理 / 财务</p>
+          <h2>对应培训模块</h2><p>TEACHER_DAILY、MANAGEMENT_CONTROL_MASTER、FINANCE_MASTER</p>
+          <h2>系统入口（23 个页面）</h2>
+          <div class="routes"><code>/admin/reports/academic-management</code><code>/admin/reports/audit-logs</code><code>/admin/reports/cancelled-sessions</code><code>/admin/reports/final</code><code>/admin/reports/midterm</code><code>/admin/reports/monthly-hours</code><code>/admin/reports/monthly-schedule</code><code>/admin/reports/package-balance-audit</code><code>/admin/reports/package-sharing-audit</code><code>/admin/reports/partner-settlement</code><code>/admin/reports/partner-settlement/billing</code><code>/admin/reports/teacher-payroll</code><code>/admin/reports/teacher-payroll/[teacherId]</code><code>/admin/reports/undeducted-completed</code><code>/final-report/[id]</code><code>/teacher/final-reports</code><code>/teacher/final-reports/[id]</code><code>/teacher/midterm-reports</code><code>/teacher/midterm-reports/[id]</code><code>/miniapp/pages/care-report-detail/care-report-detail</code><code>/miniapp/pages/care-reports/care-reports</code><code>/miniapp/pages/progress/progress</code><code>/miniapp/pages/staff-teacher-reports/staff-teacher-reports</code></div>
+          <div class="danger"><b>停止条件：</b>页面、权限、按钮或状态与现行 SOP 不一致，或操作会影响合同、课包、财务、工资、家长可见内容时，停止并找主管确认。</div>
+        </div>
+        <div class="shot"><img src="assets/sop-manager-teacher-feedback-20260623/annotated/03-admin-recent-feedback-status.png"><div class="caption">真实系统截图示例；具体步骤以对应详细 SOP 为准。</div></div>
+      </div>
+    </section>
+
+    <section class="page">
+      <header><span>06 / 16</span><span>DETAILED_SOP</span></header>
+      <h1>资源、学校指南咨询与成交交接</h1>
+      <div class="grid">
+        <div>
+          <div class="green"><b>最终完成结果</b><br>咨询完成查重、跟进、评估、负责人和成交后交接。</div>
+          <h2>谁负责</h2><p>销售 / 客服 / 教务</p>
+          <h2>对应培训模块</h2><p>RESOURCE_HANDOFF_MASTER</p>
+          <h2>系统入口（27 个页面）</h2>
+          <div class="routes"><code>/admin/leads</code><code>/admin/leads/[id]</code><code>/admin/leads/dashboard</code><code>/admin/leads/new</code><code>/admin/leads/owners</code><code>/school-guide</code><code>/school-guide/assessment</code><code>/school-guide/cases</code><code>/school-guide/compare</code><code>/school-guide/consult</code><code>/school-guide/pathways/[slug]</code><code>/school-guide/plan</code><code>/school-guide/privacy</code><code>/school-guide/schools</code><code>/school-guide/schools/[slug]</code><code>/teacher/lead</code><code>/miniapp/pages/guide-assessment/guide-assessment</code><code>/miniapp/pages/guide-cases/guide-cases</code><code>/miniapp/pages/guide-compare/guide-compare</code><code>/miniapp/pages/guide-consult/guide-consult</code><code>/miniapp/pages/guide-home/guide-home</code><code>/miniapp/pages/guide-pathway/guide-pathway</code><code>/miniapp/pages/guide-plan/guide-plan</code><code>/miniapp/pages/guide-privacy/guide-privacy</code><code>/miniapp/pages/guide-school-detail/guide-school-detail</code><code>/miniapp/pages/guide-schools/guide-schools</code><code>/miniapp/pages/staff-leads/staff-leads</code></div>
+          <div class="danger"><b>停止条件：</b>页面、权限、按钮或状态与现行 SOP 不一致，或操作会影响合同、课包、财务、工资、家长可见内容时，停止并找主管确认。</div>
+        </div>
+        <div class="shot"><img src="assets/sop-resource-followup-20260529/annotated/sales-workspace.png"><div class="caption">真实系统截图示例；具体步骤以对应详细 SOP 为准。</div></div>
+      </div>
+    </section>
+
+    <section class="page">
+      <header><span>07 / 16</span><span>MASTER_SOP</span></header>
+      <h1>工单、待办、提醒、审批与恢复</h1>
+      <div class="grid">
+        <div>
+          <div class="green"><b>最终完成结果</b><br>工作有负责人、状态、截止时间、完成结果、交接和异常升级。</div>
+          <h2>谁负责</h2><p>教务 / 管理 / 财务</p>
+          <h2>对应培训模块</h2><p>ACADEMIC_SCHEDULING_MASTER、MANAGEMENT_CONTROL_MASTER、FINANCE_MASTER</p>
+          <h2>系统入口（22 个页面）</h2>
+          <div class="routes"><code>/admin/alerts</code><code>/admin/approvals</code><code>/admin/recovery/uploads</code><code>/admin/tickets</code><code>/admin/tickets/[id]</code><code>/admin/tickets/archived</code><code>/admin/tickets/handover</code><code>/admin/tickets/scheduling</code><code>/admin/tickets/sop</code><code>/admin/todos</code><code>/tickets/intake</code><code>/tickets/intake/[token]</code><code>/miniapp/pages/request-detail/request-detail</code><code>/miniapp/pages/request-new/request-new</code><code>/miniapp/pages/requests/requests</code><code>/miniapp/pages/staff-approvals/staff-approvals</code><code>/miniapp/pages/staff-issue-report/staff-issue-report</code><code>/miniapp/pages/staff-reminder-attention/staff-reminder-attention</code><code>/miniapp/pages/staff-renewals/staff-renewals</code><code>/miniapp/pages/staff-request-detail/staff-request-detail</code><code>/miniapp/pages/staff-request-new/staff-request-new</code><code>/miniapp/pages/staff-requests/staff-requests</code></div>
+          <div class="danger"><b>停止条件：</b>页面、权限、按钮或状态与现行 SOP 不一致，或操作会影响合同、课包、财务、工资、家长可见内容时，停止并找主管确认。</div>
+        </div>
+        <div class="shot"><img src="assets/sop-小程序员工工作台-20260718/annotated/01-academic-home.png"><div class="caption">真实系统截图示例；具体步骤以对应详细 SOP 为准。</div></div>
+      </div>
+    </section>
+
+    <section class="page">
+      <header><span>08 / 16</span><span>DETAILED_SOP</span></header>
+      <h1>EduTrust 课程、SSG 合同与学生证据</h1>
+      <div class="grid">
+        <div>
+          <div class="green"><b>最终完成结果</b><br>课程和合同字段通过 readiness 检查后才进入签署和证据归档。</div>
+          <h2>谁负责</h2><p>教务 / 管理</p>
+          <h2>对应培训模块</h2><p>EDUTRUST_SSG</p>
+          <h2>系统入口（2 个页面）</h2>
+          <div class="routes"><code>/admin/edutrust</code><code>/admin/edutrust/students</code></div>
+          <div class="danger"><b>停止条件：</b>页面、权限、按钮或状态与现行 SOP 不一致，或操作会影响合同、课包、财务、工资、家长可见内容时，停止并找主管确认。</div>
+        </div>
+        <div class="shot"><img src="assets/sop-edutrust-contract-20260622/annotated/01-edutrust-overview.png"><div class="caption">真实系统截图示例；具体步骤以对应详细 SOP 为准。</div></div>
+      </div>
+    </section>
+
+    <section class="page">
+      <header><span>09 / 16</span><span>DETAILED_SOP</span></header>
+      <h1>全托管计划、执行、风险与报告</h1>
+      <div class="grid">
+        <div>
+          <div class="green"><b>最终完成结果</b><br>计划、活动、任务、风险、覆盖安排和报告在同一学生项目内闭环。</div>
+          <h2>谁负责</h2><p>教务 / 管理</p>
+          <h2>对应培训模块</h2><p>FULL_CARE</p>
+          <h2>系统入口（5 个页面）</h2>
+          <div class="routes"><code>/admin/care</code><code>/admin/care/[id]</code><code>/admin/care/[id]/operations</code><code>/admin/care/[id]/reports/[reportId]</code><code>/admin/care/quality</code></div>
+          <div class="danger"><b>停止条件：</b>页面、权限、按钮或状态与现行 SOP 不一致，或操作会影响合同、课包、财务、工资、家长可见内容时，停止并找主管确认。</div>
+        </div>
+        <!-- 当前流程以现行详细 SOP 截图为准 -->
+      </div>
+    </section>
+
+    <section class="page">
+      <header><span>10 / 16</span><span>DETAILED_SOP</span></header>
+      <h1>财务、收据审批、工资报销与合作方</h1>
+      <div class="grid">
+        <div>
+          <div class="green"><b>最终完成结果</b><br>发票、付款凭证、收据、审批、工资、报销与合作方账单相互核对并可审计。</div>
+          <h2>谁负责</h2><p>财务 / 管理</p>
+          <h2>对应培训模块</h2><p>FINANCE_MASTER、FINANCE_PAYMENT_PROFILE、PARTNER_CREDIT_NOTE、XZS_SETTLEMENT</p>
+          <h2>系统入口（19 个页面）</h2>
+          <div class="routes"><code>/admin/expense-claims</code><code>/admin/finance/business-accounts</code><code>/admin/finance/deleted-invoices</code><code>/admin/finance/documents</code><code>/admin/finance/individual-student-utility</code><code>/admin/finance/student-package-balances</code><code>/admin/finance/student-package-invoices</code><code>/admin/finance/student-package-utilization</code><code>/admin/finance/transport-billing</code><code>/admin/finance/tutor-cost-export</code><code>/admin/finance/workbench</code><code>/admin/receipts-approvals</code><code>/admin/receipts-approvals/history</code><code>/admin/receipts-approvals/package</code><code>/admin/receipts-approvals/queue</code><code>/admin/receipts-approvals/repairs</code><code>/miniapp/pages/finance/finance</code><code>/miniapp/pages/staff-teacher-expenses/staff-teacher-expenses</code><code>/miniapp/pages/staff-teacher-payroll/staff-teacher-payroll</code></div>
+          <div class="danger"><b>停止条件：</b>页面、权限、按钮或状态与现行 SOP 不一致，或操作会影响合同、课包、财务、工资、家长可见内容时，停止并找主管确认。</div>
+        </div>
+        <div class="shot"><img src="assets/sop-finance-partner-credit-note-20260714/annotated/01-entry.png"><div class="caption">真实系统截图示例；具体步骤以对应详细 SOP 为准。</div></div>
+      </div>
+    </section>
+
+    <section class="page">
+      <header><span>11 / 16</span><span>DETAILED_SOP</span></header>
+      <h1>合同、课包、账单与余额台账</h1>
+      <div class="grid">
+        <div>
+          <div class="green"><b>最终完成结果</b><br>首购或续费完成合同、发票审批、课包和允许排课门禁后才交接排课。</div>
+          <h2>谁负责</h2><p>教务 / 财务</p>
+          <h2>对应培训模块</h2><p>CONTRACT_PACKAGE_GATE_MASTER、SHARED_PACKAGE_COURSE、XZS_PACKAGE</p>
+          <h2>系统入口（6 个页面）</h2>
+          <div class="routes"><code>/admin/packages</code><code>/admin/packages/[id]/billing</code><code>/admin/packages/[id]/contract</code><code>/admin/packages/[id]/ledger</code><code>/contract-intake/[token]</code><code>/contract/[token]</code></div>
+          <div class="danger"><b>停止条件：</b>页面、权限、按钮或状态与现行 SOP 不一致，或操作会影响合同、课包、财务、工资、家长可见内容时，停止并找主管确认。</div>
+        </div>
+        <div class="shot"><img src="assets/sop-student-contract-20260604/annotated/06-package-billing-check.png"><div class="caption">真实系统截图示例；具体步骤以对应详细 SOP 为准。</div></div>
+      </div>
+    </section>
+
+    <section class="page">
+      <header><span>12 / 16</span><span>DETAILED_SOP</span></header>
+      <h1>排课、班级、报名、可用时间与考勤</h1>
+      <div class="grid">
+        <div>
+          <div class="green"><b>最终完成结果</b><br>从时间收集、冲突检查、排课确认、课次到点名反馈和异常处理闭环。</div>
+          <h2>谁负责</h2><p>教务 / 老师</p>
+          <h2>对应培训模块</h2><p>ACADEMIC_SCHEDULING_MASTER、ATTENDANCE_EXCEPTION_MASTER</p>
+          <h2>系统入口（20 个页面）</h2>
+          <div class="routes"><code>/admin/booking-links</code><code>/admin/booking-links/[id]</code><code>/admin/classes</code><code>/admin/classes/[id]</code><code>/admin/classes/[id]/sessions</code><code>/admin/conflicts</code><code>/admin/enrollments</code><code>/admin/schedule</code><code>/admin/schedule/all</code><code>/admin/schedule/new</code><code>/admin/sessions/[id]/attendance</code><code>/availability/[token]</code><code>/booking/[token]</code><code>/miniapp/pages/schedule/schedule</code><code>/miniapp/pages/staff-coordination-detail/staff-coordination-detail</code><code>/miniapp/pages/staff-coordination/staff-coordination</code><code>/miniapp/pages/staff-first-scheduling/staff-first-scheduling</code><code>/miniapp/pages/staff-schedule/staff-schedule</code><code>/miniapp/pages/staff-session-detail/staff-session-detail</code><code>/miniapp/pages/staff-student-scheduling/staff-student-scheduling</code></div>
+          <div class="danger"><b>停止条件：</b>页面、权限、按钮或状态与现行 SOP 不一致，或操作会影响合同、课包、财务、工资、家长可见内容时，停止并找主管确认。</div>
+        </div>
+        <div class="shot"><img src="assets/sop-小程序员工工作台-20260718/annotated/08-academic-schedule.png"><div class="caption">真实系统截图示例；具体步骤以对应详细 SOP 为准。</div></div>
+      </div>
+    </section>
+
+    <section class="page">
+      <header><span>13 / 16</span><span>MASTER_SOP</span></header>
+      <h1>学生档案、入学资料与教务协同</h1>
+      <div class="grid">
+        <div>
+          <div class="green"><b>最终完成结果</b><br>学生资料从外部收集、内部建档、课程与合同准备到后续服务交接。</div>
+          <h2>谁负责</h2><p>教务 / 客服</p>
+          <h2>对应培训模块</h2><p>CONTRACT_PACKAGE_GATE_MASTER、ACADEMIC_SCHEDULING_MASTER、SCHOOL_APPLICATION</p>
+          <h2>系统入口（8 个页面）</h2>
+          <div class="routes"><code>/admin/students</code><code>/admin/students/[id]</code><code>/admin/students/[id]/coordination</code><code>/admin/students/[id]/first-purchase</code><code>/partner/student-intake</code><code>/student-intake/[token]</code><code>/miniapp/pages/staff-student-workspace/staff-student-workspace</code><code>/miniapp/pages/students/students</code></div>
+          <div class="danger"><b>停止条件：</b>页面、权限、按钮或状态与现行 SOP 不一致，或操作会影响合同、课包、财务、工资、家长可见内容时，停止并找主管确认。</div>
+        </div>
+        <div class="shot"><img src="assets/sop-student-contract-20260604/annotated/01-admin-students-list.png"><div class="caption">真实系统截图示例；具体步骤以对应详细 SOP 为准。</div></div>
+      </div>
+    </section>
+
+    <section class="page">
+      <header><span>14 / 16</span><span>DETAILED_SOP</span></header>
+      <h1>老师档案、课表、可用时间、授课与收款</h1>
+      <div class="grid">
+        <div>
+          <div class="green"><b>最终完成结果</b><br>老师资料、可授课程、时间、课次、反馈、报告、工资和收款资料一致。</div>
+          <h2>谁负责</h2><p>老师 / 教务 / 管理</p>
+          <h2>对应培训模块</h2><p>TEACHER_MINIAPP、TEACHER_DAILY、TEACHER_PAYMENT、ATTENDANCE_EXCEPTION_MASTER</p>
+          <h2>系统入口（20 个页面）</h2>
+          <div class="routes"><code>/admin/teachers</code><code>/admin/teachers/[id]</code><code>/admin/teachers/[id]/availability</code><code>/admin/teachers/[id]/calendar</code><code>/admin/teachers/[id]/card</code><code>/teacher</code><code>/teacher/assessments</code><code>/teacher/availability</code><code>/teacher/card</code><code>/teacher/expense-claims</code><code>/teacher/payment-details</code><code>/teacher/payroll</code><code>/teacher/scheduling-exceptions</code><code>/teacher/sessions</code><code>/teacher/sessions/[id]</code><code>/teacher/tickets</code><code>/miniapp/pages/staff-teacher-availability/staff-teacher-availability</code><code>/miniapp/pages/staff-teacher-history/staff-teacher-history</code><code>/miniapp/pages/staff-teacher-leave/staff-teacher-leave</code><code>/miniapp/pages/staff-teacher-todos/staff-teacher-todos</code></div>
+          <div class="danger"><b>停止条件：</b>页面、权限、按钮或状态与现行 SOP 不一致，或操作会影响合同、课包、财务、工资、家长可见内容时，停止并找主管确认。</div>
+        </div>
+        <div class="shot"><img src="assets/sop-tutor-payment-profile-20260529/teacher/01-payment-details-current-annotated.png"><div class="caption">真实系统截图示例；具体步骤以对应详细 SOP 为准。</div></div>
+      </div>
+    </section>
+
+    <section class="page">
+      <header><span>15 / 16</span><span>MASTER_SOP</span></header>
+      <h1>账号、权限、基础资料与小程序管理</h1>
+      <div class="grid">
+        <div>
+          <div class="green"><b>最终完成结果</b><br>账号主角色控制系统权限，培训岗位独立分配；基础资料变更有负责人和复核。</div>
+          <h2>谁负责</h2><p>管理</p>
+          <h2>对应培训模块</h2><p>MANAGEMENT_CONTROL_MASTER、MANAGEMENT_MINIAPP、SYSTEM_OPERATION_MAP</p>
+          <h2>系统入口（10 个页面）</h2>
+          <div class="routes"><code>/admin/campuses</code><code>/admin/courses</code><code>/admin/manager</code><code>/admin/manager/quality</code><code>/admin/manager/users</code><code>/admin/miniapp-staff</code><code>/admin/partners</code><code>/admin/rooms</code><code>/admin/student-sources</code><code>/admin/student-types</code></div>
+          <div class="danger"><b>停止条件：</b>页面、权限、按钮或状态与现行 SOP 不一致，或操作会影响合同、课包、财务、工资、家长可见内容时，停止并找主管确认。</div>
+        </div>
+        <div class="shot"><img src="assets/sop-小程序员工工作台-20260718/annotated/09-management-home.png"><div class="caption">真实系统截图示例；具体步骤以对应详细 SOP 为准。</div></div>
+      </div>
+    </section>
+
+    <section class="page">
+      <header><span>16 / 16</span><span>SYSTEM_GUIDE</span></header>
+      <h1>后台与移动工作台</h1>
+      <div class="grid">
+        <div>
+          <div class="green"><b>最终完成结果</b><br>员工从角色工作台进入待办、提醒和业务流程，不跨权限操作。</div>
+          <h2>谁负责</h2><p>教务 / 客服 / 销售 / 财务 / 管理</p>
+          <h2>对应培训模块</h2><p>SYSTEM_OPERATION_MAP、ACADEMIC_MINIAPP、MANAGEMENT_MINIAPP</p>
+          <h2>系统入口（10 个页面）</h2>
+          <div class="routes"><code>/admin</code><code>/admin/mobile</code><code>/admin/mobile/parent-requests</code><code>/admin/renewals</code><code>/admin/shared-docs</code><code>/miniapp/pages/home/home</code><code>/miniapp/pages/staff-action-center/staff-action-center</code><code>/miniapp/pages/staff-health/staff-health</code><code>/miniapp/pages/staff-home/staff-home</code><code>/miniapp/pages/staff-operations/staff-operations</code></div>
+          <div class="danger"><b>停止条件：</b>页面、权限、按钮或状态与现行 SOP 不一致，或操作会影响合同、课包、财务、工资、家长可见内容时，停止并找主管确认。</div>
+        </div>
+        <div class="shot"><img src="assets/sop-小程序员工工作台-20260718/annotated/13-management-account-switch.png"><div class="caption">真实系统截图示例；具体步骤以对应详细 SOP 为准。</div></div>
+      </div>
+    </section>
+<section class="page">
+  <header><span>培训验收</span><span>版本 2026-07-28</span></header><h1>员工必须能说清四件事</h1>
+  <div class="grid"><div class="green"><ol><li>我的任务属于哪条主流程？</li><li>正确入口和对应现行 SOP 是什么？</li><li>什么系统状态才代表真正完成？</li><li>遇到缺资料、权限或高风险异常时找谁？</li></ol></div>
+  <div><div class="amber">知识检查 80 分及格；实操使用培训数据；主管验收后才算完成。</div><div class="danger">培训岗位只决定课程分配，不增加任何系统操作权限。</div></div></div>
+</section>
+</body></html>

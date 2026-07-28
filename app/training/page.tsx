@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getCurrentUser, isManagerUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { trainingModulesForRole } from "@/lib/training-center";
+import { trainingModulesForUser, trainingRolesForUser } from "@/lib/training-center";
 import { redirect } from "next/navigation";
 import { acknowledgeTrainingRead, submitTrainingPractical, submitTrainingQuiz } from "./actions";
 
@@ -11,7 +11,8 @@ export default async function TrainingPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/admin/login");
   if (user.role === "STUDENT") redirect("/");
-  const modules = trainingModulesForRole(user.role);
+  const trainingRoles = trainingRolesForUser(user.role, user.trainingRoles);
+  const modules = trainingModulesForUser(user.role, user.trainingRoles);
   const progresses = await prisma.staffTrainingProgress.findMany({ where: { userId: user.id } });
   const byKey = new Map(progresses.map((item) => [`${item.moduleCode}:${item.moduleVersion}`, item]));
   const manager = await isManagerUser(user);
@@ -22,6 +23,7 @@ export default async function TrainingPage() {
         <div style={{ color: "#0f766e", fontWeight: 800, fontSize: 12 }}>SGT TRAINING CENTER / 员工培训中心</div>
         <h1 style={{ margin: "8px 0" }}>我的岗位必修</h1>
         <p>完成标准：阅读当前 SOP → 测验 80 分以上 → 培训数据实操 → 主管验收。</p>
+        <p style={{ color: "#475569" }}>当前培训岗位：{trainingRoles.join(" / ") || "无员工培训岗位"}（主角色自动包含，附加岗位由管理者分配）</p>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <Link href={user.role === "TEACHER" ? "/teacher" : "/admin"}>返回工作台</Link>
           {manager ? <Link href="/training/manage">主管验收台</Link> : null}

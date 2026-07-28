@@ -1,5 +1,5 @@
 import { getCurrentUser } from "@/lib/auth";
-import { findTrainingModule } from "@/lib/training-center";
+import { canAccessTrainingModule, findTrainingModule } from "@/lib/training-center";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -11,7 +11,7 @@ export async function GET(_request: Request, context: { params: Promise<{ code: 
   if (!user || user.role === "STUDENT") return new Response("Unauthorized", { status: 401 });
   const { code } = await context.params;
   const item = findTrainingModule(code);
-  if (!item || !item.roles.includes(user.role)) return new Response("Forbidden", { status: 403 });
+  if (!item || !canAccessTrainingModule(user.role, user.trainingRoles, code)) return new Response("Forbidden", { status: 403 });
   const file = await readFile(path.join(process.cwd(), "output", "pdf", item.pdfFile));
   return new Response(file, {
     headers: {
