@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>SOP-财务-老师收款资料核验与导出流程-培训版-20260529</title>
+    <style>
+      @page { size: A4 landscape; margin: 14mm 12mm; }
+      :root { --ink:#0f172a; --muted:#475569; --line:#dbeafe; --blue:#2563eb; --green:#166534; --green-bg:#ecfdf5; --amber:#b45309; --amber-bg:#fffbeb; --red:#dc2626; --red-bg:#fff1f2; --slate:#f8fafc; }
+      * { box-sizing: border-box; }
+      body { margin:0; color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans CJK SC","Microsoft YaHei",Arial,sans-serif; }
+      .page { page-break-after:always; }
+      .page:last-child { page-break-after:auto; }
+      .hero,.panel,.step,.card { border:1px solid var(--line); border-radius:18px; background:#fff; break-inside:avoid; page-break-inside:avoid; }
+      .hero { padding:22px 24px; margin-bottom:14px; background:linear-gradient(180deg,#f8fbff 0%,#eef6ff 100%); }
+      .eyebrow { color:var(--blue); font-size:13px; font-weight:900; letter-spacing:.04em; margin-bottom:8px; }
+      h1 { margin:0 0 10px; font-size:34px; line-height:1.12; }
+      h2 { margin:0 0 10px; font-size:24px; line-height:1.2; }
+      h3 { margin:0 0 8px; font-size:17px; }
+      p,li,td,th { font-size:14px; line-height:1.6; }
+      .lead { margin:0; color:var(--muted); font-size:15px; line-height:1.65; max-width:980px; }
+      .grid-3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:16px; }
+      .mini { border:1px solid var(--line); border-radius:14px; padding:12px 14px; background:#fff; }
+      .mini strong { display:block; color:#64748b; font-size:12px; margin-bottom:6px; }
+      .mini span { font-size:15px; font-weight:800; }
+      .panel { padding:16px 18px; margin-bottom:14px; }
+      .panel ol,.panel ul { margin:8px 0 0 20px; padding:0; }
+      .panel li { margin:7px 0; }
+      .answer { border:1px solid #bbf7d0; border-radius:16px; background:var(--green-bg); padding:14px 16px; margin-top:12px; }
+      .answer strong { color:var(--green); }
+      .note,.danger { border-radius:14px; padding:12px 14px; margin-top:12px; font-size:14px; line-height:1.6; }
+      .note { border:1px solid #fcd34d; background:var(--amber-bg); }
+      .danger { border:1px solid #fecaca; background:var(--red-bg); }
+      .step { padding:16px; margin-bottom:16px; }
+      .step-top { display:flex; justify-content:space-between; gap:12px; align-items:baseline; margin-bottom:8px; }
+      .tag { color:var(--blue); font-size:12px; font-weight:900; white-space:nowrap; }
+      .desc { margin:0 0 12px; color:var(--muted); }
+      .action-box { border:1px solid #bbf7d0; border-radius:14px; background:var(--green-bg); padding:11px 13px; margin-bottom:12px; }
+      .action-box strong { color:var(--green); }
+      .action-box ul { margin:7px 0 0 18px; padding:0; }
+      .shot { border:1px solid #cbd5e1; border-radius:14px; overflow:hidden; background:#fff; break-inside:avoid; page-break-inside:avoid; }
+      .shot-visual { height:82mm; display:flex; align-items:flex-start; justify-content:center; background:#fff; line-height:0; }
+      .shot img { width:100%; height:100%; object-fit:contain; object-position:top center; display:block; }
+      .caption { padding:9px 12px 11px; background:var(--slate); border-top:1px solid #e2e8f0; color:var(--muted); font-size:13px; line-height:1.55; }
+      .cards-2 { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+      .card { padding:14px 16px; }
+      .card p { margin:0; color:var(--muted); }
+      table { width:100%; border-collapse:collapse; margin-top:10px; }
+      th,td { border:1px solid #dbeafe; padding:8px 10px; text-align:left; vertical-align:top; }
+      th { background:#eff6ff; }
+      .checklist li { font-weight:700; }
+    </style>
+  </head>
+  <body>
+    <section class="page">
+      <div class="hero">
+        <div class="eyebrow">Finance Training SOP / 财务培训流程</div>
+        <h1>老师收款资料核验与导出流程 / Tutor Payment Profile Review and Export</h1>
+        <p class="lead">本流程只给财务/Admin 使用。新规则是：本地老师 PayNow，海外老师 Wise；Bank Transfer 只作为历史资料参考。工资、报销和 tutor cost 金额计算逻辑不变。<br />This guide is for Finance/Admin only. New rule: local tutors use PayNow, overseas tutors use Wise. Bank Transfer is legacy reference only. Payroll, reimbursement, and tutor-cost amount calculations are unchanged.</p>
+        <div class="grid-3">
+          <div class="mini"><strong>对象 / Audience</strong><span>Finance / Admin</span></div>
+          <div class="mini"><strong>系统区域 / Areas</strong><span>Teacher Payroll, Expense Claims, Teachers</span></div>
+          <div class="mini"><strong>版本 / Version</strong><span>29 May 2026</span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>一句话 / Short Answer</h2>
+        <div class="answer">付款前先看 <strong>Payment Method</strong> 和 <strong>Payment Profile Status</strong>。PayNow 用 PayNow 栏位，Wise 用 Wise 栏位；历史 Bank Transfer 只作参考。<br />Before paying, check <strong>Payment Method</strong> and <strong>Payment Profile Status</strong>. Use PayNow columns for PayNow, Wise columns for Wise, and legacy Bank Transfer only as reference.</div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>先记住 / Must-Know Rules</h2>
+        <ol>
+          <li><strong>Pending Review</strong>：老师刚提交或修改，财务未核验，付款前不要直接使用。 / Tutor has just submitted or updated details; Finance has not verified them yet. Do not use directly for payout.</li>
+          <li><strong>Verified</strong>：财务已核验，可用于付款导出。 / Finance has verified the profile; it can be used for payout exports.</li>
+          <li><strong>Rejected</strong>：资料有问题，必须让老师补资料。 / Details are incomplete or unsafe; ask the tutor to correct them.</li>
+          <li>Payment Method 是 PayNow 时，只使用 PayNow 栏位。 / When Payment Method is PayNow, use PayNow columns only.</li>
+          <li>Payment Method 是 Wise 时，只使用 Wise 栏位。 / When Payment Method is Wise, use Wise columns only.</li>
+          <li>历史 Bank Transfer 栏位不等于新的付款方式。 / Legacy Bank Transfer columns are not a new payment method.</li>
+        </ol>
+      </div>
+      <div class="panel">
+        <h2>流程总览 / Workflow</h2>
+        <ol>
+          <li>老师提交 Payment Details。 / Tutor submits Payment Details.</li>
+          <li>财务/Admin 在老师资料中核验。 / Finance/Admin reviews the teacher profile.</li>
+          <li>资料正确设为 Verified；不正确设为 Rejected 并写原因。 / Mark correct details as Verified; mark incorrect details as Rejected and write the reason.</li>
+          <li>工资、报销或 tutor cost 导出时检查付款资料列。 / Check payment-profile columns in payroll, reimbursement, or tutor-cost exports.</li>
+          <li>付款后按原有流程更新 paid/claim/payroll 状态。 / After payment, update paid/claim/payroll status through the existing workflow.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top"><h2>Step 1: Teacher Payroll 导出 / Export Teacher Payroll</h2><div class="tag">Payroll</div></div>
+        <p class="desc">工资页面和金额计算不变。变化是导出列带出 PayNow、Wise、Payment Profile Status、Verified At/By 和历史银行资料。<br />The payroll page and amount calculations are unchanged. The export now includes PayNow, Wise, Payment Profile Status, Verified At/By, and legacy bank details.</p>
+        <div class="shot">
+          <div class="shot-visual"><img src="assets/sop-tutor-payment-profile-20260529/finance/ann-01-payroll-export.png" alt="Teacher payroll export" /></div>
+          <div class="caption"><strong>图 1 / Figure 1:</strong> 从 Teacher Payroll 导出工资付款清单；金额逻辑不变。 / Export the payroll payout list from Teacher Payroll; amount logic is unchanged.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top"><h2>Step 2: Expense Claims 导出 / Export Expense Claims</h2><div class="tag">Expense Claims</div></div>
+        <p class="desc">老师报销仍按原审批流程处理。导出时会带出提交人对应老师的收款资料，付款前先核验状态。<br />Tutor reimbursements still follow the existing approval process. The export includes the linked tutor payment profile; verify the status before payment.</p>
+        <div class="shot">
+          <div class="shot-visual"><img src="assets/sop-tutor-payment-profile-20260529/finance/ann-02-expense-export.png" alt="Expense claims export" /></div>
+          <div class="caption"><strong>图 2 / Figure 2:</strong> 报销导出前先筛选队列，确认付款对象和收款资料。 / Filter the reimbursement queue first, then confirm the payee and payment details before export.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top"><h2>Step 3: 老师资料核验 / Review Teacher Profile</h2><div class="tag">Teacher Profile</div></div>
+        <p class="desc">如果导出资料为空、状态不是 Verified，或付款方式和字段不匹配，先回老师资料核验，不要猜。<br />If export details are blank, status is not Verified, or the payment method does not match the fields, go back to the teacher profile and review. Do not guess.</p>
+        <div class="shot">
+          <div class="shot-visual"><img src="assets/sop-tutor-payment-profile-20260529/finance/ann-03-review-admin.png" alt="Teacher admin review" /></div>
+          <div class="caption"><strong>图 3 / Figure 3:</strong> 财务/Admin 从老师资料检查或更新收款资料核验状态。 / Finance/Admin checks or updates the payment-profile review status from the teacher profile.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>导出后看哪些列 / Export Columns</h2>
+        <table>
+          <tr><th>列 / Column</th><th>用途 / How Finance should use it</th></tr>
+          <tr><td>Tutor Code / Teacher Name</td><td>确认付款对象，避免重名。 / Confirm the payee and avoid duplicate-name mistakes.</td></tr>
+          <tr><td>Payment Method</td><td>决定使用 PayNow 还是 Wise。 / Decide whether to use PayNow or Wise.</td></tr>
+          <tr><td>PayNow Type / ID / Name</td><td>本地老师付款使用；付款前核对银行界面显示名称。 / Use for local tutor payout; verify the displayed bank name before payment.</td></tr>
+          <tr><td>Wise Account Holder / Email / Phone / WiseTag</td><td>海外老师付款使用；至少要有一种可查找标识。 / Use for overseas tutor payout; at least one searchable Wise identifier is required.</td></tr>
+          <tr><td>Payment Profile Status / Verified At / Verified By</td><td>判断是否已核验。 / Check whether the profile has been reviewed.</td></tr>
+          <tr><td>Legacy Bank columns</td><td>只作历史核对，不作为新的默认付款方式。 / Historical reference only; not the new default payment method.</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>异常情况 / Special Cases</h2>
+        <div class="cards-2">
+          <div class="card"><h3>资料空白 / Blank Details</h3><p>不要付款。让老师回 Payment Details 补资料。 / Do not pay. Ask the tutor to update Payment Details.</p></div>
+          <div class="card"><h3>状态 Pending Review / Pending Review</h3><p>先核验。确认无误后设为 Verified。 / Review first. Mark as Verified only after confirming.</p></div>
+          <div class="card"><h3>名字不一致 / Name Mismatch</h3><p>先核对身份和备注；不能确认就 Rejected。 / Check identity and notes first; if unsure, mark Rejected.</p></div>
+          <div class="card"><h3>必须特殊付款 / Special Payment Required</h3><p>不要改系统金额；单独记录原因和资料来源。 / Do not change system amounts; record the reason and source separately.</p></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>常见错误 / Common Mistakes</h2>
+        <ul>
+          <li>只看 PayNow 字段有值，没有看 Payment Method。 / Using PayNow fields just because they are filled, without checking Payment Method.</li>
+          <li>看到历史 Bank Account 就直接银行转账。 / Making a bank transfer just because legacy Bank Account fields exist.</li>
+          <li>老师重新修改后，仍使用旧的 Verified 结论。 / Reusing an old Verified decision after the tutor has updated details.</li>
+          <li>把付款导出表发到普通群聊。 / Sending payout export files to normal group chats.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="panel checklist">
+        <h2>付款前检查 / Final Checklist</h2>
+        <ol>
+          <li>Tutor Code 和 Teacher Name 已核对。 / Tutor Code and Teacher Name are checked.</li>
+          <li>Payment Method 已确认是 PayNow 或 Wise。 / Payment Method is confirmed as PayNow or Wise.</li>
+          <li>Payment Profile Status 已确认，优先使用 Verified。 / Payment Profile Status is checked; use Verified profiles first.</li>
+          <li>PayNow 付款前核对显示名称。 / For PayNow, verify the displayed name before payment.</li>
+          <li>Wise 付款前确认邮箱/电话/WiseTag 至少一种可查找。 / For Wise, confirm at least one searchable identifier: email, phone, or WiseTag.</li>
+          <li>历史 Bank Transfer 没有被当作新付款方式。 / Legacy Bank Transfer is not treated as a new payment method.</li>
+          <li>付款资料文件按敏感财务资料保存。 / Payout files are stored as sensitive finance data.</li>
+        </ol>
+      </div>
+      <div class="danger"><strong>提醒 / Reminder:</strong> 本功能不改变工资金额、报销审批、课时、排课、发票或收据逻辑。 / This feature does not change payroll amounts, expense approvals, lesson hours, scheduling, invoices, or receipts.</div>
+    </section>
+  </body>
+</html>

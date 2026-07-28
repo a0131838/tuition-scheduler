@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>SOP-教务管理-学校申请服务流程-培训版-20260605</title>
+    <style>
+      @page { size: A4 landscape; margin: 14mm 12mm; }
+      :root {
+        --ink:#0f172a; --muted:#475569; --line:#dbeafe; --blue:#2563eb;
+        --green:#166534; --green-bg:#ecfdf5; --amber:#b45309; --amber-bg:#fffbeb;
+        --red:#dc2626; --red-bg:#fff1f2; --slate:#f8fafc; --soft:#f8fbff;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; color: var(--ink); background: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, "PingFang SC", "Microsoft YaHei", sans-serif; }
+      .page { page-break-after: always; }
+      .page:last-child { page-break-after: auto; }
+      .hero,.panel,.step,.card { border: 1px solid var(--line); border-radius: 16px; background: #fff; break-inside: avoid; page-break-inside: avoid; }
+      .hero { padding: 22px 24px; margin-bottom: 14px; background: linear-gradient(180deg,#f8fbff 0%,#eef6ff 100%); }
+      .eyebrow { color: var(--blue); font-size: 13px; font-weight: 900; letter-spacing: .03em; margin-bottom: 8px; }
+      h1 { margin: 0 0 10px; font-size: 31px; line-height: 1.16; }
+      h2 { margin: 0 0 10px; font-size: 23px; line-height: 1.22; }
+      h3 { margin: 0 0 7px; font-size: 16px; }
+      p,li,td,th { font-size: 13.5px; line-height: 1.55; }
+      .lead { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.62; max-width: 1060px; }
+      .grid-3 { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; margin-top: 16px; }
+      .grid-2 { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+      .mini { border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; background: #fff; }
+      .mini strong { display: block; color: #64748b; font-size: 12px; margin-bottom: 5px; }
+      .mini span { font-size: 14.5px; font-weight: 850; }
+      .panel { padding: 16px 18px; margin-bottom: 14px; }
+      .panel ol,.panel ul,.step ol,.step ul { margin: 8px 0 0 20px; padding: 0; }
+      .panel li,.step li { margin: 6px 0; }
+      .answer { border: 1px solid #bbf7d0; border-radius: 14px; background: var(--green-bg); padding: 13px 15px; margin-top: 12px; }
+      .answer strong { color: var(--green); }
+      .note,.danger { border-radius: 13px; padding: 11px 13px; margin-top: 10px; font-size: 13.5px; line-height: 1.55; }
+      .note { border: 1px solid #fcd34d; background: var(--amber-bg); }
+      .note strong { color: var(--amber); }
+      .danger { border: 1px solid #fecaca; background: var(--red-bg); }
+      .danger strong { color: var(--red); }
+      .step { padding: 15px 16px; margin-bottom: 14px; }
+      .step-top { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-bottom: 6px; }
+      .tag { color: var(--blue); font-size: 12px; font-weight: 900; white-space: nowrap; }
+      .desc { margin: 0 0 10px; color: var(--muted); }
+      .action-box { border: 1px solid #bbf7d0; border-radius: 13px; background: var(--green-bg); padding: 10px 12px; margin-bottom: 10px; }
+      .action-box strong { color: var(--green); }
+      .shot { border: 1px solid #cbd5e1; border-radius: 13px; overflow: hidden; background: #fff; break-inside: avoid; page-break-inside: avoid; }
+      .shot-visual { height: 82mm; display: flex; align-items: flex-start; justify-content: center; background: #fff; line-height: 0; }
+      .shot-visual.short { height: 67mm; }
+      .shot-visual.tall { height: 91mm; }
+      .shot img { width: 100%; height: 100%; object-fit: contain; object-position: top center; display: block; }
+      .caption { padding: 8px 11px 10px; background: var(--slate); border-top: 1px solid #e2e8f0; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+      .caption strong { color: var(--ink); }
+      .card { padding: 13px 15px; }
+      .card p { margin: 0; color: var(--muted); }
+      table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+      th,td { border: 1px solid #dbeafe; padding: 7px 9px; text-align: left; vertical-align: top; }
+      th { background: #eff6ff; }
+      .small { font-size: 12.5px; color: var(--muted); }
+      .kbd { display:inline-block; border:1px solid #cbd5e1; background:#f8fafc; padding:1px 6px; border-radius:7px; font-weight:800; }
+    </style>
+  </head>
+  <body>
+    <section class="page">
+      <div class="hero">
+        <div class="eyebrow">Academic & Management Training SOP / 教务与管理培训流程</div>
+        <h1>School Application Service Full Workflow<br />学校申请服务完整流程</h1>
+        <p class="lead">
+          This 2026-06-05 version covers the latest workflow: parent information link, required-field guard, school selection, service fees, full agreement preview,
+          parent handwritten signature, automatic invoice creation, Finance payment proof and receipt handoff, plus void/delete rules.
+          <br />本 2026-06-05 版本包含最新流程：家长资料链接、必填项防呆、学校选择、服务费、完整合同预览、家长手写签名、自动生成 invoice、财务付款凭证和 receipt 交接，以及作废/删除规则。
+        </p>
+        <div class="grid-3">
+          <div class="mini"><strong>Audience / 使用对象</strong><span>Academic Ops + Management / 教务 + 管理</span></div>
+          <div class="mini"><strong>Path / 系统入口</strong><span>Student Detail -> School Applications</span></div>
+          <div class="mini"><strong>Version / 版本</strong><span>05 Jun 2026</span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>What This Function Is For / 这个功能用来做什么</h2>
+        <div class="answer">
+          <strong>Short answer:</strong> use this when a parent asks GT to support school applications, including AEIS/S-AEIS and Singapore international school applications.
+          This is a service agreement and finance billing workflow. It is not a lesson package workflow.
+          <br /><strong>一句话：</strong>家长需要 GT 协助申请学校时使用，包括 AEIS/S-AEIS 和新加坡国际学校申请。这是服务协议 + 财务收款流程，不是课时包流程。
+        </div>
+        <div class="note">
+          <strong>Screenshot note / 截图说明：</strong> screenshots were captured by Playwright with an authorized Admin account and a temporary training student. Temporary records were deleted after capture.
+          Red boxes are generated from the live page element positions.
+          <br />截图由 Playwright 使用授权 Admin 账号和临时培训学生截取；截图后临时记录已删除。红框来自真实页面元素位置。
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>Must-Know Rules / 先记住这些规则</h2>
+        <ol>
+          <li><strong>Use the separate service billing case.</strong> The system creates or reuses <b>School Application Service</b>; do not use English/Math lesson packages.<br />必须使用独立服务收款 case。系统会创建或复用 <b>School Application Service</b>；不要使用英语/数学课包。</li>
+          <li><strong>No lesson hours are added or deducted.</strong> This workflow only handles agreement, invoice, payment proof, receipt, and finance approval.<br />不会增加或扣减课时。本流程只处理协议、invoice、付款凭证、receipt 和财务审批。</li>
+          <li><strong>Parent info link comes before formal signing.</strong> Use it when parent name/phone/email/address/ID needs confirmation.<br />正式签字前可先发家长资料链接，用于确认家长姓名、电话、邮箱、地址、证件号等。</li>
+          <li><strong>Signing must be handwritten.</strong> Parent now sees the full agreement and must sign in the handwritten signature box.<br />签署必须手写。家长会看到完整协议，并必须在手写签名框签名。</li>
+          <li><strong>Void is not deletion.</strong> Delete is only allowed for voided records with no invoice. Invoice-linked records stay for audit.<br />作废不等于删除。只有作废且无 invoice 的记录可删除；已关联 invoice 的记录必须保留审计。</li>
+        </ol>
+        <div class="danger">
+          <strong>Stop and ask Management if:</strong> the parent wants a special refund rule, the school list is unclear, fees do not match the agreement, or the wrong student was selected.
+          <br /><strong>以下情况先停：</strong>家长要求特殊退费规则、学校名单不清楚、费用和协议不一致、或选错学生。
+        </div>
+      </div>
+      <div class="panel">
+        <h2>Role Split / 角色分工</h2>
+        <table>
+          <tr><th>Role / 角色</th><th>Responsible For / 负责内容</th><th>Must Not Do / 不能做</th></tr>
+          <tr><td>Academic Ops / 教务</td><td>Create service, collect parent info, select schools, fill grade/year/intake/fees, generate parent links.<br />创建服务、收集家长资料、选择学校、填写年级/Year/入学季/费用、生成家长链接。</td><td>Do not change lesson package balance.<br />不要改课时包余额。</td></tr>
+          <tr><td>Management / 管理</td><td>Confirm special fee/refund exceptions, decide void/delete, approve unusual correction paths.<br />确认特殊费用/退费例外，决定作废/删除，批准异常修正路径。</td><td>Do not physically delete invoice-linked records.<br />不要物理删除已关联 invoice 的记录。</td></tr>
+          <tr><td>Finance / 财务</td><td>After signing, handle payment proof, receipt creation, approval, and receipt PDF.<br />签署后处理付款凭证、创建 receipt、审批和收据 PDF。</td><td>Do not treat this as tuition hours.<br />不要把它当课时费课包处理。</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>End-to-End Workflow / 完整流程总览</h2>
+        <table>
+          <tr><th>#</th><th>Step / 步骤</th><th>Owner / 负责人</th><th>Result / 结果</th></tr>
+          <tr><td>1</td><td>Open correct student, enter School Applications.<br />打开正确学生，进入学校申请服务。</td><td>教务</td><td>进入服务工作区。</td></tr>
+          <tr><td>2</td><td>Create draft.<br />创建草稿。</td><td>教务</td><td>系统使用独立服务收款 case。</td></tr>
+          <tr><td>3</td><td>Generate parent info link if parent details need confirmation.<br />如家长资料需确认，生成家长资料链接。</td><td>教务</td><td>家长可先补全资料。</td></tr>
+          <tr><td>4</td><td>Fill required draft fields and fees.<br />填写草稿必填项和费用。</td><td>教务</td><td>缺项会在页面拦住，减少刷新丢内容。</td></tr>
+          <tr><td>5</td><td>Generate sign link and send to parent.<br />生成签字链接并发给家长。</td><td>教务</td><td>家长看到完整合同。</td></tr>
+          <tr><td>6</td><td>Parent previews PDF, reads full agreement, signs by hand.<br />家长预览 PDF、阅读完整合同、手写签名。</td><td>家长</td><td>系统保存签名并生成 invoice。</td></tr>
+          <tr><td>7</td><td>Finance handles payment proof and receipt.<br />财务处理付款凭证和 receipt。</td><td>财务</td><td>收款记录完成。</td></tr>
+          <tr><td>8</td><td>If wrong, void. Delete only when voided and not invoice-linked.<br />如有错误先作废；仅作废且无 invoice 才可删除。</td><td>管理/教务</td><td>保留审计安全。</td></tr>
+        </table>
+      </div>
+      <div class="panel">
+        <h2>Required Fields / 必填项</h2>
+        <table>
+          <tr><th>Field / 字段</th><th>Why Required / 为什么必填</th><th>What Happens If Missing / 缺少会怎样</th></tr>
+          <tr><td>Parent name / 家长姓名</td><td>Used in agreement, invoice, and signature record.<br />用于协议、invoice 和签署记录。</td><td>Browser blocks save or server rejects.<br />浏览器拦截保存或后端拒绝。</td></tr>
+          <tr><td>Agreement date / 合同日期</td><td>Used as agreement and invoice issue date base.<br />用于合同日期和 invoice 日期基础。</td><td>Must be checked before sign link.<br />生成签字链接前必须核对。</td></tr>
+          <tr><td>First school/application / 第一所学校/申请项目</td><td>Agreement must include 1-5 schools.<br />协议必须包含 1-5 所学校。</td><td>No agreement PDF or sign-ready workflow.<br />不能准备完整合同。</td></tr>
+          <tr><td>Total amount greater than 0 / 总金额大于 0</td><td>Finance needs a payable amount.<br />财务需要可收款金额。</td><td>Save is blocked before page refresh.<br />保存前会先在页面拦住。</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top"><h2>Step 1: Enter From Student Detail / 从学生详情进入</h2><div class="tag">Student Detail</div></div>
+        <p class="desc">Open the correct student first. In the student workbench/sidebar area, click <b>School Applications / 学校申请服务</b>.<br />先打开正确学生。在学生工作区/侧栏区域点击 <b>School Applications / 学校申请服务</b>。</p>
+        <div class="action-box"><strong>Check first / 先检查：</strong> student name, parent context, and whether this is the correct student before creating anything.<br />创建前先核对学生姓名、家长背景、是否为正确学生。</div>
+        <div class="shot">
+          <div class="shot-visual"><img src="assets/sop-school-application-service-20260605/annotated/01-student-entry.png" alt="Student detail entry" /></div>
+          <div class="caption"><strong>Figure 1:</strong> Start from the correct student detail page. Do not create service from a wrong student profile.<br />图 1：从正确学生详情页开始。不要在错误学生名下创建服务。</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top"><h2>Step 2: Create Draft / 创建草稿</h2><div class="tag">New Service</div></div>
+        <p class="desc">Click <b>Create draft / 创建草稿</b>. The page explains that the system uses a separate school application billing case for both new and existing students.<br />点击 <b>Create draft / 创建草稿</b>。页面会说明新学生和老学生都使用独立的学校申请收款 case。</p>
+        <div class="action-box"><strong>Important / 重点：</strong> There is no normal lesson-package selector here. The system will not add or deduct lesson hours.<br />这里没有普通课包选择器；系统不会增加或扣减课时。</div>
+        <div class="shot">
+          <div class="shot-visual"><img src="assets/sop-school-application-service-20260605/annotated/02-create-service.png" alt="Create draft" /></div>
+          <div class="caption"><strong>Figure 2:</strong> Create the service draft and confirm the independent billing case explanation.<br />图 2：创建服务草稿，并确认独立收款 case 说明。</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top"><h2>Step 3: Fill Required Draft Fields / 填写草稿必填项</h2><div class="tag">Draft Guard</div></div>
+        <p class="desc">The form now shows required fields and blocks obvious missing data before submitting. This reduces the old issue where reminders could refresh the page and lose unsaved input.<br />现在表单会显示必填项，并在提交前拦住明显缺项，减少以前提醒后刷新页面导致未保存内容丢失的问题。</p>
+        <div class="action-box"><strong>Fill at minimum / 最少要填：</strong> parent name, agreement date, first school/application, and at least one fee amount so total is greater than 0.<br />至少填写：家长姓名、合同日期、第一所学校/申请项目，以及至少一个费用金额使总额大于 0。</div>
+        <div class="shot">
+          <div class="shot-visual tall"><img src="assets/sop-school-application-service-20260605/annotated/03-draft-fields.png" alt="Required draft fields" /></div>
+          <div class="caption"><strong>Figure 3:</strong> Required guard, parent fields, and first school row. Red boxes mark the areas to check before saving.<br />图 3：必填项防呆、家长字段和第一条学校申请行。红框标出保存前要检查的位置。</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top"><h2>Step 4: Parent Info Link / 家长资料链接</h2><div class="tag">Before Sign Link</div></div>
+        <p class="desc">If parent details are incomplete or need confirmation, click <b>Generate parent info link / 生成家长资料链接</b>. Send it before the formal signing link.<br />如果家长资料不完整或需要确认，点击 <b>Generate parent info link / 生成家长资料链接</b>。这个链接应在正式签字链接之前发送。</p>
+        <div class="action-box"><strong>Use this for / 用于：</strong> parent name, phone, email, ID/passport number, address, student current school/grade, and application notes.<br />用于确认家长姓名、电话、邮箱、证件号、地址、学生当前学校/年级和申请备注。</div>
+        <div class="note"><strong>Cleanup / 清理：</strong> if the link was created by mistake or no longer needed, click <b>Delete link / 删除链接</b>. Submitted parent details are not deleted by deleting the link.<br />如果误生成或不再需要，点击 <b>Delete link / 删除链接</b>。删除链接不会删除已经提交的家长资料。</div>
+        <div class="shot">
+          <div class="shot-visual"><img src="assets/sop-school-application-service-20260605/annotated/04-parent-info-link.png" alt="Parent info link" /></div>
+          <div class="caption"><strong>Figure 4:</strong> Open/copy/delete parent info link. This is separate from the formal signing link.<br />图 4：打开、复制、删除家长资料链接。它和正式签字链接不是同一个。</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>School, Year, Fee, and Refund Details / 学校、Year、费用与退费细节</h2>
+        <table>
+          <tr><th>Item / 项目</th><th>How To Fill / 怎么填</th><th>Check Before Sending Link / 发链接前检查</th></tr>
+          <tr><td>School/application / 学校/申请项目</td><td>Select from dropdown. Includes AEIS/S-AEIS and Singapore international schools.<br />从下拉列表选择，包含 AEIS/S-AEIS 和新加坡国际学校。</td><td>If missing, ask Admin/Management to add; do not invent a workaround.<br />如果缺少，找 Admin/管理添加，不要乱填替代。</td></tr>
+          <tr><td>Programme / 课程体系</td><td>Select the application type/programme.<br />选择申请类型/课程体系。</td><td>Must match the school and parent request.<br />必须和学校及家长需求一致。</td></tr>
+          <tr><td>School grade / Year / 学校年级</td><td>Keep school-facing wording, e.g. Year 13.<br />保留学校对外叫法，例如 Year 13。</td><td>Do not convert it silently in the school-facing field.<br />不要在学校显示字段里偷偷换算。</td></tr>
+          <tr><td>Equivalent level / 等效年级</td><td>Use for internal understanding, e.g. Year 13 = Grade 12 equivalent.<br />用于内部理解，例如 Year 13 = Grade 12 equivalent。</td><td>Especially important for British schools.<br />英系学校尤其要核对。</td></tr>
+          <tr><td>Service fee / 服务费</td><td>GT service fee charged to parent.<br />GT 向家长收取的服务费。</td><td>Must match the offer/agreement.<br />必须和报价/协议一致。</td></tr>
+          <tr><td>Official fee / 官方费用</td><td>School/test/government fee if GT collects it; otherwise use official fee mode note.<br />如 GT 代收学校/考试/政府费用则填写；否则用官方费用方式备注。</td><td>Clarify whether parent pays school directly or GT collects.<br />确认家长直接付学校还是 GT 代收。</td></tr>
+          <tr><td>Refund rule / 退费规则</td><td>1-3 schools non-refundable; 4-5 schools follow special policy.<br />1-3 所不退费；4-5 所按特殊政策。</td><td>School count must be correct before signing.<br />签署前学校数量必须正确。</td></tr>
+        </table>
+      </div>
+      <div class="danger">
+        <strong>Do not send the sign link if the fee is still being negotiated.</strong> Once the parent signs, the system creates invoice flow based on the saved agreement amount.
+        <br /><strong>费用还在谈，不要发签字链接。</strong> 家长签署后，系统会按保存的协议金额进入 invoice 流程。
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top"><h2>Step 5: Generate Formal Sign Link / 生成正式签字链接</h2><div class="tag">Sign Link</div></div>
+        <p class="desc">After draft details are saved and checked, click <b>Generate sign link / 生成签字链接</b>. Then use <b>Open sign link</b> to preview or <b>Copy sign link / 复制签字链接</b> to send to the parent.<br />草稿资料保存并核对后，点击 <b>Generate sign link / 生成签字链接</b>。然后用 <b>Open sign link</b> 预览，或用 <b>Copy sign link / 复制签字链接</b> 发给家长。</p>
+        <div class="action-box"><strong>Before sending / 发送前：</strong> preview the link yourself once to confirm parent, student, school list, fees, and refund rule are correct.<br />发送前自己先预览一次，确认家长、学生、学校列表、费用和退费规则正确。</div>
+        <div class="shot">
+          <div class="shot-visual"><img src="assets/sop-school-application-service-20260605/annotated/05-sign-link.png" alt="Sign link" /></div>
+          <div class="caption"><strong>Figure 5:</strong> Open/copy the formal sign link. This is the link the parent uses to sign the agreement.<br />图 5：打开/复制正式签字链接。家长用这个链接签署协议。</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top"><h2>Step 6: Parent Reviews Full Agreement / 家长阅读完整合同</h2><div class="tag">Public Link</div></div>
+        <p class="desc">The parent-facing page now shows the full agreement terms, not only a summary. The parent can also open <b>Preview agreement PDF / 预览合同 PDF</b> before signing.<br />家长端现在显示完整合同条款，不只是摘要。签署前家长也可以打开 <b>Preview agreement PDF / 预览合同 PDF</b>。</p>
+        <div class="action-box"><strong>Tell the parent / 告诉家长：</strong> review the full agreement and school list first; sign only if parent/student/schools/fees are correct.<br />先阅读完整协议和学校列表；确认家长、学生、学校、费用无误后再签。</div>
+        <div class="shot">
+          <div class="shot-visual"><img src="assets/sop-school-application-service-20260605/annotated/06-parent-full-agreement.png" alt="Full agreement page" /></div>
+          <div class="caption"><strong>Figure 6:</strong> Full agreement area on the public signing page. The parent can read the terms before signing.<br />图 6：公开签字页中的完整合同区域。家长签署前可阅读条款。</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top"><h2>Step 7: Parent Handwritten Signature / 家长手写签名</h2><div class="tag">Required Signature</div></div>
+        <p class="desc">The parent must complete the handwritten signature box. The system will reject signing if there is no handwritten signature image.<br />家长必须完成手写签名框。如果没有手写签名图片，系统会拒绝签署。</p>
+        <div class="action-box"><strong>Parent action / 家长操作：</strong> fill signer name, optional email/phone, tick the confirmation checkbox, draw signature, then click <b>Sign agreement / 签署协议</b>.<br />填写签署人姓名、可选邮箱/电话，勾选确认框，手写签名，然后点击 <b>Sign agreement / 签署协议</b>。</div>
+        <div class="note"><strong>After submit / 提交后：</strong> the signature image is stored, the signed PDF includes the signature, and the system prepares the invoice for Finance.<br />提交后：系统保存签名图片，已签 PDF 会包含签名，并准备 invoice 给财务处理。</div>
+        <div class="shot">
+          <div class="shot-visual"><img src="assets/sop-school-application-service-20260605/annotated/07-parent-hand-signature.png" alt="Hand signature" /></div>
+          <div class="caption"><strong>Figure 7:</strong> Handwritten signature is mandatory. This replaces simple click-only confirmation.<br />图 7：必须手写签名，不再只是点击确认。</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top"><h2>Step 8: Finance Handoff / 交给财务处理收款</h2><div class="tag">Billing</div></div>
+        <p class="desc">Use the service record's <b>Billing</b> button to open the billing case. Finance continues from here or the Receipt Center to upload payment proof, create receipt, approve, and export receipt PDF.<br />使用服务记录上的 <b>Billing</b> 打开收款 case。财务从这里或 Receipt Center 上传付款凭证、创建 receipt、审批并导出收据 PDF。</p>
+        <div class="action-box"><strong>Academic Ops check / 教务检查：</strong> confirm the billing case is <b>School Application Service</b> and not a normal tuition package.<br />确认收款 case 是 <b>School Application Service</b>，不是普通课时包。</div>
+        <div class="shot">
+          <div class="shot-visual"><img src="assets/sop-school-application-service-20260605/annotated/08-finance-handoff.png" alt="Finance handoff" /></div>
+          <div class="caption"><strong>Figure 8:</strong> Billing page for Finance handoff. It is for invoice/payment/receipt documents only.<br />图 8：财务交接的 Billing 页面。这里只处理 invoice、付款和 receipt 单据。</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>Finance Flow After Parent Signs / 家长签署后的财务流程</h2>
+        <table>
+          <tr><th>#</th><th>Finance Action / 财务动作</th><th>Where / 在哪里</th><th>Result / 结果</th></tr>
+          <tr><td>1</td><td>Review invoice generated after signing.<br />查看签署后生成的 invoice。</td><td>Billing / Finance Documents</td><td>Invoice amount matches agreement.</td></tr>
+          <tr><td>2</td><td>Upload payment proof when parent pays.<br />家长付款后上传付款凭证。</td><td>Billing / Receipt Center</td><td>Payment record created.</td></tr>
+          <tr><td>3</td><td>Create receipt from payment record/invoice.<br />根据付款记录/invoice 创建 receipt。</td><td>Receipt Center</td><td>Receipt awaits approval or completes approval.</td></tr>
+          <tr><td>4</td><td>Approve receipt and export PDF.<br />审批 receipt 并导出 PDF。</td><td>Receipt Approval Center</td><td>Receipt issued to parent.</td></tr>
+        </table>
+        <div class="danger">
+          <strong>Do not adjust package hours.</strong> The service billing case has 0 lesson hours by design. Payment does not create lesson balance.
+          <br /><strong>不要调整课时。</strong> 服务收款 case 设计上就是 0 课时，付款不会产生课时余额。
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top"><h2>Step 9: Void and Delete / 作废与删除</h2><div class="tag">Correction</div></div>
+        <p class="desc">If the record is wrong, use <b>Void / 作废</b>. Only a voided record without invoice can be deleted. Signed or invoice-linked records should stay for audit history.<br />记录错误时使用 <b>Void / 作废</b>。只有作废且无 invoice 的记录能删除。已签署或已关联 invoice 的记录应保留审计历史。</p>
+        <div class="danger">
+          <strong>Invoice-linked records cannot be cleaned like test drafts.</strong> If invoice or receipt is wrong, use Finance/Management correction route.
+          <br /><strong>已关联 invoice 的记录不能像测试草稿一样清理。</strong> 如果 invoice 或 receipt 错误，走财务/管理修正流程。
+        </div>
+        <div class="shot">
+          <div class="shot-visual"><img src="assets/sop-school-application-service-20260605/annotated/09-void-delete.png" alt="Void delete" /></div>
+          <div class="caption"><strong>Figure 9:</strong> Delete appears only for a voided, non-invoiced record. Use carefully.<br />图 9：只有作废且无 invoice 的记录才会显示删除。谨慎使用。</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>New Student vs Existing Student / 新学生与老学生</h2>
+        <table>
+          <tr><th>Scenario / 场景</th><th>What System Does / 系统怎么做</th><th>What Staff Should Do / 员工怎么做</th></tr>
+          <tr><td>New student, no lesson package<br />新学生，没有课包</td><td>Creates School Application Service billing case with 0 lesson hours.<br />创建 0 课时学校申请服务收款 case。</td><td>Create service from student page, collect parent info, send sign link.<br />从学生页创建服务，收集资料，发送签字链接。</td></tr>
+          <tr><td>Existing student with active lesson package<br />老学生，有正常课包</td><td>Still uses separate service billing case.<br />仍使用独立服务收款 case。</td><td>Do not use existing English/Math package for this service.<br />不要用已有英语/数学课包处理该服务。</td></tr>
+          <tr><td>Parent later buys lessons<br />家长之后买课程</td><td>Lesson purchase uses normal new purchase/renewal contract workflow.<br />课程购买走正常新签/续费合同流程。</td><td>Do not reuse school application service case as a lesson package.<br />不要把学校申请服务 case 当课时包复用。</td></tr>
+        </table>
+      </div>
+      <div class="panel">
+        <h2>Common Mistakes / 常见错误</h2>
+        <ul>
+          <li>Creating service on the wrong student. Always start from the correct student profile.<br />在错误学生名下创建服务。必须从正确学生详情页进入。</li>
+          <li>Sending sign link before parent info is confirmed.<br />家长资料未确认就发正式签字链接。</li>
+          <li>Leaving total amount as 0, causing save/sign preparation to fail.<br />总金额为 0，导致保存或准备签署失败。</li>
+          <li>Using the wrong school grade wording, especially British Year levels.<br />学校年级叫法错误，尤其是英系 Year。</li>
+          <li>Thinking parent click confirmation is enough. It now requires handwritten signature.<br />以为家长点击确认就够；现在必须手写签名。</li>
+          <li>Deleting or trying to hide signed/invoiced records.<br />删除或试图隐藏已签署/已开票记录。</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>Final Checklist / 最终检查清单</h2>
+        <table>
+          <tr><th>Before Parent Info Link / 家长资料链接前</th><th>Before Sign Link / 签字链接前</th><th>After Signing / 签署后</th></tr>
+          <tr>
+            <td>
+              <ul>
+                <li>Correct student / 学生正确</li>
+                <li>Parent contact unclear? send parent info link / 家长联系方式不清楚则发资料链接</li>
+                <li>Delete unused parent info link if created by mistake / 误生成可删除资料链接</li>
+              </ul>
+            </td>
+            <td>
+              <ul>
+                <li>Parent name filled / 家长姓名已填</li>
+                <li>Agreement date checked / 合同日期已核对</li>
+                <li>1-5 schools selected / 已选择 1-5 所学校</li>
+                <li>Grade/Year and equivalent level checked / 年级与等效年级已核对</li>
+                <li>Total amount greater than 0 / 总金额大于 0</li>
+                <li>Refund policy matches school count / 退费规则与学校数量一致</li>
+              </ul>
+            </td>
+            <td>
+              <ul>
+                <li>Parent used handwritten signature / 家长已手写签名</li>
+                <li>Signed PDF includes signature / 已签 PDF 包含签名</li>
+                <li>Invoice created / invoice 已生成</li>
+                <li>Finance handles payment proof and receipt / 财务处理付款凭证和 receipt</li>
+                <li>No lesson balance changes / 不改课时余额</li>
+              </ul>
+            </td>
+          </tr>
+        </table>
+        <div class="answer">
+          <strong>One sentence to remember:</strong> School application service is a full agreement + handwritten parent signature + separate service billing case, never a normal lesson package.
+          <br /><strong>一句话记住：</strong>学校申请服务 = 完整协议 + 家长手写签名 + 独立服务收款 case，永远不是普通课时包。
+        </div>
+      </div>
+    </section>
+  </body>
+</html>

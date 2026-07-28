@@ -23,8 +23,28 @@
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
+## 2026-07-28-r289 Ready
+
+- Scope: controlled SOP library plus authenticated role-aware employee Training Center.
+- Business impact:
+  - Staff see only role-relevant current SOP modules and must complete reading, quiz, practical evidence and manager sign-off.
+  - Managers receive a dedicated training validation queue.
+  - Old manuals are explicitly stopped as current training sources.
+  - No teaching, scheduling, attendance, package, finance, payroll, settlement or parent workflow changes.
+- Files:
+  - `app/training/*`
+  - `app/api/training/sops/[code]/route.ts`
+  - `lib/training-center.ts`
+  - `prisma/schema.prisma`
+  - `docs/培训中心/*`
+- Verification before deploy:
+  - focused tests, full backend tests, TypeScript and production build.
+- Post-deploy verification:
+  - migration current, `/admin/login` 200, authenticated Admin/Teacher training pages 200, role-filtered protected PDF 200, unauthorized/other-role PDF denied.
+
 ## Open Risks
 
+- Training-center rollout: no employee is automatically marked complete. Management must review the first practical evidence and establish who is responsible for each role's sign-off.
 - Singapore School Guide rollout: `2026-07-27-r285` is additive and has no migration, but official school fees and admissions details remain time-sensitive. Fifteen priority schools show an applicable year, verification date and next review date; partially verified directory entries must continue to display their limitation. After server deployment, upload miniapp development version `1.0.17`, designate it as the experience version, and check the public entry, one school detail, four-school comparison, copied official link and test inquiry without exposing real child data.
 
 ## 2026-07-28-r288 Live

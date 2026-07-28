@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>SOP-管理老师-管理反馈查看确认流程-培训版-20260623</title>
+  <style>
+    @page { size: A4 landscape; margin: 14mm 12mm; }
+    :root { --ink:#0f172a; --muted:#475569; --line:#bfdbfe; --blue:#2563eb; --green:#166534; --green-bg:#ecfdf5; --amber:#b45309; --amber-bg:#fffbeb; --red:#dc2626; --red-bg:#fff1f2; --slate:#f8fafc; --purple:#4f46e5; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:#fff; font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans CJK SC","Microsoft YaHei",Arial,sans-serif; }
+    .page { page-break-after:always; min-height:181mm; display:flex; flex-direction:column; gap:10px; }
+    .page:last-child { page-break-after:auto; }
+    .cover { justify-content:center; border:1px solid var(--line); border-radius:16px; padding:22mm; background:linear-gradient(135deg,#eff6ff,#f8fafc 52%,#ecfdf5); }
+    h1 { font-size:32px; line-height:1.16; margin:0 0 9px; letter-spacing:0; }
+    h2 { font-size:23px; line-height:1.2; margin:0 0 8px; }
+    h3 { font-size:16px; margin:0 0 6px; }
+    p, li, td, th { font-size:13px; line-height:1.52; }
+    p { margin:0; }
+    ol, ul { margin:0; padding-left:20px; }
+    li { margin:4px 0; }
+    b { font-weight:900; }
+    .muted { color:var(--muted); }
+    .tag { display:inline-block; padding:4px 9px; border-radius:999px; border:1px solid #93c5fd; background:#eff6ff; color:#1e3a8a; font-weight:800; font-size:12px; margin-right:6px; }
+    .panel,.card,.shot { border:1px solid #cbd5e1; border-radius:12px; background:#fff; break-inside:avoid; page-break-inside:avoid; }
+    .panel { padding:12px 14px; }
+    .green { border-color:#86efac; background:var(--green-bg); }
+    .amber { border-color:#fbbf24; background:var(--amber-bg); }
+    .red { border-color:#fca5a5; background:var(--red-bg); }
+    .blue { border-color:#93c5fd; background:#eff6ff; }
+    .purple { border-color:#c4b5fd; background:#f5f3ff; }
+    .grid2 { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .grid3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+    .flow { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; }
+    .flow div { border:1px solid var(--line); background:#eff6ff; border-radius:10px; padding:9px; font-weight:800; font-size:12px; line-height:1.45; }
+    .step { display:grid; grid-template-columns:.8fr 1.4fr; gap:12px; align-items:start; }
+    .shot { padding:8px; background:#f8fafc; }
+    .shot img { width:100%; max-height:101mm; object-fit:contain; display:block; }
+    .caption { color:var(--muted); font-size:11px; line-height:1.45; margin-top:5px; }
+    table { width:100%; border-collapse:collapse; margin-top:6px; }
+    th,td { border:1px solid #dbeafe; padding:7px 9px; text-align:left; vertical-align:top; }
+    th { background:#eff6ff; }
+    code { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px; background:#f1f5f9; padding:1px 4px; border-radius:5px; }
+    .footer { margin-top:auto; font-size:10px; color:#64748b; display:flex; justify-content:space-between; border-top:1px solid #e2e8f0; padding-top:5px; }
+  </style>
+</head>
+<body>
+  <section class="page cover">
+    <div><span class="tag">Admin / Manager</span><span class="tag">Teacher Portal</span><span class="tag">Manager Feedback</span><span class="tag">培训版 PDF</span></div>
+    <h1>管理反馈发送与老师确认流程<br />Manager Feedback SOP</h1>
+    <p class="muted">适用对象：管理者、教务管理、老师。用途：管理在质量检查后，把课堂观察、表扬、改进建议或需要跟进的事项发送给指定老师；老师在老师端查看并确认已读。</p>
+    <div class="panel blue" style="margin-top:18px">
+      <h3>系统入口 / System Paths</h3>
+      <p><b>管理端发送反馈</b>: <code>/admin/manager/quality</code><br /><b>老师端查看反馈</b>: <code>/teacher/manager-feedback</code><br /><b>老师首页入口</b>: <code>/teacher</code> 的 <b>Manager feedback / 管理反馈</b> 卡片</p>
+    </div>
+    <div class="footer"><span>SGT Manage Manager Feedback SOP</span><span>管理/老师 · 2026-06-23</span></div>
+  </section>
+
+  <section class="page">
+    <h2>先记住 / Must-Know Rules</h2>
+    <div class="grid2">
+      <div class="panel green">
+        <h3>这是内部教学质量反馈</h3>
+        <ol>
+          <li>只用于管理给老师做课堂质量沟通。</li>
+          <li>不是发给家长的课后反馈。</li>
+          <li>不是老师工资、排课或扣课依据。</li>
+          <li>老师只能看到发给自己的反馈。</li>
+        </ol>
+      </div>
+      <div class="panel amber">
+        <h3>第一版支持什么</h3>
+        <ol>
+          <li>管理给单个老师发送反馈。</li>
+          <li>可选关联当天某节课。</li>
+          <li>可选择反馈类型。</li>
+          <li>老师可以点击 <b>Acknowledge / 确认知悉</b>。</li>
+        </ol>
+      </div>
+    </div>
+    <div class="panel red">
+      <h3>不要这样用 / Do Not Use For</h3>
+      <p>不要在这里填写家长投诉原文、学生敏感隐私、财务付款问题、老师工资争议、排课改动指令。需要排课或财务处理时，请回到对应系统流程。</p>
+    </div>
+    <div class="flow"><div>1. 管理质量检查</div><div>2. 选择老师</div><div>3. 可选关联课程</div><div>4. 写反馈并发送</div><div>5. 老师查看</div><div>6. 老师确认已读</div></div>
+    <div class="footer"><span>SGT Manage Manager Feedback SOP</span><span>管理/老师 · 2026-06-23</span></div>
+  </section>
+
+  <section class="page">
+    <h2>截图说明 / Screenshot Method</h2>
+    <div class="grid2">
+      <div class="panel blue">
+        <h3>截图来源</h3>
+        <p>本 SOP 的截图由 Playwright 从 SGT Manage 系统页面捕获，并用红框标注关键按钮和区域。截图使用临时登录 session，不展示密码或 session token。</p>
+      </div>
+      <div class="panel blue">
+        <h3>截图身份</h3>
+        <p><b>管理端</b>：Eva/Admin 管理账号。<br /><b>老师端</b>：测试老师账号。<br />老师端截图使用培训示例反馈，截图完成后已从数据库删除，不保留业务记录。</p>
+      </div>
+    </div>
+    <div class="panel amber">
+      <h3>培训重点</h3>
+      <p>截图里红框标的是“要看哪里、点哪里、填哪里”。实际使用时，管理应选择真实老师和真实课堂反馈内容；老师只需要进入自己的老师端查看。</p>
+    </div>
+    <div class="footer"><span>SGT Manage Manager Feedback SOP</span><span>管理/老师 · 2026-06-23</span></div>
+  </section>
+
+  <section class="page">
+    <h2>管理端 Step 1: 打开质量工作台并找到反馈表单</h2>
+    <div class="step">
+      <div class="panel">
+        <h3>操作 / Actions</h3>
+        <ol>
+          <li>管理登录系统。</li>
+          <li>进入 <b>Manager Quality Desk / 管理者质量工作台</b>。</li>
+          <li>找到 <b>Manager Feedback to Teacher / 给老师的管理反馈</b> 区域。</li>
+          <li>先选择老师，再选择反馈类型，最后填写反馈内容。</li>
+        </ol>
+        <div class="panel green"><b>结果：</b>这条反馈只会发给被选择的老师，其他老师看不到。</div>
+      </div>
+      <div class="shot"><img src="assets/sop-manager-teacher-feedback-20260623/annotated/01-admin-feedback-form.png" /><div class="caption">图 1：管理端反馈表单。红框依次标出选择老师、选择类型、填写内容、发送按钮。</div></div>
+    </div>
+    <div class="footer"><span>SGT Manage Manager Feedback SOP</span><span>管理/老师 · 2026-06-23</span></div>
+  </section>
+
+  <section class="page">
+    <h2>管理端 Step 2: 选择反馈类型</h2>
+    <div class="grid2">
+      <div class="panel">
+        <h3>类型说明</h3>
+        <table>
+          <tr><th>类型</th><th>什么时候用</th></tr>
+          <tr><td><b>Praise / 表扬</b></td><td>课堂亮点、学生互动好、节奏好、老师处理得好。</td></tr>
+          <tr><td><b>Improvement / 改进建议</b></td><td>希望老师调整节奏、反馈质量、课堂管理或作业安排。</td></tr>
+          <tr><td><b>Action Required / 需要跟进</b></td><td>需要老师明确完成某件事，例如补充反馈、调整下节课计划。</td></tr>
+          <tr><td><b>Observation / 课堂观察</b></td><td>记录观察，不一定要求立即行动。</td></tr>
+        </table>
+      </div>
+      <div class="panel amber">
+        <h3>选择建议</h3>
+        <ol>
+          <li>只是鼓励老师，选 <b>Praise / 表扬</b>。</li>
+          <li>希望老师之后注意，选 <b>Improvement / 改进建议</b>。</li>
+          <li>需要老师做具体动作，选 <b>Action Required / 需要跟进</b>。</li>
+          <li>只是留内部观察记录，选 <b>Observation / 课堂观察</b>。</li>
+        </ol>
+      </div>
+    </div>
+    <div class="panel red"><h3>注意</h3><p>如果选择 <b>Action Required / 需要跟进</b>，内容里必须写清楚“老师要做什么”和“什么时候完成”，否则老师看完不知道下一步。</p></div>
+    <div class="footer"><span>SGT Manage Manager Feedback SOP</span><span>管理/老师 · 2026-06-23</span></div>
+  </section>
+
+  <section class="page">
+    <h2>管理端 Step 3: 从当天课表快速关联课程</h2>
+    <div class="step">
+      <div class="panel">
+        <h3>操作 / Actions</h3>
+        <ol>
+          <li>在同一页下方找到 <b>Lead Desk Daily Schedule / Lead Desk 当日课表</b>。</li>
+          <li>找到对应老师和课程。</li>
+          <li>点击该行右侧 <b>Give feedback / 给反馈</b>。</li>
+          <li>系统会回到反馈表单，并预填老师和课程。</li>
+        </ol>
+        <div class="panel amber"><b>可选：</b>如果反馈不是针对某一节课，可以不关联课程，选择 <b>No specific session / 不关联具体课程</b>。</div>
+      </div>
+      <div class="shot"><img src="assets/sop-manager-teacher-feedback-20260623/annotated/02-admin-lead-desk-feedback-link.png" /><div class="caption">图 2：可从当天课表点击 Give feedback / 给反馈，减少选错老师或课程的机会。</div></div>
+    </div>
+    <div class="footer"><span>SGT Manage Manager Feedback SOP</span><span>管理/老师 · 2026-06-23</span></div>
+  </section>
+
+  <section class="page">
+    <h2>管理端 Step 4: 写反馈内容并发送</h2>
+    <div class="grid2">
+      <div class="panel green">
+        <h3>推荐模板</h3>
+        <p><b>课堂观察：</b><br />本节课整体情况是……</p>
+        <p style="margin-top:6px"><b>做得好的地方：</b><br />……</p>
+        <p style="margin-top:6px"><b>需要改进的地方：</b><br />……</p>
+        <p style="margin-top:6px"><b>建议下一步：</b><br />请在之后的课程中注意……</p>
+      </div>
+      <div class="panel blue">
+        <h3>英文/双语模板</h3>
+        <p><b>Class observation:</b><br />...</p>
+        <p style="margin-top:6px"><b>What went well:</b><br />...</p>
+        <p style="margin-top:6px"><b>Improvement point:</b><br />...</p>
+        <p style="margin-top:6px"><b>Next action:</b><br />...</p>
+      </div>
+    </div>
+    <div class="panel amber">
+      <h3>是否要求老师确认</h3>
+      <p>默认勾选 <b>Require teacher acknowledgement / 需要老师确认已读</b>。如果是重要反馈、需要跟进、或管理希望确认老师已经看到，请保留勾选。如果只是普通内部记录，可以取消。</p>
+    </div>
+    <div class="panel red"><h3>不要写得太模糊</h3><p>不要只写“请注意课堂质量”。建议写成：“下节课请增加 5 分钟复盘，并在课后反馈里补充学生具体错题/薄弱点。”</p></div>
+    <div class="footer"><span>SGT Manage Manager Feedback SOP</span><span>管理/老师 · 2026-06-23</span></div>
+  </section>
+
+  <section class="page">
+    <h2>管理端 Step 5: 查看最近反馈和确认状态</h2>
+    <div class="step">
+      <div class="panel">
+        <h3>管理要看什么</h3>
+        <ol>
+          <li><b>Recent Manager Feedback / 最近管理反馈</b> 会显示最近发送的反馈。</li>
+          <li><b>Pending ack / 待确认</b> 表示老师还没有确认知悉。</li>
+          <li><b>Clear / 已处理</b> 表示不需要确认或老师已经确认。</li>
+          <li>如果老师长期未确认，可线下提醒老师进入老师端确认。</li>
+        </ol>
+      </div>
+      <div class="shot"><img src="assets/sop-manager-teacher-feedback-20260623/annotated/03-admin-recent-feedback-status.png" /><div class="caption">图 3：管理端可追踪最近反馈和老师确认状态。</div></div>
+    </div>
+    <div class="footer"><span>SGT Manage Manager Feedback SOP</span><span>管理/老师 · 2026-06-23</span></div>
+  </section>
+
+  <section class="page">
+    <h2>老师端 Step 1: 从首页看到待确认数量</h2>
+    <div class="step">
+      <div class="panel">
+        <h3>老师操作 / Teacher Actions</h3>
+        <ol>
+          <li>老师登录 <b>Teacher Portal / 老师端</b>。</li>
+          <li>在首页 <b>My Work / 我的任务</b> 区域找到 <b>Manager feedback / 管理反馈</b>。</li>
+          <li>数字大于 0 表示有待确认反馈。</li>
+          <li>点击卡片进入反馈列表。</li>
+        </ol>
+        <div class="panel green"><b>老师只会看到自己的反馈。</b>其他老师的管理反馈不会显示在这里。</div>
+      </div>
+      <div class="shot"><img src="assets/sop-manager-teacher-feedback-20260623/annotated/04-teacher-dashboard-card.png" /><div class="caption">图 4：老师首页会显示 Manager feedback / 管理反馈 卡片和待确认数量。</div></div>
+    </div>
+    <div class="footer"><span>SGT Manage Manager Feedback SOP</span><span>管理/老师 · 2026-06-23</span></div>
+  </section>
+
+  <section class="page">
+    <h2>老师端 Step 2: 查看反馈并确认知悉</h2>
+    <div class="step">
+      <div class="panel">
+        <h3>老师操作 / Teacher Actions</h3>
+        <ol>
+          <li>进入 <b>Manager Feedback / 管理反馈</b> 页面。</li>
+          <li>先看上方 <b>Pending acknowledgement / 待确认</b> 数量。</li>
+          <li>阅读反馈类型、发送时间、关联课程和具体内容。</li>
+          <li>如果显示 <b>Needs acknowledgement / 需确认</b>，点击 <b>Acknowledge / 确认知悉</b>。</li>
+        </ol>
+      </div>
+      <div class="shot"><img src="assets/sop-manager-teacher-feedback-20260623/annotated/05-teacher-feedback-list-ack.png" /><div class="caption">图 5：老师在管理反馈页阅读内容，并点击 Acknowledge / 确认知悉。</div></div>
+    </div>
+    <div class="footer"><span>SGT Manage Manager Feedback SOP</span><span>管理/老师 · 2026-06-23</span></div>
+  </section>
+
+  <section class="page">
+    <h2>老师收到反馈后的处理标准</h2>
+    <div class="grid2">
+      <div class="panel green">
+        <h3>老师应该做</h3>
+        <ol>
+          <li>完整阅读管理反馈，不只看标题。</li>
+          <li>如果需要确认，及时点击 <b>确认知悉</b>。</li>
+          <li>如果是 <b>Action Required / 需要跟进</b>，按反馈内容完成下一步。</li>
+          <li>如果不理解，可以微信或线下问管理确认。</li>
+        </ol>
+      </div>
+      <div class="panel amber">
+        <h3>老师不需要做</h3>
+        <ol>
+          <li>不需要转发给家长。</li>
+          <li>不需要在这里改课程时间。</li>
+          <li>不需要在这里处理工资或报销。</li>
+          <li>不需要回复给其他老师。</li>
+        </ol>
+      </div>
+    </div>
+    <div class="panel blue">
+      <h3>推荐回复方式</h3>
+      <p>系统第一版只支持“确认知悉”，不支持在线回复。如果老师需要解释或沟通，请在线下或微信回复管理。管理如需记录后续结果，可以再发一条新的管理反馈。</p>
+    </div>
+    <div class="footer"><span>SGT Manage Manager Feedback SOP</span><span>管理/老师 · 2026-06-23</span></div>
+  </section>
+
+  <section class="page">
+    <h2>特殊情况 / Special Cases</h2>
+    <div class="grid2">
+      <div class="panel red">
+        <h3>老师看不到反馈</h3>
+        <ol>
+          <li>确认老师是否登录正确账号。</li>
+          <li>确认该账号是否绑定老师档案。</li>
+          <li>确认管理发送时选择的是正确老师。</li>
+          <li>仍看不到，联系系统管理员检查账号绑定。</li>
+        </ol>
+      </div>
+      <div class="panel red">
+        <h3>管理选错老师</h3>
+        <p>当前第一版没有前台删除按钮。请不要继续让老师处理错误反馈，先联系系统管理员处理数据；后续版本可再增加归档/撤回功能。</p>
+      </div>
+      <div class="panel amber">
+        <h3>反馈需要家长知道</h3>
+        <p>不要直接把管理反馈截图发给家长。需要家长知道的内容，应重新整理成家长可读的课后反馈或沟通话术。</p>
+      </div>
+      <div class="panel amber">
+        <h3>反馈和排课有关</h3>
+        <p>管理反馈可以写“下节课建议……”，但真正改课、取消课、换老师，仍必须走排课或教务流程。</p>
+      </div>
+    </div>
+    <div class="footer"><span>SGT Manage Manager Feedback SOP</span><span>管理/老师 · 2026-06-23</span></div>
+  </section>
+
+  <section class="page">
+    <h2>常见错误 / Common Mistakes</h2>
+    <div class="grid2">
+      <div class="panel red"><h3>把管理反馈当家长反馈</h3><p>管理反馈是内部质量管理记录，不是家长沟通文本。发给家长前必须重新整理。</p></div>
+      <div class="panel red"><h3>没有写下一步动作</h3><p>如果选择 Action Required，但没有写“做什么/什么时候做”，老师无法执行。</p></div>
+      <div class="panel amber"><h3>选错老师</h3><p>发送前再次确认老师姓名和关联课程，尤其是同名或相似英文名老师。</p></div>
+      <div class="panel amber"><h3>老师只读不确认</h3><p>如果要求确认，老师必须点击 Acknowledge / 确认知悉。管理端才能看到状态变化。</p></div>
+    </div>
+    <div class="panel blue"><h3>一句话规则</h3><p>管理反馈负责“内部教学质量沟通”；家长反馈负责“对外课堂沟通”；排课/财务问题回到各自系统流程。</p></div>
+    <div class="footer"><span>SGT Manage Manager Feedback SOP</span><span>管理/老师 · 2026-06-23</span></div>
+  </section>
+
+  <section class="page">
+    <h2>最终检查表 / Final Checklist</h2>
+    <div class="grid2">
+      <div class="panel green">
+        <h3>管理发送前</h3>
+        <ul>
+          <li>已确认选择的是正确老师。</li>
+          <li>如针对具体课堂，已关联正确课程。</li>
+          <li>反馈类型选择合理。</li>
+          <li>内容清楚写明观察、建议和下一步。</li>
+          <li>需要确认的反馈保留了确认勾选。</li>
+        </ul>
+      </div>
+      <div class="panel green">
+        <h3>老师查看后</h3>
+        <ul>
+          <li>已完整阅读反馈内容。</li>
+          <li>需要确认时已点击确认知悉。</li>
+          <li>需要跟进时已知道下一步动作。</li>
+          <li>不清楚的地方已向管理确认。</li>
+          <li>没有把内部反馈直接转发给家长。</li>
+        </ul>
+      </div>
+    </div>
+    <div class="panel purple">
+      <h3>版本说明</h3>
+      <p>本 SOP 对应系统版本：`2026-06-23-r199`。第一版功能包含发送、查看、确认已读；暂不包含老师在线回复、管理撤回、批量发送或统计报表。</p>
+    </div>
+    <div class="footer"><span>SGT Manage Manager Feedback SOP</span><span>管理/老师 · 2026-06-23</span></div>
+  </section>
+</body>
+</html>

@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>SOP-教务-上海新卓思学生建档与课时包创建流程-培训版-20260708</title>
+    <style>
+      @page { size: A4 landscape; margin: 14mm 12mm; }
+      :root {
+        --ink: #0f172a; --muted: #475569; --line: #dbeafe; --blue: #2563eb;
+        --green: #166534; --green-bg: #ecfdf5; --amber: #b45309; --amber-bg: #fffbeb;
+        --red: #dc2626; --red-bg: #fff1f2; --slate-bg: #f8fafc;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; color: var(--ink); background: #fff; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; }
+      .page { page-break-after: always; }
+      .page:last-child { page-break-after: auto; }
+      .hero, .panel, .step, .card { border: 1px solid var(--line); border-radius: 18px; background: #fff; break-inside: avoid; page-break-inside: avoid; }
+      .hero { padding: 22px 24px; margin-bottom: 14px; background: linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%); }
+      .eyebrow { color: var(--blue); font-size: 13px; font-weight: 900; letter-spacing: .04em; margin-bottom: 8px; }
+      h1 { margin: 0 0 10px; font-size: 31px; line-height: 1.16; }
+      h2 { margin: 0 0 10px; font-size: 23px; line-height: 1.2; }
+      h3 { margin: 0 0 8px; font-size: 17px; }
+      p, li { font-size: 14px; line-height: 1.62; }
+      .lead { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.7; max-width: 1000px; }
+      .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 16px; }
+      .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+      .mini { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; background: #fff; }
+      .mini strong { display: block; color: #64748b; font-size: 12px; margin-bottom: 6px; }
+      .mini span { font-size: 15px; font-weight: 800; }
+      .panel { padding: 16px 18px; margin-bottom: 14px; }
+      .panel ol, .panel ul { margin: 8px 0 0 20px; padding: 0; }
+      .panel li { margin: 6px 0; }
+      .answer, .note, .danger { border-radius: 14px; padding: 12px 14px; margin-top: 12px; font-size: 14px; line-height: 1.65; }
+      .answer { border: 1px solid #bbf7d0; background: var(--green-bg); }
+      .answer strong { color: var(--green); }
+      .note { border: 1px solid #fcd34d; background: var(--amber-bg); }
+      .note strong { color: var(--amber); }
+      .danger { border: 1px solid #fecaca; background: var(--red-bg); }
+      .danger strong { color: var(--red); }
+      .step { padding: 16px; margin-bottom: 16px; }
+      .step-top { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-bottom: 8px; }
+      .tag { color: var(--blue); font-size: 12px; font-weight: 900; white-space: nowrap; }
+      .desc { margin: 0 0 12px; color: var(--muted); }
+      .action-box { border: 1px solid #bbf7d0; border-radius: 14px; background: var(--green-bg); padding: 11px 13px; margin-bottom: 12px; }
+      .action-box strong { color: var(--green); }
+      .action-box ul { margin: 7px 0 0 18px; padding: 0; }
+      .action-box li { margin: 3px 0; }
+      .shot { border: 1px solid #cbd5e1; border-radius: 14px; overflow: hidden; background: #fff; }
+      .shot-visual { height: 88mm; display: flex; align-items: flex-start; justify-content: center; background: #fff; line-height: 0; }
+      .shot-visual.short { height: 75mm; }
+      .shot img { width: 100%; height: 100%; object-fit: contain; object-position: top center; display: block; }
+      .caption { padding: 9px 12px 11px; background: var(--slate-bg); border-top: 1px solid #e2e8f0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+      .caption strong { color: var(--ink); }
+      .card { padding: 14px 16px; }
+      .card p { margin: 0; color: var(--muted); }
+      .checklist li { font-weight: 700; }
+    </style>
+  </head>
+  <body>
+    <section class="page">
+      <div class="hero">
+        <div class="eyebrow">Academic Operations SOP / 教务培训流程</div>
+        <h1>上海新卓思学生建档与课时包创建流程<br />New Student Setup + HOURS Package</h1>
+        <p class="lead">
+          这份 SOP 专门给教务：当新增上海新卓思学生时，学生档案怎么选来源；创建课时包时，如何选择学生、课程、课时包分钟数、
+          结算模式，确保后续能进入合作方结算。
+        </p>
+        <div class="grid-3">
+          <div class="mini"><strong>适用角色</strong><span>教务 / Admin</span></div>
+          <div class="mini"><strong>核心字段</strong><span>学生来源 + 结算模式</span></div>
+          <div class="mini"><strong>版本日期</strong><span>2026-07-08</span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>一句话答案</h2>
+        <div class="answer">
+          <strong>新增新卓思学生：</strong> 学生来源选 <strong>上海新卓思 （Sister Company)</strong>。
+          <strong>创建课时包：</strong> 类型选 <strong>HOURS / 课时包</strong>，结算模式选 <strong>Online: Package End</strong>。
+        </div>
+        <div class="note">
+          <strong>注意：</strong> 这份 SOP 的截图使用示例填写状态，没有点击最终保存或创建按钮。
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>先记住</h2>
+        <ol>
+          <li>系统靠 <strong>学生来源</strong> 分辨上海新卓思学生，不靠备注、不靠学生名字。</li>
+          <li>上海新卓思来源必须选：<strong>上海新卓思 （Sister Company)</strong>。</li>
+          <li>课时包类型用 <strong>HOURS / 课时包</strong>，不要选月卡或旧版次数包，除非管理明确说明。</li>
+          <li>合作方线上结算必须选 <strong>Online: Package End</strong>，否则不会进入线上课包完结结算。</li>
+          <li>最后一步一定看右侧 Package summary / 课包摘要，确认学生、课程、分钟数、结算模式无误再创建。</li>
+        </ol>
+      </div>
+      <div class="panel">
+        <h2>完整流程</h2>
+        <ol>
+          <li>进入 <strong>Students / 学生</strong>，点击 <strong>Add / 新增</strong>。</li>
+          <li>填写学生姓名、学校、年级，学生来源选择 <strong>上海新卓思 （Sister Company)</strong>。</li>
+          <li>保存后用 <strong>All Students / 全部学生</strong> + 来源筛选复查。</li>
+          <li>进入 <strong>Packages / 课包</strong>，点击 <strong>Create Package / 创建课包</strong>。</li>
+          <li>第 1 步选择学生、课程、类型 <strong>HOURS</strong>。</li>
+          <li>第 2 步填写总分钟数、付款状态。</li>
+          <li>第 3 步选择 <strong>Online: Package End</strong>，第 4 步确认摘要后再创建。</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top"><h2>步骤 1：新增上海新卓思学生</h2><div class="tag">Students → Add</div></div>
+        <p class="desc">新增学生时，最关键的是学生来源。来源选错，后续合作方结算就识别不到。</p>
+        <div class="action-box"><strong>操作：</strong><ul><li>进入 <strong>Students / 学生</strong>。</li><li>点击 <strong>Add / 新增</strong>。</li><li>学生来源选择 <strong>上海新卓思 （Sister Company)</strong>。</li></ul></div>
+        <div class="shot"><div class="shot-visual"><img src="assets/sop-教务-上海新卓思学生建档与课时包创建-20260708/annotated/01-new-student-modal.png" alt="新增上海新卓思学生" /></div><div class="caption"><strong>图 1：</strong> 类型可以按实际业务选择，但学生来源必须是上海新卓思 Sister Company。</div></div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top"><h2>步骤 2：保存后复查学生来源</h2><div class="tag">All Students + Source Filter</div></div>
+        <p class="desc">新建完成后，不要只看今日新增。用全部学生视图和来源筛选确认学生确实归到上海新卓思。</p>
+        <div class="action-box"><strong>操作：</strong><ul><li>打开 <strong>All Students / 全部学生</strong>。</li><li>来源筛选为 <strong>上海新卓思 （Sister Company)</strong>。</li><li>确认筛选结果包含刚新增的学生。</li></ul></div>
+        <div class="shot"><div class="shot-visual"><img src="assets/sop-教务-上海新卓思学生建档与课时包创建-20260708/annotated/02-student-source-filter.png" alt="复查学生来源" /></div><div class="caption"><strong>图 2：</strong> 如果筛选不到，先回学生详情编辑来源，不要继续创建课包。</div></div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top"><h2>步骤 3：创建课包第 1 步</h2><div class="tag">Student + Course + HOURS</div></div>
+        <p class="desc">选择学生和课程。上海新卓思常规课时包类型用 HOURS / 课时包。</p>
+        <div class="action-box"><strong>操作：</strong><ul><li>进入 <strong>Packages / 课包</strong>。</li><li>点击 <strong>Create Package / 创建课包</strong>。</li><li>搜索并选择新卓思学生，确认课程，类型选择 <strong>HOURS / 课时包</strong>。</li></ul></div>
+        <div class="shot"><div class="shot-visual"><img src="assets/sop-教务-上海新卓思学生建档与课时包创建-20260708/annotated/03-package-step1-student-course.png" alt="创建课包第1步" /></div><div class="caption"><strong>图 3：</strong> 右侧摘要会同步显示学生、课程和课包类型，发现学生选错要马上改。</div></div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top"><h2>步骤 4：创建课包第 2 步</h2><div class="tag">Minutes + Payment</div></div>
+        <p class="desc">填写总分钟数。合作方默认按课时逻辑管理，系统会提示合作方默认课时规则。</p>
+        <div class="action-box"><strong>操作：</strong><ul><li>填写 <strong>totalMinutes / 总分钟数</strong>。</li><li>根据实际情况填写付款状态。</li><li>截图里的发票金额只是演示填表通过，不代表实际应收；最终以业务确认金额为准。</li></ul></div>
+        <div class="shot"><div class="shot-visual"><img src="assets/sop-教务-上海新卓思学生建档与课时包创建-20260708/annotated/04-package-step2-minutes-paid.png" alt="创建课包第2步" /></div><div class="caption"><strong>图 4：</strong> 在还没选合作方结算模式前，页面可能暂时显示直客发票闸门；第 3 步选好合作方模式后会变成合作方流程豁免。</div></div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top"><h2>步骤 5：创建课包第 3 步</h2><div class="tag">Settlement Mode</div></div>
+        <p class="desc">这是最容易漏掉的一步。没有选结算模式，学生来源正确也不会进合作方结算。</p>
+        <div class="action-box"><strong>操作：</strong><ul><li>状态保持 <strong>ACTIVE</strong>。</li><li><strong>Settlement Mode / 结算模式</strong> 选择 <strong>Online: Package End</strong>。</li><li>右侧摘要应显示 <strong>Partner flow exempt / 合作方流程豁免</strong>。</li></ul></div>
+        <div class="shot"><div class="shot-visual"><img src="assets/sop-教务-上海新卓思学生建档与课时包创建-20260708/annotated/05-package-step3-settlement-mode.png" alt="创建课包第3步" /></div><div class="caption"><strong>图 5：</strong> 这是合作方线上课包完结结算的关键字段。</div></div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top"><h2>步骤 6：最终确认后创建</h2><div class="tag">Review + Create</div></div>
+        <p class="desc">最后一步不要急着点创建。先看右侧摘要，确认所有关键字段正确。</p>
+        <div class="action-box"><strong>创建前必须核对：</strong><ul><li>Student / 学生是否正确。</li><li>Course / 课程是否正确。</li><li>Package type 是否为 <strong>HOURS</strong>。</li><li>Minutes 是否正确。</li><li>Settlement Mode 是否为 <strong>Online: Package End</strong>。</li><li>Invoice gate 是否显示 <strong>Partner flow exempt</strong>。</li></ul></div>
+        <div class="shot"><div class="shot-visual short"><img src="assets/sop-教务-上海新卓思学生建档与课时包创建-20260708/annotated/06-package-review-before-create.png" alt="创建前确认" /></div><div class="caption"><strong>图 6：</strong> 只有右侧摘要全部正确，才点击 <strong>Create / 创建 / 创建课包</strong>。</div></div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>常见错误</h2>
+        <div class="grid-2">
+          <div class="card"><h3>错误 1：学生来源没选新卓思</h3><p>后续合作方结算不会识别。先回学生详情把来源改正确。</p></div>
+          <div class="card"><h3>错误 2：只创建课包，没选结算模式</h3><p>课包不会进入线上待结算。需要把课包模式改成 Online: Package End。</p></div>
+          <div class="card"><h3>错误 3：选了月卡或旧版次数包</h3><p>除非管理明确说明，否则新卓思常规按 HOURS / 课时包建。</p></div>
+          <div class="card"><h3>错误 4：右侧摘要没看就创建</h3><p>学生、课程、分钟数、结算模式任一项错，后续结算都会错。</p></div>
+        </div>
+        <div class="danger"><strong>不要做：</strong> 不要为了绕过发票闸门乱勾豁免；新卓思课包应通过正确的 Settlement Mode 进入合作方流程。</div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>最终检查表</h2>
+        <ul class="checklist">
+          <li>学生来源 = <strong>上海新卓思 （Sister Company)</strong></li>
+          <li>学生保存后可以在 All Students + 来源筛选中找到</li>
+          <li>课包类型 = <strong>HOURS / 课时包</strong></li>
+          <li>总分钟数与实际销售课时一致</li>
+          <li>Settlement Mode = <strong>Online: Package End</strong></li>
+          <li>右侧摘要显示 <strong>Partner flow exempt / 合作方流程豁免</strong></li>
+          <li>最后一步核对无误后才点击 Create</li>
+        </ul>
+        <div class="note"><strong>截图说明：</strong> 本 SOP 的截图由 Playwright 使用临时 Admin 会话从 SGT Manage 页面抓取，截图结束后临时会话已删除；截图仅演示填写流程，没有提交新增学生或创建课包。</div>
+      </div>
+    </section>
+  </body>
+</html>

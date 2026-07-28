@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>SOP-教务-共享课包按学生修改课程-培训版-20260723</title>
+    <style>
+      @page { size: A4 landscape; margin: 14mm 12mm; }
+      :root {
+        --ink: #0f172a; --muted: #475569; --line: #cbd5e1; --blue: #1d4ed8;
+        --blue-bg: #eff6ff; --green: #166534; --green-bg: #ecfdf5;
+        --amber: #92400e; --amber-bg: #fffbeb; --red: #b91c1c; --red-bg: #fff1f2;
+        --slate-bg: #f8fafc;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; color: var(--ink); background: #fff;
+        font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
+          "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+      }
+      .page {
+        position: relative; height: 181mm; overflow: hidden;
+        page-break-after: always;
+      }
+      .page:last-child { page-break-after: auto; }
+      .footer {
+        position: absolute; left: 0; right: 0; bottom: 0;
+        display: flex; justify-content: space-between; align-items: center;
+        padding-top: 5px; border-top: 1px solid #e2e8f0;
+        color: #64748b; font-size: 10px;
+      }
+      .hero, .panel, .step, .card, .shot {
+        border: 1px solid var(--line); border-radius: 10px; background: #fff;
+        break-inside: avoid; page-break-inside: avoid;
+      }
+      .hero {
+        padding: 24px 26px; margin-bottom: 14px;
+        background: linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%);
+      }
+      .eyebrow {
+        color: var(--blue); font-size: 13px; font-weight: 900;
+        letter-spacing: 0; margin-bottom: 9px;
+      }
+      h1 { margin: 0 0 11px; font-size: 31px; line-height: 1.2; letter-spacing: 0; }
+      h2 { margin: 0 0 9px; font-size: 22px; line-height: 1.25; letter-spacing: 0; }
+      h3 { margin: 0 0 7px; font-size: 16px; line-height: 1.3; letter-spacing: 0; }
+      p, li, td, th { font-size: 13px; line-height: 1.52; }
+      .lead { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.7; max-width: 1040px; }
+      .panel { padding: 15px 17px; margin-bottom: 12px; }
+      .panel ol, .panel ul { margin: 7px 0 0 20px; padding: 0; }
+      .panel li { margin: 5px 0; }
+      .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
+      .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+      .grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; }
+      .mini, .card { padding: 12px 14px; }
+      .mini strong { display: block; color: #64748b; font-size: 11px; margin-bottom: 5px; }
+      .mini span { font-size: 14px; font-weight: 800; }
+      .card p { margin: 0; color: var(--muted); }
+      .answer, .note, .danger, .info {
+        border-radius: 9px; padding: 11px 13px; margin-top: 10px;
+        font-size: 13px; line-height: 1.55;
+      }
+      .answer { border: 1px solid #86efac; background: var(--green-bg); }
+      .answer strong { color: var(--green); }
+      .note { border: 1px solid #fcd34d; background: var(--amber-bg); }
+      .note strong { color: var(--amber); }
+      .danger { border: 1px solid #fca5a5; background: var(--red-bg); }
+      .danger strong { color: var(--red); }
+      .info { border: 1px solid #93c5fd; background: var(--blue-bg); }
+      .info strong { color: var(--blue); }
+      .step { padding: 15px; margin-bottom: 12px; }
+      .step-top { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-bottom: 7px; }
+      .tag { color: var(--blue); font-size: 11px; font-weight: 900; white-space: nowrap; }
+      .desc { margin: 0 0 10px; color: var(--muted); }
+      .action-box {
+        border: 1px solid #86efac; border-radius: 9px; background: var(--green-bg);
+        padding: 9px 12px; margin-bottom: 10px;
+      }
+      .action-box strong { color: var(--green); }
+      .action-box ul, .action-box ol { margin: 5px 0 0 18px; padding: 0; }
+      .action-box li { margin: 2px 0; }
+      .shot { overflow: hidden; }
+      .shot-visual {
+        height: 92mm; display: flex; align-items: center; justify-content: center;
+        background: #fff; line-height: 0;
+      }
+      .shot-visual.short { height: 78mm; }
+      .shot img { width: 100%; height: 100%; object-fit: contain; object-position: center; display: block; }
+      .caption {
+        padding: 8px 11px 9px; background: var(--slate-bg); border-top: 1px solid #e2e8f0;
+        color: var(--muted); font-size: 12px; line-height: 1.45;
+      }
+      .caption strong { color: var(--ink); }
+      table { width: 100%; border-collapse: collapse; margin-top: 9px; table-layout: fixed; }
+      th, td { border: 1px solid #cbd5e1; padding: 8px 9px; vertical-align: top; }
+      th { background: #f1f5f9; text-align: left; font-weight: 800; }
+      .yes { color: var(--green); font-weight: 800; }
+      .no { color: var(--red); font-weight: 800; }
+      .hold { color: var(--amber); font-weight: 800; }
+      .flow {
+        display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 7px; margin-top: 12px;
+      }
+      .flow div {
+        min-height: 68px; border: 1px solid #bfdbfe; background: #eff6ff;
+        border-radius: 9px; padding: 10px; font-size: 12px; line-height: 1.42;
+      }
+      .flow b { display: block; color: var(--blue); margin-bottom: 4px; font-size: 13px; }
+      .checklist { columns: 2; column-gap: 30px; }
+      .checklist li { break-inside: avoid; font-weight: 700; margin-bottom: 7px; }
+      .small { font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+      .code {
+        border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 8px;
+        padding: 10px 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 12px; line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="page">
+      <div class="hero">
+        <div class="eyebrow">Academic Operations SOP / 教务培训流程</div>
+        <h1>共享课包按学生修改课程<br />Change Course Per Student in a Shared Package</h1>
+        <p class="lead">
+          当兄弟姐妹或多名学生共用一个课时余额，但年级、学习内容或课程方向不同，教务可以只修改其中一名学生的未来课程。
+          系统会保留共享余额，不改其他学生，并把符合安全条件的已排、尚未开始的一对一课次同步到新课程。
+        </p>
+        <div class="grid-4" style="margin-top:16px">
+          <div class="mini"><strong>适用角色</strong><span>教务 / Admin</span></div>
+          <div class="mini"><strong>入口</strong><span>Packages / 课时包</span></div>
+          <div class="mini"><strong>系统版本</strong><span>Release r282</span></div>
+          <div class="mini"><strong>版本日期</strong><span>2026-07-23</span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>一句话答案</h2>
+        <div class="answer">
+          <strong>共享课包不再要求所有学生学同一门课。</strong>
+          课时余额仍然共用；教务在编辑课包时选择“要修改的学生”，再选择原课程、新课程和原因。
+          保存后只迁移该学生安全的未来一对一课次，其他共享学生保持不变。
+        </div>
+        <div class="note"><strong>本 SOP 的演示截图没有点击 Update / 更新，不会改动真实数据。</strong></div>
+      </div>
+      <div class="footer"><span>SGT Manage 教务培训 SOP</span><span>1 / 15</span></div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>先记住这 6 条</h2>
+        <ol>
+          <li><strong>共享的是余额，不是课程内容。</strong>不同年级、不同学习目标可以使用不同课程。</li>
+          <li>每次只处理 <strong>一名学生 + 一门原课程 + 一门新课程</strong>，不要一次混合多个学生。</li>
+          <li>已安排且尚未开始的安全一对一课次会同步修改；过去课程和已完成课程不改。</li>
+          <li>班课、已有签到/扣课/反馈的课次，以及无法唯一识别学生的课次不会自动改。</li>
+          <li>必须填写修改原因，并先读完系统预览数字，再点击 <strong>Update / 更新</strong>。</li>
+          <li>修改课程不会改变课时余额，也不会重写合同、发票、收据、老师工资或合作方结算。</li>
+        </ol>
+        <div class="danger">
+          <strong>绝对不要：</strong>为了让一个学生换课而直接修改整个共享班课的课程属性。班课属于全班，修改会影响同一节课里的其他学生。
+        </div>
+      </div>
+      <div class="panel">
+        <h2>教务最常见的使用场景</h2>
+        <div class="grid-3">
+          <div class="card"><h3>兄弟姐妹年级不同</h3><p>同一个余额池，哥哥学习中学数学，妹妹学习低年级英文。</p></div>
+          <div class="card"><h3>学生已进入国际学校</h3><p>从“国际学校入学考试”转为“学科学习 / Academic Subject Bridging”。</p></div>
+          <div class="card"><h3>学习目标发生变化</h3><p>从考试备考切换到英语沟通、IB、IGCSE、A-Level 或大学学科。</p></div>
+        </div>
+      </div>
+      <div class="footer"><span>先记住：余额共享，课程按学生管理</span><span>2 / 15</span></div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>完整操作流程</h2>
+        <div class="flow">
+          <div><b>1. 找课包</b>进入 Packages，搜索课包归属学生。</div>
+          <div><b>2. 核对课包</b>确认课程、状态和剩余课时，点击 Edit。</div>
+          <div><b>3. 选学生</b>在绿色区域选择本次要修改的学生。</div>
+          <div><b>4. 选课程</b>选择原课程、新课程并填写原因。</div>
+          <div><b>5. 看预览</b>核对自动修改、班课、保护和异常数量。</div>
+          <div><b>6. 保存复查</b>点击 Update，再检查课表、提醒和其他共享学生。</div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>操作前准备</h2>
+        <div class="grid-2">
+          <div class="card">
+            <h3>必须确认的业务信息</h3>
+            <p>学生姓名、当前学习内容、新学习内容、生效日期、是否已经安排未来课程、是否与兄弟姐妹共享课包。</p>
+          </div>
+          <div class="card">
+            <h3>必须确认的系统信息</h3>
+            <p>课包仍为 ACTIVE、剩余课时正确、学生仍在共享学生名单中、原课程属于该课包可扣课范围。</p>
+          </div>
+        </div>
+        <div class="note">
+          <strong>推荐原因格式：</strong>学生姓名 + 原课程 → 新课程 + 生效原因 + 生效日期。
+          示例：Coco Xu：国际学校入学考试 → Grade 6 Math；已入读学校，转为六年级数学学科学习；自 2026-07-24 起。
+        </div>
+      </div>
+      <div class="footer"><span>流程概览与操作前准备</span><span>3 / 15</span></div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>先判断：普通课包还是共享课包</h2>
+        <table>
+          <thead>
+            <tr><th>判断项目</th><th>普通 / 单人课包</th><th>共享课包</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>界面标题</td><td>Course for this package and all not-started lessons</td><td>Change one shared-package student's future course</td></tr>
+            <tr><td>是否选择学生</td><td>不需要，默认就是课包归属学生</td><td><strong>必须选择本次要修改的学生</strong></td></tr>
+            <tr><td>课包主课程</td><td>改为新课程</td><td>保持不变，避免影响其他共享学生</td></tr>
+            <tr><td>新课程扣课范围</td><td>新课程成为主课程</td><td>新课程加入该共享课包的允许课程范围</td></tr>
+            <tr><td>未来课次</td><td>该学生安全的一对一课次</td><td>只处理所选学生安全的一对一课次</td></tr>
+          </tbody>
+        </table>
+        <div class="info">
+          <strong>为什么共享课包不直接改主课程？</strong>
+          因为主课程属于整个课包。如果兄弟姐妹学习内容不同，直接替换主课程会让另一个学生的课程显示和扣课范围一起被改变。
+          新功能把“余额归属”和“学生课程”分开处理。
+        </div>
+      </div>
+      <div class="panel">
+        <h2>本功能不处理的内容</h2>
+        <div class="grid-3">
+          <div class="card"><h3>不改余额</h3><p>总分钟、剩余分钟、历史扣课流水不变。</p></div>
+          <div class="card"><h3>不改财务文件</h3><p>合同、发票、收据和付款状态不变。</p></div>
+          <div class="card"><h3>不改历史</h3><p>过去课次、完成记录、签到和反馈不被重写。</p></div>
+        </div>
+      </div>
+      <div class="footer"><span>普通课包与共享课包的区别</span><span>4 / 15</span></div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top"><h2>步骤 1：找到正确的课包</h2><div class="tag">Packages / 课时包</div></div>
+        <p class="desc">用课包归属学生姓名搜索。共享学生可能不是课包归属人，所以先向家长或同事确认课包登记在谁名下。</p>
+        <div class="action-box">
+          <strong>操作：</strong>
+          <ol>
+            <li>进入 <strong>Packages / 课时包</strong>。</li>
+            <li>搜索课包归属学生。</li>
+            <li>核对当前课程、类型、剩余课时、ACTIVE 状态。</li>
+            <li>点击该行 <strong>Edit / 编辑</strong>。</li>
+          </ol>
+        </div>
+        <div class="shot">
+          <div class="shot-visual short"><img src="assets/sop-教务-共享课包按学生修改课程-20260723/annotated/01-find-package.png" alt="查找并编辑共享课包" /></div>
+          <div class="caption"><strong>图 1：</strong>同一个学生可能有多个课包，必须核对课程、状态和剩余课时，不要只看姓名。</div>
+        </div>
+      </div>
+      <div class="footer"><span>步骤 1：查找正确课包</span><span>5 / 15</span></div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top"><h2>步骤 2：确认这是共享课包</h2><div class="tag">Edit package / 编辑课包</div></div>
+        <p class="desc">打开编辑窗口后，看到绿色的“修改一名共享课包学生的未来课程”区域，说明系统已经识别到共享学生。</p>
+        <div class="action-box">
+          <strong>先核对：</strong>
+          <ul>
+            <li>顶部 Student / 学生是课包归属人，不一定是这次要改课的学生。</li>
+            <li>Remaining / 剩余和 Total / 总量只读，本次操作不会改变余额。</li>
+            <li>绿色说明明确写着：只改所选学生，其他学生保持不变。</li>
+          </ul>
+        </div>
+        <div class="shot">
+          <div class="shot-visual short"><img src="assets/sop-教务-共享课包按学生修改课程-20260723/annotated/02-shared-course-section.png" alt="共享课包课程修改区域" /></div>
+          <div class="caption"><strong>图 2：</strong>共享课包必须在绿色区域操作。如果只看到“New course / 新课程”而没有学生选择框，当前记录不是共享课包。</div>
+        </div>
+      </div>
+      <div class="footer"><span>步骤 2：识别共享课包编辑区域</span><span>6 / 15</span></div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top"><h2>步骤 3：依次填写 4 个字段</h2><div class="tag">Student + Source + Target + Reason</div></div>
+        <div class="action-box">
+          <ol>
+            <li><strong>Student to change / 要修改的学生：</strong>选择本次课程发生变化的学生。</li>
+            <li><strong>Current course to replace / 要替换的原课程：</strong>选择该学生现在使用的课程。</li>
+            <li><strong>New course / 新课程：</strong>选择以后课表和家长提醒应显示的新课程。</li>
+            <li><strong>Reason / 修改原因：</strong>写清楚原因和生效时间，不能留空。</li>
+          </ol>
+        </div>
+        <div class="shot">
+          <div class="shot-visual short"><img src="assets/sop-教务-共享课包按学生修改课程-20260723/annotated/03-preview-selected-student.png" alt="填写共享学生课程修改字段" /></div>
+          <div class="caption"><strong>图 3：</strong>示例选择 Eason Xu。Coco Xu 仍共享同一余额，但不会跟着改成 Eason 的课程。</div>
+        </div>
+        <div class="danger">
+          <strong>原课程必须选对：</strong>系统只迁移“当前课程等于所选原课程”的未来课次。原课程选错，会导致预览数量为 0 或留下未修改课次。
+        </div>
+      </div>
+      <div class="footer"><span>步骤 3：填写学生、原课程、新课程和原因</span><span>7 / 15</span></div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>步骤 4：读懂系统预览</h2>
+        <p class="desc">选择新课程后，系统会自动检查已排课次。请等待“Checking arranged lessons...”结束，再看四类数字。</p>
+        <table>
+          <thead>
+            <tr><th style="width:23%">预览项目</th><th style="width:17%">会自动修改吗</th><th>含义与教务动作</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>not-started 1-to-1 lessons<br />未开始一对一课次</td>
+              <td class="yes">会</td>
+              <td>课次时间在现在之后、班级容量为 1、只关联该学生，且没有签到、扣课或反馈。保存后自动改为新课程。</td>
+            </tr>
+            <tr>
+              <td>group lessons<br />班课</td>
+              <td class="no">不会</td>
+              <td>同一节课属于多名学生，不能只为一人改。按“班课例外流程”处理。</td>
+            </tr>
+            <tr>
+              <td>attendance / feedback<br />已有签到或反馈</td>
+              <td class="no">不会</td>
+              <td>系统保护已有业务记录，避免签到、扣课、反馈和课程不一致。</td>
+            </tr>
+            <tr>
+              <td>ambiguous lessons<br />无法唯一识别学生</td>
+              <td class="no">不会</td>
+              <td>常见于一对一班级被错误关联多名学生。先检查班级和课次学生关系。</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="note">
+          <strong>预览数字不是全部为 0 才能保存。</strong>
+          系统会只修改安全课次，并保留例外课次不动。教务需要记录未自动处理的数量，保存后逐项检查。
+        </div>
+        <div class="danger">
+          <strong>Preview unavailable / 预览失败：</strong>不要盲目保存。刷新页面重试；仍失败时，把课包归属人、所选学生、原课程、新课程和截图交给系统管理员。
+        </div>
+      </div>
+      <div class="footer"><span>步骤 4：理解四类预览数字</span><span>8 / 15</span></div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>步骤 5：点击 Update / 更新</h2>
+        <ol>
+          <li>再次核对学生、原课程、新课程和原因。</li>
+          <li>记录预览中的自动修改数、班课数、保护数和异常数。</li>
+          <li>滚动到窗口下方，点击 <strong>Update / 更新</strong>。</li>
+          <li>等待窗口关闭或页面出现 Saved / 已保存，不要连续点击。</li>
+        </ol>
+        <div class="answer">
+          <strong>保存成功后，系统会自动完成：</strong>
+          所选学生的安全未来一对一课次改为新课程；共享课包余额不变；其他共享学生不变；
+          新课程加入该课包可扣课范围；课程变更原因和每个迁移课次写入审计记录。
+        </div>
+      </div>
+      <div class="panel">
+        <h2>保存失败时的原则</h2>
+        <div class="grid-2">
+          <div class="card"><h3>页面仍停留在窗口</h3><p>先读红色错误文字，不要重复点 Update。修正字段后再提交。</p></div>
+          <div class="card"><h3>提示已有相同未来课次</h3><p>系统没有保存任何变更。先处理重复排课，再重新执行课程修改。</p></div>
+          <div class="card"><h3>提示学生未关联课包</h3><p>确认学生仍是课包归属人或共享学生；不要在同一次保存中把该学生从共享名单移除。</p></div>
+          <div class="card"><h3>页面超时或断开</h3><p>重新打开课包先检查是否已保存，再决定是否重做，避免重复操作。</p></div>
+        </div>
+      </div>
+      <div class="footer"><span>步骤 5：保存与失败处理</span><span>9 / 15</span></div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>共享学生年级不同、内容不同：正确做法</h2>
+        <div class="grid-2">
+          <div class="card">
+            <h3>示例：Coco 与 Eason 共用课包</h3>
+            <p>Coco 学 Grade 6 Math，Eason 学 Grade 3 English。两人继续共用一个剩余课时余额，但课程、老师和未来课表可以不同。</p>
+          </div>
+          <div class="card">
+            <h3>每次操作只改一个人</h3>
+            <p>先处理 Coco 并保存、复查；如 Eason 也要改，再重新打开同一课包单独处理 Eason。</p>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr><th>项目</th><th>Coco</th><th>Eason</th><th>共享课包</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>学习课程</td><td>Grade 6 Math</td><td>Grade 3 English</td><td>允许两门课程扣课</td></tr>
+            <tr><td>未来课表</td><td>只显示自己的数学课</td><td>只显示自己的英文课</td><td>不会把两人的课程混在一起修改</td></tr>
+            <tr><td>家长提醒</td><td>显示 Coco 对应课程</td><td>显示 Eason 对应课程</td><td>待发送提醒按各自课次重建</td></tr>
+            <tr><td>课时余额</td><td colspan="2">继续从同一个共享余额扣减</td><td>总量和剩余量不因改课而变化</td></tr>
+          </tbody>
+        </table>
+        <div class="note">
+          <strong>推荐课程名称：</strong>课程应表达学生实际学习内容，例如 Grade 6 Math、IGCSE Chemistry、Academic English。
+          不要只用过于宽泛的旧名称，否则家长提醒和课表仍然不够准确。
+        </div>
+      </div>
+      <div class="footer"><span>不同年级、不同课程的共享课包处理</span><span>10 / 15</span></div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>班课与保护课次：例外处理 SOP</h2>
+        <table>
+          <thead>
+            <tr><th style="width:22%">例外类型</th><th style="width:32%">为什么不自动改</th><th>教务处理方法</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>未来班课</td>
+              <td>同一班课关联多名学生，课程属性属于全班。</td>
+              <td>检查班级名单。全班都转课时走班级/排课流程修改；只有一名学生转课时，为该学生安排新的独立班级或一对一课次。</td>
+            </tr>
+            <tr>
+              <td>已有签到、扣课或反馈</td>
+              <td>这些记录已经进入教学或账务历史，改课程会破坏一致性。</td>
+              <td>不要通过课包编辑强改。确有录入错误时，走签到/扣课修复流程并保留说明。</td>
+            </tr>
+            <tr>
+              <td>无法唯一识别学生</td>
+              <td>容量为 1 的班级或课次却关联多名学生，系统无法判断应改谁。</td>
+              <td>打开班级和课次，核对学生关系；修正后重新预览。不能确认时停止操作并升级管理员。</td>
+            </tr>
+            <tr>
+              <td>已经开始或时间已过去但未签到</td>
+              <td>本功能只迁移当前时间之后的课次。</td>
+              <td>先确认真实上课情况。已上课按签到/反馈流程处理；未上课按课次调整流程重新安排。</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="danger">
+          <strong>停止线：</strong>无法确认这节课属于谁、是否已经上课、是否已经扣课时，不要继续修改。先向老师或教务负责人确认。
+        </div>
+      </div>
+      <div class="footer"><span>班课与受保护课次的人工处理</span><span>11 / 15</span></div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top"><h2>“Less-common fields / 不常改字段”怎么处理</h2><div class="tag">Normally leave unchanged</div></div>
+        <p class="desc">正常的按学生换课不需要手工改共享学生或共享课程。系统会在保存时自动把新课程加入允许扣课范围。</p>
+        <div class="shot">
+          <div class="shot-visual"><img src="assets/sop-教务-共享课包按学生修改课程-20260723/annotated/04-shared-scope-advanced.png" alt="共享学生和共享课程高级字段" /></div>
+          <div class="caption"><strong>图 4：</strong>所选学生必须继续留在共享学生中。不要为了换课程把学生从共享名单删除。</div>
+        </div>
+        <div class="note">
+          <strong>只有以下情况才打开这里：</strong>经管理确认要新增/移除共享学生，或需要整理历史共享课程范围。
+          这属于课包结构调整，不是本次按学生改课的常规步骤。
+        </div>
+      </div>
+      <div class="footer"><span>高级字段：正常换课不要手工调整</span><span>12 / 15</span></div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>保存后必须做的 5 项复查</h2>
+        <ol>
+          <li><strong>课包：</strong>重新打开编辑窗口。共享课包主课程可保持原样，新课程应进入允许扣课范围。</li>
+          <li><strong>所选学生课表：</strong>检查未来一对一课次是否显示新课程，老师、日期和时间是否正确。</li>
+          <li><strong>其他共享学生：</strong>抽查兄弟姐妹未来课表，确认没有被连带修改。</li>
+          <li><strong>历史课程：</strong>过去已完成、已签到、已扣课或已有反馈的课次应保持原课程。</li>
+          <li><strong>余额：</strong>总课时、剩余课时和历史扣课流水应与修改前一致。</li>
+        </ol>
+      </div>
+      <div class="panel">
+        <h2>家长提醒与课表显示</h2>
+        <table>
+          <thead><tr><th>提醒状态</th><th>系统处理</th><th>教务动作</th></tr></thead>
+          <tbody>
+            <tr><td>尚未发送的 24 小时小程序提醒</td><td class="yes">旧待发记录作废，并按新课程重建</td><td>抽查一条待发提醒，确认学生和课程名称正确。</td></tr>
+            <tr><td>已经发送给家长的提醒</td><td class="no">不会静默改写已发消息</td><td>如原消息课程错误，使用现有家长沟通修正流程补发说明。</td></tr>
+            <tr><td>以后打开的学生课表</td><td class="yes">安全迁移的未来课次显示新课程</td><td>从学生视角检查，不要只看课包主课程。</td></tr>
+          </tbody>
+        </table>
+        <div class="info"><strong>推荐：</strong>修改完成后，把“所选学生课表 + 另一名共享学生课表”并排核对一次，这是发现连带错误最快的方法。</div>
+      </div>
+      <div class="footer"><span>保存后复查课表、提醒、历史与余额</span><span>13 / 15</span></div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>常见提示与处理方法</h2>
+        <table>
+          <thead><tr><th style="width:37%">系统提示</th><th>原因与处理</th></tr></thead>
+          <tbody>
+            <tr><td>Select which shared-package student should change course</td><td>没有选择学生。回到 Student to change 选择本次要修改的人。</td></tr>
+            <tr><td>Source course is not allowed by this package</td><td>所选原课程不在课包允许范围。核对原课程；确需使用时先由管理员确认共享课程范围。</td></tr>
+            <tr><td>Selected student is not linked to this package</td><td>学生不是课包归属人或共享学生。核对是否选错课包，或学生是否被移出共享名单。</td></tr>
+            <tr><td>Keep selected student linked to the package</td><td>同一次保存中把所选学生从共享名单移除了。恢复该学生关联后再提交。</td></tr>
+            <tr><td>Course change reason is required</td><td>修改原因为空。按“学生 + 原课程 → 新课程 + 原因 + 日期”填写。</td></tr>
+            <tr><td>Matching future session already exists</td><td>未来存在重复课次。系统不会保存本次变更；先处理重复排课。</td></tr>
+            <tr><td>Preview unavailable</td><td>预览失败。不要盲目保存；刷新重试，仍失败时升级管理员。</td></tr>
+          </tbody>
+        </table>
+        <div class="note">
+          <strong>页面断开或超时：</strong>重新进入 Packages，先查看课包和未来课表是否已更新。确认未保存后才能重做，避免重复操作。
+        </div>
+      </div>
+      <div class="footer"><span>常见报错与恢复方法</span><span>14 / 15</span></div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>最终检查表</h2>
+        <ul class="checklist">
+          <li>已确认课包归属学生和共享学生</li>
+          <li>已选择正确的本次修改学生</li>
+          <li>原课程与该学生当前课表一致</li>
+          <li>新课程名称与实际学习内容一致</li>
+          <li>修改原因包含生效原因和日期</li>
+          <li>已读完四类预览数字</li>
+          <li>班课、保护和异常课次数已记录</li>
+          <li>点击一次 Update 并看到保存结果</li>
+          <li>所选学生未来课表显示新课程</li>
+          <li>其他共享学生课表没有变化</li>
+          <li>过去完成课次保持原课程</li>
+          <li>共享课包余额没有变化</li>
+          <li>待发家长提醒显示正确课程</li>
+          <li>已发错误提醒已单独补充说明</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>需要管理员协助时，完整发送这些信息</h2>
+        <div class="code">课包归属学生：
+要修改的学生：
+原课程：
+新课程：
+计划生效日期：
+预览数字：安全一对一 __ / 班课 __ / 保护 __ / 异常 __
+是否已点击 Update：
+页面报错或截图：
+需要管理员确认的问题：</div>
+        <div class="info">
+          <strong>课时包规格提醒：</strong>新购或增购常用推荐为 15 / 50 / 100 小时。本 SOP 的课程修改不会改变原课包课时数；如需增购，请走 Special top-up / 特殊增购流程。
+        </div>
+        <p class="small">
+          截图说明：本 SOP 的截图由 Playwright 使用临时 Admin 会话从 SGT Manage 正式功能页面抓取，
+          临时会话在截图后删除；截图只演示选择与预览，没有点击 Update / 更新。
+        </p>
+      </div>
+      <div class="footer"><span>完成检查与升级模板</span><span>15 / 15</span></div>
+    </section>
+  </body>
+</html>

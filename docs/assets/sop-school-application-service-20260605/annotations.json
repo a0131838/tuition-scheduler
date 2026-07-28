@@ -1,0 +1,278 @@
+[
+  {
+    "source": "/Users/zhao111/Documents/sgt系统/New project/tuition-scheduler/docs/assets/sop-school-application-service-20260605/raw-pw/01-student-entry.png",
+    "output": "/Users/zhao111/Documents/sgt系统/New project/tuition-scheduler/docs/assets/sop-school-application-service-20260605/annotated/01-student-entry.png",
+    "boxes": [
+      [
+        29,
+        443,
+        226,
+        513
+      ]
+    ],
+    "labels": [
+      [
+        760,
+        700,
+        "从学生详情页进入学校申请服务",
+        "small"
+      ]
+    ]
+  },
+  {
+    "source": "/Users/zhao111/Documents/sgt系统/New project/tuition-scheduler/docs/assets/sop-school-application-service-20260605/raw-pw/02-create-service.png",
+    "output": "/Users/zhao111/Documents/sgt系统/New project/tuition-scheduler/docs/assets/sop-school-application-service-20260605/annotated/02-create-service.png",
+    "boxes": [
+      [
+        1206,
+        383,
+        1377,
+        439
+      ],
+      [
+        303,
+        380,
+        1212,
+        411
+      ]
+    ],
+    "labels": [
+      [
+        950,
+        210,
+        "点击创建草稿",
+        "small"
+      ],
+      [
+        410,
+        225,
+        "系统自动使用独立服务收款 case",
+        "small"
+      ]
+    ]
+  },
+  {
+    "source": "/Users/zhao111/Documents/sgt系统/New project/tuition-scheduler/docs/assets/sop-school-application-service-20260605/raw-pw/03-draft-fields.png",
+    "output": "/Users/zhao111/Documents/sgt系统/New project/tuition-scheduler/docs/assets/sop-school-application-service-20260605/annotated/03-draft-fields.png",
+    "boxes": [
+      [
+        303,
+        683,
+        1377,
+        760
+      ],
+      [
+        570,
+        788,
+        843,
+        855
+      ],
+      [
+        308,
+        1066,
+        584,
+        1122
+      ]
+    ],
+    "labels": [
+      [
+        285,
+        330,
+        "缺必填项会先在页面拦住",
+        "small"
+      ],
+      [
+        520,
+        285,
+        "填写家长资料",
+        "small"
+      ],
+      [
+        285,
+        610,
+        "选择学校、年级、费用",
+        "small"
+      ]
+    ]
+  },
+  {
+    "source": "/Users/zhao111/Documents/sgt系统/New project/tuition-scheduler/docs/assets/sop-school-application-service-20260605/raw-pw/04-parent-info-link.png",
+    "output": "/Users/zhao111/Documents/sgt系统/New project/tuition-scheduler/docs/assets/sop-school-application-service-20260605/annotated/04-parent-info-link.png",
+    "boxes": [
+      [
+        318,
+        616,
+        475,
+        672
+      ],
+      [
+        467,
+        616,
+        730,
+        672
+      ],
+      [
+        722,
+        616,
+        878,
+        672
+      ]
+    ],
+    "labels": [
+      [
+        420,
+        365,
+        "先让家长补全资料",
+        "small"
+      ],
+      [
+        660,
+        365,
+        "复制资料链接",
+        "small"
+      ],
+      [
+        900,
+        365,
+        "不用的资料链接可以删除",
+        "small"
+      ]
+    ]
+  },
+  {
+    "source": "/Users/zhao111/Documents/sgt系统/New project/tuition-scheduler/docs/assets/sop-school-application-service-20260605/raw-pw/05-sign-link.png",
+    "output": "/Users/zhao111/Documents/sgt系统/New project/tuition-scheduler/docs/assets/sop-school-application-service-20260605/annotated/05-sign-link.png",
+    "boxes": [
+      [
+        529,
+        837,
+        647,
+        893
+      ],
+      [
+        641,
+        837,
+        843,
+        893
+      ]
+    ],
+    "labels": [
+      [
+        670,
+        820,
+        "发给家长签字",
+        "small"
+      ],
+      [
+        820,
+        820,
+        "复制链接",
+        "small"
+      ]
+    ]
+  },
+  {
+    "source": "/Users/zhao111/Documents/sgt系统/New project/tuition-scheduler/docs/assets/sop-school-application-service-20260605/raw-pw/06-parent-full-agreement.png",
+    "output": "/Users/zhao111/Documents/sgt系统/New project/tuition-scheduler/docs/assets/sop-school-application-service-20260605/annotated/06-parent-full-agreement.png",
+    "boxes": [
+      [
+        241,
+        856,
+        1199,
+        905
+      ]
+    ],
+    "labels": [
+      [
+        370,
+        560,
+        "家长先看完整合同条款",
+        "small"
+      ]
+    ]
+  },
+  {
+    "source": "/Users/zhao111/Documents/sgt系统/New project/tuition-scheduler/docs/assets/sop-school-application-service-20260605/raw-pw/07-parent-hand-signature.png",
+    "output": "/Users/zhao111/Documents/sgt系统/New project/tuition-scheduler/docs/assets/sop-school-application-service-20260605/annotated/07-parent-hand-signature.png",
+    "boxes": [
+      [
+        241,
+        574,
+        1199,
+        612
+      ],
+      [
+        242,
+        605,
+        1198,
+        791
+      ],
+      [
+        241,
+        840,
+        1199,
+        897
+      ]
+    ],
+    "labels": [
+      [
+        300,
+        420,
+        "必须手写签名",
+        "small"
+      ],
+      [
+        680,
+        555,
+        "在这里手写",
+        "small"
+      ],
+      [
+        1040,
+        820,
+        "提交后自动生成 invoice",
+        "small"
+      ]
+    ]
+  },
+  {
+    "source": "/Users/zhao111/Documents/sgt系统/New project/tuition-scheduler/docs/assets/sop-school-application-service-20260605/raw-pw/08-finance-handoff.png",
+    "output": "/Users/zhao111/Documents/sgt系统/New project/tuition-scheduler/docs/assets/sop-school-application-service-20260605/annotated/08-finance-handoff.png",
+    "boxes": [
+      [
+        264,
+        185,
+        1416,
+        223
+      ]
+    ],
+    "labels": [
+      [
+        300,
+        125,
+        "服务 case 的 Billing 页面",
+        "small"
+      ]
+    ]
+  },
+  {
+    "source": "/Users/zhao111/Documents/sgt系统/New project/tuition-scheduler/docs/assets/sop-school-application-service-20260605/raw-pw/09-void-delete.png",
+    "output": "/Users/zhao111/Documents/sgt系统/New project/tuition-scheduler/docs/assets/sop-school-application-service-20260605/annotated/09-void-delete.png",
+    "boxes": [
+      [
+        303,
+        450,
+        493,
+        506
+      ]
+    ],
+    "labels": [
+      [
+        1040,
+        820,
+        "无 invoice 才能删除",
+        "small"
+      ]
+    ]
+  }
+]

@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>SOP-财务-合作方Credit-Note操作流程-培训版-20260714</title>
+    <style>
+      @page { size: A4 landscape; margin: 14mm 12mm; }
+      :root {
+        --ink: #172033;
+        --muted: #526079;
+        --line: #d7e0ec;
+        --blue: #1d4ed8;
+        --teal: #0f766e;
+        --green: #166534;
+        --green-bg: #effcf3;
+        --amber: #9a5200;
+        --amber-bg: #fff8e5;
+        --red: #b91c1c;
+        --red-bg: #fff1f2;
+        --panel: #f7f9fc;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: white;
+        font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", Arial, sans-serif;
+      }
+      .page { page-break-after: always; min-height: 175mm; position: relative; }
+      .page:last-child { page-break-after: auto; }
+      h1 { margin: 0 0 10px; font-size: 32px; line-height: 1.2; }
+      h2 { margin: 0 0 10px; font-size: 23px; line-height: 1.25; }
+      h3 { margin: 0 0 7px; font-size: 16px; }
+      p, li, td, th { font-size: 13px; line-height: 1.55; }
+      p { margin: 5px 0 9px; }
+      ul, ol { margin: 7px 0 0 20px; padding: 0; }
+      li { margin: 5px 0; }
+      .hero, .panel, .card, .shot, .notice, .danger, .success {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      .hero { padding: 24px 26px; background: linear-gradient(120deg, #f4f8ff, #f0fdf9); }
+      .eyebrow { color: var(--teal); font-size: 13px; font-weight: 900; margin-bottom: 8px; }
+      .lead { color: var(--muted); font-size: 15px; max-width: 1000px; }
+      .grid-3, .grid-4, .cards-2 { display: grid; gap: 10px; }
+      .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 17px; }
+      .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .cards-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .card { padding: 13px 15px; background: white; }
+      .card strong { display: block; color: #516078; font-size: 11px; margin-bottom: 5px; }
+      .card span { font-size: 15px; font-weight: 800; }
+      .panel { padding: 15px 17px; margin-bottom: 12px; background: white; }
+      .step-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+      .step-tag { color: var(--blue); font-size: 12px; font-weight: 900; white-space: nowrap; }
+      .action { border-left: 5px solid #22c55e; background: var(--green-bg); padding: 9px 12px; margin: 8px 0 10px; }
+      .action strong { color: var(--green); }
+      .notice, .danger, .success { padding: 10px 13px; margin-top: 10px; }
+      .notice { background: var(--amber-bg); border-color: #f7c948; }
+      .notice strong { color: var(--amber); }
+      .danger { background: var(--red-bg); border-color: #f5b5bd; }
+      .danger strong { color: var(--red); }
+      .success { background: var(--green-bg); border-color: #9edab0; }
+      .success strong { color: var(--green); }
+      .shot { overflow: hidden; background: white; }
+      .shot-visual { height: 89mm; display: flex; align-items: flex-start; justify-content: center; line-height: 0; }
+      .shot-visual.short { height: 78mm; }
+      .shot img { width: 100%; height: 100%; object-fit: contain; object-position: top center; display: block; }
+      .caption { padding: 7px 10px 9px; border-top: 1px solid var(--line); background: var(--panel); color: var(--muted); font-size: 12px; line-height: 1.5; }
+      .caption strong { color: var(--ink); }
+      table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+      th, td { border: 1px solid var(--line); padding: 7px 9px; vertical-align: top; }
+      th { background: #eef3f9; text-align: left; }
+      .status { font-weight: 800; }
+      .draft { color: var(--amber); }
+      .issued { color: var(--green); }
+      .void { color: var(--red); }
+      .footer { position: absolute; bottom: 0; left: 0; right: 0; color: #7b879b; font-size: 10px; border-top: 1px solid #e6ebf2; padding-top: 5px; }
+      .checklist li { font-weight: 700; }
+      code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: #eef2f7; padding: 1px 4px; border-radius: 3px; }
+    </style>
+  </head>
+  <body>
+    <section class="page">
+      <div class="hero">
+        <div class="eyebrow">Finance Training SOP / 财务培训操作流程</div>
+        <h1>合作方 Credit Note / 贷项通知单操作流程</h1>
+        <p class="lead">适用于已开具合作方发票后，因来源文件更正、服务未提供、部分费用减免或其他已确认原因，需要以独立追踪编号减少原发票金额的情况。</p>
+        <div class="grid-3">
+          <div class="card"><strong>适用人员</strong><span>Finance / 财务</span></div>
+          <div class="card"><strong>系统路径</strong><span>Partner Settlement → Credit Notes</span></div>
+          <div class="card"><strong>版本日期</strong><span>2026-07-14</span></div>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:14px">
+        <h2>一句话流程</h2>
+        <div class="success"><strong>找到原发票 → 创建 Credit Note 草稿 → 填地址、原因、项目金额及 GST → 预览核对 → 勾选确认 → 正式开具。</strong></div>
+        <div class="danger"><strong>最重要：</strong>不要修改或删除原发票；不要在未核对来源文件、客户地址、金额和 GST 前点击 <b>Issue / 正式开具</b>。</div>
+      </div>
+      <div class="footer">SGT Manage · Finance SOP · Partner Credit Note · Page 1</div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>先记住：5 条必须遵守的规则</h2>
+        <ol>
+          <li>Credit Note 是独立凭证，不会修改、覆盖或删除原发票。</li>
+          <li><span class="status draft">DRAFT</span> 只预留可调整金额，不会减少 <b>Adjusted net / 调整后净额</b>。</li>
+          <li><span class="status issued">ISSUED</span> 且未作废的 Credit Note，才会计入已开 Credit 并减少调整后净额。</li>
+          <li><span class="status void">VOID</span> 会永久保留在历史中，但不再减少原发票金额。</li>
+          <li>原发票已有收据时，Credit Note 不会自动修改收据；退款或抵扣下张发票必须由财务另行记录。</li>
+        </ol>
+      </div>
+      <div class="panel">
+        <h2>状态和金额影响</h2>
+        <table>
+          <thead><tr><th>状态</th><th>可以做什么</th><th>是否影响调整后净额</th><th>是否可以删除历史</th></tr></thead>
+          <tbody>
+            <tr><td class="status draft">DRAFT / 草稿</td><td>编辑、预览、正式开具或作废</td><td>否</td><td>否，只能作废</td></tr>
+            <tr><td class="status issued">ISSUED / 已正式开具</td><td>导出 PDF、PDF + Seal，必要时作废</td><td>是</td><td>否</td></tr>
+            <tr><td class="status void">VOID / 已作废</td><td>查看历史和作废原因</td><td>否</td><td>否</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="notice"><strong>权限：</strong>创建、更新、正式开具、作废和下载 Credit Note 仅限 Finance 和超级管理员。</div>
+      <div class="footer">SGT Manage · Finance SOP · Rules and statuses · Page 2</div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>完整流程图</h2>
+        <div class="grid-4">
+          <div class="card"><strong>01 进入工作区</strong><span>Partner Settlement</span></div>
+          <div class="card"><strong>02 找到原发票</strong><span>Invoices → Create</span></div>
+          <div class="card"><strong>03 填写草稿</strong><span>Address · Reason · Amount · GST</span></div>
+          <div class="card"><strong>04 保存复核</strong><span>Save draft → Preview</span></div>
+          <div class="card"><strong>05 正式开具</strong><span>勾选确认 → Issue</span></div>
+          <div class="card"><strong>06 导出凭证</strong><span>Export PDF / PDF + Seal</span></div>
+          <div class="card"><strong>07 后续记账</strong><span>退款或抵扣下期发票</span></div>
+          <div class="card"><strong>08 异常处理</strong><span>Void + 必填原因</span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>截图说明</h2>
+        <p>本 SOP 截图于 2026-07-14 使用 Playwright 从生产系统采集，登录角色为 <b>Finance</b>。为展示草稿操作，系统建立了明确标注为 <code>SOP DEMO - DRAFT</code> 的临时记录；截图完成后，临时 Credit Note、明细及登录会话已全部删除，数据库复核为 0 条演示记录。</p>
+      </div>
+      <div class="notice"><strong>截图中的 SGD 270：</strong>仅用于演示新东方原发票 SGD 18,540 调整至 SGD 18,270 的已确认案例。</div>
+      <div class="footer">SGT Manage · Finance SOP · Workflow overview · Page 3</div>
+    </section>
+
+    <section class="page">
+      <div class="step-head"><h2>步骤 1：进入 Partner Settlement</h2><span class="step-tag">Finance Workspace</span></div>
+      <div class="action"><strong>操作：</strong>登录财务账号，在左侧 Finance Workspace 点击 <b>Partner Settlement / 合作方结算</b>。</div>
+      <div class="shot">
+        <div class="shot-visual"><img src="assets/sop-finance-partner-credit-note-20260714/annotated/01-entry.png" alt="Open Partner Settlement" /></div>
+        <div class="caption"><strong>图 1：</strong>Credit Note 位于合作方结算账单中心，不在学生课包发票或企业账户发票页面。</div>
+      </div>
+      <div class="footer">SGT Manage · Finance SOP · Open Partner Settlement · Page 4</div>
+    </section>
+
+    <section class="page">
+      <div class="step-head"><h2>步骤 2：从原发票创建 Credit Note</h2><span class="step-tag">Invoices / 发票</span></div>
+      <div class="action"><strong>操作：</strong>打开 <b>Invoices / 发票</b>，找到需要调整的原发票；先核对原金额、已开 Credit 和调整后净额，再点击该行的 <b>Create / 创建</b>。</div>
+      <div class="shot">
+        <div class="shot-visual"><img src="assets/sop-finance-partner-credit-note-20260714/annotated/02-invoice-create.png" alt="Create credit note from invoice" /></div>
+        <div class="caption"><strong>图 2：</strong>Credit Note 必须从正确的原发票开始。系统会把原发票号、日期、客户和项目带入新草稿。</div>
+      </div>
+      <div class="danger"><strong>不要：</strong>不要为了改金额删除原发票，也不要重新开一张负数发票。</div>
+      <div class="footer">SGT Manage · Finance SOP · Select original invoice · Page 5</div>
+    </section>
+
+    <section class="page">
+      <div class="step-head"><h2>步骤 3：确认合作方、模式和 Credit Notes 页签</h2><span class="step-tag">Partner · Mode · Month</span></div>
+      <div class="action"><strong>操作：</strong>选择合作方、业务模式和月份后点击 <b>Apply / 应用</b>，再进入 <b>Credit Notes / 贷项通知单</b>。</div>
+      <div class="shot">
+        <div class="shot-visual"><img src="assets/sop-finance-partner-credit-note-20260714/annotated/03-filter-tab.png" alt="Partner billing filters and credit note tab" /></div>
+        <div class="caption"><strong>图 3：</strong>新东方线上课包结算使用 <b>Online: Package End / 线上：课包结束</b>。其他合作方应按原发票所属模式选择。</div>
+      </div>
+      <div class="notice"><strong>看不到原发票：</strong>先检查合作方和 Mode 是否与原发票一致；线上 Package End 发票通常不依赖月份筛选。</div>
+      <div class="footer">SGT Manage · Finance SOP · Filters and tab · Page 6</div>
+    </section>
+
+    <section class="page">
+      <div class="step-head"><h2>步骤 4：再次选择并核对原发票</h2><span class="step-tag">Original invoice</span></div>
+      <div class="action"><strong>操作：</strong>在 <b>Original invoice / 原发票</b> 下拉框选择正确号码，点击 <b>Open / 打开</b>，核对四个金额卡片。</div>
+      <div class="shot">
+        <div class="shot-visual"><img src="assets/sop-finance-partner-credit-note-20260714/annotated/04-select-invoice.png" alt="Open original invoice in credit note page" /></div>
+        <div class="caption"><strong>图 4：</strong>新东方案例原发票为 <b>RGT-202606-0019</b>，原金额 SGD 18,540；草稿阶段已正式开具 Credit 仍为 0。</div>
+      </div>
+      <div class="danger"><strong>停止并确认：</strong>发票号、客户或原金额与来源文件不一致时，不要继续填写。</div>
+      <div class="footer">SGT Manage · Finance SOP · Confirm invoice · Page 7</div>
+    </section>
+
+    <section class="page">
+      <div class="step-head"><h2>步骤 5：填写客户地址和调整原因</h2><span class="step-tag">Required before issue</span></div>
+      <div class="action"><strong>操作：</strong>填写来源文件上的客户正式地址；在 <b>Reason for credit / 调整原因</b> 中写清月份、差异原因、依据文件及必要的内部说明。</div>
+      <div class="shot">
+        <div class="shot-visual"><img src="assets/sop-finance-partner-credit-note-20260714/annotated/05-address-reason.png" alt="Enter customer address and reason" /></div>
+        <div class="caption"><strong>图 5：</strong>客户地址在正式开具前必填。原因必须让复核人能够从 Credit Note 回到具体来源文件。</div>
+      </div>
+      <div class="notice"><strong>推荐原因写法：</strong><br />Correction of April 2026 service amount based on revised source document. Original April line SGD 4,500; corrected line SGD 4,230; credit SGD 270.</div>
+      <div class="footer">SGT Manage · Finance SOP · Address and reason · Page 8</div>
+    </section>
+
+    <section class="page">
+      <div class="step-head"><h2>步骤 6：填写项目 Credit 金额和 GST</h2><span class="step-tag">Line-level credit</span></div>
+      <div class="action"><strong>操作：</strong>只在需要调整的原发票项目填写 <b>Credit total / 本次 Credit 金额</b>；在 <b>GST credited / 其中 GST</b> 填入本次冲减中属于 GST 的金额。确认后点击 <b>Save draft / 保存草稿</b>。</div>
+      <div class="shot">
+        <div class="shot-visual"><img src="assets/sop-finance-partner-credit-note-20260714/annotated/06-line-save.png" alt="Enter credit amount and GST then save draft" /></div>
+        <div class="caption"><strong>图 6：</strong>新东方案例只调整 2026 年 4 月项目 SGD 270，GST 为 0；其他月份保持 0。</div>
+      </div>
+      <div class="danger"><strong>GST 不是自动计算：</strong>系统默认 0。必须根据原发票和来源文件确认；不确定时停止并请财务负责人复核。</div>
+      <div class="footer">SGT Manage · Finance SOP · Amount and GST · Page 9</div>
+    </section>
+
+    <section class="page">
+      <div class="step-head"><h2>步骤 7：编辑并复核草稿</h2><span class="step-tag">Edit draft / Update draft</span></div>
+      <div class="action"><strong>操作：</strong>保存后先点 <b>Edit draft / 编辑草稿</b>，逐项检查日期、客户、地址、原因、项目、Credit 总额和 GST；有修改时点击 <b>Update draft / 更新草稿</b>。</div>
+      <div class="shot">
+        <div class="shot-visual"><img src="assets/sop-finance-partner-credit-note-20260714/annotated/07-review-draft.png" alt="Review and update credit note draft" /></div>
+        <div class="caption"><strong>图 7：</strong>系统会阻止单行或累计 Credit 超过原项目可调整余额，也会阻止总 Credit 超过原发票金额。</div>
+      </div>
+      <div class="notice"><strong>双人复核建议：</strong>制单人完成草稿后，由另一位财务人员对照原发票与修订来源文件复核，再正式开具。</div>
+      <div class="footer">SGT Manage · Finance SOP · Review draft · Page 10</div>
+    </section>
+
+    <section class="page">
+      <div class="step-head"><h2>步骤 8：预览、正式开具或作废</h2><span class="step-tag">Preview · Issue · Void</span></div>
+      <div class="action"><strong>正式开具：</strong>先点击 <b>Preview / 预览</b> 检查 PDF；确认无误后勾选 <b>Source, address, amount and GST verified</b>，再点击 <b>Issue / 正式开具</b>。</div>
+      <div class="shot">
+        <div class="shot-visual"><img src="assets/sop-finance-partner-credit-note-20260714/annotated/08-issue-void.png" alt="Preview issue or void credit note" /></div>
+        <div class="caption"><strong>图 8：</strong>DRAFT 不减少调整后净额。ISSUED 后才显示在 Issued credits，并可导出正式 PDF 或 PDF + Seal。</div>
+      </div>
+      <div class="danger"><strong>需要作废时：</strong>在 <b>Void reason / 作废原因</b> 中写清原因，再点击 <b>Void / 作废</b>。作废不是删除，历史会继续保留。</div>
+      <div class="footer">SGT Manage · Finance SOP · Preview issue void · Page 11</div>
+    </section>
+
+    <section class="page">
+      <div class="step-head"><h2>PDF 预览：正式开具前要看什么</h2><span class="step-tag">DRAFT PREVIEW</span></div>
+      <div class="action"><strong>核对顺序：</strong>Credit Note No. → Original Invoice → Customer Name/Address → Reason → 项目金额/GST → This credit note → Adjusted invoice total。</div>
+      <div class="shot">
+        <div class="shot-visual" style="height:112mm"><img src="assets/sop-finance-partner-credit-note-20260714/annotated/09-pdf-preview.png" alt="Credit note PDF preview" /></div>
+        <div class="caption"><strong>图 9：</strong>草稿 PDF 会显示 <b>DRAFT PREVIEW - NOT ISSUED</b>，不会带公司章。只有 ISSUED 后才能使用 PDF + Seal。</div>
+      </div>
+      <div class="danger"><strong>任何字段不正确：</strong>关闭 PDF，回到历史行点击 <b>Edit draft / 编辑草稿</b>；不要先 Issue 再修改。</div>
+      <div class="footer">SGT Manage · Finance SOP · PDF preview review · Page 12</div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>已正式开具后的后续处理</h2>
+        <div class="cards-2">
+          <div class="card">
+            <h3>原发票尚未收款</h3>
+            <p>以 <b>Adjusted net / 调整后净额</b> 作为剩余应收参考；将正式 Credit Note PDF 与修订来源文件一并归档。</p>
+          </div>
+          <div class="card">
+            <h3>原发票已经有收据</h3>
+            <p>系统不会自动改收据。财务必须明确记录：退款给客户，或抵扣下一张发票，并保存审批与付款证据。</p>
+          </div>
+          <div class="card">
+            <h3>需要发送给客户</h3>
+            <p>使用 <b>Export PDF</b>；需要公司章时，仅对 ISSUED 记录使用 <b>PDF + Seal</b>。</p>
+          </div>
+          <div class="card">
+            <h3>发现正式凭证有误</h3>
+            <p>不要改数据库或删除记录。输入完整作废原因并 Void，再根据正确来源文件重新创建新的 Credit Note。</p>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>归档材料</h2>
+        <ol>
+          <li>原发票 PDF。</li>
+          <li>修订前和修订后的来源文件。</li>
+          <li>正式 Credit Note PDF。</li>
+          <li>退款或抵扣后续发票的审批、付款及沟通证据。</li>
+        </ol>
+      </div>
+      <div class="footer">SGT Manage · Finance SOP · After issue · Page 13</div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>新东方 SGD 270 示例</h2>
+        <table>
+          <tbody>
+            <tr><th>原发票</th><td>RGT-202606-0019</td><th>原发票总额</th><td>SGD 18,540.00</td></tr>
+            <tr><th>调整项目</th><td>2026 年 4 月已上课学生名单统计</td><th>原项目金额</th><td>SGD 4,500.00</td></tr>
+            <tr><th>修订项目金额</th><td>SGD 4,230.00</td><th>Credit 总额</th><td>SGD 270.00</td></tr>
+            <tr><th>GST credited</th><td>SGD 0.00</td><th>调整后发票净额</th><td><b>SGD 18,270.00</b></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="panel">
+        <h2>制单时填写</h2>
+        <ul>
+          <li>Customer address：以客户正式资料或修订来源文件为准。</li>
+          <li>Reason：写明 2026 年 4 月来源文件修订，原项目 SGD 4,500，修订后 SGD 4,230。</li>
+          <li>4 月项目 Credit total：<b>270.00</b>。</li>
+          <li>GST credited：<b>0.00</b>。</li>
+          <li>3 月和 5 月项目：保持 <b>0</b>。</li>
+        </ul>
+      </div>
+      <div class="danger"><strong>本例只说明系统操作：</strong>正式开具前仍需财务再次核对客户地址、修订来源文件和会计处理。</div>
+      <div class="footer">SGT Manage · Finance SOP · New Oriental example · Page 14</div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>常见问题和处理方式</h2>
+        <table>
+          <thead><tr><th>情况</th><th>原因</th><th>正确处理</th></tr></thead>
+          <tbody>
+            <tr><td>找不到原发票</td><td>合作方或 Mode 不匹配</td><td>回到筛选区，按原发票所属合作方和模式重新 Apply。</td></tr>
+            <tr><td>无法保存草稿</td><td>没有填写任何 Credit 金额，或原因少于 5 个字符</td><td>至少在一个正确项目填入大于 0 的金额，并写清原因。</td></tr>
+            <tr><td>提示超过可调整余额</td><td>本次金额加已有草稿/正式 Credit 超过原项目</td><td>检查历史记录，不要重复冲减。</td></tr>
+            <tr><td>无法正式开具</td><td>地址未填，或未勾选核对确认</td><td>补全客户地址并完成四项复核。</td></tr>
+            <tr><td>原发票已有收据</td><td>款项已收但后续发生调整</td><td>Credit Note 正常开具；退款或抵扣下一张发票另行记录。</td></tr>
+            <tr><td>正式开具后发现错误</td><td>正式凭证不可直接编辑</td><td>填写作废原因并 Void，再创建正确的新 Credit Note。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="panel checklist">
+        <h2>正式开具前最终检查</h2>
+        <ul>
+          <li>□ 原发票号、客户、日期和原金额正确。</li>
+          <li>□ 客户正式地址已填写。</li>
+          <li>□ 调整原因能够对应修订来源文件。</li>
+          <li>□ 只调整正确的发票项目，金额没有重复。</li>
+          <li>□ GST 处理已确认。</li>
+          <li>□ Preview PDF 无错误。</li>
+          <li>□ 已决定后续是退款还是抵扣下一张发票。</li>
+        </ul>
+      </div>
+      <div class="footer">SGT Manage · Finance SOP · Troubleshooting and final checklist · Page 15</div>
+    </section>
+  </body>
+</html>

@@ -24,6 +24,13 @@ enum StaffWorkspace {
   CARE
 }
 
+enum TrainingPracticalStatus {
+  NOT_STARTED
+  SUBMITTED
+  APPROVED
+  NEEDS_REWORK
+}
+
 enum CareProgramType {
   PRE_U_ACADEMIC_CARE
   PRE_U_FULL_COORDINATION
@@ -832,8 +839,8 @@ model SessionFeedback {
   submittedAt          DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
 
-  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  session     Session                     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  teacher     Teacher                     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   attachments SessionFeedbackAttachment[]
 
   @@unique([sessionId, teacherId])
@@ -844,16 +851,16 @@ model SessionFeedback {
 }
 
 model SessionFeedbackAttachment {
-  id                 String   @id @default(uuid())
-  feedbackId         String
-  storedPath         String
-  originalFileName   String
-  mimeType           String?
-  sizeBytes          Int
-  visibility         String   @default("PARENT")
-  uploadedByUserId   String
-  uploadedByName     String
-  createdAt          DateTime @default(now())
+  id               String   @id @default(uuid())
+  feedbackId       String
+  storedPath       String
+  originalFileName String
+  mimeType         String?
+  sizeBytes        Int
+  visibility       String   @default("PARENT")
+  uploadedByUserId String
+  uploadedByName   String
+  createdAt        DateTime @default(now())
 
   feedback SessionFeedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
 
@@ -1226,6 +1233,8 @@ model User {
   staffMiniappSessions         StaffMiniappSession[]
   staffMiniappBindInvites      StaffMiniappBindInvite[]   @relation("StaffMiniappBindInviteUser")
   staffMiniappInvitesCreated   StaffMiniappBindInvite[]   @relation("StaffMiniappBindInviteCreator")
+  trainingProgresses           StaffTrainingProgress[]    @relation("TrainingProgressUser")
+  trainingApprovals            StaffTrainingProgress[]    @relation("TrainingProgressApprover")
   careEngagementsOwned         CareEngagement[]           @relation("CareEngagementCaseOwner")
   careEngagementsCreated       CareEngagement[]           @relation("CareEngagementCreatedBy")
   careMemberships              CareEngagementMember[]     @relation("CareMemberUser")
@@ -1259,6 +1268,31 @@ model User {
   careServiceReviewsPrepared   CareServiceReview[]        @relation("CareServiceReviewPreparedBy")
   careServiceReviewsSubmitted  CareServiceReview[]        @relation("CareServiceReviewSubmittedBy")
   careServiceReviewsApproved   CareServiceReview[]        @relation("CareServiceReviewApprovedBy")
+}
+
+model StaffTrainingProgress {
+  id                   String                  @id @default(uuid())
+  userId               String
+  moduleCode           String
+  moduleVersion        String
+  readAt               DateTime?
+  quizScore            Int?
+  quizPassedAt         DateTime?
+  practicalStatus      TrainingPracticalStatus @default(NOT_STARTED)
+  practicalSubmittedAt DateTime?
+  practicalEvidence    String?
+  approvedAt           DateTime?
+  approvedByUserId     String?
+  approvalNote         String?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  user       User  @relation("TrainingProgressUser", fields: [userId], references: [id], onDelete: Cascade)
+  approvedBy User? @relation("TrainingProgressApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, moduleCode, moduleVersion])
+  @@index([moduleCode, moduleVersion])
+  @@index([practicalStatus, updatedAt])
 }
 
 model CareEngagement {
@@ -1909,22 +1943,22 @@ model ParentAccount {
 }
 
 model ParentStudentLink {
-  id                String   @id @default(uuid())
-  parentId          String
-  studentId         String
-  relationship      String?
-  isPrimary         Boolean  @default(false)
-  canViewSchedule   Boolean  @default(true)
-  canViewFeedback   Boolean  @default(true)
-  canViewFinance    Boolean  @default(true)
-  canViewReports    Boolean  @default(true)
-  canCreateRequests Boolean  @default(true)
-  wechatGroupName   String?
-  communicationOwner String?
-  preferredLanguage String?  @default("BILINGUAL")
-  manualReminderEnabled Boolean @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                    String   @id @default(uuid())
+  parentId              String
+  studentId             String
+  relationship          String?
+  isPrimary             Boolean  @default(false)
+  canViewSchedule       Boolean  @default(true)
+  canViewFeedback       Boolean  @default(true)
+  canViewFinance        Boolean  @default(true)
+  canViewReports        Boolean  @default(true)
+  canCreateRequests     Boolean  @default(true)
+  wechatGroupName       String?
+  communicationOwner    String?
+  preferredLanguage     String?  @default("BILINGUAL")
+  manualReminderEnabled Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   parent  ParentAccount @relation(fields: [parentId], references: [id], onDelete: Cascade)
   student Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
@@ -2067,41 +2101,41 @@ model MiniappNotificationOutbox {
 }
 
 model ParentCommunicationTask {
-  id                  String    @id @default(uuid())
-  taskKey             String    @unique
-  kind                String
-  status              String    @default("PENDING")
-  priority            String    @default("NORMAL")
-  studentId           String?
-  sessionId           String?
-  feedbackId          String?
-  teacherId           String?
-  parentId            String?
-  title               String
-  messageText         String
-  contentFingerprint  String?
-  dueAt               DateTime?
-  ownerUserId         String?
-  ownerName           String?
-  claimedAt           DateTime?
-  publishedAt         DateTime?
-  publishedByUserId   String?
-  publishedByName     String?
-  copiedAt            DateTime?
-  copiedByUserId      String?
-  copiedByName        String?
-  manualSentAt        DateTime?
-  manualSentByUserId  String?
-  manualSentByName    String?
-  manualChannel       String?
-  wechatGroupName     String?
-  evidenceUrl         String?
-  note                String?
-  correctionOfTaskId  String?
-  supersededAt        DateTime?
-  completedAt         DateTime?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  id                 String    @id @default(uuid())
+  taskKey            String    @unique
+  kind               String
+  status             String    @default("PENDING")
+  priority           String    @default("NORMAL")
+  studentId          String?
+  sessionId          String?
+  feedbackId         String?
+  teacherId          String?
+  parentId           String?
+  title              String
+  messageText        String
+  contentFingerprint String?
+  dueAt              DateTime?
+  ownerUserId        String?
+  ownerName          String?
+  claimedAt          DateTime?
+  publishedAt        DateTime?
+  publishedByUserId  String?
+  publishedByName    String?
+  copiedAt           DateTime?
+  copiedByUserId     String?
+  copiedByName       String?
+  manualSentAt       DateTime?
+  manualSentByUserId String?
+  manualSentByName   String?
+  manualChannel      String?
+  wechatGroupName    String?
+  evidenceUrl        String?
+  note               String?
+  correctionOfTaskId String?
+  supersededAt       DateTime?
+  completedAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   @@index([status, dueAt])
   @@index([kind, status, createdAt])

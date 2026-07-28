@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>SOP-教务-上海新卓思学生合作方结算流程-培训版-20260708</title>
+    <style>
+      @page { size: A4 landscape; margin: 14mm 12mm; }
+      :root {
+        --ink: #0f172a;
+        --muted: #475569;
+        --line: #dbeafe;
+        --blue: #2563eb;
+        --green: #166534;
+        --green-bg: #ecfdf5;
+        --amber: #b45309;
+        --amber-bg: #fffbeb;
+        --red: #dc2626;
+        --red-bg: #fff1f2;
+        --slate-bg: #f8fafc;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: #fff;
+        font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+      }
+      .page { page-break-after: always; }
+      .page:last-child { page-break-after: auto; }
+      .hero, .panel, .step, .card {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: #fff;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      .hero {
+        padding: 22px 24px;
+        margin-bottom: 14px;
+        background: linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%);
+      }
+      .eyebrow { color: var(--blue); font-size: 13px; font-weight: 900; letter-spacing: .04em; margin-bottom: 8px; }
+      h1 { margin: 0 0 10px; font-size: 31px; line-height: 1.16; }
+      h2 { margin: 0 0 10px; font-size: 23px; line-height: 1.2; }
+      h3 { margin: 0 0 8px; font-size: 17px; }
+      p, li { font-size: 14px; line-height: 1.62; }
+      .lead { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.7; max-width: 1000px; }
+      .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 16px; }
+      .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+      .mini { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; background: #fff; }
+      .mini strong { display: block; color: #64748b; font-size: 12px; margin-bottom: 6px; }
+      .mini span { font-size: 15px; font-weight: 800; }
+      .panel { padding: 16px 18px; margin-bottom: 14px; }
+      .panel ol, .panel ul { margin: 8px 0 0 20px; padding: 0; }
+      .panel li { margin: 6px 0; }
+      .answer, .note, .danger {
+        border-radius: 14px;
+        padding: 12px 14px;
+        margin-top: 12px;
+        font-size: 14px;
+        line-height: 1.65;
+      }
+      .answer { border: 1px solid #bbf7d0; background: var(--green-bg); }
+      .answer strong { color: var(--green); }
+      .note { border: 1px solid #fcd34d; background: var(--amber-bg); }
+      .note strong { color: var(--amber); }
+      .danger { border: 1px solid #fecaca; background: var(--red-bg); }
+      .danger strong { color: var(--red); }
+      .step { padding: 16px; margin-bottom: 16px; }
+      .step-top { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-bottom: 8px; }
+      .tag { color: var(--blue); font-size: 12px; font-weight: 900; white-space: nowrap; }
+      .desc { margin: 0 0 12px; color: var(--muted); }
+      .action-box { border: 1px solid #bbf7d0; border-radius: 14px; background: var(--green-bg); padding: 11px 13px; margin-bottom: 12px; }
+      .action-box strong { color: var(--green); }
+      .action-box ul { margin: 7px 0 0 18px; padding: 0; }
+      .action-box li { margin: 3px 0; }
+      .shot { border: 1px solid #cbd5e1; border-radius: 14px; overflow: hidden; background: #fff; }
+      .shot-visual { height: 88mm; display: flex; align-items: flex-start; justify-content: center; background: #fff; line-height: 0; }
+      .shot-visual.short { height: 76mm; }
+      .shot img { width: 100%; height: 100%; object-fit: contain; object-position: top center; display: block; }
+      .caption { padding: 9px 12px 11px; background: var(--slate-bg); border-top: 1px solid #e2e8f0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+      .caption strong { color: var(--ink); }
+      .card { padding: 14px 16px; }
+      .card p { margin: 0; color: var(--muted); }
+      .checklist li { font-weight: 700; }
+      code { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px; padding: 1px 5px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    </style>
+  </head>
+  <body>
+    <section class="page">
+      <div class="hero">
+        <div class="eyebrow">Academic Operations SOP / 教务培训流程</div>
+        <h1>上海新卓思学生应该怎么处理<br />Sister Company 合作方学生结算流程</h1>
+        <p class="lead">
+          这份 SOP 给教务使用：当学生来源是 <strong>上海新卓思 （Sister Company)</strong> 时，如何确认学生归属、设置课包结算模式、
+          检查费率入口，并把符合条件的课包送入合作方结算与账单流程。
+        </p>
+        <div class="grid-3">
+          <div class="mini"><strong>适用角色</strong><span>教务 / Admin</span></div>
+          <div class="mini"><strong>正确入口</strong><span>Students + Partner Settlement</span></div>
+          <div class="mini"><strong>版本日期</strong><span>2026-07-08</span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>一句话答案</h2>
+        <div class="answer">
+          <strong>新卓思学生 = 学生来源为“上海新卓思 （Sister Company)”的学生。</strong>
+          教务要先确认来源，再确认课包模式是 <strong>Online: Package End / 线上：课包完结</strong>，之后才会进入合作方结算。
+        </div>
+        <div class="note">
+          <strong>注意：</strong> 费率现在只在 <strong>Partners / 合作方配置</strong> 页面修改；合作方结算页只显示当前费率，不再直接保存费率。
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>先记住</h2>
+        <ol>
+          <li>系统先用 <strong>学生来源</strong> 判断学生属于哪个合作方。</li>
+          <li>上海新卓思的来源必须是：<strong>上海新卓思 （Sister Company)</strong>。</li>
+          <li>只有课包结算模式设置为 <strong>Online: Package End</strong> 或线下月结模式，才会进入合作方结算。</li>
+          <li>费率变更只影响后续生成的结算记录；已经生成的记录保留当时保存的金额。</li>
+          <li>看不到学生时，先确认学生列表是否在 <strong>All Students / 全部学生</strong> 视图，不要只看“今日新增”。</li>
+        </ol>
+      </div>
+      <div class="panel">
+        <h2>完整流程</h2>
+        <ol>
+          <li>在 <strong>Partners / 合作方配置</strong> 确认上海新卓思的学生来源、费率和默认课包规则。</li>
+          <li>在 <strong>Students / 学生</strong> 页面筛选来源，确认学生确实属于上海新卓思。</li>
+          <li>打开学生课包，确认或设置结算模式为 <strong>Online: Package End</strong>。</li>
+          <li>进入 <strong>Partner Settlement / 合作方结算</strong>，选择上海新卓思和月份。</li>
+          <li>处理线上待结算项，生成待开票记录。</li>
+          <li>进入 <strong>Open Billing Workspace / 打开账单工作区</strong>，交给财务继续开票、收款、收据。</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top">
+          <h2>步骤 1：确认合作方配置</h2>
+          <div class="tag">Partner Setup</div>
+        </div>
+        <p class="desc">先确认系统里“上海新卓思”绑定了正确学生来源。这个配置决定系统怎么分辨新卓思学生。</p>
+        <div class="action-box">
+          <strong>操作：</strong>
+          <ul>
+            <li>进入 <strong>Partners / 合作方配置</strong>。</li>
+            <li>找到 <strong>上海新卓思</strong>。</li>
+            <li>确认 Student source 是 <strong>上海新卓思 （Sister Company)</strong>。</li>
+          </ul>
+        </div>
+        <div class="shot">
+          <div class="shot-visual"><img src="assets/sop-教务-上海新卓思学生合作方结算-20260708/annotated/01-partner-setup.png" alt="上海新卓思合作方配置" /></div>
+          <div class="caption"><strong>图 1：</strong> 费率、课时分钟数、默认课包分钟数都在合作方配置页维护；结算页不再改费率。</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top">
+          <h2>步骤 2：筛选上海新卓思学生</h2>
+          <div class="tag">Students</div>
+        </div>
+        <p class="desc">教务在学生列表里确认来源。新卓思历史学生不一定是今天新增，所以要看全部学生视图。</p>
+        <div class="action-box">
+          <strong>操作：</strong>
+          <ul>
+            <li>进入 <strong>Students / 学生</strong>。</li>
+            <li>视图选择 <strong>All Students / 全部学生</strong>。</li>
+            <li>来源筛选为 <strong>上海新卓思 （Sister Company)</strong>。</li>
+          </ul>
+        </div>
+        <div class="shot">
+          <div class="shot-visual"><img src="assets/sop-教务-上海新卓思学生合作方结算-20260708/annotated/02-students-source-filter.png" alt="筛选上海新卓思学生" /></div>
+          <div class="caption"><strong>图 2：</strong> 当前系统筛选后显示 3 名上海新卓思学生。若数量不对，先检查学生来源。</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top">
+          <h2>步骤 3：进入合作方结算中心</h2>
+          <div class="tag">Partner Settlement</div>
+        </div>
+        <p class="desc">选择上海新卓思和对应月份。页面顶部会显示线上待结算、待开票记录和异常数量。</p>
+        <div class="action-box">
+          <strong>操作：</strong>
+          <ul>
+            <li>进入 <strong>Partner Settlement / 合作方结算</strong>。</li>
+            <li>Partner 选择 <strong>上海新卓思</strong>。</li>
+            <li>选择月份后点击 <strong>Apply / 应用</strong>。</li>
+          </ul>
+        </div>
+        <div class="shot">
+          <div class="shot-visual"><img src="assets/sop-教务-上海新卓思学生合作方结算-20260708/annotated/03-partner-settlement-overview.png" alt="上海新卓思合作方结算中心" /></div>
+          <div class="caption"><strong>图 3：</strong> 先确认合作方、学生来源、月份，再从待处理队列开始，不要直接去历史记录里找。</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top">
+          <h2>步骤 4：检查费率与课包模式</h2>
+          <div class="tag">Rate + Package Mode</div>
+        </div>
+        <p class="desc">费率是只读展示；如果要改费率，去合作方配置。教务重点检查每个学生课包的 Mode 是否正确。</p>
+        <div class="action-box">
+          <strong>操作：</strong>
+          <ul>
+            <li>打开 <strong>Settlement setup / 结算配置</strong>。</li>
+            <li>确认费率只是显示，不在这里改。</li>
+            <li>确认课包 Mode 是 <strong>Online: Package End / 线上：课包完结</strong>。</li>
+          </ul>
+        </div>
+        <div class="shot">
+          <div class="shot-visual short"><img src="assets/sop-教务-上海新卓思学生合作方结算-20260708/annotated/04-rate-and-mode.png" alt="费率只读与课包模式" /></div>
+          <div class="caption"><strong>图 4：</strong> 课包模式不对时，学生来源正确也不会进入对应结算流程。</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="step">
+        <div class="step-top">
+          <h2>步骤 5：进入账单工作区</h2>
+          <div class="tag">Billing Workspace</div>
+        </div>
+        <p class="desc">教务生成待开票结算记录后，账单工作区用于后续发票、付款记录、收据和审批。</p>
+        <div class="action-box">
+          <strong>操作：</strong>
+          <ul>
+            <li>点击 <strong>Open Billing Workspace / 打开账单工作区</strong>。</li>
+            <li>确认 Partner、Mode、Month 没选错。</li>
+            <li>后续按 <strong>Create Invoice → Payment records → Create Receipt</strong> 顺序处理。</li>
+          </ul>
+        </div>
+        <div class="shot">
+          <div class="shot-visual"><img src="assets/sop-教务-上海新卓思学生合作方结算-20260708/annotated/05-billing-workspace.png" alt="合作方账单工作区" /></div>
+          <div class="caption"><strong>图 5：</strong> 进入账单工作区前先确认金额和数量；这里通常由财务继续开票收款。</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>常见错误</h2>
+        <div class="grid-2">
+          <div class="card">
+            <h3>错误 1：来源写错</h3>
+            <p>如果学生来源不是 <strong>上海新卓思 （Sister Company)</strong>，系统不会把这个学生归到上海新卓思。</p>
+          </div>
+          <div class="card">
+            <h3>错误 2：只看今日新增</h3>
+            <p>历史学生不会出现在 Today New Students。要切到 <strong>All Students / 全部学生</strong> 再筛选来源。</p>
+          </div>
+          <div class="card">
+            <h3>错误 3：课包模式为空</h3>
+            <p>学生来源正确，但课包 Mode 没设，仍然不会进入合作方结算。</p>
+          </div>
+          <div class="card">
+            <h3>错误 4：想在结算页改费率</h3>
+            <p>现在结算页费率只读。需要改费率时，点击 <strong>Edit in Partner Setup / 去合作方配置修改</strong>。</p>
+          </div>
+        </div>
+        <div class="danger">
+          <strong>不要做：</strong> 不要为了让学生进入结算而随便改学生来源。来源代表业务归属，必须和实际合作方一致。
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="panel">
+        <h2>最终检查表</h2>
+        <ul class="checklist">
+          <li>学生来源 = <strong>上海新卓思 （Sister Company)</strong></li>
+          <li>学生列表使用 <strong>All Students / 全部学生</strong> 视图时能筛到该学生</li>
+          <li>课包 Mode = <strong>Online: Package End / 线上：课包完结</strong></li>
+          <li>合作方结算页 Partner = <strong>上海新卓思</strong></li>
+          <li>月份选择正确，点击 <strong>Apply / 应用</strong> 后再处理队列</li>
+          <li>费率如需调整，只去 <strong>Partners / 合作方配置</strong></li>
+          <li>已生成结算记录的金额不会因后续改费率自动变化</li>
+        </ul>
+        <div class="note">
+          <strong>截图说明：</strong> 本 SOP 的系统截图由 Playwright 使用临时 Admin 会话从 SGT Manage 页面抓取，截图后临时会话已删除。
+        </div>
+      </div>
+      <div class="panel">
+        <h2>遇到问题先问谁</h2>
+        <ol>
+          <li>来源不确定：先问负责该学生的教务/销售确认合作方归属。</li>
+          <li>课包模式不确定：先问管理或财务，确认是线上课包完结还是线下月结。</li>
+          <li>费率不确定：不要在结算页处理，先到合作方配置核对。</li>
+          <li>金额已经生成但感觉不对：不要直接开票，先撤回/核对后再重新生成。</li>
+        </ol>
+      </div>
+    </section>
+  </body>
+</html>

@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-28-r289
+
+- Release ID: `2026-07-28-r289`
+- Date/Time (Asia/Singapore): `2026-07-28`
+- Deployment status: `READY`
+- Scope: establish the controlled SGT staff training library and add a role-aware Training Center with protected SOP access, quizzes, practical evidence and manager sign-off.
+- Key files:
+  - `app/training/*`
+  - `app/api/training/sops/[code]/route.ts`
+  - `lib/training-center.ts`
+  - `prisma/migrations/20260728150000_add_staff_training_progress/migration.sql`
+  - `docs/培训中心/*`
+  - `docs/SOP-*-20260728.html`
+  - `docs/tasks/TASK-20260728-staff-training-center.md`
+- Risk impact (if any): Medium and isolated to training. One additive training-progress table and internal authenticated pages are added. Scheduling, attendance, deductions, packages, contracts, invoices, receipts, payroll, expenses, settlement and parent data are unchanged.
+- Verification: focused training/migration tests and TypeScript pass. Full backend tests, production build, release preflight and production authenticated checks remain release gates.
+- Rollback point: `af02b28` (`2026-07-28-r288` documentation head; runtime school-guide commit `526ab99`).
+
+---
+
 ## 2026-07-28-r288
 
 - Release ID: `2026-07-28-r288`

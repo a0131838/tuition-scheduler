@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>SOP-教务-EduTrust课程与SSG合同设置流程-培训版-20260622</title>
+    <style>
+      @page { size: A4 landscape; margin: 14mm 12mm; }
+      :root { --ink:#0f172a; --muted:#475569; --line:#c7d2fe; --blue:#2563eb; --green:#166534; --green-bg:#ecfdf5; --amber:#b45309; --amber-bg:#fffbeb; --red:#dc2626; --red-bg:#fff1f2; --slate:#f8fafc; }
+      * { box-sizing:border-box; }
+      body { margin:0; color:var(--ink); background:#fff; font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans CJK SC","Microsoft YaHei",Arial,sans-serif; }
+      .page { page-break-after:always; min-height:181mm; display:flex; flex-direction:column; gap:10px; }
+      .page:last-child { page-break-after:auto; }
+      .hero,.panel,.shot,.mini { border:1px solid var(--line); border-radius:14px; background:#fff; break-inside:avoid; page-break-inside:avoid; }
+      .hero { padding:22px 24px; background:linear-gradient(135deg,#eff6ff,#fff7ed); }
+      .eyebrow { color:var(--blue); font-size:13px; font-weight:900; margin-bottom:8px; }
+      h1 { font-size:31px; line-height:1.14; margin:0 0 10px; letter-spacing:0; }
+      h2 { font-size:22px; line-height:1.2; margin:0 0 8px; letter-spacing:0; }
+      h3 { font-size:16px; margin:0 0 6px; }
+      p,li,td,th { font-size:13px; line-height:1.52; }
+      p { margin:0; }
+      ol,ul { margin:0; padding-left:20px; }
+      li { margin:4px 0; }
+      code { font-size:12px; background:#f1f5f9; border-radius:6px; padding:2px 5px; }
+      .lead { color:var(--muted); font-size:15px; line-height:1.65; max-width:1040px; }
+      .muted { color:var(--muted); }
+      .tag { display:inline-block; padding:4px 9px; border:1px solid #93c5fd; border-radius:999px; background:#eff6ff; color:#1e3a8a; font-size:12px; font-weight:800; margin-right:6px; }
+      .panel { padding:13px 15px; }
+      .green { border-color:#86efac; background:var(--green-bg); }
+      .amber { border-color:#fbbf24; background:var(--amber-bg); }
+      .red { border-color:#fca5a5; background:var(--red-bg); }
+      .blue { border-color:#93c5fd; background:#eff6ff; }
+      .grid2 { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+      .grid3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+      .grid4 { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px; }
+      .mini { padding:10px 12px; }
+      .mini strong { display:block; color:#64748b; font-size:12px; margin-bottom:4px; }
+      .mini span { font-size:14px; font-weight:800; }
+      .flow { display:grid; grid-template-columns:repeat(7,1fr); gap:7px; }
+      .flow div { border:1px solid #bfdbfe; background:#eff6ff; border-radius:10px; padding:8px; font-size:12px; line-height:1.38; font-weight:800; }
+      .step { display:grid; grid-template-columns:.78fr 1.42fr; gap:12px; align-items:start; }
+      .shot { padding:8px; background:#f8fafc; }
+      .shot img { width:100%; max-height:98mm; object-fit:contain; object-position:top center; display:block; }
+      .caption { color:var(--muted); font-size:11px; line-height:1.45; margin-top:5px; }
+      table { width:100%; border-collapse:collapse; margin-top:6px; }
+      th,td { border:1px solid #dbeafe; padding:7px 9px; text-align:left; vertical-align:top; }
+      th { background:#eff6ff; color:#1e3a8a; }
+      .footer { margin-top:auto; display:flex; justify-content:space-between; border-top:1px solid #e2e8f0; padding-top:5px; color:#64748b; font-size:10px; }
+    </style>
+  </head>
+  <body>
+    <section class="page">
+      <div class="hero">
+        <div class="eyebrow">Teaching Ops Training SOP / 教务培训流程 PDF</div>
+        <h1>EduTrust 课程设置与 SSG 官方合同生成流程<br />EduTrust Course Setup and SSG PEI Contract Workflow</h1>
+        <p class="lead">这份 SOP 解释现在系统新增的 EduTrust 功能怎么用。重点不是马上给家长签，而是先把课程、Course File、合同 Schedule、学生证据四层资料准备好，未来新学生达到条件后，系统才能生成 SSG Standard PEI-Student Contract v4.0 并发送签字链接。</p>
+        <div class="grid3" style="margin-top:16px;">
+          <div class="mini"><strong>适用对象</strong><span>教务 / 管理层 / 合规负责人</span></div>
+          <div class="mini"><strong>主入口</strong><span>Admin -> EduTrust Readiness</span></div>
+          <div class="mini"><strong>版本日期</strong><span>2026-06-22</span></div>
+        </div>
+      </div>
+      <div class="panel red"><strong>先记住：</strong> 现在不能把所有学生直接切成 SSG 合同。必须先完成课程映射、Course File、Contract Schedule Setup，并把课程状态设为 <b>PERMITTED</b>、Course File 设为 <b>APPROVED</b>，课包小时数达到最低要求，才可以给新学生走 SSG v4 合同。</div>
+      <div class="footer"><span>SGT Manage EduTrust SOP</span><span>2026-06-22</span></div>
+    </section>
+
+    <section class="page">
+      <h2>截图方式与登录身份 / Screenshot Method and Login Identity</h2>
+      <div class="panel blue">
+        <p>本 PDF 的系统截图使用 Playwright 从 live 系统自动抓取，不使用桌面截图，不包含浏览器标签、微信、Codex 窗口或其他无关内容。截图脚本通过短期 Admin `authSession` 登录，抓图后自动删除 session。</p>
+      </div>
+      <div class="grid3">
+        <div class="panel"><h3>Admin / 教务视角</h3><p>用于 EduTrust Readiness、Course File、Contract Schedule Setup、Student Evidence、Package Contract Workspace。</p></div>
+        <div class="panel"><h3>管理层视角</h3><p>负责确认退款政策、late payment、FPS、课程获准信息、Course File 审批，不建议普通教务自行决定政策值。</p></div>
+        <div class="panel"><h3>家长视角</h3><p>未来只看到签署链接里的合同 PDF/签字页；家长不会看到后台的配置页面。</p></div>
+      </div>
+      <div class="panel amber"><strong>注意：</strong> 截图中可能出现训练或历史数据。培训重点是入口、字段和判断逻辑，不代表要操作截图中的学生或课包。</div>
+      <div class="footer"><span>SGT Manage EduTrust SOP</span><span>截图身份说明</span></div>
+    </section>
+
+    <section class="page">
+      <h2>这套功能到底解决什么问题？</h2>
+      <div class="grid2">
+        <div class="panel green"><h3>系统现在做了什么</h3><ol><li>不改现有运营课程名，避免教务找不到课程。</li><li>给每个课程增加 EduTrust 合规映射层。</li><li>把官方合同 Schedule A-D 的学校资料集中配置。</li><li>未来新学生签 SSG v4 合同时自动带出课程和政策资料。</li><li>如果资料不完整，系统阻止发送 SSG 签字链接。</li></ol></div>
+        <div class="panel amber"><h3>系统没有替你决定什么</h3><ol><li>不会自动判断学校是否已获得 SSG permission。</li><li>不会替管理层决定退款比例。</li><li>不会替学校确认 FPS 是否适用。</li><li>不会把旧学生/旧合同自动改成 SSG 合同。</li><li>不会绕过官方合同的固定条款。</li></ol></div>
+      </div>
+      <div class="panel red"><strong>一句话：</strong> 系统负责“记录、自动填、拦错误”；官方政策和学校承诺仍必须由管理层确认。</div>
+      <div class="footer"><span>SGT Manage EduTrust SOP</span><span>功能定位</span></div>
+    </section>
+
+    <section class="page">
+      <h2>整体流程：从课程准备到新学生签约</h2>
+      <div class="flow">
+        <div>1. 课程映射</div><div>2. Course File</div><div>3. Contract Schedule</div><div>4. 管理层确认</div><div>5. 学生证据</div><div>6. 建新课包</div><div>7. SSG 合同签署</div>
+      </div>
+      <div class="grid2">
+        <div class="panel">
+          <h3>课程层要先完成</h3>
+          <ol><li>课程纳入 EduTrust。</li><li>合规课程名确认。</li><li>最低总小时数至少按学校策略设定，当前建议 50 小时起。</li><li>授课方式设为 One-to-one / 一对一。</li><li>Course File 内容完整并批准。</li></ol>
+        </div>
+        <div class="panel">
+          <h3>学生层以后再发生</h3>
+          <ol><li>新学生购买符合条件的 EduTrust 课包。</li><li>系统创建 SSG v4 PEI contract draft。</li><li>系统检查 Schedule A-D 是否完整。</li><li>教务预览确认后发送签署链接。</li><li>签署后保存合同 PDF、发票、付款/FPS 证据。</li></ol>
+        </div>
+      </div>
+      <div class="panel amber">现在的重点是前四步：把课程资料先整理好。否则未来新学生到了，也不能安全签 SSG 官方合同。</div>
+      <div class="footer"><span>SGT Manage EduTrust SOP</span><span>流程总览</span></div>
+    </section>
+
+    <section class="page">
+      <h2>Step 1：进入 EduTrust Readiness 页面</h2>
+      <div class="step">
+        <div class="panel">
+          <h3>路径</h3>
+          <ol><li>登录后台 Admin。</li><li>左侧菜单点击 <b>EduTrust Readiness / EduTrust 合规整改</b>。</li><li>先看顶部统计：当前课程、建议纳入课程、已保存映射、低课时风险。</li><li>再看 Suggested Course Lines，确认哪些课程线会用于 EduTrust 主证据。</li></ol>
+          <div class="panel amber">如果某门课只是普通补习课，不准备作为 EduTrust 主证据，就保持 Not for EduTrust。</div>
+        </div>
+        <div class="shot"><img src="assets/sop-edutrust-contract-20260622/annotated/01-edutrust-overview.png" /><div class="caption">Admin Playwright 截图：EduTrust Readiness 总览页。</div></div>
+      </div>
+      <div class="footer"><span>SGT Manage EduTrust SOP</span><span>Step 1</span></div>
+    </section>
+
+    <section class="page">
+      <h2>Step 2：课程映射，不要改教务熟悉的运营课程名</h2>
+      <div class="step">
+        <div class="panel">
+          <h3>怎么填</h3>
+          <ol><li><b>EduTrust 主证据</b>：选择 Yes / 纳入，表示这门课将作为申请证据课程。</li><li><b>EduTrust 课程线</b>：选择 AEIS、国际学校入学、学术英文、学科桥梁等官方风格课程线。</li><li><b>最低总课时</b>：建议至少 50 小时，一对一也可以，但课包必须达到这个小时数。</li><li><b>授课方式</b>：一对一课程选择 One-to-one。</li><li><b>合规课程名</b>：写给 SSG/合同/证据看的正式课程名。</li><li><b>对外展示名</b>：可以保留家长看得懂的名字。</li><li>点击 <b>Save mapping / 保存映射</b>。</li></ol>
+        </div>
+        <div class="shot"><img src="assets/sop-edutrust-contract-20260622/annotated/02-course-mapping-row.png" /><div class="caption">课程映射区：运营课程名不变，只增加合规映射资料。</div></div>
+      </div>
+      <div class="footer"><span>SGT Manage EduTrust SOP</span><span>Step 2</span></div>
+    </section>
+
+    <section class="page">
+      <h2>Step 3：填写 Course File / 课程文件</h2>
+      <div class="step">
+        <div class="panel">
+          <h3>Course File 是什么</h3>
+          <p>Course File 是 EduTrust 审核会看的课程证据，不是排课表。它证明学校知道这门课教什么、怎么教、怎么评估、谁批准。</p>
+          <h3 style="margin-top:8px;">必须沉淀的内容</h3>
+          <ol><li>Course write-up / 课程说明</li><li>Admission requirements / 入学要求</li><li>Learning outcomes / 学习成果</li><li>Syllabus / 课程大纲</li><li>Lesson plan / 课时计划</li><li>Assessment plan / 评估计划</li><li>Teacher deployment / 老师配置</li><li>Academic Board / Examination Board approval</li><li>Course review / 课程复盘</li></ol>
+        </div>
+        <div class="shot"><img src="assets/sop-edutrust-contract-20260622/annotated/03-course-file-expanded.png" /><div class="caption">Course File 折叠区：先写草稿，管理层/学术负责人确认后把状态设为 APPROVED。</div></div>
+      </div>
+      <div class="footer"><span>SGT Manage EduTrust SOP</span><span>Step 3</span></div>
+    </section>
+
+    <section class="page">
+      <h2>Step 4：填写 Contract Schedule Setup / 官方合同 Schedule 设置</h2>
+      <div class="step">
+        <div class="panel">
+          <h3>这个区域最容易误解</h3>
+          <p>这里不是自己写合同条款。官方 SSG v4 固定条款已经锁定；这里填的是官方合同 Schedule A-D 里要求学校提供的信息。</p>
+          <h3 style="margin-top:8px;">必须由学校确认</h3>
+          <ol><li>课程获准时长、开课/结课规则。</li><li>入学要求、课程安排、假期、评估、结果发布时间。</li><li>是否有 industrial attachment，通常补习/预备课程填 No / N.A.。</li><li>杂费，如没有就填 N.A.。</li><li>Schedule D 退款比例和 working days。</li><li>Late payment 宽限期。</li><li>FPS 是否需要、provider、policy number。</li></ol>
+        </div>
+        <div class="shot"><img src="assets/sop-edutrust-contract-20260622/annotated/04-contract-schedule-expanded.png" /><div class="caption">Contract Schedule Setup：这些值会自动填入 SSG Standard PEI-Student Contract v4.0 的 Schedule A-D。</div></div>
+      </div>
+      <div class="footer"><span>SGT Manage EduTrust SOP</span><span>Step 4</span></div>
+    </section>
+
+    <section class="page">
+      <h2>哪些字段是“必要的”？谁来确认？</h2>
+      <table>
+        <thead><tr><th>资料</th><th>是否必要</th><th>谁确认</th><th>怎么填</th></tr></thead>
+        <tbody>
+          <tr><td>课程合规名、课程线、最低小时数</td><td>必要</td><td>管理层 + 合规负责人</td><td>用于申请、合同标题和课包小时校验。</td></tr>
+          <tr><td>Course File</td><td>必要</td><td>学术负责人 / Academic Board</td><td>内容完整后状态设为 APPROVED。</td></tr>
+          <tr><td>Schedule A 课程详情</td><td>必要</td><td>学术负责人 + 管理层</td><td>入学要求、课程安排、评估、结业证明不能乱填。</td></tr>
+          <tr><td>Schedule B 费用</td><td>必要</td><td>教务 + 财务</td><td>系统会从课包金额带入，但付款日期/分期安排要确认。</td></tr>
+          <tr><td>Schedule C 杂费</td><td>必要</td><td>财务 + 管理层</td><td>没有杂费也要填 N.A.，不要留空。</td></tr>
+          <tr><td>Schedule D 退款政策</td><td>必要且高风险</td><td>管理层</td><td>百分比和 working days 是学校承诺，不能由普通教务随意决定。</td></tr>
+          <tr><td>Late payment 宽限期</td><td>必要</td><td>财务 + 管理层</td><td>例如 7 days；具体按学校政策。</td></tr>
+          <tr><td>FPS 信息</td><td>按课程/学生情况</td><td>财务 + 管理层</td><td>如果勾选 FPS required，provider 和 policy number 必须填。</td></tr>
+        </tbody>
+      </table>
+      <div class="panel red"><strong>停止点：</strong> 退款政策、FPS、official permission 没确认时，不要把课程标成可以对外签 SSG 合同。</div>
+      <div class="footer"><span>SGT Manage EduTrust SOP</span><span>必要字段</span></div>
+    </section>
+
+    <section class="page">
+      <h2>Step 5：学生证据与 C7 Outcomes</h2>
+      <div class="step">
+        <div class="panel">
+          <h3>什么时候用</h3>
+          <p>当真实学生开始上 EduTrust 课程后，需要把每个学生的学习过程证据沉淀下来，用于 EduTrust Section A/B 和 C7 Outcomes。</p>
+          <h3 style="margin-top:8px;">每个学生建议记录</h3>
+          <ol><li>Diagnostic assessment / 入学诊断</li><li>Individual learning plan / 个性化学习计划</li><li>Progress review / 进度复盘</li><li>Final assessment / 结课评估</li><li>Completion record / 完成记录</li><li>Attendance evidence note / 出勤证据</li><li>Contract/FPS evidence note / 合同与付款证据</li><li>Outcome summary / 成果总结</li></ol>
+        </div>
+        <div class="shot"><img src="assets/sop-edutrust-contract-20260622/annotated/05-student-evidence.png" /><div class="caption">学生证据页：不是签合同前必须马上填完，但三年达标计划必须从第一批学生开始记录。</div></div>
+      </div>
+      <div class="footer"><span>SGT Manage EduTrust SOP</span><span>Step 5</span></div>
+    </section>
+
+    <section class="page">
+      <h2>未来新学生怎么签 SSG 官方合同？</h2>
+      <div class="step">
+        <div class="panel">
+          <h3>新学生签约流程</h3>
+          <ol><li>先在 `/admin/edutrust` 完成课程映射、Course File、Contract Schedule Setup。</li><li>确认课程状态为 <b>PERMITTED</b>，Course File 为 <b>APPROVED</b>。</li><li>给新学生建立符合最低小时数的 EduTrust 课包，例如至少 50 小时。</li><li>打开该课包的 <b>Package Contract Workspace / 课包合同工作台</b>。</li><li>如果课程条件全部满足，会出现 SSG v4 PEI contract 创建入口。</li><li>创建 SSG 合同草稿后，系统检查 Schedule A-D 是否完整。</li><li>检查通过后，教务发送签字链接给家长。</li><li>家长签署后，系统保存合同 PDF，再继续 invoice/payment/FPS evidence。</li></ol>
+        </div>
+        <div class="shot"><img src="assets/sop-edutrust-contract-20260622/annotated/06-package-contract-workspace.png" /><div class="caption">课包合同工作台：普通合同入口仍保留；SSG 入口只在课程、文件、小时数、Schedule 设置都达标时出现。</div></div>
+      </div>
+      <div class="footer"><span>SGT Manage EduTrust SOP</span><span>未来新学生签约</span></div>
+    </section>
+
+    <section class="page">
+      <h2>为什么有时候看不到 SSG 合同按钮？</h2>
+      <div class="grid2">
+        <div class="panel red"><h3>常见原因</h3><ol><li>该课程没有勾选 EduTrust 主证据。</li><li>Permission status 不是 PERMITTED。</li><li>Course File status 不是 APPROVED。</li><li>课包小时数低于最低小时数。</li><li>Contract Schedule Setup 没填完整。</li><li>FPS 勾选了 required，但 provider/policy number 没填。</li></ol></div>
+        <div class="panel green"><h3>正确处理</h3><ol><li>回到 `/admin/edutrust` 检查课程映射。</li><li>补 Course File，并由负责人确认。</li><li>补 Schedule A-D 的必填资料。</li><li>由管理层确认退款和 late payment。</li><li>重新保存 mapping。</li><li>回课包合同工作台再试。</li></ol></div>
+      </div>
+      <div class="panel amber">系统阻止发送签字链接不是 bug，而是保护：避免把有空白 Schedule 或未确认政策的官方合同发给家长。</div>
+      <div class="footer"><span>SGT Manage EduTrust SOP</span><span>按钮看不到/不能签</span></div>
+    </section>
+
+    <section class="page">
+      <h2>教务每天怎么用？管理层每周看什么？</h2>
+      <div class="grid2">
+        <div class="panel">
+          <h3>教务日常动作</h3>
+          <ol><li>不要改老课程名，按映射层维护合规名。</li><li>新课程先填 Course File 草稿。</li><li>新学生课包创建前确认小时数达标。</li><li>合同发出前确认没有系统报错。</li><li>学生开始学习后补学生证据。</li></ol>
+        </div>
+        <div class="panel">
+          <h3>管理层/合规负责人动作</h3>
+          <ol><li>确认哪些课程纳入 EduTrust 主证据。</li><li>审批 Course File。</li><li>确认 Schedule D 退款政策。</li><li>确认 late payment 和杂费。</li><li>确认 FPS 适用规则。</li><li>每月检查 C7 outcome 是否有记录。</li></ol>
+        </div>
+      </div>
+      <div class="panel red"><strong>权限建议：</strong> 教务可以录入草稿；涉及 PERMITTED、APPROVED、退款、FPS 的最终状态，必须由负责人确认后再保存。</div>
+      <div class="footer"><span>SGT Manage EduTrust SOP</span><span>职责分工</span></div>
+    </section>
+
+    <section class="page">
+      <h2>常见错误</h2>
+      <div class="grid2">
+        <div class="panel red"><h3>不要这样做</h3><ol><li>为了快，直接把普通补习合同当 SSG 合同发给家长。</li><li>把运营课程名改成很长的官方名，导致教务找不到课程。</li><li>退款比例随手填一个大概值。</li><li>Course File 还没批准就把课程设为可签。</li><li>50 小时以下课包也尝试走 EduTrust 合同。</li><li>FPS 不确定时留空但继续签。</li></ol></div>
+        <div class="panel green"><h3>应该这样做</h3><ol><li>运营名不变，合规名放在 EduTrust 映射层。</li><li>先做课程资料，再做学生合同。</li><li>所有政策字段写 N.A. 或确认值，不留空。</li><li>先由负责人确认，再设 APPROVED / PERMITTED。</li><li>让系统拦截不完整合同。</li><li>签完后保存合同、invoice、payment/FPS evidence。</li></ol></div>
+      </div>
+      <div class="footer"><span>SGT Manage EduTrust SOP</span><span>常见错误</span></div>
+    </section>
+
+    <section class="page">
+      <h2>第一批整改建议：按这个顺序做</h2>
+      <table>
+        <thead><tr><th>阶段</th><th>负责人</th><th>要做什么</th><th>完成标准</th></tr></thead>
+        <tbody>
+          <tr><td>第 1 步</td><td>管理层</td><td>决定哪些现有课程纳入 EduTrust 主证据。</td><td>课程线清单确认。</td></tr>
+          <tr><td>第 2 步</td><td>教务</td><td>在 `/admin/edutrust` 保存课程映射。</td><td>每门目标课程有合规名、50 小时、一对一。</td></tr>
+          <tr><td>第 3 步</td><td>学术负责人</td><td>填写 Course File。</td><td>核心字段完整，状态可设 APPROVED。</td></tr>
+          <tr><td>第 4 步</td><td>管理层 + 财务</td><td>确认退款、杂费、late payment、FPS。</td><td>Schedule Setup 不留关键空白。</td></tr>
+          <tr><td>第 5 步</td><td>教务</td><td>试建一个符合条件的新课包并检查合同工作台。</td><td>能看到 SSG 创建入口，或明确知道缺什么。</td></tr>
+          <tr><td>第 6 步</td><td>合规负责人</td><td>抽查生成合同预览。</td><td>官方条款不改，Schedule 值正确。</td></tr>
+        </tbody>
+      </table>
+      <div class="panel amber">建议不要一次性把 17 门课全部改完。先选 2-3 门最适合申请证据的课程做完整样板，再复制方法到其他课程。</div>
+      <div class="footer"><span>SGT Manage EduTrust SOP</span><span>第一批整改顺序</span></div>
+    </section>
+
+    <section class="page">
+      <h2>最终检查清单 / Final Checklist</h2>
+      <div class="grid2">
+        <div class="panel">
+          <h3>课程可以准备签 SSG 合同前</h3>
+          <ol><li>EduTrust 主证据 = Yes。</li><li>Course line 正确。</li><li>Compliance name 正确。</li><li>Minimum total hours >= 50。</li><li>Delivery mode = One-to-one。</li><li>Permission status = PERMITTED。</li><li>Course File status = APPROVED。</li><li>Contract Schedule Setup 必填项完整。</li></ol>
+        </div>
+        <div class="panel">
+          <h3>新学生发签字链接前</h3>
+          <ol><li>学生资料完整。</li><li>课包属于已准备好的 EduTrust 课程。</li><li>课包小时数达标。</li><li>费用和付款日期正确。</li><li>Schedule D 退款政策正确。</li><li>FPS 信息按政策填写。</li><li>预览合同无空白关键字段。</li><li>再发送签字链接。</li></ol>
+        </div>
+      </div>
+      <div class="panel green"><strong>完成结果：</strong> 未来新学生签约时，系统会用官方 SSG Standard PEI-Student Contract v4.0，自动填入学校确认的 Schedule A-D 内容，并保存电子合同证据。</div>
+      <div class="footer"><span>SGT Manage EduTrust SOP</span><span>Final Checklist</span></div>
+    </section>
+  </body>
+</html>

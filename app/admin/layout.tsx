@@ -244,6 +244,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: "/admin/miniapp-notifications", label: t(lang, "Miniapp Notifications", "小程序通知"), tone: "accent" as const },
         { href: "/admin/tickets/handover", label: t(lang, "Daily Handover", "每日交接"), tone: "warning" as const },
         { href: "/admin/tickets/sop", label: t(lang, "SOP One Pager", "SOP一页纸"), tone: "neutral" as const },
+        { href: "/training", label: t(lang, "Training Center", "员工培训中心"), tone: "success" as const },
       ],
     },
     {
