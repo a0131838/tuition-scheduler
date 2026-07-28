@@ -25,3 +25,11 @@ Make Find Schools cover Singapore's full education system instead of presenting 
 - Preschool, MOE primary and secondary, specialised, JC/MI, SPED, private, PEI, madrasah, ITE/poly/arts and university routes are visible.
 - Every sector has an official or internal destination.
 - Web build, full tests, miniapp audit and mobile visual review pass.
+
+## Completion
+
+- Status: complete and live on `2026-07-28`.
+- Runtime commit: `526ab99d6e821adf08d155fff8e027f0f9833ca8`.
+- Production: PM2 PID `1736885`; home, directory and catalog returned HTTP 200; catalog exposed 13 sectors and 43 existing school records.
+- WeChat: development version `1.0.20` uploaded successfully at 576,398 bytes.
+- Regression: 13 focused tests, all 273 repository tests, 225-page build, 54-page miniapp audit, diff check and mobile visual review passed.

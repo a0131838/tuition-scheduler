@@ -17,7 +17,7 @@
 - Current release line: `2026-07-27-r285` is live at commit `463b680d1c0c397b96edf48a849b0c92087c48e1`; WeChat development version `1.0.17` was uploaded successfully.
 - Current release line: `2026-07-27-r286` is live at runtime feature commit `085ddd03ed79ac830ad9586ae2152161926ae747`; WeChat development version `1.0.18` was uploaded successfully. Existing business roles and workflows remain isolated.
 - Current release line: `2026-07-27-r287` is live at runtime commit `0c2c431f8cb65f3d5741f18eae14f83a0800b3da`; WeChat development version `1.0.19` was uploaded successfully. It removes employee names and internal process explanations without changing data or workflows.
-- Next release line: `2026-07-28-r288` expands Find Schools to 13 official-source education sectors while preserving the existing international-school detail directory and all business workflows.
+- Current release line: `2026-07-28-r288` is live at runtime commit `526ab99d6e821adf08d155fff8e027f0f9833ca8`; WeChat development version `1.0.20` was uploaded successfully. Find Schools now covers 13 official-source education sectors while preserving the existing international-school detail directory and all business workflows.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
@@ -27,7 +27,7 @@
 
 - Singapore School Guide rollout: `2026-07-27-r285` is additive and has no migration, but official school fees and admissions details remain time-sensitive. Fifteen priority schools show an applicable year, verification date and next review date; partially verified directory entries must continue to display their limitation. After server deployment, upload miniapp development version `1.0.17`, designate it as the experience version, and check the public entry, one school detail, four-school comparison, copied official link and test inquiry without exposing real child data.
 
-## 2026-07-28-r288 Ready
+## 2026-07-28-r288 Live
 
 - Scope: make the School Guide represent the full Singapore education landscape rather than only international schools.
 - Coverage: 13 sectors from preschool through autonomous universities, using MOE, ECDA, SSG/TPGateway, MUIS, IB and school-official destinations.
@@ -35,6 +35,11 @@
 - Miniapp: official third-party pages use copy-link behavior; the international-school card scrolls to the existing detailed directory.
 - Isolation: public School Guide API and presentation only; no database migration or changes to existing parent/staff/teacher operations.
 - Verification: 13 focused tests, all 273 repository tests, 225-page build, 54-page miniapp audit and 390px mobile review passed.
+- Production verification:
+  - Runtime commit `526ab99d6e821adf08d155fff8e027f0f9833ca8` ran as PM2 PID `1736885`.
+  - `/school-guide`, `/school-guide/schools` and `/api/public/school-guide/catalog` returned HTTP 200.
+  - The catalog returned data version `2026-07-28`, 13 sectors and 43 existing detailed school records.
+  - WeChat development version `1.0.20` uploaded at 576,398 bytes; experience-version designation remains a manual WeChat security action.
 
 ## 2026-07-27-r287 Live
 
