@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-28-r289`
 - Date/Time (Asia/Singapore): `2026-07-28`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: establish the controlled SGT staff training library and add a role-aware Training Center with protected SOP access, quizzes, practical evidence and manager sign-off.
 - Key files:
   - `app/training/*`
@@ -30,7 +30,7 @@ This file is the single source of truth for what changed in production.
   - `docs/SOP-*-20260728.html`
   - `docs/tasks/TASK-20260728-staff-training-center.md`
 - Risk impact (if any): Medium and isolated to training. One additive training-progress table and internal authenticated pages are added. Scheduling, attendance, deductions, packages, contracts, invoices, receipts, payroll, expenses, settlement and parent data are unchanged.
-- Verification: focused training/migration tests and TypeScript pass. Full backend tests, production build, release preflight and production authenticated checks remain release gates.
+- Verification: focused training/migration tests, all 114 backend tests, TypeScript and the 227-page production build passed. Runtime commit `49f9ff847aa1c7180f3f85818ae7d389a39d722a` deployed with PM2 PID `1863191`; `/admin/login` returned HTTP 200. Authenticated Admin and Teacher training pages returned 200, both roles could open an allowed protected PDF, a Teacher received 403 for a Finance-only PDF, an anonymous request received 401, and the checks created no training-completion rows.
 - Rollback point: `af02b28` (`2026-07-28-r288` documentation head; runtime school-guide commit `526ab99`).
 
 ---

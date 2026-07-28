@@ -32,3 +32,11 @@ SGT 已有大量岗位 SOP，但新旧版本、合同样板和临时资料混在
 ## Risk
 
 中等。新增一张独立培训进度表和新的内部页面；业务核心表和现有业务状态机不变。主要风险是员工首次使用时对实操证据写法不熟悉，由主管验收台和 SOP 引导控制。
+
+## Production verification
+
+- 运行提交：`49f9ff847aa1c7180f3f85818ae7d389a39d722a`。
+- PM2 PID：`1863191`；`/admin/login` 返回 HTTP 200。
+- Admin 与 Teacher 的 `/training` 均返回 200，Admin 的 `/training/manage` 返回 200。
+- 两类账号均能打开岗位允许的受保护 PDF；Teacher 访问 Finance-only PDF 返回 403，未登录访问返回 401。
+- 验收前后培训进度均为 0 行，没有自动把任何员工标记为完成。

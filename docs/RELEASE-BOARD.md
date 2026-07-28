@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-07-27`
+- Last checked: `2026-07-28`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -18,12 +18,13 @@
 - Current release line: `2026-07-27-r286` is live at runtime feature commit `085ddd03ed79ac830ad9586ae2152161926ae747`; WeChat development version `1.0.18` was uploaded successfully. Existing business roles and workflows remain isolated.
 - Current release line: `2026-07-27-r287` is live at runtime commit `0c2c431f8cb65f3d5741f18eae14f83a0800b3da`; WeChat development version `1.0.19` was uploaded successfully. It removes employee names and internal process explanations without changing data or workflows.
 - Current release line: `2026-07-28-r288` is live at runtime commit `526ab99d6e821adf08d155fff8e027f0f9833ca8`; WeChat development version `1.0.20` was uploaded successfully. Find Schools now covers 13 official-source education sectors while preserving the existing international-school detail directory and all business workflows.
+- Current release line: `2026-07-28-r289` is live at runtime commit `49f9ff847aa1c7180f3f85818ae7d389a39d722a`. It adds the authenticated role-aware Training Center, controlled SOP library, quizzes, practical evidence and manager sign-off without changing operational business workflows.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
-## 2026-07-28-r289 Ready
+## 2026-07-28-r289 Live
 
 - Scope: controlled SOP library plus authenticated role-aware employee Training Center.
 - Business impact:
@@ -37,10 +38,11 @@
   - `lib/training-center.ts`
   - `prisma/schema.prisma`
   - `docs/培训中心/*`
-- Verification before deploy:
-  - focused tests, full backend tests, TypeScript and production build.
-- Post-deploy verification:
-  - migration current, `/admin/login` 200, authenticated Admin/Teacher training pages 200, role-filtered protected PDF 200, unauthorized/other-role PDF denied.
+- Verification:
+  - focused training/migration tests, all 114 backend tests, TypeScript and the 227-page production build passed.
+  - Runtime commit `49f9ff847aa1c7180f3f85818ae7d389a39d722a` ran as PM2 PID `1863191`; `/admin/login` returned HTTP 200.
+  - Authenticated Admin and Teacher training pages returned 200, both roles could open an allowed protected PDF, a Teacher received 403 for a Finance-only PDF, and an anonymous PDF request received 401.
+  - Production verification left the training-progress table unchanged at zero rows; no employee was automatically marked complete.
 
 ## Open Risks
 
