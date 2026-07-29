@@ -24,10 +24,49 @@
 - Current release line: `2026-07-29-r297` is live at runtime feature commit `e55fed18c7e481c320d94945f3e9ae0e3618b06f`. It gives ADMIN all-module training oversight and provides 33 bilingual competency modules, 345 controlled PDF pages, and 11 TEACHER-relevant modules.
 - Current release line: `2026-07-29-r298` is live at runtime feature commit `857bb8584870fd4afd4f82a944fdd4a430adee2c`. It completes the Academic/CS curriculum with 20 relevant modules, 12 work chains, 35 controlled bilingual modules, and 365 PDF pages while preserving operational permissions.
 - Current release line: `2026-07-29-r299` is live at runtime feature commit `152024fb2b7626b09274e68b5d0d40e291a7dee6`. Partner receipts use the invoice net after issued Credit Notes, while existing financial records and approval flows remain unchanged.
+- Current release line prepared: `2026-07-29-r300` safely gates unlinked teacher accounts, exposes manager remediation, and improves training delivery and mobile/login polish without changing operational business data.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-07-29-r300 Ready
+
+- Scope: teacher-profile resilience, manager remediation visibility, training-PDF response improvements, and small mobile/login/browser polish fixes.
+- Business impact:
+  - A TEACHER account without a confirmed profile now sees a bilingual setup-required page instead of HTTP 500.
+  - Managers see every unlinked TEACHER account in one warning and can enter edit mode to choose the exact profile.
+  - New and edited TEACHER accounts cannot be saved without a linked profile.
+  - Training PDFs retain the same authenticated role permissions and add Content-Length, ETag, one-hour private caching, and 304 revalidation.
+  - Mobile language buttons no longer split inside “Apply”; login uses a native form; `/favicon.ico` is served.
+  - No existing user is automatically linked, disabled, deleted, or otherwise changed.
+- Files:
+  - `lib/auth.ts`
+  - `app/teacher/profile-required/page.tsx`
+  - `app/admin/manager/users/page.tsx`
+  - `app/api/admin/manager/users/route.ts`
+  - `app/api/admin/manager/users/[id]/route.ts`
+  - `app/api/training/sops/[code]/route.ts`
+  - `app/admin/login/_components/AdminLoginClient.tsx`
+  - `app/admin/_components/LanguageSelectorClient.tsx`
+  - `app/teacher/TeacherLanguageSelectorClient.tsx`
+  - `app/responsive-layout.css`
+  - `app/favicon.ico/route.ts`
+- Verification before deploy:
+  - 20/20 focused training and safety tests passed.
+  - TypeScript passed with a Prisma Client generated from the current schema.
+  - 129/129 backend tests passed.
+  - 113/113 mini-program and training-focused tests passed.
+  - 298/298 integrated repository tests passed after rebasing onto the live `r299` finance release.
+  - Mini-program release audit passed at 54 pages with zero errors.
+  - Complete 231-page Next.js production build passed and includes `/teacher/profile-required` and `/favicon.ico`.
+- Post-deploy verification:
+  - Confirm local/GitHub/server commit equality, live PM2 PID, and `/admin/login` HTTP 200.
+  - Confirm one unlinked TEACHER account reaches `/teacher/profile-required` rather than HTTP 500.
+  - Confirm a linked TEACHER account still loads all 19 teacher/training routes.
+  - Confirm manager users page lists the four existing unlinked TEACHER accounts.
+  - Confirm training PDF 200 response includes Content-Length/ETag and revalidation returns 304 without changing role permissions.
+  - Confirm mobile language controls, native login form, and `/favicon.ico`.
 
 ## 2026-07-29-r299 Live
 
@@ -289,6 +328,7 @@
 
 ## Open Risks
 
+- Four existing TEACHER accounts have no confirmed teacher-profile link. They are now safely gated, but a manager must identify the exact profile or decide whether each legacy account should remain inactive; the system intentionally does not guess by matching names.
 - Multi-role training assignments intentionally do not grant business permissions. Managers must still change the primary role or workspace access separately when the employee genuinely needs operational access.
 - Training-center rollout: no employee is automatically marked complete. Management must review the first practical evidence and establish who is responsible for each role's sign-off.
 - Singapore School Guide rollout: `2026-07-27-r285` is additive and has no migration, but official school fees and admissions details remain time-sensitive. Fifteen priority schools show an applicable year, verification date and next review date; partially verified directory entries must continue to display their limitation. After server deployment, upload miniapp development version `1.0.17`, designate it as the experience version, and check the public entry, one school detail, four-school comparison, copied official link and test inquiry without exposing real child data.

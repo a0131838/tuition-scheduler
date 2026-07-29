@@ -3,6 +3,13 @@ import FlashAlert from "./_components/FlashAlert";
 import ScrollManager from "./_components/ScrollManager";
 import "@/lib/date-format-global";
 import "./responsive-layout.css";
+
+export const metadata = {
+  icons: {
+    icon: "/favicon.ico",
+  },
+};
+
 export default function RootLayout({
   children,
 }: {

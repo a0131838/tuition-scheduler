@@ -31,6 +31,9 @@ export async function POST(req: Request) {
   if (password.length < 8) return bad("Password must be at least 8 characters", 409);
 
   const teacherId = role === "TEACHER" || role === "ADMIN" ? teacherIdRaw || null : null;
+  if (role === "TEACHER" && !teacherId) {
+    return bad("Teacher role requires a linked teacher profile", 409);
+  }
   if (teacherId) {
     const teacher = await prisma.teacher.findUnique({ where: { id: teacherId }, select: { id: true } });
     if (!teacher) return bad("Teacher not found", 404);

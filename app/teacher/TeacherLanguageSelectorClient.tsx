@@ -32,7 +32,7 @@ export default function TeacherLanguageSelectorClient({
   }
 
   return (
-    <div style={{ display: "inline-flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+    <div className="language-selector" style={{ display: "inline-flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
       <select
         name="lang"
         value={lang}
@@ -54,6 +54,10 @@ export default function TeacherLanguageSelectorClient({
           background: "#eff6ff",
           color: "#1d4ed8",
           fontWeight: 700,
+          whiteSpace: "nowrap",
+          overflowWrap: "normal",
+          wordBreak: "keep-all",
+          flex: "0 0 auto",
         }}
       >
         {saving ? "..." : "Apply / 应用"}

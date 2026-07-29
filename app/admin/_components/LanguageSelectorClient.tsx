@@ -72,7 +72,12 @@ export default function LanguageSelectorClient({
         <option value="ZH">中文</option>
         <option value="EN">English</option>
       </select>
-      <button type="button" onClick={apply} disabled={saving}>
+      <button
+        type="button"
+        onClick={apply}
+        disabled={saving}
+        style={{ minWidth: 58, whiteSpace: "nowrap", overflowWrap: "normal", flex: "0 0 auto" }}
+      >
         {saving ? "..." : "Apply"}
       </button>
     </div>

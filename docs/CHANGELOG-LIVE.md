@@ -15,6 +15,39 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-29-r300
+
+- Release ID: `2026-07-29-r300`
+- Date/Time (Asia/Singapore): `2026-07-29`
+- Deployment status: `READY`
+- Scope: prevent unlinked teacher accounts from crashing the teacher portal, surface exact profile-link exceptions to managers, strengthen training-PDF delivery, and repair mobile language, login-form, and favicon polish.
+- Key files:
+  - `lib/auth.ts`
+  - `app/teacher/profile-required/page.tsx`
+  - `app/admin/manager/users/page.tsx`
+  - `app/api/admin/manager/users/route.ts`
+  - `app/api/admin/manager/users/[id]/route.ts`
+  - `app/api/training/sops/[code]/route.ts`
+  - `app/admin/login/_components/AdminLoginClient.tsx`
+  - `app/responsive-layout.css`
+  - `app/favicon.ico/route.ts`
+  - `tests/training-center.test.ts`
+  - `docs/tasks/TASK-20260729-teacher-portal-resilience.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Moderate and limited to teacher-profile access gating plus presentation/delivery headers. Four existing TEACHER accounts remain intentionally unlinked until a manager confirms the exact teacher profile. No teacher mapping is guessed and no billing, receipt, package, attendance, payroll calculation, scheduling, Full Care, or mini-program business workflow changes.
+- Verification:
+  - `npx tsc --noEmit`
+  - `npm run test:backend` (129 passed)
+  - focused mini-program and training tests (113 passed)
+  - integrated final-base repository suite (298 passed)
+  - `npm run miniapp:audit-release` (54 pages, zero errors)
+  - `npm run build` (231 static pages generated)
+  - post-deploy authenticated orphan-teacher redirect, manager warning, PDF 200/304 headers, mobile layout, login-form and favicon checks
+- Rollback point: `595c80a1fb0d9ce58e3363223122359326a992af` (`2026-07-29-r299` production-aligned head).
+
+---
+
 ## 2026-07-29-r299
 
 - Release ID: `2026-07-29-r299`

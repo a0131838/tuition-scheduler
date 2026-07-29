@@ -246,3 +246,57 @@ test("parent portal invites point to the registered mini program bind page", () 
   assert.match(inviteRoute, /`\/pages\/bind\/bind\?token=/);
   assert.doesNotMatch(inviteRoute, /pages\/bind\/index/);
 });
+
+test("teacher portal blocks unlinked accounts without guessing a profile", () => {
+  const authSource = fs.readFileSync(path.join(process.cwd(), "lib", "auth.ts"), "utf8");
+  const profilePage = fs.readFileSync(
+    path.join(process.cwd(), "app", "teacher", "profile-required", "page.tsx"),
+    "utf8"
+  );
+  const createUserRoute = fs.readFileSync(
+    path.join(process.cwd(), "app", "api", "admin", "manager", "users", "route.ts"),
+    "utf8"
+  );
+  const updateUserRoute = fs.readFileSync(
+    path.join(process.cwd(), "app", "api", "admin", "manager", "users", "[id]", "route.ts"),
+    "utf8"
+  );
+
+  assert.match(authSource, /redirect\("\/teacher\/profile-required"\)/);
+  assert.doesNotMatch(authSource, /teacherByName/);
+  assert.doesNotMatch(authSource, /teacher:\s*null/);
+  assert.match(profilePage, /Teacher profile not linked/);
+  assert.match(profilePage, /尚未绑定教师档案/);
+  assert.match(createUserRoute, /Teacher role requires a linked teacher profile/);
+  assert.match(updateUserRoute, /Teacher role requires a linked teacher profile/);
+});
+
+test("training PDF delivery supports length and private revalidation", () => {
+  const route = fs.readFileSync(
+    path.join(process.cwd(), "app", "api", "training", "sops", "[code]", "route.ts"),
+    "utf8"
+  );
+
+  assert.match(route, /"content-length": String\(file\.byteLength\)/);
+  assert.match(route, /private, max-age=3600, must-revalidate/);
+  assert.match(route, /if-none-match/);
+  assert.match(route, /status: 304/);
+  assert.match(route, /canAccessTrainingModule/);
+});
+
+test("login and mobile language controls keep native and narrow-screen semantics", () => {
+  const login = fs.readFileSync(
+    path.join(process.cwd(), "app", "admin", "login", "_components", "AdminLoginClient.tsx"),
+    "utf8"
+  );
+  const responsive = fs.readFileSync(path.join(process.cwd(), "app", "responsive-layout.css"), "utf8");
+  const favicon = fs.readFileSync(path.join(process.cwd(), "app", "favicon.ico", "route.ts"), "utf8");
+
+  assert.match(login, /<form/);
+  assert.match(login, /type="submit"/);
+  assert.match(login, /autoComplete="username"/);
+  assert.match(login, /autoComplete="current-password"/);
+  assert.match(responsive, /\.language-selector button/);
+  assert.match(responsive, /white-space: nowrap !important/);
+  assert.match(favicon, /image\/svg\+xml/);
+});

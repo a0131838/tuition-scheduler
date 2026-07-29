@@ -31,14 +31,22 @@ export default function AdminLoginClient({ next }: { next: string }) {
   }
 
   return (
-    <div style={{ display: "grid", gap: 12 }}>
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        void submit("admin");
+      }}
+      style={{ display: "grid", gap: 12 }}
+    >
       {err ? <NoticeBanner type="error" title="Error" message={err} /> : null}
       <label style={{ display: "grid", gap: 6, fontSize: 12 }}>
         <span>Email</span>
         <input
+          name="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           type="email"
+          autoComplete="username"
           required
           style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #d1d5db", fontSize: 13 }}
           disabled={Boolean(busy)}
@@ -47,17 +55,18 @@ export default function AdminLoginClient({ next }: { next: string }) {
       <label style={{ display: "grid", gap: 6, fontSize: 12 }}>
         <span>Password</span>
         <input
+          name="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           type="password"
+          autoComplete="current-password"
           required
           style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #d1d5db", fontSize: 13 }}
           disabled={Boolean(busy)}
         />
       </label>
       <button
-        type="button"
-        onClick={() => submit("admin")}
+        type="submit"
         disabled={Boolean(busy)}
         style={{
           marginTop: 4,
@@ -73,7 +82,7 @@ export default function AdminLoginClient({ next }: { next: string }) {
       </button>
       <button
         type="button"
-        onClick={() => submit("teacher")}
+        onClick={() => void submit("teacher")}
         disabled={Boolean(busy)}
         style={{
           padding: "8px 12px",
@@ -86,6 +95,6 @@ export default function AdminLoginClient({ next }: { next: string }) {
       >
         {busy === "teacher" ? "进入老师端 / Teacher..." : "进入老师端 / Teacher"}
       </button>
-    </div>
+    </form>
   );
 }

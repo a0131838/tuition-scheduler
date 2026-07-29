@@ -266,17 +266,10 @@ export async function requireTeacherProfile() {
     if (teacher) return { user, teacher };
   }
 
-  // Transitional fallback: existing accounts that were created before User.teacherId.
-  const teacherByName = await prisma.teacher.findFirst({ where: { name: user.name } });
-  if (teacherByName) {
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { teacherId: teacherByName.id },
-    });
-    return { user: { ...user, teacherId: teacherByName.id }, teacher: teacherByName };
-  }
-
-  return { user, teacher: null };
+  // Never guess a teacher-profile binding from a display name. A manager must
+  // confirm the exact profile before teaching, schedule, payroll, or report data
+  // can be shown for this account.
+  redirect("/teacher/profile-required");
 }
 
 export async function requireTeacherLead() {

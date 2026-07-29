@@ -75,6 +75,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (id === manager.id && role !== "ADMIN") return bad("You cannot change your own role from ADMIN", 403);
 
   const teacherId = role === "TEACHER" || role === "ADMIN" ? teacherIdRaw || null : null;
+  if (role === "TEACHER" && !teacherId) {
+    return bad("Teacher role requires a linked teacher profile", 409);
+  }
   if (teacherId) {
     const teacher = await prisma.teacher.findUnique({ where: { id: teacherId }, select: { id: true } });
     if (!teacher) return bad("Teacher not found", 404);

@@ -113,6 +113,7 @@ export default async function ManagerUsersPage({
     },
     { ADMIN: 0, FINANCE: 0, SALES: 0, CS: 0, TEACHER: 0, STUDENT: 0 } as Record<string, number>
   );
+  const unlinkedTeacherUsers = users.filter((user) => user.role === "TEACHER" && !user.teacherId);
 
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
@@ -150,6 +151,19 @@ export default async function ManagerUsersPage({
 
       {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
       {msg ? <NoticeBanner type="success" title={t(lang, "Success", "成功")} message={msg} /> : null}
+      {unlinkedTeacherUsers.length ? (
+        <NoticeBanner
+          type="error"
+          title={t(lang, "Teacher profiles require attention", "教师档案需要处理")}
+          message={t(
+            lang,
+            `${unlinkedTeacherUsers.length} teacher account(s) cannot enter the teacher workspace until the exact profile is linked: ${unlinkedTeacherUsers.map((user) => `${user.name} (${user.email})`).join(", ")}`,
+            `有 ${unlinkedTeacherUsers.length} 个教师账号尚未绑定准确教师档案，绑定前无法进入教师工作台：${unlinkedTeacherUsers.map((user) => `${user.name}（${user.email}）`).join("、")}`
+          )}
+        >
+          {!isEditMode ? <a href="/admin/manager/users?mode=edit">{t(lang, "Open Edit Mode", "进入编辑模式")}</a> : null}
+        </NoticeBanner>
+      ) : null}
 
       <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, background: "#fff", padding: 12 }}>
         <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
@@ -392,7 +406,17 @@ export default async function ManagerUsersPage({
                       [u.role, ...u.trainingRoleAssignments.map((item) => item.role).filter((role) => role !== u.role)].join(" / ")
                     )}
                   </td>
-                  <td>{u.teacher ? u.teacher.name : t(lang, "Not linked", "未绑定")}</td>
+                  <td>
+                    {u.teacher ? (
+                      u.teacher.name
+                    ) : u.role === "TEACHER" ? (
+                      <span style={{ color: "#b42318", fontWeight: 800 }}>
+                        {t(lang, "Required — teacher portal locked", "必须绑定—教师端已锁定")}
+                      </span>
+                    ) : (
+                      t(lang, "Not linked", "未绑定")
+                    )}
+                  </td>
                   <td>
                     <div>{t(lang, "Active", "活跃")}: {sess?.count ?? 0}</div>
                     <div style={{ fontSize: 12, color: "#64748b" }}>
