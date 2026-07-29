@@ -18,8 +18,8 @@ This file is the single source of truth for what changed in production.
 ## 2026-07-29-r297
 
 - Release ID: `2026-07-29-r297`
-- Date/Time (Asia/Singapore): `2026-07-29`
-- Deployment status: `READY`
+- Date/Time (Asia/Singapore): `2026-07-29 11:45`
+- Deployment status: `LIVE`
 - Scope: give ADMIN complete training-library oversight and expand the teacher curriculum with four detailed bilingual workflow modules covering daily start, scheduling, reports, and finance.
 - Key files:
   - `lib/training-center.ts`
@@ -32,7 +32,7 @@ This file is the single source of truth for what changed in production.
   - `docs/培训中心/`
   - `docs/tasks/TASK-20260729-admin-full-library-and-teacher-depth.md`
 - Risk impact (if any): Low to moderate and limited to training access and retraining. ADMIN can see all training PDFs but receives no new operational permission. Release `20260729C` intentionally requires current-version acknowledgement.
-- Verification: 15 real production teacher pages were captured with the test-teacher account and red bilingual callouts; temporary session residue was 0. Four new teacher PDFs rendered as 10 pages each and passed extracted-text, non-blank-page, and contact-sheet inspection. The catalogue rendered without clipping. Registry totals are 33 modules / 345 pages / 33 ADMIN-visible / 11 TEACHER-visible. All 124 backend tests passed.
+- Verification: 15 real production teacher pages were captured with the test-teacher account and red bilingual callouts; temporary session residue was 0. Four new teacher PDFs rendered as 10 pages each and passed extracted-text, non-blank-page, and contact-sheet inspection. The catalogue rendered without clipping. Registry totals are 33 modules / 345 pages / 33 ADMIN-visible / 11 TEACHER-visible. All 124 backend tests, TypeScript, and the complete 229-page production build passed. Runtime feature commit `e55fed18c7e481c320d94945f3e9ae0e3618b06f` deployed with PM2 PID `2184481`; `/admin/login` returned HTTP 200. Authenticated production checks confirmed ADMIN sees 33 modules and can download a TEACHER-only PDF; TEACHER sees 11 modules, downloads all four new teacher PDFs, and receives HTTP 403 for `FINANCE_MASTER`. Temporary production verification-session residue was 0.
 - Rollback point: `4ef88cd930d6bfbb8172a4d14f57478bd39c1272` (`2026-07-29-r296` production-aligned head).
 
 ---

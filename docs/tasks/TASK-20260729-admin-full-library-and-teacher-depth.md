@@ -33,6 +33,15 @@ Give ADMIN complete training-library oversight and replace broad teacher coverag
 - Registry count: 33 modules / 345 pages / 33 ADMIN-visible / 11 TEACHER-visible.
 - `npm run test:backend`: 124/124 passed.
 
+## Verification completed after deploy
+
+- Runtime feature commit `e55fed18c7e481c320d94945f3e9ae0e3618b06f` deployed with PM2 PID `2184481`; `/admin/login` returned HTTP 200.
+- Authenticated ADMIN library returned HTTP 200, showed all 33 modules and release `20260729C`, and allowed download of a TEACHER-only PDF.
+- Authenticated TEACHER library returned HTTP 200 and showed exactly 11 relevant modules.
+- All four new teacher PDFs returned HTTP 200 for the test-teacher account.
+- TEACHER access to `FINANCE_MASTER` returned HTTP 403.
+- Temporary production authentication-session residue: 0.
+
 ## Risk
 
 Low to moderate and limited to training access and required retraining. ADMIN sees more training documents but receives no new operational permission. Teacher content version changes to `20260729C`, so current progress intentionally requires acknowledgement of the new material.

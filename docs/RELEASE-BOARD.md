@@ -21,13 +21,13 @@
 - Current release line: `2026-07-28-r289` is live at runtime commit `49f9ff847aa1c7180f3f85818ae7d389a39d722a`. It adds the authenticated role-aware Training Center, controlled SOP library, quizzes, practical evidence and manager sign-off without changing operational business workflows.
 - Current release line: `2026-07-29-r295` is live at runtime feature commit `56da50e05568d5a47331a95c7c2b3e91996d3314`. It provides 28 bilingual competency modules, 296 controlled PDF pages, and eight role-based mini-program learning paths.
 - Current release line: `2026-07-29-r296` is live at runtime feature commit `2c6badf0b4fba74e2b52d0976c28863b40f83310`. It corrects the parent binding route and provides 29 bilingual competency modules, 305 controlled PDF pages, and nine truthful mini-program learning paths.
-- Current release line on this branch: `2026-07-29-r297` is ready. It gives ADMIN all-module training oversight and provides 33 bilingual competency modules, 345 controlled PDF pages, and 11 TEACHER-relevant modules.
+- Current release line: `2026-07-29-r297` is live at runtime feature commit `e55fed18c7e481c320d94945f3e9ae0e3618b06f`. It gives ADMIN all-module training oversight and provides 33 bilingual competency modules, 345 controlled PDF pages, and 11 TEACHER-relevant modules.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
-## 2026-07-29-r297 Ready
+## 2026-07-29-r297 Live
 
 - Scope: administrator full-library oversight and a detailed teacher curriculum.
 - Business impact:
@@ -41,6 +41,12 @@
   - 33/33 bilingual PDFs exist, 345 pages total.
   - ADMIN sees 33 modules; TEACHER sees 11 relevant modules.
   - 124 backend tests passed.
+- Post-deploy verification:
+  - Runtime feature commit `e55fed18c7e481c320d94945f3e9ae0e3618b06f`, PM2 PID `2184481`, and `/admin/login` HTTP 200.
+  - Authenticated ADMIN library shows all 33 modules, release `20260729C`, and full-library oversight; ADMIN downloads a TEACHER-only PDF with HTTP 200.
+  - Authenticated TEACHER library shows 11 modules; all four new teacher PDFs return HTTP 200.
+  - TEACHER access to `FINANCE_MASTER` returns HTTP 403.
+  - Temporary production verification-session residue: 0.
 
 ## 2026-07-29-r296 Live
 
