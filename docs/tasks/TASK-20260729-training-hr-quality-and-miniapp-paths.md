@@ -40,6 +40,16 @@ The training centre had a complete technical loop, but the HR audit found weak c
 - The new Finance mini-program PDF downloaded with HTTP 200 and attachment disposition.
 - Temporary authenticated verification-session cleanup: 0 remaining.
 
+## Production verification
+
+- Runtime feature commit: `56da50e05568d5a47331a95c7c2b3e91996d3314`.
+- PM2 process `tuition-scheduler` restarted online with PID `2145187`; `/admin/login` returned HTTP 200.
+- Authenticated `/training` returned HTTP 200 with 25 administrator-accessible modules, release `20260729`, recommended learning order, learning briefs, and estimated time.
+- Authenticated `/training/library` returned HTTP 200 with 25 role-allowed cards.
+- `FINANCE_MINIAPP` returned HTTP 200 as a 1,347,605-byte `application/pdf` attachment.
+- The same administrator received HTTP 403 for the teacher-only `TEACHER_MINIAPP` PDF.
+- Temporary production verification-session cleanup: 0 remaining.
+
 ## Risk
 
 Low to moderate and isolated to training. Employees and managers must provide stronger evidence, so some previously tolerated short submissions will now be rejected. No operational workflow or business data is changed.

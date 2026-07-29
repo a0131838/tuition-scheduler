@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-07-28`
+- Last checked: `2026-07-29`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -19,12 +19,13 @@
 - Current release line: `2026-07-27-r287` is live at runtime commit `0c2c431f8cb65f3d5741f18eae14f83a0800b3da`; WeChat development version `1.0.19` was uploaded successfully. It removes employee names and internal process explanations without changing data or workflows.
 - Current release line: `2026-07-28-r288` is live at runtime commit `526ab99d6e821adf08d155fff8e027f0f9833ca8`; WeChat development version `1.0.20` was uploaded successfully. Find Schools now covers 13 official-source education sectors while preserving the existing international-school detail directory and all business workflows.
 - Current release line: `2026-07-28-r289` is live at runtime commit `49f9ff847aa1c7180f3f85818ae7d389a39d722a`. It adds the authenticated role-aware Training Center, controlled SOP library, quizzes, practical evidence and manager sign-off without changing operational business workflows.
+- Current release line: `2026-07-29-r295` is live at runtime feature commit `56da50e05568d5a47331a95c7c2b3e91996d3314`. It provides 28 bilingual competency modules, 296 controlled PDF pages, and eight role-based mini-program learning paths.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
-## 2026-07-29-r295 Ready
+## 2026-07-29-r295 Live
 
 - Scope: HR-quality training assessment and complete role-based mini-program learning paths.
 - HR improvements:
@@ -42,13 +43,20 @@
   - no database migration or operational permission change;
   - training roles still assign learning only;
   - no business record is changed by viewing, downloading, learning, or manager review UI.
-- Verification before deploy:
+- Verification:
   - 28/28 PDFs passed bilingual content and page checks, 296 pages total;
   - Finance mini-program nine-page contact sheet and 28-module catalogue visually passed;
   - 119 backend tests, TypeScript, and 229-page production build passed;
   - authenticated training page: 25 administrator-accessible modules, learning briefs and learning order present, 25 practical submissions correctly locked;
   - authenticated library: 25 role-allowed cards and new Finance PDF attachment HTTP 200;
   - temporary verification-session cleanup: 0 remaining.
+  - production runtime feature commit `56da50e05568d5a47331a95c7c2b3e91996d3314`, PM2 PID `2145187`;
+  - `/admin/login`, authenticated `/training`, and authenticated `/training/library` returned HTTP 200;
+  - production training rendered 25 administrator-accessible modules with the recommended order, learning briefs, estimated time, and release `20260729`;
+  - production library rendered 25 role-allowed cards;
+  - the Finance mini-program PDF returned HTTP 200 as a 1,347,605-byte `application/pdf` attachment;
+  - administrator access to the teacher-only PDF returned HTTP 403;
+  - production temporary verification-session cleanup: 0 remaining.
 - Task doc: `docs/tasks/TASK-20260729-training-hr-quality-and-miniapp-paths.md`.
 
 ## 2026-07-29-r294 Live
