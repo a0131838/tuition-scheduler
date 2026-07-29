@@ -16,10 +16,10 @@ import {
 import { operationAreaForRoute, OPERATION_AREAS } from "../lib/training-operation-coverage";
 
 test("training module codes and versions are unique", () => {
-  assert.equal(TRAINING_MODULES.length, 33);
+  assert.equal(TRAINING_MODULES.length, 35);
   const keys = TRAINING_MODULES.map((item) => `${item.code}:${item.version}`);
   assert.equal(new Set(keys).size, keys.length);
-  assert.equal(TRAINING_RELEASE_VERSION, "20260729C");
+  assert.equal(TRAINING_RELEASE_VERSION, "20260729D");
   assert.ok(TRAINING_MODULES.every((item) => item.version === TRAINING_RELEASE_VERSION));
   assert.equal(new Set(TRAINING_MODULES.map((item) => item.questions[0].prompt)).size, TRAINING_MODULES.length);
   assert.deepEqual(TRAINING_MODULES[0].questions.map((question) => question.answer), [1, 2, 0, 1, 2]);
@@ -90,11 +90,48 @@ test("new mini program guides use workflow-specific evidence and state unsupport
   assert.match(fullCareBoundary, /web Full Care workspace/);
 });
 
+test("academic beginner guides use student-record and teacher-coordination evidence", () => {
+  const readGuide = (name: string) =>
+    fs.readFileSync(path.join(process.cwd(), "docs", name), "utf8");
+
+  const studentRecords = readGuide("SOP-教务-每日开工学生建档与Student360-中英文培训版-20260729.html");
+  assert.match(studentRecords, /sop-小程序员工工作台-20260718\/annotated\/01-academic-home/);
+  assert.match(studentRecords, /Student 360/);
+  assert.match(studentRecords, /duplicate/i);
+
+  const teacherCoordination = readGuide("SOP-教务-老师协调可用时间例外与交接-中英文培训版-20260729.html");
+  assert.match(teacherCoordination, /sop-teacher-complete-20260729\/annotated\/03-availability/);
+  assert.match(teacherCoordination, /sop-teacher-complete-20260729\/annotated\/04-scheduling-exceptions/);
+  assert.match(teacherCoordination, /teacher reply/i);
+});
+
 test("role filtering keeps teacher and finance training isolated", () => {
   assert.ok(trainingModulesForRole("TEACHER").every((item) => item.roles.includes("TEACHER")));
   assert.equal(trainingModulesForRole("TEACHER").length, 11);
   assert.ok(trainingModulesForRole("FINANCE").every((item) => item.roles.includes("FINANCE")));
   assert.equal(trainingModulesForRole("STUDENT").length, 0);
+});
+
+test("academic staff receive the complete 20-module curriculum without unrelated role access", () => {
+  const modules = trainingModulesForRole("CS");
+  const codes = new Set(modules.map((item) => item.code));
+  assert.equal(modules.length, 20);
+  for (const code of [
+    "ACADEMIC_SCHEDULING_MASTER",
+    "ACADEMIC_DAILY_STUDENT_RECORDS",
+    "ACADEMIC_TEACHER_COORDINATION",
+    "CONTRACT_PACKAGE_GATE_MASTER",
+    "ATTENDANCE_EXCEPTION_MASTER",
+    "SHARED_PACKAGE_COURSE",
+    "XZS_PACKAGE",
+    "XZS_SETTLEMENT",
+    "SCHOOL_APPLICATION",
+    "EDUTRUST_SSG",
+  ]) {
+    assert.equal(codes.has(code), true, code);
+  }
+  assert.equal(codes.has("FINANCE_MASTER"), false);
+  assert.equal(codes.has("TEACHER_REPORTS_ASSESSMENTS"), false);
 });
 
 test("administrator has full training-library oversight, including teacher-only modules", () => {

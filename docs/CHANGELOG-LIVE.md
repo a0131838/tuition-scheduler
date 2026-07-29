@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-29-r298
+
+- Release ID: `2026-07-29-r298`
+- Date/Time (Asia/Singapore): `2026-07-29`
+- Deployment status: `READY`
+- Scope: complete the Academic/CS curriculum with two beginner-safe bilingual workflows, assign all existing Academic specialist SOPs to CS training, and organise the role into 12 work chains.
+- Key files:
+  - `lib/training-center.ts`
+  - `scripts/build-bilingual-training-sops.mjs`
+  - `tests/training-center.test.ts`
+  - `docs/SOP-教务-*-中英文培训版-20260729.html`
+  - `output/pdf/SOP-教务-*-中英文培训版-20260729.pdf`
+  - `docs/培训中心/`
+  - `docs/tasks/TASK-20260729-academic-complete-training.md`
+- Risk impact (if any): Low to moderate and limited to training access and retraining. CS gains learning access to relevant Academic SOPs but no Finance approval, payment, signing, scheduling, package, attendance, or other operational permission.
+- Verification: 35/35 bilingual PDFs exist and total 365 pages. Both new ten-page guides and the four-page 35-module catalogue passed extracted-text, non-blank-page, and contact-sheet inspection. Registry checks confirm ADMIN 35, CS 20, and TEACHER 11 modules. All 126 backend tests, TypeScript, and the complete 229-page production build passed. Deployment and authenticated production checks are pending.
+- Rollback point: `165e933db9ebd10907d5dea559099d277ec35715` (`2026-07-29-r297` production-aligned head).
+
+---
+
 ## 2026-07-29-r297
 
 - Release ID: `2026-07-29-r297`

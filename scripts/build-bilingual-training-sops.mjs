@@ -5,7 +5,7 @@ import { chromium } from "playwright";
 const root = process.cwd();
 const docsDir = path.join(root, "docs");
 const pdfDir = path.join(root, "output", "pdf");
-const version = "20260729C";
+const version = "20260729D";
 
 const guides = [
   ["SYSTEM_OPERATION_MAP", "SGT 全系统操作流程地图", "SGT Full-System Operations Map", "docs/SOP-全系统操作流程地图-培训版-20260728.html", "00-SGT全系统操作流程地图-中英文培训版-20260728.pdf", [
@@ -21,6 +21,36 @@ const guides = [
     ["在排课协调中核对场景、课包、老师、地点和冲突。", "In Scheduling Coordination, verify the scenario, package, teacher, location, and conflicts."],
     ["财务门禁或资料不完整时停止 Apply，并记录等待对象和跟进日期。", "Stop before Apply when finance gates or data are incomplete; record the waiting party and follow-up date."],
     ["正式课次复核后写完成结果；未完成事项按六要素交接。", "After verifying the official session, record the result; hand over incomplete work with all required details."],
+  ]],
+  ["ACADEMIC_DAILY_STUDENT_RECORDS", "教务每日开工、学生建档与 Student 360", "Academic Daily Start, Student Setup, and Student 360 Records", "docs/SOP-小程序-教务-完整操作-中英文培训版-20260718.html", "SOP-教务-每日开工学生建档与Student360-中英文培训版-20260729.pdf", [
+    ["登录后先核对教务身份，从统一待办检查今日课表、未分配工单、家长请求、待审核反馈和阻塞事项。", "After login, verify the Academic identity, then use Unified To-dos to review today’s schedule, unassigned tickets, parent requests, feedback review, and blockers."],
+    ["新增学生前按学生姓名、家长姓名、电话、微信和邮箱查重；找到可能重复记录时停止新增并交主管确认。", "Before creating a student, duplicate-check student name, parent name, phone, WeChat, and email; stop and ask a manager when a possible match exists."],
+    ["确认无重复后填写学生姓名、英文名、年级、学校、来源、家长联系人和负责人；不清楚的字段不得猜填。", "When no duplicate exists, enter student name, English name, grade, school, source, parent contact, and owner; never guess unknown fields."],
+    ["保存后重新打开 Student 360，核对基本资料、家长关系、课程、课包、合同、课表、反馈、工单和服务状态。", "After saving, reopen Student 360 and verify profile, parent relationships, courses, packages, contracts, schedule, feedback, tickets, and service status."],
+    ["把微信或口头请求转成系统工单或待办，写清学生、事实、负责人、截止日期、下一步和等待对象。", "Convert WeChat or verbal requests into a system ticket or to-do with student, facts, owner, due date, next action, and waiting party."],
+    ["下班前再次检查未完成事项；只在看到最终状态后关闭，其他事项按学生、问题、当前状态、负责人、期限和下一步交接。", "Before handover, recheck open work; close only after seeing the final state, and hand over every other item with student, issue, current state, owner, due time, and next action."],
+  ], [
+    "docs/assets/sop-小程序员工工作台-20260718/annotated/01-academic-home.png",
+    "docs/assets/sop-student-contract-20260604/annotated/01-admin-students-list.png",
+    "docs/assets/sop-教务-上海新卓思学生建档与课时包创建-20260708/annotated/01-new-student-modal.png",
+    "docs/assets/sop-miniapp-binding-20260729/annotated/08-parent-permissions.png",
+    "docs/assets/sop-小程序员工工作台-20260718/annotated/05-academic-intake.png",
+    "docs/assets/sop-小程序员工工作台-20260718/annotated/07-academic-coordination.png",
+  ]],
+  ["ACADEMIC_TEACHER_COORDINATION", "教务老师协调、可用时间、例外与交接", "Academic Teacher Coordination, Availability, Exceptions, and Handover", "docs/SOP-小程序-教务-完整操作-中英文培训版-20260718.html", "SOP-教务-老师协调可用时间例外与交接-中英文培训版-20260729.pdf", [
+    ["接到排课或调课请求后先核对学生、课程、课包余额与门禁、日期范围、地点和家长真实可上课时间。", "When receiving a scheduling or rescheduling request, verify student, course, package balance and gates, date range, location, and the parent’s actual availability."],
+    ["查看候选老师档案、可教课程和已提交的未来30天可用时间；没有时段不代表老师拒绝，必须发起例外确认。", "Check candidate teacher profile, eligible courses, and submitted 30-day availability; no saved slot is not a rejection, so request an exception confirmation."],
+    ["发送例外请求时写清具体日期、开始结束时间、地点、课程、学生和回复期限，禁止只问“老师有空吗”。", "Send an exception request with exact date, start and end time, location, course, student, and response deadline; never ask only “Are you free?”"],
+    ["记录老师选择的可以、不可以或替代时间；老师回复只是协调证据，不会自动建立或修改正式课次。", "Record the teacher’s Can do, Cannot do, or alternative time response; a teacher reply is coordination evidence and does not create or edit an official session."],
+    ["回到排课协调预览冲突、地点、老师、学生和课包，获授权后才 Apply；刷新课表确认正式课次已经出现。", "Return to Scheduling Coordination, preview conflicts, location, teacher, student, and package, then Apply only when authorised; refresh the schedule and confirm the official session exists."],
+    ["仍未完成时建立有负责人的工单，记录当前候选、已排除原因、等待对象、下次跟进时间和下一步；不得把聊天记录当成交接。", "If unresolved, keep an owned ticket with candidates, rejection reasons, waiting party, next follow-up time, and next action; chat history alone is not a handover."],
+  ], [
+    "docs/assets/sop-小程序员工工作台-20260718/annotated/07-academic-coordination.png",
+    "docs/assets/sop-teacher-complete-20260729/annotated/03-availability.png",
+    "docs/assets/sop-teacher-complete-20260729/annotated/04-scheduling-exceptions.png",
+    "docs/assets/sop-teacher-complete-20260729/annotated/04-scheduling-exceptions.png",
+    "docs/assets/sop-小程序员工工作台-20260718/annotated/08-academic-schedule.png",
+    "docs/assets/sop-teacher-complete-20260729/annotated/05-tickets.png",
   ]],
   ["CONTRACT_PACKAGE_GATE_MASTER", "首购续费、合同课包与财务门禁", "First Purchase, Renewal, Contracts, Packages, and Finance Gates", "docs/SOP-教务-新生首购续费合同课包财务门禁-培训版-20260728.html", "SOP-教务-新生首购续费合同课包财务门禁-中英文培训版-20260728.pdf", [
     ["先查学生、现有合同和课包，判断首购或续费，禁止重复建档。", "Check the student, existing contracts, and packages first; determine first purchase or renewal and avoid duplicates."],
@@ -273,6 +303,8 @@ const catalogueGroups = [
     ["Staff Mini Program Login, Manager Code Issue, and Self-Binding", "员工小程序登录、主管发码与本人绑定"],
   ]],
   ["Academic & CS / 教务与客服", [
+    ["Academic Daily Start, Student Setup, and Student 360 Records", "教务每日开工、学生建档与 Student 360"],
+    ["Academic Teacher Coordination, Availability, Exceptions, and Handover", "教务老师协调、可用时间、例外与交接"],
     ["Scheduling, Tickets, and Daily Handover", "排课、工单与每日交接"],
     ["First Purchase, Renewal, Contracts, Packages, and Finance Gates", "首购续费、合同课包与财务门禁"],
     ["Attendance, Feedback, Leave, Rescheduling, and Exceptions", "点名、反馈、请假调课与异常处理"],
@@ -379,9 +411,9 @@ function buildCatalogueHtml() {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>SGT Staff Training Centre Catalogue / 员工培训中心总目录</title><style>
 @page{size:A4 landscape;margin:13mm 12mm}*{box-sizing:border-box}body{margin:0;color:#172033;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}.page{height:184mm;page-break-after:always;position:relative;overflow:hidden;padding:3mm}.page:last-child{page-break-after:auto}.cover{display:grid;align-content:center;background:linear-gradient(135deg,#ecfdf5,#eff6ff);border-radius:7mm;padding:17mm}.eyebrow{font-size:10px;font-weight:900;color:#0f766e;letter-spacing:.08em}h1{font-size:30px;margin:6mm 0 3mm;color:#102a43}h2{font-size:14px;margin:0 0 2mm}.zh-title{font-size:23px;color:#334e68}.banner,.box,.group{border:1px solid #d7e2ec;border-radius:4mm;padding:5mm;background:#f8fbfd}.banner{margin-top:7mm;border-left:2mm solid #0f766e;background:white}.grid{display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin-top:6mm}.box li{font-size:11px;line-height:1.55;margin:2.5mm 0}.catalogue{display:grid;grid-template-columns:repeat(4,1fr);gap:3mm;margin-top:4mm}.catalogue-column{display:grid;align-content:start;gap:3mm}.group{padding:3mm}.module{border-top:1px solid #d7e2ec;padding:1.8mm 0}.module:first-of-type{border-top:0}.module strong,.module span{display:block;font-size:8.3px;line-height:1.28}.module span{color:#475569}.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:4mm;margin-top:8mm}.flow .box b{display:block;color:#0f766e;font-size:20px;margin-bottom:2mm}footer{position:absolute;bottom:2mm;left:3mm;right:3mm;display:flex;justify-content:space-between;color:#64748b;font-size:9px}
 </style></head><body>
-<section class="page cover"><div class="eyebrow">SGT MANAGE · CONTROLLED BILINGUAL TRAINING LIBRARY / 受控中英双语培训资料库</div><h1>Staff Training Centre Catalogue</h1><div class="zh-title">员工培训中心总目录</div><div class="banner">33 role-based modules · English / Chinese / Bilingual display · Training release 2026-07-29C<br>33 个岗位模块 · 英文 / 中文 / 中英并列显示 · 培训版本 2026-07-29C</div></section>
+<section class="page cover"><div class="eyebrow">SGT MANAGE · CONTROLLED BILINGUAL TRAINING LIBRARY / 受控中英双语培训资料库</div><h1>Staff Training Centre Catalogue</h1><div class="zh-title">员工培训中心总目录</div><div class="banner">35 role-based modules · English / Chinese / Bilingual display · Training release 2026-07-29D<br>35 个岗位模块 · 英文 / 中文 / 中英并列显示 · 培训版本 2026-07-29D</div></section>
 <section class="page"><div class="eyebrow">LANGUAGE & CONTROL / 语言与版本控制</div><h1>Use the version assigned in the system<br><span class="zh-title">只使用系统分配的当前版本</span></h1><div class="grid"><div class="box"><h2>Account language / 账号语言</h2><ul><li>EN: English only / 仅英文</li><li>ZH: Chinese only / 仅中文</li><li>BILINGUAL: English + Chinese / 中英并列</li><li>Managers set account language in System User Admin. / 管理者在系统使用者管理设置账号语言。</li></ul></div><div class="box"><h2>Version status / 版本状态</h2><ul><li>Current: may be used for training and authorised work. / 现行：可用于培训和已授权工作。</li><li>Review required: manager explanation only. / 待复核：仅供主管解释。</li><li>Superseded: audit history only. / 已替代：仅供审计追溯。</li><li>Training roles never grant system permissions. / 培训岗位不授予系统权限。</li></ul></div></div><footer><span>SGT Training Centre / 员工培训中心</span><span>2</span></footer></section>
-<section class="page"><div class="eyebrow">CURRENT MODULES / 当前模块</div><h1>Role learning paths / 岗位学习路径</h1><div class="catalogue">${groups}</div><footer><span>33 current bilingual modules / 33 个现行双语模块</span><span>3</span></footer></section>
+<section class="page"><div class="eyebrow">CURRENT MODULES / 当前模块</div><h1>Role learning paths / 岗位学习路径</h1><div class="catalogue">${groups}</div><footer><span>35 current bilingual modules / 35 个现行双语模块</span><span>3</span></footer></section>
 <section class="page"><div class="eyebrow">CERTIFICATION / 培训验收</div><h1>Opening a PDF is not completion<br><span class="zh-title">打开 PDF 不等于完成培训</span></h1><div class="flow"><div class="box"><b>1</b>Read the current bilingual SOP.<br>阅读当前双语 SOP。</div><div class="box"><b>2</b>Pass five questions at 80% or above.<br>五题测验达到 80 分。</div><div class="box"><b>3</b>Practise with training data and submit evidence.<br>使用培训数据实操并提交证据。</div><div class="box"><b>4</b>Manager verifies the result and signs off.<br>主管核对结果并验收。</div></div><div class="banner">Stop and escalate when data, permission, page state, or a high-risk outcome is unclear.<br>资料、权限、页面状态或高风险结果不明确时，停止操作并升级主管。</div><footer><span>SGT Training Centre / 员工培训中心</span><span>4</span></footer></section>
 </body></html>`;
 }

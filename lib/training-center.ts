@@ -2,7 +2,7 @@ import type { SystemUserRole } from "@/lib/staff-roles";
 
 export const TRAINING_ASSIGNABLE_ROLES = ["ADMIN", "FINANCE", "SALES", "CS", "TEACHER"] as const satisfies readonly SystemUserRole[];
 export type TrainingAssignableRole = (typeof TRAINING_ASSIGNABLE_ROLES)[number];
-export const TRAINING_RELEASE_VERSION = "20260729C";
+export const TRAINING_RELEASE_VERSION = "20260729D";
 
 export type TrainingQuestion = {
   prompt: string;
@@ -48,6 +48,8 @@ type TrainingModuleInput = Omit<
 const englishContent: Record<string, { title: string; category: string; practicalTask: string }> = {
   SYSTEM_OPERATION_MAP: { title: "SGT Full-System Operations Map", category: "Common Core", practicalTask: "Choose three routine tasks for your role and identify the correct entry point, detailed SOP, required final status, and escalation owner." },
   ACADEMIC_SCHEDULING_MASTER: { title: "Scheduling, Tickets, and Daily Handover", category: "Academic Core", practicalTask: "Using training data, complete the loop from request intake and ticket creation through scheduling preview, result verification, and handover." },
+  ACADEMIC_DAILY_STUDENT_RECORDS: { title: "Academic Daily Start, Student Setup, and Student 360 Records", category: "Academic Foundation", practicalTask: "Complete the academic opening checklist, duplicate-check and verify a training student record, then record an owned next action or handover." },
+  ACADEMIC_TEACHER_COORDINATION: { title: "Academic Teacher Coordination, Availability, Exceptions, and Handover", category: "Academic Scheduling", practicalTask: "Verify a teacher’s availability, send one precise scheduling request, record the teacher response, and confirm the final official session or owned handover." },
   CONTRACT_PACKAGE_GATE_MASTER: { title: "First Purchase, Renewal, Contracts, Packages, and Finance Gates", category: "Contracts & Packages", practicalTask: "For a training student, determine first purchase or renewal and verify the contract, invoice approval, and scheduling eligibility." },
   FINANCE_MASTER: { title: "Finance Approvals, Invoices, Receipts, Payroll, Claims, and Partners", category: "Finance Core", practicalTask: "Select a set of training finance records and explain the complete relationship among invoice, payment proof, receipt, approval, and audit trail." },
   RESOURCE_HANDOFF_MASTER: { title: "Lead Follow-up, School Guide Enquiries, and Sales Handover", category: "Lead Management Core", practicalTask: "Create a training lead and practise duplicate checking, owner assignment, follow-up, assessment, conversion, and handover." },
@@ -83,7 +85,8 @@ const englishContent: Record<string, { title: string; category: string; practica
 
 const foundationCodes = new Set(["SYSTEM_OPERATION_MAP", "MINIAPP_STARTER"]);
 const coreCodes = new Set([
-  "ACADEMIC_SCHEDULING_MASTER", "CONTRACT_PACKAGE_GATE_MASTER", "FINANCE_MASTER", "RESOURCE_HANDOFF_MASTER",
+  "ACADEMIC_SCHEDULING_MASTER", "ACADEMIC_DAILY_STUDENT_RECORDS", "ACADEMIC_TEACHER_COORDINATION",
+  "CONTRACT_PACKAGE_GATE_MASTER", "FINANCE_MASTER", "RESOURCE_HANDOFF_MASTER",
   "MANAGEMENT_CONTROL_MASTER", "ATTENDANCE_EXCEPTION_MASTER", "ACADEMIC_MINIAPP", "TEACHER_MINIAPP",
   "MANAGEMENT_MINIAPP", "PARENT_MINIAPP_BINDING", "SALES_MINIAPP", "FINANCE_MINIAPP",
   "TEACHER_ONBOARDING_PROFILE", "TEACHER_AVAILABILITY_SCHEDULING", "TEACHER_REPORTS_ASSESSMENTS",
@@ -171,19 +174,21 @@ function module(input: TrainingModuleInput): TrainingModule {
 export const TRAINING_MODULES: TrainingModule[] = [
   module({ code: "SYSTEM_OPERATION_MAP", title: "SGT 全系统操作流程地图", version: "20260728", roles: ["ADMIN", "FINANCE", "SALES", "CS", "TEACHER"], category: "共同必修", pdfFile: "00-SGT全系统操作流程地图-中英文培训版-20260728.pdf", practicalTask: "从本人岗位选取三个日常任务，指出正确入口、对应详细 SOP、最终完成状态和异常升级对象。" }),
   module({ code: "ACADEMIC_SCHEDULING_MASTER", title: "排课、工单与每日交接完整流程", version: "20260728", roles: ["ADMIN", "CS"], category: "教务必修", pdfFile: "SOP-教务-排课工单与每日交接完整流程-中英文培训版-20260728.pdf", practicalTask: "使用培训数据从请求建工单、排课预览到完成结果和交接记录走完闭环。" }),
-  module({ code: "CONTRACT_PACKAGE_GATE_MASTER", title: "首购续费、合同课包与财务门禁", version: "20260728", roles: ["ADMIN", "FINANCE"], category: "合同课包", pdfFile: "SOP-教务-新生首购续费合同课包财务门禁-中英文培训版-20260728.pdf", practicalTask: "使用培训学生判断首购/续费，核对合同、发票审批和允许排课状态。" }),
+  module({ code: "ACADEMIC_DAILY_STUDENT_RECORDS", title: "教务每日开工、学生建档与 Student 360", version: "20260729D", roles: ["ADMIN", "CS"], category: "教务基础", pdfFile: "SOP-教务-每日开工学生建档与Student360-中英文培训版-20260729.pdf", practicalTask: "完成教务开工检查，为培训学生查重并核对档案，再记录有负责人的下一步或交接。" }),
+  module({ code: "ACADEMIC_TEACHER_COORDINATION", title: "教务老师协调、可用时间、例外与交接", version: "20260729D", roles: ["ADMIN", "CS"], category: "教务排课", pdfFile: "SOP-教务-老师协调可用时间例外与交接-中英文培训版-20260729.pdf", practicalTask: "核对老师可用时间，发送一项准确排课请求，记录老师回复，并确认正式课次或有负责人的交接。" }),
+  module({ code: "CONTRACT_PACKAGE_GATE_MASTER", title: "首购续费、合同课包与财务门禁", version: "20260728", roles: ["ADMIN", "FINANCE", "CS"], category: "合同课包", pdfFile: "SOP-教务-新生首购续费合同课包财务门禁-中英文培训版-20260728.pdf", practicalTask: "使用培训学生判断首购/续费，核对合同、发票审批和允许排课状态。" }),
   module({ code: "FINANCE_MASTER", title: "财务审批、发票收据、工资报销与合作方", version: "20260728", roles: ["FINANCE", "ADMIN"], category: "财务必修", pdfFile: "SOP-财务-审批发票收据工资报销合作方完整流程-中英文培训版-20260728.pdf", practicalTask: "选择一组培训财务记录，说明发票、凭证、收据、审批和审计的完整关系。" }),
   module({ code: "RESOURCE_HANDOFF_MASTER", title: "资源跟进、学校指南咨询与成交交接", version: "20260728", roles: ["SALES", "CS", "ADMIN"], category: "资源必修", pdfFile: "SOP-客服销售-资源跟进学校指南咨询与成交交接-中英文培训版-20260728.pdf", practicalTask: "建立培训资源，完成查重、负责人、跟进、评估和成交交接演练。" }),
   module({ code: "MANAGEMENT_CONTROL_MASTER", title: "账号权限、审批质量与培训验收", version: "20260728", roles: ["ADMIN"], category: "管理必修", pdfFile: "SOP-管理-账号权限审批质量与培训验收-中英文培训版-20260728.pdf", practicalTask: "检查培训账号权限、审批、沟通审计，并验收一项员工实操。" }),
-  module({ code: "ATTENDANCE_EXCEPTION_MASTER", title: "点名、反馈、请假调课与异常处理", version: "20260728", roles: ["TEACHER", "ADMIN"], category: "教学必修", pdfFile: "SOP-教务老师-点名反馈请假调课与异常处理-中英文培训版-20260728.pdf", practicalTask: "使用培训课次完成点名和反馈，并说明请假、取消、调课和错误更正边界。" }),
+  module({ code: "ATTENDANCE_EXCEPTION_MASTER", title: "点名、反馈、请假调课与异常处理", version: "20260728", roles: ["TEACHER", "ADMIN", "CS"], category: "教学必修", pdfFile: "SOP-教务老师-点名反馈请假调课与异常处理-中英文培训版-20260728.pdf", practicalTask: "使用培训课次完成点名和反馈，并说明请假、取消、调课和错误更正边界。" }),
   module({ code: "ACADEMIC_MINIAPP", title: "教务小程序完整操作", version: "20260718", roles: ["ADMIN", "CS"], category: "教务", pdfFile: "SOP-小程序-教务-完整操作-中英文培训版-20260718.pdf", practicalTask: "使用培训学生完成一项待办、一次工单跟进和一次排课预览。" }),
   module({ code: "PARENT_COMMUNICATION", title: "家长沟通与通知中心", version: "20260718", roles: ["ADMIN", "CS"], category: "教务", pdfFile: "SOP-教务-家长沟通与通知中心-中英文培训版-20260718.pdf", practicalTask: "完成一条培训反馈的审核、家长版发布、转发留痕和更正演练。" }),
   module({ code: "FULL_CARE", title: "全托管完整操作", version: "20260717", roles: ["ADMIN", "CS"], category: "全托管", pdfFile: "全托管完整操作SOP-中英文培训版-20260728.pdf", practicalTask: "建立培训项目，完成计划、活动、任务、风险和报告草稿。" }),
-  module({ code: "SHARED_PACKAGE_COURSE", title: "共享课包按学生修改课程", version: "20260723", roles: ["ADMIN"], category: "课包", pdfFile: "SGT教务SOP-共享课包按学生修改课程-中英文培训版-20260728.pdf", practicalTask: "在培训共享课包中只修改指定学生课程并核对其他学生不受影响。" }),
-  module({ code: "XZS_PACKAGE", title: "上海新卓思建档与课时包", version: "20260708", roles: ["ADMIN"], category: "合作方", pdfFile: "SOP-教务-上海新卓思学生建档与课时包创建流程-中英文培训版-20260728.pdf", practicalTask: "完成培训学生来源和合作方课包设置预览。" }),
-  module({ code: "XZS_SETTLEMENT", title: "上海新卓思合作方结算", version: "20260708", roles: ["ADMIN", "FINANCE"], category: "合作方", pdfFile: "SOP-教务-上海新卓思学生合作方结算流程-中英文培训版-20260728.pdf", practicalTask: "识别一条可结算培训记录并说明账单前检查项。" }),
-  module({ code: "SCHOOL_APPLICATION", title: "学校申请服务完整流程", version: "20260605", roles: ["ADMIN"], category: "学校申请", pdfFile: "SOP-教务管理-学校申请服务流程-中英文培训版-20260728.pdf", practicalTask: "建立培训申请服务并完成协议到收费交接的状态说明。" }),
-  module({ code: "EDUTRUST_SSG", title: "EduTrust 课程与 SSG 合同", version: "20260622", roles: ["ADMIN"], category: "合规", pdfFile: "SOP-教务-EduTrust课程与SSG合同设置流程-中英文培训版-20260728.pdf", practicalTask: "检查培训课程的 readiness、Schedule 字段和签字前门禁。" }),
+  module({ code: "SHARED_PACKAGE_COURSE", title: "共享课包按学生修改课程", version: "20260723", roles: ["ADMIN", "CS"], category: "课包", pdfFile: "SGT教务SOP-共享课包按学生修改课程-中英文培训版-20260728.pdf", practicalTask: "在培训共享课包中只修改指定学生课程并核对其他学生不受影响。" }),
+  module({ code: "XZS_PACKAGE", title: "上海新卓思建档与课时包", version: "20260708", roles: ["ADMIN", "CS"], category: "合作方", pdfFile: "SOP-教务-上海新卓思学生建档与课时包创建流程-中英文培训版-20260728.pdf", practicalTask: "完成培训学生来源和合作方课包设置预览。" }),
+  module({ code: "XZS_SETTLEMENT", title: "上海新卓思合作方结算", version: "20260708", roles: ["ADMIN", "FINANCE", "CS"], category: "合作方", pdfFile: "SOP-教务-上海新卓思学生合作方结算流程-中英文培训版-20260728.pdf", practicalTask: "识别一条可结算培训记录并说明账单前检查项。" }),
+  module({ code: "SCHOOL_APPLICATION", title: "学校申请服务完整流程", version: "20260605", roles: ["ADMIN", "CS"], category: "学校申请", pdfFile: "SOP-教务管理-学校申请服务流程-中英文培训版-20260728.pdf", practicalTask: "建立培训申请服务并完成协议到收费交接的状态说明。" }),
+  module({ code: "EDUTRUST_SSG", title: "EduTrust 课程与 SSG 合同", version: "20260622", roles: ["ADMIN", "CS"], category: "合规", pdfFile: "SOP-教务-EduTrust课程与SSG合同设置流程-中英文培训版-20260728.pdf", practicalTask: "检查培训课程的 readiness、Schedule 字段和签字前门禁。" }),
   module({ code: "TEACHER_MINIAPP", title: "老师小程序完整操作", version: "20260718", roles: ["TEACHER"], category: "老师", pdfFile: "SOP-小程序-老师-完整操作-中英文培训版-20260718.pdf", practicalTask: "完成培训课次的点名、反馈、通知确认和工资查看。" }),
   module({ code: "TEACHER_DAILY", title: "老师课表、反馈、工资与学生历史", version: "20260718", roles: ["TEACHER"], category: "老师", pdfFile: "SOP-老师-课表反馈工资与学生历史-中英文培训版-20260718.pdf", practicalTask: "从课表进入培训课次，完成反馈并查到该学生历史记录。" }),
   module({ code: "TEACHER_PAYMENT", title: "老师收款资料填写", version: "20260529", roles: ["TEACHER"], category: "老师财务", pdfFile: "SOP-老师-收款资料填写流程-中英文培训版-20260728.pdf", practicalTask: "根据本地或海外身份选择正确收款方式并完成字段检查。" }),
