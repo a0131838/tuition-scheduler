@@ -37,5 +37,8 @@ Low to moderate and limited to creating a new partner receipt. The server now ow
 ## Release Record
 
 - Release ID: `2026-07-29-r299`
-- Deployment status: ready.
+- Deployment status: live.
+- Runtime feature commit: `152024fb2b7626b09274e68b5d0d40e291a7dee6`.
+- Initial live PM2 PID: `2211224`; `/admin/login` returned HTTP 200.
+- Post-deploy production reconciliation: SGD 18,540 original - SGD 270 issued credit = SGD 18,270 net; the matching payment proof remains present and receipt count remains zero.
 - Rollback point: `ad9af64021f0dd33639d073d443634288580446e`

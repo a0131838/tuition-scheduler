@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-29-r299`
 - Date/Time (Asia/Singapore): `2026-07-29 12:24`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: make partner receipt creation use the adjusted invoice net after issued Credit Notes, update receipt values when Finance selects another invoice, and recalculate the authoritative net again on submit.
 - Key files:
   - `app/admin/reports/partner-settlement/billing/page.tsx`
@@ -28,7 +28,7 @@ This file is the single source of truth for what changed in production.
   - `tests/partner-receipt-net.test.ts`
   - `docs/tasks/TASK-20260729-partner-receipt-credit-net.md`
 - Risk impact (if any): Low to moderate and limited to new partner-receipt creation. Existing invoices, Credit Notes, receipts, payment records and approvals are unchanged. Parent receipts, package billing, attendance, scheduling, payroll and partner settlement calculations are unchanged.
-- Verification: 10 focused finance tests and all 295 repository tests passed; TypeScript, `git diff --check` and the complete 229-page production build passed. A read-only production check confirmed `RGT-202606-0019` has original total SGD 18,540, issued Credit Note `RGT-CN-202607-0001` for SGD 270, adjusted net SGD 18,270, one matching payment proof and no receipt.
+- Verification: 10 focused finance tests and all 295 repository tests passed; TypeScript, `git diff --check` and the complete 229-page production build passed. Runtime feature commit `152024fb2b7626b09274e68b5d0d40e291a7dee6` deployed with PM2 PID `2211224` and `/admin/login` returned HTTP 200. A post-deploy read-only production check confirmed `RGT-202606-0019` remains SGD 18,540 original less issued Credit Note `RGT-CN-202607-0001` of SGD 270 = SGD 18,270 net, its matching payment proof remains present, and no receipt was created during verification.
 - Rollback point: `ad9af64021f0dd33639d073d443634288580446e` (`2026-07-29-r298` production-aligned head).
 
 ---
