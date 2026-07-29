@@ -2,7 +2,7 @@ import type { SystemUserRole } from "@/lib/staff-roles";
 
 export const TRAINING_ASSIGNABLE_ROLES = ["ADMIN", "FINANCE", "SALES", "CS", "TEACHER"] as const satisfies readonly SystemUserRole[];
 export type TrainingAssignableRole = (typeof TRAINING_ASSIGNABLE_ROLES)[number];
-export const TRAINING_RELEASE_VERSION = "20260729B";
+export const TRAINING_RELEASE_VERSION = "20260729C";
 
 export type TrainingQuestion = {
   prompt: string;
@@ -64,6 +64,10 @@ const englishContent: Record<string, { title: string; category: string; practica
   TEACHER_MINIAPP: { title: "Teacher Mini Program — Complete Operations", category: "Teacher", practicalTask: "Complete attendance, feedback, notification acknowledgement, and payroll viewing for a training session." },
   TEACHER_DAILY: { title: "Teacher Schedule, Feedback, Payroll, and Student History", category: "Teacher", practicalTask: "Open a training session from the schedule, submit feedback, and locate that student's history." },
   TEACHER_PAYMENT: { title: "Teacher Payment Details Submission", category: "Teacher Finance", practicalTask: "Choose the correct payment method for a local or overseas profile and complete the field checks." },
+  TEACHER_ONBOARDING_PROFILE: { title: "Teacher Account, Profile, Notices, and Daily Start", category: "Teacher Foundation", practicalTask: "Verify the linked teacher identity, complete the daily course check, review required notices and alerts, and confirm the public teacher profile is ready." },
+  TEACHER_AVAILABILITY_SCHEDULING: { title: "Teacher Availability, Scheduling Exceptions, and Tickets", category: "Teacher Scheduling", practicalTask: "Maintain 30-day availability, respond to an assigned scheduling exception, and close an assigned teacher ticket with a verifiable completion note." },
+  TEACHER_REPORTS_ASSESSMENTS: { title: "Teacher Assessments, Midterm Reports, and Final Reports", category: "Teacher Academic Records", practicalTask: "Complete one training assessment or report using session evidence, verify its submission status, and explain the correction and escalation path." },
+  TEACHER_EXPENSES_PAYROLL: { title: "Teacher Expense Claims, Payroll, and Payment Follow-up", category: "Teacher Finance", practicalTask: "Prepare a training expense claim with evidence, trace its approval state, reconcile a payroll statement, and identify the correct payment-detail path." },
   FINANCE_PAYMENT_PROFILE: { title: "Verify and Export Teacher Payment Details", category: "Finance", practicalTask: "Verify one training teacher's payment details and explain how exceptions must be handled." },
   PARTNER_CREDIT_NOTE: { title: "Partner Credit Note", category: "Finance", practicalTask: "Create a Credit Note draft from a training invoice and complete review without issuing it." },
   MANAGEMENT_MINIAPP: { title: "Management Mini Program — Oversight and Accounts", category: "Management", practicalTask: "Review training to-dos, approvals, and risks, then check account switching." },
@@ -82,6 +86,8 @@ const coreCodes = new Set([
   "ACADEMIC_SCHEDULING_MASTER", "CONTRACT_PACKAGE_GATE_MASTER", "FINANCE_MASTER", "RESOURCE_HANDOFF_MASTER",
   "MANAGEMENT_CONTROL_MASTER", "ATTENDANCE_EXCEPTION_MASTER", "ACADEMIC_MINIAPP", "TEACHER_MINIAPP",
   "MANAGEMENT_MINIAPP", "PARENT_MINIAPP_BINDING", "SALES_MINIAPP", "FINANCE_MINIAPP",
+  "TEACHER_ONBOARDING_PROFILE", "TEACHER_AVAILABILITY_SCHEDULING", "TEACHER_REPORTS_ASSESSMENTS",
+  "TEACHER_EXPENSES_PAYROLL",
 ]);
 
 function trainingQuestions(input: TrainingModuleInput, en: { title: string; practicalTask: string }): TrainingQuestion[] {
@@ -181,6 +187,10 @@ export const TRAINING_MODULES: TrainingModule[] = [
   module({ code: "TEACHER_MINIAPP", title: "老师小程序完整操作", version: "20260718", roles: ["TEACHER"], category: "老师", pdfFile: "SOP-小程序-老师-完整操作-中英文培训版-20260718.pdf", practicalTask: "完成培训课次的点名、反馈、通知确认和工资查看。" }),
   module({ code: "TEACHER_DAILY", title: "老师课表、反馈、工资与学生历史", version: "20260718", roles: ["TEACHER"], category: "老师", pdfFile: "SOP-老师-课表反馈工资与学生历史-中英文培训版-20260718.pdf", practicalTask: "从课表进入培训课次，完成反馈并查到该学生历史记录。" }),
   module({ code: "TEACHER_PAYMENT", title: "老师收款资料填写", version: "20260529", roles: ["TEACHER"], category: "老师财务", pdfFile: "SOP-老师-收款资料填写流程-中英文培训版-20260728.pdf", practicalTask: "根据本地或海外身份选择正确收款方式并完成字段检查。" }),
+  module({ code: "TEACHER_ONBOARDING_PROFILE", title: "老师账号、个人资料、通知与每日开工", version: "20260729C", roles: ["TEACHER"], category: "老师基础", pdfFile: "SOP-老师-账号资料通知与每日开工-中英文培训版-20260729.pdf", practicalTask: "核对关联的老师身份，完成每日课程检查，处理必须确认的通知和警示，并确认对外教师资料可用。" }),
+  module({ code: "TEACHER_AVAILABILITY_SCHEDULING", title: "老师可用时间、排课例外与工单", version: "20260729C", roles: ["TEACHER"], category: "老师排课", pdfFile: "SOP-老师-可用时间排课例外与工单-中英文培训版-20260729.pdf", practicalTask: "维护未来30天可用时间，回复一项分配给自己的排课例外，并以可核对的完成说明关闭老师工单。" }),
+  module({ code: "TEACHER_REPORTS_ASSESSMENTS", title: "老师评估、中期报告与结课报告", version: "20260729C", roles: ["TEACHER"], category: "老师教学记录", pdfFile: "SOP-老师-评估中期报告与结课报告-中英文培训版-20260729.pdf", practicalTask: "根据课次证据完成一项培训评估或报告，核对提交状态，并说明更正和升级路径。" }),
+  module({ code: "TEACHER_EXPENSES_PAYROLL", title: "老师报销、工资与付款跟进", version: "20260729C", roles: ["TEACHER"], category: "老师财务", pdfFile: "SOP-老师-报销工资与付款跟进-中英文培训版-20260729.pdf", practicalTask: "用培训数据准备含凭证的报销，追踪审批状态，核对一张工资单，并找到正确的收款资料入口。" }),
   module({ code: "FINANCE_PAYMENT_PROFILE", title: "老师收款资料核验与导出", version: "20260529", roles: ["FINANCE", "ADMIN"], category: "财务", pdfFile: "SOP-财务-老师收款资料核验与导出流程-中英文培训版-20260728.pdf", practicalTask: "核验一名培训老师的收款资料并说明异常处理。" }),
   module({ code: "PARTNER_CREDIT_NOTE", title: "合作方 Credit Note", version: "20260714", roles: ["FINANCE", "ADMIN"], category: "财务", pdfFile: "SOP-财务-合作方Credit-Note操作流程-中英文培训版-20260728.pdf", practicalTask: "从培训发票建立 Credit Note 草稿，完成复核但不签发。" }),
   module({ code: "MANAGEMENT_MINIAPP", title: "管理小程序监督与账号", version: "20260718", roles: ["ADMIN"], category: "管理", pdfFile: "SOP-小程序-管理-监督与账号-中英文培训版-20260718.pdf", practicalTask: "查看培训待办、审批和风险，并完成账号切换检查。" }),
@@ -195,6 +205,7 @@ export const TRAINING_MODULES: TrainingModule[] = [
 ];
 
 export function trainingModulesForRole(role: SystemUserRole) {
+  if (role === "ADMIN") return TRAINING_MODULES;
   return TRAINING_MODULES.filter((item) => item.roles.includes(role));
 }
 
@@ -205,6 +216,7 @@ export function trainingRolesForUser(primaryRole: SystemUserRole, assignedRoles:
 }
 
 export function trainingModulesForUser(primaryRole: SystemUserRole, assignedRoles: readonly string[] = []) {
+  if (primaryRole === "ADMIN") return TRAINING_MODULES;
   const roles = new Set<SystemUserRole>(trainingRolesForUser(primaryRole, assignedRoles));
   return TRAINING_MODULES.filter((item) => item.roles.some((role) => roles.has(role)));
 }
@@ -216,6 +228,7 @@ export function canAccessTrainingModule(
 ) {
   const item = findTrainingModule(moduleCode);
   if (!item) return false;
+  if (primaryRole === "ADMIN") return true;
   const roles = new Set<SystemUserRole>(trainingRolesForUser(primaryRole, assignedRoles));
   return item.roles.some((role) => roles.has(role));
 }

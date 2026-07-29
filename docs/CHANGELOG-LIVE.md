@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-29-r297
+
+- Release ID: `2026-07-29-r297`
+- Date/Time (Asia/Singapore): `2026-07-29`
+- Deployment status: `READY`
+- Scope: give ADMIN complete training-library oversight and expand the teacher curriculum with four detailed bilingual workflow modules covering daily start, scheduling, reports, and finance.
+- Key files:
+  - `lib/training-center.ts`
+  - `app/training/library/page.tsx`
+  - `scripts/build-bilingual-training-sops.mjs`
+  - `tests/training-center.test.ts`
+  - `docs/assets/sop-teacher-complete-20260729/`
+  - `docs/SOP-老师-*-中英文培训版-20260729.html`
+  - `output/pdf/SOP-老师-*-中英文培训版-20260729.pdf`
+  - `docs/培训中心/`
+  - `docs/tasks/TASK-20260729-admin-full-library-and-teacher-depth.md`
+- Risk impact (if any): Low to moderate and limited to training access and retraining. ADMIN can see all training PDFs but receives no new operational permission. Release `20260729C` intentionally requires current-version acknowledgement.
+- Verification: 15 real production teacher pages were captured with the test-teacher account and red bilingual callouts; temporary session residue was 0. Four new teacher PDFs rendered as 10 pages each and passed extracted-text, non-blank-page, and contact-sheet inspection. The catalogue rendered without clipping. Registry totals are 33 modules / 345 pages / 33 ADMIN-visible / 11 TEACHER-visible. All 124 backend tests passed.
+- Rollback point: `4ef88cd930d6bfbb8172a4d14f57478bd39c1272` (`2026-07-29-r296` production-aligned head).
+
+---
+
 ## 2026-07-29-r296
 
 - Release ID: `2026-07-29-r296`

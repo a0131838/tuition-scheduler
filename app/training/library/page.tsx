@@ -40,6 +40,9 @@ export default async function TrainingPdfLibraryPage() {
         </p>
         <p style={{ color: "#475569" }}>
           {text("Training roles", "培训岗位")}：{roles.join(" / ")} · {text("Available PDFs", "可用 PDF")}：{modules.length}
+          {user.role === "ADMIN"
+            ? ` · ${text("Administrator full-library oversight", "管理员全资料库监督模式")}`
+            : ""}
         </p>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <Link href="/training">{text("Back to My Training", "返回我的培训")}</Link>

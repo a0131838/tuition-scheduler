@@ -16,10 +16,10 @@ import {
 import { operationAreaForRoute, OPERATION_AREAS } from "../lib/training-operation-coverage";
 
 test("training module codes and versions are unique", () => {
-  assert.equal(TRAINING_MODULES.length, 29);
+  assert.equal(TRAINING_MODULES.length, 33);
   const keys = TRAINING_MODULES.map((item) => `${item.code}:${item.version}`);
   assert.equal(new Set(keys).size, keys.length);
-  assert.equal(TRAINING_RELEASE_VERSION, "20260729B");
+  assert.equal(TRAINING_RELEASE_VERSION, "20260729C");
   assert.ok(TRAINING_MODULES.every((item) => item.version === TRAINING_RELEASE_VERSION));
   assert.equal(new Set(TRAINING_MODULES.map((item) => item.questions[0].prompt)).size, TRAINING_MODULES.length);
   assert.deepEqual(TRAINING_MODULES[0].questions.map((question) => question.answer), [1, 2, 0, 1, 2]);
@@ -92,8 +92,28 @@ test("new mini program guides use workflow-specific evidence and state unsupport
 
 test("role filtering keeps teacher and finance training isolated", () => {
   assert.ok(trainingModulesForRole("TEACHER").every((item) => item.roles.includes("TEACHER")));
+  assert.equal(trainingModulesForRole("TEACHER").length, 11);
   assert.ok(trainingModulesForRole("FINANCE").every((item) => item.roles.includes("FINANCE")));
   assert.equal(trainingModulesForRole("STUDENT").length, 0);
+});
+
+test("administrator has full training-library oversight, including teacher-only modules", () => {
+  assert.equal(trainingModulesForRole("ADMIN").length, TRAINING_MODULES.length);
+  assert.equal(trainingModulesForUser("ADMIN").length, TRAINING_MODULES.length);
+  assert.equal(canAccessTrainingModule("ADMIN", [], "TEACHER_MINIAPP"), true);
+  assert.equal(canAccessTrainingModule("ADMIN", [], "TEACHER_REPORTS_ASSESSMENTS"), true);
+});
+
+test("teacher curriculum covers the complete daily, scheduling, academic-record, and finance loops", () => {
+  const codes = new Set(trainingModulesForRole("TEACHER").map((item) => item.code));
+  for (const code of [
+    "TEACHER_ONBOARDING_PROFILE",
+    "TEACHER_AVAILABILITY_SCHEDULING",
+    "TEACHER_REPORTS_ASSESSMENTS",
+    "TEACHER_EXPENSES_PAYROLL",
+  ]) {
+    assert.equal(codes.has(code), true, code);
+  }
 });
 
 test("additional training roles combine modules without changing the primary role", () => {

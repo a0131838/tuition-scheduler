@@ -5,7 +5,7 @@ import { chromium } from "playwright";
 const root = process.cwd();
 const docsDir = path.join(root, "docs");
 const pdfDir = path.join(root, "output", "pdf");
-const version = "20260729B";
+const version = "20260729C";
 
 const guides = [
   ["SYSTEM_OPERATION_MAP", "SGT 全系统操作流程地图", "SGT Full-System Operations Map", "docs/SOP-全系统操作流程地图-培训版-20260728.html", "00-SGT全系统操作流程地图-中英文培训版-20260728.pdf", [
@@ -205,6 +205,66 @@ const guides = [
     "docs/assets/sop-miniapp-binding-20260729/annotated/08-parent-permissions.png",
     "docs/assets/sop-小程序员工工作台-20260718/annotated/05-academic-intake.png",
   ]],
+  ["TEACHER_ONBOARDING_PROFILE", "老师账号、个人资料、通知与每日开工", "Teacher Account, Profile, Notices, and Daily Start", "docs/SOP-老师-课表反馈工资与学生历史-中英文培训版-20260718.html", "SOP-老师-账号资料通知与每日开工-中英文培训版-20260729.pdf", [
+    ["登录后先核对顶部姓名、老师身份和已关联档案；出现“老师资料未关联”时停止并联系管理员。", "After login, verify the name, Teacher identity, and linked profile; stop and contact an administrator if the profile is not linked."],
+    ["从老师工作台先看今日课程、待点名、待反馈、交接风险、报销补件和工资确认，不从聊天消息猜任务。", "On the Teacher Dashboard, first review today’s sessions, attendance, feedback, handoff risks, rejected claims, and payroll confirmation; never infer tasks from chat alone."],
+    ["上课前确认今日课程和学生；课程、时间、地点或学生不正确时不自行修改，立即交给教务核对。", "Before class, confirm today’s sessions and students; do not edit an incorrect course, time, location, or student yourself—send it to Academic for review."],
+    ["打开通知并处理要求确认的项目；管理反馈必须阅读完整内容后确认，不得只点“已读”。", "Open Notices and acknowledge required items; read manager feedback in full before acknowledging it."],
+    ["检查签到警示；只处理属于本人且事实清楚的警示，错误记录保留页面和时间证据后升级。", "Review sign-in alerts; act only on alerts assigned to you with clear facts, and preserve page and time evidence before escalating an incorrect record."],
+    ["检查教师名片的姓名、科目、授课语言、经验和介绍；对外资料不准确时先更正或联系管理员，再下载或分享。", "Check the teacher card’s name, subjects, teaching language, experience, and introduction; correct or escalate inaccurate public information before downloading or sharing it."],
+  ], [
+    "docs/assets/sop-teacher-complete-20260729/annotated/01-dashboard.png",
+    "docs/assets/sop-teacher-complete-20260729/annotated/01-dashboard.png",
+    "docs/assets/sop-teacher-complete-20260729/annotated/02-sessions.png",
+    "docs/assets/sop-teacher-complete-20260729/annotated/12-notices.png",
+    "docs/assets/sop-teacher-complete-20260729/annotated/15-alerts.png",
+    "docs/assets/sop-teacher-complete-20260729/annotated/13-card.png",
+  ]],
+  ["TEACHER_AVAILABILITY_SCHEDULING", "老师可用时间、排课例外与工单", "Teacher Availability, Scheduling Exceptions, and Tickets", "docs/SOP-老师-课表反馈工资与学生历史-中英文培训版-20260718.html", "SOP-老师-可用时间排课例外与工单-中英文培训版-20260729.pdf", [
+    ["进入“我的可上课时间”，先检查未来30天覆盖天数和已有时段；这些是真实排课依据，不是个人备忘。", "Open My Availability and check the next-30-day coverage and saved ranges; these drive real scheduling and are not personal notes."],
+    ["使用单日或批量日期新增准确时段；保存前核对日期、开始和结束时间，避免重叠或错误时区。", "Add accurate ranges by single day or date range; verify dates, start and end times, overlaps, and timezone before saving."],
+    ["需要整天不可用时使用清空当天；误清空只撤销最近一次可撤销操作，无法确认时停止并联系教务。", "Use Clear Day when an entire day becomes unavailable; undo only the latest eligible clear-day action and stop for Academic help when uncertain."],
+    ["只在“排课例外确认”回复分配给自己的请求，选择可以、不可以或建议替代时间，并写清可执行的具体时间。", "Reply only to assigned Scheduling Exceptions, choose Can do, Cannot do, or Suggest another slot, and provide a specific actionable time."],
+    ["老师的回复不是正式改课；返回课表确认教务是否已建立或更新正式课次，未变化时不要重复提交。", "A teacher reply does not change the official session; return to My Sessions and verify Academic created or updated it, and do not resubmit when unchanged."],
+    ["在老师工单中先筛选本人任务，核对学生、情况、优先级和凭证；完成后填写可核对的完成说明再标记完成。", "In Teacher Tickets, filter assigned work, verify student, situation, priority, and evidence, then add a verifiable completion note before marking complete."],
+  ], [
+    "docs/assets/sop-teacher-complete-20260729/annotated/03-availability.png",
+    "docs/assets/sop-teacher-complete-20260729/annotated/03-availability.png",
+    "docs/assets/sop-teacher-complete-20260729/annotated/03-availability.png",
+    "docs/assets/sop-teacher-complete-20260729/annotated/04-scheduling-exceptions.png",
+    "docs/assets/sop-teacher-complete-20260729/annotated/02-sessions.png",
+    "docs/assets/sop-teacher-complete-20260729/annotated/05-tickets.png",
+  ]],
+  ["TEACHER_REPORTS_ASSESSMENTS", "老师评估、中期报告与结课报告", "Teacher Assessments, Midterm Reports, and Final Reports", "docs/SOP-老师-课表反馈工资与学生历史-中英文培训版-20260718.html", "SOP-老师-评估中期报告与结课报告-中英文培训版-20260729.pdf", [
+    ["先打开老师评估队列，只处理分配给本人且背景、学生和问题清楚的任务；资料不足时退回提问，不猜测。", "Open the teacher assessment queue and work only on clearly assigned tasks with complete student context and questions; ask for missing information instead of guessing."],
+    ["报告前查看相关课次、本人反馈和其他老师的交接反馈，区分课堂事实、专业判断和建议。", "Before reporting, review relevant sessions, your feedback, and cross-teacher handoff feedback, separating classroom facts, professional judgement, and recommendations."],
+    ["进入中期报告，先看待填写、已提交、任务总数和最近分配时间；没有任务时不自行新建学生报告。", "In Midterm Reports, check Pending, Submitted, total tasks, and latest assignment; do not create an unassigned student report."],
+    ["按页面模板逐项填写学习内容、掌握情况、困难、证据和下一阶段计划；禁止复制其他学生内容。", "Complete the template with learning content, mastery, difficulties, evidence, and next-stage plan; never copy another student’s report."],
+    ["进入结课报告核对课程周期、课时和最终学习结果；结论必须能由课次及反馈记录支持。", "In Final Reports, verify the course period, sessions, and final outcomes; every conclusion must be supported by session and feedback records."],
+    ["提交后重新打开并核对状态；被退回时按具体意见更正，涉及家长争议、重大风险或记录冲突时升级教务或主管。", "Reopen after submission and verify status; correct returned work against specific comments and escalate parent disputes, material risks, or record conflicts to Academic or management."],
+  ], [
+    "docs/assets/sop-teacher-complete-20260729/annotated/06-assessments.png",
+    "docs/assets/sop-家长沟通通知中心-20260718/annotated/11-teacher-feedback-history.png",
+    "docs/assets/sop-teacher-complete-20260729/annotated/07-midterm-reports.png",
+    "docs/assets/sop-teacher-complete-20260729/annotated/07-midterm-reports.png",
+    "docs/assets/sop-teacher-complete-20260729/annotated/08-final-reports.png",
+    "docs/assets/sop-teacher-complete-20260729/annotated/08-final-reports.png",
+  ]],
+  ["TEACHER_EXPENSES_PAYROLL", "老师报销、工资与付款跟进", "Teacher Expense Claims, Payroll, and Payment Follow-up", "docs/SOP-老师-收款资料填写流程-培训版-20260529.html", "SOP-老师-报销工资与付款跟进-中英文培训版-20260729.pdf", [
+    ["进入“我的报销”先处理被驳回补件和已批未付项目，再建立新报销，避免重复提交。", "In My Expense Claims, handle rejected items and approved-unpaid follow-up before creating a new claim to avoid duplicates."],
+    ["新建报销时核对日期、用途、金额、币种和业务说明，上传清晰且属于该笔费用的凭证。", "For a new claim, verify date, purpose, amount, currency, and business reason, and attach clear evidence for that exact expense."],
+    ["提交后确认状态为等待审批；被驳回时阅读原因、替换错误资料并使用重提，不另建重复报销。", "After submission, confirm the waiting-approval status; when rejected, read the reason, replace incorrect evidence, and resubmit instead of duplicating the claim."],
+    ["进入工资单核对结算期间、课次、课时、费率、调整项目和总额；不得只看最终金额。", "In Payroll, verify the period, sessions, hours, rates, adjustments, and total; never review only the final amount."],
+    ["全部一致才确认工资；发现漏课、错课时、错费率或重复项目时保留具体课次证据并按页面流程提出问题。", "Confirm payroll only when every line agrees; for missing sessions, wrong hours or rates, or duplicates, preserve exact session evidence and raise the issue through the page workflow."],
+    ["在收款资料中按所在地使用 PayNow 或 Wise，保存后重新打开核对；密码、验证码和网银登录资料不得提交给系统或员工。", "Use PayNow or Wise according to location, then reopen after saving to verify; never submit passwords, OTPs, or online-banking credentials to the system or staff."],
+  ], [
+    "docs/assets/sop-teacher-complete-20260729/annotated/09-expense-claims.png",
+    "docs/assets/sop-teacher-complete-20260729/annotated/09-expense-claims.png",
+    "docs/assets/sop-teacher-complete-20260729/annotated/09-expense-claims.png",
+    "docs/assets/sop-teacher-complete-20260729/annotated/10-payroll.png",
+    "docs/assets/sop-teacher-complete-20260729/annotated/10-payroll.png",
+    "docs/assets/sop-teacher-complete-20260729/annotated/11-payment-details.png",
+  ]],
 ];
 
 const catalogueGroups = [
@@ -232,6 +292,10 @@ const catalogueGroups = [
     ["Teacher Mini Program — Complete Operations", "老师小程序完整操作"],
     ["Teacher Schedule, Feedback, Payroll, and Student History", "老师课表、反馈、工资与学生历史"],
     ["Teacher Payment Details Submission", "老师收款资料填写"],
+    ["Teacher Account, Profile, Notices, and Daily Start", "老师账号、个人资料、通知与每日开工"],
+    ["Teacher Availability, Scheduling Exceptions, and Tickets", "老师可用时间、排课例外与工单"],
+    ["Teacher Assessments, Midterm Reports, and Final Reports", "老师评估、中期报告与结课报告"],
+    ["Teacher Expense Claims, Payroll, and Payment Follow-up", "老师报销、工资与付款跟进"],
   ]],
   ["Finance / 财务", [
     ["Finance Approvals, Invoices, Receipts, Payroll, Claims, and Partners", "财务审批、发票收据、工资报销与合作方"],
@@ -315,9 +379,9 @@ function buildCatalogueHtml() {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>SGT Staff Training Centre Catalogue / 员工培训中心总目录</title><style>
 @page{size:A4 landscape;margin:13mm 12mm}*{box-sizing:border-box}body{margin:0;color:#172033;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}.page{height:184mm;page-break-after:always;position:relative;overflow:hidden;padding:3mm}.page:last-child{page-break-after:auto}.cover{display:grid;align-content:center;background:linear-gradient(135deg,#ecfdf5,#eff6ff);border-radius:7mm;padding:17mm}.eyebrow{font-size:10px;font-weight:900;color:#0f766e;letter-spacing:.08em}h1{font-size:30px;margin:6mm 0 3mm;color:#102a43}h2{font-size:14px;margin:0 0 2mm}.zh-title{font-size:23px;color:#334e68}.banner,.box,.group{border:1px solid #d7e2ec;border-radius:4mm;padding:5mm;background:#f8fbfd}.banner{margin-top:7mm;border-left:2mm solid #0f766e;background:white}.grid{display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin-top:6mm}.box li{font-size:11px;line-height:1.55;margin:2.5mm 0}.catalogue{display:grid;grid-template-columns:repeat(4,1fr);gap:3mm;margin-top:4mm}.catalogue-column{display:grid;align-content:start;gap:3mm}.group{padding:3mm}.module{border-top:1px solid #d7e2ec;padding:1.8mm 0}.module:first-of-type{border-top:0}.module strong,.module span{display:block;font-size:8.3px;line-height:1.28}.module span{color:#475569}.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:4mm;margin-top:8mm}.flow .box b{display:block;color:#0f766e;font-size:20px;margin-bottom:2mm}footer{position:absolute;bottom:2mm;left:3mm;right:3mm;display:flex;justify-content:space-between;color:#64748b;font-size:9px}
 </style></head><body>
-<section class="page cover"><div class="eyebrow">SGT MANAGE · CONTROLLED BILINGUAL TRAINING LIBRARY / 受控中英双语培训资料库</div><h1>Staff Training Centre Catalogue</h1><div class="zh-title">员工培训中心总目录</div><div class="banner">29 role-based modules · English / Chinese / Bilingual display · Training release 2026-07-29B<br>29 个岗位模块 · 英文 / 中文 / 中英并列显示 · 培训版本 2026-07-29B</div></section>
+<section class="page cover"><div class="eyebrow">SGT MANAGE · CONTROLLED BILINGUAL TRAINING LIBRARY / 受控中英双语培训资料库</div><h1>Staff Training Centre Catalogue</h1><div class="zh-title">员工培训中心总目录</div><div class="banner">33 role-based modules · English / Chinese / Bilingual display · Training release 2026-07-29C<br>33 个岗位模块 · 英文 / 中文 / 中英并列显示 · 培训版本 2026-07-29C</div></section>
 <section class="page"><div class="eyebrow">LANGUAGE & CONTROL / 语言与版本控制</div><h1>Use the version assigned in the system<br><span class="zh-title">只使用系统分配的当前版本</span></h1><div class="grid"><div class="box"><h2>Account language / 账号语言</h2><ul><li>EN: English only / 仅英文</li><li>ZH: Chinese only / 仅中文</li><li>BILINGUAL: English + Chinese / 中英并列</li><li>Managers set account language in System User Admin. / 管理者在系统使用者管理设置账号语言。</li></ul></div><div class="box"><h2>Version status / 版本状态</h2><ul><li>Current: may be used for training and authorised work. / 现行：可用于培训和已授权工作。</li><li>Review required: manager explanation only. / 待复核：仅供主管解释。</li><li>Superseded: audit history only. / 已替代：仅供审计追溯。</li><li>Training roles never grant system permissions. / 培训岗位不授予系统权限。</li></ul></div></div><footer><span>SGT Training Centre / 员工培训中心</span><span>2</span></footer></section>
-<section class="page"><div class="eyebrow">CURRENT MODULES / 当前模块</div><h1>Role learning paths / 岗位学习路径</h1><div class="catalogue">${groups}</div><footer><span>29 current bilingual modules / 29 个现行双语模块</span><span>3</span></footer></section>
+<section class="page"><div class="eyebrow">CURRENT MODULES / 当前模块</div><h1>Role learning paths / 岗位学习路径</h1><div class="catalogue">${groups}</div><footer><span>33 current bilingual modules / 33 个现行双语模块</span><span>3</span></footer></section>
 <section class="page"><div class="eyebrow">CERTIFICATION / 培训验收</div><h1>Opening a PDF is not completion<br><span class="zh-title">打开 PDF 不等于完成培训</span></h1><div class="flow"><div class="box"><b>1</b>Read the current bilingual SOP.<br>阅读当前双语 SOP。</div><div class="box"><b>2</b>Pass five questions at 80% or above.<br>五题测验达到 80 分。</div><div class="box"><b>3</b>Practise with training data and submit evidence.<br>使用培训数据实操并提交证据。</div><div class="box"><b>4</b>Manager verifies the result and signs off.<br>主管核对结果并验收。</div></div><div class="banner">Stop and escalate when data, permission, page state, or a high-risk outcome is unclear.<br>资料、权限、页面状态或高风险结果不明确时，停止操作并升级主管。</div><footer><span>SGT Training Centre / 员工培训中心</span><span>4</span></footer></section>
 </body></html>`;
 }
