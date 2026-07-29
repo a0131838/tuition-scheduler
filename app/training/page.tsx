@@ -29,6 +29,7 @@ export default async function TrainingPage() {
         <p style={{ color: "#475569" }}>{moduleText("Current training roles", "当前培训岗位")}：{trainingRoles.join(" / ") || moduleText("No staff training role", "无员工培训岗位")}（{moduleText("the primary role is included automatically; managers assign additional training roles", "主角色自动包含，附加岗位由管理者分配")}）</p>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <Link href={user.role === "TEACHER" ? "/teacher" : "/admin"}>{moduleText("Back to Workspace", "返回工作台")}</Link>
+          <Link href="/training/library">{moduleText("PDF Download Centre", "PDF 下载中心")}</Link>
           {manager ? <Link href="/training/manage">{moduleText("Manager Sign-off", "主管验收台")}</Link> : null}
         </div>
       </div>
@@ -44,7 +45,11 @@ export default async function TrainingPage() {
               <div style={{ display: "grid", gap: 16, marginTop: 16 }}>
                 <section>
                   <strong>{moduleText("Step 1: Read", "步骤一：阅读")}</strong>
-                  <p><a href={`/api/training/sops/${item.code}`} target="_blank" rel="noreferrer">{moduleText("Open Current Bilingual PDF", "打开当前中英双语 PDF")}</a></p>
+                  <p>
+                    <a href={`/api/training/sops/${item.code}`} target="_blank" rel="noreferrer">{moduleText("Open Current Bilingual PDF", "打开当前中英双语 PDF")}</a>
+                    {" · "}
+                    <a href={`/api/training/sops/${item.code}?download=1`} download>{moduleText("Download PDF", "下载 PDF")}</a>
+                  </p>
                   <form action={acknowledgeTrainingRead}>
                     <input type="hidden" name="moduleCode" value={item.code} />
                     <button type="submit">{progress?.readAt ? moduleText("Confirm Again", "重新确认已阅读") : moduleText("Confirm Current Version Read", "确认已阅读当前版本")}</button>

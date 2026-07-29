@@ -24,6 +24,31 @@
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
+## 2026-07-29-r294 Ready
+
+- Scope: zero-experience step-by-step bilingual training PDFs and an employee PDF Download Centre.
+- Training material:
+  - the 17 former four-page outline PDFs are now nine-page beginner guides;
+  - each upgraded guide includes preparation, workflow overview, one page per key action, real annotated system screenshots, before-save review, after-save verification, stop conditions, and a final checklist;
+  - the six existing detailed bilingual guides remain in place;
+  - all 23 assigned PDFs now cover 251 pages and use training release version `20260729`.
+- Employee access:
+  - `/training` offers both View PDF and Download PDF for each assigned module;
+  - `/training/library` groups all assigned PDFs by category and offers persistent view/download actions;
+  - the PDF API returns `inline` for viewing and `attachment` only for an explicit download request;
+  - authentication and training-role access checks remain mandatory.
+- Isolation:
+  - no database migration and no automatic training progress creation;
+  - no system permission, training-role assignment, scheduling, finance, package, payroll, Full Care, or parent workflow changes.
+- Verification before deploy:
+  - 23/23 PDFs passed page-count and Chinese/English content validation, 251 pages total;
+  - representative nine-page contact sheet visually passed;
+  - authenticated local library: HTTP 200, 20 administrator-accessible module cards;
+  - PDF inline/download headers passed, `%PDF` signature passed, unauthorised teacher-only access returned 403;
+  - temporary verification-session cleanup: 0 remaining;
+  - 118 backend tests, TypeScript, and the 229-page production build passed.
+- Task doc: `docs/tasks/TASK-20260729-beginner-training-pdfs-download-centre.md`.
+
 ## 2026-07-28-r293 Live
 
 - Scope: make `/training/manage` a complete staff training overview instead of an empty submission-only queue.

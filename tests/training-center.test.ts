@@ -6,6 +6,7 @@ import {
   canAccessTrainingModule,
   findTrainingModule,
   gradeTrainingQuiz,
+  TRAINING_RELEASE_VERSION,
   TRAINING_MODULES,
   trainingModulesForRole,
   trainingModulesForUser,
@@ -17,6 +18,8 @@ import { operationAreaForRoute, OPERATION_AREAS } from "../lib/training-operatio
 test("training module codes and versions are unique", () => {
   const keys = TRAINING_MODULES.map((item) => `${item.code}:${item.version}`);
   assert.equal(new Set(keys).size, keys.length);
+  assert.equal(TRAINING_RELEASE_VERSION, "20260729");
+  assert.ok(TRAINING_MODULES.every((item) => item.version === TRAINING_RELEASE_VERSION));
 });
 
 test("every module has complete Chinese and English training content and a PDF", () => {
@@ -25,6 +28,7 @@ test("every module has complete Chinese and English training content and a PDF",
     assert.match(item.pdfFile, /\.pdf$/);
     assert.match(item.pdfFile, /中英文/);
     assert.equal(fs.existsSync(path.join(process.cwd(), "output", "pdf", item.pdfFile)), true, item.pdfFile);
+    assert.ok(fs.statSync(path.join(process.cwd(), "output", "pdf", item.pdfFile)).size >= 500_000, item.pdfFile);
     assert.ok(item.practicalTask.length >= 10);
     assert.ok(item.practicalTaskEn.length >= 10);
     assert.ok(item.title.length >= 2);

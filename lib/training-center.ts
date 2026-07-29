@@ -2,7 +2,7 @@ import type { SystemUserRole } from "@/lib/staff-roles";
 
 export const TRAINING_ASSIGNABLE_ROLES = ["ADMIN", "FINANCE", "SALES", "CS", "TEACHER"] as const satisfies readonly SystemUserRole[];
 export type TrainingAssignableRole = (typeof TRAINING_ASSIGNABLE_ROLES)[number];
-export const TRAINING_RELEASE_VERSION = "20260728";
+export const TRAINING_RELEASE_VERSION = "20260729";
 
 export type TrainingQuestion = {
   prompt: string;

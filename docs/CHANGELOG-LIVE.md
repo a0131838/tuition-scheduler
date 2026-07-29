@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-29-r294
+
+- Release ID: `2026-07-29-r294`
+- Date/Time (Asia/Singapore): `2026-07-29`
+- Deployment status: `READY`
+- Scope: replace the 17 short bilingual training outlines with zero-experience step-by-step guides and add a role-aware PDF Download Centre for staff.
+- Key files:
+  - `app/training/page.tsx`
+  - `app/training/library/page.tsx`
+  - `app/api/training/sops/[code]/route.ts`
+  - `lib/training-center.ts`
+  - `scripts/build-bilingual-training-sops.mjs`
+  - `docs/*中英文培训版-20260728.html`
+  - `output/pdf/*中英文培训版-20260728.pdf`
+  - `docs/培训中心/README.md`
+  - `docs/tasks/TASK-20260729-beginner-training-pdfs-download-centre.md`
+- Risk impact (if any): Low. PDF access remains authenticated and limited to the employee's primary and additional training roles. The new download response changes only Content-Disposition when explicitly requested. The release changes no operational permission, role assignment, business record, finance, package, schedule, attendance, payroll, Full Care, or parent-visible workflow.
+- Verification: all 23 assigned bilingual PDFs passed file, page-count, English/Chinese text, and per-page content checks: 251 pages total. A representative nine-page guide passed rendered contact-sheet inspection with no blank or clipped pages. The authenticated Download Centre rendered 20 administrator-accessible role modules; inline view returned `inline`, download returned `attachment`, the file began with `%PDF`, and an unauthorised teacher-only module returned HTTP 403. Temporary verification-session cleanup was 0. All 118 backend tests, TypeScript, and the complete 229-page production build passed.
+- Rollback point: `42aad183a4f1f4a0f8da768b5e94a470d3a331ea` (`2026-07-28-r293` live).
+
+---
+
 ## 2026-07-28-r293
 
 - Release ID: `2026-07-28-r293`
