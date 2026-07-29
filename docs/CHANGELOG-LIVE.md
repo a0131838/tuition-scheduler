@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-29-r296
+
+- Release ID: `2026-07-29-r296`
+- Date/Time (Asia/Singapore): `2026-07-29`
+- Deployment status: `READY`
+- Scope: repair the parent mini-program invite route and replace incomplete or misleading mini-program training with 29 role-based, bilingual, step-by-step modules.
+- Key files:
+  - `app/api/admin/students/[id]/parent-portal/invites/route.ts`
+  - `lib/training-center.ts`
+  - `scripts/build-bilingual-training-sops.mjs`
+  - `tests/training-center.test.ts`
+  - `docs/SOP-小程序-*-中英文培训版-20260729.html`
+  - `docs/assets/sop-miniapp-binding-20260729/`
+  - `output/pdf/SOP-小程序-*-中英文培训版-20260729.pdf`
+  - `docs/培训中心/`
+  - `docs/tasks/TASK-20260729-training-completeness-and-miniapp-binding.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low to moderate. The only operational change corrects the parent invite route from an unregistered page to the existing bind page. No role, permission, billing, receipt, package, attendance, payroll, scheduling, Full Care record, or parent-visible business data changes.
+- Verification: 122 backend tests passed; TypeScript passed; the complete 229-page production build passed. All 29 assigned bilingual PDFs exist and total 305 pages. The parent binding guide, Finance boundary guide, and four-column 29-module catalogue passed rendered-page inspection. Automated checks prove every referenced training screenshot exists, the new guides use workflow-specific evidence, all 198 visible system pages remain mapped, and the parent invite path matches the registered mini-program page.
+- Rollback point: `fcd4c09cabf0e03630751e705c47e3ad4929f8cc` (`2026-07-29-r295` production-aligned head).
+
+---
+
 ## 2026-07-29-r295
 
 - Release ID: `2026-07-29-r295`

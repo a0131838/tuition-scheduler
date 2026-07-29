@@ -2,7 +2,7 @@ import type { SystemUserRole } from "@/lib/staff-roles";
 
 export const TRAINING_ASSIGNABLE_ROLES = ["ADMIN", "FINANCE", "SALES", "CS", "TEACHER"] as const satisfies readonly SystemUserRole[];
 export type TrainingAssignableRole = (typeof TRAINING_ASSIGNABLE_ROLES)[number];
-export const TRAINING_RELEASE_VERSION = "20260729";
+export const TRAINING_RELEASE_VERSION = "20260729B";
 
 export type TrainingQuestion = {
   prompt: string;
@@ -69,18 +69,19 @@ const englishContent: Record<string, { title: string; category: string; practica
   MANAGEMENT_MINIAPP: { title: "Management Mini Program — Oversight and Accounts", category: "Management", practicalTask: "Review training to-dos, approvals, and risks, then check account switching." },
   MANAGEMENT_COMMUNICATION: { title: "Parent Communication Oversight and Audit", category: "Management", practicalTask: "Verify the owner, publication status, and audit record for one parent communication." },
   MANAGER_FEEDBACK: { title: "Manager Feedback and Teacher Acknowledgement", category: "Management", practicalTask: "A manager sends training feedback; the teacher account acknowledges it as read." },
-  MINIAPP_STARTER: { title: "Staff Mini Program Login, Binding, and Account Switching", category: "Mini Program Foundation", practicalTask: "Bind a training staff account, verify the active identity, switch accounts safely, and complete logout and re-entry." },
-  SALES_MINIAPP: { title: "Sales Mini Program Lead Follow-up and Conversion Handover", category: "Sales Mini Program", practicalTask: "Using a training lead, complete duplicate checking, ownership, follow-up, assessment request, and conversion handover." },
-  FINANCE_MINIAPP: { title: "Finance Mini Program Approvals, Payroll, Claims, and Exceptions", category: "Finance Mini Program", practicalTask: "Review a training approval, payroll item, or claim, document every check, and route complex work to the web finance workbench." },
-  FULL_CARE_MINIAPP: { title: "Full Care Mini Program Student Progress, Risk, and Handover", category: "Full Care Mini Program", practicalTask: "Using a training student, update one owned task, record one waiting or risk state, and prepare a complete handover." },
-  PARENT_STUDENT_SUPPORT_MINIAPP: { title: "Parent and Student Mini Program Support", category: "Customer Support Mini Program", practicalTask: "Classify a training support case, verify the actual system state, give safe guidance or create an owned ticket, and record the result." },
+  MINIAPP_STARTER: { title: "Staff Mini Program Login, Manager Code Issue, and Self-Binding", category: "Mini Program Foundation", practicalTask: "A manager issues a one-time code to the correct training employee; the employee binds their own WeChat, verifies identity, and practises safe account switching." },
+  PARENT_MINIAPP_BINDING: { title: "Academic Parent Invitation and Parent Mini Program Binding", category: "Academic & Parent Mini Program", practicalTask: "Using a training student, issue one parent invite, complete parent binding, then verify the ACTIVE parent relationship and visibility permissions." },
+  SALES_MINIAPP: { title: "Sales Mini Program Lead Follow-up and Web Conversion Handover", category: "Sales Mini Program", practicalTask: "Using a training lead, complete mobile duplicate checking and follow-up, then explain the required web conversion and owner handover." },
+  FINANCE_MINIAPP: { title: "Finance Mini Program Access Boundary and Web Finance Handover", category: "Finance Mini Program Boundary", practicalTask: "Demonstrate staff binding, identify that Finance operations are not available in the current mini program, and route a training finance item to the correct web workbench." },
+  FULL_CARE_MINIAPP: { title: "Full Care Mini Program Support Boundary and Web Handover", category: "Full Care Mini Program Boundary", practicalTask: "Classify what can be viewed in the mini program, create an owned request ticket, and route project, task, risk, and report updates to the web Full Care workspace." },
+  PARENT_STUDENT_SUPPORT_MINIAPP: { title: "Parent and Student Mini Program Binding Support and Troubleshooting", category: "Customer Support Mini Program", practicalTask: "Troubleshoot a training invite, verify the ACTIVE relationship and permissions, then record an owned follow-up for any remaining issue." },
 };
 
 const foundationCodes = new Set(["SYSTEM_OPERATION_MAP", "MINIAPP_STARTER"]);
 const coreCodes = new Set([
   "ACADEMIC_SCHEDULING_MASTER", "CONTRACT_PACKAGE_GATE_MASTER", "FINANCE_MASTER", "RESOURCE_HANDOFF_MASTER",
   "MANAGEMENT_CONTROL_MASTER", "ATTENDANCE_EXCEPTION_MASTER", "ACADEMIC_MINIAPP", "TEACHER_MINIAPP",
-  "MANAGEMENT_MINIAPP", "SALES_MINIAPP", "FINANCE_MINIAPP",
+  "MANAGEMENT_MINIAPP", "PARENT_MINIAPP_BINDING", "SALES_MINIAPP", "FINANCE_MINIAPP",
 ]);
 
 function trainingQuestions(input: TrainingModuleInput, en: { title: string; practicalTask: string }): TrainingQuestion[] {
@@ -185,11 +186,12 @@ export const TRAINING_MODULES: TrainingModule[] = [
   module({ code: "MANAGEMENT_MINIAPP", title: "管理小程序监督与账号", version: "20260718", roles: ["ADMIN"], category: "管理", pdfFile: "SOP-小程序-管理-监督与账号-中英文培训版-20260718.pdf", practicalTask: "查看培训待办、审批和风险，并完成账号切换检查。" }),
   module({ code: "MANAGEMENT_COMMUNICATION", title: "家长沟通监督与审计", version: "20260718", roles: ["ADMIN"], category: "管理", pdfFile: "SOP-管理-家长沟通通知监督与审计-中英文培训版-20260718.pdf", practicalTask: "核对一条家长沟通的负责人、发布状态和审计记录。" }),
   module({ code: "MANAGER_FEEDBACK", title: "管理反馈发送与老师确认", version: "20260623", roles: ["ADMIN", "TEACHER"], category: "管理", pdfFile: "SOP-管理老师-管理反馈查看确认流程-中英文培训版-20260728.pdf", practicalTask: "管理者发送培训反馈；老师账号完成确认已读。" }),
-  module({ code: "MINIAPP_STARTER", title: "员工小程序登录绑定与账号切换", version: "20260729", roles: ["ADMIN", "FINANCE", "SALES", "CS", "TEACHER"], category: "小程序共同必修", pdfFile: "SOP-小程序-全员工-登录绑定与账号切换-中英文培训版-20260729.pdf", practicalTask: "绑定培训员工账号，核对当前身份，安全切换岗位账号，并完成退出与重新进入。" }),
-  module({ code: "SALES_MINIAPP", title: "销售小程序资源跟进与成交交接", version: "20260729", roles: ["SALES", "CS", "ADMIN"], category: "销售小程序", pdfFile: "SOP-小程序-销售-资源跟进与成交交接-中英文培训版-20260729.pdf", practicalTask: "使用培训资源完成查重、领取、跟进、老师评估和成交交接。" }),
-  module({ code: "FINANCE_MINIAPP", title: "财务小程序审批工资报销与异常", version: "20260729", roles: ["FINANCE", "ADMIN"], category: "财务小程序", pdfFile: "SOP-小程序-财务-审批工资报销与异常-中英文培训版-20260729.pdf", practicalTask: "核验一条培训审批、工资或报销记录，记录检查结果，并把复杂事项转回网页版财务工作台。" }),
-  module({ code: "FULL_CARE_MINIAPP", title: "全托管小程序学生进度风险与交接", version: "20260729", roles: ["CS", "ADMIN"], category: "全托管小程序", pdfFile: "SOP-小程序-全托管-学生进度风险与交接-中英文培训版-20260729.pdf", practicalTask: "使用培训学生更新一项本人任务，记录一次等待或风险状态，并完成六要素交接。" }),
-  module({ code: "PARENT_STUDENT_SUPPORT_MINIAPP", title: "家长学生小程序客服支持", version: "20260729", roles: ["CS", "SALES", "ADMIN"], category: "客服小程序", pdfFile: "SOP-小程序-客服-家长学生端支持-中英文培训版-20260729.pdf", practicalTask: "分类一条培训支持咨询，核对真实系统状态，完成安全指导或建立负责人明确的工单并记录结果。" }),
+  module({ code: "MINIAPP_STARTER", title: "员工小程序登录、主管发码与本人绑定", version: "20260729B", roles: ["ADMIN", "FINANCE", "SALES", "CS", "TEACHER"], category: "小程序共同必修", pdfFile: "SOP-小程序-全员工-登录绑定与账号切换-中英文培训版-20260729.pdf", practicalTask: "主管向正确培训员工生成一次性绑定码；员工绑定本人微信、核对身份并演练安全切换账号。" }),
+  module({ code: "PARENT_MINIAPP_BINDING", title: "教务邀请家长与家长完成小程序绑定", version: "20260729B", roles: ["CS", "ADMIN"], category: "教务家长小程序", pdfFile: "SOP-小程序-教务家长-邀请与绑定-中英文培训版-20260729.pdf", practicalTask: "使用培训学生生成一次家长邀请，完成家长绑定，并核对 ACTIVE 关系及可见权限。" }),
+  module({ code: "SALES_MINIAPP", title: "销售小程序资源跟进与网页版成交交接", version: "20260729B", roles: ["SALES", "CS", "ADMIN"], category: "销售小程序", pdfFile: "SOP-小程序-销售-资源跟进与成交交接-中英文培训版-20260729.pdf", practicalTask: "使用培训资源完成移动端查重和跟进，并说明正式成交与负责人交接必须回网页版完成的步骤。" }),
+  module({ code: "FINANCE_MINIAPP", title: "财务小程序登录边界与网页版财务交接", version: "20260729B", roles: ["FINANCE", "ADMIN"], category: "财务小程序边界", pdfFile: "SOP-小程序-财务-审批工资报销与异常-中英文培训版-20260729.pdf", practicalTask: "演练员工绑定，识别当前小程序没有财务操作工作台，并把培训财务事项转到正确网页版入口。" }),
+  module({ code: "FULL_CARE_MINIAPP", title: "全托管小程序支持边界与网页版交接", version: "20260729B", roles: ["CS", "ADMIN"], category: "全托管小程序边界", pdfFile: "SOP-小程序-全托管-学生进度风险与交接-中英文培训版-20260729.pdf", practicalTask: "区分小程序可查看内容，建立有负责人的请求工单，并把项目、任务、风险和报告更新转到网页版全托管工作台。" }),
+  module({ code: "PARENT_STUDENT_SUPPORT_MINIAPP", title: "家长学生小程序绑定与客服排障", version: "20260729B", roles: ["CS", "SALES", "ADMIN"], category: "客服小程序", pdfFile: "SOP-小程序-客服-家长学生端支持-中英文培训版-20260729.pdf", practicalTask: "排查一个培训邀请码，核对 ACTIVE 关系和权限，并为未解决问题记录负责人及跟进时间。" }),
 ];
 
 export function trainingModulesForRole(role: SystemUserRole) {

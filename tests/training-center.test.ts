@@ -16,10 +16,10 @@ import {
 import { operationAreaForRoute, OPERATION_AREAS } from "../lib/training-operation-coverage";
 
 test("training module codes and versions are unique", () => {
-  assert.equal(TRAINING_MODULES.length, 28);
+  assert.equal(TRAINING_MODULES.length, 29);
   const keys = TRAINING_MODULES.map((item) => `${item.code}:${item.version}`);
   assert.equal(new Set(keys).size, keys.length);
-  assert.equal(TRAINING_RELEASE_VERSION, "20260729");
+  assert.equal(TRAINING_RELEASE_VERSION, "20260729B");
   assert.ok(TRAINING_MODULES.every((item) => item.version === TRAINING_RELEASE_VERSION));
   assert.equal(new Set(TRAINING_MODULES.map((item) => item.questions[0].prompt)).size, TRAINING_MODULES.length);
   assert.deepEqual(TRAINING_MODULES[0].questions.map((question) => question.answer), [1, 2, 0, 1, 2]);
@@ -50,6 +50,46 @@ test("every module has complete Chinese and English training content and a PDF",
   }
 });
 
+test("every generated training HTML references screenshots that exist beside docs", () => {
+  const htmlFiles = fs.readdirSync(path.join(process.cwd(), "docs"))
+    .filter((name) => name.endsWith(".html") && name.includes("中英文培训版"));
+
+  for (const name of htmlFiles) {
+    const html = fs.readFileSync(path.join(process.cwd(), "docs", name), "utf8");
+    for (const match of html.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)) {
+      const src = match[1];
+      if (src.startsWith("data:") || src.startsWith("http:") || src.startsWith("https:")) continue;
+      assert.equal(
+        fs.existsSync(path.resolve(process.cwd(), "docs", src)),
+        true,
+        `${name}: missing screenshot ${src}`
+      );
+    }
+  }
+});
+
+test("new mini program guides use workflow-specific evidence and state unsupported boundaries", () => {
+  const readGuide = (name: string) =>
+    fs.readFileSync(path.join(process.cwd(), "docs", name), "utf8");
+
+  const staffBinding = readGuide("SOP-小程序-全员工-登录绑定与账号切换-中英文培训版-20260729.html");
+  assert.match(staffBinding, /sop-miniapp-binding-20260729\/annotated\/05-staff-account-row/);
+  assert.match(staffBinding, /sop-miniapp-binding-20260729\/annotated\/04-staff-bind/);
+
+  const parentBinding = readGuide("SOP-小程序-教务家长-邀请与绑定-中英文培训版-20260729.html");
+  assert.match(parentBinding, /\/pages\/bind\/bind/);
+  assert.match(parentBinding, /02-parent-bind/);
+  assert.match(parentBinding, /08-parent-permissions/);
+
+  const financeBoundary = readGuide("SOP-小程序-财务-审批工资报销与异常-中英文培训版-20260729.html");
+  assert.match(financeBoundary, /no dedicated Finance approvals, payroll, or claims workspace/);
+  assert.match(financeBoundary, /web Finance Workbench/);
+
+  const fullCareBoundary = readGuide("SOP-小程序-全托管-学生进度风险与交接-中英文培训版-20260729.html");
+  assert.match(fullCareBoundary, /native Full Care activity, task, risk-editing, and report-publishing pages are not currently available/);
+  assert.match(fullCareBoundary, /web Full Care workspace/);
+});
+
 test("role filtering keeps teacher and finance training isolated", () => {
   assert.ok(trainingModulesForRole("TEACHER").every((item) => item.roles.includes("TEACHER")));
   assert.ok(trainingModulesForRole("FINANCE").every((item) => item.roles.includes("FINANCE")));
@@ -65,6 +105,8 @@ test("additional training roles combine modules without changing the primary rol
   assert.equal(canAccessTrainingModule("CS", [], "FINANCE_MASTER"), false);
   assert.deepEqual(trainingModulesForUser("STUDENT", ["ADMIN"]), []);
   assert.equal(canAccessTrainingModule("SALES", [], "SALES_MINIAPP"), true);
+  assert.equal(canAccessTrainingModule("CS", [], "PARENT_MINIAPP_BINDING"), true);
+  assert.equal(canAccessTrainingModule("TEACHER", [], "PARENT_MINIAPP_BINDING"), false);
   assert.equal(canAccessTrainingModule("FINANCE", [], "FINANCE_MINIAPP"), true);
   assert.equal(canAccessTrainingModule("TEACHER", [], "FINANCE_MINIAPP"), false);
 });
@@ -132,4 +174,18 @@ test("every visible app page is assigned to an operation flow", () => {
   assert.ok(routes.length >= 198);
   assert.equal(routes.filter((route) => !operationAreaForRoute(route)).length, 0);
   assert.ok(OPERATION_AREAS.length >= 15);
+});
+
+test("parent portal invites point to the registered mini program bind page", () => {
+  const inviteRoute = fs.readFileSync(
+    path.join(process.cwd(), "app", "api", "admin", "students", "[id]", "parent-portal", "invites", "route.ts"),
+    "utf8"
+  );
+  const miniapp = JSON.parse(
+    fs.readFileSync(path.join(process.cwd(), "miniapp", "boss-academic-parent", "app.json"), "utf8")
+  ) as { pages: string[] };
+
+  assert.ok(miniapp.pages.includes("pages/bind/bind"));
+  assert.match(inviteRoute, /`\/pages\/bind\/bind\?token=/);
+  assert.doesNotMatch(inviteRoute, /pages\/bind\/index/);
 });

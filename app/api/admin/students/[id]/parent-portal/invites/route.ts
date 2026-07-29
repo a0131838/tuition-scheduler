@@ -29,7 +29,7 @@ function inviteDto(invite: {
     isActive: invite.isActive,
     createdAt: invite.createdAt.toISOString(),
     updatedAt: invite.updatedAt.toISOString(),
-    miniappPath: `/pages/bind/index?token=${encodeURIComponent(invite.token)}`,
+    miniappPath: `/pages/bind/bind?token=${encodeURIComponent(invite.token)}`,
   };
 }
 

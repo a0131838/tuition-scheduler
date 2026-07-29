@@ -20,10 +20,41 @@
 - Current release line: `2026-07-28-r288` is live at runtime commit `526ab99d6e821adf08d155fff8e027f0f9833ca8`; WeChat development version `1.0.20` was uploaded successfully. Find Schools now covers 13 official-source education sectors while preserving the existing international-school detail directory and all business workflows.
 - Current release line: `2026-07-28-r289` is live at runtime commit `49f9ff847aa1c7180f3f85818ae7d389a39d722a`. It adds the authenticated role-aware Training Center, controlled SOP library, quizzes, practical evidence and manager sign-off without changing operational business workflows.
 - Current release line: `2026-07-29-r295` is live at runtime feature commit `56da50e05568d5a47331a95c7c2b3e91996d3314`. It provides 28 bilingual competency modules, 296 controlled PDF pages, and eight role-based mini-program learning paths.
+- Current release line on this branch: `2026-07-29-r296` is ready. It corrects the parent binding route and provides 29 bilingual competency modules, 305 controlled PDF pages, and nine truthful mini-program learning paths.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-07-29-r296 Ready
+
+- Scope: complete parent and employee mini-program binding training, correct the parent bind route, and repair other mini-program guides whose screenshots or claimed capabilities did not match the system.
+- Business impact:
+  - Academic staff receive a dedicated end-to-end parent invitation and binding module.
+  - Managers and employees receive a two-sided one-time staff-code binding workflow.
+  - Sales training separates mobile follow-up from web conversion.
+  - Finance and Full Care guides state the current native-mobile boundary and direct unavailable work to the web workbench.
+  - Training release `20260729B` intentionally requires acknowledgement of the corrected content.
+  - No operational role, permission, billing, receipt, package, attendance, payroll, scheduling, Full Care data, or parent-visible record changes.
+- Files:
+  - `app/api/admin/students/[id]/parent-portal/invites/route.ts`
+  - `lib/training-center.ts`
+  - `scripts/build-bilingual-training-sops.mjs`
+  - `tests/training-center.test.ts`
+  - `docs/assets/sop-miniapp-binding-20260729/`
+  - `docs/培训中心/`
+  - `docs/tasks/TASK-20260729-training-completeness-and-miniapp-binding.md`
+- Verification before deploy:
+  - 122 backend tests passed.
+  - TypeScript passed.
+  - 229-page production build passed.
+  - 29/29 bilingual PDFs exist, 305 pages total.
+  - Parent binding, Finance boundary, and full catalogue rendered-page checks passed without missing screenshots or clipping.
+- Post-deploy verification:
+  - `/admin/login` HTTP 200 and local/GitHub/server commit equality.
+  - Authenticated `/training` and `/training/library` show 26 ADMIN-accessible modules with release `20260729B`.
+  - Parent binding PDF downloads as `application/pdf`; unrelated-role access remains forbidden.
+  - A temporary parent invite response returns `/pages/bind/bind`, followed by zero temporary-record residue.
 
 ## 2026-07-29-r295 Live
 

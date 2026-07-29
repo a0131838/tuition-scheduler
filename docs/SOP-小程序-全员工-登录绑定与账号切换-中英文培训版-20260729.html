@@ -1,21 +1,21 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Staff Mini Program Login, Binding, and Account Switching / 员工小程序登录绑定与账号切换</title><style>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Staff Mini Program Login, Manager Code Issue, and Self-Binding / 员工小程序登录、主管发码与本人绑定</title><style>
 @page{size:A4 landscape;margin:13mm 12mm}*{box-sizing:border-box}body{margin:0;color:#172033;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}.page{height:184mm;page-break-after:always;position:relative;overflow:hidden;padding:3mm}.page:last-child{page-break-after:auto}.cover{display:grid;align-content:center;background:linear-gradient(135deg,#ecfdf5,#eff6ff);border-radius:7mm;padding:17mm}.eyebrow{font-size:10px;font-weight:900;color:#0f766e;letter-spacing:.08em}h1{font-size:25px;margin:4mm 0 2mm;color:#102a43;line-height:1.2}.zh-title{font-size:19px;color:#334e68;line-height:1.3}.meta{margin-top:8mm;font-size:13px;line-height:1.8}.banner{margin-top:7mm;padding:4mm;border-left:2mm solid #0f766e;background:#fff}.steps{display:grid;gap:3mm;margin-top:4mm}.step{display:grid;grid-template-columns:9mm 1fr;gap:3mm;align-items:start;border:1px solid #d7e2ec;border-radius:3mm;padding:3mm;background:#f8fbfd}.step>b{display:grid;place-items:center;width:7mm;height:7mm;border-radius:50%;background:#0f766e;color:white}.step strong,.step span{display:block;font-size:11px;line-height:1.45}.step span{color:#475569;margin-top:1mm}.check{display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin-top:6mm}.box{border:1px solid #d7e2ec;border-radius:4mm;padding:5mm;background:#f8fbfd}.danger{border-color:#fca5a5;background:#fef2f2}.box h2{font-size:16px;margin:0 0 3mm}.box li{font-size:11px;line-height:1.5;margin:2mm 0}.lesson{display:grid;grid-template-columns:1.18fr 1fr;gap:5mm;margin-top:4mm;height:118mm}.shot{border:1px solid #d7e2ec;border-radius:4mm;background:#f8fafc;overflow:hidden;display:grid;grid-template-rows:1fr auto}.shot img{width:100%;height:105mm;object-fit:contain;display:block}.caption{padding:2mm 3mm;color:#475569;font-size:9px;border-top:1px solid #d7e2ec}.empty-shot{display:grid;place-items:center;text-align:center;color:#64748b;font-size:14px}.beginner{border:1px solid #d7e2ec;border-radius:4mm;padding:4mm;background:#fff}.beginner h2{font-size:15px;margin:0 0 2mm}.beginner ol{margin:0;padding-left:6mm}.beginner li{font-size:9.5px;line-height:1.35;margin:1.7mm 0}.stop{font-size:9.5px;line-height:1.35;padding:2.5mm;border:1px solid #fca5a5;border-radius:2mm;background:#fef2f2;margin-top:2mm}footer{position:absolute;bottom:2mm;left:3mm;right:3mm;display:flex;justify-content:space-between;color:#64748b;font-size:9px}
 </style></head><body>
-<section class="page cover"><div class="eyebrow">SGT MANAGE · BEGINNER BILINGUAL TRAINING SOP / 零基础中英双语培训 SOP</div><h1>Staff Mini Program Login, Binding, and Account Switching</h1><div class="zh-title">员工小程序登录绑定与账号切换</div><div class="meta">Module / 模块：MINIAPP_STARTER<br>Edition / 版本：Beginner step-by-step / 完全小白逐步教学版<br>Language / 语言：English + 中文<br>System screenshots / 系统截图：Playwright authenticated role capture / 登录岗位实拍</div><div class="banner"><b>Completion / 完成标准</b><br>Read every step → quiz ≥ 80% → practise with training data → manager sign-off<br>逐步阅读 → 测验至少 80 分 → 培训数据实操 → 主管验收</div></section>
+<section class="page cover"><div class="eyebrow">SGT MANAGE · BEGINNER BILINGUAL TRAINING SOP / 零基础中英双语培训 SOP</div><h1>Staff Mini Program Login, Manager Code Issue, and Self-Binding</h1><div class="zh-title">员工小程序登录、主管发码与本人绑定</div><div class="meta">Module / 模块：MINIAPP_STARTER<br>Edition / 版本：Beginner step-by-step / 完全小白逐步教学版<br>Language / 语言：English + 中文<br>System screenshots / 系统截图：Authenticated web capture + WeChat Developer Tools simulator / 网页登录实拍 + 微信开发者工具模拟器实拍</div><div class="banner"><b>Completion / 完成标准</b><br>Read every step → quiz ≥ 80% → practise with training data → manager sign-off<br>逐步阅读 → 测验至少 80 分 → 培训数据实操 → 主管验收</div></section>
 <section class="page"><div class="eyebrow">BEFORE YOU START / 开始前准备</div><h1>Read this before clicking anything<br><span class="zh-title">点击任何按钮前先阅读</span></h1><div class="check"><div class="box"><h2>Prepare / 准备</h2><ul><li>Use your own account and the workspace assigned to your role. / 使用本人账号和岗位对应工作台。</li><li>Use training data unless your manager explicitly authorises real data. / 除非主管明确授权，否则只用培训数据。</li><li>Prepare the correct student, teacher, date, owner, package, invoice, or task reference. / 准备正确的学生、老师、日期、负责人、课包、发票或任务资料。</li><li>Keep this PDF open beside the system and complete one numbered step at a time. / 将本 PDF 与系统并排打开，每次只完成一个编号步骤。</li></ul></div><div class="box danger"><h2>Never guess / 禁止猜测</h2><ul><li>Do not guess names, amounts, dates, statuses, permissions, or missing fields. / 不猜测姓名、金额、日期、状态、权限或缺失字段。</li><li>Do not use another employee's account. / 不使用其他员工账号。</li><li>Do not repeat Save, Apply, Approve, Issue, Publish, or Send when the result is unclear. / 结果不明确时，不重复点击保存、应用、批准、签发、发布或发送。</li><li>Stop and ask the workflow owner when the page differs. / 页面不一致时停止并询问流程负责人。</li></ul></div></div><footer><span>Beginner rules / 小白操作规则</span><span>2</span></footer></section>
-<section class="page"><div class="eyebrow">END-TO-END WORKFLOW / 完整操作流程</div><h1>Staff Mini Program Login, Binding, and Account Switching<br><span class="zh-title">员工小程序登录绑定与账号切换</span></h1><div class="steps"><div class="step"><b>1</b><div><strong>Open Boss Education Assistant in WeChat and choose Staff Entry, not the parent or student entry.</strong><span>从微信打开博思学业管家，选择员工入口，不进入家长或学生入口。</span></div></div><div class="step"><b>2</b><div><strong>Use the invitation to bind your own WeChat and staff account; never bind a colleague's account or forward binding credentials.</strong><span>按邀请绑定本人微信与员工账号；不得绑定同事账号或转发绑定凭证。</span></div></div><div class="step"><b>3</b><div><strong>After login, verify your name, role, and active identity before entering the role workspace.</strong><span>登录后核对姓名、岗位和当前身份，确认进入正确的岗位工作台。</span></div></div><div class="step"><b>4</b><div><strong>For multiple staff accounts, switch in Account Management and recheck the workspace role after every switch.</strong><span>有多个岗位账号时从账号管理切换，每次切换后重新核对首页岗位名称。</span></div></div><div class="step"><b>5</b><div><strong>Practise logout, re-entry, and exception reporting; never share OTPs, passwords, or sessions.</strong><span>完成退出、重新进入和异常上报演练；不共享验证码、密码或会话。</span></div></div></div><footer><span>SGT Training Centre / 员工培训中心</span><span>3</span></footer></section>
+<section class="page"><div class="eyebrow">END-TO-END WORKFLOW / 完整操作流程</div><h1>Staff Mini Program Login, Manager Code Issue, and Self-Binding<br><span class="zh-title">员工小程序登录、主管发码与本人绑定</span></h1><div class="steps"><div class="step"><b>1</b><div><strong>A manager opens Staff Mini Program Accounts, finds the correct employee, and verifies name, primary role, and current binding status.</strong><span>主管在“员工小程序账号”找到正确员工，核对姓名、主岗位和当前绑定状态。</span></div></div><div class="step"><b>2</b><div><strong>The manager generates a one-time binding code and sends the code or mini program path privately to that employee only.</strong><span>主管为该员工生成一次性绑定码，只把绑定码或小程序路径私发给本人。</span></div></div><div class="step"><b>3</b><div><strong>The employee opens Boss Education Assistant in WeChat and chooses Staff Login, not the parent entry.</strong><span>员工从微信打开博思学业管家，选择“员工登录”，不得进入家长入口。</span></div></div><div class="step"><b>4</b><div><strong>The employee enters their own binding code and confirms; never use a colleague's code or forward personal binding credentials.</strong><span>员工输入本人绑定码并确认；不得使用同事绑定码或转发自己的绑定凭证。</span></div></div><div class="step"><b>5</b><div><strong>After binding, verify name, role, and home page; switch multiple accounts only in Account Management and recheck identity after every switch.</strong><span>绑定后核对姓名、岗位和首页；多账号时只在账号管理中切换，每次切换后重新核对身份。</span></div></div></div><footer><span>SGT Training Centre / 员工培训中心</span><span>3</span></footer></section>
 <section class="page">
       <div class="eyebrow">STEP 1 OF 5 / 第 1 步，共 5 步</div>
-      <h1>Open Boss Education Assistant in WeChat and choose Staff Entry, not the parent or student entry.</h1><div class="zh-title">从微信打开博思学业管家，选择员工入口，不进入家长或学生入口。</div>
+      <h1>A manager opens Staff Mini Program Accounts, finds the correct employee, and verifies name, primary role, and current binding status.</h1><div class="zh-title">主管在“员工小程序账号”找到正确员工，核对姓名、主岗位和当前绑定状态。</div>
       <div class="lesson">
-        <div class="shot"><img src="assets/sop-小程序员工工作台-20260718/annotated/09-management-home.png"><div class="caption">Follow the red box or callout in the current system screenshot. / 按当前系统截图中的红框或标注操作。</div>
+        <div class="shot"><img src="assets/sop-miniapp-binding-20260729/annotated/05-staff-account-row.png"><div class="caption">Follow the red box or callout in the current system screenshot. / 按当前系统截图中的红框或标注操作。</div>
         </div>
         <div class="beginner">
           <h2>Do this slowly / 请逐项操作</h2>
           <ol>
             <li><b>Confirm the page / 确认页面：</b> Check the page title and make sure you are in the correct workspace.<br>核对页面标题，确认自己进入了正确的工作台。</li>
             <li><b>Confirm the target / 确认对象：</b> Recheck the student, teacher, owner, date, invoice, package, or task before editing.<br>修改前再次核对学生、老师、负责人、日期、发票、课包或任务。</li>
-            <li><b>Complete this step / 完成本步：</b> Open Boss Education Assistant in WeChat and choose Staff Entry, not the parent or student entry.<br>从微信打开博思学业管家，选择员工入口，不进入家长或学生入口。</li>
+            <li><b>Complete this step / 完成本步：</b> A manager opens Staff Mini Program Accounts, finds the correct employee, and verifies name, primary role, and current binding status.<br>主管在“员工小程序账号”找到正确员工，核对姓名、主岗位和当前绑定状态。</li>
             <li><b>Review before saving / 保存前复核：</b> Read every changed field once more. Do not guess missing information.<br>重新检查所有变更字段；资料缺失时不要猜测填写。</li>
             <li><b>Verify after saving / 保存后验收：</b> Reopen or refresh the record and confirm the expected status is visible.<br>重新打开或刷新记录，确认预期状态已经显示。</li>
           </ol>
@@ -25,16 +25,16 @@
       <footer><span>MINIAPP_STARTER · Beginner Guide / 小白教学版</span><span>4</span></footer>
     </section><section class="page">
       <div class="eyebrow">STEP 2 OF 5 / 第 2 步，共 5 步</div>
-      <h1>Use the invitation to bind your own WeChat and staff account; never bind a colleague's account or forward binding credentials.</h1><div class="zh-title">按邀请绑定本人微信与员工账号；不得绑定同事账号或转发绑定凭证。</div>
+      <h1>The manager generates a one-time binding code and sends the code or mini program path privately to that employee only.</h1><div class="zh-title">主管为该员工生成一次性绑定码，只把绑定码或小程序路径私发给本人。</div>
       <div class="lesson">
-        <div class="shot"><img src="assets/sop-小程序员工工作台-20260718/annotated/10-management-communications.png"><div class="caption">Follow the red box or callout in the current system screenshot. / 按当前系统截图中的红框或标注操作。</div>
+        <div class="shot"><img src="assets/sop-miniapp-binding-20260729/annotated/06-staff-code.png"><div class="caption">Follow the red box or callout in the current system screenshot. / 按当前系统截图中的红框或标注操作。</div>
         </div>
         <div class="beginner">
           <h2>Do this slowly / 请逐项操作</h2>
           <ol>
             <li><b>Confirm the page / 确认页面：</b> Check the page title and make sure you are in the correct workspace.<br>核对页面标题，确认自己进入了正确的工作台。</li>
             <li><b>Confirm the target / 确认对象：</b> Recheck the student, teacher, owner, date, invoice, package, or task before editing.<br>修改前再次核对学生、老师、负责人、日期、发票、课包或任务。</li>
-            <li><b>Complete this step / 完成本步：</b> Use the invitation to bind your own WeChat and staff account; never bind a colleague's account or forward binding credentials.<br>按邀请绑定本人微信与员工账号；不得绑定同事账号或转发绑定凭证。</li>
+            <li><b>Complete this step / 完成本步：</b> The manager generates a one-time binding code and sends the code or mini program path privately to that employee only.<br>主管为该员工生成一次性绑定码，只把绑定码或小程序路径私发给本人。</li>
             <li><b>Review before saving / 保存前复核：</b> Read every changed field once more. Do not guess missing information.<br>重新检查所有变更字段；资料缺失时不要猜测填写。</li>
             <li><b>Verify after saving / 保存后验收：</b> Reopen or refresh the record and confirm the expected status is visible.<br>重新打开或刷新记录，确认预期状态已经显示。</li>
           </ol>
@@ -44,16 +44,16 @@
       <footer><span>MINIAPP_STARTER · Beginner Guide / 小白教学版</span><span>5</span></footer>
     </section><section class="page">
       <div class="eyebrow">STEP 3 OF 5 / 第 3 步，共 5 步</div>
-      <h1>After login, verify your name, role, and active identity before entering the role workspace.</h1><div class="zh-title">登录后核对姓名、岗位和当前身份，确认进入正确的岗位工作台。</div>
+      <h1>The employee opens Boss Education Assistant in WeChat and chooses Staff Login, not the parent entry.</h1><div class="zh-title">员工从微信打开博思学业管家，选择“员工登录”，不得进入家长入口。</div>
       <div class="lesson">
-        <div class="shot"><img src="assets/sop-小程序员工工作台-20260718/annotated/11-management-reminder-attention.png"><div class="caption">Follow the red box or callout in the current system screenshot. / 按当前系统截图中的红框或标注操作。</div>
+        <div class="shot"><img src="assets/sop-miniapp-binding-20260729/annotated/03-staff-login.png"><div class="caption">Follow the red box or callout in the current system screenshot. / 按当前系统截图中的红框或标注操作。</div>
         </div>
         <div class="beginner">
           <h2>Do this slowly / 请逐项操作</h2>
           <ol>
             <li><b>Confirm the page / 确认页面：</b> Check the page title and make sure you are in the correct workspace.<br>核对页面标题，确认自己进入了正确的工作台。</li>
             <li><b>Confirm the target / 确认对象：</b> Recheck the student, teacher, owner, date, invoice, package, or task before editing.<br>修改前再次核对学生、老师、负责人、日期、发票、课包或任务。</li>
-            <li><b>Complete this step / 完成本步：</b> After login, verify your name, role, and active identity before entering the role workspace.<br>登录后核对姓名、岗位和当前身份，确认进入正确的岗位工作台。</li>
+            <li><b>Complete this step / 完成本步：</b> The employee opens Boss Education Assistant in WeChat and chooses Staff Login, not the parent entry.<br>员工从微信打开博思学业管家，选择“员工登录”，不得进入家长入口。</li>
             <li><b>Review before saving / 保存前复核：</b> Read every changed field once more. Do not guess missing information.<br>重新检查所有变更字段；资料缺失时不要猜测填写。</li>
             <li><b>Verify after saving / 保存后验收：</b> Reopen or refresh the record and confirm the expected status is visible.<br>重新打开或刷新记录，确认预期状态已经显示。</li>
           </ol>
@@ -63,16 +63,16 @@
       <footer><span>MINIAPP_STARTER · Beginner Guide / 小白教学版</span><span>6</span></footer>
     </section><section class="page">
       <div class="eyebrow">STEP 4 OF 5 / 第 4 步，共 5 步</div>
-      <h1>For multiple staff accounts, switch in Account Management and recheck the workspace role after every switch.</h1><div class="zh-title">有多个岗位账号时从账号管理切换，每次切换后重新核对首页岗位名称。</div>
+      <h1>The employee enters their own binding code and confirms; never use a colleague's code or forward personal binding credentials.</h1><div class="zh-title">员工输入本人绑定码并确认；不得使用同事绑定码或转发自己的绑定凭证。</div>
       <div class="lesson">
-        <div class="shot"><img src="assets/sop-小程序员工工作台-20260718/raw-devtools/12-management-schedule.png"><div class="caption">Follow the red box or callout in the current system screenshot. / 按当前系统截图中的红框或标注操作。</div>
+        <div class="shot"><img src="assets/sop-miniapp-binding-20260729/annotated/04-staff-bind.png"><div class="caption">Follow the red box or callout in the current system screenshot. / 按当前系统截图中的红框或标注操作。</div>
         </div>
         <div class="beginner">
           <h2>Do this slowly / 请逐项操作</h2>
           <ol>
             <li><b>Confirm the page / 确认页面：</b> Check the page title and make sure you are in the correct workspace.<br>核对页面标题，确认自己进入了正确的工作台。</li>
             <li><b>Confirm the target / 确认对象：</b> Recheck the student, teacher, owner, date, invoice, package, or task before editing.<br>修改前再次核对学生、老师、负责人、日期、发票、课包或任务。</li>
-            <li><b>Complete this step / 完成本步：</b> For multiple staff accounts, switch in Account Management and recheck the workspace role after every switch.<br>有多个岗位账号时从账号管理切换，每次切换后重新核对首页岗位名称。</li>
+            <li><b>Complete this step / 完成本步：</b> The employee enters their own binding code and confirms; never use a colleague's code or forward personal binding credentials.<br>员工输入本人绑定码并确认；不得使用同事绑定码或转发自己的绑定凭证。</li>
             <li><b>Review before saving / 保存前复核：</b> Read every changed field once more. Do not guess missing information.<br>重新检查所有变更字段；资料缺失时不要猜测填写。</li>
             <li><b>Verify after saving / 保存后验收：</b> Reopen or refresh the record and confirm the expected status is visible.<br>重新打开或刷新记录，确认预期状态已经显示。</li>
           </ol>
@@ -82,16 +82,16 @@
       <footer><span>MINIAPP_STARTER · Beginner Guide / 小白教学版</span><span>7</span></footer>
     </section><section class="page">
       <div class="eyebrow">STEP 5 OF 5 / 第 5 步，共 5 步</div>
-      <h1>Practise logout, re-entry, and exception reporting; never share OTPs, passwords, or sessions.</h1><div class="zh-title">完成退出、重新进入和异常上报演练；不共享验证码、密码或会话。</div>
+      <h1>After binding, verify name, role, and home page; switch multiple accounts only in Account Management and recheck identity after every switch.</h1><div class="zh-title">绑定后核对姓名、岗位和首页；多账号时只在账号管理中切换，每次切换后重新核对身份。</div>
       <div class="lesson">
-        <div class="shot"><img src="assets/sop-小程序员工工作台-20260718/annotated/13-management-account-switch.png"><div class="caption">Follow the red box or callout in the current system screenshot. / 按当前系统截图中的红框或标注操作。</div>
+        <div class="shot"><img src="assets/sop-小程序员工工作台-20260718/annotated/21-teacher-account-switch.png"><div class="caption">Follow the red box or callout in the current system screenshot. / 按当前系统截图中的红框或标注操作。</div>
         </div>
         <div class="beginner">
           <h2>Do this slowly / 请逐项操作</h2>
           <ol>
             <li><b>Confirm the page / 确认页面：</b> Check the page title and make sure you are in the correct workspace.<br>核对页面标题，确认自己进入了正确的工作台。</li>
             <li><b>Confirm the target / 确认对象：</b> Recheck the student, teacher, owner, date, invoice, package, or task before editing.<br>修改前再次核对学生、老师、负责人、日期、发票、课包或任务。</li>
-            <li><b>Complete this step / 完成本步：</b> Practise logout, re-entry, and exception reporting; never share OTPs, passwords, or sessions.<br>完成退出、重新进入和异常上报演练；不共享验证码、密码或会话。</li>
+            <li><b>Complete this step / 完成本步：</b> After binding, verify name, role, and home page; switch multiple accounts only in Account Management and recheck identity after every switch.<br>绑定后核对姓名、岗位和首页；多账号时只在账号管理中切换，每次切换后重新核对身份。</li>
             <li><b>Review before saving / 保存前复核：</b> Read every changed field once more. Do not guess missing information.<br>重新检查所有变更字段；资料缺失时不要猜测填写。</li>
             <li><b>Verify after saving / 保存后验收：</b> Reopen or refresh the record and confirm the expected status is visible.<br>重新打开或刷新记录，确认预期状态已经显示。</li>
           </ol>
