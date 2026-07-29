@@ -33,6 +33,10 @@ import {
   voidPartnerCreditNote,
 } from "@/lib/partner-credit-notes";
 import {
+  buildPartnerReceiptAdjustmentNote,
+  calculatePartnerReceiptNet,
+} from "@/lib/partner-receipt-net";
+import {
   deletePartnerReceiptApproval,
   getPartnerReceiptApprovalMap,
 } from "@/lib/partner-receipt-approval";
@@ -47,6 +51,10 @@ import {
   workbenchMetricLabelStyle,
   workbenchMetricValueStyle,
 } from "../../../_components/workbenchStyles";
+import {
+  PartnerReceiptFields,
+  type PartnerReceiptInvoiceOption,
+} from "./PartnerReceiptFields";
 
 const SUPER_ADMIN_EMAIL = "zhaohongwei0880@gmail.com";
 
@@ -340,10 +348,18 @@ async function createReceiptAction(formData: FormData) {
   if (!invoiceId) redirect(withQuery("/admin/reports/partner-settlement/billing?err=choose-invoice", mode, month, null, partner.id));
   const linkedInvoice = await getPartnerInvoiceById(invoiceId);
   if (!linkedInvoice || (linkedInvoice.partnerId && linkedInvoice.partnerId !== partner.id)) redirect(withQuery("/admin/reports/partner-settlement/billing?err=invoice-not-found", mode, month, null, partner.id));
+  const latestCreditNotes = await listPartnerCreditNotes([invoiceId]);
+  const receiptNet = calculatePartnerReceiptNet(linkedInvoice, latestCreditNotes);
+  if (receiptNet.adjustedTotalAmount <= 0) {
+    redirect(withQuery("/admin/reports/partner-settlement/billing?err=invoice-has-no-net-balance", mode, month, null, partner.id));
+  }
   const receiptNoInput = String(formData.get("receiptNo") ?? "").trim();
   const receiptNo = receiptNoInput || (await buildPartnerReceiptNoForInvoice(invoiceId));
   const receivedFrom = String(formData.get("receivedFrom") ?? "").trim();
   const paidBy = String(formData.get("paidBy") ?? "").trim();
+  const operatorNote = String(formData.get("note") ?? "").trim();
+  const adjustmentNote = buildPartnerReceiptAdjustmentNote(linkedInvoice.invoiceNo, receiptNet);
+  const receiptNote = [adjustmentNote, operatorNote].filter(Boolean).join(" ");
   if (!receivedFrom) redirect(withQuery("/admin/reports/partner-settlement/billing?err=received-from-required", mode, month, null, partner.id));
   if (!paidBy) redirect(withQuery("/admin/reports/partner-settlement/billing?err=paid-by-required", mode, month, null, partner.id));
   try {
@@ -356,11 +372,11 @@ async function createReceiptAction(formData: FormData) {
       paidBy,
       quantity: Math.max(1, Math.floor(parseNum(formData.get("quantity"), 1))),
       description: `For Invoice no. ${linkedInvoice.invoiceNo}`,
-      amount: parseNum(formData.get("amount"), linkedInvoice.amount),
-      gstAmount: parseNum(formData.get("gstAmount"), linkedInvoice.gstAmount),
-      totalAmount: parseNum(formData.get("totalAmount"), linkedInvoice.totalAmount),
-      amountReceived: parseNum(formData.get("amountReceived"), linkedInvoice.totalAmount),
-      note: String(formData.get("note") ?? "").trim() || null,
+      amount: receiptNet.adjustedAmount,
+      gstAmount: receiptNet.adjustedGstAmount,
+      totalAmount: receiptNet.adjustedTotalAmount,
+      amountReceived: receiptNet.adjustedTotalAmount,
+      note: receiptNote || null,
       createdBy: admin.email,
     });
   } catch (e) {
@@ -619,6 +635,25 @@ export default async function PartnerBillingPage({
   const approvalMap = await getPartnerReceiptApprovalMap(billing.receipts.map((x) => x.id));
   const creditNotes = await listPartnerCreditNotes(billing.invoices.map((invoice) => invoice.id));
   const issuedCreditByInvoice = summarizePartnerCreditNotes(creditNotes);
+  const receiptInvoiceOptions: PartnerReceiptInvoiceOption[] = availableInvoices
+    .map((invoice) => {
+      const calculated = calculatePartnerReceiptNet(
+        invoice,
+        creditNotes.filter((note) => note.sourceInvoiceId === invoice.id),
+      );
+      return {
+        id: invoice.id,
+        invoiceNo: invoice.invoiceNo,
+        billTo: invoice.billTo,
+        originalTotalAmount: calculated.originalTotalAmount,
+        creditTotalAmount: calculated.creditTotalAmount,
+        adjustedAmount: calculated.adjustedAmount,
+        adjustedGstAmount: calculated.adjustedGstAmount,
+        adjustedTotalAmount: calculated.adjustedTotalAmount,
+        creditNoteNos: calculated.creditNoteNos,
+      };
+    })
+    .filter((invoice) => invoice.adjustedTotalAmount > 0);
   const requestedEditCreditNote = creditNotes.find((note) => note.id === String(sp?.editCreditNoteId ?? "").trim() && note.status === "DRAFT") ?? null;
   const selectedCreditInvoiceId = requestedEditCreditNote?.sourceInvoiceId || String(sp?.creditInvoiceId ?? "").trim() || billing.invoices[0]?.id || "";
   const selectedCreditInvoice = invoiceMap.get(selectedCreditInvoiceId) ?? null;
@@ -930,21 +965,15 @@ export default async function PartnerBillingPage({
       {financeOpsEnabled ? (
         <form action={createReceiptAction} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 0 }}>
           <input type="hidden" name="partnerId" value={partnerId} /><input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8 }}>
-            <label>{t(lang, "Source Invoice", "来源发票")}<select name="invoiceId" defaultValue={availableInvoices[0]?.id ?? ""} required style={{ width: "100%" }}><option value="" disabled>{availableInvoices.length === 0 ? t(lang, "(No available invoice)", "（无可用发票）") : t(lang, "Select an invoice", "请选择发票")}</option>{availableInvoices.map((inv) => (<option key={inv.id} value={inv.id}>{inv.invoiceNo} / {money(inv.totalAmount)}</option>))}</select></label>
-            <label>{t(lang, "Receipt number", "收据号")}<input name="receiptNo" placeholder={t(lang, "Leave blank to auto-generate: InvoiceNo-RC", "留空自动生成：InvoiceNo-RC")} style={{ width: "100%" }} /></label>
-            <label>{t(lang, "Receipt Date", "收据日期")}<input name="receiptDate" type="date" defaultValue={today} style={{ width: "100%" }} /></label>
-            <label>{t(lang, "Received From", "收款对象")}<input name="receivedFrom" required style={{ width: "100%" }} /></label>
-            <label>{t(lang, "Paid via", "付款方式")}<select name="paidBy" required defaultValue="Paynow" style={{ width: "100%" }}><option value="Paynow">Paynow</option><option value="Cash">Cash</option><option value="Bank transfer">{t(lang, "Bank transfer", "银行转账")}</option></select></label>
-            <label>{t(lang, "Quantity", "数量")}<input name="quantity" type="number" min={1} defaultValue={1} style={{ width: "100%" }} /></label>
-            <label>{t(lang, "Amount", "金额")}<input name="amount" type="number" step="0.01" defaultValue={availableInvoices[0]?.amount ?? 0} style={{ width: "100%" }} /></label>
-            <label>{t(lang, "GST", "消费税")}<input name="gstAmount" type="number" step="0.01" defaultValue={availableInvoices[0]?.gstAmount ?? 0} style={{ width: "100%" }} /></label>
-            <label>{t(lang, "Total", "合计")}<input name="totalAmount" type="number" step="0.01" defaultValue={availableInvoices[0]?.totalAmount ?? 0} style={{ width: "100%" }} /></label>
-            <label>{t(lang, "Amount Received", "实收金额")}<input name="amountReceived" type="number" step="0.01" defaultValue={availableInvoices[0]?.totalAmount ?? 0} style={{ width: "100%" }} /></label>
-            <label>{t(lang, "Payment Record", "付款记录")}<select name="paymentRecordId" defaultValue="" style={{ width: "100%" }}><option value="">{t(lang, "(none)", "（无）")}</option>{billing.paymentRecords.map((r) => (<option key={r.id} value={r.id}>{formatBusinessDateOnly(new Date(r.uploadedAt))} - {r.originalFileName}</option>))}</select></label>
-            <label style={{ gridColumn: "span 4" }}>{t(lang, "Note", "备注")}<input name="note" style={{ width: "100%" }} /></label>
-          </div>
-          <div style={{ marginTop: 8 }}><button type="submit" style={primaryBtn} disabled={availableInvoices.length === 0}>{t(lang, "Create Receipt", "创建收据")}</button></div>
+          <PartnerReceiptFields
+            lang={lang}
+            today={today}
+            invoices={receiptInvoiceOptions}
+            paymentRecords={billing.paymentRecords.map((record) => ({
+              id: record.id,
+              label: `${formatBusinessDateOnly(new Date(record.uploadedAt))} - ${record.originalFileName}${record.referenceNo ? ` - ${record.referenceNo}` : ""}`,
+            }))}
+          />
         </form>
       ) : <div style={{ color: "#92400e" }}>{t(lang, "Only finance can create receipts.", "仅财务可创建收据。")}</div>}
       </div>

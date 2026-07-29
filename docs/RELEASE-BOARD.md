@@ -23,10 +23,34 @@
 - Current release line: `2026-07-29-r296` is live at runtime feature commit `2c6badf0b4fba74e2b52d0976c28863b40f83310`. It corrects the parent binding route and provides 29 bilingual competency modules, 305 controlled PDF pages, and nine truthful mini-program learning paths.
 - Current release line: `2026-07-29-r297` is live at runtime feature commit `e55fed18c7e481c320d94945f3e9ae0e3618b06f`. It gives ADMIN all-module training oversight and provides 33 bilingual competency modules, 345 controlled PDF pages, and 11 TEACHER-relevant modules.
 - Current release line: `2026-07-29-r298` is live at runtime feature commit `857bb8584870fd4afd4f82a944fdd4a430adee2c`. It completes the Academic/CS curriculum with 20 relevant modules, 12 work chains, 35 controlled bilingual modules, and 365 PDF pages while preserving operational permissions.
+- Current release line: `2026-07-29-r299` is ready. Partner receipts will use the invoice net after issued Credit Notes, while existing financial records and approval flows remain unchanged.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-07-29-r299 Ready
+
+- Scope: calculate new partner receipts from original invoice less issued Credit Notes.
+- Business impact:
+  - Selecting a source invoice immediately shows original total, issued Credit Notes and receipt net.
+  - Amount, GST, Total and Amount Received update together and are read-only.
+  - The server recalculates the latest issued-credit net on submit, so stale pages and edited browser values cannot restore the gross invoice amount.
+  - Credit Note numbers and the net calculation are added to the receipt audit note automatically.
+  - Fully credited invoices are excluded from receipt creation.
+  - Existing invoices, Credit Notes, receipts, payment records and approvals are not rewritten.
+- Verification before deploy:
+  - 10 focused receipt and finance-document tests.
+  - 295 repository tests.
+  - `npx tsc --noEmit`.
+  - `git diff --check`.
+  - `npm run build` (229 pages).
+  - Read-only production reconciliation: `RGT-202606-0019` = SGD 18,540 original - SGD 270 issued credit = SGD 18,270 net; no receipt exists.
+- Post-deploy verification:
+  - Confirm local, GitHub and server commits align, PM2 is online and `/admin/login` returns HTTP 200.
+  - Open the partner receipt tab without submitting and confirm `RGT-202606-0019` shows SGD 18,270 in all receipt-value fields.
+  - Confirm the existing payment proof remains selectable and the production receipt count remains zero.
+- Task doc: `docs/tasks/TASK-20260729-partner-receipt-credit-net.md`.
 
 ## 2026-07-29-r298 Live
 
