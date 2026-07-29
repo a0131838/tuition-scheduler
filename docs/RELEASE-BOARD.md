@@ -24,7 +24,7 @@
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
-## 2026-07-29-r294 Ready
+## 2026-07-29-r294 Live
 
 - Scope: zero-experience step-by-step bilingual training PDFs and an employee PDF Download Centre.
 - Training material:
@@ -40,13 +40,18 @@
 - Isolation:
   - no database migration and no automatic training progress creation;
   - no system permission, training-role assignment, scheduling, finance, package, payroll, Full Care, or parent workflow changes.
-- Verification before deploy:
+- Verification:
   - 23/23 PDFs passed page-count and Chinese/English content validation, 251 pages total;
   - representative nine-page contact sheet visually passed;
   - authenticated local library: HTTP 200, 20 administrator-accessible module cards;
   - PDF inline/download headers passed, `%PDF` signature passed, unauthorised teacher-only access returned 403;
   - temporary verification-session cleanup: 0 remaining;
   - 118 backend tests, TypeScript, and the 229-page production build passed.
+  - production runtime commit `3f9cfeb50a35d3bcd8a835b3c62e754224117059`, PM2 PID `2133294`;
+  - production authenticated `/training/library`: HTTP 200 and 20 administrator-accessible module cards;
+  - production PDF view/download: HTTP 200, `inline`/`attachment`, 1,855,674 bytes, valid `%PDF`;
+  - production unauthorised teacher-only access: HTTP 403;
+  - production temporary verification-session cleanup: 0 remaining.
 - Task doc: `docs/tasks/TASK-20260729-beginner-training-pdfs-download-centre.md`.
 
 ## 2026-07-28-r293 Live

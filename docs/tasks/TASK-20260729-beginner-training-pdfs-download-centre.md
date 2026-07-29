@@ -43,3 +43,13 @@ The training centre had complete role coverage, but 17 of the 23 bilingual PDFs 
 ## Risk
 
 Low. The release adds a read-only catalogue and larger static PDF artifacts. Access control reuses the existing module-role check. The only response change is attachment disposition for an explicit download query. No operational data is mutated.
+
+## Production verification
+
+- Runtime feature commit `3f9cfeb50a35d3bcd8a835b3c62e754224117059` deployed with PM2 PID `2133294`.
+- `/admin/login` returned HTTP 200.
+- Authenticated `/training/library` returned HTTP 200 and rendered 20 modules available to the administrator training-role combination.
+- Production inline view returned HTTP 200 with `Content-Disposition: inline`.
+- Production download returned HTTP 200 with `Content-Disposition: attachment`, 1,855,674 bytes, and a valid `%PDF` signature.
+- A teacher-only module returned HTTP 403 for the administrator account without that training role.
+- The short-lived production verification session was deleted; remaining matching sessions: 0.
