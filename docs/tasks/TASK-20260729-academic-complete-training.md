@@ -40,7 +40,13 @@ Make the Academic/CS curriculum complete enough for a new employee with no syste
 
 ## Verification completed after deploy
 
-- Pending deployment.
+- Runtime feature commit `857bb8584870fd4afd4f82a944fdd4a430adee2c` deployed with PM2 PID `2197584`; `/admin/login` returned HTTP 200.
+- Authenticated ADMIN library returned HTTP 200 and showed exactly 35 modules at release `20260729D`.
+- Authenticated CS library returned HTTP 200 and showed exactly 20 modules at release `20260729D`.
+- ADMIN and CS downloaded both new Academic PDFs with HTTP 200.
+- CS downloaded all seven newly assigned Academic specialist PDFs with HTTP 200.
+- CS access to `FINANCE_MASTER` and `TEACHER_REPORTS_ASSESSMENTS` returned HTTP 403.
+- Temporary production authentication-session residue: 0.
 
 ## Risk
 

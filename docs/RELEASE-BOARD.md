@@ -22,13 +22,13 @@
 - Current release line: `2026-07-29-r295` is live at runtime feature commit `56da50e05568d5a47331a95c7c2b3e91996d3314`. It provides 28 bilingual competency modules, 296 controlled PDF pages, and eight role-based mini-program learning paths.
 - Current release line: `2026-07-29-r296` is live at runtime feature commit `2c6badf0b4fba74e2b52d0976c28863b40f83310`. It corrects the parent binding route and provides 29 bilingual competency modules, 305 controlled PDF pages, and nine truthful mini-program learning paths.
 - Current release line: `2026-07-29-r297` is live at runtime feature commit `e55fed18c7e481c320d94945f3e9ae0e3618b06f`. It gives ADMIN all-module training oversight and provides 33 bilingual competency modules, 345 controlled PDF pages, and 11 TEACHER-relevant modules.
-- Next release line: `2026-07-29-r298` is ready. It completes the Academic/CS curriculum with 20 relevant modules, 12 work chains, 35 controlled bilingual modules, and 365 PDF pages while preserving operational permissions.
+- Current release line: `2026-07-29-r298` is live at runtime feature commit `857bb8584870fd4afd4f82a944fdd4a430adee2c`. It completes the Academic/CS curriculum with 20 relevant modules, 12 work chains, 35 controlled bilingual modules, and 365 PDF pages while preserving operational permissions.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
-## 2026-07-29-r298 Ready
+## 2026-07-29-r298 Live
 
 - Scope: complete the Academic/CS role curriculum for a zero-experience employee.
 - Business impact:
@@ -41,6 +41,12 @@
   - The two new ten-page guides and four-page catalogue passed rendered contact-sheet inspection.
   - Registry visibility is 35 ADMIN / 20 CS / 11 TEACHER modules.
   - 126 backend tests, TypeScript, and the complete 229-page production build passed.
+- Post-deploy verification:
+  - Runtime feature commit `857bb8584870fd4afd4f82a944fdd4a430adee2c`, PM2 PID `2197584`, and `/admin/login` HTTP 200.
+  - Authenticated ADMIN library shows 35 modules and authenticated CS library shows 20 modules, both at release `20260729D`.
+  - Both new PDFs and all seven newly assigned Academic specialist PDFs return HTTP 200 for CS.
+  - CS access to `FINANCE_MASTER` and `TEACHER_REPORTS_ASSESSMENTS` returns HTTP 403.
+  - Temporary production verification-session residue: 0.
 - Task doc: `docs/tasks/TASK-20260729-academic-complete-training.md`.
 
 ## 2026-07-29-r297 Live

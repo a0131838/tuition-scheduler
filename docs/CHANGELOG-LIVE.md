@@ -18,8 +18,8 @@ This file is the single source of truth for what changed in production.
 ## 2026-07-29-r298
 
 - Release ID: `2026-07-29-r298`
-- Date/Time (Asia/Singapore): `2026-07-29`
-- Deployment status: `READY`
+- Date/Time (Asia/Singapore): `2026-07-29 11:54`
+- Deployment status: `LIVE`
 - Scope: complete the Academic/CS curriculum with two beginner-safe bilingual workflows, assign all existing Academic specialist SOPs to CS training, and organise the role into 12 work chains.
 - Key files:
   - `lib/training-center.ts`
@@ -30,7 +30,7 @@ This file is the single source of truth for what changed in production.
   - `docs/培训中心/`
   - `docs/tasks/TASK-20260729-academic-complete-training.md`
 - Risk impact (if any): Low to moderate and limited to training access and retraining. CS gains learning access to relevant Academic SOPs but no Finance approval, payment, signing, scheduling, package, attendance, or other operational permission.
-- Verification: 35/35 bilingual PDFs exist and total 365 pages. Both new ten-page guides and the four-page 35-module catalogue passed extracted-text, non-blank-page, and contact-sheet inspection. Registry checks confirm ADMIN 35, CS 20, and TEACHER 11 modules. All 126 backend tests, TypeScript, and the complete 229-page production build passed. Deployment and authenticated production checks are pending.
+- Verification: 35/35 bilingual PDFs exist and total 365 pages. Both new ten-page guides and the four-page 35-module catalogue passed extracted-text, non-blank-page, and contact-sheet inspection. Registry checks confirm ADMIN 35, CS 20, and TEACHER 11 modules. All 126 backend tests, TypeScript, and the complete 229-page production build passed. Runtime feature commit `857bb8584870fd4afd4f82a944fdd4a430adee2c` deployed with PM2 PID `2197584`; `/admin/login` returned HTTP 200. Authenticated production libraries showed exactly 35 ADMIN and 20 CS module cards at release `20260729D`. ADMIN and CS downloaded both new PDFs with HTTP 200; CS downloaded all seven newly assigned Academic specialist PDFs with HTTP 200 and received HTTP 403 for `FINANCE_MASTER` and `TEACHER_REPORTS_ASSESSMENTS`. Temporary verification-session residue was 0.
 - Rollback point: `165e933db9ebd10907d5dea559099d277ec35715` (`2026-07-29-r297` production-aligned head).
 
 ---
