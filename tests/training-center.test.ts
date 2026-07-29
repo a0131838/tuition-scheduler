@@ -16,10 +16,13 @@ import {
 import { operationAreaForRoute, OPERATION_AREAS } from "../lib/training-operation-coverage";
 
 test("training module codes and versions are unique", () => {
+  assert.equal(TRAINING_MODULES.length, 28);
   const keys = TRAINING_MODULES.map((item) => `${item.code}:${item.version}`);
   assert.equal(new Set(keys).size, keys.length);
   assert.equal(TRAINING_RELEASE_VERSION, "20260729");
   assert.ok(TRAINING_MODULES.every((item) => item.version === TRAINING_RELEASE_VERSION));
+  assert.equal(new Set(TRAINING_MODULES.map((item) => item.questions[0].prompt)).size, TRAINING_MODULES.length);
+  assert.deepEqual(TRAINING_MODULES[0].questions.map((question) => question.answer), [1, 2, 0, 1, 2]);
 });
 
 test("every module has complete Chinese and English training content and a PDF", () => {
@@ -35,6 +38,11 @@ test("every module has complete Chinese and English training content and a PDF",
     assert.ok(item.titleEn.length >= 2);
     assert.ok(item.category.length >= 2);
     assert.ok(item.categoryEn.length >= 2);
+    assert.equal(item.learningObjectives.length, 3);
+    assert.equal(item.learningObjectivesEn.length, 3);
+    assert.equal(item.managerRubric.length, 4);
+    assert.equal(item.managerRubricEn.length, 4);
+    assert.ok(item.estimatedMinutes >= 30);
     for (const question of item.questions) {
       assert.ok(question.promptEn.length >= 10);
       assert.equal(question.optionsEn.length, question.options.length);
@@ -56,6 +64,19 @@ test("additional training roles combine modules without changing the primary rol
   assert.equal(canAccessTrainingModule("CS", ["FINANCE"], "FINANCE_MASTER"), true);
   assert.equal(canAccessTrainingModule("CS", [], "FINANCE_MASTER"), false);
   assert.deepEqual(trainingModulesForUser("STUDENT", ["ADMIN"]), []);
+  assert.equal(canAccessTrainingModule("SALES", [], "SALES_MINIAPP"), true);
+  assert.equal(canAccessTrainingModule("FINANCE", [], "FINANCE_MINIAPP"), true);
+  assert.equal(canAccessTrainingModule("TEACHER", [], "FINANCE_MINIAPP"), false);
+});
+
+test("practical submission and manager sign-off enforce structured HR evidence", () => {
+  const actions = fs.readFileSync(path.join(process.cwd(), "app", "training", "actions.ts"), "utf8");
+  assert.match(actions, /trainingData/);
+  assert.match(actions, /finalResult/);
+  assert.match(actions, /selfCheck/);
+  assert.match(actions, /Complete reading and pass the quiz/);
+  assert.match(actions, /rubricConfirmed/);
+  assert.match(actions, /cannot sign off their own practical training/);
 });
 
 test("quiz grading requires every answer and passes correct answers", () => {

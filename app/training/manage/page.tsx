@@ -177,6 +177,18 @@ export default async function TrainingManagePage() {
                     {state === "PENDING_REVIEW" && progress ? (
                       <form action={reviewTrainingPractical} style={{ display: "grid", gap: 8, marginTop: 10 }}>
                         <input type="hidden" name="progressId" value={progress.id} />
+                        <div style={{ border: "1px solid #dbe5ef", borderRadius: 10, padding: 10, background: "#fff" }}>
+                          <strong>{t(lang, "Manager competency rubric", "主管能力验收标准")}</strong>
+                          <ol style={{ marginBottom: 8 }}>
+                            {module.managerRubricEn.map((rubric, index) => (
+                              <li key={rubric}>{t(lang, rubric, module.managerRubric[index])}</li>
+                            ))}
+                          </ol>
+                          <label>
+                            <input type="checkbox" name="rubricConfirmed" value="yes" required />{" "}
+                            {t(lang, "I observed or verified every item above; this is not a self-sign-off.", "我已观察或核对以上每一项，并且这不是本人自我验收。")}
+                          </label>
+                        </div>
                         <textarea name="note" rows={2} placeholder={t(lang, "Approval note or rework instructions", "验收意见或返工要求")} />
                         <div style={{ display: "flex", gap: 8 }}>
                           <button name="decision" value="APPROVED">{t(lang, "Approve", "通过验收")}</button>

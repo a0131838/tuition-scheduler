@@ -24,6 +24,33 @@
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
+## 2026-07-29-r295 Ready
+
+- Scope: HR-quality training assessment and complete role-based mini-program learning paths.
+- HR improvements:
+  - 28 modules are classified as foundation, role core, or specialist and show estimated time plus three learning objectives;
+  - every module has a distinct role-context question set instead of one shared generic quiz;
+  - practical submission is locked until reading and an 80% quiz pass;
+  - practical evidence requires training-data reference, verified final state, and rubric self-check;
+  - managers must confirm a four-item competency rubric;
+  - rework requires specific instructions, only the current ready version can be reviewed, and self-sign-off is blocked.
+- Mini-program paths:
+  - common login/binding/account switching;
+  - Academic/CS, Teacher, Management, Sales, Finance, Full Care, and Parent/Student Support;
+  - five new nine-page bilingual beginner PDFs extend the existing three detailed mini-program guides.
+- Isolation:
+  - no database migration or operational permission change;
+  - training roles still assign learning only;
+  - no business record is changed by viewing, downloading, learning, or manager review UI.
+- Verification before deploy:
+  - 28/28 PDFs passed bilingual content and page checks, 296 pages total;
+  - Finance mini-program nine-page contact sheet and 28-module catalogue visually passed;
+  - 119 backend tests, TypeScript, and 229-page production build passed;
+  - authenticated training page: 25 administrator-accessible modules, learning briefs and learning order present, 25 practical submissions correctly locked;
+  - authenticated library: 25 role-allowed cards and new Finance PDF attachment HTTP 200;
+  - temporary verification-session cleanup: 0 remaining.
+- Task doc: `docs/tasks/TASK-20260729-training-hr-quality-and-miniapp-paths.md`.
+
 ## 2026-07-29-r294 Live
 
 - Scope: zero-experience step-by-step bilingual training PDFs and an employee PDF Download Centre.

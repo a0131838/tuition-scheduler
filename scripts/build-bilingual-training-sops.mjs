@@ -127,10 +127,48 @@ const guides = [
     ["老师从自己的工作台查看完整反馈并确认已读。", "The teacher reads the full feedback in their own workspace and acknowledges it."],
     ["管理者复核确认状态；需跟进的事项建立后续动作和记录。", "The manager checks acknowledgement and creates follow-up actions and records when needed."],
   ]],
+  ["MINIAPP_STARTER", "员工小程序登录绑定与账号切换", "Staff Mini Program Login, Binding, and Account Switching", "docs/SOP-小程序-管理-监督与账号-中英文培训版-20260718.html", "SOP-小程序-全员工-登录绑定与账号切换-中英文培训版-20260729.pdf", [
+    ["从微信打开博思学业管家，选择员工入口，不进入家长或学生入口。", "Open Boss Education Assistant in WeChat and choose Staff Entry, not the parent or student entry."],
+    ["按邀请绑定本人微信与员工账号；不得绑定同事账号或转发绑定凭证。", "Use the invitation to bind your own WeChat and staff account; never bind a colleague's account or forward binding credentials."],
+    ["登录后核对姓名、岗位和当前身份，确认进入正确的岗位工作台。", "After login, verify your name, role, and active identity before entering the role workspace."],
+    ["有多个岗位账号时从账号管理切换，每次切换后重新核对首页岗位名称。", "For multiple staff accounts, switch in Account Management and recheck the workspace role after every switch."],
+    ["完成退出、重新进入和异常上报演练；不共享验证码、密码或会话。", "Practise logout, re-entry, and exception reporting; never share OTPs, passwords, or sessions."],
+  ]],
+  ["SALES_MINIAPP", "销售小程序资源跟进与成交交接", "Sales Mini Program Lead Follow-up and Conversion Handover", "docs/SOP-小程序-管理-监督与账号-中英文培训版-20260718.html", "SOP-小程序-销售-资源跟进与成交交接-中英文培训版-20260729.pdf", [
+    ["确认当前身份为课程顾问，从统一待办或新咨询进入资源队列。", "Confirm the Course Consultant identity and open the lead queue from Unified Tasks or New Enquiries."],
+    ["按电话、微信、邮箱和学生姓名查重，再领取或建立资源。", "Check duplicates by phone, WeChat, email, and student name before claiming or creating a lead."],
+    ["每次跟进记录事实、结果、下一步、负责人和下次日期。", "Record facts, result, next action, owner, and next date after every follow-up."],
+    ["需要学术判断时发起老师评估，保留问题、背景和要求返回时间。", "Request a teacher assessment when academic judgement is needed, including questions, context, and due time."],
+    ["成交后建立明确交接，核对学生、合同或排课工单及新负责人。", "After conversion, create a clear handover and verify the student, contract or scheduling ticket, and new owner."],
+  ]],
+  ["FINANCE_MINIAPP", "财务小程序审批工资报销与异常", "Finance Mini Program Approvals, Payroll, Claims, and Exceptions", "docs/SOP-小程序-管理-监督与账号-中英文培训版-20260718.html", "SOP-小程序-财务-审批工资报销与异常-中英文培训版-20260729.pdf", [
+    ["确认当前身份为财务，从统一待办进入需要财务处理的审批和异常。", "Confirm the Finance identity and open finance approvals and exceptions from Unified Tasks."],
+    ["审批前核对对象、金额、期间、凭证、业务原因和前序状态。", "Before approval, verify the party, amount, period, evidence, business reason, and previous status."],
+    ["老师工资核对课次、费率、收款资料和发布状态；不在手机端猜测更正。", "For payroll, verify sessions, rates, payment details, and publication status; never guess corrections on mobile."],
+    ["报销核对申请人、用途、票据和重复记录，资料不足时退回补充。", "For claims, verify claimant, purpose, receipt, and duplicates; return incomplete submissions for evidence."],
+    ["复杂发票、收据、Credit Note 和月结返回网页版处理并保留审计。", "Use the web finance workbench for complex invoices, receipts, Credit Notes, and month-end work, retaining the audit trail."],
+  ]],
+  ["FULL_CARE_MINIAPP", "全托管小程序学生进度风险与交接", "Full Care Mini Program Student Progress, Risk, and Handover", "docs/SOP-教务-全托管完整操作流程-培训版-20260717.html", "SOP-小程序-全托管-学生进度风险与交接-中英文培训版-20260729.pdf", [
+    ["从学生工作台选择正确学生，先确认全托管项目、负责人和服务范围。", "Select the correct student in Student Workspace and verify the Full Care project, owner, and service scope."],
+    ["查看活动、任务和截止日期，只更新本人负责且有事实依据的状态。", "Review activities, tasks, and due dates; update only owned work with factual evidence."],
+    ["等待家长、学校或学生时记录等待对象、原因和下次跟进时间。", "When waiting for a parent, school, or student, record the party, reason, and next follow-up time."],
+    ["发现风险时记录严重度、事实、当前应对和下一步，并按规则升级。", "For a risk, record severity, facts, current response, and next action, then escalate under policy."],
+    ["交接前确认未完成任务都有负责人、截止日期、证据和下一次动作。", "Before handover, verify every open task has an owner, due date, evidence, and next action."],
+  ]],
+  ["PARENT_STUDENT_SUPPORT_MINIAPP", "家长学生小程序客服支持", "Parent and Student Mini Program Support", "docs/SOP-小程序-教务-完整操作-中英文培训版-20260718.html", "SOP-小程序-客服-家长学生端支持-中英文培训版-20260729.pdf", [
+    ["先确认咨询人身份和学生关系，不索取密码、验证码或不必要隐私资料。", "Verify the enquirer's identity and student relationship; never request passwords, OTPs, or unnecessary personal data."],
+    ["区分绑定登录、课表、反馈、财务、服务进度和请求工单问题。", "Classify the issue as binding/login, schedule, feedback, finance, service progress, or request ticket."],
+    ["在学生 360 和操作日志核对真实状态，不凭家长截图直接修改业务数据。", "Check the actual state in Student 360 and operation logs; do not edit business data from a parent screenshot alone."],
+    ["能指导的只说明当前页面和下一步；需业务处理的建立工单并指定负责人。", "For guidance, explain the current page and next step; for operational work, create a ticket with an owner."],
+    ["回复前核对家长可见内容，记录处理结果、证据和后续跟进日期。", "Before replying, verify parent-visible content and record the result, evidence, and follow-up date."],
+  ]],
 ];
 
 const catalogueGroups = [
-  ["Common Core / 共同必修", [["SGT Full-System Operations Map", "SGT 全系统操作流程地图"]]],
+  ["Common Core / 共同必修", [
+    ["SGT Full-System Operations Map", "SGT 全系统操作流程地图"],
+    ["Staff Mini Program Login, Binding, and Account Switching", "员工小程序登录绑定与账号切换"],
+  ]],
   ["Academic & CS / 教务与客服", [
     ["Scheduling, Tickets, and Daily Handover", "排课、工单与每日交接"],
     ["First Purchase, Renewal, Contracts, Packages, and Finance Gates", "首购续费、合同课包与财务门禁"],
@@ -143,6 +181,8 @@ const catalogueGroups = [
     ["Shanghai Xinzhuosi Partner Settlement", "上海新卓思合作方结算"],
     ["School Application Service — Complete Workflow", "学校申请服务完整流程"],
     ["EduTrust Courses and SSG Contracts", "EduTrust 课程与 SSG 合同"],
+    ["Full Care Mini Program Student Progress, Risk, and Handover", "全托管小程序学生进度风险与交接"],
+    ["Parent and Student Mini Program Support", "家长学生小程序客服支持"],
   ]],
   ["Teacher / 老师", [
     ["Teacher Mini Program — Complete Operations", "老师小程序完整操作"],
@@ -153,6 +193,7 @@ const catalogueGroups = [
     ["Finance Approvals, Invoices, Receipts, Payroll, Claims, and Partners", "财务审批、发票收据、工资报销与合作方"],
     ["Verify and Export Teacher Payment Details", "老师收款资料核验与导出"],
     ["Partner Credit Note", "合作方 Credit Note"],
+    ["Finance Mini Program Approvals, Payroll, Claims, and Exceptions", "财务小程序审批工资报销与异常"],
   ]],
   ["Management / 管理", [
     ["Accounts, Permissions, Approval Quality, and Training Sign-off", "账号权限、审批质量与培训验收"],
@@ -160,7 +201,10 @@ const catalogueGroups = [
     ["Parent Communication Oversight and Audit", "家长沟通监督与审计"],
     ["Manager Feedback and Teacher Acknowledgement", "管理反馈发送与老师确认"],
   ]],
-  ["Sales & CS / 销售与客服", [["Lead Follow-up, School Guide Enquiries, and Sales Handover", "资源跟进、学校指南咨询与成交交接"]]],
+  ["Sales & CS / 销售与客服", [
+    ["Lead Follow-up, School Guide Enquiries, and Sales Handover", "资源跟进、学校指南咨询与成交交接"],
+    ["Sales Mini Program Lead Follow-up and Conversion Handover", "销售小程序资源跟进与成交交接"],
+  ]],
 ];
 
 const escapeHtml = (value) => String(value)
@@ -224,9 +268,9 @@ function buildCatalogueHtml() {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>SGT Staff Training Centre Catalogue / 员工培训中心总目录</title><style>
 @page{size:A4 landscape;margin:13mm 12mm}*{box-sizing:border-box}body{margin:0;color:#172033;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}.page{height:184mm;page-break-after:always;position:relative;overflow:hidden;padding:3mm}.page:last-child{page-break-after:auto}.cover{display:grid;align-content:center;background:linear-gradient(135deg,#ecfdf5,#eff6ff);border-radius:7mm;padding:17mm}.eyebrow{font-size:10px;font-weight:900;color:#0f766e;letter-spacing:.08em}h1{font-size:30px;margin:6mm 0 3mm;color:#102a43}h2{font-size:16px;margin:0 0 3mm}.zh-title{font-size:23px;color:#334e68}.banner,.box,.group{border:1px solid #d7e2ec;border-radius:4mm;padding:5mm;background:#f8fbfd}.banner{margin-top:7mm;border-left:2mm solid #0f766e;background:white}.grid{display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin-top:6mm}.box li{font-size:11px;line-height:1.55;margin:2.5mm 0}.catalogue{display:grid;grid-template-columns:repeat(3,1fr);gap:4mm;margin-top:4mm}.catalogue-column{display:grid;align-content:start;gap:4mm}.group{padding:4mm}.module{border-top:1px solid #d7e2ec;padding:2.2mm 0}.module:first-of-type{border-top:0}.module strong,.module span{display:block;font-size:9.5px;line-height:1.35}.module span{color:#475569}.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:4mm;margin-top:8mm}.flow .box b{display:block;color:#0f766e;font-size:20px;margin-bottom:2mm}footer{position:absolute;bottom:2mm;left:3mm;right:3mm;display:flex;justify-content:space-between;color:#64748b;font-size:9px}
 </style></head><body>
-<section class="page cover"><div class="eyebrow">SGT MANAGE · CONTROLLED BILINGUAL TRAINING LIBRARY / 受控中英双语培训资料库</div><h1>Staff Training Centre Catalogue</h1><div class="zh-title">员工培训中心总目录</div><div class="banner">23 role-based modules · English / Chinese / Bilingual display · Training release 2026-07-29<br>23 个岗位模块 · 英文 / 中文 / 中英并列显示 · 培训版本 2026-07-29</div></section>
+<section class="page cover"><div class="eyebrow">SGT MANAGE · CONTROLLED BILINGUAL TRAINING LIBRARY / 受控中英双语培训资料库</div><h1>Staff Training Centre Catalogue</h1><div class="zh-title">员工培训中心总目录</div><div class="banner">28 role-based modules · English / Chinese / Bilingual display · Training release 2026-07-29<br>28 个岗位模块 · 英文 / 中文 / 中英并列显示 · 培训版本 2026-07-29</div></section>
 <section class="page"><div class="eyebrow">LANGUAGE & CONTROL / 语言与版本控制</div><h1>Use the version assigned in the system<br><span class="zh-title">只使用系统分配的当前版本</span></h1><div class="grid"><div class="box"><h2>Account language / 账号语言</h2><ul><li>EN: English only / 仅英文</li><li>ZH: Chinese only / 仅中文</li><li>BILINGUAL: English + Chinese / 中英并列</li><li>Managers set account language in System User Admin. / 管理者在系统使用者管理设置账号语言。</li></ul></div><div class="box"><h2>Version status / 版本状态</h2><ul><li>Current: may be used for training and authorised work. / 现行：可用于培训和已授权工作。</li><li>Review required: manager explanation only. / 待复核：仅供主管解释。</li><li>Superseded: audit history only. / 已替代：仅供审计追溯。</li><li>Training roles never grant system permissions. / 培训岗位不授予系统权限。</li></ul></div></div><footer><span>SGT Training Centre / 员工培训中心</span><span>2</span></footer></section>
-<section class="page"><div class="eyebrow">CURRENT MODULES / 当前模块</div><h1>Role learning paths / 岗位学习路径</h1><div class="catalogue">${groups}</div><footer><span>23 current bilingual modules / 23 个现行双语模块</span><span>3</span></footer></section>
+<section class="page"><div class="eyebrow">CURRENT MODULES / 当前模块</div><h1>Role learning paths / 岗位学习路径</h1><div class="catalogue">${groups}</div><footer><span>28 current bilingual modules / 28 个现行双语模块</span><span>3</span></footer></section>
 <section class="page"><div class="eyebrow">CERTIFICATION / 培训验收</div><h1>Opening a PDF is not completion<br><span class="zh-title">打开 PDF 不等于完成培训</span></h1><div class="flow"><div class="box"><b>1</b>Read the current bilingual SOP.<br>阅读当前双语 SOP。</div><div class="box"><b>2</b>Pass five questions at 80% or above.<br>五题测验达到 80 分。</div><div class="box"><b>3</b>Practise with training data and submit evidence.<br>使用培训数据实操并提交证据。</div><div class="box"><b>4</b>Manager verifies the result and signs off.<br>主管核对结果并验收。</div></div><div class="banner">Stop and escalate when data, permission, page state, or a high-risk outcome is unclear.<br>资料、权限、页面状态或高风险结果不明确时，停止操作并升级主管。</div><footer><span>SGT Training Centre / 员工培训中心</span><span>4</span></footer></section>
 </body></html>`;
 }

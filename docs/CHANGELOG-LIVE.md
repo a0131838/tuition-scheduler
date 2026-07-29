@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-29-r295
+
+- Release ID: `2026-07-29-r295`
+- Date/Time (Asia/Singapore): `2026-07-29`
+- Deployment status: `READY`
+- Scope: complete eight role-based mini-program learning paths and upgrade the training centre from document acknowledgement to structured HR competency assessment.
+- Key files:
+  - `lib/training-center.ts`
+  - `app/training/page.tsx`
+  - `app/training/actions.ts`
+  - `app/training/manage/page.tsx`
+  - `scripts/build-bilingual-training-sops.mjs`
+  - `docs/SOP-小程序-*-中英文培训版-20260729.html`
+  - `output/pdf/SOP-小程序-*-中英文培训版-20260729.pdf`
+  - `docs/培训中心/培训体系HR审计与改进-20260729.md`
+  - `docs/tasks/TASK-20260729-training-hr-quality-and-miniapp-paths.md`
+- Risk impact (if any): Low to moderate and limited to training. Practical submission and manager sign-off are intentionally stricter. Existing operational roles, permissions, business data, scheduling, attendance, packages, contracts, finance, payroll, Full Care, and parent-visible workflows are unchanged.
+- Verification: 28 assigned bilingual PDFs passed existence, minimum-page, Chinese, and English checks: 296 pages total. The new Finance mini-program guide rendered as nine pages and passed full contact-sheet inspection; the 28-module catalogue rendered without clipping. All 119 backend tests, TypeScript, and the complete 229-page production build passed. Authenticated local HR training rendered 25 administrator-accessible modules in foundation/core/specialist order, displayed learning briefs, kept all practical submissions locked before reading and quiz completion, offered 25 role-allowed downloads, returned the new Finance PDF as an attachment, and cleaned the temporary session to 0.
+- Rollback point: `dffd76ae4becd871a6c9bc736bea430deab3bf94` (`2026-07-29-r294` live).
+
+---
+
 ## 2026-07-29-r294
 
 - Release ID: `2026-07-29-r294`

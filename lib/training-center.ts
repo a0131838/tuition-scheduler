@@ -23,6 +23,12 @@ export type TrainingModule = {
   pdfFile: string;
   practicalTask: string;
   practicalTaskEn: string;
+  phase: "FOUNDATION" | "CORE" | "SPECIALIST";
+  estimatedMinutes: number;
+  learningObjectives: string[];
+  learningObjectivesEn: string[];
+  managerRubric: string[];
+  managerRubricEn: string[];
   questions: TrainingQuestion[];
 };
 
@@ -34,17 +40,9 @@ export type TrainingProgressSnapshot = {
   practicalStatus: "NOT_STARTED" | "SUBMITTED" | "APPROVED" | "NEEDS_REWORK";
 } | null | undefined;
 
-const safetyQuestions: TrainingQuestion[] = [
-  { prompt: "发现页面与 SOP 截图不同，第一步应该做什么？", promptEn: "What should you do first when the page differs from the SOP screenshot?", options: ["继续尝试", "停止高风险操作并向主管确认", "直接修改数据"], optionsEn: ["Keep trying", "Stop the high-risk action and confirm with a manager", "Edit the data directly"], answer: 1 },
-  { prompt: "哪一种情况代表培训完成？", promptEn: "Which situation means the training is complete?", options: ["打开 PDF", "阅读后口头说明", "阅读、测验、实操并由主管验收"], optionsEn: ["The PDF was opened", "The employee explained it after reading", "Reading, quiz, practical task, and manager approval are all complete"], answer: 2 },
-  { prompt: "待复核 SOP 可以怎样使用？", promptEn: "How may an SOP marked for review be used?", options: ["新员工独立照做", "只供主管解释背景", "替代现行版"], optionsEn: ["A new employee may follow it independently", "Only as background explained by a manager", "As a replacement for the current version"], answer: 1 },
-  { prompt: "涉及课包、财务或家长发布时，应以什么作为完成依据？", promptEn: "For packages, finance, or parent-facing publishing, what proves completion?", options: ["页面没有报错", "最终状态与检查表均正确", "同事说完成了"], optionsEn: ["The page showed no error", "The final status and checklist are both correct", "A colleague said it was complete"], answer: 1 },
-  { prompt: "系统流程更新后，旧 SOP 应如何处理？", promptEn: "What should happen to an old SOP after the system workflow changes?", options: ["继续使用到年底", "立即标记待复核", "删除全部历史文件"], optionsEn: ["Keep using it until year-end", "Mark it for review immediately", "Delete all historical files"], answer: 1 },
-];
-
 type TrainingModuleInput = Omit<
   TrainingModule,
-  "titleEn" | "categoryEn" | "practicalTaskEn" | "questions"
+  "titleEn" | "categoryEn" | "practicalTaskEn" | "phase" | "estimatedMinutes" | "learningObjectives" | "learningObjectivesEn" | "managerRubric" | "managerRubricEn" | "questions"
 >;
 
 const englishContent: Record<string, { title: string; category: string; practicalTask: string }> = {
@@ -71,18 +69,95 @@ const englishContent: Record<string, { title: string; category: string; practica
   MANAGEMENT_MINIAPP: { title: "Management Mini Program — Oversight and Accounts", category: "Management", practicalTask: "Review training to-dos, approvals, and risks, then check account switching." },
   MANAGEMENT_COMMUNICATION: { title: "Parent Communication Oversight and Audit", category: "Management", practicalTask: "Verify the owner, publication status, and audit record for one parent communication." },
   MANAGER_FEEDBACK: { title: "Manager Feedback and Teacher Acknowledgement", category: "Management", practicalTask: "A manager sends training feedback; the teacher account acknowledges it as read." },
+  MINIAPP_STARTER: { title: "Staff Mini Program Login, Binding, and Account Switching", category: "Mini Program Foundation", practicalTask: "Bind a training staff account, verify the active identity, switch accounts safely, and complete logout and re-entry." },
+  SALES_MINIAPP: { title: "Sales Mini Program Lead Follow-up and Conversion Handover", category: "Sales Mini Program", practicalTask: "Using a training lead, complete duplicate checking, ownership, follow-up, assessment request, and conversion handover." },
+  FINANCE_MINIAPP: { title: "Finance Mini Program Approvals, Payroll, Claims, and Exceptions", category: "Finance Mini Program", practicalTask: "Review a training approval, payroll item, or claim, document every check, and route complex work to the web finance workbench." },
+  FULL_CARE_MINIAPP: { title: "Full Care Mini Program Student Progress, Risk, and Handover", category: "Full Care Mini Program", practicalTask: "Using a training student, update one owned task, record one waiting or risk state, and prepare a complete handover." },
+  PARENT_STUDENT_SUPPORT_MINIAPP: { title: "Parent and Student Mini Program Support", category: "Customer Support Mini Program", practicalTask: "Classify a training support case, verify the actual system state, give safe guidance or create an owned ticket, and record the result." },
 };
+
+const foundationCodes = new Set(["SYSTEM_OPERATION_MAP", "MINIAPP_STARTER"]);
+const coreCodes = new Set([
+  "ACADEMIC_SCHEDULING_MASTER", "CONTRACT_PACKAGE_GATE_MASTER", "FINANCE_MASTER", "RESOURCE_HANDOFF_MASTER",
+  "MANAGEMENT_CONTROL_MASTER", "ATTENDANCE_EXCEPTION_MASTER", "ACADEMIC_MINIAPP", "TEACHER_MINIAPP",
+  "MANAGEMENT_MINIAPP", "SALES_MINIAPP", "FINANCE_MINIAPP",
+]);
+
+function trainingQuestions(input: TrainingModuleInput, en: { title: string; practicalTask: string }): TrainingQuestion[] {
+  return [
+    {
+      prompt: `完成《${input.title}》培训时，员工必须实际证明什么？`,
+      promptEn: `What must the employee demonstrate for ${en.title}?`,
+      options: ["只需打开 PDF", input.practicalTask, "只需说明自己看懂了"],
+      optionsEn: ["Only open the PDF", en.practicalTask, "Only say that the guide was understood"],
+      answer: 1,
+    },
+    {
+      prompt: `开始《${input.title}》实操前，第一项检查是什么？`,
+      promptEn: `What is the first check before practising ${en.title}?`,
+      options: ["直接点击保存", "使用同事账号比较结果", "确认本人账号、正确岗位、目标记录和培训数据"],
+      optionsEn: ["Click Save immediately", "Use a colleague's account to compare results", "Confirm your own account, correct role, target record, and training data"],
+      answer: 2,
+    },
+    {
+      prompt: `《${input.title}》实操提交主管验收时，哪组证据才完整？`,
+      promptEn: `Which evidence is complete enough for manager sign-off on ${en.title}?`,
+      options: ["培训数据名称、关键动作、最终状态和逐项自查", "一句“已经完成”", "只有操作前截图"],
+      optionsEn: ["Training-data name, key actions, final status, and item-by-item self-check", "A single sentence saying completed", "Only a before-action screenshot"],
+      answer: 0,
+    },
+    {
+      prompt: "页面、权限、对象、金额或状态与教材不一致时应该怎样处理？",
+      promptEn: "What should you do when the page, permission, target, amount, or status differs from the guide?",
+      options: ["不断重复点击", "停止操作、保留当前状态并升级负责人", "自行猜测缺失资料"],
+      optionsEn: ["Keep clicking repeatedly", "Stop, preserve the current state, and escalate to the owner", "Guess the missing information"],
+      answer: 1,
+    },
+    {
+      prompt: "哪一种情况代表该模块真正完成？",
+      promptEn: "Which situation means the module is truly complete?",
+      options: ["下载过 PDF", "参加过一次口头说明", "阅读、岗位题达到 80 分、结构化实操证据和主管按标准验收"],
+      optionsEn: ["The PDF was downloaded", "A verbal explanation was attended", "Reading, 80% role-based quiz, structured practical evidence, and rubric-based manager approval"],
+      answer: 2,
+    },
+  ];
+}
 
 function module(input: TrainingModuleInput): TrainingModule {
   const en = englishContent[input.code];
   if (!en) throw new Error(`Missing English training content for ${input.code}`);
+  const phase = foundationCodes.has(input.code) ? "FOUNDATION" : coreCodes.has(input.code) ? "CORE" : "SPECIALIST";
   return {
     ...input,
     version: TRAINING_RELEASE_VERSION,
     titleEn: en.title,
     categoryEn: en.category,
     practicalTaskEn: en.practicalTask,
-    questions: safetyQuestions,
+    phase,
+    estimatedMinutes: phase === "FOUNDATION" ? 30 : phase === "CORE" ? 45 : 60,
+    learningObjectives: [
+      `能够说明《${input.title}》的正确入口、适用岗位和停止条件。`,
+      `能够使用培训数据完成：${input.practicalTask}`,
+      "能够核对最终系统状态，并在异常时留下证据和正确升级。",
+    ],
+    learningObjectivesEn: [
+      `Explain the correct entry point, role scope, and stop conditions for ${en.title}.`,
+      `Complete with training data: ${en.practicalTask}`,
+      "Verify the final system state and preserve evidence with correct escalation when an exception occurs.",
+    ],
+    managerRubric: [
+      "员工使用本人账号、正确岗位和正确培训数据。",
+      "员工按 SOP 顺序完成关键动作，没有绕过权限或业务门禁。",
+      "最终系统状态与教材完成标准一致，并有可核对证据。",
+      "员工能独立说明一个常见错误、停止条件和升级对象。",
+    ],
+    managerRubricEn: [
+      "The employee used their own account, correct role, and correct training data.",
+      "The employee followed the SOP sequence without bypassing permissions or business gates.",
+      "The final system state matches the completion standard and has verifiable evidence.",
+      "The employee can independently explain one common error, stop condition, and escalation owner.",
+    ],
+    questions: trainingQuestions(input, en),
   };
 }
 
@@ -110,6 +185,11 @@ export const TRAINING_MODULES: TrainingModule[] = [
   module({ code: "MANAGEMENT_MINIAPP", title: "管理小程序监督与账号", version: "20260718", roles: ["ADMIN"], category: "管理", pdfFile: "SOP-小程序-管理-监督与账号-中英文培训版-20260718.pdf", practicalTask: "查看培训待办、审批和风险，并完成账号切换检查。" }),
   module({ code: "MANAGEMENT_COMMUNICATION", title: "家长沟通监督与审计", version: "20260718", roles: ["ADMIN"], category: "管理", pdfFile: "SOP-管理-家长沟通通知监督与审计-中英文培训版-20260718.pdf", practicalTask: "核对一条家长沟通的负责人、发布状态和审计记录。" }),
   module({ code: "MANAGER_FEEDBACK", title: "管理反馈发送与老师确认", version: "20260623", roles: ["ADMIN", "TEACHER"], category: "管理", pdfFile: "SOP-管理老师-管理反馈查看确认流程-中英文培训版-20260728.pdf", practicalTask: "管理者发送培训反馈；老师账号完成确认已读。" }),
+  module({ code: "MINIAPP_STARTER", title: "员工小程序登录绑定与账号切换", version: "20260729", roles: ["ADMIN", "FINANCE", "SALES", "CS", "TEACHER"], category: "小程序共同必修", pdfFile: "SOP-小程序-全员工-登录绑定与账号切换-中英文培训版-20260729.pdf", practicalTask: "绑定培训员工账号，核对当前身份，安全切换岗位账号，并完成退出与重新进入。" }),
+  module({ code: "SALES_MINIAPP", title: "销售小程序资源跟进与成交交接", version: "20260729", roles: ["SALES", "CS", "ADMIN"], category: "销售小程序", pdfFile: "SOP-小程序-销售-资源跟进与成交交接-中英文培训版-20260729.pdf", practicalTask: "使用培训资源完成查重、领取、跟进、老师评估和成交交接。" }),
+  module({ code: "FINANCE_MINIAPP", title: "财务小程序审批工资报销与异常", version: "20260729", roles: ["FINANCE", "ADMIN"], category: "财务小程序", pdfFile: "SOP-小程序-财务-审批工资报销与异常-中英文培训版-20260729.pdf", practicalTask: "核验一条培训审批、工资或报销记录，记录检查结果，并把复杂事项转回网页版财务工作台。" }),
+  module({ code: "FULL_CARE_MINIAPP", title: "全托管小程序学生进度风险与交接", version: "20260729", roles: ["CS", "ADMIN"], category: "全托管小程序", pdfFile: "SOP-小程序-全托管-学生进度风险与交接-中英文培训版-20260729.pdf", practicalTask: "使用培训学生更新一项本人任务，记录一次等待或风险状态，并完成六要素交接。" }),
+  module({ code: "PARENT_STUDENT_SUPPORT_MINIAPP", title: "家长学生小程序客服支持", version: "20260729", roles: ["CS", "SALES", "ADMIN"], category: "客服小程序", pdfFile: "SOP-小程序-客服-家长学生端支持-中英文培训版-20260729.pdf", practicalTask: "分类一条培训支持咨询，核对真实系统状态，完成安全指导或建立负责人明确的工单并记录结果。" }),
 ];
 
 export function trainingModulesForRole(role: SystemUserRole) {

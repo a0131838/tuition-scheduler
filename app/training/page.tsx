@@ -13,7 +13,10 @@ export default async function TrainingPage() {
   if (!user) redirect("/admin/login");
   if (user.role === "STUDENT") redirect("/");
   const trainingRoles = trainingRolesForUser(user.role, user.trainingRoles);
-  const modules = trainingModulesForUser(user.role, user.trainingRoles);
+  const phaseRank = { FOUNDATION: 0, CORE: 1, SPECIALIST: 2 } as const;
+  const modules = [...trainingModulesForUser(user.role, user.trainingRoles)].sort(
+    (a, b) => phaseRank[a.phase] - phaseRank[b.phase] || a.category.localeCompare(b.category) || a.title.localeCompare(b.title)
+  );
   const progresses = await prisma.staffTrainingProgress.findMany({ where: { userId: user.id } });
   const byKey = new Map(progresses.map((item) => [`${item.moduleCode}:${item.moduleVersion}`, item]));
   const manager = await isManagerUser(user);
@@ -33,16 +36,38 @@ export default async function TrainingPage() {
           {manager ? <Link href="/training/manage">{moduleText("Manager Sign-off", "主管验收台")}</Link> : null}
         </div>
       </div>
+      <section style={{ ...card, marginBottom: 16, borderColor: "#99f6e4", background: "#f0fdfa" }}>
+        <strong>{moduleText("Recommended learning order", "建议学习顺序")}</strong>
+        <p style={{ marginBottom: 0 }}>
+          1. {moduleText("Foundation and login", "基础与登录")} → 2. {moduleText("Role core workflows", "岗位核心流程")} → 3. {moduleText("Specialist scenarios", "专项场景")}。
+          {moduleText(" Complete one module at a time; do not submit practical evidence before reading and passing its quiz.", " 每次只完成一个模块；未阅读并通过测验前不能提交实操。")}
+        </p>
+      </section>
       <div style={{ display: "grid", gap: 16 }}>
         {modules.map((item) => {
           const progress = byKey.get(`${item.code}:${item.version}`);
           const complete = Boolean(progress?.readAt && progress?.quizPassedAt && progress?.practicalStatus === "APPROVED");
+          const practicalReady = Boolean(progress?.readAt && progress?.quizPassedAt);
           return (
             <details key={item.code} style={card} open={!complete}>
               <summary style={{ cursor: "pointer", fontWeight: 800, fontSize: 17 }}>
                 {complete ? "✅" : "⬜"} {moduleText(item.titleEn, item.title)} <span style={{ color: "#64748b", fontSize: 12 }}>v{item.version} · {moduleText(item.categoryEn, item.category)}</span>
               </summary>
               <div style={{ display: "grid", gap: 16, marginTop: 16 }}>
+                <section style={{ border: "1px solid #dbe5ef", borderRadius: 12, padding: 12, background: "#f8fafc" }}>
+                  <strong>{moduleText("Learning brief", "学习说明")}</strong>
+                  <p style={{ color: "#475569" }}>
+                    {moduleText("Phase", "阶段")}：{moduleText(
+                      item.phase === "FOUNDATION" ? "Foundation" : item.phase === "CORE" ? "Role Core" : "Specialist",
+                      item.phase === "FOUNDATION" ? "基础必修" : item.phase === "CORE" ? "岗位核心" : "专项进阶"
+                    )} · {moduleText("Estimated time", "预计用时")}：{item.estimatedMinutes} {moduleText("minutes", "分钟")}
+                  </p>
+                  <ul>
+                    {item.learningObjectivesEn.map((objective, index) => (
+                      <li key={objective}>{moduleText(objective, item.learningObjectives[index])}</li>
+                    ))}
+                  </ul>
+                </section>
                 <section>
                   <strong>{moduleText("Step 1: Read", "步骤一：阅读")}</strong>
                   <p>
@@ -72,9 +97,32 @@ export default async function TrainingPage() {
                 </form>
                 <form action={submitTrainingPractical} style={{ display: "grid", gap: 8 }}>
                   <strong>{moduleText("Step 3: Practical Task", "步骤三：实操任务")}</strong>
+                  {!practicalReady ? (
+                    <p style={{ margin: 0, color: "#b45309" }}>
+                      {moduleText("Locked until the current PDF is confirmed read and the quiz is passed at 80% or above.", "完成当前 PDF 阅读确认并且测验达到 80 分后，实操提交才会开放。")}
+                    </p>
+                  ) : null}
                   <p>{moduleText(item.practicalTaskEn, item.practicalTask)}</p>
-                  <textarea name="evidence" required minLength={10} rows={3} placeholder={moduleText("Enter the training-data name, final result, and self-check evidence. Do not enter passwords or sensitive information.", "填写培训数据名称、完成结果和自查证据；不要填写密码或敏感资料。")} defaultValue={progress?.practicalEvidence ?? ""} />
-                  <button type="submit">{moduleText("Submit for Manager Sign-off", "提交主管验收")}</button>
+                  {progress?.practicalEvidence ? <pre style={{ whiteSpace: "pre-wrap", background: "#f8fafc", padding: 10, borderRadius: 10 }}>{progress.practicalEvidence}</pre> : null}
+                  <label>
+                    {moduleText("Training-data reference", "培训数据名称或编号")}
+                    <input name="trainingData" required minLength={3} disabled={!practicalReady} placeholder={moduleText("Example: Training Student A / Ticket TRAIN-001", "例如：培训学生 A／工单 TRAIN-001")} style={{ display: "block", width: "100%", marginTop: 4 }} />
+                  </label>
+                  <label>
+                    {moduleText("Verified final result", "已核对的最终结果")}
+                    <textarea name="finalResult" required minLength={10} disabled={!practicalReady} rows={2} placeholder={moduleText("State the final system status you reopened or refreshed and verified.", "说明重新打开或刷新后确认的最终系统状态。")} style={{ display: "block", width: "100%", marginTop: 4 }} />
+                  </label>
+                  <label>
+                    {moduleText("Self-check against the manager rubric", "按照主管验收标准逐项自查")}
+                    <textarea name="selfCheck" required minLength={20} disabled={!practicalReady} rows={3} placeholder={moduleText("Explain account/role, target record, key actions, final evidence, and the exception you can handle.", "说明账号岗位、目标记录、关键动作、最终证据，以及自己能处理的异常。")} style={{ display: "block", width: "100%", marginTop: 4 }} />
+                  </label>
+                  <div style={{ border: "1px solid #fde68a", borderRadius: 10, padding: 10, background: "#fffbeb" }}>
+                    <strong>{moduleText("Manager will check", "主管将检查")}</strong>
+                    <ol>
+                      {item.managerRubricEn.map((rubric, index) => <li key={rubric}>{moduleText(rubric, item.managerRubric[index])}</li>)}
+                    </ol>
+                  </div>
+                  <button type="submit" disabled={!practicalReady}>{moduleText("Submit for Manager Sign-off", "提交主管验收")}</button>
                   <small>{moduleText("Status", "状态")}：{progress?.practicalStatus ?? "NOT_STARTED"} {progress?.approvalNote ? `· ${progress.approvalNote}` : ""}</small>
                 </form>
               </div>
