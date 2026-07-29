@@ -52,6 +52,15 @@ Every module remains complete only after:
   - all 198 visible routes remain mapped;
   - parent invite route matches `pages/bind/bind` in the mini-program registry.
 
+## Verification completed after deploy
+
+- Runtime feature commit `2c6badf0b4fba74e2b52d0976c28863b40f83310` deployed with PM2 PID `2169138`; `/admin/login` returned HTTP 200 and local/GitHub/server commits were aligned.
+- Authenticated `/training` and `/training/library` returned HTTP 200, release `20260729B`, and 26 ADMIN-accessible modules.
+- The parent-binding PDF returned HTTP 200 as a 1,258,187-byte `application/pdf` attachment.
+- A TEACHER session received HTTP 403 for the CS/ADMIN-only parent-binding module.
+- A temporary parent invitation returned `/pages/bind/bind?token=...`.
+- Temporary invite and authentication-session cleanup both left 0 records.
+
 ## Risk
 
 Low to moderate. The route correction changes an unusable parent path to the existing registered bind page. Training changes reset the current content version to `20260729B`; they do not grant operational permissions or mutate business records.

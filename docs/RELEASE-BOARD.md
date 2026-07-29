@@ -20,13 +20,13 @@
 - Current release line: `2026-07-28-r288` is live at runtime commit `526ab99d6e821adf08d155fff8e027f0f9833ca8`; WeChat development version `1.0.20` was uploaded successfully. Find Schools now covers 13 official-source education sectors while preserving the existing international-school detail directory and all business workflows.
 - Current release line: `2026-07-28-r289` is live at runtime commit `49f9ff847aa1c7180f3f85818ae7d389a39d722a`. It adds the authenticated role-aware Training Center, controlled SOP library, quizzes, practical evidence and manager sign-off without changing operational business workflows.
 - Current release line: `2026-07-29-r295` is live at runtime feature commit `56da50e05568d5a47331a95c7c2b3e91996d3314`. It provides 28 bilingual competency modules, 296 controlled PDF pages, and eight role-based mini-program learning paths.
-- Current release line on this branch: `2026-07-29-r296` is ready. It corrects the parent binding route and provides 29 bilingual competency modules, 305 controlled PDF pages, and nine truthful mini-program learning paths.
+- Current release line: `2026-07-29-r296` is live at runtime feature commit `2c6badf0b4fba74e2b52d0976c28863b40f83310`. It corrects the parent binding route and provides 29 bilingual competency modules, 305 controlled PDF pages, and nine truthful mini-program learning paths.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
-## 2026-07-29-r296 Ready
+## 2026-07-29-r296 Live
 
 - Scope: complete parent and employee mini-program binding training, correct the parent bind route, and repair other mini-program guides whose screenshots or claimed capabilities did not match the system.
 - Business impact:
@@ -51,10 +51,10 @@
   - 29/29 bilingual PDFs exist, 305 pages total.
   - Parent binding, Finance boundary, and full catalogue rendered-page checks passed without missing screenshots or clipping.
 - Post-deploy verification:
-  - `/admin/login` HTTP 200 and local/GitHub/server commit equality.
+  - Runtime feature commit `2c6badf0b4fba74e2b52d0976c28863b40f83310`, PM2 PID `2169138`, `/admin/login` HTTP 200, and local/GitHub/server commit equality.
   - Authenticated `/training` and `/training/library` show 26 ADMIN-accessible modules with release `20260729B`.
-  - Parent binding PDF downloads as `application/pdf`; unrelated-role access remains forbidden.
-  - A temporary parent invite response returns `/pages/bind/bind`, followed by zero temporary-record residue.
+  - Parent binding PDF downloads as a 1,258,187-byte `application/pdf` attachment; TEACHER access returns HTTP 403.
+  - A temporary parent invite response returns `/pages/bind/bind?token=...`, followed by zero temporary invite and session residue.
 
 ## 2026-07-29-r295 Live
 

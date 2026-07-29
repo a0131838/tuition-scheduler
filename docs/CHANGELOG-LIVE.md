@@ -18,8 +18,8 @@ This file is the single source of truth for what changed in production.
 ## 2026-07-29-r296
 
 - Release ID: `2026-07-29-r296`
-- Date/Time (Asia/Singapore): `2026-07-29`
-- Deployment status: `READY`
+- Date/Time (Asia/Singapore): `2026-07-29 10:31`
+- Deployment status: `LIVE`
 - Scope: repair the parent mini-program invite route and replace incomplete or misleading mini-program training with 29 role-based, bilingual, step-by-step modules.
 - Key files:
   - `app/api/admin/students/[id]/parent-portal/invites/route.ts`
@@ -34,7 +34,7 @@ This file is the single source of truth for what changed in production.
   - `docs/CHANGELOG-LIVE.md`
   - `docs/RELEASE-BOARD.md`
 - Risk impact (if any): Low to moderate. The only operational change corrects the parent invite route from an unregistered page to the existing bind page. No role, permission, billing, receipt, package, attendance, payroll, scheduling, Full Care record, or parent-visible business data changes.
-- Verification: 122 backend tests passed; TypeScript passed; the complete 229-page production build passed. All 29 assigned bilingual PDFs exist and total 305 pages. The parent binding guide, Finance boundary guide, and four-column 29-module catalogue passed rendered-page inspection. Automated checks prove every referenced training screenshot exists, the new guides use workflow-specific evidence, all 198 visible system pages remain mapped, and the parent invite path matches the registered mini-program page.
+- Verification: 122 backend tests passed; TypeScript passed; the complete 229-page production build passed. All 29 assigned bilingual PDFs exist and total 305 pages. The parent binding guide, Finance boundary guide, and four-column 29-module catalogue passed rendered-page inspection. Automated checks prove every referenced training screenshot exists, the new guides use workflow-specific evidence, all 198 visible system pages remain mapped, and the parent invite path matches the registered mini-program page. Production deployed at runtime feature commit `2c6badf0b4fba74e2b52d0976c28863b40f83310`; PM2 PID `2169138` was online and `/admin/login` returned HTTP 200. Authenticated `/training` and `/training/library` returned HTTP 200 with release `20260729B` and 26 ADMIN-accessible modules. The parent-binding PDF returned HTTP 200 as a 1,258,187-byte `application/pdf` attachment; TEACHER access returned HTTP 403. A temporary parent invite returned `/pages/bind/bind?token=...`; temporary invite and session residue were both 0 after cleanup.
 - Rollback point: `fcd4c09cabf0e03630751e705c47e3ad4929f8cc` (`2026-07-29-r295` production-aligned head).
 
 ---
