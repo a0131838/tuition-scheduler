@@ -22,6 +22,7 @@ function paymentStatusLabel(lang: Lang, status: FinanceDocumentPaymentStatus) {
   if (status === "PENDING_APPROVAL") return t(lang, "Pending approval", "收据待审批");
   if (status === "REJECTED") return t(lang, "Rejected", "已驳回");
   if (status === "CREDITED") return t(lang, "Fully credited", "已全额冲减");
+  if (status === "VOID") return t(lang, "Void", "已作废");
   return t(lang, "Unpaid", "未收款");
 }
 
@@ -39,7 +40,14 @@ function paymentStatusStyle(status: FinanceDocumentPaymentStatus): React.CSSProp
   if (status === "PENDING_APPROVAL") return { ...base, background: "#e0f2fe", color: "#075985" };
   if (status === "REJECTED") return { ...base, background: "#fee2e2", color: "#991b1b" };
   if (status === "CREDITED") return { ...base, background: "#ede9fe", color: "#5b21b6" };
+  if (status === "VOID") return { ...base, background: "#f3f4f6", color: "#6b7280" };
   return { ...base, background: "#f1f5f9", color: "#334155" };
+}
+
+function channelLabel(lang: Lang, channel: "PARENT" | "PARTNER" | "BUSINESS") {
+  if (channel === "PARENT") return t(lang, "Parent", "直客");
+  if (channel === "BUSINESS") return t(lang, "Business", "企业账户");
+  return t(lang, "Partner", "合作方");
 }
 
 function creditNoteStatusLabel(lang: Lang, status: "ISSUED" | "VOID") {
@@ -131,8 +139,8 @@ export default async function FinanceDocumentsPage({
           <div style={{ color: "#475569", lineHeight: 1.5 }}>
             {t(
               lang,
-              "Use this page to review parent and partner invoices, receipts, and issued or void credit notes, including adjusted invoice balances and PDFs.",
-              "这个页面统一查看直客和合作方发票、收据、已正式开具或已作废的 Credit Note，以及发票调整后余额和 PDF。",
+              "Use this page to review parent, partner, and business-account invoices and receipts, plus issued or void credit notes, adjusted balances, and PDFs.",
+              "这个页面统一查看直客、合作方和企业账户发票与收据，以及已正式开具或已作废的 Credit Note、调整后余额和 PDF。",
             )}
           </div>
         </div>
@@ -157,6 +165,7 @@ export default async function FinanceDocumentsPage({
               <option value="">{t(lang, "All", "全部")}</option>
               <option value="PARENT">{t(lang, "Parent", "直客")}</option>
               <option value="PARTNER">{t(lang, "Partner", "合作方")}</option>
+              <option value="BUSINESS">{t(lang, "Business", "企业账户")}</option>
             </select>
           </label>
           <label style={{ display: "grid", gap: 6 }}>
@@ -182,6 +191,7 @@ export default async function FinanceDocumentsPage({
               <option value="PENDING_APPROVAL">{t(lang, "Pending approval", "收据待审批")}</option>
               <option value="REJECTED">{t(lang, "Rejected", "已驳回")}</option>
               <option value="CREDITED">{t(lang, "Fully credited", "已全额冲减")}</option>
+              <option value="VOID">{t(lang, "Void", "已作废")}</option>
             </select>
           </label>
           <label style={{ display: "grid", gap: 6 }}>
@@ -256,7 +266,7 @@ export default async function FinanceDocumentsPage({
             <tbody>
               {filteredRows.map((row) => (
                 <tr key={`${row.type}-${row.id}`} style={{ borderTop: "1px solid #eef2f7" }}>
-                  <td>{row.channel === "PARENT" ? t(lang, "Parent", "直客") : t(lang, "Partner", "合作方")}</td>
+                  <td>{channelLabel(lang, row.channel)}</td>
                   <td>
                     {row.type === "INVOICE"
                       ? t(lang, "Invoice", "发票")

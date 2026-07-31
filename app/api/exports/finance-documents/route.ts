@@ -16,7 +16,14 @@ function paymentStatusLabel(status: FinanceDocumentPaymentStatus) {
   if (status === "PENDING_APPROVAL") return "Pending approval";
   if (status === "REJECTED") return "Rejected";
   if (status === "CREDITED") return "Fully credited";
+  if (status === "VOID") return "Void";
   return "Unpaid";
+}
+
+function channelLabel(channel: "PARENT" | "PARTNER" | "BUSINESS") {
+  if (channel === "PARENT") return "Parent";
+  if (channel === "BUSINESS") return "Business";
+  return "Partner";
 }
 
 function applyHeader(row: ExcelJS.Row) {
@@ -106,7 +113,7 @@ export async function GET(req: Request) {
 
   for (const row of rows) {
     sheet.addRow({
-      channel: row.channel === "PARENT" ? "Parent" : "Partner",
+      channel: channelLabel(row.channel),
       type: row.type === "INVOICE" ? "Invoice" : row.type === "RECEIPT" ? "Receipt" : "Credit Note",
       docNo: row.docNo,
       issueDate: row.issueDate,
@@ -129,7 +136,7 @@ export async function GET(req: Request) {
     });
   }
   sheet.views = [{ state: "frozen", ySplit: 5 }];
-  sheet.autoFilter = { from: "A5", to: "P5" };
+  sheet.autoFilter = { from: "A5", to: "T5" };
   applyDataBorders(sheet, 6);
 
   const buffer = await workbook.xlsx.writeBuffer();

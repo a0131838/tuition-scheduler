@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-31-r301
+
+- Release ID: `2026-07-31-r301`
+- Date/Time (Asia/Singapore): `2026-07-31`
+- Deployment status: `READY`
+- Scope: include Business Accounts invoices and receipts in the central Finance Documents list, filters, PDF links, source-workspace links, payment statuses, and Excel exports without moving or rewriting the source records.
+- Key files:
+  - `lib/finance-documents.ts`
+  - `app/admin/finance/documents/page.tsx`
+  - `app/api/exports/finance-documents/route.ts`
+  - `tests/finance-documents.test.ts`
+  - `docs/tasks/TASK-20260731-business-finance-documents.md`
+- Risk impact (if any): Low and limited to read-only finance-document aggregation and export presentation. Business Account drafts remain hidden; issued, paid, partial, and void documents are represented truthfully. Existing Business Accounts records, invoice and receipt creation, payment proofs, partner settlement, parent billing, Credit Notes, approvals, package balances, attendance, payroll, and scheduling are unchanged.
+- Verification:
+  - Read-only production reconciliation confirmed Shanghai Xinzhuo Si has three paid Business Account invoices and receipts, while the central Finance Documents aggregator previously returned no matching partner invoices.
+  - 30 focused finance, billing, Credit Note, receipt, and settlement tests passed.
+  - All 301 repository tests passed.
+  - `npx tsc --noEmit` passed.
+  - `git diff --check` passed.
+  - `npm run build` passed and generated 231 pages.
+- Rollback point: `b38c2417ee65fc2264697bdbf406b1c3a30f767c` (`2026-07-29-r300` production head).
+
+---
+
 ## 2026-07-29-r300
 
 - Release ID: `2026-07-29-r300`

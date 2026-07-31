@@ -3,13 +3,21 @@ import { formatBusinessDateTime, normalizeDateOnly } from "@/lib/date-only";
 import { getParentReceiptApprovalMap } from "@/lib/parent-receipt-approval";
 import { getPartnerReceiptApprovalMap } from "@/lib/partner-receipt-approval";
 import { listPartnerBilling } from "@/lib/partner-billing";
+import { listBusinessAccounts } from "@/lib/business-accounts";
 import { prisma } from "@/lib/prisma";
 import { getReceiptApprovalStatus, isReceiptFinanceApproved } from "@/lib/receipt-approval-policy";
 import { listAllParentBilling } from "@/lib/student-parent-billing";
 
-export type FinanceDocumentChannel = "PARENT" | "PARTNER";
+export type FinanceDocumentChannel = "PARENT" | "PARTNER" | "BUSINESS";
 export type FinanceDocumentType = "INVOICE" | "RECEIPT" | "CREDIT_NOTE";
-export type FinanceDocumentPaymentStatus = "PAID" | "PARTIAL" | "UNPAID" | "PENDING_APPROVAL" | "REJECTED" | "CREDITED";
+export type FinanceDocumentPaymentStatus =
+  | "PAID"
+  | "PARTIAL"
+  | "UNPAID"
+  | "PENDING_APPROVAL"
+  | "REJECTED"
+  | "CREDITED"
+  | "VOID";
 export type FinanceDocumentCreditNoteStatus = "ISSUED" | "VOID";
 
 export type FinanceDocumentFilters = {
@@ -61,7 +69,7 @@ function normalizeAmount(value: unknown) {
 
 export function normalizeFinanceDocumentChannel(value: string | null | undefined): FinanceDocumentChannel | "" {
   const normalized = String(value ?? "").trim().toUpperCase();
-  return normalized === "PARENT" || normalized === "PARTNER" ? normalized : "";
+  return normalized === "PARENT" || normalized === "PARTNER" || normalized === "BUSINESS" ? normalized : "";
 }
 
 export function normalizeFinanceDocumentType(value: string | null | undefined): FinanceDocumentType | "" {
@@ -78,7 +86,8 @@ export function normalizeFinanceDocumentPaymentStatus(
     normalized === "UNPAID" ||
     normalized === "PENDING_APPROVAL" ||
     normalized === "REJECTED" ||
-    normalized === "CREDITED"
+    normalized === "CREDITED" ||
+    normalized === "VOID"
     ? normalized
     : "";
 }
@@ -165,10 +174,115 @@ export function filterFinanceDocumentRows(rows: FinanceDocumentRow[], filters: F
   });
 }
 
+type BusinessFinanceSource = {
+  accounts: Array<{
+    id: string;
+    legalNameEn: string;
+    legalNameZh: string;
+  }>;
+  monthlyDocuments: Array<{
+    id: string;
+    accountId: string;
+    monthKey: string;
+    invoiceNo: string;
+    issueDate: string;
+    totalAmount: number;
+    status: "DRAFT" | "ISSUED" | "PAID" | "VOID";
+    receiptNo: string | null;
+    receivedFrom: string | null;
+    paidDate: string | null;
+    paidAmount: number | null;
+  }>;
+};
+
+export function buildBusinessFinanceDocumentRows(source: BusinessFinanceSource): FinanceDocumentRow[] {
+  const accountMap = new Map(source.accounts.map((account) => [account.id, account] as const));
+  const rows: FinanceDocumentRow[] = [];
+
+  for (const document of source.monthlyDocuments) {
+    if (document.status === "DRAFT") continue;
+    const account = accountMap.get(document.accountId);
+    if (!account) continue;
+
+    const accountLabel = account.legalNameZh || account.legalNameEn || document.accountId;
+    const totalAmount = roundMoney(Math.max(0, normalizeAmount(document.totalAmount)));
+    const paidAmount =
+      document.status === "PAID"
+        ? roundMoney(Math.max(0, normalizeAmount(document.paidAmount ?? totalAmount)))
+        : 0;
+    const receiptExists =
+      document.status === "PAID" &&
+      Boolean(String(document.receiptNo ?? "").trim()) &&
+      Boolean(normalizeDateOnly(String(document.paidDate ?? "").trim()));
+    const openHref = `/admin/finance/business-accounts?accountId=${encodeURIComponent(document.accountId)}&tab=documents`;
+
+    rows.push({
+      id: document.id,
+      channel: "BUSINESS",
+      type: "INVOICE",
+      docNo: document.invoiceNo,
+      issueDate: document.issueDate,
+      packageId: "",
+      partyLabel: accountLabel,
+      contextLabel: `${accountLabel} · BUSINESS_MONTHLY · ${document.monthKey}`,
+      amount: totalAmount,
+      creditAmount: 0,
+      adjustedAmount: totalAmount,
+      receiptedAmount: paidAmount,
+      pendingReceiptAmount: 0,
+      rejectedReceiptAmount: 0,
+      remainingAmount: document.status === "VOID" ? 0 : roundMoney(Math.max(0, totalAmount - paidAmount)),
+      receiptCount: receiptExists ? 1 : 0,
+      paymentStatus:
+        document.status === "VOID"
+          ? "VOID"
+          : resolveInvoicePaymentStatus({
+              invoiceTotal: totalAmount,
+              approvedReceiptTotal: paidAmount,
+            }),
+      exportHref: `/api/exports/business-accounts/${encodeURIComponent(document.id)}/invoice`,
+      openHref,
+      exportReady: true,
+      sourceLabel: "Business account monthly billing",
+      contractLinkLabel: "Business account invoice",
+    });
+
+    if (!receiptExists) continue;
+    rows.push({
+      id: document.id,
+      channel: "BUSINESS",
+      type: "RECEIPT",
+      docNo: String(document.receiptNo),
+      issueDate: String(document.paidDate),
+      packageId: "",
+      partyLabel: document.receivedFrom || accountLabel,
+      contextLabel: `${accountLabel} · BUSINESS_MONTHLY · ${document.monthKey}`,
+      amount: paidAmount,
+      creditAmount: 0,
+      adjustedAmount: paidAmount,
+      receiptedAmount: paidAmount,
+      pendingReceiptAmount: 0,
+      rejectedReceiptAmount: 0,
+      remainingAmount: 0,
+      receiptCount: 1,
+      paymentStatus: "PAID",
+      relatedDocumentNo: document.invoiceNo,
+      exportHref: `/api/exports/business-accounts/${encodeURIComponent(document.id)}/receipt`,
+      openHref,
+      exportReady: true,
+      sourceLabel: "Business account payment record",
+      contractLinkLabel: `Linked to ${document.invoiceNo}`,
+    });
+  }
+
+  return rows;
+}
+
 export async function listFinanceDocumentRows() {
-  const [parentAll, partnerAll, roleCfg, partnerCreditNotes] = await Promise.all([
+  const [parentAll, partnerAll, businessAll, roleCfg, partnerCreditNotes] = await Promise.all([
     listAllParentBilling(),
     listPartnerBilling(),
+    listBusinessAccounts(),
     getApprovalRoleConfig(),
     prisma.creditNote.findMany({
       where: {
@@ -262,6 +376,7 @@ export async function listFinanceDocumentRows() {
   }
 
   const rows: FinanceDocumentRow[] = [];
+  rows.push(...buildBusinessFinanceDocumentRows(businessAll));
 
   for (const invoice of parentAll.invoices) {
     const pkg = packageMap.get(invoice.packageId);

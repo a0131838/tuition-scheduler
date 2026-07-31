@@ -25,10 +25,33 @@
 - Current release line: `2026-07-29-r298` is live at runtime feature commit `857bb8584870fd4afd4f82a944fdd4a430adee2c`. It completes the Academic/CS curriculum with 20 relevant modules, 12 work chains, 35 controlled bilingual modules, and 365 PDF pages while preserving operational permissions.
 - Current release line: `2026-07-29-r299` is live at runtime feature commit `152024fb2b7626b09274e68b5d0d40e291a7dee6`. Partner receipts use the invoice net after issued Credit Notes, while existing financial records and approval flows remain unchanged.
 - Current release line prepared: `2026-07-29-r300` safely gates unlinked teacher accounts, exposes manager remediation, and improves training delivery and mobile/login polish without changing operational business data.
+- Current release line prepared: `2026-07-31-r301` adds Business Accounts invoices and receipts to the central Finance Documents list and export without moving or rewriting source finance records.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-07-31-r301 Ready
+
+- Scope: include Business Accounts invoices and receipts in Finance Documents as a separate `Business / 企业账户` channel.
+- Business impact:
+  - Shanghai Xinzhuo Si invoices and receipts become visible in the central finance list under their true Business Account classification.
+  - Date, type, channel, payment-status, keyword, and Excel export paths use the same combined rows.
+  - Invoice and receipt rows open their existing Business Account PDFs and source workspace.
+  - Drafts remain excluded from formal documents; issued, paid, partial, and void states remain distinguishable.
+  - Existing source records and all creation, payment, approval, settlement, package, attendance, payroll, and scheduling workflows remain unchanged.
+- Verification before deploy:
+  - Read-only production data: three paid Shanghai Xinzhuo Si invoices and three receipts exist in Business Accounts; none exist in Partner Billing.
+  - 30 focused finance and billing tests passed.
+  - 301 repository tests passed.
+  - TypeScript and `git diff --check` passed.
+  - Complete 231-page production build passed.
+- Post-deploy verification:
+  - Confirm local, GitHub, and server commit equality, PM2 online, and `/admin/login` HTTP 200.
+  - Confirm Business channel returns three Shanghai Xinzhuo Si invoices and three receipts.
+  - Confirm the July 2026 invoice filter includes `RGT-202607-0004` for SGD 18,440.
+  - Confirm the three existing source documents remain unchanged and no duplicate records are created.
+- Task doc: `docs/tasks/TASK-20260731-business-finance-documents.md`.
 
 ## 2026-07-29-r300 Ready
 
