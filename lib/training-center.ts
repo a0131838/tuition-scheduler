@@ -3,6 +3,7 @@ import type { SystemUserRole } from "@/lib/staff-roles";
 export const TRAINING_ASSIGNABLE_ROLES = ["ADMIN", "FINANCE", "SALES", "CS", "TEACHER"] as const satisfies readonly SystemUserRole[];
 export type TrainingAssignableRole = (typeof TRAINING_ASSIGNABLE_ROLES)[number];
 export const TRAINING_RELEASE_VERSION = "20260803A";
+export const ACADEMIC_SCHEDULING_TRAINING_VERSION = "20260803B";
 
 export type TrainingPlatform = "WEB" | "MINIAPP";
 
@@ -50,7 +51,7 @@ type TrainingModuleInput = Omit<
 
 const englishContent: Record<string, { title: string; category: string; practicalTask: string }> = {
   SYSTEM_OPERATION_MAP: { title: "SGT Full-System Operations Map", category: "Common Core", practicalTask: "Choose three routine tasks for your role and identify the correct entry point, detailed SOP, required final status, and escalation owner." },
-  ACADEMIC_SCHEDULING_MASTER: { title: "Scheduling, Tickets, and Daily Handover", category: "Academic Core", practicalTask: "Using training data, complete the loop from request intake and ticket creation through scheduling preview, result verification, and handover." },
+  ACADEMIC_SCHEDULING_MASTER: { title: "Academic Web Scheduling: First Lessons, Continuation, Rescheduling, and Exceptions", category: "Academic Core", practicalTask: "Using training data, complete one first or continued scheduling preview, explain the reschedule/cancel/teacher-replacement paths, verify the official schedule, and complete the ticket or handover." },
   ACADEMIC_DAILY_STUDENT_RECORDS: { title: "Academic Daily Start, Student Setup, and Student 360 Records", category: "Academic Foundation", practicalTask: "Complete the academic opening checklist, duplicate-check and verify a training student record, then record an owned next action or handover." },
   ACADEMIC_TEACHER_COORDINATION: { title: "Academic Teacher Coordination, Availability, Exceptions, and Handover", category: "Academic Scheduling", practicalTask: "Verify a teacher’s availability, send one precise scheduling request, record the teacher response, and confirm the final official session or owned handover." },
   CONTRACT_PACKAGE_GATE_MASTER: { title: "First Purchase, Renewal, Contracts, Packages, and Finance Gates", category: "Contracts & Packages", practicalTask: "For a training student, determine first purchase or renewal and verify the contract, invoice approval, and scheduling eligibility." },
@@ -143,13 +144,13 @@ function module(input: TrainingModuleInput): TrainingModule {
   return {
     ...input,
     pdfFile: input.pdfFile.replace(/2026\d{4}(?=\.pdf$)/, "20260803"),
-    version: TRAINING_RELEASE_VERSION,
+    version: input.code === "ACADEMIC_SCHEDULING_MASTER" ? ACADEMIC_SCHEDULING_TRAINING_VERSION : TRAINING_RELEASE_VERSION,
     platform: input.code.includes("MINIAPP") ? "MINIAPP" : "WEB",
     titleEn: en.title,
     categoryEn: en.category,
     practicalTaskEn: en.practicalTask,
     phase,
-    estimatedMinutes: phase === "FOUNDATION" ? 30 : phase === "CORE" ? 45 : 60,
+    estimatedMinutes: input.code === "ACADEMIC_SCHEDULING_MASTER" ? 90 : phase === "FOUNDATION" ? 30 : phase === "CORE" ? 45 : 60,
     learningObjectives: [
       `能够说明《${input.title}》的正确入口、适用岗位和停止条件。`,
       `能够使用培训数据完成：${input.practicalTask}`,
@@ -178,7 +179,7 @@ function module(input: TrainingModuleInput): TrainingModule {
 
 export const TRAINING_MODULES: TrainingModule[] = [
   module({ code: "SYSTEM_OPERATION_MAP", title: "SGT 全系统操作流程地图", version: "20260728", roles: ["ADMIN", "FINANCE", "SALES", "CS", "TEACHER"], category: "共同必修", pdfFile: "00-SGT全系统操作流程地图-中英文培训版-20260728.pdf", practicalTask: "从本人岗位选取三个日常任务，指出正确入口、对应详细 SOP、最终完成状态和异常升级对象。" }),
-  module({ code: "ACADEMIC_SCHEDULING_MASTER", title: "排课、工单与每日交接完整流程", version: "20260728", roles: ["ADMIN", "CS"], category: "教务必修", pdfFile: "SOP-教务-排课工单与每日交接完整流程-中英文培训版-20260728.pdf", practicalTask: "使用培训数据从请求建工单、排课预览到完成结果和交接记录走完闭环。" }),
+  module({ code: "ACADEMIC_SCHEDULING_MASTER", title: "教务网页端排课：首次排课、续排、调课与异常闭环", version: "20260728", roles: ["ADMIN", "CS"], category: "教务必修", pdfFile: "SOP-教务-排课工单与每日交接完整流程-中英文培训版-20260728.pdf", practicalTask: "使用培训数据完成一次首次或续排预览，说明调课、取消、换老师和冲突处理路径，核对正式课表并完成工单或交接。" }),
   module({ code: "ACADEMIC_DAILY_STUDENT_RECORDS", title: "教务每日开工、学生建档与 Student 360", version: "20260729D", roles: ["ADMIN", "CS"], category: "教务基础", pdfFile: "SOP-教务-每日开工学生建档与Student360-中英文培训版-20260729.pdf", practicalTask: "完成教务开工检查，为培训学生查重并核对档案，再记录有负责人的下一步或交接。" }),
   module({ code: "ACADEMIC_TEACHER_COORDINATION", title: "教务老师协调、可用时间、例外与交接", version: "20260729D", roles: ["ADMIN", "CS"], category: "教务排课", pdfFile: "SOP-教务-老师协调可用时间例外与交接-中英文培训版-20260729.pdf", practicalTask: "核对老师可用时间，发送一项准确排课请求，记录老师回复，并确认正式课次或有负责人的交接。" }),
   module({ code: "CONTRACT_PACKAGE_GATE_MASTER", title: "首购续费、合同课包与财务门禁", version: "20260728", roles: ["ADMIN", "FINANCE", "CS"], category: "合同课包", pdfFile: "SOP-教务-新生首购续费合同课包财务门禁-中英文培训版-20260728.pdf", practicalTask: "使用培训学生判断首购/续费，核对合同、发票审批和允许排课状态。" }),

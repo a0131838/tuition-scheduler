@@ -1,198 +1,428 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>排课、工单与每日交接完整流程 · Scheduling, Tickets, and Daily Handover</title><style>
-@page{size:A4 landscape;margin:13mm 12mm}*{box-sizing:border-box}body{margin:0;color:#172033;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}.page{height:184mm;page-break-after:always;position:relative;overflow:hidden;padding:3mm}.page:last-child{page-break-after:auto}.cover{display:grid;align-content:center;background:linear-gradient(135deg,#ecfdf5,#eff6ff);border-radius:7mm;padding:17mm}.eyebrow{font-size:10px;font-weight:900;color:#0f766e;letter-spacing:.08em}h1{font-size:25px;margin:4mm 0 3mm;color:#102a43;line-height:1.25}.cover h1{font-size:30px}.english-title{font-size:22px;color:#334e68;margin-top:10mm}.meta{margin-top:8mm;font-size:13px;line-height:1.8}.banner{margin-top:7mm;padding:4mm;border-left:2mm solid #0f766e;background:#fff}.steps{display:grid;gap:3mm;margin-top:5mm}.step{display:grid;grid-template-columns:9mm 1fr;gap:3mm;align-items:start;border:1px solid #d7e2ec;border-radius:3mm;padding:3mm;background:#f8fbfd}.step>b{display:grid;place-items:center;width:7mm;height:7mm;border-radius:50%;background:#0f766e;color:#fff}.step span{font-size:11px;line-height:1.48}.check{display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin-top:6mm}.box{border:1px solid #d7e2ec;border-radius:4mm;padding:5mm;background:#f8fbfd}.danger{border-color:#fca5a5;background:#fef2f2}.box h2{font-size:16px;margin:0 0 3mm}.box li{font-size:11px;line-height:1.55;margin:2.5mm 0}.lesson{display:grid;grid-template-columns:1.12fr 1fr;gap:5mm;margin-top:4mm;height:120mm}.shot{border:1px solid #d7e2ec;border-radius:4mm;background:#f8fafc;overflow:hidden;display:grid;grid-template-rows:1fr auto}.shot img{width:100%;height:106mm;object-fit:contain;display:block}.caption{padding:2mm 3mm;color:#475569;font-size:9px;border-top:1px solid #d7e2ec}.empty-shot{display:grid;place-items:center;text-align:center;color:#64748b;font-size:14px;padding:10mm}.beginner{border:1px solid #d7e2ec;border-radius:4mm;padding:4mm;background:#fff}.beginner h2{font-size:15px;margin:0 0 2mm}.beginner ol{margin:0;padding-left:6mm}.beginner li{font-size:9.7px;line-height:1.4;margin:1.8mm 0}.stop{font-size:9.7px;line-height:1.4;padding:2.5mm;border:1px solid #fca5a5;border-radius:2mm;background:#fef2f2;margin-top:2mm}.divider{display:grid;place-items:center;text-align:center;background:#eff6ff;border:2px solid #93c5fd;border-radius:7mm}.divider h1{font-size:34px}footer{position:absolute;bottom:2mm;left:3mm;right:3mm;display:flex;justify-content:space-between;color:#64748b;font-size:9px}
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>教务网页端排课：首次排课、续排、调课与异常闭环 · Academic Web Scheduling: First Lessons, Continuation, Rescheduling, and Exceptions</title><style>
+@page{size:A4 landscape;margin:13mm 12mm}*{box-sizing:border-box}body{margin:0;color:#172033;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}.page{height:184mm;page-break-after:always;position:relative;overflow:hidden;padding:3mm}.page:last-child{page-break-after:auto}.cover{display:grid;align-content:center;background:linear-gradient(135deg,#ecfdf5,#eff6ff);border-radius:7mm;padding:17mm}.eyebrow{font-size:10px;font-weight:900;color:#0f766e;letter-spacing:.08em}h1{font-size:25px;margin:4mm 0 3mm;color:#102a43;line-height:1.25}.cover h1{font-size:30px}.english-title{font-size:22px;color:#334e68;margin-top:10mm}.meta{margin-top:8mm;font-size:13px;line-height:1.8}.banner{margin-top:7mm;padding:4mm;border-left:2mm solid #0f766e;background:#fff}.steps{display:grid;gap:3mm;margin-top:5mm}.step{display:grid;grid-template-columns:9mm 1fr;gap:3mm;align-items:start;border:1px solid #d7e2ec;border-radius:3mm;padding:3mm;background:#f8fbfd}.step>b{display:grid;place-items:center;width:7mm;height:7mm;border-radius:50%;background:#0f766e;color:#fff}.step span{font-size:11px;line-height:1.48}.check{display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin-top:6mm}.box{border:1px solid #d7e2ec;border-radius:4mm;padding:5mm;background:#f8fbfd}.danger{border-color:#fca5a5;background:#fef2f2}.box h2{font-size:16px;margin:0 0 3mm}.box li{font-size:11px;line-height:1.55;margin:2.5mm 0}.lesson{display:grid;grid-template-columns:1.12fr 1fr;gap:5mm;margin-top:4mm;height:120mm}.shot{border:1px solid #d7e2ec;border-radius:4mm;background:#f8fafc;overflow:hidden;display:grid;grid-template-rows:1fr auto}.shot img{width:100%;height:106mm;object-fit:contain;display:block}.caption{padding:2mm 3mm;color:#475569;font-size:9px;border-top:1px solid #d7e2ec}.empty-shot{display:grid;place-items:center;text-align:center;color:#64748b;font-size:14px;padding:10mm}.beginner{border:1px solid #d7e2ec;border-radius:4mm;padding:4mm;background:#fff}.beginner h2{font-size:15px;margin:0 0 2mm}.beginner ol{margin:0;padding-left:6mm}.beginner li{font-size:9.7px;line-height:1.4;margin:1.8mm 0}.complete,.stop{font-size:9.7px;line-height:1.4;padding:2.5mm;border-radius:2mm;margin-top:2mm}.complete{border:1px solid #86efac;background:#f0fdf4}.stop{border:1px solid #fca5a5;background:#fef2f2}.divider{display:grid;place-items:center;text-align:center;background:#eff6ff;border:2px solid #93c5fd;border-radius:7mm}.divider h1{font-size:34px}footer{position:absolute;bottom:2mm;left:3mm;right:3mm;display:flex;justify-content:space-between;color:#64748b;font-size:9px}
 </style></head><body>
-<section class="page cover"><div class="eyebrow">SGT MANAGE · 网页端 WEB</div><h1>排课、工单与每日交接完整流程</h1><div class="english-title">Scheduling, Tickets, and Daily Handover</div><div class="meta">功能编号：ACADEMIC_SCHEDULING_MASTER<br>版本：20260803A<br>排版顺序：先完整中文版，再完整英文版<br>Layout: Complete Chinese section first, followed by the complete English section</div><div class="banner"><b>一份文档只讲一个功能。</b> 网页端与小程序端分开；员工按编号一步一步操作。<br><b>One document covers one function only.</b> Web and Mini Program guides are separate.</div></section>
-<section class="page zh"><div class="eyebrow">中文版 · 操作前准备</div><h1>点击任何按钮前，先完成这四项准备</h1><div class="check"><div class="box"><h2>准备</h2><ul><li>使用本人账号和岗位对应工作台。</li><li>除非主管明确授权，否则只使用培训数据。</li><li>准备正确的对象、日期、负责人和所需资料。</li><li>把 PDF 与系统并排打开，每次只做一个编号步骤。</li></ul></div><div class="box danger"><h2>禁止</h2><ul><li>不使用同事账号。</li><li>不猜测姓名、金额、日期、状态或缺失字段。</li><li>结果不明确时不重复点击保存、应用、批准、发布或发送。</li><li>页面不一致时立即停止并询问负责人。</li></ul></div></div><footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>2</span></footer></section><section class="page zh"><div class="eyebrow">中文版 · 完整步骤总览</div><h1>排课、工单与每日交接完整流程</h1><div class="steps"><div class="step"><b>1</b><span>从统一待办检查今日课表、未分配工单和阻塞事项。</span></div><div class="step"><b>2</b><span>把微信或口头请求建成工单，写清学生、时间、负责人和截止日期。</span></div><div class="step"><b>3</b><span>在排课协调中核对场景、课包、老师、地点和冲突。</span></div><div class="step"><b>4</b><span>财务门禁或资料不完整时停止 Apply，并记录等待对象和跟进日期。</span></div><div class="step"><b>5</b><span>正式课次复核后写完成结果；未完成事项按六要素交接。</span></div></div><footer><span>网页端培训</span><span>3</span></footer></section><section class="page zh">
-      <div class="eyebrow">中文流程 · 第 1 步，共 5 步</div>
-      <h1>从统一待办检查今日课表、未分配工单和阻塞事项。</h1>
+<section class="page cover"><div class="eyebrow">SGT MANAGE · 网页端 WEB</div><h1>教务网页端排课：首次排课、续排、调课与异常闭环</h1><div class="english-title">Academic Web Scheduling: First Lessons, Continuation, Rescheduling, and Exceptions</div><div class="meta">功能编号：ACADEMIC_SCHEDULING_MASTER<br>版本：20260803B<br>排版顺序：先完整中文版，再完整英文版<br>Layout: Complete Chinese section first, followed by the complete English section</div><div class="banner"><b>一份文档只讲一个功能。</b> 网页端与小程序端分开；员工按编号一步一步操作。<br><b>One document covers one function only.</b> Web and Mini Program guides are separate.</div></section>
+<section class="page zh"><div class="eyebrow">中文版 · 操作前准备</div><h1>点击任何按钮前，先完成这四项准备</h1><div class="check"><div class="box"><h2>准备</h2><ul><li>使用本人账号和岗位对应工作台。</li><li>除非主管明确授权，否则只使用培训数据。</li><li>准备正确的对象、日期、负责人和所需资料。</li><li>把 PDF 与系统并排打开，每次只做一个编号步骤。</li></ul></div><div class="box danger"><h2>禁止</h2><ul><li>不使用同事账号。</li><li>不猜测姓名、金额、日期、状态或缺失字段。</li><li>结果不明确时不重复点击保存、应用、批准、发布或发送。</li><li>页面不一致时立即停止并询问负责人。</li></ul></div></div><footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>2</span></footer></section><section class="page zh"><div class="eyebrow">中文版 · 完整步骤总览 · 1/2</div><h1>教务网页端排课：首次排课、续排、调课与异常闭环</h1><div class="steps"><div class="step"><b>1</b><span>先确认请求属于哪一种排课场景。</span></div><div class="step"><b>2</b><span>从“排课执行工单”领取并检查当前队列。</span></div><div class="step"><b>3</b><span>排课前核对学生、课程、课包和财务门禁。</span></div><div class="step"><b>4</b><span>把家长时间要求写进排课协调工单。</span></div><div class="step"><b>5</b><span>核对老师可用时间，必要时走例外确认。</span></div><div class="step"><b>6</b><span>生成候选时间并把已发送状态留在系统。</span></div><div class="step"><b>7</b><span>首次排课或续排：打开 Quick Schedule 并填写全部字段。</span></div><div class="step"><b>8</b><span>查找可用老师并完成排课预览。</span></div></div><footer><span>网页端培训</span><span>3</span></footer></section><section class="page zh"><div class="eyebrow">中文版 · 完整步骤总览 · 2/2</div><h1>教务网页端排课：首次排课、续排、调课与异常闭环</h1><div class="steps"><div class="step"><b>9</b><span>确认无误后只执行一次 Apply，并核对整批结果。</span></div><div class="step"><b>10</b><span>特殊单次课程：使用 New (Single) 的正确页签。</span></div><div class="step"><b>11</b><span>调课：选择原课次、新时间和调整范围。</span></div><div class="step"><b>12</b><span>取消、请假或换老师必须关联原课次和结构化动作。</span></div><div class="step"><b>13</b><span>出现冲突时进入 Conflict Center 逐条解决。</span></div><div class="step"><b>14</b><span>回到正式课表核对，再写工单完成结果。</span></div><div class="step"><b>15</b><span>未完成排课必须进入每日交接。</span></div></div><footer><span>网页端培训</span><span>4</span></footer></section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 1 步，共 15 步</div>
+      <h1>先确认请求属于哪一种排课场景。</h1>
       <div class="lesson">
-        <div class="shot"><img src="assets/sop-小程序员工工作台-20260718/annotated/01-academic-home.png"><div class="caption">按照截图中的红框或标注找到操作位置。</div>
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/02-scheduling-ticket-queue.png"><div class="caption">按照截图中的红框或标注找到操作位置。</div>
         </div>
         <div class="beginner">
           <h2>请按顺序完成</h2>
-          <ol>
-            <li><b>确认入口：</b>核对页面标题和当前岗位，确保进入的是本文功能，不是相似页面。</li>
-            <li><b>确认对象：</b>核对学生、老师、任务、日期、金额、课包或记录编号。</li>
-            <li><b>执行本步：</b>从统一待办检查今日课表、未分配工单和阻塞事项。</li>
-            <li><b>保存前：</b>逐项复核刚才填写或选择的内容；缺失资料不得猜填。</li>
-            <li><b>保存后：</b>只点击一次保存或提交，然后刷新或重新打开记录。</li>
-            <li><b>完成标志：</b>页面显示预期结果、负责人和最终状态，且结果仍属于正确对象。</li></ol>
-          <div class="stop"><b>立即停止：</b> 姓名、金额、权限、状态或按钮与本教程不一致时，不要继续或重复点击；保留当前页面并联系流程负责人。</div>
-        </div>
-      </div>
-      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>4</span></footer>
-    </section><section class="page zh">
-      <div class="eyebrow">中文流程 · 第 2 步，共 5 步</div>
-      <h1>把微信或口头请求建成工单，写清学生、时间、负责人和截止日期。</h1>
-      <div class="lesson">
-        <div class="shot"><img src="assets/sop-小程序员工工作台-20260718/annotated/05-academic-intake.png"><div class="caption">按照截图中的红框或标注找到操作位置。</div>
-        </div>
-        <div class="beginner">
-          <h2>请按顺序完成</h2>
-          <ol>
-            <li><b>确认入口：</b>核对页面标题和当前岗位，确保进入的是本文功能，不是相似页面。</li>
-            <li><b>确认对象：</b>核对学生、老师、任务、日期、金额、课包或记录编号。</li>
-            <li><b>执行本步：</b>把微信或口头请求建成工单，写清学生、时间、负责人和截止日期。</li>
-            <li><b>保存前：</b>逐项复核刚才填写或选择的内容；缺失资料不得猜填。</li>
-            <li><b>保存后：</b>只点击一次保存或提交，然后刷新或重新打开记录。</li>
-            <li><b>完成标志：</b>页面显示预期结果、负责人和最终状态，且结果仍属于正确对象。</li></ol>
-          <div class="stop"><b>立即停止：</b> 姓名、金额、权限、状态或按钮与本教程不一致时，不要继续或重复点击；保留当前页面并联系流程负责人。</div>
+          <ol><li>打开家长请求或排课工单，核对学生和课程。</li><li>把请求归类为首次排课、续排/加课、调课、取消/请假或换老师。</li><li>记录家长要求的日期范围、时长、线上/线下和地点。</li><li>已有同课程未关闭工单时沿用原工单，不重复创建。</li></ol>
+          <div class="complete"><b>完成标志：</b> 工单中能看到明确场景、学生、课程和下一步。</div>
+          <div class="stop"><b>立即停止：</b> 无法确认学生、课程或请求类型时停止。</div>
         </div>
       </div>
       <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>5</span></footer>
     </section><section class="page zh">
-      <div class="eyebrow">中文流程 · 第 3 步，共 5 步</div>
-      <h1>在排课协调中核对场景、课包、老师、地点和冲突。</h1>
+      <div class="eyebrow">中文流程 · 第 2 步，共 15 步</div>
+      <h1>从“排课执行工单”领取并检查当前队列。</h1>
       <div class="lesson">
-        <div class="shot"><img src="assets/sop-小程序员工工作台-20260718/annotated/06-academic-intake-attachments.png"><div class="caption">按照截图中的红框或标注找到操作位置。</div>
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/02-scheduling-ticket-queue.png"><div class="caption">按照截图中的红框或标注找到操作位置。</div>
         </div>
         <div class="beginner">
           <h2>请按顺序完成</h2>
-          <ol>
-            <li><b>确认入口：</b>核对页面标题和当前岗位，确保进入的是本文功能，不是相似页面。</li>
-            <li><b>确认对象：</b>核对学生、老师、任务、日期、金额、课包或记录编号。</li>
-            <li><b>执行本步：</b>在排课协调中核对场景、课包、老师、地点和冲突。</li>
-            <li><b>保存前：</b>逐项复核刚才填写或选择的内容；缺失资料不得猜填。</li>
-            <li><b>保存后：</b>只点击一次保存或提交，然后刷新或重新打开记录。</li>
-            <li><b>完成标志：</b>页面显示预期结果、负责人和最终状态，且结果仍属于正确对象。</li></ol>
-          <div class="stop"><b>立即停止：</b> 姓名、金额、权限、状态或按钮与本教程不一致时，不要继续或重复点击；保留当前页面并联系流程负责人。</div>
+          <ol><li>进入管理后台 → Scheduling Work Orders / 排课执行工单。</li><li>先看开放工单、待执行动作、旧工单待结构化和逾期数量。</li><li>优先处理逾期或已承诺家长回复时间的工单。</li><li>打开目标工单并确认负责人；不是本人负责时先完成交接。</li></ol>
+          <div class="complete"><b>完成标志：</b> 目标工单已打开，负责人和截止时间明确。</div>
+          <div class="stop"><b>立即停止：</b> 同一请求存在两张工单或负责人冲突时停止并合并判断。</div>
         </div>
       </div>
       <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>6</span></footer>
     </section><section class="page zh">
-      <div class="eyebrow">中文流程 · 第 4 步，共 5 步</div>
-      <h1>财务门禁或资料不完整时停止 Apply，并记录等待对象和跟进日期。</h1>
+      <div class="eyebrow">中文流程 · 第 3 步，共 15 步</div>
+      <h1>排课前核对学生、课程、课包和财务门禁。</h1>
       <div class="lesson">
-        <div class="shot"><img src="assets/sop-小程序员工工作台-20260718/annotated/07-academic-coordination.png"><div class="caption">按照截图中的红框或标注找到操作位置。</div>
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/03-ticket-actions.png"><div class="caption">按照截图中的红框或标注找到操作位置。</div>
         </div>
         <div class="beginner">
           <h2>请按顺序完成</h2>
-          <ol>
-            <li><b>确认入口：</b>核对页面标题和当前岗位，确保进入的是本文功能，不是相似页面。</li>
-            <li><b>确认对象：</b>核对学生、老师、任务、日期、金额、课包或记录编号。</li>
-            <li><b>执行本步：</b>财务门禁或资料不完整时停止 Apply，并记录等待对象和跟进日期。</li>
-            <li><b>保存前：</b>逐项复核刚才填写或选择的内容；缺失资料不得猜填。</li>
-            <li><b>保存后：</b>只点击一次保存或提交，然后刷新或重新打开记录。</li>
-            <li><b>完成标志：</b>页面显示预期结果、负责人和最终状态，且结果仍属于正确对象。</li></ol>
-          <div class="stop"><b>立即停止：</b> 姓名、金额、权限、状态或按钮与本教程不一致时，不要继续或重复点击；保留当前页面并联系流程负责人。</div>
+          <ol><li>从工单打开学生排课工作区，核对学生姓名和课程。</li><li>查看有效课包、剩余课时、有效期和本节时长。</li><li>确认页面显示 Schedulable / 可排课；发票待审批或门禁阻塞时不得继续。</li><li>共享课包必须再次确认本节实际学生和课程归属。</li></ol>
+          <div class="complete"><b>完成标志：</b> 正确课包显示可排课且余额足够。</div>
+          <div class="stop"><b>立即停止：</b> 缺少有效课包、余额不足、过期或财务门禁未通过时停止。</div>
         </div>
       </div>
       <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>7</span></footer>
     </section><section class="page zh">
-      <div class="eyebrow">中文流程 · 第 5 步，共 5 步</div>
-      <h1>正式课次复核后写完成结果；未完成事项按六要素交接。</h1>
+      <div class="eyebrow">中文流程 · 第 4 步，共 15 步</div>
+      <h1>把家长时间要求写进排课协调工单。</h1>
       <div class="lesson">
-        <div class="shot"><img src="assets/sop-小程序员工工作台-20260718/annotated/08-academic-schedule.png"><div class="caption">按照截图中的红框或标注找到操作位置。</div>
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/04-coordination-workspace.png"><div class="caption">按照截图中的红框或标注找到操作位置。</div>
         </div>
         <div class="beginner">
           <h2>请按顺序完成</h2>
-          <ol>
-            <li><b>确认入口：</b>核对页面标题和当前岗位，确保进入的是本文功能，不是相似页面。</li>
-            <li><b>确认对象：</b>核对学生、老师、任务、日期、金额、课包或记录编号。</li>
-            <li><b>执行本步：</b>正式课次复核后写完成结果；未完成事项按六要素交接。</li>
-            <li><b>保存前：</b>逐项复核刚才填写或选择的内容；缺失资料不得猜填。</li>
-            <li><b>保存后：</b>只点击一次保存或提交，然后刷新或重新打开记录。</li>
-            <li><b>完成标志：</b>页面显示预期结果、负责人和最终状态，且结果仍属于正确对象。</li></ol>
-          <div class="stop"><b>立即停止：</b> 姓名、金额、权限、状态或按钮与本教程不一致时，不要继续或重复点击；保留当前页面并联系流程负责人。</div>
+          <ol><li>进入排课协调工作台，优先打开当前课程的未关闭工单。</li><li>写明家长可上课日期、开始/结束时间、时区、频率和不可用时间。</li><li>如果使用家长时间链接，确认最新提交已经回到当前工单。</li><li>把下一次跟进时间和等待对象写清，不使用“继续跟进”。</li></ol>
+          <div class="complete"><b>完成标志：</b> 当前工单显示家长时间和下一次跟进日期。</div>
+          <div class="stop"><b>立即停止：</b> 家长时间只有聊天截图但没有结构化记录时停止正式排课。</div>
         </div>
       </div>
       <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>8</span></footer>
-    </section><section class="page zh"><div class="eyebrow">中文版 · 最终验收</div><h1>以下项目全部确认后才能报告完成</h1><div class="check"><div class="box"><h2>员工自查</h2><ul><li>账号、平台、岗位和目标记录正确。</li><li>全部步骤按顺序完成。</li><li>刷新后仍看到预期最终状态。</li><li>已保存不含敏感信息的结果证据。</li><li>能说明出现异常时找谁处理。</li></ul></div><div class="box danger"><h2>停止并升级</h2><ul><li>缺少必要资料或权限。</li><li>页面、按钮或状态与教程不同。</li><li>未获授权却会影响财务、合同、课包、工资、真实课次或家长可见内容。</li><li>无法确认最终状态。</li></ul></div></div><footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>9</span></footer></section>
-<section class="page divider"><div><div class="eyebrow">LANGUAGE DIVIDER</div><h1>中文版到此结束</h1><div class="english-title">English section starts on the next page</div></div><footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>10</span></footer></section>
-<section class="page en"><div class="eyebrow">ENGLISH SECTION · BEFORE YOU START</div><h1>Complete these four checks before clicking</h1><div class="check"><div class="box"><h2>Prepare</h2><ul><li>Use your own account and role workspace.</li><li>Use training data unless a manager authorises real data.</li><li>Prepare the correct target, date, owner, and source records.</li><li>Keep this PDF beside the system and complete one numbered step at a time.</li></ul></div><div class="box danger"><h2>Never</h2><ul><li>Do not use another employee's account.</li><li>Do not guess names, amounts, dates, statuses, or missing fields.</li><li>Do not repeat Save, Apply, Approve, Publish, or Send when the result is unclear.</li><li>Stop and ask the owner when the page differs.</li></ul></div></div><footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>10</span></footer></section><section class="page en"><div class="eyebrow">ENGLISH SECTION · WORKFLOW OVERVIEW</div><h1>Scheduling, Tickets, and Daily Handover</h1><div class="steps"><div class="step"><b>1</b><span>Start in Unified To-dos and check today's schedule, unassigned tickets, and blockers.</span></div><div class="step"><b>2</b><span>Convert chat or verbal requests into tickets with student, time, owner, and due date.</span></div><div class="step"><b>3</b><span>In Scheduling Coordination, verify the scenario, package, teacher, location, and conflicts.</span></div><div class="step"><b>4</b><span>Stop before Apply when finance gates or data are incomplete; record the waiting party and follow-up date.</span></div><div class="step"><b>5</b><span>After verifying the official session, record the result; hand over incomplete work with all required details.</span></div></div><footer><span>Web training</span><span>11</span></footer></section><section class="page en">
-      <div class="eyebrow">ENGLISH WORKFLOW · STEP 1 OF 5</div>
-      <h1>Start in Unified To-dos and check today's schedule, unassigned tickets, and blockers.</h1>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 5 步，共 15 步</div>
+      <h1>核对老师可用时间，必要时走例外确认。</h1>
       <div class="lesson">
-        <div class="shot"><img src="assets/sop-小程序员工工作台-20260718/annotated/01-academic-home.png"><div class="caption">Use the red box or callout to locate the action.</div>
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/04-coordination-workspace.png"><div class="caption">按照截图中的红框或标注找到操作位置。</div>
         </div>
         <div class="beginner">
-          <h2>Complete in this order</h2>
-          <ol>
-            <li><b>Confirm the entry:</b> Check the page title and current role. Make sure this is the function described here, not a similar page.</li>
-            <li><b>Confirm the target:</b> Recheck the student, teacher, task, date, amount, package, or record number.</li>
-            <li><b>Perform this step:</b> Start in Unified To-dos and check today's schedule, unassigned tickets, and blockers.</li>
-            <li><b>Before saving:</b> Review every field or selection. Never guess missing information.</li>
-            <li><b>After saving:</b> Click Save or Submit once, then refresh or reopen the record.</li>
-            <li><b>Completion signal:</b> The expected result, owner, and final status remain visible on the correct record.</li></ol>
-          <div class="stop"><b>STOP:</b> If the name, amount, permission, status, or button differs, do not continue or click again. Preserve the screen and contact the workflow owner.</div>
+          <h2>请按顺序完成</h2>
+          <ol><li>先查看候选老师可教课程和未来 30 天 Availability。</li><li>没有保存时段不等于老师拒绝，不得自行猜测。</li><li>家长坚持 Availability 以外时间时，发送包含日期、起止、课程、地点和回复期限的例外请求。</li><li>老师回复只是协调证据，不会自动建立正式课次。</li></ol>
+          <div class="complete"><b>完成标志：</b> 候选老师有有效 Availability 或已明确接受例外时间。</div>
+          <div class="stop"><b>立即停止：</b> 老师尚未确认特殊时间时停止 Apply。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>9</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 6 步，共 15 步</div>
+      <h1>生成候选时间并把已发送状态留在系统。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/04-coordination-workspace.png"><div class="caption">按照截图中的红框或标注找到操作位置。</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>在排课协调工作台选择课程工单和日期范围。</li><li>点击 Generate slots / 生成时间，检查候选老师、时间和地点。</li><li>把准确候选项发给家长，不发送已冲突或未确认的时间。</li><li>发送后点击 Mark options sent / 标记已发候选时间，并记录等待家长回复。</li></ol>
+          <div class="complete"><b>完成标志：</b> 工单阶段显示候选已发送，并有下一次跟进时间。</div>
+          <div class="stop"><b>立即停止：</b> 系统没有候选时间时保留工单，不强行创建课次。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>10</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 7 步，共 15 步</div>
+      <h1>首次排课或续排：打开 Quick Schedule 并填写全部字段。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/06-quick-schedule.png"><div class="caption">按照截图中的红框或标注找到操作位置。</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>在学生详情进入 Quick Schedule / 快速排课并打开弹窗。</li><li>Mode 选择 Create New Sessions / 新建课次。</li><li>依次选择课程、科目、级别、校区、教室、开始时间和时长。</li><li>续排可填写 Repeat Weeks；连续周数必须符合系统允许范围。</li><li>On Conflict 新员工默认选择 Reject Immediately，遇到冲突整批停止。</li></ol>
+          <div class="complete"><b>完成标志：</b> 字段完整，课包余额预览显示可排课。</div>
+          <div class="stop"><b>立即停止：</b> 课程、地点、日期或时长与家长确认不一致时停止。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>11</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 8 步，共 15 步</div>
+      <h1>查找可用老师并完成排课预览。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/06-quick-schedule.png"><div class="caption">按照截图中的红框或标注找到操作位置。</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>点击 Find Available Teachers / 查找可用老师。</li><li>只选择系统返回且课程匹配的老师。</li><li>逐项检查学生冲突、老师课次冲突、老师约课冲突、教室冲突和课包门禁。</li><li>连续排课时检查首节、末节日期和总周数。</li><li>预览改变或等待时间过长时重新生成，不使用旧预览。</li></ol>
+          <div class="complete"><b>完成标志：</b> 预览中所有冲突检查通过，老师、地点和课包正确。</div>
+          <div class="stop"><b>立即停止：</b> 出现任何冲突、旧预览或老师不匹配时停止。</div>
         </div>
       </div>
       <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>12</span></footer>
-    </section><section class="page en">
-      <div class="eyebrow">ENGLISH WORKFLOW · STEP 2 OF 5</div>
-      <h1>Convert chat or verbal requests into tickets with student, time, owner, and due date.</h1>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 9 步，共 15 步</div>
+      <h1>确认无误后只执行一次 Apply，并核对整批结果。</h1>
       <div class="lesson">
-        <div class="shot"><img src="assets/sop-小程序员工工作台-20260718/annotated/05-academic-intake.png"><div class="caption">Use the red box or callout to locate the action.</div>
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/06-quick-schedule.png"><div class="caption">按照截图中的红框或标注找到操作位置。</div>
         </div>
         <div class="beginner">
-          <h2>Complete in this order</h2>
-          <ol>
-            <li><b>Confirm the entry:</b> Check the page title and current role. Make sure this is the function described here, not a similar page.</li>
-            <li><b>Confirm the target:</b> Recheck the student, teacher, task, date, amount, package, or record number.</li>
-            <li><b>Perform this step:</b> Convert chat or verbal requests into tickets with student, time, owner, and due date.</li>
-            <li><b>Before saving:</b> Review every field or selection. Never guess missing information.</li>
-            <li><b>After saving:</b> Click Save or Submit once, then refresh or reopen the record.</li>
-            <li><b>Completion signal:</b> The expected result, owner, and final status remain visible on the correct record.</li></ol>
-          <div class="stop"><b>STOP:</b> If the name, amount, permission, status, or button differs, do not continue or click again. Preserve the screen and contact the workflow owner.</div>
+          <h2>请按顺序完成</h2>
+          <ol><li>把预览结果与家长确认内容逐项对照。</li><li>获得授权后只点击一次 Apply / 应用；按钮处理中不得再次点击。</li><li>连续排课要核对系统返回的成功节数、首节和末节。</li><li>如整批被 Reject，先处理第一条冲突后重新预览，不改用跳过冲突掩盖问题。</li></ol>
+          <div class="complete"><b>完成标志：</b> 页面返回成功结果，且预期课次数量一致。</div>
+          <div class="stop"><b>立即停止：</b> 页面无明确成功结果、网络中断或数量不一致时停止重复提交。</div>
         </div>
       </div>
       <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>13</span></footer>
-    </section><section class="page en">
-      <div class="eyebrow">ENGLISH WORKFLOW · STEP 3 OF 5</div>
-      <h1>In Scheduling Coordination, verify the scenario, package, teacher, location, and conflicts.</h1>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 10 步，共 15 步</div>
+      <h1>特殊单次课程：使用 New (Single) 的正确页签。</h1>
       <div class="lesson">
-        <div class="shot"><img src="assets/sop-小程序员工工作台-20260718/annotated/06-academic-intake-attachments.png"><div class="caption">Use the red box or callout to locate the action.</div>
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/07-single-session.png"><div class="caption">按照截图中的红框或标注找到操作位置。</div>
         </div>
         <div class="beginner">
-          <h2>Complete in this order</h2>
-          <ol>
-            <li><b>Confirm the entry:</b> Check the page title and current role. Make sure this is the function described here, not a similar page.</li>
-            <li><b>Confirm the target:</b> Recheck the student, teacher, task, date, amount, package, or record number.</li>
-            <li><b>Perform this step:</b> In Scheduling Coordination, verify the scenario, package, teacher, location, and conflicts.</li>
-            <li><b>Before saving:</b> Review every field or selection. Never guess missing information.</li>
-            <li><b>After saving:</b> Click Save or Submit once, then refresh or reopen the record.</li>
-            <li><b>Completion signal:</b> The expected result, owner, and final status remain visible on the correct record.</li></ol>
-          <div class="stop"><b>STOP:</b> If the name, amount, permission, status, or button differs, do not continue or click again. Preserve the screen and contact the workflow owner.</div>
+          <h2>请按顺序完成</h2>
+          <ol><li>从周课表进入 New (Single) / 新建单次。</li><li>班课课次选择 Create Session；一对一预约选择 Create Appointment。</li><li>班课先选正确班级；一对一必须再选正确学生。</li><li>填写开始时间和时长后检查表单提示，再提交一次。</li><li>常规首次排课和续排仍优先从学生 Quick Schedule 进入。</li></ol>
+          <div class="complete"><b>完成标志：</b> 单节课出现在正确班级/学生的正式课表。</div>
+          <div class="stop"><b>立即停止：</b> 不清楚班课与一对一差别时停止，不试错提交。</div>
         </div>
       </div>
       <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>14</span></footer>
-    </section><section class="page en">
-      <div class="eyebrow">ENGLISH WORKFLOW · STEP 4 OF 5</div>
-      <h1>Stop before Apply when finance gates or data are incomplete; record the waiting party and follow-up date.</h1>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 11 步，共 15 步</div>
+      <h1>调课：选择原课次、新时间和调整范围。</h1>
       <div class="lesson">
-        <div class="shot"><img src="assets/sop-小程序员工工作台-20260718/annotated/07-academic-coordination.png"><div class="caption">Use the red box or callout to locate the action.</div>
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/11-reschedule-modal.png"><div class="caption">按照截图中的红框或标注找到操作位置。</div>
         </div>
         <div class="beginner">
-          <h2>Complete in this order</h2>
-          <ol>
-            <li><b>Confirm the entry:</b> Check the page title and current role. Make sure this is the function described here, not a similar page.</li>
-            <li><b>Confirm the target:</b> Recheck the student, teacher, task, date, amount, package, or record number.</li>
-            <li><b>Perform this step:</b> Stop before Apply when finance gates or data are incomplete; record the waiting party and follow-up date.</li>
-            <li><b>Before saving:</b> Review every field or selection. Never guess missing information.</li>
-            <li><b>After saving:</b> Click Save or Submit once, then refresh or reopen the record.</li>
-            <li><b>Completion signal:</b> The expected result, owner, and final status remain visible on the correct record.</li></ol>
-          <div class="stop"><b>STOP:</b> If the name, amount, permission, status, or button differs, do not continue or click again. Preserve the screen and contact the workflow owner.</div>
+          <h2>请按顺序完成</h2>
+          <ol><li>从结构化工单动作或学生 Quick Schedule 进入 Reschedule Existing Session。</li><li>先选择 Target Session / 目标课次，核对原日期、课程和老师。</li><li>填写 New Start 和 New Duration。</li><li>Reschedule Scope 默认 This Session Only；只有获得明确授权才扩大范围。</li><li>提交前重新检查学生、老师、教室和约课冲突。</li></ol>
+          <div class="complete"><b>完成标志：</b> 原课次已按授权范围更新，其他课次未被误改。</div>
+          <div class="stop"><b>立即停止：</b> 找不到原课次、范围不明确或课已发生时停止。</div>
         </div>
       </div>
       <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>15</span></footer>
-    </section><section class="page en">
-      <div class="eyebrow">ENGLISH WORKFLOW · STEP 5 OF 5</div>
-      <h1>After verifying the official session, record the result; hand over incomplete work with all required details.</h1>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 12 步，共 15 步</div>
+      <h1>取消、请假或换老师必须关联原课次和结构化动作。</h1>
       <div class="lesson">
-        <div class="shot"><img src="assets/sop-小程序员工工作台-20260718/annotated/08-academic-schedule.png"><div class="caption">Use the red box or callout to locate the action.</div>
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/03-ticket-actions.png"><div class="caption">按照截图中的红框或标注找到操作位置。</div>
         </div>
         <div class="beginner">
-          <h2>Complete in this order</h2>
-          <ol>
-            <li><b>Confirm the entry:</b> Check the page title and current role. Make sure this is the function described here, not a similar page.</li>
-            <li><b>Confirm the target:</b> Recheck the student, teacher, task, date, amount, package, or record number.</li>
-            <li><b>Perform this step:</b> After verifying the official session, record the result; hand over incomplete work with all required details.</li>
-            <li><b>Before saving:</b> Review every field or selection. Never guess missing information.</li>
-            <li><b>After saving:</b> Click Save or Submit once, then refresh or reopen the record.</li>
-            <li><b>Completion signal:</b> The expected result, owner, and final status remain visible on the correct record.</li></ol>
-          <div class="stop"><b>STOP:</b> If the name, amount, permission, status, or button differs, do not continue or click again. Preserve the screen and contact the workflow owner.</div>
+          <h2>请按顺序完成</h2>
+          <ol><li>在工单 Actions / 执行动作中添加正确动作类型。</li><li>改课、取消和换老师必须选择 Source Session / 原课次。</li><li>取消或请假要记录扣费/免扣口径和是否需要补课；无授权不得自行判断。</li><li>换老师要先确认替代老师，再从正式课表执行。</li><li>完成后把系统产生的结果课次或取消结果关联回工单。</li></ol>
+          <div class="complete"><b>完成标志：</b> 工单动作显示 Applied，正式课表与授权结果一致。</div>
+          <div class="stop"><b>立即停止：</b> 扣费口径、补课要求或替代老师不明确时停止并升级主管。</div>
         </div>
       </div>
       <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>16</span></footer>
-    </section><section class="page en"><div class="eyebrow">ENGLISH SECTION · FINAL CHECK</div><h1>Report completion only when every item is true</h1><div class="check"><div class="box"><h2>Employee self-check</h2><ul><li>The account, platform, role, and target record are correct.</li><li>Every step was completed in order.</li><li>The expected final status remains after refresh.</li><li>Non-sensitive evidence of the result was saved.</li><li>You can explain who handles an exception.</li></ul></div><div class="box danger"><h2>Stop and escalate</h2><ul><li>Required data or permission is missing.</li><li>The page, button, or status differs from the guide.</li><li>An unauthorised action would affect finance, contracts, packages, payroll, live sessions, or parent-visible content.</li><li>The final state cannot be verified.</li></ul></div></div><footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>17</span></footer></section>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 13 步，共 15 步</div>
+      <h1>出现冲突时进入 Conflict Center 逐条解决。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/08-conflict-center.png"><div class="caption">按照截图中的红框或标注找到操作位置。</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>进入 Conflict Center / 冲突处理中心。</li><li>先缩小日期范围，再按课程、科目和分页筛选。</li><li>分别确认老师冲突、教室冲突和约课冲突涉及哪两条记录。</li><li>一次只处理一张冲突卡，完成后刷新并确认数量减少。</li><li>不要用删除真实课次来快速清零冲突。</li></ol>
+          <div class="complete"><b>完成标志：</b> 目标冲突消失，相关正式课次均符合最终安排。</div>
+          <div class="stop"><b>立即停止：</b> 无法判断应保留哪一节课时停止并联系负责人。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>17</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 14 步，共 15 步</div>
+      <h1>回到正式课表核对，再写工单完成结果。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/01-schedule-week.png"><div class="caption">按照截图中的红框或标注找到操作位置。</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>打开 Weekly Schedule / 周课表并选择正确周、老师或课程。</li><li>核对正式课次的学生、课程、日期、时间、老师、地点和数量。</li><li>回到工单确认所有结构化动作均为 Applied 或明确 Cancelled。</li><li>填写完成结果，写清最终日期、老师、地点和已通知对象。</li><li>只有正式结果存在时才把工单标记 Completed。</li></ol>
+          <div class="complete"><b>完成标志：</b> 正式课表与工单完成结果一致，刷新后仍存在。</div>
+          <div class="stop"><b>立即停止：</b> 只看到聊天确认但正式课表没有课次时不得完成工单。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>18</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 15 步，共 15 步</div>
+      <h1>未完成排课必须进入每日交接。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/09-daily-handover.png"><div class="caption">按照截图中的红框或标注找到操作位置。</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>进入 Daily Handover / 每日交接，查看未闭环卡片和管理介入。</li><li>每项写清学生、课程、当前阶段、负责人、等待对象和截止时间。</li><li>下一步必须是可执行动作，例如“明日 10:00 联系家长确认 A/B 时间”。</li><li>高风险、逾期或影响次日上课的事项标记管理介入。</li><li>下一班人员打开工单确认接手后，原负责人才能结束交接。</li></ol>
+          <div class="complete"><b>完成标志：</b> 交接卡包含六要素，下一班能直接继续执行。</div>
+          <div class="stop"><b>立即停止：</b> 不得用“已沟通”“跟进中”代替负责人、期限和下一步。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>19</span></footer>
+    </section><section class="page zh"><div class="eyebrow">中文版 · 最终验收</div><h1>以下项目全部确认后才能报告完成</h1><div class="check"><div class="box"><h2>员工自查</h2><ul><li>账号、平台、岗位和目标记录正确。</li><li>全部步骤按顺序完成。</li><li>刷新后仍看到预期最终状态。</li><li>已保存不含敏感信息的结果证据。</li><li>能说明出现异常时找谁处理。</li></ul></div><div class="box danger"><h2>停止并升级</h2><ul><li>缺少必要资料或权限。</li><li>页面、按钮或状态与教程不同。</li><li>未获授权却会影响财务、合同、课包、工资、真实课次或家长可见内容。</li><li>无法确认最终状态。</li></ul></div></div><footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>20</span></footer></section>
+<section class="page divider"><div><div class="eyebrow">LANGUAGE DIVIDER</div><h1>中文版到此结束</h1><div class="english-title">English section starts on the next page</div></div><footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>21</span></footer></section>
+<section class="page en"><div class="eyebrow">ENGLISH SECTION · BEFORE YOU START</div><h1>Complete these four checks before clicking</h1><div class="check"><div class="box"><h2>Prepare</h2><ul><li>Use your own account and role workspace.</li><li>Use training data unless a manager authorises real data.</li><li>Prepare the correct target, date, owner, and source records.</li><li>Keep this PDF beside the system and complete one numbered step at a time.</li></ul></div><div class="box danger"><h2>Never</h2><ul><li>Do not use another employee's account.</li><li>Do not guess names, amounts, dates, statuses, or missing fields.</li><li>Do not repeat Save, Apply, Approve, Publish, or Send when the result is unclear.</li><li>Stop and ask the owner when the page differs.</li></ul></div></div><footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>20</span></footer></section><section class="page en"><div class="eyebrow">ENGLISH SECTION · WORKFLOW OVERVIEW · 1/2</div><h1>Academic Web Scheduling: First Lessons, Continuation, Rescheduling, and Exceptions</h1><div class="steps"><div class="step"><b>1</b><span>First identify the scheduling scenario.</span></div><div class="step"><b>2</b><span>Open Scheduling Work Orders and inspect the queue.</span></div><div class="step"><b>3</b><span>Verify the student, course, package, and finance gate.</span></div><div class="step"><b>4</b><span>Record the parent's availability in the coordination ticket.</span></div><div class="step"><b>5</b><span>Check teacher availability and use the exception path when needed.</span></div><div class="step"><b>6</b><span>Generate candidate slots and record that options were sent.</span></div><div class="step"><b>7</b><span>For first or continued scheduling, complete every Quick Schedule field.</span></div><div class="step"><b>8</b><span>Find available teachers and complete the scheduling preview.</span></div></div><footer><span>Web training</span><span>23</span></footer></section><section class="page en"><div class="eyebrow">ENGLISH SECTION · WORKFLOW OVERVIEW · 2/2</div><h1>Academic Web Scheduling: First Lessons, Continuation, Rescheduling, and Exceptions</h1><div class="steps"><div class="step"><b>9</b><span>Apply once only, then verify the entire result.</span></div><div class="step"><b>10</b><span>For a special one-off lesson, use the correct New (Single) tab.</span></div><div class="step"><b>11</b><span>For rescheduling, select the original session, new time, and scope.</span></div><div class="step"><b>12</b><span>Cancellation, leave, or teacher replacement must link the original session and a structured action.</span></div><div class="step"><b>13</b><span>Resolve conflicts one by one in Conflict Center.</span></div><div class="step"><b>14</b><span>Verify the official schedule before recording the ticket result.</span></div><div class="step"><b>15</b><span>Every unfinished scheduling item must enter Daily Handover.</span></div></div><footer><span>Web training</span><span>24</span></footer></section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 1 OF 15</div>
+      <h1>First identify the scheduling scenario.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/02-scheduling-ticket-queue.png"><div class="caption">Use the red box or callout to locate the action.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Open the parent request or scheduling ticket and verify the student and course.</li><li>Classify it as first scheduling, continuation/additional lessons, rescheduling, cancellation/leave, or teacher replacement.</li><li>Record the requested date range, duration, online/offline mode, and location.</li><li>Reuse an open ticket for the same course instead of creating a duplicate.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The ticket shows the exact scenario, student, course, and next action.</div>
+          <div class="stop"><b>STOP:</b> Stop if the student, course, or request type is unclear.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>25</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 2 OF 15</div>
+      <h1>Open Scheduling Work Orders and inspect the queue.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/02-scheduling-ticket-queue.png"><div class="caption">Use the red box or callout to locate the action.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Open Admin → Scheduling Work Orders.</li><li>Review open tickets, pending actions, legacy tickets needing structure, and overdue counts.</li><li>Prioritise overdue items and commitments with a promised parent response time.</li><li>Open the target ticket and confirm the owner; hand it over before acting if it is not yours.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The target ticket is open with a clear owner and deadline.</div>
+          <div class="stop"><b>STOP:</b> Stop when duplicate tickets or conflicting owners exist.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>26</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 3 OF 15</div>
+      <h1>Verify the student, course, package, and finance gate.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/03-ticket-actions.png"><div class="caption">Use the red box or callout to locate the action.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Open the student scheduling workspace from the ticket and verify the student and course.</li><li>Check the active package, remaining hours, validity, and lesson duration.</li><li>Continue only when the package shows Schedulable; stop for pending invoice approval or a blocked gate.</li><li>For a shared package, reconfirm the actual student and course owner for this lesson.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The correct package is schedulable with enough balance.</div>
+          <div class="stop"><b>STOP:</b> Stop for no active package, insufficient balance, expiry, or an uncleared finance gate.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>27</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 4 OF 15</div>
+      <h1>Record the parent's availability in the coordination ticket.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/04-coordination-workspace.png"><div class="caption">Use the red box or callout to locate the action.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Open the coordination workspace and reuse the open ticket for the current course.</li><li>Record available dates, start/end time, time zone, frequency, and unavailable periods.</li><li>If a parent availability link is used, verify the latest submission is attached to this ticket.</li><li>Set the next follow-up time and waiting party; do not write only 'follow up'.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The ticket shows parent availability and the next follow-up date.</div>
+          <div class="stop"><b>STOP:</b> Stop before scheduling if availability exists only in chat and is not recorded.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>28</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 5 OF 15</div>
+      <h1>Check teacher availability and use the exception path when needed.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/04-coordination-workspace.png"><div class="caption">Use the red box or callout to locate the action.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Check candidate teachers, eligible courses, and their next-30-day availability.</li><li>No saved slot does not mean the teacher declined; never guess.</li><li>For a time outside availability, send an exception request with date, start/end, course, location, and reply deadline.</li><li>A teacher response is coordination evidence and does not create an official session.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The candidate has valid availability or explicitly accepted an exception.</div>
+          <div class="stop"><b>STOP:</b> Stop before Apply until the teacher confirms an exceptional time.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>29</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 6 OF 15</div>
+      <h1>Generate candidate slots and record that options were sent.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/04-coordination-workspace.png"><div class="caption">Use the red box or callout to locate the action.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Select the course ticket and date range in the coordination workspace.</li><li>Click Generate slots and review teacher, time, and location for every option.</li><li>Send only valid options to the parent; exclude conflicts and unconfirmed times.</li><li>After sending, click Mark options sent and record that the ticket is waiting for the parent.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The ticket shows options sent and a next follow-up time.</div>
+          <div class="stop"><b>STOP:</b> Keep the ticket open and do not force a session when no slot is available.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>30</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 7 OF 15</div>
+      <h1>For first or continued scheduling, complete every Quick Schedule field.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/06-quick-schedule.png"><div class="caption">Use the red box or callout to locate the action.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Open Quick Schedule from the student profile and launch the modal.</li><li>Choose Create New Sessions as the mode.</li><li>Select course, subject, level, campus, room, start time, and duration in order.</li><li>For continuation, enter Repeat Weeks within the allowed range.</li><li>New staff should use Reject Immediately for On Conflict so any conflict stops the batch.</li></ol>
+          <div class="complete"><b>Completion signal:</b> All fields are complete and the package preview is schedulable.</div>
+          <div class="stop"><b>STOP:</b> Stop if course, location, date, or duration differs from the parent's confirmation.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>31</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 8 OF 15</div>
+      <h1>Find available teachers and complete the scheduling preview.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/06-quick-schedule.png"><div class="caption">Use the red box or callout to locate the action.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Click Find Available Teachers.</li><li>Choose only a returned teacher whose course eligibility matches.</li><li>Check student, teacher session, teacher appointment, room, and package-gate conflicts.</li><li>For repeated lessons, verify first date, last date, and total weeks.</li><li>Regenerate the preview if data changed or the preview became stale.</li></ol>
+          <div class="complete"><b>Completion signal:</b> All preview checks pass with the correct teacher, location, and package.</div>
+          <div class="stop"><b>STOP:</b> Stop for any conflict, stale preview, or teacher mismatch.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>32</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 9 OF 15</div>
+      <h1>Apply once only, then verify the entire result.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/06-quick-schedule.png"><div class="caption">Use the red box or callout to locate the action.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Compare the preview with the parent's confirmed arrangement field by field.</li><li>After authorisation, click Apply once; never click again while processing.</li><li>For a batch, verify success count, first lesson, and last lesson.</li><li>If the batch is rejected, fix the first conflict and preview again instead of hiding it with Skip.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The page returns success and the expected session count matches.</div>
+          <div class="stop"><b>STOP:</b> Do not resubmit after an unclear result, network interruption, or count mismatch.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>33</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 10 OF 15</div>
+      <h1>For a special one-off lesson, use the correct New (Single) tab.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/07-single-session.png"><div class="caption">Use the red box or callout to locate the action.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Open New (Single) from the weekly schedule.</li><li>Use Create Session for a class lesson and Create Appointment for a one-to-one appointment.</li><li>Choose the correct class; for one-to-one, also choose the correct student.</li><li>Enter start time and duration, review form warnings, and submit once.</li><li>Use student Quick Schedule for normal first and continued scheduling.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The single lesson appears on the correct class/student schedule.</div>
+          <div class="stop"><b>STOP:</b> Stop instead of trial submissions if class and one-to-one modes are unclear.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>34</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 11 OF 15</div>
+      <h1>For rescheduling, select the original session, new time, and scope.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/11-reschedule-modal.png"><div class="caption">Use the red box or callout to locate the action.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Open Reschedule Existing Session from a structured ticket action or student Quick Schedule.</li><li>Select the Target Session and verify its original date, course, and teacher.</li><li>Enter New Start and New Duration.</li><li>Keep Reschedule Scope as This Session Only unless broader scope is explicitly authorised.</li><li>Recheck student, teacher, room, and appointment conflicts before applying.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The original session changed within the authorised scope and no other sessions were altered.</div>
+          <div class="stop"><b>STOP:</b> Stop if the original session is missing, scope is unclear, or the lesson already occurred.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>35</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 12 OF 15</div>
+      <h1>Cancellation, leave, or teacher replacement must link the original session and a structured action.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/03-ticket-actions.png"><div class="caption">Use the red box or callout to locate the action.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Add the correct action type under Ticket Actions.</li><li>Rescheduling, cancellation, and teacher replacement must select the Source Session.</li><li>For cancellation/leave, record charge or no-charge treatment and whether replacement is required; do not decide without authority.</li><li>Confirm the replacement teacher before changing the official schedule.</li><li>Link the resulting session or cancellation result back to the ticket.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The ticket action is Applied and the official schedule matches the authorised result.</div>
+          <div class="stop"><b>STOP:</b> Stop and escalate if charge treatment, replacement need, or teacher is unclear.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>36</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 13 OF 15</div>
+      <h1>Resolve conflicts one by one in Conflict Center.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/08-conflict-center.png"><div class="caption">Use the red box or callout to locate the action.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Open Conflict Center.</li><li>Narrow the date range, then filter by course, subject, and page size.</li><li>Identify both records behind each teacher, room, or appointment conflict.</li><li>Resolve one conflict card at a time, refresh, and verify the count decreases.</li><li>Never delete a real session merely to clear a conflict.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The target conflict is gone and all related sessions match the final arrangement.</div>
+          <div class="stop"><b>STOP:</b> Stop and contact the owner if you cannot determine which session should remain.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>37</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 14 OF 15</div>
+      <h1>Verify the official schedule before recording the ticket result.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/01-schedule-week.png"><div class="caption">Use the red box or callout to locate the action.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Open Weekly Schedule and select the correct week, teacher, or course.</li><li>Verify student, course, date, time, teacher, location, and session count.</li><li>Return to the ticket and confirm every structured action is Applied or explicitly Cancelled.</li><li>Record the completion result with final date, teacher, location, and notified party.</li><li>Mark the ticket Completed only when the official result exists.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The official schedule and ticket result match and remain after refresh.</div>
+          <div class="stop"><b>STOP:</b> Do not complete the ticket when chat confirms it but no official session exists.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>38</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 15 OF 15</div>
+      <h1>Every unfinished scheduling item must enter Daily Handover.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-academic-scheduling-20260803/annotated/09-daily-handover.png"><div class="caption">Use the red box or callout to locate the action.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Open Daily Handover and review open cards and management escalations.</li><li>Record student, course, current phase, owner, waiting party, and deadline for every item.</li><li>Write an executable next action such as 'Contact parent at 10:00 tomorrow to choose slot A or B'.</li><li>Escalate high-risk, overdue, or next-day lesson impacts to management.</li><li>The current owner ends handover only after the next shift opens and accepts the ticket.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The handover contains all six elements and the next shift can act immediately.</div>
+          <div class="stop"><b>STOP:</b> Do not replace owner, deadline, and next action with vague notes such as 'communicated' or 'following up'.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>39</span></footer>
+    </section><section class="page en"><div class="eyebrow">ENGLISH SECTION · FINAL CHECK</div><h1>Report completion only when every item is true</h1><div class="check"><div class="box"><h2>Employee self-check</h2><ul><li>The account, platform, role, and target record are correct.</li><li>Every step was completed in order.</li><li>The expected final status remains after refresh.</li><li>Non-sensitive evidence of the result was saved.</li><li>You can explain who handles an exception.</li></ul></div><div class="box danger"><h2>Stop and escalate</h2><ul><li>Required data or permission is missing.</li><li>The page, button, or status differs from the guide.</li><li>An unauthorised action would affect finance, contracts, packages, payroll, live sessions, or parent-visible content.</li><li>The final state cannot be verified.</li></ul></div></div><footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>40</span></footer></section>
 </body></html>

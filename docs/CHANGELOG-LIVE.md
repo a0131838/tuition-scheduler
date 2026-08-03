@@ -15,6 +15,33 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-03-r304
+
+- Release ID: `2026-08-03-r304`
+- Date/Time (Asia/Singapore): `2026-08-03`
+- Deployment status: `READY`
+- Scope: replace the five-step generic Academic scheduling guide and Mini Program screenshots with a 40-page Web-only beginner manual covering first scheduling, continuation, single lessons, rescheduling, cancellation/leave, teacher replacement, conflict resolution, ticket completion, and daily handover.
+- Key files:
+  - `lib/training-center.ts`
+  - `scripts/build-bilingual-training-sops.mjs`
+  - `docs/SOP-教务-排课工单与每日交接完整流程-中英文培训版-20260803.html`
+  - `output/pdf/SOP-教务-排课工单与每日交接完整流程-中英文培训版-20260803.pdf`
+  - `output/pdf/00-SGT网页端逐功能培训目录-中英文版-20260803.pdf`
+  - `docs/assets/sop-academic-scheduling-20260803/`
+  - `tests/training-center.test.ts`
+  - `docs/tasks/TASK-20260803-academic-web-scheduling-sop.md`
+- Risk impact (if any): Low and limited to Academic training content and this module's retraining version. No live scheduling, ticket, package, finance-gate, attendance, payroll, contract, parent-visible data, permission, or Mini Program business logic changes.
+- Verification:
+  - the scheduling guide contains 15 complete Chinese steps, a language divider, and 15 complete English steps across 40 non-blank pages;
+  - nine annotated real Web screenshots cover the scheduling queue, ticket action, coordination, Quick Schedule, single create, rescheduling, Conflict Center, official schedule, and handover;
+  - page-image and contact-sheet inspection found no blank, clipped, or unreadable pages;
+  - the downloadable Web catalogue shows the new scheduling title while the other 34 module titles remain unchanged;
+  - 22 focused training tests and all 307 repository tests passed;
+  - TypeScript, `git diff --check`, the 231-page production build, and the 54-page Mini Program release audit passed.
+- Rollback point: `737943a6a1e50cd273b7a501c662996e3bbd703d` (`2026-08-03-r303` production head).
+
+---
+
 ## 2026-08-03-r303
 
 - Release ID: `2026-08-03-r303`

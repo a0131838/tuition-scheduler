@@ -1,11 +1,160 @@
 import fs from "node:fs";
 import path from "node:path";
-import { chromium } from "playwright";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const { chromium } = require("playwright");
 
 const root = process.cwd();
 const docsDir = path.join(root, "docs");
 const pdfDir = path.join(root, "output", "pdf");
 const version = "20260803A";
+const schedulingVersion = "20260803B";
+
+const detailedStep = (zh, en, zhActions, enActions, zhComplete, enComplete, zhStop, enStop) => [zh, en, {
+  zhActions, enActions, zhComplete, enComplete, zhStop, enStop,
+}];
+
+const schedulingSteps = [
+  detailedStep(
+    "先确认请求属于哪一种排课场景。",
+    "First identify the scheduling scenario.",
+    ["打开家长请求或排课工单，核对学生和课程。", "把请求归类为首次排课、续排/加课、调课、取消/请假或换老师。", "记录家长要求的日期范围、时长、线上/线下和地点。", "已有同课程未关闭工单时沿用原工单，不重复创建。"],
+    ["Open the parent request or scheduling ticket and verify the student and course.", "Classify it as first scheduling, continuation/additional lessons, rescheduling, cancellation/leave, or teacher replacement.", "Record the requested date range, duration, online/offline mode, and location.", "Reuse an open ticket for the same course instead of creating a duplicate."],
+    "工单中能看到明确场景、学生、课程和下一步。", "The ticket shows the exact scenario, student, course, and next action.",
+    "无法确认学生、课程或请求类型时停止。", "Stop if the student, course, or request type is unclear."
+  ),
+  detailedStep(
+    "从“排课执行工单”领取并检查当前队列。",
+    "Open Scheduling Work Orders and inspect the queue.",
+    ["进入管理后台 → Scheduling Work Orders / 排课执行工单。", "先看开放工单、待执行动作、旧工单待结构化和逾期数量。", "优先处理逾期或已承诺家长回复时间的工单。", "打开目标工单并确认负责人；不是本人负责时先完成交接。"],
+    ["Open Admin → Scheduling Work Orders.", "Review open tickets, pending actions, legacy tickets needing structure, and overdue counts.", "Prioritise overdue items and commitments with a promised parent response time.", "Open the target ticket and confirm the owner; hand it over before acting if it is not yours."],
+    "目标工单已打开，负责人和截止时间明确。", "The target ticket is open with a clear owner and deadline.",
+    "同一请求存在两张工单或负责人冲突时停止并合并判断。", "Stop when duplicate tickets or conflicting owners exist."
+  ),
+  detailedStep(
+    "排课前核对学生、课程、课包和财务门禁。",
+    "Verify the student, course, package, and finance gate.",
+    ["从工单打开学生排课工作区，核对学生姓名和课程。", "查看有效课包、剩余课时、有效期和本节时长。", "确认页面显示 Schedulable / 可排课；发票待审批或门禁阻塞时不得继续。", "共享课包必须再次确认本节实际学生和课程归属。"],
+    ["Open the student scheduling workspace from the ticket and verify the student and course.", "Check the active package, remaining hours, validity, and lesson duration.", "Continue only when the package shows Schedulable; stop for pending invoice approval or a blocked gate.", "For a shared package, reconfirm the actual student and course owner for this lesson."],
+    "正确课包显示可排课且余额足够。", "The correct package is schedulable with enough balance.",
+    "缺少有效课包、余额不足、过期或财务门禁未通过时停止。", "Stop for no active package, insufficient balance, expiry, or an uncleared finance gate."
+  ),
+  detailedStep(
+    "把家长时间要求写进排课协调工单。",
+    "Record the parent's availability in the coordination ticket.",
+    ["进入排课协调工作台，优先打开当前课程的未关闭工单。", "写明家长可上课日期、开始/结束时间、时区、频率和不可用时间。", "如果使用家长时间链接，确认最新提交已经回到当前工单。", "把下一次跟进时间和等待对象写清，不使用“继续跟进”。"],
+    ["Open the coordination workspace and reuse the open ticket for the current course.", "Record available dates, start/end time, time zone, frequency, and unavailable periods.", "If a parent availability link is used, verify the latest submission is attached to this ticket.", "Set the next follow-up time and waiting party; do not write only 'follow up'."],
+    "当前工单显示家长时间和下一次跟进日期。", "The ticket shows parent availability and the next follow-up date.",
+    "家长时间只有聊天截图但没有结构化记录时停止正式排课。", "Stop before scheduling if availability exists only in chat and is not recorded."
+  ),
+  detailedStep(
+    "核对老师可用时间，必要时走例外确认。",
+    "Check teacher availability and use the exception path when needed.",
+    ["先查看候选老师可教课程和未来 30 天 Availability。", "没有保存时段不等于老师拒绝，不得自行猜测。", "家长坚持 Availability 以外时间时，发送包含日期、起止、课程、地点和回复期限的例外请求。", "老师回复只是协调证据，不会自动建立正式课次。"],
+    ["Check candidate teachers, eligible courses, and their next-30-day availability.", "No saved slot does not mean the teacher declined; never guess.", "For a time outside availability, send an exception request with date, start/end, course, location, and reply deadline.", "A teacher response is coordination evidence and does not create an official session."],
+    "候选老师有有效 Availability 或已明确接受例外时间。", "The candidate has valid availability or explicitly accepted an exception.",
+    "老师尚未确认特殊时间时停止 Apply。", "Stop before Apply until the teacher confirms an exceptional time."
+  ),
+  detailedStep(
+    "生成候选时间并把已发送状态留在系统。",
+    "Generate candidate slots and record that options were sent.",
+    ["在排课协调工作台选择课程工单和日期范围。", "点击 Generate slots / 生成时间，检查候选老师、时间和地点。", "把准确候选项发给家长，不发送已冲突或未确认的时间。", "发送后点击 Mark options sent / 标记已发候选时间，并记录等待家长回复。"],
+    ["Select the course ticket and date range in the coordination workspace.", "Click Generate slots and review teacher, time, and location for every option.", "Send only valid options to the parent; exclude conflicts and unconfirmed times.", "After sending, click Mark options sent and record that the ticket is waiting for the parent."],
+    "工单阶段显示候选已发送，并有下一次跟进时间。", "The ticket shows options sent and a next follow-up time.",
+    "系统没有候选时间时保留工单，不强行创建课次。", "Keep the ticket open and do not force a session when no slot is available."
+  ),
+  detailedStep(
+    "首次排课或续排：打开 Quick Schedule 并填写全部字段。",
+    "For first or continued scheduling, complete every Quick Schedule field.",
+    ["在学生详情进入 Quick Schedule / 快速排课并打开弹窗。", "Mode 选择 Create New Sessions / 新建课次。", "依次选择课程、科目、级别、校区、教室、开始时间和时长。", "续排可填写 Repeat Weeks；连续周数必须符合系统允许范围。", "On Conflict 新员工默认选择 Reject Immediately，遇到冲突整批停止。"],
+    ["Open Quick Schedule from the student profile and launch the modal.", "Choose Create New Sessions as the mode.", "Select course, subject, level, campus, room, start time, and duration in order.", "For continuation, enter Repeat Weeks within the allowed range.", "New staff should use Reject Immediately for On Conflict so any conflict stops the batch."],
+    "字段完整，课包余额预览显示可排课。", "All fields are complete and the package preview is schedulable.",
+    "课程、地点、日期或时长与家长确认不一致时停止。", "Stop if course, location, date, or duration differs from the parent's confirmation."
+  ),
+  detailedStep(
+    "查找可用老师并完成排课预览。",
+    "Find available teachers and complete the scheduling preview.",
+    ["点击 Find Available Teachers / 查找可用老师。", "只选择系统返回且课程匹配的老师。", "逐项检查学生冲突、老师课次冲突、老师约课冲突、教室冲突和课包门禁。", "连续排课时检查首节、末节日期和总周数。", "预览改变或等待时间过长时重新生成，不使用旧预览。"],
+    ["Click Find Available Teachers.", "Choose only a returned teacher whose course eligibility matches.", "Check student, teacher session, teacher appointment, room, and package-gate conflicts.", "For repeated lessons, verify first date, last date, and total weeks.", "Regenerate the preview if data changed or the preview became stale."],
+    "预览中所有冲突检查通过，老师、地点和课包正确。", "All preview checks pass with the correct teacher, location, and package.",
+    "出现任何冲突、旧预览或老师不匹配时停止。", "Stop for any conflict, stale preview, or teacher mismatch."
+  ),
+  detailedStep(
+    "确认无误后只执行一次 Apply，并核对整批结果。",
+    "Apply once only, then verify the entire result.",
+    ["把预览结果与家长确认内容逐项对照。", "获得授权后只点击一次 Apply / 应用；按钮处理中不得再次点击。", "连续排课要核对系统返回的成功节数、首节和末节。", "如整批被 Reject，先处理第一条冲突后重新预览，不改用跳过冲突掩盖问题。"],
+    ["Compare the preview with the parent's confirmed arrangement field by field.", "After authorisation, click Apply once; never click again while processing.", "For a batch, verify success count, first lesson, and last lesson.", "If the batch is rejected, fix the first conflict and preview again instead of hiding it with Skip."],
+    "页面返回成功结果，且预期课次数量一致。", "The page returns success and the expected session count matches.",
+    "页面无明确成功结果、网络中断或数量不一致时停止重复提交。", "Do not resubmit after an unclear result, network interruption, or count mismatch."
+  ),
+  detailedStep(
+    "特殊单次课程：使用 New (Single) 的正确页签。",
+    "For a special one-off lesson, use the correct New (Single) tab.",
+    ["从周课表进入 New (Single) / 新建单次。", "班课课次选择 Create Session；一对一预约选择 Create Appointment。", "班课先选正确班级；一对一必须再选正确学生。", "填写开始时间和时长后检查表单提示，再提交一次。", "常规首次排课和续排仍优先从学生 Quick Schedule 进入。"],
+    ["Open New (Single) from the weekly schedule.", "Use Create Session for a class lesson and Create Appointment for a one-to-one appointment.", "Choose the correct class; for one-to-one, also choose the correct student.", "Enter start time and duration, review form warnings, and submit once.", "Use student Quick Schedule for normal first and continued scheduling."],
+    "单节课出现在正确班级/学生的正式课表。", "The single lesson appears on the correct class/student schedule.",
+    "不清楚班课与一对一差别时停止，不试错提交。", "Stop instead of trial submissions if class and one-to-one modes are unclear."
+  ),
+  detailedStep(
+    "调课：选择原课次、新时间和调整范围。",
+    "For rescheduling, select the original session, new time, and scope.",
+    ["从结构化工单动作或学生 Quick Schedule 进入 Reschedule Existing Session。", "先选择 Target Session / 目标课次，核对原日期、课程和老师。", "填写 New Start 和 New Duration。", "Reschedule Scope 默认 This Session Only；只有获得明确授权才扩大范围。", "提交前重新检查学生、老师、教室和约课冲突。"],
+    ["Open Reschedule Existing Session from a structured ticket action or student Quick Schedule.", "Select the Target Session and verify its original date, course, and teacher.", "Enter New Start and New Duration.", "Keep Reschedule Scope as This Session Only unless broader scope is explicitly authorised.", "Recheck student, teacher, room, and appointment conflicts before applying."],
+    "原课次已按授权范围更新，其他课次未被误改。", "The original session changed within the authorised scope and no other sessions were altered.",
+    "找不到原课次、范围不明确或课已发生时停止。", "Stop if the original session is missing, scope is unclear, or the lesson already occurred."
+  ),
+  detailedStep(
+    "取消、请假或换老师必须关联原课次和结构化动作。",
+    "Cancellation, leave, or teacher replacement must link the original session and a structured action.",
+    ["在工单 Actions / 执行动作中添加正确动作类型。", "改课、取消和换老师必须选择 Source Session / 原课次。", "取消或请假要记录扣费/免扣口径和是否需要补课；无授权不得自行判断。", "换老师要先确认替代老师，再从正式课表执行。", "完成后把系统产生的结果课次或取消结果关联回工单。"],
+    ["Add the correct action type under Ticket Actions.", "Rescheduling, cancellation, and teacher replacement must select the Source Session.", "For cancellation/leave, record charge or no-charge treatment and whether replacement is required; do not decide without authority.", "Confirm the replacement teacher before changing the official schedule.", "Link the resulting session or cancellation result back to the ticket."],
+    "工单动作显示 Applied，正式课表与授权结果一致。", "The ticket action is Applied and the official schedule matches the authorised result.",
+    "扣费口径、补课要求或替代老师不明确时停止并升级主管。", "Stop and escalate if charge treatment, replacement need, or teacher is unclear."
+  ),
+  detailedStep(
+    "出现冲突时进入 Conflict Center 逐条解决。",
+    "Resolve conflicts one by one in Conflict Center.",
+    ["进入 Conflict Center / 冲突处理中心。", "先缩小日期范围，再按课程、科目和分页筛选。", "分别确认老师冲突、教室冲突和约课冲突涉及哪两条记录。", "一次只处理一张冲突卡，完成后刷新并确认数量减少。", "不要用删除真实课次来快速清零冲突。"],
+    ["Open Conflict Center.", "Narrow the date range, then filter by course, subject, and page size.", "Identify both records behind each teacher, room, or appointment conflict.", "Resolve one conflict card at a time, refresh, and verify the count decreases.", "Never delete a real session merely to clear a conflict."],
+    "目标冲突消失，相关正式课次均符合最终安排。", "The target conflict is gone and all related sessions match the final arrangement.",
+    "无法判断应保留哪一节课时停止并联系负责人。", "Stop and contact the owner if you cannot determine which session should remain."
+  ),
+  detailedStep(
+    "回到正式课表核对，再写工单完成结果。",
+    "Verify the official schedule before recording the ticket result.",
+    ["打开 Weekly Schedule / 周课表并选择正确周、老师或课程。", "核对正式课次的学生、课程、日期、时间、老师、地点和数量。", "回到工单确认所有结构化动作均为 Applied 或明确 Cancelled。", "填写完成结果，写清最终日期、老师、地点和已通知对象。", "只有正式结果存在时才把工单标记 Completed。"],
+    ["Open Weekly Schedule and select the correct week, teacher, or course.", "Verify student, course, date, time, teacher, location, and session count.", "Return to the ticket and confirm every structured action is Applied or explicitly Cancelled.", "Record the completion result with final date, teacher, location, and notified party.", "Mark the ticket Completed only when the official result exists."],
+    "正式课表与工单完成结果一致，刷新后仍存在。", "The official schedule and ticket result match and remain after refresh.",
+    "只看到聊天确认但正式课表没有课次时不得完成工单。", "Do not complete the ticket when chat confirms it but no official session exists."
+  ),
+  detailedStep(
+    "未完成排课必须进入每日交接。",
+    "Every unfinished scheduling item must enter Daily Handover.",
+    ["进入 Daily Handover / 每日交接，查看未闭环卡片和管理介入。", "每项写清学生、课程、当前阶段、负责人、等待对象和截止时间。", "下一步必须是可执行动作，例如“明日 10:00 联系家长确认 A/B 时间”。", "高风险、逾期或影响次日上课的事项标记管理介入。", "下一班人员打开工单确认接手后，原负责人才能结束交接。"],
+    ["Open Daily Handover and review open cards and management escalations.", "Record student, course, current phase, owner, waiting party, and deadline for every item.", "Write an executable next action such as 'Contact parent at 10:00 tomorrow to choose slot A or B'.", "Escalate high-risk, overdue, or next-day lesson impacts to management.", "The current owner ends handover only after the next shift opens and accepts the ticket."],
+    "交接卡包含六要素，下一班能直接继续执行。", "The handover contains all six elements and the next shift can act immediately.",
+    "不得用“已沟通”“跟进中”代替负责人、期限和下一步。", "Do not replace owner, deadline, and next action with vague notes such as 'communicated' or 'following up'."
+  ),
+];
+
+const schedulingImages = [
+  "docs/assets/sop-academic-scheduling-20260803/annotated/02-scheduling-ticket-queue.png",
+  "docs/assets/sop-academic-scheduling-20260803/annotated/02-scheduling-ticket-queue.png",
+  "docs/assets/sop-academic-scheduling-20260803/annotated/03-ticket-actions.png",
+  "docs/assets/sop-academic-scheduling-20260803/annotated/04-coordination-workspace.png",
+  "docs/assets/sop-academic-scheduling-20260803/annotated/04-coordination-workspace.png",
+  "docs/assets/sop-academic-scheduling-20260803/annotated/04-coordination-workspace.png",
+  "docs/assets/sop-academic-scheduling-20260803/annotated/06-quick-schedule.png",
+  "docs/assets/sop-academic-scheduling-20260803/annotated/06-quick-schedule.png",
+  "docs/assets/sop-academic-scheduling-20260803/annotated/06-quick-schedule.png",
+  "docs/assets/sop-academic-scheduling-20260803/annotated/07-single-session.png",
+  "docs/assets/sop-academic-scheduling-20260803/annotated/11-reschedule-modal.png",
+  "docs/assets/sop-academic-scheduling-20260803/annotated/03-ticket-actions.png",
+  "docs/assets/sop-academic-scheduling-20260803/annotated/08-conflict-center.png",
+  "docs/assets/sop-academic-scheduling-20260803/annotated/01-schedule-week.png",
+  "docs/assets/sop-academic-scheduling-20260803/annotated/09-daily-handover.png"
+];
 
 const guides = [
   ["SYSTEM_OPERATION_MAP", "SGT 全系统操作流程地图", "SGT Full-System Operations Map", "docs/SOP-全系统操作流程地图-培训版-20260728.html", "00-SGT全系统操作流程地图-中英文培训版-20260728.pdf", [
@@ -15,13 +164,7 @@ const guides = [
     ["按最终系统状态验收，不以“点过按钮”为完成。", "Verify the final system state; clicking a button is not completion."],
     ["异常时保留当前状态、证据和下一步并升级主管。", "For exceptions, preserve the current state, evidence, and next action, then escalate."],
   ]],
-  ["ACADEMIC_SCHEDULING_MASTER", "排课、工单与每日交接完整流程", "Scheduling, Tickets, and Daily Handover", "docs/SOP-教务-排课工单与每日交接完整流程-培训版-20260728.html", "SOP-教务-排课工单与每日交接完整流程-中英文培训版-20260728.pdf", [
-    ["从统一待办检查今日课表、未分配工单和阻塞事项。", "Start in Unified To-dos and check today's schedule, unassigned tickets, and blockers."],
-    ["把微信或口头请求建成工单，写清学生、时间、负责人和截止日期。", "Convert chat or verbal requests into tickets with student, time, owner, and due date."],
-    ["在排课协调中核对场景、课包、老师、地点和冲突。", "In Scheduling Coordination, verify the scenario, package, teacher, location, and conflicts."],
-    ["财务门禁或资料不完整时停止 Apply，并记录等待对象和跟进日期。", "Stop before Apply when finance gates or data are incomplete; record the waiting party and follow-up date."],
-    ["正式课次复核后写完成结果；未完成事项按六要素交接。", "After verifying the official session, record the result; hand over incomplete work with all required details."],
-  ]],
+  ["ACADEMIC_SCHEDULING_MASTER", "教务网页端排课：首次排课、续排、调课与异常闭环", "Academic Web Scheduling: First Lessons, Continuation, Rescheduling, and Exceptions", "docs/SOP-教务-排课工单与每日交接完整流程-培训版-20260728.html", "SOP-教务-排课工单与每日交接完整流程-中英文培训版-20260728.pdf", schedulingSteps, schedulingImages],
   ["ACADEMIC_DAILY_STUDENT_RECORDS", "教务每日开工、学生建档与 Student 360", "Academic Daily Start, Student Setup, and Student 360 Records", "docs/SOP-小程序-教务-完整操作-中英文培训版-20260718.html", "SOP-教务-每日开工学生建档与Student360-中英文培训版-20260729.pdf", [
     ["登录后先核对教务身份，从统一待办检查今日课表、未分配工单、家长请求、待审核反馈和阻塞事项。", "After login, verify the Academic identity, then use Unified To-dos to review today’s schedule, unassigned tickets, parent requests, feedback review, and blockers."],
     ["新增学生前按学生姓名、家长姓名、电话、微信和邮箱查重；找到可能重复记录时停止新增并交主管确认。", "Before creating a student, duplicate-check student name, parent name, phone, WeChat, and email; stop and ask a manager when a possible match exists."],
@@ -437,17 +580,26 @@ function imagesFrom(sourceRelative) {
 
 function buildHtml(code, zhTitle, enTitle, sourceRelative, steps, explicitImages = null) {
   const platform = code.includes("MINIAPP") ? "MINIAPP" : "WEB";
+  const currentVersion = code === "ACADEMIC_SCHEDULING_MASTER" ? schedulingVersion : version;
   const allImages = (explicitImages ?? imagesFrom(sourceRelative)).map((image) => image.replace(/^docs\//, ""));
   const platformImages = allImages.filter((image) => {
     const mini = /miniapp|小程序/i.test(image);
     return platform === "MINIAPP" ? mini : !mini;
   });
   const images = platformImages.length ? platformImages : allImages;
-  const workflow = (language) => steps.map(([zh, en], index) => `<div class="step"><b>${index + 1}</b><span>${escapeHtml(language === "zh" ? zh : en)}</span></div>`).join("");
-  const stepPages = (language) => steps.map(([zh, en], index) => {
+  const overviewChunks = steps.length > 8 ? [steps.slice(0, 8), steps.slice(8)] : [steps];
+  const overviewCount = overviewChunks.length;
+  const workflow = (language, chunk, offset) => chunk.map(([zh, en], index) => `<div class="step"><b>${offset + index + 1}</b><span>${escapeHtml(language === "zh" ? zh : en)}</span></div>`).join("");
+  const stepPages = (language) => steps.map(([zh, en, detail = {}], index) => {
     const text = language === "zh" ? zh : en;
     const image = images.length ? images[index % images.length] : null;
-    const pageNumber = language === "zh" ? index + 4 : steps.length + index + 7;
+    const actions = language === "zh" ? detail.zhActions : detail.enActions;
+    const complete = language === "zh" ? detail.zhComplete : detail.enComplete;
+    const stop = language === "zh" ? detail.zhStop : detail.enStop;
+    const pageNumber = language === "zh" ? index + overviewCount + 3 : steps.length + index + overviewCount * 2 + 6;
+    const detailedActions = actions?.length
+      ? actions.map((action) => `<li>${escapeHtml(action)}</li>`).join("")
+      : null;
     return `<section class="page ${language}">
       <div class="eyebrow">${language === "zh" ? `中文流程 · 第 ${index + 1} 步，共 ${steps.length} 步` : `ENGLISH WORKFLOW · STEP ${index + 1} OF ${steps.length}`}</div>
       <h1>${escapeHtml(text)}</h1>
@@ -458,7 +610,7 @@ function buildHtml(code, zhTitle, enTitle, sourceRelative, steps, explicitImages
         </div>
         <div class="beginner">
           <h2>${language === "zh" ? "请按顺序完成" : "Complete in this order"}</h2>
-          <ol>${language === "zh" ? `
+          <ol>${detailedActions ?? (language === "zh" ? `
             <li><b>确认入口：</b>核对页面标题和当前岗位，确保进入的是本文功能，不是相似页面。</li>
             <li><b>确认对象：</b>核对学生、老师、任务、日期、金额、课包或记录编号。</li>
             <li><b>执行本步：</b>${escapeHtml(text)}</li>
@@ -470,22 +622,23 @@ function buildHtml(code, zhTitle, enTitle, sourceRelative, steps, explicitImages
             <li><b>Perform this step:</b> ${escapeHtml(text)}</li>
             <li><b>Before saving:</b> Review every field or selection. Never guess missing information.</li>
             <li><b>After saving:</b> Click Save or Submit once, then refresh or reopen the record.</li>
-            <li><b>Completion signal:</b> The expected result, owner, and final status remain visible on the correct record.</li>`}</ol>
-          <div class="stop"><b>${language === "zh" ? "立即停止：" : "STOP:"}</b> ${language === "zh" ? "姓名、金额、权限、状态或按钮与本教程不一致时，不要继续或重复点击；保留当前页面并联系流程负责人。" : "If the name, amount, permission, status, or button differs, do not continue or click again. Preserve the screen and contact the workflow owner."}</div>
+            <li><b>Completion signal:</b> The expected result, owner, and final status remain visible on the correct record.</li>`)}</ol>
+          ${complete ? `<div class="complete"><b>${language === "zh" ? "完成标志：" : "Completion signal:"}</b> ${escapeHtml(complete)}</div>` : ""}
+          <div class="stop"><b>${language === "zh" ? "立即停止：" : "STOP:"}</b> ${escapeHtml(stop ?? (language === "zh" ? "姓名、金额、权限、状态或按钮与本教程不一致时，不要继续或重复点击；保留当前页面并联系流程负责人。" : "If the name, amount, permission, status, or button differs, do not continue or click again. Preserve the screen and contact the workflow owner."))}</div>
         </div>
       </div>
       <footer><span>${escapeHtml(code)} · ${platform}</span><span>${pageNumber}</span></footer>
     </section>`;
   }).join("");
   const startPage = (language) => `<section class="page ${language}"><div class="eyebrow">${language === "zh" ? "中文版 · 操作前准备" : "ENGLISH SECTION · BEFORE YOU START"}</div><h1>${language === "zh" ? "点击任何按钮前，先完成这四项准备" : "Complete these four checks before clicking"}</h1><div class="check"><div class="box"><h2>${language === "zh" ? "准备" : "Prepare"}</h2><ul>${language === "zh" ? "<li>使用本人账号和岗位对应工作台。</li><li>除非主管明确授权，否则只使用培训数据。</li><li>准备正确的对象、日期、负责人和所需资料。</li><li>把 PDF 与系统并排打开，每次只做一个编号步骤。</li>" : "<li>Use your own account and role workspace.</li><li>Use training data unless a manager authorises real data.</li><li>Prepare the correct target, date, owner, and source records.</li><li>Keep this PDF beside the system and complete one numbered step at a time.</li>"}</ul></div><div class="box danger"><h2>${language === "zh" ? "禁止" : "Never"}</h2><ul>${language === "zh" ? "<li>不使用同事账号。</li><li>不猜测姓名、金额、日期、状态或缺失字段。</li><li>结果不明确时不重复点击保存、应用、批准、发布或发送。</li><li>页面不一致时立即停止并询问负责人。</li>" : "<li>Do not use another employee's account.</li><li>Do not guess names, amounts, dates, statuses, or missing fields.</li><li>Do not repeat Save, Apply, Approve, Publish, or Send when the result is unclear.</li><li>Stop and ask the owner when the page differs.</li>"}</ul></div></div><footer><span>${escapeHtml(code)} · ${platform}</span><span>${language === "zh" ? 2 : steps.length + 5}</span></footer></section>`;
-  const overviewPage = (language) => `<section class="page ${language}"><div class="eyebrow">${language === "zh" ? "中文版 · 完整步骤总览" : "ENGLISH SECTION · WORKFLOW OVERVIEW"}</div><h1>${escapeHtml(language === "zh" ? zhTitle : enTitle)}</h1><div class="steps">${workflow(language)}</div><footer><span>${platform === "WEB" ? (language === "zh" ? "网页端培训" : "Web training") : (language === "zh" ? "小程序培训" : "Mini Program training")}</span><span>${language === "zh" ? 3 : steps.length + 6}</span></footer></section>`;
-  const finalPage = (language) => `<section class="page ${language}"><div class="eyebrow">${language === "zh" ? "中文版 · 最终验收" : "ENGLISH SECTION · FINAL CHECK"}</div><h1>${language === "zh" ? "以下项目全部确认后才能报告完成" : "Report completion only when every item is true"}</h1><div class="check"><div class="box"><h2>${language === "zh" ? "员工自查" : "Employee self-check"}</h2><ul>${language === "zh" ? "<li>账号、平台、岗位和目标记录正确。</li><li>全部步骤按顺序完成。</li><li>刷新后仍看到预期最终状态。</li><li>已保存不含敏感信息的结果证据。</li><li>能说明出现异常时找谁处理。</li>" : "<li>The account, platform, role, and target record are correct.</li><li>Every step was completed in order.</li><li>The expected final status remains after refresh.</li><li>Non-sensitive evidence of the result was saved.</li><li>You can explain who handles an exception.</li>"}</ul></div><div class="box danger"><h2>${language === "zh" ? "停止并升级" : "Stop and escalate"}</h2><ul>${language === "zh" ? "<li>缺少必要资料或权限。</li><li>页面、按钮或状态与教程不同。</li><li>未获授权却会影响财务、合同、课包、工资、真实课次或家长可见内容。</li><li>无法确认最终状态。</li>" : "<li>Required data or permission is missing.</li><li>The page, button, or status differs from the guide.</li><li>An unauthorised action would affect finance, contracts, packages, payroll, live sessions, or parent-visible content.</li><li>The final state cannot be verified.</li>"}</ul></div></div><footer><span>${escapeHtml(code)} · ${platform}</span><span>${language === "zh" ? steps.length + 4 : steps.length * 2 + 7}</span></footer></section>`;
+  const overviewPage = (language) => overviewChunks.map((chunk, chunkIndex) => `<section class="page ${language}"><div class="eyebrow">${language === "zh" ? "中文版 · 完整步骤总览" : "ENGLISH SECTION · WORKFLOW OVERVIEW"} · ${chunkIndex + 1}/${overviewCount}</div><h1>${escapeHtml(language === "zh" ? zhTitle : enTitle)}</h1><div class="steps">${workflow(language, chunk, chunkIndex * 8)}</div><footer><span>${platform === "WEB" ? (language === "zh" ? "网页端培训" : "Web training") : (language === "zh" ? "小程序培训" : "Mini Program training")}</span><span>${language === "zh" ? 3 + chunkIndex : steps.length + overviewCount + 6 + chunkIndex}</span></footer></section>`).join("");
+  const finalPage = (language) => `<section class="page ${language}"><div class="eyebrow">${language === "zh" ? "中文版 · 最终验收" : "ENGLISH SECTION · FINAL CHECK"}</div><h1>${language === "zh" ? "以下项目全部确认后才能报告完成" : "Report completion only when every item is true"}</h1><div class="check"><div class="box"><h2>${language === "zh" ? "员工自查" : "Employee self-check"}</h2><ul>${language === "zh" ? "<li>账号、平台、岗位和目标记录正确。</li><li>全部步骤按顺序完成。</li><li>刷新后仍看到预期最终状态。</li><li>已保存不含敏感信息的结果证据。</li><li>能说明出现异常时找谁处理。</li>" : "<li>The account, platform, role, and target record are correct.</li><li>Every step was completed in order.</li><li>The expected final status remains after refresh.</li><li>Non-sensitive evidence of the result was saved.</li><li>You can explain who handles an exception.</li>"}</ul></div><div class="box danger"><h2>${language === "zh" ? "停止并升级" : "Stop and escalate"}</h2><ul>${language === "zh" ? "<li>缺少必要资料或权限。</li><li>页面、按钮或状态与教程不同。</li><li>未获授权却会影响财务、合同、课包、工资、真实课次或家长可见内容。</li><li>无法确认最终状态。</li>" : "<li>Required data or permission is missing.</li><li>The page, button, or status differs from the guide.</li><li>An unauthorised action would affect finance, contracts, packages, payroll, live sessions, or parent-visible content.</li><li>The final state cannot be verified.</li>"}</ul></div></div><footer><span>${escapeHtml(code)} · ${platform}</span><span>${language === "zh" ? steps.length + overviewCount + 3 : steps.length * 2 + overviewCount * 2 + 6}</span></footer></section>`;
   return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>${escapeHtml(zhTitle)} · ${escapeHtml(enTitle)}</title><style>
-@page{size:A4 landscape;margin:13mm 12mm}*{box-sizing:border-box}body{margin:0;color:#172033;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}.page{height:184mm;page-break-after:always;position:relative;overflow:hidden;padding:3mm}.page:last-child{page-break-after:auto}.cover{display:grid;align-content:center;background:linear-gradient(135deg,#ecfdf5,#eff6ff);border-radius:7mm;padding:17mm}.eyebrow{font-size:10px;font-weight:900;color:#0f766e;letter-spacing:.08em}h1{font-size:25px;margin:4mm 0 3mm;color:#102a43;line-height:1.25}.cover h1{font-size:30px}.english-title{font-size:22px;color:#334e68;margin-top:10mm}.meta{margin-top:8mm;font-size:13px;line-height:1.8}.banner{margin-top:7mm;padding:4mm;border-left:2mm solid #0f766e;background:#fff}.steps{display:grid;gap:3mm;margin-top:5mm}.step{display:grid;grid-template-columns:9mm 1fr;gap:3mm;align-items:start;border:1px solid #d7e2ec;border-radius:3mm;padding:3mm;background:#f8fbfd}.step>b{display:grid;place-items:center;width:7mm;height:7mm;border-radius:50%;background:#0f766e;color:#fff}.step span{font-size:11px;line-height:1.48}.check{display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin-top:6mm}.box{border:1px solid #d7e2ec;border-radius:4mm;padding:5mm;background:#f8fbfd}.danger{border-color:#fca5a5;background:#fef2f2}.box h2{font-size:16px;margin:0 0 3mm}.box li{font-size:11px;line-height:1.55;margin:2.5mm 0}.lesson{display:grid;grid-template-columns:1.12fr 1fr;gap:5mm;margin-top:4mm;height:120mm}.shot{border:1px solid #d7e2ec;border-radius:4mm;background:#f8fafc;overflow:hidden;display:grid;grid-template-rows:1fr auto}.shot img{width:100%;height:106mm;object-fit:contain;display:block}.caption{padding:2mm 3mm;color:#475569;font-size:9px;border-top:1px solid #d7e2ec}.empty-shot{display:grid;place-items:center;text-align:center;color:#64748b;font-size:14px;padding:10mm}.beginner{border:1px solid #d7e2ec;border-radius:4mm;padding:4mm;background:#fff}.beginner h2{font-size:15px;margin:0 0 2mm}.beginner ol{margin:0;padding-left:6mm}.beginner li{font-size:9.7px;line-height:1.4;margin:1.8mm 0}.stop{font-size:9.7px;line-height:1.4;padding:2.5mm;border:1px solid #fca5a5;border-radius:2mm;background:#fef2f2;margin-top:2mm}.divider{display:grid;place-items:center;text-align:center;background:#eff6ff;border:2px solid #93c5fd;border-radius:7mm}.divider h1{font-size:34px}footer{position:absolute;bottom:2mm;left:3mm;right:3mm;display:flex;justify-content:space-between;color:#64748b;font-size:9px}
+@page{size:A4 landscape;margin:13mm 12mm}*{box-sizing:border-box}body{margin:0;color:#172033;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}.page{height:184mm;page-break-after:always;position:relative;overflow:hidden;padding:3mm}.page:last-child{page-break-after:auto}.cover{display:grid;align-content:center;background:linear-gradient(135deg,#ecfdf5,#eff6ff);border-radius:7mm;padding:17mm}.eyebrow{font-size:10px;font-weight:900;color:#0f766e;letter-spacing:.08em}h1{font-size:25px;margin:4mm 0 3mm;color:#102a43;line-height:1.25}.cover h1{font-size:30px}.english-title{font-size:22px;color:#334e68;margin-top:10mm}.meta{margin-top:8mm;font-size:13px;line-height:1.8}.banner{margin-top:7mm;padding:4mm;border-left:2mm solid #0f766e;background:#fff}.steps{display:grid;gap:3mm;margin-top:5mm}.step{display:grid;grid-template-columns:9mm 1fr;gap:3mm;align-items:start;border:1px solid #d7e2ec;border-radius:3mm;padding:3mm;background:#f8fbfd}.step>b{display:grid;place-items:center;width:7mm;height:7mm;border-radius:50%;background:#0f766e;color:#fff}.step span{font-size:11px;line-height:1.48}.check{display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin-top:6mm}.box{border:1px solid #d7e2ec;border-radius:4mm;padding:5mm;background:#f8fbfd}.danger{border-color:#fca5a5;background:#fef2f2}.box h2{font-size:16px;margin:0 0 3mm}.box li{font-size:11px;line-height:1.55;margin:2.5mm 0}.lesson{display:grid;grid-template-columns:1.12fr 1fr;gap:5mm;margin-top:4mm;height:120mm}.shot{border:1px solid #d7e2ec;border-radius:4mm;background:#f8fafc;overflow:hidden;display:grid;grid-template-rows:1fr auto}.shot img{width:100%;height:106mm;object-fit:contain;display:block}.caption{padding:2mm 3mm;color:#475569;font-size:9px;border-top:1px solid #d7e2ec}.empty-shot{display:grid;place-items:center;text-align:center;color:#64748b;font-size:14px;padding:10mm}.beginner{border:1px solid #d7e2ec;border-radius:4mm;padding:4mm;background:#fff}.beginner h2{font-size:15px;margin:0 0 2mm}.beginner ol{margin:0;padding-left:6mm}.beginner li{font-size:9.7px;line-height:1.4;margin:1.8mm 0}.complete,.stop{font-size:9.7px;line-height:1.4;padding:2.5mm;border-radius:2mm;margin-top:2mm}.complete{border:1px solid #86efac;background:#f0fdf4}.stop{border:1px solid #fca5a5;background:#fef2f2}.divider{display:grid;place-items:center;text-align:center;background:#eff6ff;border:2px solid #93c5fd;border-radius:7mm}.divider h1{font-size:34px}footer{position:absolute;bottom:2mm;left:3mm;right:3mm;display:flex;justify-content:space-between;color:#64748b;font-size:9px}
 </style></head><body>
-<section class="page cover"><div class="eyebrow">SGT MANAGE · ${platform === "WEB" ? "网页端 WEB" : "微信小程序 WECHAT MINI PROGRAM"}</div><h1>${escapeHtml(zhTitle)}</h1><div class="english-title">${escapeHtml(enTitle)}</div><div class="meta">功能编号：${escapeHtml(code)}<br>版本：${version}<br>排版顺序：先完整中文版，再完整英文版<br>Layout: Complete Chinese section first, followed by the complete English section</div><div class="banner"><b>一份文档只讲一个功能。</b> 网页端与小程序端分开；员工按编号一步一步操作。<br><b>One document covers one function only.</b> Web and Mini Program guides are separate.</div></section>
+<section class="page cover"><div class="eyebrow">SGT MANAGE · ${platform === "WEB" ? "网页端 WEB" : "微信小程序 WECHAT MINI PROGRAM"}</div><h1>${escapeHtml(zhTitle)}</h1><div class="english-title">${escapeHtml(enTitle)}</div><div class="meta">功能编号：${escapeHtml(code)}<br>版本：${currentVersion}<br>排版顺序：先完整中文版，再完整英文版<br>Layout: Complete Chinese section first, followed by the complete English section</div><div class="banner"><b>一份文档只讲一个功能。</b> 网页端与小程序端分开；员工按编号一步一步操作。<br><b>One document covers one function only.</b> Web and Mini Program guides are separate.</div></section>
 ${startPage("zh")}${overviewPage("zh")}${stepPages("zh")}${finalPage("zh")}
-<section class="page divider"><div><div class="eyebrow">LANGUAGE DIVIDER</div><h1>中文版到此结束</h1><div class="english-title">English section starts on the next page</div></div><footer><span>${escapeHtml(code)} · ${platform}</span><span>${steps.length + 5}</span></footer></section>
+<section class="page divider"><div><div class="eyebrow">LANGUAGE DIVIDER</div><h1>中文版到此结束</h1><div class="english-title">English section starts on the next page</div></div><footer><span>${escapeHtml(code)} · ${platform}</span><span>${steps.length + overviewCount + 4}</span></footer></section>
 ${startPage("en")}${overviewPage("en")}${stepPages("en")}${finalPage("en")}
 </body></html>`;
 }
@@ -507,9 +660,16 @@ function buildCatalogueHtml(platform) {
 
 async function main() {
   fs.mkdirSync(pdfDir, { recursive: true });
+  const onlyCode = process.argv.find((arg) => arg.startsWith("--only="))?.split("=")[1] ?? null;
+  const onlyCatalogue = process.argv.find((arg) => arg.startsWith("--catalogue="))?.split("=")[1] ?? null;
+  if (onlyCode && onlyCatalogue) throw new Error("Use --only or --catalogue, not both");
+  if (onlyCode && !guides.some(([code]) => code === onlyCode)) throw new Error(`Unknown guide code: ${onlyCode}`);
+  if (onlyCatalogue && !["WEB", "MINIAPP"].includes(onlyCatalogue)) throw new Error(`Unknown catalogue platform: ${onlyCatalogue}`);
   const browser = await chromium.launch({ headless: true, channel: "chrome" });
   try {
     for (const [code, zhTitle, enTitle, sourceRelative, pdfName, steps, explicitImages] of guides) {
+      if (onlyCatalogue) continue;
+      if (onlyCode && code !== onlyCode) continue;
       const currentPdfName = pdfName.replace(/2026\d{4}(?=\.pdf$)/, "20260803");
       const htmlName = currentPdfName.replace(/\.pdf$/i, ".html");
       const htmlPath = path.join(docsDir, htmlName);
@@ -520,7 +680,7 @@ async function main() {
       await page.close();
       console.log(`${code}: ${currentPdfName}`);
     }
-    for (const platform of ["WEB", "MINIAPP"]) {
+    for (const platform of onlyCode ? [] : onlyCatalogue ? [onlyCatalogue] : ["WEB", "MINIAPP"]) {
       const label = platform === "WEB" ? "网页端" : "小程序";
       const catalogueHtmlPath = path.join(docsDir, `SOP-${label}逐功能培训目录-中英文版-20260803.html`);
       const cataloguePdfPath = path.join(pdfDir, `00-SGT${label}逐功能培训目录-中英文版-20260803.pdf`);
@@ -534,7 +694,7 @@ async function main() {
   } finally {
     await browser.close();
   }
-  console.log(JSON.stringify({ guides: guides.length, version }));
+  console.log(JSON.stringify({ guides: onlyCode ? 1 : onlyCatalogue ? 0 : guides.length, catalogue: onlyCatalogue, version: onlyCode === "ACADEMIC_SCHEDULING_MASTER" ? schedulingVersion : version }));
 }
 
 main().catch((error) => {
