@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-03-r302
+
+- Release ID: `2026-08-03-r302`
+- Date/Time (Asia/Singapore): `2026-08-03`
+- Deployment status: `READY`
+- Scope: add same-day future-class recovery to the parent communication sync, combine explicitly linked siblings into one labelled parent reminder, and preserve audited correction tasks when a frequently adjusted course changes after sending.
+- Key files:
+  - `lib/parent-communication-center.ts`
+  - `tests/parent-communication-center.test.ts`
+  - `docs/tasks/TASK-20260803-same-day-family-course-reminders.md`
+- Risk impact (if any): Moderate and isolated to manual communication-task generation. No message is sent automatically, no parent relationship is inferred from a shared package, and no schedule, attendance, package, finance, contract, payroll, parent login, or historical evidence record is changed.
+- Verification:
+  - focused communication suite passed 21 tests;
+  - backend regression passed 132 tests;
+  - full repository suite passed 304 tests;
+  - `npx tsc --noEmit`, `git diff --check`, and the complete 231-page production build passed.
+- Rollback point: `b00b13c9f40ecb08cc93829a44bb17d9c5001b08` (`2026-07-31-r301` production head).
+
+---
+
 ## 2026-07-31-r301
 
 - Release ID: `2026-07-31-r301`

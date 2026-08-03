@@ -26,10 +26,32 @@
 - Current release line: `2026-07-29-r299` is live at runtime feature commit `152024fb2b7626b09274e68b5d0d40e291a7dee6`. Partner receipts use the invoice net after issued Credit Notes, while existing financial records and approval flows remain unchanged.
 - Current release line prepared: `2026-07-29-r300` safely gates unlinked teacher accounts, exposes manager remediation, and improves training delivery and mobile/login polish without changing operational business data.
 - Current release line prepared: `2026-07-31-r301` adds Business Accounts invoices and receipts to the central Finance Documents list and export without moving or rewriting source finance records.
+- Current release line prepared: `2026-08-03-r302` adds current-day reminder recovery, explicit-family reminder consolidation, and audited course-change resends without changing schedules or sending messages automatically.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-03-r302 Ready
+
+- Scope: make manual course reminders resilient to same-day additions and frequent schedule changes, and consolidate siblings only under an explicit active parent link.
+- Business impact:
+  - future classes added on the class date enter the reminder queue as high priority;
+  - children under the same verified parent link appear in one reminder with a visible student label on every lesson;
+  - a sent reminder remains immutable and a changed course creates a high-priority correction task;
+  - previously sent individual reminders are not silently replaced by a combined family reminder;
+  - shared packages alone never establish a family recipient.
+- Verification before deploy:
+  - 21 focused communication tests passed;
+  - 132 backend tests passed;
+  - all 304 repository tests passed;
+  - TypeScript, `git diff --check`, and the 231-page production build passed.
+- Post-deploy verification:
+  - confirm local, GitHub, and server commit equality, PM2 online, and `/admin/login` HTTP 200;
+  - run one communication sync and confirm the future same-day Su Xinyuan class is represented without modifying its schedule;
+  - confirm no automatic message-send or duplicate parent-account record is created;
+  - confirm tomorrow's existing parent and teacher reminder queues remain available.
+- Task doc: `docs/tasks/TASK-20260803-same-day-family-course-reminders.md`.
 
 ## 2026-07-31-r301 Ready
 

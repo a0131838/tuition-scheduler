@@ -4,7 +4,12 @@ import test from "node:test";
 import sharp from "sharp";
 import { buildCommunicationShareImage, wrapCommunicationLine } from "@/lib/communication-share-image";
 import { formatBusinessDateWithWeekday } from "@/lib/date-only";
-import { buildCourseChangeMessage, reminderScheduleLines } from "@/lib/parent-communication-center";
+import {
+  buildCourseChangeMessage,
+  buildParentCourseReminderMessage,
+  communicationReminderRanges,
+  reminderScheduleLines,
+} from "@/lib/parent-communication-center";
 
 const migrationPath = new URL("../prisma/migrations/20260718190000_add_parent_communication_center/migration.sql", import.meta.url);
 
@@ -78,6 +83,66 @@ test("course reminders use an absolute Singapore date with weekday", async () =>
   const source = await readFile(new URL("../lib/parent-communication-center.ts", import.meta.url), "utf8");
   assert.match(source, /的课程如下/);
   assert.match(source, /presentationOnlyIfBodyUnchanged/);
+});
+
+test("course communication sync covers the Singapore current day and next day", () => {
+  const ranges = communicationReminderRanges(new Date("2026-08-03T02:30:00.000Z"));
+  assert.deepEqual(ranges.map((range) => ({ date: range.date, isToday: range.isToday })), [
+    { date: "2026-08-03", isToday: true },
+    { date: "2026-08-04", isToday: false },
+  ]);
+  assert.equal(ranges[0].start.toISOString(), "2026-08-02T16:00:00.000Z");
+  assert.equal(ranges[0].end.toISOString(), "2026-08-03T15:59:59.999Z");
+  assert.equal(ranges[1].start.toISOString(), "2026-08-03T16:00:00.000Z");
+});
+
+test("family course reminder labels each child while single-student copy stays familiar", () => {
+  const family = buildParentCourseReminderMessage({
+    parentName: "王小英",
+    dateLabel: "2026年8月3日（周一）",
+    students: [
+      { name: "苏芯媛", lines: ["13:30–15:00 英语口语 · Yunfeng · Orchard Plaza · Room 2"] },
+      { name: "Steven 苏", lines: ["17:00–18:30 英语口语 · Sharilyn · Orchard Plaza · Room 2"] },
+    ],
+  });
+  assert.match(family, /王小英您好/);
+  assert.match(family, /您家孩子/);
+  assert.match(family, /【苏芯媛】13:30–15:00/);
+  assert.match(family, /【Steven 苏】17:00–18:30/);
+
+  const single = buildParentCourseReminderMessage({
+    dateLabel: "2026年8月3日（周一）",
+    students: [{ name: "Steven 苏", lines: ["17:00–18:30 英语口语 · Sharilyn · Orchard Plaza · Room 2"] }],
+  });
+  assert.match(single, /家长您好，温馨提醒，Steven 苏在2026年8月3日/);
+  assert.doesNotMatch(single, /【Steven 苏】/);
+});
+
+test("family course reminder changes retain student labels and identify a time change", () => {
+  const previous = [
+    "王小英您好，温馨提醒，您家孩子在2026年8月3日（周一）的课程如下：",
+    "【苏芯媛】13:30–15:00 英语口语 · Yunfeng · Orchard Plaza · Room 2",
+    "【Steven 苏】17:00–18:30 英语口语 · Sharilyn · Orchard Plaza · Room 2",
+  ].join("\n");
+  const current = previous.replace("13:30–15:00", "14:00–15:30");
+  const result = buildCourseChangeMessage({
+    kind: "COURSE_REMINDER_PARENT",
+    previousMessageText: previous,
+    currentMessageText: current,
+  });
+
+  assert.equal(result.type, "TIME_CHANGED");
+  assert.match(result.messageText, /【苏芯媛】13:30–15:00/);
+  assert.match(result.messageText, /【苏芯媛】14:00–15:30/);
+});
+
+test("course communication source keeps same-day future filtering and explicit parent grouping", async () => {
+  const source = await readFile(new URL("../lib/parent-communication-center.ts", import.meta.url), "utf8");
+  assert.match(source, /communicationReminderRanges\(now\)/);
+  assert.match(source, /session\.startAt\.getTime\(\) > now\.getTime\(\)/);
+  assert.match(source, /COURSE_PARENT:\$\{range\.date\}:PARENT:\$\{group\.parentId\}/);
+  assert.match(source, /parent:\s*\{ status: "ACTIVE" \}/);
+  assert.doesNotMatch(source, /sharedStudents.*COURSE_PARENT/s);
 });
 
 test("communication workbench separates feedback, parent, teacher and correction queues", async () => {

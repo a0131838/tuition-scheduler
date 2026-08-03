@@ -25,7 +25,7 @@ export function reminderScheduleLines(value: string) {
   return String(value ?? "")
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .filter((line) => /^\d{1,2}:\d{2}\s*[–-]\s*\d{1,2}:\d{2}\b/.test(line));
+    .filter((line) => /^(?:【[^】]+】)?\d{1,2}:\d{2}\s*[–-]\s*\d{1,2}:\d{2}\b/.test(line));
 }
 
 type CourseChangeType = "CANCELLED" | "TIME_CHANGED" | "TEACHER_CHANGED" | "LOCATION_CHANGED" | "STUDENTS_CHANGED" | "MULTIPLE_CHANGED" | "UPDATED";
@@ -41,10 +41,16 @@ const courseChangeLabels: Record<CourseChangeType, string> = {
 };
 
 function parseScheduleLine(line: string) {
-  const match = line.match(/^(\d{1,2}:\d{2})\s*[–-]\s*(\d{1,2}:\d{2})\s+(.+)$/);
+  const match = line.match(/^(?:【([^】]+)】)?(\d{1,2}:\d{2})\s*[–-]\s*(\d{1,2}:\d{2})\s+(.+)$/);
   if (!match) return null;
-  const parts = match[3].split(/\s+·\s+/).map((part) => part.trim());
-  return { time: `${match[1]}–${match[2]}`, subject: parts[0] ?? "", person: parts[1] ?? "", location: parts.slice(2).join(" · ") };
+  const parts = match[4].split(/\s+·\s+/).map((part) => part.trim());
+  return {
+    student: match[1] ?? "",
+    time: `${match[2]}–${match[3]}`,
+    subject: parts[0] ?? "",
+    person: parts[1] ?? "",
+    location: parts.slice(2).join(" · "),
+  };
 }
 
 function detectCourseChangeType(kind: string, previousLines: string[], currentLines: string[]): CourseChangeType {
@@ -55,6 +61,7 @@ function detectCourseChangeType(kind: string, previousLines: string[], currentLi
     const previous = parseScheduleLine(previousLines[index]);
     const current = parseScheduleLine(currentLines[index]);
     if (!previous || !current) return "UPDATED";
+    if (previous.student !== current.student) changes.add("STUDENTS_CHANGED");
     if (previous.time !== current.time) changes.add("TIME_CHANGED");
     if (previous.subject !== current.subject) changes.add("UPDATED");
     if (previous.person !== current.person) changes.add(kind === "COURSE_REMINDER_PARENT" ? "TEACHER_CHANGED" : "STUDENTS_CHANGED");
@@ -312,15 +319,49 @@ async function syncFeedbackTasks() {
   return rows.length;
 }
 
-function tomorrowRange(now = new Date()) {
+type CommunicationReminderRange = {
+  start: Date;
+  end: Date;
+  date: string;
+  isToday: boolean;
+};
+
+export function communicationReminderRanges(now = new Date()): CommunicationReminderRange[] {
   const today = formatBusinessDateOnly(now);
   const startToday = parseBusinessDateStart(today)!;
-  const start = new Date(startToday.getTime() + 24 * 60 * 60 * 1000);
-  return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1), date: formatBusinessDateOnly(start) };
+  const endToday = new Date(startToday.getTime() + 24 * 60 * 60 * 1000 - 1);
+  const startTomorrow = new Date(endToday.getTime() + 1);
+  return [
+    { start: startToday, end: endToday, date: today, isToday: true },
+    {
+      start: startTomorrow,
+      end: new Date(startTomorrow.getTime() + 24 * 60 * 60 * 1000 - 1),
+      date: formatBusinessDateOnly(startTomorrow),
+      isToday: false,
+    },
+  ];
 }
 
-async function syncTomorrowReminderTasks() {
-  const range = tomorrowRange();
+export function buildParentCourseReminderMessage(input: {
+  parentName?: string | null;
+  dateLabel: string;
+  students: Array<{ name: string | null; lines: string[] }>;
+}) {
+  const multipleStudents = input.students.length > 1;
+  const lines = input.students.flatMap((student) =>
+    student.lines.map((line) => multipleStudents ? `【${student.name || "学员"}】${line}` : line)
+  );
+  const subject = multipleStudents
+    ? "您家孩子"
+    : input.students[0]?.name || "孩子";
+  return [
+    `${input.parentName || "家长"}您好，温馨提醒，${subject}在${input.dateLabel}的课程如下，请进入家长小程序查看完整课表：`,
+    ...lines,
+    "如时间或安排有变化，请及时联系我们。 / Please contact us promptly if anything changes.",
+  ].join("\n");
+}
+
+async function syncReminderRange(range: CommunicationReminderRange, now: Date) {
   const sessions = await prisma.session.findMany({
     where: { startAt: { gte: range.start, lte: range.end } },
     include: {
@@ -352,49 +393,146 @@ async function syncTomorrowReminderTasks() {
     byTeacher.set(teacher.id, teacherEntry);
   }
 
-  let count = 0;
-  const activeParentKeys = new Set<string>();
-  for (const { student, sessions: studentSessions } of byStudent.values()) {
-    const link = await primaryParentLink(student.id);
+  const priorTasks = await prisma.parentCommunicationTask.findMany({
+    where: {
+      OR: [
+        { taskKey: { startsWith: `COURSE_PARENT:${range.date}:` } },
+        { taskKey: { startsWith: `COURSE_TEACHER:${range.date}:` } },
+      ],
+      correctionOfTaskId: null,
+    },
+  });
+  const priorParentTasks = priorTasks.filter((task) => task.kind === "COURSE_REMINDER_PARENT");
+  const priorTeacherTasks = priorTasks.filter((task) => task.kind === "COURSE_REMINDER_TEACHER");
+
+  const studentIds = Array.from(byStudent.keys());
+  const links = studentIds.length
+    ? await prisma.parentStudentLink.findMany({
+        where: { studentId: { in: studentIds }, parent: { status: "ACTIVE" } },
+        include: { parent: { select: { id: true, name: true, phone: true } } },
+        orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+      })
+    : [];
+  const linkByStudent = new Map<string, (typeof links)[number]>();
+  for (const link of links) {
+    if (!linkByStudent.has(link.studentId)) linkByStudent.set(link.studentId, link);
+  }
+
+  type StudentBundle = { student: { id: string; name: string | null }; sessions: any[]; link: (typeof links)[number] | null };
+  type ParentBundle = {
+    parentId: string | null;
+    parentName: string | null;
+    ownerName: string | null;
+    wechatGroupName: string | null;
+    students: StudentBundle[];
+  };
+  const grouped = new Map<string, ParentBundle>();
+  for (const entry of byStudent.values()) {
+    const link = linkByStudent.get(entry.student.id) ?? null;
     if (link?.manualReminderEnabled === false) continue;
-    const fullDateLabel = formatBusinessDateWithWeekday(studentSessions[0].startAt);
-    const shortDateLabel = formatBusinessDateWithWeekday(studentSessions[0].startAt, { short: true });
-    const lines = studentSessions.map((session) =>
-      `${formatBusinessTimeOnly(session.startAt)}–${formatBusinessTimeOnly(session.endAt)} ${courseLabel(session)} · ${session.teacher?.name || session.class.teacher.name} · ${locationLabel(session)}`
-    );
-    const messageText = [
-      `${link?.parent.name || "家长"}您好，温馨提醒，${student.name || "孩子"}在${fullDateLabel}的课程如下，请进入家长小程序查看完整课表：`,
-      ...lines,
-      "如时间或安排有变化，请及时联系我们。 / Please contact us promptly if anything changes.",
-    ].join("\n");
-    const taskKey = `COURSE_PARENT:${range.date}:${student.id}`;
-    activeParentKeys.add(taskKey);
-    await upsertCommunicationTask({
-      taskKey,
-      kind: "COURSE_REMINDER_PARENT",
-      status: "READY_TO_SEND",
-      studentId: student.id,
-      sessionId: studentSessions.length === 1 ? studentSessions[0].id : null,
+    const groupKey = link ? `PARENT:${link.parentId}` : `STUDENT:${entry.student.id}`;
+    const group = grouped.get(groupKey) ?? {
       parentId: link?.parentId ?? null,
-      title: `${student.name || "学员"} · ${shortDateLabel}家长课程提醒`,
-      messageText,
-      dueAt: range.start,
+      parentName: link?.parent.name ?? null,
       ownerName: link?.communicationOwner ?? null,
       wechatGroupName: link?.wechatGroupName ?? null,
-      presentationOnlyIfBodyUnchanged: true,
-    });
-    count += 1;
+      students: [],
+    };
+    group.ownerName ||= link?.communicationOwner ?? null;
+    group.wechatGroupName ||= link?.wechatGroupName ?? null;
+    group.students.push({ ...entry, link });
+    grouped.set(groupKey, group);
+  }
+
+  let count = 0;
+  const activeParentKeys = new Set<string>();
+  for (const group of grouped.values()) {
+    const familyKey = group.parentId ? `COURSE_PARENT:${range.date}:PARENT:${group.parentId}` : null;
+    const existingFamilyTask = familyKey ? priorParentTasks.find((task) => task.taskKey === familyKey) : null;
+    const legacySent = group.students.some(({ student }) =>
+      priorParentTasks.some((task) => task.studentId === student.id && task.manualSentAt && task.taskKey !== familyKey)
+    );
+    const entries = group.students.length > 1 && (existingFamilyTask || !legacySent)
+      ? [{ students: group.students, taskKey: familyKey! }]
+      : group.students.map((student) => ({ students: [student], taskKey: `COURSE_PARENT:${range.date}:${student.student.id}` }));
+
+    for (const entry of entries) {
+      const existing = priorParentTasks.find((task) => task.taskKey === entry.taskKey) ?? null;
+      const allSessions = entry.students.flatMap((student) => student.sessions);
+      const futureSessions = allSessions.filter((session) => session.startAt.getTime() > now.getTime());
+      const sessionsForMessage = range.isToday && !existing ? futureSessions : allSessions;
+      if (!sessionsForMessage.length) {
+        if (existing) activeParentKeys.add(existing.taskKey);
+        continue;
+      }
+      const firstSession = sessionsForMessage.slice().sort((a, b) => a.startAt.getTime() - b.startAt.getTime())[0];
+      const fullDateLabel = formatBusinessDateWithWeekday(firstSession.startAt);
+      const shortDateLabel = formatBusinessDateWithWeekday(firstSession.startAt, { short: true });
+      const reminderStudents = entry.students
+        .map(({ student, sessions: studentSessions }) => ({
+          name: student.name,
+          lines: (range.isToday && !existing ? studentSessions.filter((session) => session.startAt.getTime() > now.getTime()) : studentSessions)
+            .sort((a, b) => a.startAt.getTime() - b.startAt.getTime())
+            .map((session) => `${formatBusinessTimeOnly(session.startAt)}–${formatBusinessTimeOnly(session.endAt)} ${courseLabel(session)} · ${session.teacher?.name || session.class.teacher.name} · ${locationLabel(session)}`),
+        }))
+        .filter((student) => student.lines.length > 0);
+      if (!reminderStudents.length) continue;
+      const names = reminderStudents.map((student) => student.name || "学员").join("、");
+      activeParentKeys.add(entry.taskKey);
+      await upsertCommunicationTask({
+        taskKey: entry.taskKey,
+        kind: "COURSE_REMINDER_PARENT",
+        status: "READY_TO_SEND",
+        priority: range.isToday ? "HIGH" : "NORMAL",
+        studentId: entry.students[0]?.student.id ?? null,
+        sessionId: sessionsForMessage.length === 1 ? sessionsForMessage[0].id : null,
+        parentId: group.parentId,
+        title: `${names} · ${shortDateLabel}家长课程提醒`,
+        messageText: buildParentCourseReminderMessage({
+          parentName: group.parentName,
+          dateLabel: fullDateLabel,
+          students: reminderStudents,
+        }),
+        dueAt: range.isToday ? now : range.start,
+        ownerName: group.ownerName,
+        wechatGroupName: group.wechatGroupName,
+        presentationOnlyIfBodyUnchanged: true,
+      });
+      count += 1;
+
+      if (entry.students.length > 1) {
+        const absorbedIds = new Set(entry.students.map((student) => student.student.id));
+        for (const legacy of priorParentTasks) {
+          if (legacy.taskKey === entry.taskKey || !legacy.studentId || !absorbedIds.has(legacy.studentId)) continue;
+          activeParentKeys.add(legacy.taskKey);
+          if (!legacy.manualSentAt && legacy.status !== "COMPLETED" && legacy.status !== "WAIVED") {
+            await prisma.parentCommunicationTask.update({
+              where: { id: legacy.id },
+              data: { status: "WAIVED", note: "已合并到同一家长的家庭课程提醒。", completedAt: now, supersededAt: now },
+            });
+          }
+        }
+      }
+    }
   }
 
   const activeTeacherKeys = new Set<string>();
   for (const { teacher, sessions: teacherSessions } of byTeacher.values()) {
-    const fullDateLabel = formatBusinessDateWithWeekday(teacherSessions[0].startAt);
-    const shortDateLabel = formatBusinessDateWithWeekday(teacherSessions[0].startAt, { short: true });
-    const lines = teacherSessions.map((session) => {
+    const taskKey = `COURSE_TEACHER:${range.date}:${teacher.id}`;
+    const existing = priorTeacherTasks.find((task) => task.taskKey === taskKey) ?? null;
+    const sessionsForMessage = range.isToday && !existing
+      ? teacherSessions.filter((session) => session.startAt.getTime() > now.getTime())
+      : teacherSessions;
+    if (!sessionsForMessage.length) {
+      if (existing) activeTeacherKeys.add(taskKey);
+      continue;
+    }
+    const fullDateLabel = formatBusinessDateWithWeekday(sessionsForMessage[0].startAt);
+    const shortDateLabel = formatBusinessDateWithWeekday(sessionsForMessage[0].startAt, { short: true });
+    const lines = sessionsForMessage.map((session) => {
       const names = getVisibleSessionStudents(session).map((item) => item.name).filter(Boolean).join("、") || "待确认学生";
       return `${formatBusinessTimeOnly(session.startAt)}–${formatBusinessTimeOnly(session.endAt)} ${courseLabel(session)} · ${names} · ${locationLabel(session)}`;
     });
-    const taskKey = `COURSE_TEACHER:${range.date}:${teacher.id}`;
     activeTeacherKeys.add(taskKey);
     await upsertCommunicationTask({
       taskKey,
@@ -408,15 +546,13 @@ async function syncTomorrowReminderTasks() {
         ...lines,
         "如有时间、学生或地点问题，请立即联系教务。 / Please contact Academic Operations immediately if any detail is incorrect.",
       ].join("\n"),
-      dueAt: range.start,
+      dueAt: range.isToday ? now : range.start,
+      priority: range.isToday ? "HIGH" : "NORMAL",
       presentationOnlyIfBodyUnchanged: true,
     });
     count += 1;
   }
 
-  const priorTasks = await prisma.parentCommunicationTask.findMany({
-    where: { OR: [{ taskKey: { startsWith: `COURSE_PARENT:${range.date}:` } }, { taskKey: { startsWith: `COURSE_TEACHER:${range.date}:` } }], correctionOfTaskId: null },
-  });
   for (const prior of priorTasks) {
     const active = prior.kind === "COURSE_REMINDER_PARENT" ? activeParentKeys.has(prior.taskKey) : activeTeacherKeys.has(prior.taskKey);
     if (active) continue;
@@ -430,16 +566,23 @@ async function syncTomorrowReminderTasks() {
         teacherId: prior.teacherId,
         parentId: prior.parentId,
         title: prior.title,
-        messageText: "原定明日课程已经取消、改期或不再适用，请忽略上一条提醒。新的课程安排请以家长/员工小程序为准。 / The previous reminder is no longer valid. Please refer to the latest schedule in the miniapp.",
+        messageText: "原定课程已经取消、改期或不再适用，请忽略上一条提醒。新的课程安排请以家长/员工小程序为准。 / The previous reminder is no longer valid. Please refer to the latest schedule in the miniapp.",
         dueAt: prior.dueAt,
         ownerName: prior.ownerName,
         wechatGroupName: prior.wechatGroupName,
         forceCourseCancelled: true,
       });
     } else {
-      await prisma.parentCommunicationTask.update({ where: { id: prior.id }, data: { status: "WAIVED", note: "原课程已取消、改期或不再属于明日提醒范围。", completedAt: new Date(), supersededAt: new Date() } });
+      await prisma.parentCommunicationTask.update({ where: { id: prior.id }, data: { status: "WAIVED", note: "原课程已取消、改期或不再属于当前提醒范围。", completedAt: now, supersededAt: now } });
     }
   }
+  return count;
+}
+
+async function syncCourseReminderTasks() {
+  const now = new Date();
+  let count = 0;
+  for (const range of communicationReminderRanges(now)) count += await syncReminderRange(range, now);
   return count;
 }
 
@@ -473,7 +616,7 @@ async function refreshLegacyCourseChangeTasks() {
 }
 
 export async function syncParentCommunicationCenter(actor?: CommunicationActor) {
-  const [feedbackCount, reminderCount] = await Promise.all([syncFeedbackTasks(), syncTomorrowReminderTasks()]);
+  const [feedbackCount, reminderCount] = await Promise.all([syncFeedbackTasks(), syncCourseReminderTasks()]);
   const legacyCourseChangeCount = await refreshLegacyCourseChangeTasks();
   if (actor) {
     await logAudit({
