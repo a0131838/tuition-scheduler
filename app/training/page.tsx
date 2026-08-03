@@ -15,7 +15,7 @@ export default async function TrainingPage() {
   const trainingRoles = trainingRolesForUser(user.role, user.trainingRoles);
   const phaseRank = { FOUNDATION: 0, CORE: 1, SPECIALIST: 2 } as const;
   const modules = [...trainingModulesForUser(user.role, user.trainingRoles)].sort(
-    (a, b) => phaseRank[a.phase] - phaseRank[b.phase] || a.category.localeCompare(b.category) || a.title.localeCompare(b.title)
+    (a, b) => a.platform.localeCompare(b.platform) || phaseRank[a.phase] - phaseRank[b.phase] || a.category.localeCompare(b.category) || a.title.localeCompare(b.title)
   );
   const progresses = await prisma.staffTrainingProgress.findMany({ where: { userId: user.id } });
   const byKey = new Map(progresses.map((item) => [`${item.moduleCode}:${item.moduleVersion}`, item]));
@@ -44,7 +44,14 @@ export default async function TrainingPage() {
         </p>
       </section>
       <div style={{ display: "grid", gap: 16 }}>
-        {modules.map((item) => {
+        {(["WEB", "MINIAPP"] as const).map((platform) => (
+          <section key={platform} style={{ display: "grid", gap: 16, border: "2px solid #cbd5e1", borderRadius: 20, padding: 16, background: platform === "WEB" ? "#f8fbff" : "#fffaf5" }}>
+            <div>
+              <div style={{ color: platform === "WEB" ? "#1d4ed8" : "#c2410c", fontWeight: 900, fontSize: 12 }}>{platform}</div>
+              <h2 style={{ margin: "5px 0" }}>{platform === "WEB" ? moduleText("Web System Training", "网页端功能培训") : moduleText("WeChat Mini Program Training", "微信小程序功能培训")}</h2>
+              <p style={{ margin: 0, color: "#64748b" }}>{moduleText("Complete this platform separately. Do not switch between Web and Mini Program during one module.", "本平台单独学习；完成一个模块期间不要在网页端和小程序之间来回切换。")}</p>
+            </div>
+            {modules.filter((item) => item.platform === platform).map((item) => {
           const progress = byKey.get(`${item.code}:${item.version}`);
           const complete = Boolean(progress?.readAt && progress?.quizPassedAt && progress?.practicalStatus === "APPROVED");
           const practicalReady = Boolean(progress?.readAt && progress?.quizPassedAt);
@@ -128,7 +135,9 @@ export default async function TrainingPage() {
               </div>
             </details>
           );
-        })}
+            })}
+          </section>
+        ))}
       </div>
     </main>
   );

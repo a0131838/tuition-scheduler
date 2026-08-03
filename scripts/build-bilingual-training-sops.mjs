@@ -5,7 +5,7 @@ import { chromium } from "playwright";
 const root = process.cwd();
 const docsDir = path.join(root, "docs");
 const pdfDir = path.join(root, "output", "pdf");
-const version = "20260729D";
+const version = "20260803A";
 
 const guides = [
   ["SYSTEM_OPERATION_MAP", "SGT 全系统操作流程地图", "SGT Full-System Operations Map", "docs/SOP-全系统操作流程地图-培训版-20260728.html", "00-SGT全系统操作流程地图-中英文培训版-20260728.pdf", [
@@ -295,6 +295,82 @@ const guides = [
     "docs/assets/sop-teacher-complete-20260729/annotated/10-payroll.png",
     "docs/assets/sop-teacher-complete-20260729/annotated/11-payment-details.png",
   ]],
+  ["ACADEMIC_MINIAPP", "教务小程序完整操作", "Academic Staff Mini Program - Complete Operations", "docs/SOP-小程序-教务-完整操作-中英文培训版-20260718.html", "SOP-小程序-教务-完整操作-中英文培训版-20260718.pdf", [
+    ["打开员工小程序后先确认当前身份为教务，再进入员工首页查看今日待办、家长请求和排课事项。", "Open the staff Mini Program, confirm the Academic identity, then review today's to-dos, parent requests, and scheduling items."],
+    ["进入家长沟通，选择正确学生和请求；先阅读原始内容及附件，再领取或更新负责人。", "Open Parent Communications, select the correct student and request, read the original content and attachments, then claim or update ownership."],
+    ["需要补充资料时在原请求内记录问题、等待对象和下次跟进时间，不要另建重复请求。", "When information is missing, record the question, waiting party, and next follow-up time in the same request instead of creating a duplicate."],
+    ["进入排课协调，核对学生、课程、课包、家长时间和候选老师；小程序中的建议不等于正式落课。", "Open Scheduling Coordination and verify student, course, package, parent availability, and candidate teachers; a Mini Program suggestion is not an official session."],
+    ["在预览中检查冲突、地点、老师和课包门禁，确认无误后才执行获授权的 Apply。", "In preview, check conflicts, location, teacher, and package gates; use Apply only after every check passes and authorisation is confirmed."],
+    ["返回课表或请求详情确认最终状态；未完成事项必须留下负责人、当前状态、期限和下一步。", "Return to Schedule or Request Detail to verify the final state; unresolved work must retain an owner, current state, due time, and next action."],
+  ], [
+    "docs/assets/sop-小程序员工工作台-20260718/annotated/01-academic-home.png",
+    "docs/assets/sop-小程序员工工作台-20260718/annotated/03-academic-communications.png",
+    "docs/assets/sop-小程序员工工作台-20260718/annotated/06-academic-intake-attachments.png",
+    "docs/assets/sop-小程序员工工作台-20260718/annotated/07-academic-coordination.png",
+    "docs/assets/sop-小程序员工工作台-20260718/annotated/08-academic-schedule.png",
+  ]],
+  ["PARENT_COMMUNICATION", "家长沟通与通知中心", "Parent Communication and Notification Centre", "docs/SOP-教务-家长沟通与通知中心-中英文培训版-20260718.html", "SOP-教务-家长沟通与通知中心-中英文培训版-20260718.pdf", [
+    ["进入网页端家长沟通中心，按待处理状态筛选，核对学生、家长、负责人和原始请求。", "Open the Web Parent Communication Centre, filter pending items, and verify the student, parent, owner, and original request."],
+    ["阅读全部正文和附件，区分家长原话、内部备注和可以对外发送的内容。", "Read the full message and attachments, separating the parent's original words, internal notes, and parent-facing content."],
+    ["需要老师反馈时关联正确课次和老师；老师提交后由教务复核学生、事实、语气和隐私。", "When teacher feedback is required, link the correct session and teacher; after submission, Academic reviews the student, facts, tone, and privacy."],
+    ["确认收件对象、发送渠道和文案后只发布一次；技术发送成功不等于家长已经理解。", "Verify recipient, channel, and wording, then publish once; technical delivery does not prove parent understanding."],
+    ["转发、人工补发或家长确认必须在原记录内留痕，不使用私人聊天作为唯一证据。", "Record forwarding, manual resend, or parent acknowledgement in the original record; private chat cannot be the only evidence."],
+    ["内容错误时停止再次发送，使用更正流程记录原内容、更正原因、新内容和最终通知状态。", "If content is wrong, stop sending, then use the correction flow to record the original content, reason, corrected content, and final notification state."],
+  ], [
+    "docs/assets/sop-家长沟通通知中心-20260718/annotated/01-cs-communication-overview.png",
+    "docs/assets/sop-家长沟通通知中心-20260718/annotated/05-admin-communication-monitor.png",
+    "docs/assets/sop-家长沟通通知中心-20260718/annotated/07-admin-notification-monitor.png",
+  ]],
+  ["TEACHER_MINIAPP", "老师小程序完整操作", "Teacher Mini Program - Complete Operations", "docs/SOP-小程序-老师-完整操作-中英文培训版-20260718.html", "SOP-小程序-老师-完整操作-中英文培训版-20260718.pdf", [
+    ["登录员工小程序并确认显示的是本人老师身份；身份不正确时立即退出，不查看或操作课程。", "Sign in to the staff Mini Program and confirm your own Teacher identity; sign out immediately if the identity is wrong."],
+    ["从老师首页依次检查下一节课、待点名、待反馈、待办、通知和需要确认的管理反馈。", "From Teacher Home, review the next session, pending attendance, pending feedback, to-dos, notices, and manager feedback requiring acknowledgement."],
+    ["打开课表并选择正确课次，核对日期、时间、学生、课程、地点和授课方式。", "Open Schedule, select the correct session, and verify date, time, student, course, location, and delivery mode."],
+    ["进入课次详情按真实情况点名；请假免扣、取消或调课口径不明确时交教务处理。", "In Session Detail, record actual attendance; ask Academic to handle unclear no-deduction leave, cancellation, or rescheduling treatment."],
+    ["完成课堂反馈，写明课堂事实、掌握情况、困难和下一步；提交前再次核对学生姓名。", "Complete lesson feedback with class facts, mastery, difficulties, and next steps; recheck the student's name before submission."],
+    ["查看工资、历史反馈或可用时间后返回首页，确认待办数量已经更新且没有重复提交。", "After reviewing payroll, history, or availability, return Home and confirm the to-do count updated without duplicate submission."],
+  ], [
+    "docs/assets/sop-小程序员工工作台-20260718/annotated/14-teacher-home.png",
+    "docs/assets/sop-小程序员工工作台-20260718/annotated/16-teacher-todos.png",
+    "docs/assets/sop-小程序员工工作台-20260718/annotated/17-teacher-schedule.png",
+    "docs/assets/sop-小程序员工工作台-20260718/annotated/18-teacher-feedback-history.png",
+    "docs/assets/sop-小程序员工工作台-20260718/annotated/19-teacher-payroll.png",
+  ]],
+  ["TEACHER_DAILY", "老师网页端课表、点名反馈与学生历史", "Teacher Web Schedule, Attendance, Feedback, and Student History", "docs/SOP-老师-课表反馈工资与学生历史-中英文培训版-20260718.html", "SOP-老师-课表反馈工资与学生历史-中英文培训版-20260718.pdf", [
+    ["登录老师网页端后确认姓名和账号，先查看总览中的今日课程、待点名、待反馈和交接风险。", "After signing in to the Teacher Web Portal, confirm the name and account, then review today's sessions, pending attendance, feedback, and handover risks."],
+    ["进入我的课次，按日期找到正确课程；核对学生、课程、时间、地点、授课方式和课次状态。", "Open My Sessions and locate the correct class by date; verify student, course, time, location, delivery mode, and session status."],
+    ["打开课次详情，逐名按真实出勤选择状态并保存一次；保存后确认点名数量和状态更新。", "Open Session Detail, record actual attendance for each student, save once, then verify attendance counts and status."],
+    ["在同一课次填写课后反馈，分别记录学习内容、掌握情况、困难、建议和下一步。", "In the same session, complete lesson feedback with content covered, mastery, difficulties, recommendations, and next steps."],
+    ["提交前核对学生姓名；提交后刷新并确认反馈状态为已提交，而不是草稿或待提交。", "Recheck the student's name before submission; refresh afterward and confirm the feedback is Submitted rather than Draft or Pending."],
+    ["进入学生课后反馈查看本人和其他授权老师的历史，标记持续困难或交接风险并通知教务。", "Open Student Feedbacks to review your own and authorised cross-teacher history, identify ongoing difficulties or handover risks, and notify Academic."],
+  ], [
+    "docs/assets/sop-teacher-complete-20260729/annotated/01-dashboard.png",
+    "docs/assets/sop-teacher-complete-20260729/annotated/02-sessions.png",
+    "docs/assets/sop-家长沟通通知中心-20260718/annotated/11-teacher-feedback-history.png",
+  ]],
+  ["MANAGEMENT_MINIAPP", "管理小程序监督与账号", "Management Mini Program Oversight and Accounts", "docs/SOP-小程序-管理-监督与账号-中英文培训版-20260718.html", "SOP-小程序-管理-监督与账号-中英文培训版-20260718.pdf", [
+    ["登录员工小程序并切换到管理身份，核对首页显示全部员工监督范围，而不是某个普通岗位工作台。", "Sign in to the staff Mini Program, switch to Management, and confirm the home page shows organisation-wide oversight rather than a normal staff workspace."],
+    ["先看行动中心的逾期、未分配、审批、提醒失败和高风险事项，按影响程度确定处理顺序。", "Start in Action Centre and review overdue, unassigned, approval, reminder-failure, and high-risk items, prioritising by impact."],
+    ["打开具体事项核对负责人、截止时间、当前状态和证据；监督不等于替员工直接完成。", "Open each item and verify owner, due time, current status, and evidence; oversight does not mean completing staff work for them."],
+    ["需要切换账号时先完成当前页面并返回首页，再选择目标身份；切换后重新核对姓名和权限范围。", "Before switching accounts, finish the current page and return Home; after switching, recheck the name and permission scope."],
+    ["发现异常权限、错误对象或重复操作时停止，保留页面证据并转到网页端管理后台处理。", "Stop when permissions, target records, or duplicate actions are wrong; preserve evidence and use the Web Management Console for correction."],
+    ["处理后回到行动中心刷新，确认风险数量、负责人和最终状态已经更新。", "After resolution, refresh Action Centre and verify the risk count, owner, and final status updated."],
+  ], [
+    "docs/assets/sop-小程序员工工作台-20260718/annotated/09-management-home.png",
+    "docs/assets/sop-小程序员工工作台-20260718/annotated/11-management-reminder-attention.png",
+    "docs/assets/sop-小程序员工工作台-20260718/annotated/13-management-account-switch.png",
+  ]],
+  ["MANAGEMENT_COMMUNICATION", "管理网页端家长沟通监督与审计", "Management Web Parent Communication Oversight and Audit", "docs/SOP-管理-家长沟通通知监督与审计-中英文培训版-20260718.html", "SOP-管理-家长沟通通知监督与审计-中英文培训版-20260718.pdf", [
+    ["进入网页端家长沟通中心，先筛选逾期、无负责人、待审核、发送失败和需要更正的记录。", "Open the Web Parent Communication Centre and filter overdue, unowned, pending-review, failed-delivery, and correction-required records."],
+    ["打开记录核对学生、家长、负责人、原始请求、内部处理、家长版内容和附件是否一致。", "Open the record and reconcile the student, parent, owner, original request, internal handling, parent-facing content, and attachments."],
+    ["检查敏感内容是否经过规定复核，发送对象、渠道、发布时间和发送状态是否正确。", "Check that sensitive content received required review and that recipient, channel, publish time, and delivery status are correct."],
+    ["进入通知监控区分等待授权、排队、成功、失败和人工补发，不把发送成功当作家长已理解。", "In Notification Monitoring, distinguish authorisation pending, queued, sent, failed, and manual resend; sent does not mean understood."],
+    ["进入操作审计，按人员、时间和对象核对关键动作；更正必须保留原操作、原因和修复结果。", "Open Audit Logs and review critical actions by staff, time, and target; corrections must retain the original action, reason, and result."],
+    ["完成监督后更新负责人或整改要求，并重新打开记录确认最终状态和审计链完整。", "After review, update the owner or remediation requirement, then reopen the record and verify the final state and audit chain."],
+  ], [
+    "docs/assets/sop-家长沟通通知中心-20260718/annotated/05-admin-communication-monitor.png",
+    "docs/assets/sop-家长沟通通知中心-20260718/annotated/07-admin-notification-monitor.png",
+    "docs/assets/sop-家长沟通通知中心-20260718/annotated/06-admin-audit-logs.png",
+  ]],
 ];
 
 const catalogueGroups = [
@@ -360,86 +436,101 @@ function imagesFrom(sourceRelative) {
 }
 
 function buildHtml(code, zhTitle, enTitle, sourceRelative, steps, explicitImages = null) {
-  const images = (explicitImages ?? imagesFrom(sourceRelative))
-    .map((image) => image.replace(/^docs\//, ""));
-  const stepRows = steps.map(([zh, en], index) => `<div class="step"><b>${index + 1}</b><div><strong>${escapeHtml(en)}</strong><span>${escapeHtml(zh)}</span></div></div>`).join("");
-  const stepPages = steps.map(([zh, en], index) => {
+  const platform = code.includes("MINIAPP") ? "MINIAPP" : "WEB";
+  const allImages = (explicitImages ?? imagesFrom(sourceRelative)).map((image) => image.replace(/^docs\//, ""));
+  const platformImages = allImages.filter((image) => {
+    const mini = /miniapp|小程序/i.test(image);
+    return platform === "MINIAPP" ? mini : !mini;
+  });
+  const images = platformImages.length ? platformImages : allImages;
+  const workflow = (language) => steps.map(([zh, en], index) => `<div class="step"><b>${index + 1}</b><span>${escapeHtml(language === "zh" ? zh : en)}</span></div>`).join("");
+  const stepPages = (language) => steps.map(([zh, en], index) => {
+    const text = language === "zh" ? zh : en;
     const image = images.length ? images[index % images.length] : null;
-    return `<section class="page">
-      <div class="eyebrow">STEP ${index + 1} OF ${steps.length} / 第 ${index + 1} 步，共 ${steps.length} 步</div>
-      <h1>${escapeHtml(en)}</h1><div class="zh-title">${escapeHtml(zh)}</div>
+    const pageNumber = language === "zh" ? index + 4 : steps.length + index + 7;
+    return `<section class="page ${language}">
+      <div class="eyebrow">${language === "zh" ? `中文流程 · 第 ${index + 1} 步，共 ${steps.length} 步` : `ENGLISH WORKFLOW · STEP ${index + 1} OF ${steps.length}`}</div>
+      <h1>${escapeHtml(text)}</h1>
       <div class="lesson">
         <div class="shot">${image
-          ? `<img src="${escapeHtml(image)}"><div class="caption">Follow the red box or callout in the current system screenshot. / 按当前系统截图中的红框或标注操作。</div>`
-          : `<div class="empty-shot">Open the system entry assigned by your manager.<br>打开主管分配的系统入口。</div>`}
+          ? `<img src="${escapeHtml(image)}"><div class="caption">${language === "zh" ? "按照截图中的红框或标注找到操作位置。" : "Use the red box or callout to locate the action."}</div>`
+          : `<div class="empty-shot">${language === "zh" ? "先打开主管指定的正确功能页面。" : "Open the correct function page assigned by your manager."}</div>`}
         </div>
         <div class="beginner">
-          <h2>Do this slowly / 请逐项操作</h2>
-          <ol>
-            <li><b>Confirm the page / 确认页面：</b> Check the page title and make sure you are in the correct workspace.<br>核对页面标题，确认自己进入了正确的工作台。</li>
-            <li><b>Confirm the target / 确认对象：</b> Recheck the student, teacher, owner, date, invoice, package, or task before editing.<br>修改前再次核对学生、老师、负责人、日期、发票、课包或任务。</li>
-            <li><b>Complete this step / 完成本步：</b> ${escapeHtml(en)}<br>${escapeHtml(zh)}</li>
-            <li><b>Review before saving / 保存前复核：</b> Read every changed field once more. Do not guess missing information.<br>重新检查所有变更字段；资料缺失时不要猜测填写。</li>
-            <li><b>Verify after saving / 保存后验收：</b> Reopen or refresh the record and confirm the expected status is visible.<br>重新打开或刷新记录，确认预期状态已经显示。</li>
-          </ol>
-          <div class="stop"><b>STOP / 停止：</b> If the name, amount, permission, status, or button differs from this guide, do not continue. Keep the current screen and ask the owner or manager.<br>姓名、金额、权限、状态或按钮与本教程不一致时不要继续；保留当前页面并询问负责人或主管。</div>
+          <h2>${language === "zh" ? "请按顺序完成" : "Complete in this order"}</h2>
+          <ol>${language === "zh" ? `
+            <li><b>确认入口：</b>核对页面标题和当前岗位，确保进入的是本文功能，不是相似页面。</li>
+            <li><b>确认对象：</b>核对学生、老师、任务、日期、金额、课包或记录编号。</li>
+            <li><b>执行本步：</b>${escapeHtml(text)}</li>
+            <li><b>保存前：</b>逐项复核刚才填写或选择的内容；缺失资料不得猜填。</li>
+            <li><b>保存后：</b>只点击一次保存或提交，然后刷新或重新打开记录。</li>
+            <li><b>完成标志：</b>页面显示预期结果、负责人和最终状态，且结果仍属于正确对象。</li>` : `
+            <li><b>Confirm the entry:</b> Check the page title and current role. Make sure this is the function described here, not a similar page.</li>
+            <li><b>Confirm the target:</b> Recheck the student, teacher, task, date, amount, package, or record number.</li>
+            <li><b>Perform this step:</b> ${escapeHtml(text)}</li>
+            <li><b>Before saving:</b> Review every field or selection. Never guess missing information.</li>
+            <li><b>After saving:</b> Click Save or Submit once, then refresh or reopen the record.</li>
+            <li><b>Completion signal:</b> The expected result, owner, and final status remain visible on the correct record.</li>`}</ol>
+          <div class="stop"><b>${language === "zh" ? "立即停止：" : "STOP:"}</b> ${language === "zh" ? "姓名、金额、权限、状态或按钮与本教程不一致时，不要继续或重复点击；保留当前页面并联系流程负责人。" : "If the name, amount, permission, status, or button differs, do not continue or click again. Preserve the screen and contact the workflow owner."}</div>
         </div>
       </div>
-      <footer><span>${escapeHtml(code)} · Beginner Guide / 小白教学版</span><span>${index + 4}</span></footer>
+      <footer><span>${escapeHtml(code)} · ${platform}</span><span>${pageNumber}</span></footer>
     </section>`;
   }).join("");
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${escapeHtml(enTitle)} / ${escapeHtml(zhTitle)}</title><style>
-@page{size:A4 landscape;margin:13mm 12mm}*{box-sizing:border-box}body{margin:0;color:#172033;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}.page{height:184mm;page-break-after:always;position:relative;overflow:hidden;padding:3mm}.page:last-child{page-break-after:auto}.cover{display:grid;align-content:center;background:linear-gradient(135deg,#ecfdf5,#eff6ff);border-radius:7mm;padding:17mm}.eyebrow{font-size:10px;font-weight:900;color:#0f766e;letter-spacing:.08em}h1{font-size:25px;margin:4mm 0 2mm;color:#102a43;line-height:1.2}.zh-title{font-size:19px;color:#334e68;line-height:1.3}.meta{margin-top:8mm;font-size:13px;line-height:1.8}.banner{margin-top:7mm;padding:4mm;border-left:2mm solid #0f766e;background:#fff}.steps{display:grid;gap:3mm;margin-top:4mm}.step{display:grid;grid-template-columns:9mm 1fr;gap:3mm;align-items:start;border:1px solid #d7e2ec;border-radius:3mm;padding:3mm;background:#f8fbfd}.step>b{display:grid;place-items:center;width:7mm;height:7mm;border-radius:50%;background:#0f766e;color:white}.step strong,.step span{display:block;font-size:11px;line-height:1.45}.step span{color:#475569;margin-top:1mm}.check{display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin-top:6mm}.box{border:1px solid #d7e2ec;border-radius:4mm;padding:5mm;background:#f8fbfd}.danger{border-color:#fca5a5;background:#fef2f2}.box h2{font-size:16px;margin:0 0 3mm}.box li{font-size:11px;line-height:1.5;margin:2mm 0}.lesson{display:grid;grid-template-columns:1.18fr 1fr;gap:5mm;margin-top:4mm;height:118mm}.shot{border:1px solid #d7e2ec;border-radius:4mm;background:#f8fafc;overflow:hidden;display:grid;grid-template-rows:1fr auto}.shot img{width:100%;height:105mm;object-fit:contain;display:block}.caption{padding:2mm 3mm;color:#475569;font-size:9px;border-top:1px solid #d7e2ec}.empty-shot{display:grid;place-items:center;text-align:center;color:#64748b;font-size:14px}.beginner{border:1px solid #d7e2ec;border-radius:4mm;padding:4mm;background:#fff}.beginner h2{font-size:15px;margin:0 0 2mm}.beginner ol{margin:0;padding-left:6mm}.beginner li{font-size:9.5px;line-height:1.35;margin:1.7mm 0}.stop{font-size:9.5px;line-height:1.35;padding:2.5mm;border:1px solid #fca5a5;border-radius:2mm;background:#fef2f2;margin-top:2mm}footer{position:absolute;bottom:2mm;left:3mm;right:3mm;display:flex;justify-content:space-between;color:#64748b;font-size:9px}
+  const startPage = (language) => `<section class="page ${language}"><div class="eyebrow">${language === "zh" ? "中文版 · 操作前准备" : "ENGLISH SECTION · BEFORE YOU START"}</div><h1>${language === "zh" ? "点击任何按钮前，先完成这四项准备" : "Complete these four checks before clicking"}</h1><div class="check"><div class="box"><h2>${language === "zh" ? "准备" : "Prepare"}</h2><ul>${language === "zh" ? "<li>使用本人账号和岗位对应工作台。</li><li>除非主管明确授权，否则只使用培训数据。</li><li>准备正确的对象、日期、负责人和所需资料。</li><li>把 PDF 与系统并排打开，每次只做一个编号步骤。</li>" : "<li>Use your own account and role workspace.</li><li>Use training data unless a manager authorises real data.</li><li>Prepare the correct target, date, owner, and source records.</li><li>Keep this PDF beside the system and complete one numbered step at a time.</li>"}</ul></div><div class="box danger"><h2>${language === "zh" ? "禁止" : "Never"}</h2><ul>${language === "zh" ? "<li>不使用同事账号。</li><li>不猜测姓名、金额、日期、状态或缺失字段。</li><li>结果不明确时不重复点击保存、应用、批准、发布或发送。</li><li>页面不一致时立即停止并询问负责人。</li>" : "<li>Do not use another employee's account.</li><li>Do not guess names, amounts, dates, statuses, or missing fields.</li><li>Do not repeat Save, Apply, Approve, Publish, or Send when the result is unclear.</li><li>Stop and ask the owner when the page differs.</li>"}</ul></div></div><footer><span>${escapeHtml(code)} · ${platform}</span><span>${language === "zh" ? 2 : steps.length + 5}</span></footer></section>`;
+  const overviewPage = (language) => `<section class="page ${language}"><div class="eyebrow">${language === "zh" ? "中文版 · 完整步骤总览" : "ENGLISH SECTION · WORKFLOW OVERVIEW"}</div><h1>${escapeHtml(language === "zh" ? zhTitle : enTitle)}</h1><div class="steps">${workflow(language)}</div><footer><span>${platform === "WEB" ? (language === "zh" ? "网页端培训" : "Web training") : (language === "zh" ? "小程序培训" : "Mini Program training")}</span><span>${language === "zh" ? 3 : steps.length + 6}</span></footer></section>`;
+  const finalPage = (language) => `<section class="page ${language}"><div class="eyebrow">${language === "zh" ? "中文版 · 最终验收" : "ENGLISH SECTION · FINAL CHECK"}</div><h1>${language === "zh" ? "以下项目全部确认后才能报告完成" : "Report completion only when every item is true"}</h1><div class="check"><div class="box"><h2>${language === "zh" ? "员工自查" : "Employee self-check"}</h2><ul>${language === "zh" ? "<li>账号、平台、岗位和目标记录正确。</li><li>全部步骤按顺序完成。</li><li>刷新后仍看到预期最终状态。</li><li>已保存不含敏感信息的结果证据。</li><li>能说明出现异常时找谁处理。</li>" : "<li>The account, platform, role, and target record are correct.</li><li>Every step was completed in order.</li><li>The expected final status remains after refresh.</li><li>Non-sensitive evidence of the result was saved.</li><li>You can explain who handles an exception.</li>"}</ul></div><div class="box danger"><h2>${language === "zh" ? "停止并升级" : "Stop and escalate"}</h2><ul>${language === "zh" ? "<li>缺少必要资料或权限。</li><li>页面、按钮或状态与教程不同。</li><li>未获授权却会影响财务、合同、课包、工资、真实课次或家长可见内容。</li><li>无法确认最终状态。</li>" : "<li>Required data or permission is missing.</li><li>The page, button, or status differs from the guide.</li><li>An unauthorised action would affect finance, contracts, packages, payroll, live sessions, or parent-visible content.</li><li>The final state cannot be verified.</li>"}</ul></div></div><footer><span>${escapeHtml(code)} · ${platform}</span><span>${language === "zh" ? steps.length + 4 : steps.length * 2 + 7}</span></footer></section>`;
+  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>${escapeHtml(zhTitle)} · ${escapeHtml(enTitle)}</title><style>
+@page{size:A4 landscape;margin:13mm 12mm}*{box-sizing:border-box}body{margin:0;color:#172033;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}.page{height:184mm;page-break-after:always;position:relative;overflow:hidden;padding:3mm}.page:last-child{page-break-after:auto}.cover{display:grid;align-content:center;background:linear-gradient(135deg,#ecfdf5,#eff6ff);border-radius:7mm;padding:17mm}.eyebrow{font-size:10px;font-weight:900;color:#0f766e;letter-spacing:.08em}h1{font-size:25px;margin:4mm 0 3mm;color:#102a43;line-height:1.25}.cover h1{font-size:30px}.english-title{font-size:22px;color:#334e68;margin-top:10mm}.meta{margin-top:8mm;font-size:13px;line-height:1.8}.banner{margin-top:7mm;padding:4mm;border-left:2mm solid #0f766e;background:#fff}.steps{display:grid;gap:3mm;margin-top:5mm}.step{display:grid;grid-template-columns:9mm 1fr;gap:3mm;align-items:start;border:1px solid #d7e2ec;border-radius:3mm;padding:3mm;background:#f8fbfd}.step>b{display:grid;place-items:center;width:7mm;height:7mm;border-radius:50%;background:#0f766e;color:#fff}.step span{font-size:11px;line-height:1.48}.check{display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin-top:6mm}.box{border:1px solid #d7e2ec;border-radius:4mm;padding:5mm;background:#f8fbfd}.danger{border-color:#fca5a5;background:#fef2f2}.box h2{font-size:16px;margin:0 0 3mm}.box li{font-size:11px;line-height:1.55;margin:2.5mm 0}.lesson{display:grid;grid-template-columns:1.12fr 1fr;gap:5mm;margin-top:4mm;height:120mm}.shot{border:1px solid #d7e2ec;border-radius:4mm;background:#f8fafc;overflow:hidden;display:grid;grid-template-rows:1fr auto}.shot img{width:100%;height:106mm;object-fit:contain;display:block}.caption{padding:2mm 3mm;color:#475569;font-size:9px;border-top:1px solid #d7e2ec}.empty-shot{display:grid;place-items:center;text-align:center;color:#64748b;font-size:14px;padding:10mm}.beginner{border:1px solid #d7e2ec;border-radius:4mm;padding:4mm;background:#fff}.beginner h2{font-size:15px;margin:0 0 2mm}.beginner ol{margin:0;padding-left:6mm}.beginner li{font-size:9.7px;line-height:1.4;margin:1.8mm 0}.stop{font-size:9.7px;line-height:1.4;padding:2.5mm;border:1px solid #fca5a5;border-radius:2mm;background:#fef2f2;margin-top:2mm}.divider{display:grid;place-items:center;text-align:center;background:#eff6ff;border:2px solid #93c5fd;border-radius:7mm}.divider h1{font-size:34px}footer{position:absolute;bottom:2mm;left:3mm;right:3mm;display:flex;justify-content:space-between;color:#64748b;font-size:9px}
 </style></head><body>
-<section class="page cover"><div class="eyebrow">SGT MANAGE · BEGINNER BILINGUAL TRAINING SOP / 零基础中英双语培训 SOP</div><h1>${escapeHtml(enTitle)}</h1><div class="zh-title">${escapeHtml(zhTitle)}</div><div class="meta">Module / 模块：${escapeHtml(code)}<br>Edition / 版本：Beginner step-by-step / 完全小白逐步教学版<br>Language / 语言：English + 中文<br>System screenshots / 系统截图：Authenticated web capture + WeChat Developer Tools simulator / 网页登录实拍 + 微信开发者工具模拟器实拍</div><div class="banner"><b>Completion / 完成标准</b><br>Read every step → quiz ≥ 80% → practise with training data → manager sign-off<br>逐步阅读 → 测验至少 80 分 → 培训数据实操 → 主管验收</div></section>
-<section class="page"><div class="eyebrow">BEFORE YOU START / 开始前准备</div><h1>Read this before clicking anything<br><span class="zh-title">点击任何按钮前先阅读</span></h1><div class="check"><div class="box"><h2>Prepare / 准备</h2><ul><li>Use your own account and the workspace assigned to your role. / 使用本人账号和岗位对应工作台。</li><li>Use training data unless your manager explicitly authorises real data. / 除非主管明确授权，否则只用培训数据。</li><li>Prepare the correct student, teacher, date, owner, package, invoice, or task reference. / 准备正确的学生、老师、日期、负责人、课包、发票或任务资料。</li><li>Keep this PDF open beside the system and complete one numbered step at a time. / 将本 PDF 与系统并排打开，每次只完成一个编号步骤。</li></ul></div><div class="box danger"><h2>Never guess / 禁止猜测</h2><ul><li>Do not guess names, amounts, dates, statuses, permissions, or missing fields. / 不猜测姓名、金额、日期、状态、权限或缺失字段。</li><li>Do not use another employee's account. / 不使用其他员工账号。</li><li>Do not repeat Save, Apply, Approve, Issue, Publish, or Send when the result is unclear. / 结果不明确时，不重复点击保存、应用、批准、签发、发布或发送。</li><li>Stop and ask the workflow owner when the page differs. / 页面不一致时停止并询问流程负责人。</li></ul></div></div><footer><span>Beginner rules / 小白操作规则</span><span>2</span></footer></section>
-<section class="page"><div class="eyebrow">END-TO-END WORKFLOW / 完整操作流程</div><h1>${escapeHtml(enTitle)}<br><span class="zh-title">${escapeHtml(zhTitle)}</span></h1><div class="steps">${stepRows}</div><footer><span>SGT Training Centre / 员工培训中心</span><span>3</span></footer></section>
-${stepPages}
-<section class="page"><div class="eyebrow">FINAL CHECK / 最终检查</div><h1>Do not report completion until every item is true<br><span class="zh-title">以下项目全部确认后才能报告完成</span></h1><div class="check"><div class="box"><h2>Employee self-check / 员工自查</h2><ul><li>I used the correct account, workspace, and target record. / 我使用了正确账号、工作台和目标记录。</li><li>I completed every numbered step in order. / 我按顺序完成了每个编号步骤。</li><li>I reopened or refreshed the record and saw the expected final status. / 我重新打开或刷新记录并看到预期最终状态。</li><li>I saved non-sensitive evidence of the final result. / 我保存了不含敏感资料的结果证据。</li><li>I can explain what to do when the result is different. / 我能说明结果不一致时应如何处理。</li></ul></div><div class="box danger"><h2>Stop and escalate / 停止并升级</h2><ul><li>Required data or permission is missing. / 缺少必要资料或权限。</li><li>The page differs from the current guide. / 页面与当前教程不一致。</li><li>The action affects finance, packages, contracts, payroll, real sessions, or parent-visible content without authorisation. / 未获授权却会影响财务、课包、合同、工资、真实课次或家长可见内容。</li><li>The final state cannot be verified. / 无法确认最终状态。</li></ul></div></div><div class="banner">Submit the training-data name, final status, and self-check evidence in Training Centre. Training roles never grant system permissions.<br>在培训中心提交培训数据名称、最终状态和自查证据。培训岗位不会授予系统权限。</div><footer><span>Assessment-ready / 可提交验收</span><span>${steps.length + 4}</span></footer></section>
+<section class="page cover"><div class="eyebrow">SGT MANAGE · ${platform === "WEB" ? "网页端 WEB" : "微信小程序 WECHAT MINI PROGRAM"}</div><h1>${escapeHtml(zhTitle)}</h1><div class="english-title">${escapeHtml(enTitle)}</div><div class="meta">功能编号：${escapeHtml(code)}<br>版本：${version}<br>排版顺序：先完整中文版，再完整英文版<br>Layout: Complete Chinese section first, followed by the complete English section</div><div class="banner"><b>一份文档只讲一个功能。</b> 网页端与小程序端分开；员工按编号一步一步操作。<br><b>One document covers one function only.</b> Web and Mini Program guides are separate.</div></section>
+${startPage("zh")}${overviewPage("zh")}${stepPages("zh")}${finalPage("zh")}
+<section class="page divider"><div><div class="eyebrow">LANGUAGE DIVIDER</div><h1>中文版到此结束</h1><div class="english-title">English section starts on the next page</div></div><footer><span>${escapeHtml(code)} · ${platform}</span><span>${steps.length + 5}</span></footer></section>
+${startPage("en")}${overviewPage("en")}${stepPages("en")}${finalPage("en")}
 </body></html>`;
 }
 
-function buildCatalogueHtml() {
-  const groupHtml = ([heading, modules]) => `<section class="group"><h2>${escapeHtml(heading)}</h2>${modules.map(([en, zh]) => `<div class="module"><strong>${escapeHtml(en)}</strong><span>${escapeHtml(zh)}</span></div>`).join("")}</section>`;
-  const academicModules = catalogueGroups[1][1];
-  const groups = [
-    [["Academic & CS / 教务与客服", academicModules.slice(0, 7)]],
-    [["Academic & CS (continued) / 教务与客服（续）", academicModules.slice(7)]],
-    [catalogueGroups[0], catalogueGroups[2], catalogueGroups[3]],
-    [catalogueGroups[4], catalogueGroups[5]],
-  ].map((column) => `<div class="catalogue-column">${column.map(groupHtml).join("")}</div>`).join("");
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>SGT Staff Training Centre Catalogue / 员工培训中心总目录</title><style>
-@page{size:A4 landscape;margin:13mm 12mm}*{box-sizing:border-box}body{margin:0;color:#172033;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}.page{height:184mm;page-break-after:always;position:relative;overflow:hidden;padding:3mm}.page:last-child{page-break-after:auto}.cover{display:grid;align-content:center;background:linear-gradient(135deg,#ecfdf5,#eff6ff);border-radius:7mm;padding:17mm}.eyebrow{font-size:10px;font-weight:900;color:#0f766e;letter-spacing:.08em}h1{font-size:30px;margin:6mm 0 3mm;color:#102a43}h2{font-size:14px;margin:0 0 2mm}.zh-title{font-size:23px;color:#334e68}.banner,.box,.group{border:1px solid #d7e2ec;border-radius:4mm;padding:5mm;background:#f8fbfd}.banner{margin-top:7mm;border-left:2mm solid #0f766e;background:white}.grid{display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin-top:6mm}.box li{font-size:11px;line-height:1.55;margin:2.5mm 0}.catalogue{display:grid;grid-template-columns:repeat(4,1fr);gap:3mm;margin-top:4mm}.catalogue-column{display:grid;align-content:start;gap:3mm}.group{padding:3mm}.module{border-top:1px solid #d7e2ec;padding:1.8mm 0}.module:first-of-type{border-top:0}.module strong,.module span{display:block;font-size:8.3px;line-height:1.28}.module span{color:#475569}.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:4mm;margin-top:8mm}.flow .box b{display:block;color:#0f766e;font-size:20px;margin-bottom:2mm}footer{position:absolute;bottom:2mm;left:3mm;right:3mm;display:flex;justify-content:space-between;color:#64748b;font-size:9px}
+function buildCatalogueHtml(platform) {
+  const items = guides.filter(([code]) => (code.includes("MINIAPP") ? "MINIAPP" : "WEB") === platform);
+  const rows = (language) => items.map(([code, zh, en], index) => `<div class="module"><b>${index + 1}</b><div><strong>${escapeHtml(language === "zh" ? zh : en)}</strong><span>${escapeHtml(code)}</span></div></div>`).join("");
+  const zhPlatform = platform === "WEB" ? "网页端" : "微信小程序";
+  const enPlatform = platform === "WEB" ? "Web System" : "WeChat Mini Program";
+  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>SGT ${zhPlatform}逐功能培训目录</title><style>
+@page{size:A4 landscape;margin:13mm 12mm}*{box-sizing:border-box}body{margin:0;color:#172033;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}.page{min-height:184mm;page-break-after:always;position:relative;padding:5mm}.page:last-child{page-break-after:auto}.cover{display:grid;align-content:center;background:linear-gradient(135deg,#ecfdf5,#eff6ff);border-radius:7mm;padding:17mm}.eyebrow{font-size:10px;font-weight:900;color:#0f766e;letter-spacing:.08em}h1{font-size:30px;margin:6mm 0 3mm;color:#102a43}.subtitle{font-size:22px;color:#334e68;margin-top:7mm}.banner{margin-top:8mm;padding:5mm;border-left:2mm solid #0f766e;background:#fff}.modules{display:grid;grid-template-columns:1fr 1fr;gap:3mm;margin-top:5mm}.module{display:grid;grid-template-columns:9mm 1fr;gap:3mm;padding:3mm;border:1px solid #d7e2ec;border-radius:3mm;background:#f8fbfd}.module>b{display:grid;place-items:center;width:7mm;height:7mm;border-radius:50%;background:#0f766e;color:#fff}.module strong,.module span{display:block;font-size:10px;line-height:1.35}.module span{color:#64748b;font-size:8.5px;margin-top:1mm}.divider{display:grid;place-items:center;text-align:center;background:#eff6ff;border:2px solid #93c5fd;border-radius:7mm}footer{position:absolute;bottom:2mm;left:5mm;right:5mm;display:flex;justify-content:space-between;color:#64748b;font-size:9px}
 </style></head><body>
-<section class="page cover"><div class="eyebrow">SGT MANAGE · CONTROLLED BILINGUAL TRAINING LIBRARY / 受控中英双语培训资料库</div><h1>Staff Training Centre Catalogue</h1><div class="zh-title">员工培训中心总目录</div><div class="banner">35 role-based modules · English / Chinese / Bilingual display · Training release 2026-07-29D<br>35 个岗位模块 · 英文 / 中文 / 中英并列显示 · 培训版本 2026-07-29D</div></section>
-<section class="page"><div class="eyebrow">LANGUAGE & CONTROL / 语言与版本控制</div><h1>Use the version assigned in the system<br><span class="zh-title">只使用系统分配的当前版本</span></h1><div class="grid"><div class="box"><h2>Account language / 账号语言</h2><ul><li>EN: English only / 仅英文</li><li>ZH: Chinese only / 仅中文</li><li>BILINGUAL: English + Chinese / 中英并列</li><li>Managers set account language in System User Admin. / 管理者在系统使用者管理设置账号语言。</li></ul></div><div class="box"><h2>Version status / 版本状态</h2><ul><li>Current: may be used for training and authorised work. / 现行：可用于培训和已授权工作。</li><li>Review required: manager explanation only. / 待复核：仅供主管解释。</li><li>Superseded: audit history only. / 已替代：仅供审计追溯。</li><li>Training roles never grant system permissions. / 培训岗位不授予系统权限。</li></ul></div></div><footer><span>SGT Training Centre / 员工培训中心</span><span>2</span></footer></section>
-<section class="page"><div class="eyebrow">CURRENT MODULES / 当前模块</div><h1>Role learning paths / 岗位学习路径</h1><div class="catalogue">${groups}</div><footer><span>35 current bilingual modules / 35 个现行双语模块</span><span>3</span></footer></section>
-<section class="page"><div class="eyebrow">CERTIFICATION / 培训验收</div><h1>Opening a PDF is not completion<br><span class="zh-title">打开 PDF 不等于完成培训</span></h1><div class="flow"><div class="box"><b>1</b>Read the current bilingual SOP.<br>阅读当前双语 SOP。</div><div class="box"><b>2</b>Pass five questions at 80% or above.<br>五题测验达到 80 分。</div><div class="box"><b>3</b>Practise with training data and submit evidence.<br>使用培训数据实操并提交证据。</div><div class="box"><b>4</b>Manager verifies the result and signs off.<br>主管核对结果并验收。</div></div><div class="banner">Stop and escalate when data, permission, page state, or a high-risk outcome is unclear.<br>资料、权限、页面状态或高风险结果不明确时，停止操作并升级主管。</div><footer><span>SGT Training Centre / 员工培训中心</span><span>4</span></footer></section>
+<section class="page cover"><div class="eyebrow">SGT MANAGE · ${platform}</div><h1>${zhPlatform}逐功能培训目录</h1><div class="subtitle">${enPlatform} Step-by-Step Training Catalogue</div><div class="banner">${items.length} 份现行文档。每份只讲一个功能；文档内先完整中文，再完整英文。<br>${items.length} current guides. One function per document; complete Chinese section first, then complete English.</div></section>
+<section class="page"><div class="eyebrow">中文版目录</div><h1>${zhPlatform}培训文件</h1><div class="modules">${rows("zh")}</div><footer><span>${version}</span><span>2</span></footer></section>
+<section class="page divider"><div><div class="eyebrow">LANGUAGE DIVIDER</div><h1>中文版到此结束</h1><div class="subtitle">English catalogue starts on the next page</div></div><footer><span>${platform}</span><span>3</span></footer></section>
+<section class="page"><div class="eyebrow">ENGLISH CATALOGUE</div><h1>${enPlatform} Training Files</h1><div class="modules">${rows("en")}</div><footer><span>${version}</span><span>4</span></footer></section>
 </body></html>`;
 }
 
 async function main() {
   fs.mkdirSync(pdfDir, { recursive: true });
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ headless: true, channel: "chrome" });
   try {
     for (const [code, zhTitle, enTitle, sourceRelative, pdfName, steps, explicitImages] of guides) {
-      const htmlName = pdfName.replace(/\.pdf$/i, ".html");
+      const currentPdfName = pdfName.replace(/2026\d{4}(?=\.pdf$)/, "20260803");
+      const htmlName = currentPdfName.replace(/\.pdf$/i, ".html");
       const htmlPath = path.join(docsDir, htmlName);
       fs.writeFileSync(htmlPath, buildHtml(code, zhTitle, enTitle, sourceRelative, steps, explicitImages), "utf8");
       const page = await browser.newPage();
       await page.goto(`file://${htmlPath}`, { waitUntil: "networkidle" });
-      await page.pdf({ path: path.join(pdfDir, pdfName), format: "A4", landscape: true, printBackground: true, margin: { top: "0", right: "0", bottom: "0", left: "0" } });
+      await page.pdf({ path: path.join(pdfDir, currentPdfName), format: "A4", landscape: true, printBackground: true, margin: { top: "0", right: "0", bottom: "0", left: "0" } });
       await page.close();
-      console.log(`${code}: ${pdfName}`);
+      console.log(`${code}: ${currentPdfName}`);
     }
-    const catalogueHtmlPath = path.join(docsDir, "SOP-员工培训中心总目录-中英文版-20260728.html");
-    const cataloguePdfPath = path.join(pdfDir, "00-SGT员工培训中心总目录-中英文版-20260728.pdf");
-    fs.writeFileSync(catalogueHtmlPath, buildCatalogueHtml(), "utf8");
-    const cataloguePage = await browser.newPage();
-    await cataloguePage.goto(`file://${catalogueHtmlPath}`, { waitUntil: "networkidle" });
-    await cataloguePage.pdf({ path: cataloguePdfPath, format: "A4", landscape: true, printBackground: true, margin: { top: "0", right: "0", bottom: "0", left: "0" } });
-    await cataloguePage.close();
-    console.log(`CATALOGUE: ${path.basename(cataloguePdfPath)}`);
+    for (const platform of ["WEB", "MINIAPP"]) {
+      const label = platform === "WEB" ? "网页端" : "小程序";
+      const catalogueHtmlPath = path.join(docsDir, `SOP-${label}逐功能培训目录-中英文版-20260803.html`);
+      const cataloguePdfPath = path.join(pdfDir, `00-SGT${label}逐功能培训目录-中英文版-20260803.pdf`);
+      fs.writeFileSync(catalogueHtmlPath, buildCatalogueHtml(platform), "utf8");
+      const cataloguePage = await browser.newPage();
+      await cataloguePage.goto(`file://${catalogueHtmlPath}`, { waitUntil: "networkidle" });
+      await cataloguePage.pdf({ path: cataloguePdfPath, format: "A4", landscape: true, printBackground: true, margin: { top: "0", right: "0", bottom: "0", left: "0" } });
+      await cataloguePage.close();
+      console.log(`${platform} CATALOGUE: ${path.basename(cataloguePdfPath)}`);
+    }
   } finally {
     await browser.close();
   }

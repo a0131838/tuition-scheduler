@@ -27,10 +27,44 @@
 - Current release line prepared: `2026-07-29-r300` safely gates unlinked teacher accounts, exposes manager remediation, and improves training delivery and mobile/login polish without changing operational business data.
 - Current release line prepared: `2026-07-31-r301` adds Business Accounts invoices and receipts to the central Finance Documents list and export without moving or rewriting source finance records.
 - Current release line prepared: `2026-08-03-r302` adds current-day reminder recovery, explicit-family reminder consolidation, and audited course-change resends without changing schedules or sending messages automatically.
+- Current release line prepared: `2026-08-03-r303` separates Web and Mini Program training and rebuilds all 35 current modules as complete Chinese-first, English-second, single-function beginner guides.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-03-r303 Ready
+
+- Scope: replace the mixed-language training-PDF format with one-function guides that contain the complete Chinese workflow first and the complete English workflow second, while separating Web and Mini Program libraries and catalogues.
+- Business impact:
+  - employees choose Web or Mini Program before learning and no longer jump between platforms inside one module;
+  - each guide follows preparation, numbered workflow, one page per key step, save verification, stop conditions, and final sign-off;
+  - 26 Web guides and 9 Mini Program guides are separately grouped and downloadable;
+  - the six modules missing from the previous generator are now included, restoring 35/35 generated module files;
+  - the new release version requires staff to acknowledge the current material again;
+  - operational roles and permissions are unchanged.
+- Files:
+  - `lib/training-center.ts`
+  - `app/training/page.tsx`
+  - `app/training/library/page.tsx`
+  - `app/api/training/catalogs/[platform]/route.ts`
+  - `scripts/build-bilingual-training-sops.mjs`
+  - `docs/SOP-*-20260803.html`
+  - `output/pdf/*20260803.pdf`
+  - `tests/training-center.test.ts`
+- Verification before deploy:
+  - 35 registered guide PDFs plus two platform catalogue PDFs exist;
+  - 37 PDFs / 664 pages passed automated page-count, text-order, blank-page, and file-size checks;
+  - all 374 referenced screenshots exist;
+  - four representative contact sheets passed visual inspection;
+  - 21 focused training tests and all 306 repository tests passed;
+  - TypeScript, Mini Program release audit, `git diff --check`, and the complete 231-page build passed.
+- Post-deploy verification:
+  - confirm local, GitHub, and server commit equality, PM2 online, and `/admin/login` HTTP 200;
+  - confirm ADMIN sees 26 Web and 9 Mini Program guides in separate sections;
+  - confirm the two catalogue downloads and representative Web/Mini Program module downloads return PDF 200;
+  - confirm non-staff access remains blocked and role filtering is unchanged.
+- Task doc: `docs/tasks/TASK-20260803-step-by-step-training-library.md`.
 
 ## 2026-08-03-r302 Ready
 

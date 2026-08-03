@@ -2,7 +2,9 @@ import type { SystemUserRole } from "@/lib/staff-roles";
 
 export const TRAINING_ASSIGNABLE_ROLES = ["ADMIN", "FINANCE", "SALES", "CS", "TEACHER"] as const satisfies readonly SystemUserRole[];
 export type TrainingAssignableRole = (typeof TRAINING_ASSIGNABLE_ROLES)[number];
-export const TRAINING_RELEASE_VERSION = "20260729D";
+export const TRAINING_RELEASE_VERSION = "20260803A";
+
+export type TrainingPlatform = "WEB" | "MINIAPP";
 
 export type TrainingQuestion = {
   prompt: string;
@@ -21,6 +23,7 @@ export type TrainingModule = {
   category: string;
   categoryEn: string;
   pdfFile: string;
+  platform: TrainingPlatform;
   practicalTask: string;
   practicalTaskEn: string;
   phase: "FOUNDATION" | "CORE" | "SPECIALIST";
@@ -42,7 +45,7 @@ export type TrainingProgressSnapshot = {
 
 type TrainingModuleInput = Omit<
   TrainingModule,
-  "titleEn" | "categoryEn" | "practicalTaskEn" | "phase" | "estimatedMinutes" | "learningObjectives" | "learningObjectivesEn" | "managerRubric" | "managerRubricEn" | "questions"
+  "titleEn" | "categoryEn" | "practicalTaskEn" | "platform" | "phase" | "estimatedMinutes" | "learningObjectives" | "learningObjectivesEn" | "managerRubric" | "managerRubricEn" | "questions"
 >;
 
 const englishContent: Record<string, { title: string; category: string; practicalTask: string }> = {
@@ -139,7 +142,9 @@ function module(input: TrainingModuleInput): TrainingModule {
   const phase = foundationCodes.has(input.code) ? "FOUNDATION" : coreCodes.has(input.code) ? "CORE" : "SPECIALIST";
   return {
     ...input,
+    pdfFile: input.pdfFile.replace(/2026\d{4}(?=\.pdf$)/, "20260803"),
     version: TRAINING_RELEASE_VERSION,
+    platform: input.code.includes("MINIAPP") ? "MINIAPP" : "WEB",
     titleEn: en.title,
     categoryEn: en.category,
     practicalTaskEn: en.practicalTask,

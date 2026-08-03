@@ -19,8 +19,10 @@ test("training module codes and versions are unique", () => {
   assert.equal(TRAINING_MODULES.length, 35);
   const keys = TRAINING_MODULES.map((item) => `${item.code}:${item.version}`);
   assert.equal(new Set(keys).size, keys.length);
-  assert.equal(TRAINING_RELEASE_VERSION, "20260729D");
+  assert.equal(TRAINING_RELEASE_VERSION, "20260803A");
   assert.ok(TRAINING_MODULES.every((item) => item.version === TRAINING_RELEASE_VERSION));
+  assert.equal(TRAINING_MODULES.filter((item) => item.platform === "WEB").length, 26);
+  assert.equal(TRAINING_MODULES.filter((item) => item.platform === "MINIAPP").length, 9);
   assert.equal(new Set(TRAINING_MODULES.map((item) => item.questions[0].prompt)).size, TRAINING_MODULES.length);
   assert.deepEqual(TRAINING_MODULES[0].questions.map((question) => question.answer), [1, 2, 0, 1, 2]);
 });
@@ -50,12 +52,17 @@ test("every module has complete Chinese and English training content and a PDF",
   }
 });
 
-test("every generated training HTML references screenshots that exist beside docs", () => {
+test("every current training HTML separates Chinese and English and references valid screenshots", () => {
   const htmlFiles = fs.readdirSync(path.join(process.cwd(), "docs"))
-    .filter((name) => name.endsWith(".html") && name.includes("中英文培训版"));
+    .filter((name) => name.endsWith("20260803.html") && name.includes("中英文"));
+
+  assert.equal(htmlFiles.length, 37);
 
   for (const name of htmlFiles) {
     const html = fs.readFileSync(path.join(process.cwd(), "docs", name), "utf8");
+    assert.match(html, /中文版到此结束/);
+    assert.match(html, /English (?:section|catalogue) starts on the next page/);
+    assert.ok(html.indexOf("中文版到此结束") < html.lastIndexOf("ENGLISH"), name);
     for (const match of html.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)) {
       const src = match[1];
       if (src.startsWith("data:") || src.startsWith("http:") || src.startsWith("https:")) continue;
@@ -72,20 +79,20 @@ test("new mini program guides use workflow-specific evidence and state unsupport
   const readGuide = (name: string) =>
     fs.readFileSync(path.join(process.cwd(), "docs", name), "utf8");
 
-  const staffBinding = readGuide("SOP-小程序-全员工-登录绑定与账号切换-中英文培训版-20260729.html");
+  const staffBinding = readGuide("SOP-小程序-全员工-登录绑定与账号切换-中英文培训版-20260803.html");
   assert.match(staffBinding, /sop-miniapp-binding-20260729\/annotated\/05-staff-account-row/);
   assert.match(staffBinding, /sop-miniapp-binding-20260729\/annotated\/04-staff-bind/);
 
-  const parentBinding = readGuide("SOP-小程序-教务家长-邀请与绑定-中英文培训版-20260729.html");
+  const parentBinding = readGuide("SOP-小程序-教务家长-邀请与绑定-中英文培训版-20260803.html");
   assert.match(parentBinding, /\/pages\/bind\/bind/);
   assert.match(parentBinding, /02-parent-bind/);
   assert.match(parentBinding, /08-parent-permissions/);
 
-  const financeBoundary = readGuide("SOP-小程序-财务-审批工资报销与异常-中英文培训版-20260729.html");
+  const financeBoundary = readGuide("SOP-小程序-财务-审批工资报销与异常-中英文培训版-20260803.html");
   assert.match(financeBoundary, /no dedicated Finance approvals, payroll, or claims workspace/);
   assert.match(financeBoundary, /web Finance Workbench/);
 
-  const fullCareBoundary = readGuide("SOP-小程序-全托管-学生进度风险与交接-中英文培训版-20260729.html");
+  const fullCareBoundary = readGuide("SOP-小程序-全托管-学生进度风险与交接-中英文培训版-20260803.html");
   assert.match(fullCareBoundary, /native Full Care activity, task, risk-editing, and report-publishing pages are not currently available/);
   assert.match(fullCareBoundary, /web Full Care workspace/);
 });
@@ -94,12 +101,13 @@ test("academic beginner guides use student-record and teacher-coordination evide
   const readGuide = (name: string) =>
     fs.readFileSync(path.join(process.cwd(), "docs", name), "utf8");
 
-  const studentRecords = readGuide("SOP-教务-每日开工学生建档与Student360-中英文培训版-20260729.html");
-  assert.match(studentRecords, /sop-小程序员工工作台-20260718\/annotated\/01-academic-home/);
+  const studentRecords = readGuide("SOP-教务-每日开工学生建档与Student360-中英文培训版-20260803.html");
+  assert.doesNotMatch(studentRecords, /sop-小程序员工工作台/);
+  assert.match(studentRecords, /网页端 WEB/);
   assert.match(studentRecords, /Student 360/);
   assert.match(studentRecords, /duplicate/i);
 
-  const teacherCoordination = readGuide("SOP-教务-老师协调可用时间例外与交接-中英文培训版-20260729.html");
+  const teacherCoordination = readGuide("SOP-教务-老师协调可用时间例外与交接-中英文培训版-20260803.html");
   assert.match(teacherCoordination, /sop-teacher-complete-20260729\/annotated\/03-availability/);
   assert.match(teacherCoordination, /sop-teacher-complete-20260729\/annotated\/04-scheduling-exceptions/);
   assert.match(teacherCoordination, /teacher reply/i);
@@ -282,6 +290,24 @@ test("training PDF delivery supports length and private revalidation", () => {
   assert.match(route, /if-none-match/);
   assert.match(route, /status: 304/);
   assert.match(route, /canAccessTrainingModule/);
+});
+
+test("training centre separates web and mini program libraries and serves both catalogues", () => {
+  const trainingPage = fs.readFileSync(path.join(process.cwd(), "app", "training", "page.tsx"), "utf8");
+  const libraryPage = fs.readFileSync(path.join(process.cwd(), "app", "training", "library", "page.tsx"), "utf8");
+  const catalogueRoute = fs.readFileSync(
+    path.join(process.cwd(), "app", "api", "training", "catalogs", "[platform]", "route.ts"),
+    "utf8"
+  );
+
+  assert.match(trainingPage, /Web System Training/);
+  assert.match(trainingPage, /WeChat Mini Program Training/);
+  assert.match(libraryPage, /api\/training\/catalogs\/web/);
+  assert.match(libraryPage, /api\/training\/catalogs\/miniapp/);
+  assert.match(libraryPage, /item\.platform === platform/);
+  assert.match(catalogueRoute, /00-SGT网页端逐功能培训目录/);
+  assert.match(catalogueRoute, /00-SGT小程序逐功能培训目录/);
+  assert.match(catalogueRoute, /user\.role === "STUDENT"/);
 });
 
 test("login and mobile language controls keep native and narrow-screen semantics", () => {

@@ -1,0 +1,198 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>教务邀请家长与家长完成小程序绑定 · Academic Parent Invitation and Parent Mini Program Binding</title><style>
+@page{size:A4 landscape;margin:13mm 12mm}*{box-sizing:border-box}body{margin:0;color:#172033;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}.page{height:184mm;page-break-after:always;position:relative;overflow:hidden;padding:3mm}.page:last-child{page-break-after:auto}.cover{display:grid;align-content:center;background:linear-gradient(135deg,#ecfdf5,#eff6ff);border-radius:7mm;padding:17mm}.eyebrow{font-size:10px;font-weight:900;color:#0f766e;letter-spacing:.08em}h1{font-size:25px;margin:4mm 0 3mm;color:#102a43;line-height:1.25}.cover h1{font-size:30px}.english-title{font-size:22px;color:#334e68;margin-top:10mm}.meta{margin-top:8mm;font-size:13px;line-height:1.8}.banner{margin-top:7mm;padding:4mm;border-left:2mm solid #0f766e;background:#fff}.steps{display:grid;gap:3mm;margin-top:5mm}.step{display:grid;grid-template-columns:9mm 1fr;gap:3mm;align-items:start;border:1px solid #d7e2ec;border-radius:3mm;padding:3mm;background:#f8fbfd}.step>b{display:grid;place-items:center;width:7mm;height:7mm;border-radius:50%;background:#0f766e;color:#fff}.step span{font-size:11px;line-height:1.48}.check{display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin-top:6mm}.box{border:1px solid #d7e2ec;border-radius:4mm;padding:5mm;background:#f8fbfd}.danger{border-color:#fca5a5;background:#fef2f2}.box h2{font-size:16px;margin:0 0 3mm}.box li{font-size:11px;line-height:1.55;margin:2.5mm 0}.lesson{display:grid;grid-template-columns:1.12fr 1fr;gap:5mm;margin-top:4mm;height:120mm}.shot{border:1px solid #d7e2ec;border-radius:4mm;background:#f8fafc;overflow:hidden;display:grid;grid-template-rows:1fr auto}.shot img{width:100%;height:106mm;object-fit:contain;display:block}.caption{padding:2mm 3mm;color:#475569;font-size:9px;border-top:1px solid #d7e2ec}.empty-shot{display:grid;place-items:center;text-align:center;color:#64748b;font-size:14px;padding:10mm}.beginner{border:1px solid #d7e2ec;border-radius:4mm;padding:4mm;background:#fff}.beginner h2{font-size:15px;margin:0 0 2mm}.beginner ol{margin:0;padding-left:6mm}.beginner li{font-size:9.7px;line-height:1.4;margin:1.8mm 0}.stop{font-size:9.7px;line-height:1.4;padding:2.5mm;border:1px solid #fca5a5;border-radius:2mm;background:#fef2f2;margin-top:2mm}.divider{display:grid;place-items:center;text-align:center;background:#eff6ff;border:2px solid #93c5fd;border-radius:7mm}.divider h1{font-size:34px}footer{position:absolute;bottom:2mm;left:3mm;right:3mm;display:flex;justify-content:space-between;color:#64748b;font-size:9px}
+</style></head><body>
+<section class="page cover"><div class="eyebrow">SGT MANAGE · 微信小程序 WECHAT MINI PROGRAM</div><h1>教务邀请家长与家长完成小程序绑定</h1><div class="english-title">Academic Parent Invitation and Parent Mini Program Binding</div><div class="meta">功能编号：PARENT_MINIAPP_BINDING<br>版本：20260803A<br>排版顺序：先完整中文版，再完整英文版<br>Layout: Complete Chinese section first, followed by the complete English section</div><div class="banner"><b>一份文档只讲一个功能。</b> 网页端与小程序端分开；员工按编号一步一步操作。<br><b>One document covers one function only.</b> Web and Mini Program guides are separate.</div></section>
+<section class="page zh"><div class="eyebrow">中文版 · 操作前准备</div><h1>点击任何按钮前，先完成这四项准备</h1><div class="check"><div class="box"><h2>准备</h2><ul><li>使用本人账号和岗位对应工作台。</li><li>除非主管明确授权，否则只使用培训数据。</li><li>准备正确的对象、日期、负责人和所需资料。</li><li>把 PDF 与系统并排打开，每次只做一个编号步骤。</li></ul></div><div class="box danger"><h2>禁止</h2><ul><li>不使用同事账号。</li><li>不猜测姓名、金额、日期、状态或缺失字段。</li><li>结果不明确时不重复点击保存、应用、批准、发布或发送。</li><li>页面不一致时立即停止并询问负责人。</li></ul></div></div><footer><span>PARENT_MINIAPP_BINDING · MINIAPP</span><span>2</span></footer></section><section class="page zh"><div class="eyebrow">中文版 · 完整步骤总览</div><h1>教务邀请家长与家长完成小程序绑定</h1><div class="steps"><div class="step"><b>1</b><span>教务从正确学生的 Student 360 进入“家长端开通”，先核对学生和已有绑定家长，避免重复或绑错学生。</span></div><div class="step"><b>2</b><span>教务生成一次性家长邀请码，复制邀请码或系统给出的 `/pages/bind/bind` 小程序路径，只发给该学生的已核实家长。</span></div><div class="step"><b>3</b><span>家长打开博思学业管家，选择家长入口；已有登录状态不确定时先退出错误账号。</span></div><div class="step"><b>4</b><span>家长输入邀请码、选择真实关系，按需填写姓名与电话，然后点击确认绑定。</span></div><div class="step"><b>5</b><span>教务回到家长端开通页面，核对家长姓名、关系、ACTIVE 状态和课表/反馈/财务/报告/请求权限。</span></div></div><footer><span>小程序培训</span><span>3</span></footer></section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 1 步，共 5 步</div>
+      <h1>教务从正确学生的 Student 360 进入“家长端开通”，先核对学生和已有绑定家长，避免重复或绑错学生。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-miniapp-binding-20260729/annotated/08-parent-permissions.png"><div class="caption">按照截图中的红框或标注找到操作位置。</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol>
+            <li><b>确认入口：</b>核对页面标题和当前岗位，确保进入的是本文功能，不是相似页面。</li>
+            <li><b>确认对象：</b>核对学生、老师、任务、日期、金额、课包或记录编号。</li>
+            <li><b>执行本步：</b>教务从正确学生的 Student 360 进入“家长端开通”，先核对学生和已有绑定家长，避免重复或绑错学生。</li>
+            <li><b>保存前：</b>逐项复核刚才填写或选择的内容；缺失资料不得猜填。</li>
+            <li><b>保存后：</b>只点击一次保存或提交，然后刷新或重新打开记录。</li>
+            <li><b>完成标志：</b>页面显示预期结果、负责人和最终状态，且结果仍属于正确对象。</li></ol>
+          <div class="stop"><b>立即停止：</b> 姓名、金额、权限、状态或按钮与本教程不一致时，不要继续或重复点击；保留当前页面并联系流程负责人。</div>
+        </div>
+      </div>
+      <footer><span>PARENT_MINIAPP_BINDING · MINIAPP</span><span>4</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 2 步，共 5 步</div>
+      <h1>教务生成一次性家长邀请码，复制邀请码或系统给出的 `/pages/bind/bind` 小程序路径，只发给该学生的已核实家长。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-miniapp-binding-20260729/annotated/07-parent-generate-invite.png"><div class="caption">按照截图中的红框或标注找到操作位置。</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol>
+            <li><b>确认入口：</b>核对页面标题和当前岗位，确保进入的是本文功能，不是相似页面。</li>
+            <li><b>确认对象：</b>核对学生、老师、任务、日期、金额、课包或记录编号。</li>
+            <li><b>执行本步：</b>教务生成一次性家长邀请码，复制邀请码或系统给出的 `/pages/bind/bind` 小程序路径，只发给该学生的已核实家长。</li>
+            <li><b>保存前：</b>逐项复核刚才填写或选择的内容；缺失资料不得猜填。</li>
+            <li><b>保存后：</b>只点击一次保存或提交，然后刷新或重新打开记录。</li>
+            <li><b>完成标志：</b>页面显示预期结果、负责人和最终状态，且结果仍属于正确对象。</li></ol>
+          <div class="stop"><b>立即停止：</b> 姓名、金额、权限、状态或按钮与本教程不一致时，不要继续或重复点击；保留当前页面并联系流程负责人。</div>
+        </div>
+      </div>
+      <footer><span>PARENT_MINIAPP_BINDING · MINIAPP</span><span>5</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 3 步，共 5 步</div>
+      <h1>家长打开博思学业管家，选择家长入口；已有登录状态不确定时先退出错误账号。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-miniapp-binding-20260729/annotated/01-parent-login.png"><div class="caption">按照截图中的红框或标注找到操作位置。</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol>
+            <li><b>确认入口：</b>核对页面标题和当前岗位，确保进入的是本文功能，不是相似页面。</li>
+            <li><b>确认对象：</b>核对学生、老师、任务、日期、金额、课包或记录编号。</li>
+            <li><b>执行本步：</b>家长打开博思学业管家，选择家长入口；已有登录状态不确定时先退出错误账号。</li>
+            <li><b>保存前：</b>逐项复核刚才填写或选择的内容；缺失资料不得猜填。</li>
+            <li><b>保存后：</b>只点击一次保存或提交，然后刷新或重新打开记录。</li>
+            <li><b>完成标志：</b>页面显示预期结果、负责人和最终状态，且结果仍属于正确对象。</li></ol>
+          <div class="stop"><b>立即停止：</b> 姓名、金额、权限、状态或按钮与本教程不一致时，不要继续或重复点击；保留当前页面并联系流程负责人。</div>
+        </div>
+      </div>
+      <footer><span>PARENT_MINIAPP_BINDING · MINIAPP</span><span>6</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 4 步，共 5 步</div>
+      <h1>家长输入邀请码、选择真实关系，按需填写姓名与电话，然后点击确认绑定。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-miniapp-binding-20260729/annotated/02-parent-bind.png"><div class="caption">按照截图中的红框或标注找到操作位置。</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol>
+            <li><b>确认入口：</b>核对页面标题和当前岗位，确保进入的是本文功能，不是相似页面。</li>
+            <li><b>确认对象：</b>核对学生、老师、任务、日期、金额、课包或记录编号。</li>
+            <li><b>执行本步：</b>家长输入邀请码、选择真实关系，按需填写姓名与电话，然后点击确认绑定。</li>
+            <li><b>保存前：</b>逐项复核刚才填写或选择的内容；缺失资料不得猜填。</li>
+            <li><b>保存后：</b>只点击一次保存或提交，然后刷新或重新打开记录。</li>
+            <li><b>完成标志：</b>页面显示预期结果、负责人和最终状态，且结果仍属于正确对象。</li></ol>
+          <div class="stop"><b>立即停止：</b> 姓名、金额、权限、状态或按钮与本教程不一致时，不要继续或重复点击；保留当前页面并联系流程负责人。</div>
+        </div>
+      </div>
+      <footer><span>PARENT_MINIAPP_BINDING · MINIAPP</span><span>7</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 5 步，共 5 步</div>
+      <h1>教务回到家长端开通页面，核对家长姓名、关系、ACTIVE 状态和课表/反馈/财务/报告/请求权限。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-miniapp-binding-20260729/annotated/08-parent-permissions.png"><div class="caption">按照截图中的红框或标注找到操作位置。</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol>
+            <li><b>确认入口：</b>核对页面标题和当前岗位，确保进入的是本文功能，不是相似页面。</li>
+            <li><b>确认对象：</b>核对学生、老师、任务、日期、金额、课包或记录编号。</li>
+            <li><b>执行本步：</b>教务回到家长端开通页面，核对家长姓名、关系、ACTIVE 状态和课表/反馈/财务/报告/请求权限。</li>
+            <li><b>保存前：</b>逐项复核刚才填写或选择的内容；缺失资料不得猜填。</li>
+            <li><b>保存后：</b>只点击一次保存或提交，然后刷新或重新打开记录。</li>
+            <li><b>完成标志：</b>页面显示预期结果、负责人和最终状态，且结果仍属于正确对象。</li></ol>
+          <div class="stop"><b>立即停止：</b> 姓名、金额、权限、状态或按钮与本教程不一致时，不要继续或重复点击；保留当前页面并联系流程负责人。</div>
+        </div>
+      </div>
+      <footer><span>PARENT_MINIAPP_BINDING · MINIAPP</span><span>8</span></footer>
+    </section><section class="page zh"><div class="eyebrow">中文版 · 最终验收</div><h1>以下项目全部确认后才能报告完成</h1><div class="check"><div class="box"><h2>员工自查</h2><ul><li>账号、平台、岗位和目标记录正确。</li><li>全部步骤按顺序完成。</li><li>刷新后仍看到预期最终状态。</li><li>已保存不含敏感信息的结果证据。</li><li>能说明出现异常时找谁处理。</li></ul></div><div class="box danger"><h2>停止并升级</h2><ul><li>缺少必要资料或权限。</li><li>页面、按钮或状态与教程不同。</li><li>未获授权却会影响财务、合同、课包、工资、真实课次或家长可见内容。</li><li>无法确认最终状态。</li></ul></div></div><footer><span>PARENT_MINIAPP_BINDING · MINIAPP</span><span>9</span></footer></section>
+<section class="page divider"><div><div class="eyebrow">LANGUAGE DIVIDER</div><h1>中文版到此结束</h1><div class="english-title">English section starts on the next page</div></div><footer><span>PARENT_MINIAPP_BINDING · MINIAPP</span><span>10</span></footer></section>
+<section class="page en"><div class="eyebrow">ENGLISH SECTION · BEFORE YOU START</div><h1>Complete these four checks before clicking</h1><div class="check"><div class="box"><h2>Prepare</h2><ul><li>Use your own account and role workspace.</li><li>Use training data unless a manager authorises real data.</li><li>Prepare the correct target, date, owner, and source records.</li><li>Keep this PDF beside the system and complete one numbered step at a time.</li></ul></div><div class="box danger"><h2>Never</h2><ul><li>Do not use another employee's account.</li><li>Do not guess names, amounts, dates, statuses, or missing fields.</li><li>Do not repeat Save, Apply, Approve, Publish, or Send when the result is unclear.</li><li>Stop and ask the owner when the page differs.</li></ul></div></div><footer><span>PARENT_MINIAPP_BINDING · MINIAPP</span><span>10</span></footer></section><section class="page en"><div class="eyebrow">ENGLISH SECTION · WORKFLOW OVERVIEW</div><h1>Academic Parent Invitation and Parent Mini Program Binding</h1><div class="steps"><div class="step"><b>1</b><span>Academic opens Parent Portal Access from the correct Student 360 record and checks the student and existing bound parents to avoid duplicates or wrong-student binding.</span></div><div class="step"><b>2</b><span>Academic generates a one-time parent invite and sends the code or system-provided `/pages/bind/bind` path only to the verified parent of that student.</span></div><div class="step"><b>3</b><span>The parent opens Boss Education Assistant and chooses Parent Entry; if the active identity is uncertain, exit the wrong account first.</span></div><div class="step"><b>4</b><span>The parent enters the invite code, selects the true relationship, optionally enters name and phone, then confirms binding.</span></div><div class="step"><b>5</b><span>Academic returns to Parent Portal Access and verifies parent name, relationship, ACTIVE status, and schedule/feedback/finance/report/request permissions.</span></div></div><footer><span>Mini Program training</span><span>11</span></footer></section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 1 OF 5</div>
+      <h1>Academic opens Parent Portal Access from the correct Student 360 record and checks the student and existing bound parents to avoid duplicates or wrong-student binding.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-miniapp-binding-20260729/annotated/08-parent-permissions.png"><div class="caption">Use the red box or callout to locate the action.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol>
+            <li><b>Confirm the entry:</b> Check the page title and current role. Make sure this is the function described here, not a similar page.</li>
+            <li><b>Confirm the target:</b> Recheck the student, teacher, task, date, amount, package, or record number.</li>
+            <li><b>Perform this step:</b> Academic opens Parent Portal Access from the correct Student 360 record and checks the student and existing bound parents to avoid duplicates or wrong-student binding.</li>
+            <li><b>Before saving:</b> Review every field or selection. Never guess missing information.</li>
+            <li><b>After saving:</b> Click Save or Submit once, then refresh or reopen the record.</li>
+            <li><b>Completion signal:</b> The expected result, owner, and final status remain visible on the correct record.</li></ol>
+          <div class="stop"><b>STOP:</b> If the name, amount, permission, status, or button differs, do not continue or click again. Preserve the screen and contact the workflow owner.</div>
+        </div>
+      </div>
+      <footer><span>PARENT_MINIAPP_BINDING · MINIAPP</span><span>12</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 2 OF 5</div>
+      <h1>Academic generates a one-time parent invite and sends the code or system-provided `/pages/bind/bind` path only to the verified parent of that student.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-miniapp-binding-20260729/annotated/07-parent-generate-invite.png"><div class="caption">Use the red box or callout to locate the action.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol>
+            <li><b>Confirm the entry:</b> Check the page title and current role. Make sure this is the function described here, not a similar page.</li>
+            <li><b>Confirm the target:</b> Recheck the student, teacher, task, date, amount, package, or record number.</li>
+            <li><b>Perform this step:</b> Academic generates a one-time parent invite and sends the code or system-provided `/pages/bind/bind` path only to the verified parent of that student.</li>
+            <li><b>Before saving:</b> Review every field or selection. Never guess missing information.</li>
+            <li><b>After saving:</b> Click Save or Submit once, then refresh or reopen the record.</li>
+            <li><b>Completion signal:</b> The expected result, owner, and final status remain visible on the correct record.</li></ol>
+          <div class="stop"><b>STOP:</b> If the name, amount, permission, status, or button differs, do not continue or click again. Preserve the screen and contact the workflow owner.</div>
+        </div>
+      </div>
+      <footer><span>PARENT_MINIAPP_BINDING · MINIAPP</span><span>13</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 3 OF 5</div>
+      <h1>The parent opens Boss Education Assistant and chooses Parent Entry; if the active identity is uncertain, exit the wrong account first.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-miniapp-binding-20260729/annotated/01-parent-login.png"><div class="caption">Use the red box or callout to locate the action.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol>
+            <li><b>Confirm the entry:</b> Check the page title and current role. Make sure this is the function described here, not a similar page.</li>
+            <li><b>Confirm the target:</b> Recheck the student, teacher, task, date, amount, package, or record number.</li>
+            <li><b>Perform this step:</b> The parent opens Boss Education Assistant and chooses Parent Entry; if the active identity is uncertain, exit the wrong account first.</li>
+            <li><b>Before saving:</b> Review every field or selection. Never guess missing information.</li>
+            <li><b>After saving:</b> Click Save or Submit once, then refresh or reopen the record.</li>
+            <li><b>Completion signal:</b> The expected result, owner, and final status remain visible on the correct record.</li></ol>
+          <div class="stop"><b>STOP:</b> If the name, amount, permission, status, or button differs, do not continue or click again. Preserve the screen and contact the workflow owner.</div>
+        </div>
+      </div>
+      <footer><span>PARENT_MINIAPP_BINDING · MINIAPP</span><span>14</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 4 OF 5</div>
+      <h1>The parent enters the invite code, selects the true relationship, optionally enters name and phone, then confirms binding.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-miniapp-binding-20260729/annotated/02-parent-bind.png"><div class="caption">Use the red box or callout to locate the action.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol>
+            <li><b>Confirm the entry:</b> Check the page title and current role. Make sure this is the function described here, not a similar page.</li>
+            <li><b>Confirm the target:</b> Recheck the student, teacher, task, date, amount, package, or record number.</li>
+            <li><b>Perform this step:</b> The parent enters the invite code, selects the true relationship, optionally enters name and phone, then confirms binding.</li>
+            <li><b>Before saving:</b> Review every field or selection. Never guess missing information.</li>
+            <li><b>After saving:</b> Click Save or Submit once, then refresh or reopen the record.</li>
+            <li><b>Completion signal:</b> The expected result, owner, and final status remain visible on the correct record.</li></ol>
+          <div class="stop"><b>STOP:</b> If the name, amount, permission, status, or button differs, do not continue or click again. Preserve the screen and contact the workflow owner.</div>
+        </div>
+      </div>
+      <footer><span>PARENT_MINIAPP_BINDING · MINIAPP</span><span>15</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 5 OF 5</div>
+      <h1>Academic returns to Parent Portal Access and verifies parent name, relationship, ACTIVE status, and schedule/feedback/finance/report/request permissions.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-miniapp-binding-20260729/annotated/08-parent-permissions.png"><div class="caption">Use the red box or callout to locate the action.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol>
+            <li><b>Confirm the entry:</b> Check the page title and current role. Make sure this is the function described here, not a similar page.</li>
+            <li><b>Confirm the target:</b> Recheck the student, teacher, task, date, amount, package, or record number.</li>
+            <li><b>Perform this step:</b> Academic returns to Parent Portal Access and verifies parent name, relationship, ACTIVE status, and schedule/feedback/finance/report/request permissions.</li>
+            <li><b>Before saving:</b> Review every field or selection. Never guess missing information.</li>
+            <li><b>After saving:</b> Click Save or Submit once, then refresh or reopen the record.</li>
+            <li><b>Completion signal:</b> The expected result, owner, and final status remain visible on the correct record.</li></ol>
+          <div class="stop"><b>STOP:</b> If the name, amount, permission, status, or button differs, do not continue or click again. Preserve the screen and contact the workflow owner.</div>
+        </div>
+      </div>
+      <footer><span>PARENT_MINIAPP_BINDING · MINIAPP</span><span>16</span></footer>
+    </section><section class="page en"><div class="eyebrow">ENGLISH SECTION · FINAL CHECK</div><h1>Report completion only when every item is true</h1><div class="check"><div class="box"><h2>Employee self-check</h2><ul><li>The account, platform, role, and target record are correct.</li><li>Every step was completed in order.</li><li>The expected final status remains after refresh.</li><li>Non-sensitive evidence of the result was saved.</li><li>You can explain who handles an exception.</li></ul></div><div class="box danger"><h2>Stop and escalate</h2><ul><li>Required data or permission is missing.</li><li>The page, button, or status differs from the guide.</li><li>An unauthorised action would affect finance, contracts, packages, payroll, live sessions, or parent-visible content.</li><li>The final state cannot be verified.</li></ul></div></div><footer><span>PARENT_MINIAPP_BINDING · MINIAPP</span><span>17</span></footer></section>
+</body></html>

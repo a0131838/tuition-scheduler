@@ -15,6 +15,33 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-03-r303
+
+- Release ID: `2026-08-03-r303`
+- Date/Time (Asia/Singapore): `2026-08-03`
+- Deployment status: `READY`
+- Scope: rebuild all 35 current training guides as single-function beginner SOPs with complete Chinese-first and English-second sections, separate Web and Mini Program libraries, and add downloadable platform catalogues.
+- Key files:
+  - `lib/training-center.ts`
+  - `app/training/page.tsx`
+  - `app/training/library/page.tsx`
+  - `app/api/training/catalogs/[platform]/route.ts`
+  - `scripts/build-bilingual-training-sops.mjs`
+  - `docs/SOP-*-20260803.html`
+  - `output/pdf/*20260803.pdf`
+  - `docs/tasks/TASK-20260803-step-by-step-training-library.md`
+- Risk impact (if any): Low to moderate and limited to training content, retraining version state, PDF delivery, and training-centre presentation. No operational permission, student data, finance, contract, package, attendance, payroll, scheduling, parent-visible business data, or Mini Program business logic changes.
+- Verification:
+  - 35/35 registered module PDFs and two platform catalogues generated;
+  - 37 PDFs / 664 pages checked for page count, required language divider text, blank pages, and file presence;
+  - 374 screenshot references checked with zero missing files;
+  - representative Web, Mini Program, Teacher, and catalogue contact sheets visually inspected;
+  - 21 focused training tests and all 306 repository tests passed;
+  - TypeScript, Mini Program release audit, `git diff --check`, and the 231-page production build passed.
+- Rollback point: `1414aed68176e52165923c25d6de574203a6d5c8` (`2026-08-03-r302` production-aligned head).
+
+---
+
 ## 2026-08-03-r302
 
 - Release ID: `2026-08-03-r302`
