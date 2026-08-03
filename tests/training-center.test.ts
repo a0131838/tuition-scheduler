@@ -21,7 +21,7 @@ test("training module codes and versions are unique", () => {
   const keys = TRAINING_MODULES.map((item) => `${item.code}:${item.version}`);
   assert.equal(new Set(keys).size, keys.length);
   assert.equal(TRAINING_RELEASE_VERSION, "20260803A");
-  assert.equal(ACADEMIC_SCHEDULING_TRAINING_VERSION, "20260803B");
+  assert.equal(ACADEMIC_SCHEDULING_TRAINING_VERSION, "20260803C");
   assert.equal(findTrainingModule("ACADEMIC_SCHEDULING_MASTER")?.version, ACADEMIC_SCHEDULING_TRAINING_VERSION);
   assert.ok(TRAINING_MODULES.filter((item) => item.code !== "ACADEMIC_SCHEDULING_MASTER").every((item) => item.version === TRAINING_RELEASE_VERSION));
   assert.equal(TRAINING_MODULES.filter((item) => item.platform === "WEB").length, 26);
@@ -33,20 +33,23 @@ test("training module codes and versions are unique", () => {
 test("academic web scheduling guide covers every high-risk scheduling path with web evidence", () => {
   const module = findTrainingModule("ACADEMIC_SCHEDULING_MASTER");
   assert.equal(module?.platform, "WEB");
-  assert.equal(module?.estimatedMinutes, 90);
+  assert.equal(module?.estimatedMinutes, 120);
   const html = fs.readFileSync(
     path.join(process.cwd(), "docs", "SOP-教务-排课工单与每日交接完整流程-中英文培训版-20260803.html"),
     "utf8"
   );
   for (const expected of [
     "首次排课", "续排", "Reschedule Existing Session", "取消、请假或换老师", "Conflict Center", "Daily Handover",
-    "ACADEMIC_SCHEDULING_MASTER · WEB", "20260803B",
+    "ACADEMIC_SCHEDULING_MASTER · WEB", "20260803C", "Full List / 完整列表", "Apply / 应用",
   ]) assert.match(html, new RegExp(expected));
   assert.doesNotMatch(html, /sop-小程序员工工作台/);
   assert.match(html, /sop-academic-scheduling-20260803\/annotated\/06-quick-schedule/);
   assert.match(html, /sop-academic-scheduling-20260803\/annotated\/11-reschedule-modal/);
-  assert.equal((html.match(/中文流程 · 第/g) ?? []).length, 15);
-  assert.equal((html.match(/ENGLISH WORKFLOW · STEP/g) ?? []).length, 15);
+  assert.match(html, /sop-academic-scheduling-20260803\/annotated\/12-dashboard-click-students/);
+  assert.match(html, /sop-academic-scheduling-20260803\/annotated\/14-student-search-click-path/);
+  assert.match(html, /sop-academic-scheduling-20260803\/annotated\/15-student-click-quick-schedule/);
+  assert.equal((html.match(/中文流程 · 第/g) ?? []).length, 22);
+  assert.equal((html.match(/ENGLISH WORKFLOW · STEP/g) ?? []).length, 22);
   const webCatalogue = fs.readFileSync(path.join(process.cwd(), "docs", "SOP-网页端逐功能培训目录-中英文版-20260803.html"), "utf8");
   assert.match(webCatalogue, /教务网页端排课：首次排课、续排、调课与异常闭环/);
 });

@@ -29,10 +29,38 @@
 - Current release line prepared: `2026-08-03-r302` adds current-day reminder recovery, explicit-family reminder consolidation, and audited course-change resends without changing schedules or sending messages automatically.
 - Current release line prepared: `2026-08-03-r303` separates Web and Mini Program training and rebuilds all 35 current modules as complete Chinese-first, English-second, single-function beginner guides.
 - Current release line prepared: `2026-08-03-r304` expands the core Academic Web scheduling module from five generic steps to a 40-page, 15-step beginner workflow with real Web screenshots and a module-only retraining version.
+- Current release line prepared: `2026-08-03-r305` adds the missing click-by-click entry chain and expands Academic Web scheduling to 54 pages and 22 steps from login through final handover.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-03-r305 Ready
+
+- Scope: make the Academic Web scheduling training executable by a completely new employee who does not yet know how to enter the scheduling workflow.
+- Business impact:
+  - staff now follow Dashboard → Students → Full List → search → Apply → student name → Quick Schedule as separate numbered actions;
+  - existing-ticket staff now see the exact sidebar position for Scheduling Work Orders;
+  - each new step includes one visible target, completion evidence, and a stop condition;
+  - only `ACADEMIC_SCHEDULING_MASTER` moves to `20260803C` and a 120-minute estimate;
+  - operational scheduling code, permissions, packages, finance gates, tickets, and production data remain unchanged.
+- Files:
+  - `lib/training-center.ts`
+  - `scripts/build-bilingual-training-sops.mjs`
+  - `docs/SOP-教务-排课工单与每日交接完整流程-中英文培训版-20260803.html`
+  - `output/pdf/SOP-教务-排课工单与每日交接完整流程-中英文培训版-20260803.pdf`
+  - `docs/assets/sop-academic-scheduling-20260803/annotated/`
+  - `tests/training-center.test.ts`
+- Verification before deploy:
+  - 54 PDF pages, 22 Chinese steps, 22 English steps, zero blank pages, and a valid language divider;
+  - four new annotated Web entry screenshots plus the existing nine scheduling workflow screenshots passed visual inspection;
+  - focused training tests, all repository tests, TypeScript, production build, Mini Program audit, and `git diff --check` passed.
+- Post-deploy verification:
+  - confirm local, GitHub, and server commit equality, PM2 online, and `/admin/login` HTTP 200;
+  - confirm ADMIN and Academic/CS users see version `20260803C`;
+  - download the production PDF and confirm 54 pages plus the Students, Full List, Apply, Quick Schedule, and Scheduling Work Orders click instructions;
+  - confirm unrelated module versions remain `20260803A` and non-staff access remains blocked.
+- Task doc: `docs/tasks/TASK-20260803-academic-scheduling-click-entry.md`.
 
 ## 2026-08-03-r304 Ready
 

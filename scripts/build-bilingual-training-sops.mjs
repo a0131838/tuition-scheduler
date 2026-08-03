@@ -9,7 +9,7 @@ const root = process.cwd();
 const docsDir = path.join(root, "docs");
 const pdfDir = path.join(root, "output", "pdf");
 const version = "20260803A";
-const schedulingVersion = "20260803B";
+const schedulingVersion = "20260803C";
 
 const detailedStep = (zh, en, zhActions, enActions, zhComplete, enComplete, zhStop, enStop) => [zh, en, {
   zhActions, enActions, zhComplete, enComplete, zhStop, enStop,
@@ -17,18 +17,74 @@ const detailedStep = (zh, en, zhActions, enActions, zhComplete, enComplete, zhSt
 
 const schedulingSteps = [
   detailedStep(
-    "先确认请求属于哪一种排课场景。",
-    "First identify the scheduling scenario.",
-    ["打开家长请求或排课工单，核对学生和课程。", "把请求归类为首次排课、续排/加课、调课、取消/请假或换老师。", "记录家长要求的日期范围、时长、线上/线下和地点。", "已有同课程未关闭工单时沿用原工单，不重复创建。"],
-    ["Open the parent request or scheduling ticket and verify the student and course.", "Classify it as first scheduling, continuation/additional lessons, rescheduling, cancellation/leave, or teacher replacement.", "Record the requested date range, duration, online/offline mode, and location.", "Reuse an open ticket for the same course instead of creating a duplicate."],
-    "工单中能看到明确场景、学生、课程和下一步。", "The ticket shows the exact scenario, student, course, and next action.",
+    "登录网页后，先确认自己在管理工作台。",
+    "After signing in, confirm that you are in the Admin Workspace.",
+    ["打开 https://sgtmanage.com/admin/login。", "输入本人账号和密码，点击 Login / 登录一次。", "登录后查看页面左上角，必须显示 Admin Workspace / 管理工作台。", "确认右上方显示的是本人姓名；不要使用同事账号。"],
+    ["Open https://sgtmanage.com/admin/login.", "Enter your own account and password, then click Login once.", "After login, confirm that the upper-left workspace says Admin Workspace.", "Confirm that your own name is shown; never use another employee's account."],
+    "看到管理工作台、左侧菜单和本人账号。", "The Admin Workspace, sidebar, and your own account are visible.",
+    "登录后进入老师端、家长端或没有左侧菜单时停止。", "Stop if login opens the teacher portal, parent portal, or a page without the admin sidebar."
+  ),
+  detailedStep(
+    "先判断请求类型，再选择正确入口。",
+    "Identify the request type, then choose the correct entry route.",
+    ["首次排课或续排：走“学生 → 快速排课”路线。", "已经有排课工单、家长改时间、取消、请假或换老师：走“排课执行工单”路线。", "临时单节班课：走“周课表 → New (Single)”路线。", "同一课程已经有未关闭工单时继续原工单，不要重复创建。"],
+    ["For first or continued scheduling, use Students → Quick Schedule.", "For an existing ticket, parent time change, cancellation, leave, or teacher replacement, use Scheduling Work Orders.", "For a special one-off class lesson, use Weekly Schedule → New (Single).", "Reuse an open ticket for the same course instead of creating a duplicate."],
+    "你能明确说出本次使用哪条入口路线。", "You can state which entry route this request requires.",
     "无法确认学生、课程或请求类型时停止。", "Stop if the student, course, or request type is unclear."
   ),
   detailedStep(
-    "从“排课执行工单”领取并检查当前队列。",
-    "Open Scheduling Work Orders and inspect the queue.",
-    ["进入管理后台 → Scheduling Work Orders / 排课执行工单。", "先看开放工单、待执行动作、旧工单待结构化和逾期数量。", "优先处理逾期或已承诺家长回复时间的工单。", "打开目标工单并确认负责人；不是本人负责时先完成交接。"],
-    ["Open Admin → Scheduling Work Orders.", "Review open tickets, pending actions, legacy tickets needing structure, and overdue counts.", "Prioritise overdue items and commitments with a promised parent response time.", "Open the target ticket and confirm the owner; hand it over before acting if it is not yours."],
+    "首次排课或续排：在首页点击 Students / 学生。",
+    "For first or continued scheduling, click Students on the dashboard.",
+    ["保持在 Admin Dashboard / 管理首页。", "找到页面中部 Core workflows / 核心流程。", "只点击 Students / 学生卡片一次。", "等待页面标题变成 Students / 学生。"],
+    ["Stay on the Admin Dashboard.", "Find Core workflows in the middle of the page.", "Click the Students card once.", "Wait until the page title changes to Students."],
+    "页面标题显示 Students / 学生。", "The page title says Students.",
+    "点击后进入新增家长链接或其他页面时停止并返回管理首页。", "Stop and return to the dashboard if another page opens."
+  ),
+  detailedStep(
+    "在学生页面点击 Full List / 完整列表。",
+    "On the Students page, click Full List.",
+    ["先看 Current view / 当前视图。", "如果显示 Today New Students / 今日新增，点击 Full List / 完整列表卡片。", "不要在今日新增列表里直接判断学生不存在。", "等待 Full List 卡片出现蓝色边框。"],
+    ["Check Current view first.", "If it says Today New Students, click the Full List card.", "Do not assume a student is missing while viewing only today's list.", "Wait until the Full List card has a blue border."],
+    "Full List / 完整列表被选中。", "Full List is selected.",
+    "完整列表仍显示 0 人或页面报错时停止。", "Stop if the full list still shows zero students or the page errors."
+  ),
+  detailedStep(
+    "输入学生姓名，然后点击 Apply / 应用。",
+    "Enter the student name, then click Apply.",
+    ["展开 Search & filters / 搜索与筛选。", "在第一个搜索框输入学生姓名或学生 ID。", "第二个下拉框保持 All Students / 全部学生。", "点击 Apply / 应用一次，等待结果刷新。"],
+    ["Expand Search & filters.", "Enter the student name or student ID in the first search box.", "Keep the second field as All Students.", "Click Apply once and wait for the results to refresh."],
+    "结果区显示目标学生且姓名完全一致。", "The exact target student appears in the results.",
+    "出现同名学生时不要猜，先用学校、年级、家长或 ID 核对。", "For duplicate names, stop and verify school, grade, parent, or ID."
+  ),
+  detailedStep(
+    "点击学生姓名，打开 Student Detail / 学生详情。",
+    "Click the student name to open Student Detail.",
+    ["在结果表最左侧 Name / 姓名栏找到目标学生。", "再次核对学校、年级和 ID。", "点击蓝色学生姓名一次；不要点击右侧 Delete / 删除。", "等待学生详情页加载完成。"],
+    ["Find the target in the leftmost Name column.", "Recheck school, grade, and ID.", "Click the blue student name once; do not click Delete.", "Wait for Student Detail to finish loading."],
+    "页面顶部显示正确学生姓名和 Student Detail / 学生详情。", "The correct name and Student Detail appear at the top.",
+    "姓名、学校、年级或 ID 不一致时立即返回学生列表。", "Return to the student list immediately if the name, school, grade, or ID differs."
+  ),
+  detailedStep(
+    "在学生工作台点击 Quick Schedule / 快速排课。",
+    "Click Quick Schedule in the student workbench.",
+    ["向下找到 Student workbench / 学生工作台。", "先查看系统的 Recommended now / 当前推荐。", "确认没有未付款课包、财务门禁或必须先处理的协调工单。", "点击 Quick Schedule / 快速排课卡片一次。"],
+    ["Scroll to Student workbench.", "Review Recommended now.", "Confirm there is no unpaid package, finance gate, or coordination ticket that must be handled first.", "Click the Quick Schedule card once."],
+    "页面滚动到 Quick Schedule 区域或打开快速排课表单。", "The page moves to the Quick Schedule section or opens its form.",
+    "系统推荐先协调、存在未付款课包或门禁时不要强行排课。", "Do not force scheduling when coordination, an unpaid package, or a gate is shown first."
+  ),
+  detailedStep(
+    "已有排课请求：在左侧点击 Scheduling Work Orders / 排课执行工单。",
+    "For an existing request, click Scheduling Work Orders in the sidebar.",
+    ["在左侧 Today / 今天分组向下滚动。", "找到 Weekly Schedule / 周课表下面的 Scheduling Work Orders / 排课执行工单。", "只点击排课执行工单一次。", "等待页面标题显示排课执行工单。"],
+    ["Scroll down inside the Today section of the sidebar.", "Find Scheduling Work Orders directly below Weekly Schedule.", "Click Scheduling Work Orders once.", "Wait for the Scheduling Work Orders page title."],
+    "页面标题显示排课执行工单。", "The page title says Scheduling Work Orders.",
+    "不要误点 Ticket Center / 工单中心或 Weekly Schedule / 周课表。", "Do not click Ticket Center or Weekly Schedule by mistake."
+  ),
+  detailedStep(
+    "点击目标排课工单并检查负责人。",
+    "Click the target scheduling ticket and verify its owner.",
+    ["先看开放工单、待执行动作、旧工单待结构化和逾期数量。", "优先处理逾期或已承诺家长回复时间的工单。", "按学生姓名或工单编号找到目标卡片。", "点击目标工单一次并确认负责人；不是本人负责时先完成交接。"],
+    ["Review open tickets, pending actions, legacy tickets needing structure, and overdue counts.", "Prioritise overdue items and parent-response commitments.", "Find the target card by student name or ticket number.", "Click it once and confirm the owner; hand over first if it is not yours."],
     "目标工单已打开，负责人和截止时间明确。", "The target ticket is open with a clear owner and deadline.",
     "同一请求存在两张工单或负责人冲突时停止并合并判断。", "Stop when duplicate tickets or conflicting owners exist."
   ),
@@ -139,7 +195,14 @@ const schedulingSteps = [
 ];
 
 const schedulingImages = [
-  "docs/assets/sop-academic-scheduling-20260803/annotated/02-scheduling-ticket-queue.png",
+  "docs/assets/sop-academic-scheduling-20260803/annotated/12-dashboard-click-students.png",
+  "docs/assets/sop-academic-scheduling-20260803/annotated/12-dashboard-click-students.png",
+  "docs/assets/sop-academic-scheduling-20260803/annotated/12-dashboard-click-students.png",
+  "docs/assets/sop-academic-scheduling-20260803/annotated/14-student-search-click-path.png",
+  "docs/assets/sop-academic-scheduling-20260803/annotated/14-student-search-click-path.png",
+  "docs/assets/sop-academic-scheduling-20260803/annotated/14-student-search-click-path.png",
+  "docs/assets/sop-academic-scheduling-20260803/annotated/15-student-click-quick-schedule.png",
+  "docs/assets/sop-academic-scheduling-20260803/annotated/13-sidebar-click-scheduling-orders.png",
   "docs/assets/sop-academic-scheduling-20260803/annotated/02-scheduling-ticket-queue.png",
   "docs/assets/sop-academic-scheduling-20260803/annotated/03-ticket-actions.png",
   "docs/assets/sop-academic-scheduling-20260803/annotated/04-coordination-workspace.png",

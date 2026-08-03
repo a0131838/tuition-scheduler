@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-03-r305
+
+- Release ID: `2026-08-03-r305`
+- Date/Time (Asia/Singapore): `2026-08-03`
+- Deployment status: `READY`
+- Scope: replace the missing Academic scheduling entry path with a 54-page, 22-step click-by-click beginner guide that starts at login and shows exactly how to open Students, Full List, search, Student Detail, Quick Schedule, and Scheduling Work Orders.
+- Key files:
+  - `lib/training-center.ts`
+  - `scripts/build-bilingual-training-sops.mjs`
+  - `docs/SOP-教务-排课工单与每日交接完整流程-中英文培训版-20260803.html`
+  - `output/pdf/SOP-教务-排课工单与每日交接完整流程-中英文培训版-20260803.pdf`
+  - `docs/assets/sop-academic-scheduling-20260803/annotated/`
+  - `tests/training-center.test.ts`
+  - `docs/tasks/TASK-20260803-academic-scheduling-click-entry.md`
+- Risk impact (if any): Low and limited to Academic training content and retraining version `20260803C`. No scheduling, ticket, package, finance-gate, attendance, payroll, contract, permission, parent-visible, or Mini Program business logic changed.
+- Verification:
+  - the guide contains 22 complete Chinese click steps, a language divider, and 22 complete English click steps across 54 non-blank pages;
+  - four new annotated real Web screenshots show Dashboard → Students, Full List/search/Apply/student name, Quick Schedule, and Scheduling Work Orders;
+  - page-image, representative full-page, and contact-sheet inspection found no blank, clipped, or unreadable pages;
+  - focused tests, full repository tests, TypeScript, production build, Mini Program audit, and `git diff --check` passed.
+- Rollback point: `5583f8fd5a798affe971b8d3d61f562808025e4e` (`2026-08-03-r304` production head).
+
+---
+
 ## 2026-08-03-r304
 
 - Release ID: `2026-08-03-r304`

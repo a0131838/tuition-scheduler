@@ -3,7 +3,7 @@ import type { SystemUserRole } from "@/lib/staff-roles";
 export const TRAINING_ASSIGNABLE_ROLES = ["ADMIN", "FINANCE", "SALES", "CS", "TEACHER"] as const satisfies readonly SystemUserRole[];
 export type TrainingAssignableRole = (typeof TRAINING_ASSIGNABLE_ROLES)[number];
 export const TRAINING_RELEASE_VERSION = "20260803A";
-export const ACADEMIC_SCHEDULING_TRAINING_VERSION = "20260803B";
+export const ACADEMIC_SCHEDULING_TRAINING_VERSION = "20260803C";
 
 export type TrainingPlatform = "WEB" | "MINIAPP";
 
@@ -150,7 +150,7 @@ function module(input: TrainingModuleInput): TrainingModule {
     categoryEn: en.category,
     practicalTaskEn: en.practicalTask,
     phase,
-    estimatedMinutes: input.code === "ACADEMIC_SCHEDULING_MASTER" ? 90 : phase === "FOUNDATION" ? 30 : phase === "CORE" ? 45 : 60,
+    estimatedMinutes: input.code === "ACADEMIC_SCHEDULING_MASTER" ? 120 : phase === "FOUNDATION" ? 30 : phase === "CORE" ? 45 : 60,
     learningObjectives: [
       `能够说明《${input.title}》的正确入口、适用岗位和停止条件。`,
       `能够使用培训数据完成：${input.practicalTask}`,
