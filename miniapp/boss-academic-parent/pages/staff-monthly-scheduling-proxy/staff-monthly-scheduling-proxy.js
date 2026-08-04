@@ -20,6 +20,9 @@ const teacherPreferenceOptions = [
   { value: "NONE", label: "不指定老师" }, { value: "CURRENT", label: "沿用当前老师" },
   { value: "PREFERRED", label: "选择合格老师" }, { value: "VERIFY", label: "家长提到老师，待核对" }
 ];
+const timePriorityOptions = [
+  { value: "REQUIRED", label: "必须满足" }, { value: "PREFERRED", label: "优先选择" }, { value: "ACCEPTABLE", label: "可以接受" }
+];
 const editableStatuses = ["NOT_SENT", "SENT", "VIEWED", "SUBMITTED", "OFFERED", "NEEDS_CLARIFICATION", "NO_RESPONSE"];
 
 function today() {
@@ -44,7 +47,7 @@ function blankForm() {
     teacherPreferenceType: "NONE",
     teacherPreferenceNote: "",
     weekdays: [],
-    timeRanges: [{ start: "09:00", end: "12:00" }, { start: "14:00", end: "18:00" }, { start: "19:00", end: "21:00" }],
+    timeRanges: [{ start: "09:00", end: "12:00", priority: "REQUIRED", priorityIndex: 0 }, { start: "14:00", end: "18:00", priority: "PREFERRED", priorityIndex: 1 }, { start: "19:00", end: "21:00", priority: "ACCEPTABLE", priorityIndex: 2 }],
     unavailableDatesText: "",
     parentNotes: "",
     responseChannel: "WECHAT_GROUP",
@@ -66,6 +69,7 @@ Page({
     channelIndex: 0,
     weekdayOptions,
     teacherPreferenceOptions,
+    timePriorityOptions,
     teacherPreferenceIndex: 0,
     teacherOptions: [],
     teacherIndex: 0,
@@ -90,7 +94,10 @@ Page({
         const item = (data.items || [])[0];
         if (!item) throw new Error("排课项目不存在或月份已关闭");
         const availability = item.availability || {};
-        const ranges = (availability.timeRanges || []).slice(0, 3);
+        const ranges = (availability.timeRanges || []).slice(0, 3).map((row, index) => {
+          const priority = row.priority || timePriorityOptions[index].value;
+          return Object.assign({}, row, { priority, priorityIndex: Math.max(0, timePriorityOptions.findIndex((option) => option.value === priority)) });
+        });
         const defaults = blankForm().timeRanges;
         while (ranges.length < 3) ranges.push(defaults[ranges.length]);
         const responseChannel = item.responseChannel || "WECHAT_GROUP";
@@ -165,6 +172,11 @@ Page({
   inputField(e) { this.setData({ [`form.${e.currentTarget.dataset.field}`]: e.detail.value }); },
   inputNumber(e) { this.setData({ [`form.${e.currentTarget.dataset.field}`]: e.detail.value }); },
   changeTime(e) { this.setData({ [`form.timeRanges[${Number(e.currentTarget.dataset.index)}].${e.currentTarget.dataset.field}`]: e.detail.value }); },
+  changeTimePriority(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const optionIndex = Number(e.detail.value || 0);
+    this.setData({ [`form.timeRanges[${index}].priority`]: (timePriorityOptions[optionIndex] || timePriorityOptions[1]).value, [`form.timeRanges[${index}].priorityIndex`]: optionIndex });
+  },
   changeConfirmedDate(e) { this.setData({ "form.parentConfirmedAt": e.detail.value }); },
   changeSelectionDate(e) { this.setData({ selectionConfirmedAt: e.detail.value }); },
   inputSelectionNote(e) { this.setData({ selectionNote: e.detail.value }); },
@@ -203,6 +215,35 @@ Page({
     }).then(() => { wx.showToast({ title: "代录成功", icon: "success" }); return this.load(); })
       .catch((err) => api.toast(err.message))
       .finally(() => this.setData({ saving: false }));
+  },
+
+  submitFamilyKeep() {
+    const item = this.data.item;
+    const form = this.data.form;
+    if (!item || !item.familyCanKeep || !form.parentConfirmationNote.trim() || this.data.saving) return api.toast("请填写家长原话或沟通摘要");
+    wx.showModal({
+      title: "代录全家沿用",
+      content: `将记录本家庭 ${item.familyItemCount || 1} 项课程沿用本月固定安排。不会创建正式课程。`,
+      confirmText: "确认代录",
+      success: (result) => {
+        if (!result.confirm) return;
+        this.setData({ saving: true });
+        api.requestStaff("/api/miniapp/staff/monthly-scheduling", {
+          method: "POST",
+          timeout: 20000,
+          data: {
+            action: "PROXY_KEEP_FAMILY",
+            campaignId: item.campaignId,
+            itemId: item.id,
+            responseChannel: form.responseChannel,
+            parentConfirmationNote: form.parentConfirmationNote,
+            parentConfirmedAt: form.parentConfirmedAt
+          }
+        }).then(() => { wx.showToast({ title: "全家代录成功", icon: "success" }); return this.load(); })
+          .catch((err) => api.toast(err.message))
+          .finally(() => this.setData({ saving: false }));
+      }
+    });
   },
 
   toggleOffer(e) {

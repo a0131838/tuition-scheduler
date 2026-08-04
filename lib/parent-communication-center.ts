@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { feedbackAttachmentDto } from "@/lib/feedback-attachments";
 import { getVisibleSessionStudents } from "@/lib/session-students";
 import { renderPublishedCommunicationTemplate } from "@/lib/parent-communication-templates";
+import { monthlySchedulingMonthKey } from "@/lib/monthly-scheduling";
 
 export type CommunicationActor = {
   id: string;
@@ -186,6 +187,9 @@ async function upsertCommunicationTask(input: {
       data: { ...taskData, priority: input.priority ?? "NORMAL", contentFingerprint },
     });
   }
+  if (input.kind === "MONTHLY_SCHEDULING" && existing.contentFingerprint === contentFingerprint) {
+    return existing;
+  }
   if (existing.contentFingerprint === contentFingerprint) {
     if (!existing.manualSentAt && existing.status !== input.status) {
       return prisma.parentCommunicationTask.update({ where: { id: existing.id }, data: { status: input.status, note: input.status === "PENDING_REVIEW" ? null : existing.note } });
@@ -205,6 +209,37 @@ async function upsertCommunicationTask(input: {
 
   if (existing.manualSentAt || existing.status === "COMPLETED") {
     const correctionKey = `${input.taskKey}:correction:${contentFingerprint.slice(0, 12)}`;
+    if (input.kind === "MONTHLY_SCHEDULING") {
+      const existingCorrection = await prisma.parentCommunicationTask.findUnique({ where: { taskKey: correctionKey } });
+      if (existingCorrection?.manualSentAt || existingCorrection?.status === "COMPLETED") return existingCorrection;
+      await prisma.parentCommunicationTask.update({
+        where: { id: existing.id },
+        data: { supersededAt: existing.supersededAt ?? new Date() },
+      });
+      return prisma.parentCommunicationTask.upsert({
+        where: { taskKey: correctionKey },
+        create: {
+          ...taskData,
+          taskKey: correctionKey,
+          status: "READY_TO_SEND",
+          priority: "HIGH",
+          title: `【家庭课程更新】${input.title}`,
+          contentFingerprint,
+          correctionOfTaskId: existing.id,
+        },
+        update: {
+          status: existingCorrection?.status ?? "READY_TO_SEND",
+          priority: "HIGH",
+          title: `【家庭课程更新】${input.title}`,
+          messageText: input.messageText,
+          contentFingerprint,
+          templateCode: input.templateCode,
+          templateVersion: input.templateVersion,
+          templateVariables: input.templateVariables ?? undefined,
+          dueAt: input.dueAt ?? existing.dueAt,
+        },
+      });
+    }
     const feedbackRevision = input.kind === "FEEDBACK";
     const existingCorrection = await prisma.parentCommunicationTask.findUnique({ where: { taskKey: correctionKey } });
     const courseChange = feedbackRevision ? null : buildCourseChangeMessage({
@@ -611,6 +646,65 @@ async function syncCourseReminderTasks() {
   return count;
 }
 
+export async function syncMonthlySchedulingCommunicationTasks() {
+  const campaigns = await prisma.monthlySchedulingCampaign.findMany({
+    where: { status: "OPEN" },
+    include: {
+      items: {
+        where: { status: { not: "EXCLUDED" } },
+        include: { student: { select: { id: true, name: true } }, course: { select: { name: true } }, parent: { select: { id: true, name: true } } },
+        orderBy: [{ student: { name: "asc" } }, { course: { name: "asc" } }],
+      },
+    },
+    orderBy: { month: "asc" },
+    take: 4,
+  });
+  let count = 0;
+  for (const campaign of campaigns) {
+    const families = new Map<string, typeof campaign.items>();
+    for (const item of campaign.items) {
+      const key = item.parentId ?? `STUDENT:${item.studentId}`;
+      families.set(key, [...(families.get(key) ?? []), item]);
+    }
+    for (const [familyKey, rows] of families) {
+      const first = rows[0];
+      if (!first) continue;
+      const taskKey = `monthly-scheduling:${campaign.id}:${familyKey}`;
+      if (!rows.some((row) => row.status === "NOT_SENT")) {
+        await prisma.parentCommunicationTask.updateMany({
+          where: { taskKey, manualSentAt: null, status: { in: OPEN_STATUSES } },
+          data: { status: "WAIVED", note: "家庭已完成下月安排回复，无需再发送初始提醒。", completedAt: new Date() },
+        });
+        continue;
+      }
+      const month = monthlySchedulingMonthKey(campaign.month);
+      const variables = {
+        parentName: first.parent?.name || "家长",
+        month,
+        studentNames: Array.from(new Set(rows.map((row) => row.student.name))).join("、"),
+        studentCourseLines: rows.map((row) => `${row.student.name}：${row.course.name}`).join("；"),
+        dueDate: campaign.dueAt ? formatBusinessDateOnly(campaign.dueAt) : "-",
+      };
+      const rendered = await renderPublishedCommunicationTemplate("MONTHLY_INITIAL", variables);
+      await upsertCommunicationTask({
+        taskKey,
+        kind: "MONTHLY_SCHEDULING",
+        status: "READY_TO_SEND",
+        studentId: first.studentId,
+        parentId: first.parentId,
+        title: `${month} 下月排课确认 · ${variables.studentNames}`,
+        messageText: rendered.messageText,
+        templateCode: rendered.template.code,
+        templateVersion: rendered.template.version,
+        templateVariables: variables,
+        dueAt: campaign.dueAt,
+      });
+      count += 1;
+    }
+  }
+  return count;
+}
+
 async function refreshLegacyCourseChangeTasks() {
   const legacyRows = await prisma.parentCommunicationTask.findMany({
     where: { kind: "COURSE_CHANGE", status: { in: OPEN_STATUSES }, correctionOfTaskId: { not: null } },
@@ -641,7 +735,7 @@ async function refreshLegacyCourseChangeTasks() {
 }
 
 export async function syncParentCommunicationCenter(actor?: CommunicationActor) {
-  const [feedbackCount, reminderCount] = await Promise.all([syncFeedbackTasks(), syncCourseReminderTasks()]);
+  const [feedbackCount, reminderCount, monthlySchedulingCount] = await Promise.all([syncFeedbackTasks(), syncCourseReminderTasks(), syncMonthlySchedulingCommunicationTasks()]);
   const legacyCourseChangeCount = await refreshLegacyCourseChangeTasks();
   if (actor) {
     await logAudit({
@@ -649,10 +743,10 @@ export async function syncParentCommunicationCenter(actor?: CommunicationActor) 
       module: "COMMUNICATION",
       action: "SYNC_COMMUNICATION_TASKS",
       entityType: "ParentCommunicationTask",
-      meta: { feedbackCount, reminderCount, legacyCourseChangeCount },
+      meta: { feedbackCount, reminderCount, monthlySchedulingCount, legacyCourseChangeCount },
     });
   }
-  return { feedbackCount, reminderCount, legacyCourseChangeCount };
+  return { feedbackCount, reminderCount, monthlySchedulingCount, legacyCourseChangeCount };
 }
 
 export async function listParentCommunicationTasks(input: { status?: string; kind?: string; limit?: number }) {
@@ -933,6 +1027,17 @@ export async function updateParentCommunicationTask(input: {
     }
     if (task.kind === "COURSE_REMINDER_TEACHER" && task.teacherId && task.dueAt) {
       await prisma.todoReminderConfirm.createMany({ data: [{ type: "TEACHER_TOMORROW", targetId: task.teacherId, date: task.dueAt }], skipDuplicates: true });
+    }
+    if (task.kind === "MONTHLY_SCHEDULING" && task.taskKey.startsWith("monthly-scheduling:")) {
+      const campaignId = task.taskKey.split(":")[1] ?? "";
+      await prisma.monthlySchedulingItem.updateMany({
+        where: {
+          campaignId,
+          status: "NOT_SENT",
+          ...(task.parentId ? { parentId: task.parentId } : task.studentId ? { studentId: task.studentId } : { id: "__none__" }),
+        },
+        data: { status: "SENT", sentAt: now, ownerUserId: input.actor.id, ownerName: input.actor.name },
+      });
     }
     if (task.feedbackId) {
       const remaining = await prisma.parentCommunicationTask.count({ where: { feedbackId: task.feedbackId, manualSentAt: null, status: { not: "WAIVED" } } });

@@ -13,6 +13,11 @@
   <view class="empty" wx:if="{{!loading && !items.length}}">目前没有需要确认的下月课程安排</view>
 
   <block wx:if="{{selected}}">
+    <view class="family-keep" wx:if="{{selected.familyCanKeep}}">
+      <view class="family-keep-title">本家庭可以一键沿用</view>
+      <view class="offer-help">系统已根据本月固定课表整理 {{selected.familyItemCount}} 项课程。确认后教务只需处理例外。</view>
+      <button class="family-keep-button" loading="{{saving}}" bindtap="keepFamily">全家沿用本月固定安排</button>
+    </view>
     <view class="field-card" wx:if="{{items.length > 1}}">
       <view class="field-label family-label">本家庭需要分别确认</view>
       <view class="family-item {{selectedIndex === index ? 'active' : ''}}" wx:for="{{items}}" wx:key="id" data-index="{{index}}" bindtap="selectItemCard">
@@ -26,18 +31,22 @@
       <view class="status-chip">{{selected.statusLabel}}</view>
     </view>
 
-    <view class="section-title">目前安排</view>
+    <view class="section-title">下月已排正式课程</view>
     <view class="schedule-list" wx:if="{{selected.currentSchedule.length}}">
       <view class="schedule-row" wx:for="{{selected.currentSchedule}}" wx:key="sessionId"><view class="schedule-time">{{item.startText}}</view><view class="schedule-meta">{{item.teacher || "老师未定"}} · {{item.campus || "地点未定"}}</view></view>
     </view>
-    <view class="empty-line" wx:else>下个月尚未安排正式课程</view>
+    <view class="empty-line" wx:if="{{!selected.currentSchedule.length}}">下个月尚未安排正式课程</view>
+    <view class="section-title" wx:if="{{selected.carryForwardSchedule.length}}">沿用本月固定安排建议</view>
+    <view class="schedule-list carry-forward" wx:if="{{selected.carryForwardSchedule.length}}">
+      <view class="schedule-row" wx:for="{{selected.carryForwardSchedule}}" wx:key="index"><view class="schedule-time">{{item.weekdayLabel}} {{item.start}}–{{item.end}}</view><view class="schedule-meta">{{item.teacher || "老师未定"}} · {{item.campus || "地点未定"}} · 本月出现 {{item.sourceCount}} 次</view></view>
+    </view>
 
     <view class="offer-section" wx:if="{{selected.canRankOffers && selected.offers.length}}">
       <view class="section-title compact">学校初步匹配的具体时间</view>
       <view class="offer-help">请按优先顺序点击最多三个方案。系统会临时保留第一个仍可用的教师时段 24 小时，最终以学校确认课表为准。</view>
       <view class="offer-row {{item.displayRank ? 'selected' : ''}}" wx:for="{{selected.offers}}" wx:key="id" data-id="{{item.id}}" bindtap="toggleOffer">
         <view class="offer-rank">{{item.rankLabel}}</view>
-        <view class="offer-copy"><view class="offer-title">{{item.weekdayLabel}} {{item.start}}–{{item.end}} · {{item.teacherName}}</view><view class="offer-meta">目标月可安排 {{item.sessionCount}} 次 · 每次 {{item.durationMin}} 分钟</view></view>
+        <view class="offer-copy"><view class="offer-title">{{item.weekdayLabel}} {{item.start}}–{{item.end}} · {{item.teacherName}}</view><view class="offer-meta">{{item.preferenceLabel || "可选时间"}} · 目标月可安排 {{item.sessionCount}} 次 · 每次 {{item.durationMin}} 分钟</view></view>
       </view>
       <button class="primary" loading="{{saving}}" disabled="{{saving || !rankedOfferIds.length}}" bindtap="submitOfferRanking">确认时间优先顺序</button>
     </view>
@@ -71,7 +80,7 @@
         <view class="field-label">可以上课的星期</view>
         <view class="weekday-grid"><view class="weekday {{item.selected ? 'selected' : ''}}" wx:for="{{weekdayOptions}}" wx:key="value" data-value="{{item.value}}" bindtap="toggleWeekday">{{item.label}}</view></view>
         <view class="field-label">提供最多三组可用时间</view>
-        <view class="time-row" wx:for="{{form.timeRanges}}" wx:key="index"><picker mode="time" value="{{item.start}}" data-index="{{index}}" bindchange="changeTimeStart"><view class="time-picker">{{item.start}}</view></picker><text>至</text><picker mode="time" value="{{item.end}}" data-index="{{index}}" bindchange="changeTimeEnd"><view class="time-picker">{{item.end}}</view></picker></view>
+        <view class="time-block" wx:for="{{form.timeRanges}}" wx:key="index"><view class="time-row"><picker mode="time" value="{{item.start}}" data-index="{{index}}" bindchange="changeTimeStart"><view class="time-picker">{{item.start}}</view></picker><text>至</text><picker mode="time" value="{{item.end}}" data-index="{{index}}" bindchange="changeTimeEnd"><view class="time-picker">{{item.end}}</view></picker></view><picker mode="selector" range="{{timePriorityOptions}}" range-key="label" value="{{item.priorityIndex}}" data-index="{{index}}" bindchange="changeTimePriority"><view class="priority-picker">优先级：{{item.priority === 'REQUIRED' ? '必须满足' : item.priority === 'PREFERRED' ? '优先选择' : '可以接受'}}</view></picker></view>
       </block>
 
       <block wx:if="{{form.intent !== 'PAUSE'}}">

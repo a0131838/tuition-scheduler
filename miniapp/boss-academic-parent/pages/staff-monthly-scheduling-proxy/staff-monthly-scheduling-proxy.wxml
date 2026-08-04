@@ -14,6 +14,14 @@
       <view class="audit" wx:if="{{item.responseEntryMode === 'STAFF_PROXY'}}">上次代录：{{item.respondedByName || "-"}} · {{item.responseChannel || "-"}}</view>
     </view>
 
+    <view class="form-card family-keep-card" wx:if="{{item.familyCanKeep && canEditPreference}}">
+      <view class="section-title">快速处理：全家沿用本月安排</view>
+      <view class="section-help">适用于家长在微信群直接回复“下月照旧”。一次记录 {{item.familyItemCount}} 项课程，每项仍独立保留。</view>
+      <view class="field required"><view class="label">家长原话或沟通摘要</view><textarea class="textarea" value="{{form.parentConfirmationNote}}" data-field="parentConfirmationNote" bindinput="inputField" placeholder="例如：家长在微信群回复，下个月两个孩子都按现在时间继续。" /></view>
+      <view class="field"><view class="label">沟通渠道</view><picker range="{{channelOptions}}" range-key="label" value="{{channelIndex}}" bindchange="changeChannel"><view class="picker">{{channelOptions[channelIndex].label}} <text>选择</text></view></picker></view>
+      <button class="family-keep-button" loading="{{saving}}" bindtap="submitFamilyKeep">代录全家沿用</button>
+    </view>
+
     <view class="form-card" wx:if="{{canEditPreference}}">
       <view class="section-title">第一步：录入家长需求</view>
       <view class="section-help">家长原话或沟通摘要为必填审计记录，家长不可见。</view>
@@ -31,7 +39,7 @@
       <view class="field required" wx:if="{{form.teacherPreferenceType === 'VERIFY'}}"><view class="label">家长提到的老师</view><input class="input" value="{{form.teacherPreferenceNote}}" data-field="teacherPreferenceNote" bindinput="inputField" placeholder="填写原话中的老师姓名，交教务核对" /></view>
 
       <view class="field" wx:if="{{form.intent === 'CHANGE'}}"><view class="label">可上课星期</view><view class="weekday-grid"><view class="weekday {{item.selected ? 'selected' : ''}}" wx:for="{{weekdayOptions}}" wx:key="value" data-value="{{item.value}}" bindtap="toggleWeekday">{{item.label}}</view></view></view>
-      <view class="time-row" wx:if="{{form.intent === 'CHANGE'}}" wx:for="{{form.timeRanges}}" wx:key="index"><view class="time-label">时段 {{index + 1}}</view><picker mode="time" value="{{item.start}}" data-index="{{index}}" data-field="start" bindchange="changeTime"><view class="time-picker">{{item.start}}</view></picker><text>至</text><picker mode="time" value="{{item.end}}" data-index="{{index}}" data-field="end" bindchange="changeTime"><view class="time-picker">{{item.end}}</view></picker></view>
+      <view class="time-block" wx:if="{{form.intent === 'CHANGE'}}" wx:for="{{form.timeRanges}}" wx:key="index"><view class="time-row"><view class="time-label">时段 {{index + 1}}</view><picker mode="time" value="{{item.start}}" data-index="{{index}}" data-field="start" bindchange="changeTime"><view class="time-picker">{{item.start}}</view></picker><text>至</text><picker mode="time" value="{{item.end}}" data-index="{{index}}" data-field="end" bindchange="changeTime"><view class="time-picker">{{item.end}}</view></picker></view><picker mode="selector" range="{{timePriorityOptions}}" range-key="label" value="{{item.priorityIndex}}" data-index="{{index}}" bindchange="changeTimePriority"><view class="picker">优先级：{{item.priority === 'REQUIRED' ? '必须满足' : item.priority === 'PREFERRED' ? '优先选择' : '可以接受'}}</view></picker></view>
       <view class="field" wx:if="{{form.intent === 'CHANGE'}}"><view class="label">不可上课日期</view><input class="input" value="{{form.unavailableDatesText}}" data-field="unavailableDatesText" bindinput="inputField" placeholder="2026-09-05, 2026-09-12" /></view>
       <view class="field"><view class="label">家长需求备注</view><textarea class="textarea" value="{{form.parentNotes}}" data-field="parentNotes" bindinput="inputField" placeholder="对排课有帮助的补充信息" /></view>
       <view class="field required"><view class="label">家长原话或沟通摘要</view><textarea class="textarea" value="{{form.parentConfirmationNote}}" data-field="parentConfirmationNote" bindinput="inputField" placeholder="例如：家长在李赫轩家长群回复，周二和周四下午可以，周四优先。" /></view>
@@ -45,7 +53,7 @@
       <view class="section-title">第二步：代录家长时间排序</view>
       <view class="section-help">先把候选时间发到微信群，收到家长回复后再按顺序点击，最多三个。</view>
       <view class="offer {{item.displayRank ? 'selected' : ''}}" wx:for="{{item.offers}}" wx:key="id" data-id="{{item.id}}" bindtap="toggleOffer">
-        <view><view class="offer-title">{{item.weekdayLabel}} {{item.start}}–{{item.end}}</view><view class="offer-meta">{{item.teacherName}} · {{item.sessionCount}} 次 · 每次 {{item.durationMin}} 分钟</view></view>
+        <view><view class="offer-title">{{item.weekdayLabel}} {{item.start}}–{{item.end}}</view><view class="offer-meta">{{item.preferenceLabel || "可选时间"}} · {{item.teacherName}} · {{item.sessionCount}} 次 · 每次 {{item.durationMin}} 分钟</view></view>
         <view class="rank">{{item.displayRank ? '第' + item.displayRank + '选择' : '选择'}}</view>
       </view>
       <view class="field"><view class="label">沟通渠道</view><picker range="{{channelOptions}}" range-key="label" value="{{selectionChannelIndex}}" bindchange="changeSelectionChannel"><view class="picker">{{channelOptions[selectionChannelIndex].label}} <text>选择</text></view></picker></view>

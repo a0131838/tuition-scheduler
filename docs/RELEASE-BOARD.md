@@ -34,10 +34,34 @@
 - Current release line prepared: `2026-08-04-r307` replaces repeated free-form time negotiation with ranked concrete teacher/time choices, 24-hour holds, a simplified Academic queue, and safe prefilling into the existing formally validated scheduling page.
 - Current release line prepared: `2026-08-04-r308` lets authorized Academic staff record parent preferences and ranked choices received through WeChat or phone, while preserving the same conflict checks, temporary holds, formal scheduling boundary, and audit trail.
 - Current release line prepared: `2026-08-04-r309` validates teacher preferences by course-qualified teacher ID and gives Academic a manager-controlled, versioned 18-scenario bilingual parent-message library on the Web and Staff Mini Program.
+- Current release line prepared: `2026-08-04-r310` reduces routine next-month coordination with previous-month carry-forward suggestions, one family decision, prioritized time windows, sibling conflict protection, consolidated communication tasks, and an exception-only Academic queue across Web and Mini Program.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-04-r310 Ready
+
+- Routine family handling:
+  - the system derives a read-only next-month suggestion from the previous month's actual recurring lessons;
+  - one family can confirm keeping all eligible sibling/course arrangements in one action;
+  - Parent and Staff Mini Programs expose the same family decision, while staff proxy entry retains channel, confirmation time, original message or summary, and operator audit;
+  - one family/campaign communication task contains all linked children and courses instead of creating duplicate reminders.
+- Change handling:
+  - families submit at most three time windows labeled must fit, preferred, or acceptable;
+  - concrete offers respect the priority before teacher preference and still require real teacher date availability;
+  - temporary holds treat the same parent's sibling offers as conflicts, preventing overlapping sibling selections;
+  - Web and Staff Mini Program queues separate ready confirmation, waiting parent, exceptions, and completed work, with a visible exception reason.
+- Automation and capacity:
+  - a daily idempotent server job prepares the next campaign, opens it at the configured date, and moves overdue untouched responses to no-response follow-up;
+  - the Web workbench shows teachers who have not entered availability;
+  - all formal lessons are still created only through the existing validated scheduling workflow.
+- Safety boundaries:
+  - additive nullable columns and one index only; no destructive SQL;
+  - serializable family writes and stale-state guards prevent partial or conflicting updates;
+  - automation never sends WeChat messages and never creates, moves, or cancels formal lessons;
+  - packages, balances, attendance, deductions, contracts, invoices, receipts, payroll, tickets, and historical lessons remain unchanged.
+- Task doc: `docs/tasks/TASK-20260804-monthly-scheduling-family-efficiency.md`.
 
 ## 2026-08-04-r308 Ready
 

@@ -2,6 +2,7 @@ const api = require("../../utils/api");
 
 const kindLabels = {
   FEEDBACK: "课后反馈",
+  MONTHLY_SCHEDULING: "下月排课",
   COURSE_REMINDER_PARENT: "发给家长",
   COURSE_REMINDER_TEACHER: "发给老师",
   COURSE_CHANGE: "课程变更补发"
@@ -37,6 +38,9 @@ function formatDateTime(value) {
 }
 
 function shareInfo(item) {
+  if (item.kind === "MONTHLY_SCHEDULING") {
+    return { canShareCard: true, shareTitle: item.title || "下月排课确认", sharePath: "/pages/monthly-scheduling/monthly-scheduling" };
+  }
   if (item.kind === "FEEDBACK" && item.feedbackId && item.studentId) {
     return { canShareCard: Boolean(item.feedback && item.feedback.reviewStatus === "PUBLISHED"), shareTitle: `${item.student && item.student.name ? item.student.name : "学生"}课后反馈`, sharePath: `/pages/feedbacks/feedbacks?studentId=${encodeURIComponent(item.studentId)}&feedbackId=${encodeURIComponent(item.feedbackId)}` };
   }
@@ -59,6 +63,7 @@ Page({
     expandedId: "",
     workstreams: [
       { value: "FEEDBACK", label: "课后反馈", count: 0 },
+      { value: "MONTHLY_SCHEDULING", label: "下月排课", count: 0 },
       { value: "COURSE_REMINDER_PARENT", label: "发给家长", count: 0 },
       { value: "COURSE_REMINDER_TEACHER", label: "发给老师", count: 0 },
       { value: "COURSE_CHANGE", label: "课程变更补发", count: 0 }

@@ -28,13 +28,16 @@ export const MONTHLY_SCHEDULING_ITEM_STATUSES = [
 export const MONTHLY_SCHEDULING_INTENTS = ["KEEP", "CHANGE", "PAUSE", "UNSURE"] as const;
 export const MONTHLY_SCHEDULING_RESPONSE_CHANNELS = ["WECHAT_GROUP", "WECHAT_PRIVATE", "PHONE", "OTHER"] as const;
 export const MONTHLY_SCHEDULING_TEACHER_PREFERENCE_TYPES = ["NONE", "CURRENT", "PREFERRED", "VERIFY"] as const;
+export const MONTHLY_SCHEDULING_TIME_PRIORITIES = ["REQUIRED", "PREFERRED", "ACCEPTABLE"] as const;
 export const MONTHLY_SCHEDULING_PROXY_EDITABLE_STATUSES = ["NOT_SENT", "SENT", "VIEWED", "SUBMITTED", "OFFERED", "NEEDS_CLARIFICATION", "NO_RESPONSE"] as const;
+const MONTHLY_SCHEDULING_FAMILY_KEEP_STATUSES = ["NOT_SENT", "SENT", "VIEWED", "SUBMITTED", "NEEDS_CLARIFICATION", "NO_RESPONSE"] as const;
 
 export type MonthlySchedulingCampaignStatus = (typeof MONTHLY_SCHEDULING_CAMPAIGN_STATUSES)[number];
 export type MonthlySchedulingItemStatus = (typeof MONTHLY_SCHEDULING_ITEM_STATUSES)[number];
 export type MonthlySchedulingIntent = (typeof MONTHLY_SCHEDULING_INTENTS)[number];
 export type MonthlySchedulingResponseChannel = (typeof MONTHLY_SCHEDULING_RESPONSE_CHANNELS)[number];
 export type MonthlySchedulingTeacherPreferenceType = (typeof MONTHLY_SCHEDULING_TEACHER_PREFERENCE_TYPES)[number];
+export type MonthlySchedulingTimePriority = (typeof MONTHLY_SCHEDULING_TIME_PRIORITIES)[number];
 
 export const responseChannelLabels: Record<MonthlySchedulingResponseChannel, { en: string; zh: string }> = {
   WECHAT_GROUP: { en: "WeChat group", zh: "微信群" },
@@ -46,8 +49,14 @@ export const responseChannelLabels: Record<MonthlySchedulingResponseChannel, { e
 export type MonthlyAvailabilityPayload = {
   selectionMode: "weekly" | "calendar";
   weekdays: string[];
-  timeRanges: Array<{ start: string; end: string }>;
-  dateSelections: Array<{ date: string; start: string; end: string }>;
+  timeRanges: Array<{ start: string; end: string; priority: MonthlySchedulingTimePriority }>;
+  dateSelections: Array<{ date: string; start: string; end: string; priority: MonthlySchedulingTimePriority }>;
+};
+
+export const timePriorityLabels: Record<MonthlySchedulingTimePriority, { en: string; zh: string }> = {
+  REQUIRED: { en: "Must fit", zh: "必须满足" },
+  PREFERRED: { en: "Preferred", zh: "优先选择" },
+  ACCEPTABLE: { en: "Acceptable", zh: "可以接受" },
 };
 
 export const itemStatusLabels: Record<MonthlySchedulingItemStatus, { en: string; zh: string }> = {
@@ -162,6 +171,56 @@ function scheduleRow(session: any) {
   };
 }
 
+export type MonthlyCarryForwardScheduleRow = {
+  weekdayCode: string;
+  weekdayLabel: string;
+  start: string;
+  end: string;
+  durationMin: number;
+  teacher: string | null;
+  teacherId: string | null;
+  campus: string | null;
+  mode: string;
+  sourceCount: number;
+  sourceDates: string[];
+};
+
+const weekdayZh: Record<string, string> = { MON: "周一", TUE: "周二", WED: "周三", THU: "周四", FRI: "周五", SAT: "周六", SUN: "周日" };
+
+export function buildMonthlyCarryForwardSchedule(rows: ReturnType<typeof scheduleRow>[]) {
+  const grouped = new Map<string, MonthlyCarryForwardScheduleRow>();
+  for (const row of rows) {
+    const startAt = new Date(row.startAt);
+    const endAt = new Date(row.endAt);
+    if (Number.isNaN(startAt.getTime()) || Number.isNaN(endAt.getTime())) continue;
+    const weekdayCode = monthlySchedulingWeekdayCode(formatBusinessDateOnly(startAt));
+    const startMin = businessMinuteOfDay(startAt);
+    const endMin = businessMinuteOfDay(endAt);
+    const start = `${String(Math.floor(startMin / 60)).padStart(2, "0")}:${String(startMin % 60).padStart(2, "0")}`;
+    const end = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
+    const key = [weekdayCode, start, end, row.teacherId ?? "", row.campus ?? "", row.mode].join(":");
+    const existing: MonthlyCarryForwardScheduleRow = grouped.get(key) ?? {
+      weekdayCode,
+      weekdayLabel: weekdayZh[weekdayCode] ?? weekdayCode,
+      start,
+      end,
+      durationMin: row.durationMin,
+      teacher: row.teacher,
+      teacherId: row.teacherId,
+      campus: row.campus,
+      mode: row.mode,
+      sourceCount: 0,
+      sourceDates: [],
+    };
+    existing.sourceCount += 1;
+    existing.sourceDates.push(formatBusinessDateOnly(startAt));
+    grouped.set(key, existing);
+  }
+  return Array.from(grouped.values())
+    .sort((a, b) => b.sourceCount - a.sourceCount || a.weekdayCode.localeCompare(b.weekdayCode) || a.start.localeCompare(b.start))
+    .slice(0, 6);
+}
+
 export async function createMonthlySchedulingCampaign(input: {
   month: string;
   actor: { id: string; name: string };
@@ -185,6 +244,7 @@ export async function syncMonthlySchedulingCampaignItems(campaignId: string) {
   const range = monthlySchedulingRange(month);
   if (!range) throw new Error("Invalid campaign month");
   const historyStart = new Date(range.start.getTime() - 120 * DAY_MS);
+  const previousMonthRange = monthlySchedulingRange(monthlySchedulingMonthKey(new Date(range.start.getTime() - DAY_MS)));
 
   const [packages, sessions, existingRows] = await Promise.all([
     prisma.coursePackage.findMany({
@@ -240,12 +300,17 @@ export async function syncMonthlySchedulingCampaignItems(campaignId: string) {
   const existingKeys = new Set(existingRows.map((row) => `${row.studentId}:${row.courseId}`));
 
   const schedules = new Map<string, ReturnType<typeof scheduleRow>[]>();
+  const previousSchedules = new Map<string, ReturnType<typeof scheduleRow>[]>();
   const recentCoursesByStudent = new Map<string, Set<string>>();
   for (const session of sessions) {
     for (const studentId of monthlySchedulingSessionStudentIds(session)) {
       const recentCourses = recentCoursesByStudent.get(studentId) ?? new Set<string>();
       recentCourses.add(session.class.courseId);
       recentCoursesByStudent.set(studentId, recentCourses);
+      if (previousMonthRange && session.startAt >= previousMonthRange.start && session.startAt < range.start) {
+        const previousKey = `${studentId}:${session.class.courseId}`;
+        previousSchedules.set(previousKey, [...(previousSchedules.get(previousKey) ?? []), scheduleRow(session)]);
+      }
       if (session.startAt < range.start || session.startAt >= range.end) continue;
       const key = `${studentId}:${session.class.courseId}`;
       schedules.set(key, [...(schedules.get(key) ?? []), scheduleRow(session)]);
@@ -288,11 +353,13 @@ export async function syncMonthlySchedulingCampaignItems(campaignId: string) {
             parentId,
             token: token(),
             currentScheduleJson: schedules.get(key) ?? [],
+            carryForwardScheduleJson: buildMonthlyCarryForwardSchedule(previousSchedules.get(key) ?? []),
           },
           update: {
             packageId: pkg.id,
             parentId,
             currentScheduleJson: schedules.get(key) ?? [],
+            carryForwardScheduleJson: buildMonthlyCarryForwardSchedule(previousSchedules.get(key) ?? []),
           },
         });
         if (existingKeys.has(key)) refreshed += 1;
@@ -312,6 +379,29 @@ export async function syncMonthlySchedulingCampaignItems(campaignId: string) {
   }
 
   return { created, refreshed, excluded: staleIds.length, candidates: candidateKeys.size };
+}
+
+export async function syncNextMonthlySchedulingAutomation(now = new Date()) {
+  const month = nextMonthlySchedulingMonth(now);
+  const campaign = await createMonthlySchedulingCampaign({
+    month,
+    actor: { id: "SYSTEM_MONTHLY_SCHEDULING", name: "System / 系统" },
+  });
+  const roster = await syncMonthlySchedulingCampaignItems(campaign.id);
+  let status = campaign.status;
+  if (campaign.status === "DRAFT" && campaign.opensAt && now >= campaign.opensAt) {
+    await prisma.monthlySchedulingCampaign.update({ where: { id: campaign.id }, data: { status: "OPEN" } });
+    status = "OPEN";
+  }
+  let noResponse = 0;
+  if (status === "OPEN" && campaign.dueAt && now > campaign.dueAt) {
+    const result = await prisma.monthlySchedulingItem.updateMany({
+      where: { campaignId: campaign.id, status: { in: ["NOT_SENT", "SENT", "VIEWED"] } },
+      data: { status: "NO_RESPONSE" },
+    });
+    noResponse = result.count;
+  }
+  return { campaignId: campaign.id, month, status, roster, noResponse };
 }
 
 export async function getMonthlySchedulingCampaign(month?: string | null) {
@@ -486,7 +576,13 @@ export function normalizeMonthlyAvailability(value: unknown): MonthlyAvailabilit
   const weekdays = cleanStringList(body.weekdays, /^(MON|TUE|WED|THU|FRI|SAT|SUN)$/);
   const timeRanges = Array.isArray(body.timeRanges)
     ? body.timeRanges
-        .map((row) => ({ start: cleanText((row as any)?.start, 5) ?? "", end: cleanText((row as any)?.end, 5) ?? "" }))
+        .map((row, index) => ({
+          start: cleanText((row as any)?.start, 5) ?? "",
+          end: cleanText((row as any)?.end, 5) ?? "",
+          priority: MONTHLY_SCHEDULING_TIME_PRIORITIES.includes((row as any)?.priority)
+            ? (row as any).priority as MonthlySchedulingTimePriority
+            : MONTHLY_SCHEDULING_TIME_PRIORITIES[Math.min(index, MONTHLY_SCHEDULING_TIME_PRIORITIES.length - 1)],
+        }))
         .filter((row) => validTime(row.start) && validTime(row.end) && row.end > row.start)
         .slice(0, 3)
     : [];
@@ -496,6 +592,9 @@ export function normalizeMonthlyAvailability(value: unknown): MonthlyAvailabilit
           date: cleanText((row as any)?.date, 10) ?? "",
           start: cleanText((row as any)?.start, 5) ?? "",
           end: cleanText((row as any)?.end, 5) ?? "",
+          priority: MONTHLY_SCHEDULING_TIME_PRIORITIES.includes((row as any)?.priority)
+            ? (row as any).priority as MonthlySchedulingTimePriority
+            : "PREFERRED",
         }))
         .filter((row) => validDateKey(row.date) && validTime(row.start) && validTime(row.end) && row.end > row.start)
         .slice(0, 30)
@@ -541,7 +640,7 @@ function proxyAuditValues(input: MonthlySchedulingProxyAuditInput) {
 }
 
 async function persistMonthlySchedulingPreference(
-  item: { id: string; status: string; courseId: string; currentScheduleJson: unknown; campaign: { month: Date } },
+  item: { id: string; status: string; courseId: string; currentScheduleJson: unknown; carryForwardScheduleJson: unknown; campaign: { month: Date } },
   input: MonthlySchedulingPreferenceInput,
   audit: {
     entryMode: "PARENT" | "STAFF_PROXY";
@@ -574,7 +673,9 @@ async function persistMonthlySchedulingPreference(
   let preferredTeacherId = cleanText(input.preferredTeacherId, 80);
   let preferredTeacher: string | null = null;
   if (preferenceType === "CURRENT") {
-    const currentTeachers = unique(jsonRows(item.currentScheduleJson).map((row: any) => String(row.teacherId ?? "")).filter(Boolean));
+    const currentRows = jsonRows(item.currentScheduleJson);
+    const teacherSource = currentRows.length ? currentRows : jsonRows(item.carryForwardScheduleJson);
+    const currentTeachers = unique(teacherSource.map((row: any) => String(row.teacherId ?? "")).filter(Boolean));
     if (currentTeachers.length !== 1) throw new Error("当前课表没有唯一老师，请选择具体老师或标记待核对");
     preferredTeacherId = currentTeachers[0];
   }
@@ -703,6 +804,167 @@ export async function submitMonthlySchedulingPreferenceByStaff(
   return row;
 }
 
+type MonthlyFamilyKeepRow = {
+  id: string;
+  status: string;
+  studentId?: string;
+  parentId?: string | null;
+  currentScheduleJson: unknown;
+  carryForwardScheduleJson: unknown;
+  expectedSessionsPerWeek: number | null;
+};
+
+export function monthlySchedulingFamilyCanKeep(rows: MonthlyFamilyKeepRow[]) {
+  const editable = rows.filter((row) => MONTHLY_SCHEDULING_FAMILY_KEEP_STATUSES.includes(row.status as (typeof MONTHLY_SCHEDULING_FAMILY_KEEP_STATUSES)[number]));
+  return editable.length > 0 && editable.every((row) => jsonRows(row.currentScheduleJson).length > 0 || jsonRows(row.carryForwardScheduleJson).length > 0);
+}
+
+function carryForwardFrequency(row: MonthlyFamilyKeepRow) {
+  if (row.expectedSessionsPerWeek != null) return row.expectedSessionsPerWeek;
+  const source = jsonRows(row.currentScheduleJson).length ? jsonRows(row.currentScheduleJson) : jsonRows(row.carryForwardScheduleJson);
+  return Math.max(1, unique(source.map((entry: any) => `${entry.weekdayCode ?? ""}:${entry.start ?? entry.startText ?? ""}`).filter(Boolean)).length);
+}
+
+async function persistMonthlySchedulingFamilyKeep(input: {
+  campaignId: string;
+  parentId?: string;
+  linkedParentId?: string;
+  seedItemId?: string;
+  entryMode: "PARENT" | "STAFF_PROXY";
+  responseChannel: string;
+  respondedByParentId: string | null;
+  respondedByUserId: string | null;
+  respondedByName: string | null;
+  parentConfirmationNote: string | null;
+  parentConfirmedAt: Date;
+}) {
+  const seed = input.seedItemId ? await prisma.monthlySchedulingItem.findFirst({ where: { id: input.seedItemId, campaignId: input.campaignId } }) : null;
+  const parentId = input.parentId ?? seed?.parentId ?? null;
+  const studentId = parentId ? null : seed?.studentId ?? null;
+  if (!input.linkedParentId && !parentId && !studentId) throw new Error("Family scheduling record is unavailable");
+  const rows = await prisma.monthlySchedulingItem.findMany({
+    where: {
+      campaignId: input.campaignId,
+      campaign: { status: "OPEN" },
+      status: { in: [...MONTHLY_SCHEDULING_FAMILY_KEEP_STATUSES] },
+      ...(input.linkedParentId
+        ? { student: { parentLinks: { some: { parentId: input.linkedParentId, canCreateRequests: true } } } }
+        : parentId ? { parentId } : { studentId: studentId! }),
+    },
+    select: { id: true, status: true, studentId: true, parentId: true, currentScheduleJson: true, carryForwardScheduleJson: true, expectedSessionsPerWeek: true },
+    orderBy: { createdAt: "asc" },
+  });
+  if (!monthlySchedulingFamilyCanKeep(rows)) throw new Error("这个家庭有课程没有可沿用的固定安排，请逐项确认");
+  const batchId = crypto.randomUUID();
+  const now = new Date();
+  await prisma.$transaction(async (tx) => {
+    for (const row of rows) {
+      const updated = await tx.monthlySchedulingItem.updateMany({
+        where: { id: row.id, status: row.status },
+        data: {
+          status: "SUBMITTED",
+          intent: "KEEP",
+          expectedSessionsPerWeek: carryForwardFrequency(row),
+          familyDecisionBatchId: batchId,
+          responseEntryMode: input.entryMode,
+          responseChannel: input.responseChannel,
+          respondedByParentId: input.respondedByParentId,
+          respondedByUserId: input.respondedByUserId,
+          respondedByName: input.respondedByName,
+          parentConfirmationNote: input.parentConfirmationNote,
+          parentConfirmedAt: input.parentConfirmedAt,
+          submittedAt: now,
+          pausedAt: null,
+          offerSelectionEntryMode: null,
+          offerSelectionChannel: null,
+          offerSelectedByUserId: null,
+          offerSelectedByName: null,
+          offerSelectionNote: null,
+          offerParentConfirmedAt: null,
+        },
+      });
+      if (updated.count !== 1) throw new Error("家庭安排已被其他同事更新，请刷新后重试");
+    }
+    await tx.monthlySchedulingOffer.updateMany({
+      where: { itemId: { in: rows.map((row) => row.id) }, status: { in: ["AVAILABLE", "HELD"] } },
+      data: { status: "WITHDRAWN", holdExpiresAt: null, parentRank: null },
+    });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  const familyTaskKeys = unique(rows.map((row) => `monthly-scheduling:${input.campaignId}:${row.parentId ?? `STUDENT:${row.studentId}`}`));
+  await prisma.parentCommunicationTask.updateMany({
+    where: {
+      taskKey: { in: familyTaskKeys },
+      manualSentAt: null,
+      status: { in: ["PENDING_REVIEW", "READY_TO_SEND", "CLAIMED", "RETURNED", "ATTENTION"] },
+    },
+    data: { status: "WAIVED", note: "家庭沿用安排已确认，无需再发送初始提醒。", completedAt: now },
+  });
+  return { batchId, itemIds: rows.map((row) => row.id), count: rows.length };
+}
+
+export async function submitMonthlySchedulingFamilyKeep(input: { campaignId: string; parentId: string }) {
+  return persistMonthlySchedulingFamilyKeep({
+    campaignId: input.campaignId,
+    linkedParentId: input.parentId,
+    entryMode: "PARENT",
+    responseChannel: "MINIAPP",
+    respondedByParentId: input.parentId,
+    respondedByUserId: null,
+    respondedByName: null,
+    parentConfirmationNote: null,
+    parentConfirmedAt: new Date(),
+  });
+}
+
+export async function submitMonthlySchedulingFamilyKeepByStaff(input: {
+  campaignId: string;
+  seedItemId: string;
+} & MonthlySchedulingProxyAuditInput) {
+  const audit = proxyAuditValues(input);
+  const result = await persistMonthlySchedulingFamilyKeep({
+    campaignId: input.campaignId,
+    seedItemId: input.seedItemId,
+    entryMode: "STAFF_PROXY",
+    responseChannel: input.responseChannel,
+    respondedByParentId: null,
+    respondedByUserId: input.actorUserId,
+    respondedByName: cleanText(input.actorName, 120),
+    parentConfirmationNote: audit.note,
+    parentConfirmedAt: audit.confirmedAt,
+  });
+  await logAudit({
+    actor: { email: input.actorEmail, name: input.actorName, role: input.actorRole },
+    module: "MONTHLY_SCHEDULING",
+    action: "PROXY_FAMILY_KEEP_CURRENT",
+    entityType: "MonthlySchedulingFamily",
+    entityId: result.batchId,
+    meta: { itemIds: result.itemIds, responseChannel: input.responseChannel, parentConfirmationNote: audit.note },
+  });
+  return result;
+}
+
+export type MonthlySchedulingQueueLane = "READY_CONFIRM" | "WAITING_PARENT" | "EXCEPTIONS" | "COMPLETED" | "OTHER";
+
+export function monthlySchedulingQueueLane(row: { status: string; intent?: string | null; teacherPreferenceType?: string | null }): MonthlySchedulingQueueLane {
+  if (row.status === "PARENT_SELECTED" || (row.status === "SUBMITTED" && row.intent === "KEEP")) return "READY_CONFIRM";
+  if (["NOT_SENT", "SENT", "VIEWED", "OFFERED"].includes(row.status)) return "WAITING_PARENT";
+  if (["NO_RESPONSE", "NEEDS_CLARIFICATION", "TEACHER_EXCEPTION", "CHANGE_REQUESTED"].includes(row.status)) return "EXCEPTIONS";
+  if (row.status === "SUBMITTED" || row.intent === "UNSURE" || row.teacherPreferenceType === "VERIFY") return "EXCEPTIONS";
+  if (["MATCHED", "SCHEDULED", "PAUSED", "EXCLUDED"].includes(row.status)) return "COMPLETED";
+  return "OTHER";
+}
+
+export function monthlySchedulingExceptionReason(row: { status: string; intent?: string | null; teacherPreferenceType?: string | null }) {
+  if (row.status === "NO_RESPONSE") return "家长逾期未回复";
+  if (row.teacherPreferenceType === "VERIFY") return "老师姓名需要核对";
+  if (row.intent === "UNSURE") return "家长尚未确定，需要联系";
+  if (row.status === "SUBMITTED" && row.intent === "CHANGE") return "没有标准时间完全匹配";
+  if (row.status === "NEEDS_CLARIFICATION") return "家长需求需要澄清";
+  if (row.status === "TEACHER_EXCEPTION") return "等待老师例外确认";
+  if (row.status === "CHANGE_REQUESTED") return "正式方案后再次申请调整";
+  return null;
+}
+
 export async function listParentMonthlyScheduling(parentId: string, options: { markViewed?: boolean } = {}) {
   await expireMonthlySchedulingOfferHolds();
   const items = await prisma.monthlySchedulingItem.findMany({
@@ -748,8 +1010,9 @@ function offerSessionDates(value: unknown): OfferSessionDate[] {
     : [];
 }
 
-function monthlyOfferDuration(item: { currentScheduleJson: unknown; expectedMinutes: number | null; expectedSessionsPerWeek: number | null }) {
-  const current = jsonRows(item.currentScheduleJson);
+function monthlyOfferDuration(item: { currentScheduleJson: unknown; carryForwardScheduleJson: unknown; expectedMinutes: number | null; expectedSessionsPerWeek: number | null }) {
+  const targetMonth = jsonRows(item.currentScheduleJson);
+  const current = targetMonth.length ? targetMonth : jsonRows(item.carryForwardScheduleJson);
   const currentDuration = Number(current[0]?.durationMin ?? 0);
   if (currentDuration >= 15 && currentDuration <= 360) return ceilQuarter(currentDuration);
   if (item.expectedMinutes && item.expectedSessionsPerWeek) {
@@ -779,6 +1042,8 @@ export function monthlySchedulingOfferView(row: any) {
     start: `${String(Math.floor(row.startMin / 60)).padStart(2, "0")}:${String(row.startMin % 60).padStart(2, "0")}`,
     end: `${String(Math.floor(row.endMin / 60)).padStart(2, "0")}:${String(row.endMin % 60).padStart(2, "0")}`,
     durationMin: row.durationMin,
+    preferenceLevel: row.preferenceLevel ?? null,
+    preferenceLabel: row.preferenceLevel ? timePriorityLabels[row.preferenceLevel as MonthlySchedulingTimePriority]?.zh ?? row.preferenceLevel : null,
     sessionDates: dates,
     sessionCount: dates.length,
     suggestedWeeks,
@@ -847,17 +1112,18 @@ export async function refreshMonthlySchedulingOffers(itemId: string) {
     weekdayLabel: string;
     startMin: number;
     endMin: number;
+    preferenceLevel: MonthlySchedulingTimePriority;
     dates: OfferSessionDate[];
   }> = [];
   for (const teacher of teachers) {
     const canTeach = new Set([...teacher.courseRates.map((row) => row.courseId), ...teacher.classes.map((row) => row.courseId)]).has(item.courseId);
     if (!canTeach) continue;
-    const groups = new Map<string, { weekdayLabel: string; startMin: number; endMin: number; dates: OfferSessionDate[] }>();
+    const groups = new Map<string, { weekdayLabel: string; startMin: number; endMin: number; preferenceLevel: MonthlySchedulingTimePriority; dates: OfferSessionDate[] }>();
     for (const interval of intervalsForTeacher({ month, dates: teacher.dateAvailabilities })) {
       if (unavailableDates.has(interval.date)) continue;
       const weekdayLabel = monthlySchedulingWeekdayCode(interval.date);
       const ranges = parent.selectionMode === "calendar"
-        ? parent.dateSelections.filter((row) => row.date === interval.date).map((row) => ({ start: row.start, end: row.end }))
+        ? parent.dateSelections.filter((row) => row.date === interval.date)
         : parent.weekdays.includes(weekdayLabel) ? parent.timeRanges : [];
       for (const rangeRow of ranges) {
         const [startHour, startMinute] = rangeRow.start.split(":").map(Number);
@@ -870,7 +1136,10 @@ export async function refreshMonthlySchedulingOffers(itemId: string) {
         if ((busyByTeacher.get(teacher.id) ?? []).some((row) => startAt < row.endAt && row.startAt < endAt)) continue;
         if (busyForStudent.some((row) => startAt < row.endAt && row.startAt < endAt)) continue;
         const key = `${weekdayLabel}:${startMin}:${endMin}`;
-        const group = groups.get(key) ?? { weekdayLabel, startMin, endMin, dates: [] };
+        const group = groups.get(key) ?? { weekdayLabel, startMin, endMin, preferenceLevel: rangeRow.priority, dates: [] };
+        if (MONTHLY_SCHEDULING_TIME_PRIORITIES.indexOf(rangeRow.priority) < MONTHLY_SCHEDULING_TIME_PRIORITIES.indexOf(group.preferenceLevel)) {
+          group.preferenceLevel = rangeRow.priority;
+        }
         if (!group.dates.some((row) => row.date === interval.date)) {
           group.dates.push({ date: interval.date, startAt: startAt.toISOString(), endAt: endAt.toISOString() });
         }
@@ -878,11 +1147,11 @@ export async function refreshMonthlySchedulingOffers(itemId: string) {
         break;
       }
     }
-    for (const group of Array.from(groups.values()).sort((a, b) => b.dates.length - a.dates.length || a.startMin - b.startMin).slice(0, 3)) {
+    for (const group of Array.from(groups.values()).sort((a, b) => MONTHLY_SCHEDULING_TIME_PRIORITIES.indexOf(a.preferenceLevel) - MONTHLY_SCHEDULING_TIME_PRIORITIES.indexOf(b.preferenceLevel) || b.dates.length - a.dates.length || a.startMin - b.startMin).slice(0, 3)) {
       candidates.push({ teacherId: teacher.id, ...group });
     }
   }
-  candidates.sort((a, b) => Number(b.teacherId === item.preferredTeacherId) - Number(a.teacherId === item.preferredTeacherId) || b.dates.length - a.dates.length || a.dates[0]?.startAt.localeCompare(b.dates[0]?.startAt ?? "") || 0);
+  candidates.sort((a, b) => MONTHLY_SCHEDULING_TIME_PRIORITIES.indexOf(a.preferenceLevel) - MONTHLY_SCHEDULING_TIME_PRIORITIES.indexOf(b.preferenceLevel) || Number(b.teacherId === item.preferredTeacherId) - Number(a.teacherId === item.preferredTeacherId) || b.dates.length - a.dates.length || a.dates[0]?.startAt.localeCompare(b.dates[0]?.startAt ?? "") || 0);
   const selected = candidates.slice(0, 5);
   await prisma.$transaction(async (tx) => {
     await tx.monthlySchedulingOffer.deleteMany({
@@ -897,6 +1166,7 @@ export async function refreshMonthlySchedulingOffers(itemId: string) {
           startMin: candidate.startMin,
           endMin: candidate.endMin,
           durationMin,
+          preferenceLevel: candidate.preferenceLevel,
           sessionDatesJson: candidate.dates,
         },
       });
@@ -956,13 +1226,13 @@ async function rankMonthlySchedulingOffersCore(input: {
         itemId: { not: item.id },
         AND: [
           { OR: [{ status: "ACCEPTED" }, { status: "HELD", holdExpiresAt: { gt: now } }] },
-          { OR: [{ teacherId: { in: teacherIds } }, { item: { studentId: item.studentId } }] },
+          { OR: [{ teacherId: { in: teacherIds } }, { item: { studentId: item.studentId } }, ...(item.parentId ? [{ item: { parentId: item.parentId } }] : [])] },
         ],
       },
-      include: { item: { select: { studentId: true } } },
+      include: { item: { select: { studentId: true, parentId: true } } },
     });
     const chosen = ranked.find((candidate) => !active.some((held) =>
-      (held.teacherId === candidate.teacherId || held.item.studentId === item.studentId)
+      (held.teacherId === candidate.teacherId || held.item.studentId === item.studentId || Boolean(item.parentId && held.item.parentId === item.parentId))
       && monthlySchedulingOffersConflict(offerSessionDates(candidate.sessionDatesJson), offerSessionDates(held.sessionDatesJson))
     ));
     if (!chosen) throw new Error("The selected times were just taken; refresh for new choices");
@@ -1293,6 +1563,7 @@ export async function buildMonthlyStaffingReport(campaignId: string) {
       scheduledMinutes: courses.reduce((sum, row) => sum + row.scheduledMinutes, 0),
       gapMinutes: courses.reduce((sum, row) => sum + row.gapMinutes, 0),
       redCourses: courses.filter((row) => row.tone === "RED").length,
+      teachersWithoutAvailability: teachers.filter((teacher) => (availabilityByTeacher.get(teacher.id) ?? []).length === 0).length,
     },
   };
 }

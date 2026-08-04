@@ -8,24 +8,23 @@ import {
   MONTHLY_SCHEDULING_ITEM_STATUSES,
   MONTHLY_SCHEDULING_INTENTS,
   monthlySchedulingMonthKey,
+  monthlySchedulingExceptionReason,
+  monthlySchedulingFamilyCanKeep,
+  monthlySchedulingQueueLane,
   monthlySchedulingOfferView,
   monthlySchedulingParentMessageFromTemplate,
   listMonthlySchedulingQualifiedTeachers,
   nextMonthlySchedulingMonth,
   rankMonthlySchedulingOffersByStaff,
   submitMonthlySchedulingPreferenceByStaff,
+  submitMonthlySchedulingFamilyKeepByStaff,
   updateMonthlySchedulingItem,
   type MonthlySchedulingIntent,
   type MonthlySchedulingItemStatus,
   type MonthlySchedulingResponseChannel,
 } from "@/lib/monthly-scheduling";
 
-const QUEUE_LANES: Record<string, MonthlySchedulingItemStatus[]> = {
-  READY_CONFIRM: ["PARENT_SELECTED"],
-  WAITING_PARENT: ["NOT_SENT", "SENT", "VIEWED", "OFFERED"],
-  EXCEPTIONS: ["SUBMITTED", "NEEDS_CLARIFICATION", "TEACHER_EXCEPTION", "CHANGE_REQUESTED"],
-  COMPLETED: ["MATCHED", "SCHEDULED", "PAUSED"],
-};
+const QUEUE_LANES = ["READY_CONFIRM", "WAITING_PARENT", "EXCEPTIONS", "COMPLETED"] as const;
 
 export async function GET(req: Request) {
   const auth = await requireMiniappStaff(req);
@@ -35,14 +34,14 @@ export async function GET(req: Request) {
   const month = /^\d{4}-\d{2}$/.test(url.searchParams.get("month") ?? "") ? url.searchParams.get("month")! : nextMonthlySchedulingMonth();
   const status = url.searchParams.get("status") ?? "READY_CONFIRM";
   const itemId = cleanMiniappText(url.searchParams.get("itemId"), 80);
-  if (status !== "ALL" && !QUEUE_LANES[status] && !MONTHLY_SCHEDULING_ITEM_STATUSES.includes(status as MonthlySchedulingItemStatus)) return bad("Invalid status");
+  if (status !== "ALL" && !QUEUE_LANES.includes(status as (typeof QUEUE_LANES)[number]) && !MONTHLY_SCHEDULING_ITEM_STATUSES.includes(status as MonthlySchedulingItemStatus)) return bad("Invalid status");
   await expireMonthlySchedulingOfferHolds();
   const campaign = await getMonthlySchedulingCampaign(month);
   if (!campaign) return ok({ month, campaign: null, items: [], counts: {} });
   const teacherOptionsByCourse = await listMonthlySchedulingQualifiedTeachers(campaign.items.map((row) => row.courseId));
   const counts = Object.fromEntries([
     ...MONTHLY_SCHEDULING_ITEM_STATUSES.map((value) => [value, campaign.items.filter((row) => row.status === value).length] as const),
-    ...Object.entries(QUEUE_LANES).map(([lane, statuses]) => [lane, campaign.items.filter((row) => statuses.includes(row.status as MonthlySchedulingItemStatus)).length] as const),
+    ...QUEUE_LANES.map((lane) => [lane, campaign.items.filter((row) => monthlySchedulingQueueLane(row) === lane).length] as const),
   ]);
   const familyRows = new Map<string, typeof campaign.items>();
   for (const row of campaign.items) {
@@ -61,11 +60,23 @@ export async function GET(req: Request) {
       students: rows.map((candidate) => ({ studentName: candidate.student.name, courseName: candidate.course.name })),
     }));
   }
-  const selectedStatuses = itemId ? null : QUEUE_LANES[status] ?? (status === "ALL" ? null : [status as MonthlySchedulingItemStatus]);
-  const items = campaign.items.filter((row) => (!itemId || row.id === itemId) && (!selectedStatuses || selectedStatuses.includes(row.status as MonthlySchedulingItemStatus))).slice(0, 300).map((row) => {
+  const familyLeadIds = new Set(Array.from(familyRows.values()).map((rows) => rows[0]?.id).filter(Boolean));
+  const items = campaign.items.filter((row) => {
+    if (itemId) return row.id === itemId;
+    if (status === "ALL") return true;
+    if (QUEUE_LANES.includes(status as (typeof QUEUE_LANES)[number])) return monthlySchedulingQueueLane(row) === status;
+    return row.status === status;
+  }).slice(0, 300).map((row) => {
     const selectedOffer = row.offers.find((offer) => ["HELD", "ACCEPTED"].includes(offer.status));
+    const familyKey = row.parentId ?? `STUDENT:${row.studentId}`;
+    const family = familyRows.get(familyKey) ?? [row];
     return {
       id: row.id,
+      campaignId: row.campaignId,
+      familyKey,
+      familyItemCount: family.length,
+      familyCanKeep: monthlySchedulingFamilyCanKeep(family),
+      isFamilyLead: familyLeadIds.has(row.id),
       studentId: row.studentId,
       courseId: row.courseId,
       studentName: row.student.name,
@@ -87,6 +98,9 @@ export async function GET(req: Request) {
       parentNotes: row.parentNotes,
       availability: row.availabilityJson,
       unavailableDates: row.unavailableDatesJson,
+      currentSchedule: Array.isArray(row.currentScheduleJson) ? row.currentScheduleJson : [],
+      carryForwardSchedule: Array.isArray(row.carryForwardScheduleJson) ? row.carryForwardScheduleJson : [],
+      exceptionReason: monthlySchedulingExceptionReason(row),
       internalNote: row.internalNote,
       ownerName: row.ownerName,
       responseEntryMode: row.responseEntryMode,
@@ -156,6 +170,20 @@ export async function POST(req: Request) {
         actorRole: auth.user.role,
       });
       return ok({ itemId: String((body as any).itemId ?? ""), status: "PARENT_SELECTED", selectedOffer: selected, message: "已按家长回复临时保留时间" });
+    }
+    if (action === "PROXY_KEEP_FAMILY") {
+      const result = await submitMonthlySchedulingFamilyKeepByStaff({
+        campaignId: String((body as any).campaignId ?? ""),
+        seedItemId: String((body as any).itemId ?? ""),
+        responseChannel: String((body as any).responseChannel ?? "") as MonthlySchedulingResponseChannel,
+        parentConfirmationNote: cleanMiniappText((body as any).parentConfirmationNote, 1000),
+        parentConfirmedAt: String((body as any).parentConfirmedAt ?? ""),
+        actorUserId: auth.user.id,
+        actorEmail: auth.user.email,
+        actorName: auth.user.name,
+        actorRole: auth.user.role,
+      });
+      return ok({ ...result, status: "SUBMITTED", message: `已代录全家 ${result.count} 项沿用本月安排` });
     }
     return bad("Invalid action");
   } catch (error) {

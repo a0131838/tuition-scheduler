@@ -2900,52 +2900,54 @@ model MonthlySchedulingCampaign {
 }
 
 model MonthlySchedulingItem {
-  id                      String    @id @default(uuid())
-  campaignId              String
-  studentId               String
-  courseId                String
-  packageId               String?
-  parentId                String?
-  token                   String    @unique
-  status                  String    @default("NOT_SENT")
-  intent                  String?
-  expectedSessionsPerWeek Int?
-  expectedMinutes         Int?
-  preferredMode           String?
-  preferredCampus         String?
-  preferredTeacher        String?
-  preferredTeacherId      String?
-  teacherPreferenceType   String?
-  teacherPreferenceNote   String?
-  availabilityJson        Json?
-  unavailableDatesJson    Json?
-  currentScheduleJson     Json?
-  parentNotes             String?
-  internalNote            String?
-  responseEntryMode       String?
-  responseChannel         String?
-  respondedByUserId       String?
-  respondedByName         String?
-  parentConfirmationNote  String?
-  parentConfirmedAt       DateTime?
-  offerSelectionEntryMode String?
-  offerSelectionChannel   String?
-  offerSelectedByUserId   String?
-  offerSelectedByName     String?
-  offerSelectionNote      String?
-  offerParentConfirmedAt  DateTime?
-  ownerUserId             String?
-  ownerName               String?
-  respondedByParentId     String?
-  sentAt                  DateTime?
-  viewedAt                DateTime?
-  submittedAt             DateTime?
-  clarifiedAt             DateTime?
-  matchedAt               DateTime?
-  scheduledAt             DateTime?
-  pausedAt                DateTime?
-  createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
+  id                       String    @id @default(uuid())
+  campaignId               String
+  studentId                String
+  courseId                 String
+  packageId                String?
+  parentId                 String?
+  token                    String    @unique
+  status                   String    @default("NOT_SENT")
+  intent                   String?
+  expectedSessionsPerWeek  Int?
+  expectedMinutes          Int?
+  preferredMode            String?
+  preferredCampus          String?
+  preferredTeacher         String?
+  preferredTeacherId       String?
+  teacherPreferenceType    String?
+  teacherPreferenceNote    String?
+  availabilityJson         Json?
+  unavailableDatesJson     Json?
+  currentScheduleJson      Json?
+  carryForwardScheduleJson Json?
+  familyDecisionBatchId    String?
+  parentNotes              String?
+  internalNote             String?
+  responseEntryMode        String?
+  responseChannel          String?
+  respondedByUserId        String?
+  respondedByName          String?
+  parentConfirmationNote   String?
+  parentConfirmedAt        DateTime?
+  offerSelectionEntryMode  String?
+  offerSelectionChannel    String?
+  offerSelectedByUserId    String?
+  offerSelectedByName      String?
+  offerSelectionNote       String?
+  offerParentConfirmedAt   DateTime?
+  ownerUserId              String?
+  ownerName                String?
+  respondedByParentId      String?
+  sentAt                   DateTime?
+  viewedAt                 DateTime?
+  submittedAt              DateTime?
+  clarifiedAt              DateTime?
+  matchedAt                DateTime?
+  scheduledAt              DateTime?
+  pausedAt                 DateTime?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
 
   campaign MonthlySchedulingCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   student  Student                   @relation(fields: [studentId], references: [id], onDelete: Cascade)
@@ -2962,6 +2964,7 @@ model MonthlySchedulingItem {
   @@index([ownerUserId, status])
   @@index([responseEntryMode, updatedAt])
   @@index([preferredTeacherId, campaignId])
+  @@index([familyDecisionBatchId])
 }
 
 model MonthlySchedulingOffer {
@@ -2973,6 +2976,7 @@ model MonthlySchedulingOffer {
   startMin         Int
   endMin           Int
   durationMin      Int
+  preferenceLevel  String?
   sessionDatesJson Json
   parentRank       Int?
   heldByParentId   String?

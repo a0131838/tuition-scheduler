@@ -19,6 +19,11 @@ const frequencyOptions = ["暂不确定", "每周1次", "每周2次", "每周3�
 const modeOptions = ["无偏好", "线上", "线下"];
 const teacherPreferenceOptions = ["不指定老师", "沿用当前老师", "选择老师", "其他老师，请教务核对"];
 const teacherPreferenceValues = ["NONE", "CURRENT", "PREFERRED", "VERIFY"];
+const timePriorityOptions = [
+  { value: "REQUIRED", label: "必须满足" },
+  { value: "PREFERRED", label: "优先选择" },
+  { value: "ACCEPTABLE", label: "可以接受" }
+];
 
 function blankForm() {
   return {
@@ -31,7 +36,7 @@ function blankForm() {
     teacherPreferenceType: "NONE",
     teacherPreferenceNote: "",
     weekdays: [],
-    timeRanges: [{ start: "09:00", end: "12:00" }, { start: "14:00", end: "18:00" }, { start: "19:00", end: "21:00" }],
+    timeRanges: [{ start: "09:00", end: "12:00", priority: "REQUIRED", priorityIndex: 0 }, { start: "14:00", end: "18:00", priority: "PREFERRED", priorityIndex: 1 }, { start: "19:00", end: "21:00", priority: "ACCEPTABLE", priorityIndex: 2 }],
     unavailableDates: [],
     unavailableDateDraft: "",
     parentNotes: ""
@@ -40,7 +45,10 @@ function blankForm() {
 
 function formFromItem(item) {
   const availability = item.availability || {};
-  const ranges = (availability.timeRanges || []).slice(0, 3);
+  const ranges = (availability.timeRanges || []).slice(0, 3).map((row, index) => {
+    const priority = row.priority || timePriorityOptions[index].value;
+    return Object.assign({}, row, { priority, priorityIndex: Math.max(0, timePriorityOptions.findIndex((option) => option.value === priority)) });
+  });
   while (ranges.length < 3) ranges.push(blankForm().timeRanges[ranges.length]);
   return {
     intent: item.intent || "KEEP",
@@ -75,6 +83,7 @@ Page({
     modeOptions,
     modeIndex: 0,
     teacherPreferenceOptions,
+    timePriorityOptions,
     teacherPreferenceIndex: 0,
     teacherOptions: [],
     teacherIndex: 0,
@@ -95,7 +104,7 @@ Page({
         this.setData({
           items,
           itemLabels: items.map((item) => `${item.student.name} · ${item.course.name}`),
-          completedCount: items.filter((item) => ["PARENT_SELECTED", "MATCHED", "SCHEDULED", "PAUSED", "CHANGE_REQUESTED"].includes(item.status)).length,
+          completedCount: items.filter((item) => ["SUBMITTED", "OFFERED", "PARENT_SELECTED", "MATCHED", "SCHEDULED", "PAUSED", "CHANGE_REQUESTED"].includes(item.status)).length,
           selectedIndex
         });
         this.selectItem(selectedIndex);
@@ -157,6 +166,11 @@ Page({
   },
   changeTimeStart(e) { this.setData({ [`form.timeRanges[${Number(e.currentTarget.dataset.index)}].start`]: e.detail.value }); },
   changeTimeEnd(e) { this.setData({ [`form.timeRanges[${Number(e.currentTarget.dataset.index)}].end`]: e.detail.value }); },
+  changeTimePriority(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const optionIndex = Number(e.detail.value || 0);
+    this.setData({ [`form.timeRanges[${index}].priority`]: (timePriorityOptions[optionIndex] || timePriorityOptions[1]).value, [`form.timeRanges[${index}].priorityIndex`]: optionIndex });
+  },
   changeUnavailableDate(e) { this.setData({ "form.unavailableDateDraft": e.detail.value }); },
   addUnavailableDate() {
     const value = this.data.form.unavailableDateDraft;
@@ -233,6 +247,28 @@ Page({
           data: { action: "REQUEST_CHANGE", itemId: item.id, note }
         })
           .then(() => { wx.showToast({ title: "申请已提交", icon: "success" }); return this.load(); })
+          .catch((err) => api.toast(err.message))
+          .finally(() => this.setData({ saving: false }));
+      }
+    });
+  },
+
+  keepFamily() {
+    const item = this.data.selected;
+    if (!item || !item.familyCanKeep || this.data.saving) return;
+    wx.showModal({
+      title: "确认全家沿用",
+      content: `将一次确认本家庭 ${item.familyItemCount || 1} 项课程沿用本月固定安排。系统只记录需求，不会自动创建课程。`,
+      confirmText: "确认沿用",
+      success: (result) => {
+        if (!result.confirm) return;
+        this.setData({ saving: true });
+        api.request("/api/miniapp/monthly-scheduling", {
+          method: "POST",
+          timeout: 20000,
+          data: { action: "KEEP_FAMILY", campaignId: item.campaignId }
+        })
+          .then(() => { wx.showToast({ title: "全家已确认", icon: "success" }); return this.load(); })
           .catch((err) => api.toast(err.message))
           .finally(() => this.setData({ saving: false }));
       }

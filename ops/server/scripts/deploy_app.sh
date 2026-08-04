@@ -121,5 +121,8 @@ fi
 if [[ -x ops/server/scripts/setup_renewal_followup_cron.sh ]]; then
   bash ops/server/scripts/setup_renewal_followup_cron.sh "$APP_DIR"
 fi
+if [[ -x ops/server/scripts/setup_monthly_scheduling_cron.sh ]]; then
+  bash ops/server/scripts/setup_monthly_scheduling_cron.sh "$APP_DIR"
+fi
 
 echo "Deploy done: $APP_NAME on port $APP_PORT"

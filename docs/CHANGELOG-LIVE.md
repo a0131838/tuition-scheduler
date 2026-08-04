@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-04-r310
+
+- Release ID: `2026-08-04-r310`
+- Date/Time (Asia/Singapore): `2026-08-04`
+- Deployment status: `READY`
+- Scope: reduce next-month scheduling coordination across the Web, Parent Mini Program, and Staff Mini Program through previous-month carry-forward suggestions, one family keep-current decision, three-level time priorities, sibling-safe temporary holds, an exception-only Academic queue, consolidated communication tasks, and daily campaign automation.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260804233000_add_monthly_scheduling_family_efficiency/migration.sql`
+  - `lib/monthly-scheduling.ts`
+  - `lib/parent-communication-center.ts`
+  - `app/admin/monthly-scheduling/`
+  - `app/api/miniapp/monthly-scheduling/route.ts`
+  - `app/api/miniapp/staff/monthly-scheduling/route.ts`
+  - `miniapp/boss-academic-parent/pages/monthly-scheduling/`
+  - `miniapp/boss-academic-parent/pages/staff-monthly-scheduling/`
+  - `miniapp/boss-academic-parent/pages/staff-monthly-scheduling-proxy/`
+  - `ops/server/scripts/setup_monthly_scheduling_cron.sh`
+  - `docs/SOP-教务-下月家庭排课例外工作台-20260804.md`
+- Risk impact (if any): Moderate and isolated to next-month scheduling demand collection. Family keep-current writes are serializable, editable-status guarded, and audited; sibling offers cannot hold overlapping times; automation only creates/syncs the next campaign, opens it on the configured date, and marks overdue untouched responses. No formal Session is created or changed automatically. Packages, balances, attendance, deductions, contracts, invoices, receipts, payroll, tickets, and historical lessons remain unchanged.
+- Verification: Prisma format/generation/validation, TypeScript, focused feature and migration tests, full repository tests, Mini Program JavaScript checks and release audit, `git diff --check`, and production build.
+- Rollback point: `4ddd9dea8fa3d9875209db3e69cedb3186398c39` (`2026-08-04-r309` production baseline).
+
 ## 2026-08-04-r309
 
 - Release ID: `2026-08-04-r309`

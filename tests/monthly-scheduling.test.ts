@@ -2,11 +2,15 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   allocateMonthlyCourseCapacity,
+  buildMonthlyCarryForwardSchedule,
   defaultMonthlySchedulingDates,
+  monthlySchedulingExceptionReason,
+  monthlySchedulingFamilyCanKeep,
   monthlySchedulingMonthKey,
   monthlySchedulingBusyOverlapMinutes,
   monthlySchedulingParentMessage,
   monthlySchedulingOffersConflict,
+  monthlySchedulingQueueLane,
   monthlySchedulingRange,
   monthlySchedulingRelevantCourseIds,
   monthlySchedulingSessionStudentIds,
@@ -38,7 +42,7 @@ test("parent availability keeps valid weekly choices and drops malformed values"
     dateSelections: [],
   });
   assert.deepEqual(result.weekdays, ["MON", "SAT"]);
-  assert.deepEqual(result.timeRanges, [{ start: "16:00", end: "19:00" }]);
+  assert.deepEqual(result.timeRanges, [{ start: "16:00", end: "19:00", priority: "REQUIRED" }]);
 });
 
 test("parent availability rejects impossible times and calendar dates", () => {
@@ -52,7 +56,62 @@ test("parent availability rejects impossible times and calendar dates", () => {
     ],
   });
   assert.deepEqual(result.timeRanges, []);
-  assert.deepEqual(result.dateSelections, [{ date: "2026-09-03", start: "09:00", end: "10:00" }]);
+  assert.deepEqual(result.dateSelections, [{ date: "2026-09-03", start: "09:00", end: "10:00", priority: "PREFERRED" }]);
+});
+
+test("availability preserves explicit priority and caps choices at three", () => {
+  const result = normalizeMonthlyAvailability({
+    selectionMode: "weekly",
+    weekdays: ["MON"],
+    timeRanges: [
+      { start: "09:00", end: "10:00", priority: "PREFERRED" },
+      { start: "10:00", end: "11:00", priority: "ACCEPTABLE" },
+      { start: "11:00", end: "12:00", priority: "REQUIRED" },
+      { start: "12:00", end: "13:00", priority: "REQUIRED" },
+    ],
+  });
+  assert.deepEqual(result.timeRanges.map((row) => row.priority), ["PREFERRED", "ACCEPTABLE", "REQUIRED"]);
+  assert.equal(result.timeRanges.length, 3);
+});
+
+test("prior-month sessions become stable carry-forward patterns", () => {
+  const rows = [
+    ["s1", "2026-07-06T09:00:00.000Z", "2026-07-06T10:30:00.000Z"],
+    ["s2", "2026-07-13T09:00:00.000Z", "2026-07-13T10:30:00.000Z"],
+  ].map(([sessionId, startAt, endAt]) => ({
+    sessionId,
+    startAt,
+    endAt,
+    startText: startAt,
+    endText: endAt,
+    durationMin: 90,
+    teacher: "Jasmine",
+    teacherId: "teacher-1",
+    campus: "Orchard Plaza",
+    mode: "OFFLINE",
+  }));
+  const result = buildMonthlyCarryForwardSchedule(rows as any);
+  assert.equal(result.length, 1);
+  assert.equal(result[0].weekdayCode, "MON");
+  assert.equal(result[0].start, "17:00");
+  assert.equal(result[0].sourceCount, 2);
+});
+
+test("family keep is available only when every editable sibling row has a schedule", () => {
+  const ready = [
+    { id: "a", status: "SENT", currentScheduleJson: [], carryForwardScheduleJson: [{ weekdayCode: "MON" }], expectedSessionsPerWeek: null },
+    { id: "b", status: "VIEWED", currentScheduleJson: [{ sessionId: "x" }], carryForwardScheduleJson: [], expectedSessionsPerWeek: 1 },
+  ];
+  assert.equal(monthlySchedulingFamilyCanKeep(ready), true);
+  assert.equal(monthlySchedulingFamilyCanKeep([...ready, { id: "c", status: "SENT", currentScheduleJson: [], carryForwardScheduleJson: [], expectedSessionsPerWeek: null }]), false);
+});
+
+test("queue lanes keep routine work separate from exceptions", () => {
+  assert.equal(monthlySchedulingQueueLane({ status: "SUBMITTED", intent: "KEEP" }), "READY_CONFIRM");
+  assert.equal(monthlySchedulingQueueLane({ status: "SENT" }), "WAITING_PARENT");
+  assert.equal(monthlySchedulingQueueLane({ status: "SUBMITTED", intent: "CHANGE" }), "EXCEPTIONS");
+  assert.equal(monthlySchedulingQueueLane({ status: "SCHEDULED" }), "COMPLETED");
+  assert.equal(monthlySchedulingExceptionReason({ status: "SUBMITTED", intent: "CHANGE" }), "没有标准时间完全匹配");
 });
 
 test("one family message lists siblings and their courses separately", () => {

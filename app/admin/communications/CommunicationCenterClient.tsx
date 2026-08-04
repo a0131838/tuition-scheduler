@@ -24,10 +24,10 @@ const statusLabels: Record<string, string> = {
 };
 const kindLabels: Record<string, string> = {
   ALL: "全部类型", FEEDBACK: "课后反馈", COURSE_REMINDER_PARENT: "家长课程提醒",
-  COURSE_REMINDER_TEACHER: "老师课程提醒", COURSE_CHANGE: "课程变更补发",
+  COURSE_REMINDER_TEACHER: "老师课程提醒", COURSE_CHANGE: "课程变更补发", MONTHLY_SCHEDULING: "下月排课确认",
 };
 const statuses = ["OPEN", "PENDING_REVIEW", "READY_TO_SEND", "ATTENTION", "RETURNED", "COMPLETED", "ALL"];
-const kinds = ["FEEDBACK", "COURSE_REMINDER_PARENT", "COURSE_REMINDER_TEACHER", "COURSE_CHANGE"];
+const kinds = ["FEEDBACK", "MONTHLY_SCHEDULING", "COURSE_REMINDER_PARENT", "COURSE_REMINDER_TEACHER", "COURSE_CHANGE"];
 const feedbackSectionLabels = [["lessonFocus", "本节课重点"], ["currentFinding", "当前发现"], ["classPerformance", "课堂表现"], ["nextPlan", "下一步计划"], ["parentNote", "家长需要知道"]] as const;
 
 const button: React.CSSProperties = { border: "1px solid #cbd5e1", borderRadius: 8, background: "#fff", padding: "8px 11px", fontWeight: 750, cursor: "pointer" };
@@ -119,7 +119,7 @@ export default function CommunicationCenterClient({ currentUser }: { currentUser
 
       <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 1, background: "#e2e8f0", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
         {[
-          ["审核反馈", kindSummary.FEEDBACK || 0], ["发给家长", kindSummary.COURSE_REMINDER_PARENT || 0],
+          ["审核反馈", kindSummary.FEEDBACK || 0], ["下月排课", kindSummary.MONTHLY_SCHEDULING || 0], ["发给家长", kindSummary.COURSE_REMINDER_PARENT || 0],
           ["发给老师", kindSummary.COURSE_REMINDER_TEACHER || 0], ["课程变更补发", kindSummary.COURSE_CHANGE || 0],
         ].map(([label, value]) => <div key={String(label)} style={{ background: "#fff", padding: 14 }}><div style={{ color: "#64748b", fontSize: 12 }}>{label}</div><div style={{ fontSize: 26, fontWeight: 850, marginTop: 4 }}>{value}</div></div>)}
       </section>

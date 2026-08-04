@@ -9,6 +9,8 @@ const parentRoute = fs.readFileSync(path.join(process.cwd(), "app/api/miniapp/mo
 const staffRoute = fs.readFileSync(path.join(process.cwd(), "app/api/miniapp/staff/monthly-scheduling/route.ts"), "utf8");
 const exportRoute = fs.readFileSync(path.join(process.cwd(), "app/admin/monthly-scheduling/export/route.ts"), "utf8");
 const staffProxyPage = fs.readFileSync(path.join(process.cwd(), "miniapp/boss-academic-parent/pages/staff-monthly-scheduling-proxy/staff-monthly-scheduling-proxy.js"), "utf8");
+const communicationCenter = fs.readFileSync(path.join(process.cwd(), "lib/parent-communication-center.ts"), "utf8");
+const automationScript = fs.readFileSync(path.join(process.cwd(), "scripts/sync-monthly-scheduling.ts"), "utf8");
 
 test("monthly scheduling status writes use stale-state guards", () => {
   assert.match(service, /expectedStatus\?: MonthlySchedulingItemStatus/);
@@ -35,6 +37,7 @@ test("parent concrete-time selection uses serializable holds and staff acceptanc
   assert.match(service, /monthlySchedulingSessionStudentIds\(row\)\.includes\(item\.studentId\)/);
   assert.match(service, /item: \{ studentId: item\.studentId \}/);
   assert.match(service, /held\.item\.studentId === item\.studentId/);
+  assert.match(service, /held\.item\.parentId === item\.parentId/);
 });
 
 test("staff proxy entry reuses preference and hold services with an auditable parent source", () => {
@@ -52,6 +55,30 @@ test("staff proxy entry reuses preference and hold services with an auditable pa
   assert.match(adminPage, /proxyRankOffersAction/);
   assert.match(staffProxyPage, /PROXY_PREFERENCE/);
   assert.match(staffProxyPage, /PROXY_RANK_OFFERS/);
+});
+
+test("family keep is atomic, audited and available to parents and staff", () => {
+  assert.match(service, /submitMonthlySchedulingFamilyKeep/);
+  assert.match(service, /submitMonthlySchedulingFamilyKeepByStaff/);
+  assert.match(service, /familyDecisionBatchId: batchId/);
+  assert.match(service, /parentLinks: \{ some: \{ parentId: input\.linkedParentId, canCreateRequests: true \} \}/);
+  assert.match(service, /TransactionIsolationLevel\.Serializable/);
+  assert.match(service, /PROXY_FAMILY_KEEP_CURRENT/);
+  assert.match(parentRoute, /KEEP_FAMILY/);
+  assert.match(staffRoute, /PROXY_KEEP_FAMILY/);
+  assert.match(adminPage, /proxyFamilyKeepAction/);
+  assert.match(staffProxyPage, /PROXY_KEEP_FAMILY/);
+});
+
+test("automation opens campaigns and moves overdue replies into exceptions", () => {
+  assert.match(service, /syncNextMonthlySchedulingAutomation/);
+  assert.match(service, /status: "NO_RESPONSE"/);
+  assert.match(staffRoute, /monthlySchedulingQueueLane/);
+  assert.match(adminPage, /monthlySchedulingExceptionReason/);
+  assert.match(automationScript, /syncMonthlySchedulingCommunicationTasks/);
+  assert.doesNotMatch(automationScript, /syncParentCommunicationCenter/);
+  assert.match(communicationCenter, /家庭已完成下月安排回复，无需再发送初始提醒/);
+  assert.match(communicationCenter, /input\.kind === "MONTHLY_SCHEDULING" && existing\.contentFingerprint === contentFingerprint/);
 });
 
 test("staff proxy entry cannot replace matched or scheduled work", () => {

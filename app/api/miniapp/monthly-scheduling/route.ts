@@ -4,12 +4,14 @@ import {
   itemStatusLabels,
   listParentMonthlyScheduling,
   listMonthlySchedulingQualifiedTeachers,
+  monthlySchedulingFamilyCanKeep,
   monthlySchedulingOfferView,
   MONTHLY_SCHEDULING_INTENTS,
   monthlySchedulingMonthKey,
   monthlySchedulingRange,
   rankMonthlySchedulingOffers,
   requestMonthlySchedulingChange,
+  submitMonthlySchedulingFamilyKeep,
   submitMonthlySchedulingPreference,
   type MonthlySchedulingIntent,
   type MonthlySchedulingItemStatus,
@@ -26,6 +28,8 @@ export async function GET(req: Request) {
   const markViewed = new URL(req.url).searchParams.get("markViewed") === "1";
   const rows = await listParentMonthlyScheduling(auth.parent.id, { markViewed });
   const teacherOptionsByCourse = await listMonthlySchedulingQualifiedTeachers(rows.map((row) => row.courseId));
+  const familyRowsByCampaign = new Map<string, typeof rows>();
+  for (const row of rows) familyRowsByCampaign.set(row.campaignId, [...(familyRowsByCampaign.get(row.campaignId) ?? []), row]);
   return ok({
     items: rows.map((row) => {
       const month = monthlySchedulingMonthKey(row.campaign.month);
@@ -33,6 +37,7 @@ export async function GET(req: Request) {
       const selectedOffer = row.offers.find((offer) => ["HELD", "ACCEPTED"].includes(offer.status));
       return {
         id: row.id,
+        campaignId: row.campaignId,
         month,
         monthStart: range ? formatBusinessDateOnly(range.start) : null,
         monthEnd: range ? formatBusinessDateOnly(new Date(range.end.getTime() - 1)) : null,
@@ -59,6 +64,9 @@ export async function GET(req: Request) {
         unavailableDates: row.unavailableDatesJson,
         parentNotes: row.parentNotes,
         currentSchedule: scheduleRows(row.currentScheduleJson),
+        carryForwardSchedule: scheduleRows(row.carryForwardScheduleJson),
+        familyItemCount: familyRowsByCampaign.get(row.campaignId)?.length ?? 1,
+        familyCanKeep: monthlySchedulingFamilyCanKeep(familyRowsByCampaign.get(row.campaignId) ?? []),
         offers: row.offers.map(monthlySchedulingOfferView),
         selectedOffer: selectedOffer ? monthlySchedulingOfferView(selectedOffer) : null,
         submittedAt: row.submittedAt?.toISOString() ?? null,
@@ -92,6 +100,13 @@ export async function POST(req: Request) {
         note: String((body as any).note ?? ""),
       });
       return ok({ itemId: item.id, status: item.status, message: "调整申请已提交，原安排会保留至学校确认新方案" });
+    }
+    if (action === "KEEP_FAMILY") {
+      const result = await submitMonthlySchedulingFamilyKeep({
+        campaignId: String((body as any).campaignId ?? ""),
+        parentId: auth.parent.id,
+      });
+      return ok({ ...result, status: "SUBMITTED", message: `已确认全家 ${result.count} 项沿用本月固定安排` });
     }
   } catch (error) {
     return bad(error instanceof Error ? error.message : "提交失败", 409);
