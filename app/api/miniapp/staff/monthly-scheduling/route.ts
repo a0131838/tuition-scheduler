@@ -8,6 +8,7 @@ import {
   MONTHLY_SCHEDULING_ITEM_STATUSES,
   MONTHLY_SCHEDULING_INTENTS,
   monthlySchedulingMonthKey,
+  monthlySchedulingCohortForSourceName,
   monthlySchedulingExceptionReason,
   monthlySchedulingFamilyCanKeep,
   monthlySchedulingQueueLane,
@@ -22,6 +23,7 @@ import {
   type MonthlySchedulingIntent,
   type MonthlySchedulingItemStatus,
   type MonthlySchedulingResponseChannel,
+  type MonthlySchedulingCohort,
 } from "@/lib/monthly-scheduling";
 
 const QUEUE_LANES = ["READY_CONFIRM", "WAITING_PARENT", "EXCEPTIONS", "COMPLETED"] as const;
@@ -33,18 +35,26 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const month = /^\d{4}-\d{2}$/.test(url.searchParams.get("month") ?? "") ? url.searchParams.get("month")! : nextMonthlySchedulingMonth();
   const status = url.searchParams.get("status") ?? "READY_CONFIRM";
+  const cohort: MonthlySchedulingCohort = url.searchParams.get("cohort") === "XDF" ? "XDF" : "BOSS_OTHER";
   const itemId = cleanMiniappText(url.searchParams.get("itemId"), 80);
   if (status !== "ALL" && !QUEUE_LANES.includes(status as (typeof QUEUE_LANES)[number]) && !MONTHLY_SCHEDULING_ITEM_STATUSES.includes(status as MonthlySchedulingItemStatus)) return bad("Invalid status");
   await expireMonthlySchedulingOfferHolds();
   const campaign = await getMonthlySchedulingCampaign(month);
-  if (!campaign) return ok({ month, campaign: null, items: [], counts: {} });
+  if (!campaign) return ok({ month, campaign: null, cohort, cohortCounts: { BOSS_OTHER: 0, XDF: 0 }, items: [], counts: {} });
   const teacherOptionsByCourse = await listMonthlySchedulingQualifiedTeachers(campaign.items.map((row) => row.courseId));
+  const cohortCounts = {
+    BOSS_OTHER: campaign.items.filter((row) => monthlySchedulingCohortForSourceName(row.student.sourceChannel?.name) === "BOSS_OTHER" && row.status !== "EXCLUDED").length,
+    XDF: campaign.items.filter((row) => monthlySchedulingCohortForSourceName(row.student.sourceChannel?.name) === "XDF" && row.status !== "EXCLUDED").length,
+  };
+  const selectedItem = itemId ? campaign.items.find((row) => row.id === itemId) : null;
+  const scopeCohort = selectedItem ? monthlySchedulingCohortForSourceName(selectedItem.student.sourceChannel?.name) : cohort;
+  const scopeItems = campaign.items.filter((row) => monthlySchedulingCohortForSourceName(row.student.sourceChannel?.name) === scopeCohort);
   const counts = Object.fromEntries([
-    ...MONTHLY_SCHEDULING_ITEM_STATUSES.map((value) => [value, campaign.items.filter((row) => row.status === value).length] as const),
-    ...QUEUE_LANES.map((lane) => [lane, campaign.items.filter((row) => monthlySchedulingQueueLane(row) === lane).length] as const),
+    ...MONTHLY_SCHEDULING_ITEM_STATUSES.map((value) => [value, scopeItems.filter((row) => row.status === value).length] as const),
+    ...QUEUE_LANES.map((lane) => [lane, scopeItems.filter((row) => monthlySchedulingQueueLane(row) === lane).length] as const),
   ]);
   const familyRows = new Map<string, typeof campaign.items>();
-  for (const row of campaign.items) {
+  for (const row of scopeItems) {
     if (row.status === "EXCLUDED") continue;
     const key = row.parentId ?? `STUDENT:${row.studentId}`;
     familyRows.set(key, [...(familyRows.get(key) ?? []), row]);
@@ -61,7 +71,7 @@ export async function GET(req: Request) {
     }));
   }
   const familyLeadIds = new Set(Array.from(familyRows.values()).map((rows) => rows[0]?.id).filter(Boolean));
-  const items = campaign.items.filter((row) => {
+  const items = scopeItems.filter((row) => {
     if (itemId) return row.id === itemId;
     if (status === "ALL") return true;
     if (QUEUE_LANES.includes(status as (typeof QUEUE_LANES)[number])) return monthlySchedulingQueueLane(row) === status;
@@ -80,6 +90,9 @@ export async function GET(req: Request) {
       studentId: row.studentId,
       courseId: row.courseId,
       studentName: row.student.name,
+      cohort: monthlySchedulingCohortForSourceName(row.student.sourceChannel?.name),
+      sourceLabel: row.student.sourceChannel?.name ?? "博思及其他",
+      sourceGroupLabel: monthlySchedulingCohortForSourceName(row.student.sourceChannel?.name) === "XDF" ? "新东方学生" : row.student.sourceChannel?.name ?? "博思及其他",
       grade: row.student.grade,
       courseName: row.course.name,
       parentName: row.parent?.name ?? null,
@@ -118,7 +131,7 @@ export async function GET(req: Request) {
       message: familyMessages.get(row.parentId ?? `STUDENT:${row.studentId}`) ?? "",
     };
   });
-  return ok({ month: monthlySchedulingMonthKey(campaign.month), campaign: { id: campaign.id, status: campaign.status, dueAt: campaign.dueAt?.toISOString() ?? null }, counts, items });
+  return ok({ month: monthlySchedulingMonthKey(campaign.month), campaign: { id: campaign.id, status: campaign.status, dueAt: campaign.dueAt?.toISOString() ?? null }, cohort: scopeCohort, cohortCounts, counts, items });
 }
 
 export async function POST(req: Request) {

@@ -12,6 +12,7 @@ import {
   listMonthlySchedulingQualifiedTeachers,
   itemStatusLabels,
   monthlySchedulingExceptionReason,
+  monthlySchedulingCohortForSourceName,
   monthlySchedulingFamilyCanKeep,
   monthlySchedulingQueueLane,
   monthlySchedulingMonthKey,
@@ -30,6 +31,7 @@ import {
   syncMonthlySchedulingCampaignItems,
   updateMonthlySchedulingItem,
   type MonthlySchedulingCampaignStatus,
+  type MonthlySchedulingCohort,
   type MonthlySchedulingIntent,
   type MonthlySchedulingItemStatus,
   type MonthlySchedulingResponseChannel,
@@ -103,6 +105,11 @@ function optionalFormNumber(formData: FormData, name: string) {
   return value ? Number(value) : null;
 }
 
+function monthlySchedulingRedirectPath(month: string, formData: FormData, params: Record<string, string> = {}) {
+  const query = new URLSearchParams({ month, cohort: formData.get("cohort") === "XDF" ? "XDF" : "BOSS_OTHER", ...params });
+  return `/admin/monthly-scheduling?${query.toString()}`;
+}
+
 async function createCampaignAction(formData: FormData) {
   "use server";
   const access = await requireMonthlySchedulingUser();
@@ -110,7 +117,7 @@ async function createCampaignAction(formData: FormData) {
   const month = String(formData.get("month") ?? "");
   const campaign = await createMonthlySchedulingCampaign({ month, actor: { id: access.user.id, name: access.user.name } });
   await syncMonthlySchedulingCampaignItems(campaign.id);
-  redirect(`/admin/monthly-scheduling?month=${encodeURIComponent(month)}`);
+  redirect(monthlySchedulingRedirectPath(month, formData));
 }
 
 async function syncCampaignAction(formData: FormData) {
@@ -121,7 +128,7 @@ async function syncCampaignAction(formData: FormData) {
   const month = String(formData.get("month") ?? "");
   await syncMonthlySchedulingCampaignItems(campaignId);
   revalidatePath("/admin/monthly-scheduling");
-  redirect(`/admin/monthly-scheduling?month=${encodeURIComponent(month)}&notice=Roster+refreshed`);
+  redirect(monthlySchedulingRedirectPath(month, formData, { notice: "Roster refreshed" }));
 }
 
 async function campaignStatusAction(formData: FormData) {
@@ -134,7 +141,7 @@ async function campaignStatusAction(formData: FormData) {
   if (!MONTHLY_SCHEDULING_CAMPAIGN_STATUSES.includes(status)) throw new Error("Invalid campaign status");
   await setMonthlySchedulingCampaignStatus(campaignId, status);
   revalidatePath("/admin/monthly-scheduling");
-  redirect(`/admin/monthly-scheduling?month=${encodeURIComponent(month)}`);
+  redirect(monthlySchedulingRedirectPath(month, formData));
 }
 
 async function itemStatusAction(formData: FormData) {
@@ -155,7 +162,7 @@ async function itemStatusAction(formData: FormData) {
     internalNote: String(formData.get("internalNote") ?? "").trim().slice(0, 1000) || null,
   });
   revalidatePath("/admin/monthly-scheduling");
-  redirect(`/admin/monthly-scheduling?month=${encodeURIComponent(month)}&status=${encodeURIComponent(status)}`);
+  redirect(monthlySchedulingRedirectPath(month, formData, { status }));
 }
 
 async function proxyPreferenceAction(formData: FormData) {
@@ -187,7 +194,7 @@ async function proxyPreferenceAction(formData: FormData) {
     actorRole: access.user.role,
   });
   revalidatePath("/admin/monthly-scheduling");
-  redirect(`/admin/monthly-scheduling?month=${encodeURIComponent(month)}&status=${encodeURIComponent(row.status)}&notice=${encodeURIComponent("Parent response entered by staff")}`);
+  redirect(monthlySchedulingRedirectPath(month, formData, { status: row.status, notice: "Parent response entered by staff" }));
 }
 
 async function proxyRankOffersAction(formData: FormData) {
@@ -208,7 +215,7 @@ async function proxyRankOffersAction(formData: FormData) {
     actorRole: access.user.role,
   });
   revalidatePath("/admin/monthly-scheduling");
-  redirect(`/admin/monthly-scheduling?month=${encodeURIComponent(month)}&status=PARENT_SELECTED&notice=${encodeURIComponent("Parent choices recorded by staff")}`);
+  redirect(monthlySchedulingRedirectPath(month, formData, { status: "PARENT_SELECTED", notice: "Parent choices recorded by staff" }));
 }
 
 async function proxyFamilyKeepAction(formData: FormData) {
@@ -228,7 +235,7 @@ async function proxyFamilyKeepAction(formData: FormData) {
     actorRole: access.user.role,
   });
   revalidatePath("/admin/monthly-scheduling");
-  redirect(`/admin/monthly-scheduling?month=${encodeURIComponent(month)}&notice=${encodeURIComponent(`Recorded ${result.count} family items as keep current`)}`);
+  redirect(monthlySchedulingRedirectPath(month, formData, { notice: `Recorded ${result.count} family items as keep current` }));
 }
 
 async function createExceptionTicketAction(formData: FormData) {
@@ -280,13 +287,13 @@ async function createExceptionTicketAction(formData: FormData) {
     }
   });
   revalidatePath("/admin/monthly-scheduling");
-  redirect(`/admin/monthly-scheduling?month=${encodeURIComponent(month)}&status=TEACHER_EXCEPTION`);
+  redirect(monthlySchedulingRedirectPath(month, formData, { status: "TEACHER_EXCEPTION" }));
 }
 
 export default async function MonthlySchedulingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; status?: string; lane?: string; notice?: string }>;
+  searchParams: Promise<{ month?: string; status?: string; lane?: string; cohort?: string; notice?: string }>;
 }) {
   const access = await requireMonthlySchedulingUser();
   const lang = await getLang();
@@ -296,15 +303,21 @@ export default async function MonthlySchedulingPage({
     ? params.status as MonthlySchedulingItemStatus
     : "ALL";
   const selectedLane = ["READY_CONFIRM", "WAITING_PARENT", "EXCEPTIONS", "COMPLETED"].includes(params.lane ?? "") ? params.lane! : null;
+  const selectedCohort: MonthlySchedulingCohort = params.cohort === "XDF" ? "XDF" : "BOSS_OTHER";
   const campaign = await getMonthlySchedulingCampaign(month);
   const [report, matchSuggestions, teacherOptionsByCourse]: [Awaited<ReturnType<typeof buildMonthlyStaffingReport>> | null, Awaited<ReturnType<typeof buildMonthlyMatchSuggestions>>, Awaited<ReturnType<typeof listMonthlySchedulingQualifiedTeachers>>] = campaign
-    ? await Promise.all([buildMonthlyStaffingReport(campaign.id), buildMonthlyMatchSuggestions(campaign.id), listMonthlySchedulingQualifiedTeachers(campaign.items.map((row) => row.courseId))])
+    ? await Promise.all([buildMonthlyStaffingReport(campaign.id, selectedCohort), buildMonthlyMatchSuggestions(campaign.id), listMonthlySchedulingQualifiedTeachers(campaign.items.map((row) => row.courseId))])
     : [null, new Map<string, Array<{ teacherId: string; teacherName: string; date: string; start: string; end: string; startAt: string; endAt: string }>>(), new Map<string, Array<{ id: string; name: string }>>()];
-  const items = campaign?.items.filter((row) => selectedLane ? monthlySchedulingQueueLane(row) === selectedLane : selectedStatus === "ALL" || row.status === selectedStatus) ?? [];
-  const counts = Object.fromEntries(MONTHLY_SCHEDULING_ITEM_STATUSES.map((status) => [status, campaign?.items.filter((row) => row.status === status).length ?? 0]));
-  const laneCounts = Object.fromEntries(["READY_CONFIRM", "WAITING_PARENT", "EXCEPTIONS", "COMPLETED"].map((lane) => [lane, campaign?.items.filter((row) => monthlySchedulingQueueLane(row) === lane).length ?? 0]));
+  const cohortItems = campaign?.items.filter((row) => monthlySchedulingCohortForSourceName(row.student.sourceChannel?.name) === selectedCohort) ?? [];
+  const cohortCounts = {
+    BOSS_OTHER: campaign?.items.filter((row) => monthlySchedulingCohortForSourceName(row.student.sourceChannel?.name) === "BOSS_OTHER" && row.status !== "EXCLUDED").length ?? 0,
+    XDF: campaign?.items.filter((row) => monthlySchedulingCohortForSourceName(row.student.sourceChannel?.name) === "XDF" && row.status !== "EXCLUDED").length ?? 0,
+  };
+  const items = cohortItems.filter((row) => selectedLane ? monthlySchedulingQueueLane(row) === selectedLane : selectedStatus === "ALL" || row.status === selectedStatus);
+  const counts = Object.fromEntries(MONTHLY_SCHEDULING_ITEM_STATUSES.map((status) => [status, cohortItems.filter((row) => row.status === status).length]));
+  const laneCounts = Object.fromEntries(["READY_CONFIRM", "WAITING_PARENT", "EXCEPTIONS", "COMPLETED"].map((lane) => [lane, cohortItems.filter((row) => monthlySchedulingQueueLane(row) === lane).length]));
   const familyGroups = new Map<string, typeof campaign extends null ? never : NonNullable<typeof campaign>["items"]>();
-  for (const item of campaign?.items ?? []) {
+  for (const item of cohortItems) {
     if (item.status === "EXCLUDED") continue;
     const key = item.parentId ?? `STUDENT:${item.studentId}`;
     familyGroups.set(key, [...(familyGroups.get(key) ?? []), item]);
@@ -326,8 +339,9 @@ export default async function MonthlySchedulingPage({
         </div>
         <form action={createCampaignAction} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "end" }}>
           <label>{t(lang, "Target month", "目标月份")}<br /><input name="month" type="month" defaultValue={month} required style={{ padding: 10, minWidth: 180 }} /></label>
+          <input type="hidden" name="cohort" value={selectedCohort} />
           <button style={buttonStyle}>{campaign ? t(lang, "Open selected month", "打开所选月份") : t(lang, "Create campaign", "创建活动")}</button>
-          {campaign && <Link href={`/admin/monthly-scheduling/export?month=${month}`} style={{ ...buttonStyle, textDecoration: "none", color: "#10243e" }}>{t(lang, "Export CSV", "导出CSV")}</Link>}
+          {campaign && <Link href={`/admin/monthly-scheduling/export?month=${month}&cohort=${selectedCohort}`} style={{ ...buttonStyle, textDecoration: "none", color: "#10243e" }}>{t(lang, "Export current group", "导出当前分组")}</Link>}
         </form>
         {params.notice && <div style={{ padding: 10, background: "#eafaf0", color: "#17663a" }}>{params.notice}</div>}
       </section>
@@ -337,6 +351,12 @@ export default async function MonthlySchedulingPage({
       ) : (
         <>
           <section style={sectionStyle}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <strong>{t(lang, "Student group", "学生分组")}</strong>
+              {([ ["BOSS_OTHER", t(lang, "Boss and other students", "博思及其他")], ["XDF", t(lang, "New Oriental students", "新东方学生")] ] as const).map(([cohort, label]) => (
+                <Link key={cohort} href={`/admin/monthly-scheduling?month=${month}&cohort=${cohort}${selectedLane ? `&lane=${selectedLane}` : selectedStatus !== "ALL" ? `&status=${selectedStatus}` : ""}`} style={{ ...buttonStyle, textDecoration: "none", color: "#10243e", background: selectedCohort === cohort ? "#dce9ff" : "#f7faff" }}>{label} ({cohortCounts[cohort]})</Link>
+              ))}
+            </div>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
               <div>
                 <h2 style={{ margin: 0 }}>{month} · {campaign.status}</h2>
@@ -345,14 +365,14 @@ export default async function MonthlySchedulingPage({
                 </div>
               </div>
               {access.canManage && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <form action={syncCampaignAction}><input type="hidden" name="campaignId" value={campaign.id} /><input type="hidden" name="month" value={month} /><button style={buttonStyle}>{t(lang, "Refresh roster", "刷新名单")}</button></form>
-                {campaign.status !== "OPEN" && <form action={campaignStatusAction}><input type="hidden" name="campaignId" value={campaign.id} /><input type="hidden" name="month" value={month} /><input type="hidden" name="status" value="OPEN" /><button style={{ ...buttonStyle, background: "#174ea6", color: "#fff" }}>{t(lang, "Open campaign", "开放家长填写")}</button></form>}
-                {campaign.status === "OPEN" && <form action={campaignStatusAction}><input type="hidden" name="campaignId" value={campaign.id} /><input type="hidden" name="month" value={month} /><input type="hidden" name="status" value="CLOSED" /><button style={buttonStyle}>{t(lang, "Close campaign", "关闭活动")}</button></form>}
+                <form action={syncCampaignAction}><input type="hidden" name="campaignId" value={campaign.id} /><input type="hidden" name="month" value={month} /><input type="hidden" name="cohort" value={selectedCohort} /><button style={buttonStyle}>{t(lang, "Refresh roster", "刷新名单")}</button></form>
+                {campaign.status !== "OPEN" && <form action={campaignStatusAction}><input type="hidden" name="campaignId" value={campaign.id} /><input type="hidden" name="month" value={month} /><input type="hidden" name="cohort" value={selectedCohort} /><input type="hidden" name="status" value="OPEN" /><button style={{ ...buttonStyle, background: "#174ea6", color: "#fff" }}>{t(lang, "Open campaign", "开放家长填写")}</button></form>}
+                {campaign.status === "OPEN" && <form action={campaignStatusAction}><input type="hidden" name="campaignId" value={campaign.id} /><input type="hidden" name="month" value={month} /><input type="hidden" name="cohort" value={selectedCohort} /><input type="hidden" name="status" value="CLOSED" /><button style={buttonStyle}>{t(lang, "Close campaign", "关闭活动")}</button></form>}
               </div>}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(145px,1fr))", gap: 10 }}>
               {[
-                ["TOTAL", campaign.items.filter((row) => row.status !== "EXCLUDED").length, t(lang, "Students / courses", "学生课程项")],
+                ["TOTAL", cohortItems.filter((row) => row.status !== "EXCLUDED").length, t(lang, "Students / courses", "学生课程项")],
                 ["READY_CONFIRM", laneCounts.READY_CONFIRM, t(lang, "Ready to confirm", "待教务确认")],
                 ["WAITING_PARENT", laneCounts.WAITING_PARENT, t(lang, "Waiting parent", "等待家长")],
                 ["EXCEPTIONS", laneCounts.EXCEPTIONS, t(lang, "Exceptions only", "例外处理")],
@@ -364,9 +384,9 @@ export default async function MonthlySchedulingPage({
           <section style={sectionStyle}>
             <h2 style={{ margin: 0 }}>{t(lang, "Follow-up queue", "家长跟进工作台")}</h2>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <Link href={`/admin/monthly-scheduling?month=${month}`} style={{ ...buttonStyle, textDecoration: "none", color: "#10243e", background: !selectedLane && selectedStatus === "ALL" ? "#dce9ff" : "#f7faff" }}>{t(lang, "All", "全部")} ({campaign.items.length})</Link>
-              {[["READY_CONFIRM", "待教务确认"], ["WAITING_PARENT", "等待家长"], ["EXCEPTIONS", "只看例外"], ["COMPLETED", "已处理"]].map(([lane, label]) => <Link key={lane} href={`/admin/monthly-scheduling?month=${month}&lane=${lane}`} style={{ ...buttonStyle, textDecoration: "none", color: "#10243e", background: selectedLane === lane ? "#dce9ff" : "#f7faff" }}>{label} ({laneCounts[lane] ?? 0})</Link>)}
-              {MONTHLY_SCHEDULING_ITEM_STATUSES.filter((status) => counts[status] > 0).map((status) => <Link key={status} href={`/admin/monthly-scheduling?month=${month}&status=${status}`} style={{ ...buttonStyle, textDecoration: "none", color: "#10243e", background: selectedStatus === status ? "#dce9ff" : "#f7faff" }}>{itemStatusLabels[status].zh} ({counts[status]})</Link>)}
+              <Link href={`/admin/monthly-scheduling?month=${month}&cohort=${selectedCohort}`} style={{ ...buttonStyle, textDecoration: "none", color: "#10243e", background: !selectedLane && selectedStatus === "ALL" ? "#dce9ff" : "#f7faff" }}>{t(lang, "All", "全部")} ({cohortItems.length})</Link>
+              {[["READY_CONFIRM", "待教务确认"], ["WAITING_PARENT", "等待家长"], ["EXCEPTIONS", "只看例外"], ["COMPLETED", "已处理"]].map(([lane, label]) => <Link key={lane} href={`/admin/monthly-scheduling?month=${month}&cohort=${selectedCohort}&lane=${lane}`} style={{ ...buttonStyle, textDecoration: "none", color: "#10243e", background: selectedLane === lane ? "#dce9ff" : "#f7faff" }}>{label} ({laneCounts[lane] ?? 0})</Link>)}
+              {MONTHLY_SCHEDULING_ITEM_STATUSES.filter((status) => counts[status] > 0).map((status) => <Link key={status} href={`/admin/monthly-scheduling?month=${month}&cohort=${selectedCohort}&status=${status}`} style={{ ...buttonStyle, textDecoration: "none", color: "#10243e", background: selectedStatus === status ? "#dce9ff" : "#f7faff" }}>{itemStatusLabels[status].zh} ({counts[status]})</Link>)}
             </div>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1100 }}>
@@ -379,7 +399,7 @@ export default async function MonthlySchedulingPage({
                   const defaultRanges = [0, 1, 2].map((index) => availability.timeRanges[index] ?? [{ start: "09:00", end: "12:00", priority: "REQUIRED" }, { start: "14:00", end: "18:00", priority: "PREFERRED" }, { start: "19:00", end: "21:00", priority: "ACCEPTABLE" }][index]);
                   const canProxyPreference = MONTHLY_SCHEDULING_PROXY_EDITABLE_STATUSES.includes(item.status as (typeof MONTHLY_SCHEDULING_PROXY_EDITABLE_STATUSES)[number]);
                   return <tr key={item.id}>
-                    <td style={{ padding: 10, borderBottom: "1px solid #e5ebf3" }}><strong>{item.student.name}</strong><br /><small>{item.student.grade || "-"}</small></td>
+                    <td style={{ padding: 10, borderBottom: "1px solid #e5ebf3" }}><strong>{item.student.name}</strong><br /><small>{item.student.grade || "-"} · {selectedCohort === "XDF" ? "新东方学生" : item.student.sourceChannel?.name || "博思及其他"}</small></td>
                     <td style={{ padding: 10, borderBottom: "1px solid #e5ebf3" }}>{item.course.name}<br /><small>{item.package?.remainingMinutes != null ? `${hours(item.package.remainingMinutes)} remaining` : item.package?.type ?? "-"}</small></td>
                     <td style={{ padding: 10, borderBottom: "1px solid #e5ebf3" }}>{schedules.length ? <><strong>{t(lang, "Target month scheduled", "下月已排")}</strong>{schedules.slice(0, 3).map((row, idx) => <div key={idx}>{row.startText} · {row.teacher || "-"}</div>)}</> : carryForward.length ? <><strong style={{ color: "#17663a" }}>{t(lang, "Carry-forward suggestion", "沿用本月建议")}</strong>{carryForward.slice(0, 3).map((row, idx) => <div key={idx}>{row.weekdayLabel} {row.start}-{row.end} · {row.teacher || "-"}</div>)}</> : <span style={{ color: "#9a5b00" }}>{t(lang, "No stable arrangement to copy", "没有可沿用的固定安排")}</span>}</td>
                     <td style={{ padding: 10, borderBottom: "1px solid #e5ebf3" }}>{item.intent || "-"}<br /><small>{item.preferredMode || ""} {item.preferredTeacher || ""}</small></td>
@@ -404,7 +424,7 @@ export default async function MonthlySchedulingPage({
                     <td style={{ padding: 10, borderBottom: "1px solid #e5ebf3", minWidth: 360 }}>
                       {access.canManage ? <>
                         <form action={itemStatusAction} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 6 }}>
-                          <input type="hidden" name="itemId" value={item.id} /><input type="hidden" name="month" value={month} /><input type="hidden" name="expectedStatus" value={item.status} />
+                          <input type="hidden" name="itemId" value={item.id} /><input type="hidden" name="month" value={month} /><input type="hidden" name="cohort" value={selectedCohort} /><input type="hidden" name="expectedStatus" value={item.status} />
                           <select name="status" defaultValue={item.status} style={{ padding: 8 }}>{MONTHLY_SCHEDULING_ITEM_STATUSES.map((status) => <option key={status} value={status}>{itemStatusLabels[status].zh} / {itemStatusLabels[status].en}</option>)}</select>
                           <button style={buttonStyle}>{t(lang, "Save", "保存")}</button>
                           <input name="internalNote" defaultValue={item.internalNote ?? ""} placeholder="Internal note / 内部备注" style={{ gridColumn: "1 / -1", padding: 8 }} />
@@ -412,7 +432,7 @@ export default async function MonthlySchedulingPage({
                         {canProxyPreference && <details style={{ marginTop: 8, border: "1px solid #f2c48d", padding: 8, background: "#fffaf3" }}>
                           <summary style={{ cursor: "pointer", fontWeight: 800, color: "#9a4d08" }}>{t(lang, "Enter response for parent", "代家长录入需求")}</summary>
                           <form action={proxyPreferenceAction} style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(130px,1fr))", gap: 8, marginTop: 10 }}>
-                            <input type="hidden" name="itemId" value={item.id} /><input type="hidden" name="month" value={month} /><input type="hidden" name="expectedStatus" value={item.status} />
+                            <input type="hidden" name="itemId" value={item.id} /><input type="hidden" name="month" value={month} /><input type="hidden" name="cohort" value={selectedCohort} /><input type="hidden" name="expectedStatus" value={item.status} />
                             <label>家长安排<select name="intent" defaultValue={item.intent ?? "KEEP"} required style={{ width: "100%", padding: 8 }}>{MONTHLY_SCHEDULING_INTENTS.map((value) => <option key={value} value={value}>{value === "KEEP" ? "保持目前安排" : value === "CHANGE" ? "希望修改时间" : value === "PAUSE" ? "下个月暂停" : "尚未确定"}</option>)}</select></label>
                             <label>沟通渠道<select name="responseChannel" defaultValue={item.responseChannel ?? "WECHAT_GROUP"} required style={{ width: "100%", padding: 8 }}>{MONTHLY_SCHEDULING_RESPONSE_CHANNELS.map((value) => <option key={value} value={value}>{responseChannelLabels[value].zh}</option>)}</select></label>
                             <label>每周次数<input name="expectedSessionsPerWeek" type="number" min="0" max="14" defaultValue={item.expectedSessionsPerWeek ?? 1} style={{ width: "100%", padding: 8, boxSizing: "border-box" }} /></label>
@@ -434,7 +454,7 @@ export default async function MonthlySchedulingPage({
                         {["OFFERED", "PARENT_SELECTED"].includes(item.status) && concreteOffers.length > 0 && <details style={{ marginTop: 8, border: "1px solid #9bcfae", padding: 8, background: "#f3fbf5" }}>
                           <summary style={{ cursor: "pointer", fontWeight: 800, color: "#17663a" }}>{t(lang, "Record parent choices", "代家长选择候选时间")}</summary>
                           <form action={proxyRankOffersAction} style={{ display: "grid", gap: 8, marginTop: 10 }}>
-                            <input type="hidden" name="itemId" value={item.id} /><input type="hidden" name="month" value={month} />
+                            <input type="hidden" name="itemId" value={item.id} /><input type="hidden" name="month" value={month} /><input type="hidden" name="cohort" value={selectedCohort} />
                             {[1, 2, 3].map((rank) => <label key={rank}>第{rank}选择<select name={`rank${rank}`} required={rank === 1} defaultValue={concreteOffers.find((option) => option.parentRank === rank)?.id ?? ""} style={{ width: "100%", padding: 8 }}><option value="">{rank === 1 ? "请选择" : "不填写"}</option>{concreteOffers.map((option) => <option key={option.id} value={option.id}>{offerOptionLabel(option)}</option>)}</select></label>)}
                             <label>沟通渠道<select name="responseChannel" defaultValue={item.offerSelectionChannel ?? item.responseChannel ?? "WECHAT_GROUP"} required style={{ width: "100%", padding: 8 }}>{MONTHLY_SCHEDULING_RESPONSE_CHANNELS.map((value) => <option key={value} value={value}>{responseChannelLabels[value].zh}</option>)}</select></label>
                             <label>家长回复日期<input name="parentConfirmedAt" type="date" required defaultValue={dateInputValue(item.offerParentConfirmedAt ?? item.parentConfirmedAt)} style={{ width: "100%", padding: 8, boxSizing: "border-box" }} /></label>
@@ -442,7 +462,7 @@ export default async function MonthlySchedulingPage({
                             <button style={{ ...buttonStyle, background: "#17663a", color: "#fff" }}>按家长排序临时保留24小时</button>
                           </form>
                         </details>}
-                        {(item.intent === "CHANGE" || item.status === "CHANGE_REQUESTED") && ["SUBMITTED", "NEEDS_CLARIFICATION", "MATCHED", "CHANGE_REQUESTED"].includes(item.status) && <form action={createExceptionTicketAction} style={{ marginTop: 6 }}><input type="hidden" name="itemId" value={item.id} /><input type="hidden" name="month" value={month} /><button style={{ ...buttonStyle, width: "100%" }}>{t(lang, "Escalate teacher exception", "转老师例外工单")}</button></form>}
+                        {(item.intent === "CHANGE" || item.status === "CHANGE_REQUESTED") && ["SUBMITTED", "NEEDS_CLARIFICATION", "MATCHED", "CHANGE_REQUESTED"].includes(item.status) && <form action={createExceptionTicketAction} style={{ marginTop: 6 }}><input type="hidden" name="itemId" value={item.id} /><input type="hidden" name="month" value={month} /><input type="hidden" name="cohort" value={selectedCohort} /><button style={{ ...buttonStyle, width: "100%" }}>{t(lang, "Escalate teacher exception", "转老师例外工单")}</button></form>}
                       </> : <span>{item.ownerName || "-"}</span>}
                     </td>
                   </tr>;
@@ -458,7 +478,7 @@ export default async function MonthlySchedulingPage({
               const first = rows[0];
               const message = familyMessages.get(key) ?? "";
               const canKeepFamily = monthlySchedulingFamilyCanKeep(rows);
-              return <details key={key}><summary style={{ cursor: "pointer", fontWeight: 800 }}>{first.parent?.name || first.student.name} · {rows.length} {t(lang, "item(s)", "项")}</summary><textarea readOnly value={message} style={{ width: "100%", minHeight: 150, marginTop: 8, padding: 10 }} />{access.canManage && canKeepFamily && <form action={proxyFamilyKeepAction} style={{ marginTop: 10, padding: 12, display: "grid", gap: 8, background: "#f1fbf4", border: "1px solid #9bcfae" }}><strong>{t(lang, "Family replied: keep the current arrangement", "家长回复：全家沿用本月安排")}</strong><input type="hidden" name="campaignId" value={campaign.id} /><input type="hidden" name="seedItemId" value={first.id} /><input type="hidden" name="month" value={month} /><label>{t(lang, "Response channel", "沟通渠道")}<select name="responseChannel" defaultValue="WECHAT_GROUP" style={{ width: "100%", padding: 8 }}>{MONTHLY_SCHEDULING_RESPONSE_CHANNELS.map((value) => <option key={value} value={value}>{responseChannelLabels[value].zh}</option>)}</select></label><label>{t(lang, "Parent reply date", "家长回复日期")}<input name="parentConfirmedAt" type="date" required defaultValue={dateInputValue(null)} style={{ width: "100%", padding: 8, boxSizing: "border-box" }} /></label><label>{t(lang, "Original reply or summary", "家长原话或摘要")}<textarea name="parentConfirmationNote" required placeholder="例如：家长在微信群回复，下个月两个孩子都照旧。" style={{ width: "100%", minHeight: 70, padding: 8, boxSizing: "border-box" }} /></label><button style={{ ...buttonStyle, background: "#17663a", color: "#fff" }}>{t(lang, `Record ${rows.length} items together`, `一次代录 ${rows.length} 项`)}</button></form>}</details>;
+              return <details key={key}><summary style={{ cursor: "pointer", fontWeight: 800 }}>{first.parent?.name || first.student.name} · {rows.length} {t(lang, "item(s)", "项")}</summary><textarea readOnly value={message} style={{ width: "100%", minHeight: 150, marginTop: 8, padding: 10 }} />{access.canManage && canKeepFamily && <form action={proxyFamilyKeepAction} style={{ marginTop: 10, padding: 12, display: "grid", gap: 8, background: "#f1fbf4", border: "1px solid #9bcfae" }}><strong>{t(lang, "Family replied: keep the current arrangement", "家长回复：全家沿用本月安排")}</strong><input type="hidden" name="campaignId" value={campaign.id} /><input type="hidden" name="seedItemId" value={first.id} /><input type="hidden" name="month" value={month} /><input type="hidden" name="cohort" value={selectedCohort} /><label>{t(lang, "Response channel", "沟通渠道")}<select name="responseChannel" defaultValue="WECHAT_GROUP" style={{ width: "100%", padding: 8 }}>{MONTHLY_SCHEDULING_RESPONSE_CHANNELS.map((value) => <option key={value} value={value}>{responseChannelLabels[value].zh}</option>)}</select></label><label>{t(lang, "Parent reply date", "家长回复日期")}<input name="parentConfirmedAt" type="date" required defaultValue={dateInputValue(null)} style={{ width: "100%", padding: 8, boxSizing: "border-box" }} /></label><label>{t(lang, "Original reply or summary", "家长原话或摘要")}<textarea name="parentConfirmationNote" required placeholder="例如：家长在微信群回复，下个月两个孩子都照旧。" style={{ width: "100%", minHeight: 70, padding: 8, boxSizing: "border-box" }} /></label><button style={{ ...buttonStyle, background: "#17663a", color: "#fff" }}>{t(lang, `Record ${rows.length} items together`, `一次代录 ${rows.length} 项`)}</button></form>}</details>;
             })}
           </section>
 

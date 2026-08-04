@@ -35,6 +35,7 @@
 - Current release line prepared: `2026-08-04-r308` lets authorized Academic staff record parent preferences and ranked choices received through WeChat or phone, while preserving the same conflict checks, temporary holds, formal scheduling boundary, and audit trail.
 - Current release line prepared: `2026-08-04-r309` validates teacher preferences by course-qualified teacher ID and gives Academic a manager-controlled, versioned 18-scenario bilingual parent-message library on the Web and Staff Mini Program.
 - Current release line prepared: `2026-08-04-r310` reduces routine next-month coordination with previous-month carry-forward suggestions, one family decision, prioritized time windows, sibling conflict protection, consolidated communication tasks, and an exception-only Academic queue across Web and Mini Program.
+- Current release line prepared: `2026-08-04-r311` separates exact-source New Oriental students from the combined Boss-and-other next-month scheduling queue on the Web and Staff Mini Program without changing parent or formal scheduling behavior.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
@@ -62,6 +63,15 @@
   - automation never sends WeChat messages and never creates, moves, or cancels formal lessons;
   - packages, balances, attendance, deductions, contracts, invoices, receipts, payroll, tickets, and historical lessons remain unchanged.
 - Task doc: `docs/tasks/TASK-20260804-monthly-scheduling-family-efficiency.md`.
+
+## 2026-08-04-r311 Ready
+
+- Web and Staff Mini Program provide two explicit student groups: `博思及其他` and `新东方学生`.
+- Only a source-channel name exactly equal to `新东方学生` enters the New Oriental group; all other sources remain together.
+- Follow-up counts, family-message preparation, staffing forecasts and CSV exports follow the selected group.
+- Direct item links still open the correct item even when it belongs to the non-default group.
+- The filter performs no data migration and does not change parent responses, matching, temporary holds or formal lesson creation.
+- Task doc: `docs/tasks/TASK-20260804-monthly-scheduling-xdf-filter.md`.
 
 ## 2026-08-04-r308 Ready
 

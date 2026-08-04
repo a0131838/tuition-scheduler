@@ -8,18 +8,34 @@ const tabs = [
   { value: "ALL", label: "全部" }
 ];
 
+const cohortOptions = [
+  { value: "BOSS_OTHER", label: "博思及其他", count: 0 },
+  { value: "XDF", label: "新东方学生", count: 0 }
+];
+
 Page({
-  data: { loading: true, updatingId: "", month: "", campaign: null, items: [], counts: {}, tabs, status: "READY_CONFIRM" },
+  data: { loading: true, updatingId: "", month: "", campaign: null, items: [], counts: {}, tabs, status: "READY_CONFIRM", cohort: "BOSS_OTHER", cohortOptions },
   onShow() { this.load(); },
   onPullDownRefresh() { this.load().finally(() => wx.stopPullDownRefresh()); },
   load() {
     this.setData({ loading: true });
-    return api.requestStaff(`/api/miniapp/staff/monthly-scheduling?status=${encodeURIComponent(this.data.status)}`, { timeout: 15000 })
-      .then((data) => this.setData({ month: data.month || "", campaign: data.campaign || null, items: data.items || [], counts: data.counts || {} }))
+    return api.requestStaff(`/api/miniapp/staff/monthly-scheduling?status=${encodeURIComponent(this.data.status)}&cohort=${encodeURIComponent(this.data.cohort)}`, { timeout: 15000 })
+      .then((data) => {
+        const counts = data.cohortCounts || {};
+        this.setData({
+          month: data.month || "",
+          campaign: data.campaign || null,
+          items: data.items || [],
+          counts: data.counts || {},
+          cohort: data.cohort || this.data.cohort,
+          cohortOptions: cohortOptions.map((item) => ({ ...item, count: counts[item.value] || 0 }))
+        });
+      })
       .catch((err) => api.toast(err.message))
       .finally(() => this.setData({ loading: false }));
   },
   selectTab(e) { this.setData({ status: e.currentTarget.dataset.value }, () => this.load()); },
+  selectCohort(e) { this.setData({ cohort: e.currentTarget.dataset.value }, () => this.load()); },
   copyMessage(e) {
     const item = this.data.items.find((row) => row.id === e.currentTarget.dataset.id);
     if (!item || !item.message) return;

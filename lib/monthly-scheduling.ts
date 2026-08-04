@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
 import { logAudit } from "@/lib/audit-log";
 import { renderPublishedCommunicationTemplate } from "@/lib/parent-communication-templates";
+import { LEGACY_XDF_SOURCE_CHANNEL_NAME } from "@/lib/partners";
 
 const BIZ_OFFSET_MS = 8 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -30,6 +31,7 @@ export const MONTHLY_SCHEDULING_RESPONSE_CHANNELS = ["WECHAT_GROUP", "WECHAT_PRI
 export const MONTHLY_SCHEDULING_TEACHER_PREFERENCE_TYPES = ["NONE", "CURRENT", "PREFERRED", "VERIFY"] as const;
 export const MONTHLY_SCHEDULING_TIME_PRIORITIES = ["REQUIRED", "PREFERRED", "ACCEPTABLE"] as const;
 export const MONTHLY_SCHEDULING_PROXY_EDITABLE_STATUSES = ["NOT_SENT", "SENT", "VIEWED", "SUBMITTED", "OFFERED", "NEEDS_CLARIFICATION", "NO_RESPONSE"] as const;
+export const MONTHLY_SCHEDULING_COHORTS = ["BOSS_OTHER", "XDF"] as const;
 const MONTHLY_SCHEDULING_FAMILY_KEEP_STATUSES = ["NOT_SENT", "SENT", "VIEWED", "SUBMITTED", "NEEDS_CLARIFICATION", "NO_RESPONSE"] as const;
 
 export type MonthlySchedulingCampaignStatus = (typeof MONTHLY_SCHEDULING_CAMPAIGN_STATUSES)[number];
@@ -38,6 +40,11 @@ export type MonthlySchedulingIntent = (typeof MONTHLY_SCHEDULING_INTENTS)[number
 export type MonthlySchedulingResponseChannel = (typeof MONTHLY_SCHEDULING_RESPONSE_CHANNELS)[number];
 export type MonthlySchedulingTeacherPreferenceType = (typeof MONTHLY_SCHEDULING_TEACHER_PREFERENCE_TYPES)[number];
 export type MonthlySchedulingTimePriority = (typeof MONTHLY_SCHEDULING_TIME_PRIORITIES)[number];
+export type MonthlySchedulingCohort = (typeof MONTHLY_SCHEDULING_COHORTS)[number];
+
+export function monthlySchedulingCohortForSourceName(sourceName: string | null | undefined): MonthlySchedulingCohort {
+  return sourceName?.trim() === LEGACY_XDF_SOURCE_CHANNEL_NAME ? "XDF" : "BOSS_OTHER";
+}
 
 export const responseChannelLabels: Record<MonthlySchedulingResponseChannel, { en: string; zh: string }> = {
   WECHAT_GROUP: { en: "WeChat group", zh: "微信群" },
@@ -412,7 +419,7 @@ export async function getMonthlySchedulingCampaign(month?: string | null) {
     include: {
       items: {
         include: {
-          student: { select: { id: true, name: true, grade: true } },
+          student: { select: { id: true, name: true, grade: true, sourceChannel: { select: { name: true } } } },
           course: { select: { id: true, name: true } },
           package: { select: { id: true, type: true, remainingMinutes: true, validTo: true } },
           parent: { select: { id: true, name: true, phone: true } },
@@ -1422,10 +1429,10 @@ export function allocateMonthlyCourseCapacity(
   return allocations;
 }
 
-export async function buildMonthlyStaffingReport(campaignId: string) {
+export async function buildMonthlyStaffingReport(campaignId: string, cohort?: MonthlySchedulingCohort) {
   const campaign = await prisma.monthlySchedulingCampaign.findUnique({
     where: { id: campaignId },
-    include: { items: { include: { course: true, student: true } } },
+    include: { items: { include: { course: true, student: { include: { sourceChannel: { select: { name: true } } } } } } },
   });
   if (!campaign) throw new Error("Campaign not found");
   const month = monthlySchedulingMonthKey(campaign.month);
@@ -1497,6 +1504,7 @@ export async function buildMonthlyStaffingReport(campaignId: string) {
   const courseMap = new Map<string, { courseId: string; courseName: string; students: Set<string>; demandMinutes: number; scheduledMinutes: number; pendingCount: number }>();
   const timeBandMap = new Map<string, { label: string; itemCount: number; demandMinutes: number }>();
   for (const item of campaign.items) {
+    if (cohort && monthlySchedulingCohortForSourceName(item.student.sourceChannel?.name) !== cohort) continue;
     if (!activeStatuses.has(item.status) || item.intent === "PAUSE") continue;
     const key = `${item.studentId}:${item.courseId}`;
     const alreadyScheduled = scheduledMinutes.get(key) ?? 0;

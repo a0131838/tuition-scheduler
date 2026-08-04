@@ -9,6 +9,7 @@ const parentRoute = fs.readFileSync(path.join(process.cwd(), "app/api/miniapp/mo
 const staffRoute = fs.readFileSync(path.join(process.cwd(), "app/api/miniapp/staff/monthly-scheduling/route.ts"), "utf8");
 const exportRoute = fs.readFileSync(path.join(process.cwd(), "app/admin/monthly-scheduling/export/route.ts"), "utf8");
 const staffProxyPage = fs.readFileSync(path.join(process.cwd(), "miniapp/boss-academic-parent/pages/staff-monthly-scheduling-proxy/staff-monthly-scheduling-proxy.js"), "utf8");
+const staffSchedulingPage = fs.readFileSync(path.join(process.cwd(), "miniapp/boss-academic-parent/pages/staff-monthly-scheduling/staff-monthly-scheduling.js"), "utf8");
 const communicationCenter = fs.readFileSync(path.join(process.cwd(), "lib/parent-communication-center.ts"), "utf8");
 const automationScript = fs.readFileSync(path.join(process.cwd(), "scripts/sync-monthly-scheduling.ts"), "utf8");
 
@@ -104,4 +105,15 @@ test("teacher-exception creation claims the item in the ticket transaction", () 
 test("CSV export rejects invalid months and neutralizes spreadsheet formulas", () => {
   assert.match(exportRoute, /Invalid month/);
   assert.ok(exportRoute.includes("const text = /^[=+\\-@]/.test(raw)"));
+});
+
+test("New Oriental scheduling stays in an explicit source-based cohort", () => {
+  assert.match(service, /LEGACY_XDF_SOURCE_CHANNEL_NAME/);
+  assert.match(service, /monthlySchedulingCohortForSourceName/);
+  assert.match(adminPage, /Student group/);
+  assert.match(adminPage, /cohort=\$\{selectedCohort\}/);
+  assert.match(staffRoute, /cohortCounts/);
+  assert.match(staffSchedulingPage, /BOSS_OTHER/);
+  assert.match(staffSchedulingPage, /XDF/);
+  assert.match(exportRoute, /monthlySchedulingCohortForSourceName/);
 });

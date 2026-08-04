@@ -15,6 +15,23 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-04-r311
+
+- Release ID: `2026-08-04-r311`
+- Date/Time (Asia/Singapore): `2026-08-04`
+- Deployment status: `READY`
+- Scope: separate next-month scheduling work into an exact-source `New Oriental students` queue and a combined `Boss and other students` queue across the Web workbench, Staff Mini Program, staffing forecast, family-message preparation, and CSV export.
+- Key files:
+  - `lib/monthly-scheduling.ts`
+  - `app/admin/monthly-scheduling/page.tsx`
+  - `app/admin/monthly-scheduling/export/route.ts`
+  - `app/api/miniapp/staff/monthly-scheduling/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-monthly-scheduling/`
+  - `docs/SOP-教务-下月家庭排课例外工作台-20260804.md`
+- Risk impact (if any): Low and isolated to read/display scoping. The `XDF` queue is selected only when the student's source-channel name exactly equals `新东方学生`; every other source remains in `BOSS_OTHER`. No student source, campaign item, parent response, formal lesson, package, balance, attendance, deduction, contract, invoice, receipt, payroll, ticket, or historical record is created or modified by the filter.
+- Verification: exact-source cohort unit test, server-surface safety test, TypeScript, repository tests, Mini Program JavaScript/release audit, `git diff --check`, and production build.
+- Rollback point: `cb0d8e640098b4254526cab41b026b95fe7fcfad` (`2026-08-04-r310` production baseline).
+
 ## 2026-08-04-r310
 
 - Release ID: `2026-08-04-r310`

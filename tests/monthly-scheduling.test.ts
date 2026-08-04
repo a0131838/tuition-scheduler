@@ -8,6 +8,7 @@ import {
   monthlySchedulingFamilyCanKeep,
   monthlySchedulingMonthKey,
   monthlySchedulingBusyOverlapMinutes,
+  monthlySchedulingCohortForSourceName,
   monthlySchedulingParentMessage,
   monthlySchedulingOffersConflict,
   monthlySchedulingQueueLane,
@@ -18,6 +19,13 @@ import {
   nextMonthlySchedulingMonth,
   normalizeMonthlyAvailability,
 } from "../lib/monthly-scheduling";
+
+test("monthly scheduling separates only the exact New Oriental source", () => {
+  assert.equal(monthlySchedulingCohortForSourceName("新东方学生"), "XDF");
+  assert.equal(monthlySchedulingCohortForSourceName(" 新东方学生 "), "XDF");
+  assert.equal(monthlySchedulingCohortForSourceName("上海新卓思学生"), "BOSS_OTHER");
+  assert.equal(monthlySchedulingCohortForSourceName(null), "BOSS_OTHER");
+});
 
 test("monthly scheduling uses business-time month boundaries", () => {
   const range = monthlySchedulingRange("2026-09");
