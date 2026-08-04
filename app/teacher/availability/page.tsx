@@ -4,6 +4,7 @@ import { getLang, t, type Lang } from "@/lib/i18n";
 import { formatBusinessDateOnly, parseBusinessDateEnd, parseBusinessDateStart } from "@/lib/date-only";
 import TeacherAvailabilityClient from "./TeacherAvailabilityClient";
 import TeacherWorkspaceHero from "../_components/TeacherWorkspaceHero";
+import { monthlySchedulingMonthKey, monthlySchedulingRange } from "@/lib/monthly-scheduling";
 
 function undoKey(teacherId: string) {
   return `teacher_availability_last_undo:${teacherId}`;
@@ -47,15 +48,18 @@ export default async function TeacherAvailabilityPage() {
   const today = new Date();
   const startKey = formatBusinessDateOnly(today);
   const endCursor = new Date(today);
-  endCursor.setDate(endCursor.getDate() + 30);
+  endCursor.setDate(endCursor.getDate() + 62);
   const endKey = formatBusinessDateOnly(endCursor);
   const start = parseBusinessDateStart(startKey) ?? today;
   const end = parseBusinessDateEnd(endKey) ?? endCursor;
 
-  const slots = await prisma.teacherAvailabilityDate.findMany({
-    where: { teacherId: teacher.id, date: { gte: start, lte: end } },
-    orderBy: [{ date: "asc" }, { startMin: "asc" }],
-  });
+  const [slots, campaign] = await Promise.all([
+    prisma.teacherAvailabilityDate.findMany({
+      where: { teacherId: teacher.id, date: { gte: start, lte: end } },
+      orderBy: [{ date: "asc" }, { startMin: "asc" }],
+    }),
+    prisma.monthlySchedulingCampaign.findFirst({ where: { status: "OPEN" }, orderBy: { month: "asc" } }),
+  ]);
 
   const undoRow = await prisma.appSetting.findUnique({
     where: { key: undoKey(teacher.id) },
@@ -70,6 +74,9 @@ export default async function TeacherAvailabilityPage() {
   const next7DaysWithSlots = new Set(
     slots.filter((s) => formatBusinessDateOnly(s.date) <= next7Key).map((s) => formatBusinessDateOnly(s.date)),
   ).size;
+  const campaignMonth = campaign ? monthlySchedulingMonthKey(campaign.month) : null;
+  const campaignRange = campaignMonth ? monthlySchedulingRange(campaignMonth) : null;
+  const campaignSlotCount = campaignRange ? slots.filter((slot) => slot.date >= campaignRange.start && slot.date < campaignRange.end).length : 0;
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
@@ -77,19 +84,25 @@ export default async function TeacherAvailabilityPage() {
         title={t(lang, "My Availability", "我的可上课时间")}
         subtitle={t(
           lang,
-          "Plan the next 30 days of real bookable date slots here. Ops scheduling only uses the date slots you save on this page.",
-          "在这里安排未来30天真正可排课的按日期时段。教务排课时只会读取你在本页保存的日期时段。"
+          "Plan the next 62 days of real bookable date slots here so the full next month is covered.",
+          "在这里安排未来62天真正可排课的按日期时段，完整覆盖下个月。教务排课只读取你保存的日期时段。"
         )}
         actions={[
           { href: "/teacher", label: t(lang, "Back to dashboard", "返回工作台") },
           { href: "/teacher/sessions", label: t(lang, "Open sessions", "打开我的课次") },
         ]}
       />
+      {campaign && <section style={{ ...statCard(campaignSlotCount ? "#f0fdf4" : "#fffbeb", campaignSlotCount ? "#86efac" : "#fde68a"), display: "grid", gap: 6 }}>
+        <strong>{t(lang, `${campaignMonth} availability confirmation`, `${campaignMonth} 可授课时间确认`)}</strong>
+        <span>{campaignSlotCount
+          ? t(lang, `${campaignSlotCount} date slots are saved for the campaign month.`, `活动月份已保存 ${campaignSlotCount} 个日期时段。`)
+          : t(lang, `Please complete next-month availability by ${campaign.teacherAvailabilityDueAt ? formatBusinessDateOnly(campaign.teacherAvailabilityDueAt) : "-"}.`, `请于 ${campaign.teacherAvailabilityDueAt ? formatBusinessDateOnly(campaign.teacherAvailabilityDueAt) : "-"} 前补充下月可授课时间。`)}</span>
+      </section>}
       <section style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
         <div style={statCard("#eff6ff", "#bfdbfe")}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#1d4ed8" }}>{t(lang, "Covered days", "已覆盖天数")}</div>
           <div style={{ fontSize: 28, fontWeight: 800, color: "#1d4ed8", marginTop: 8 }}>{daysWithSlots}</div>
-          <div style={{ color: "#1e40af", marginTop: 4 }}>{t(lang, "Days with at least one slot in the next 30 days.", "未来30天里至少有一个时段的日期数。")}</div>
+          <div style={{ color: "#1e40af", marginTop: 4 }}>{t(lang, "Days with at least one slot in the next 62 days.", "未来62天里至少有一个时段的日期数。")}</div>
         </div>
         <div style={statCard("#f0fdf4", "#bbf7d0")}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#166534" }}>{t(lang, "Total ranges", "总时段数")}</div>

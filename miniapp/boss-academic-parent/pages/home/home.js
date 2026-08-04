@@ -47,6 +47,8 @@ Page({
     lessonBalanceText: "暂无剩余课时",
     subscriptionGroups: [],
     courseReminder: null,
+    monthlyScheduling: null,
+    hasMonthlyScheduling: false,
     hasSubscriptionGroups: false,
     subscriptionLoadingKey: "",
     subscriptionLoading: false
@@ -86,6 +88,8 @@ Page({
       lessonBalanceText: "暂无剩余课时",
       subscriptionGroups: [],
       courseReminder: null,
+      monthlyScheduling: null,
+      hasMonthlyScheduling: false,
       hasSubscriptionGroups: false
     });
     const homeTask = api.request(`/api/miniapp/students/${studentId}/home`)
@@ -147,7 +151,21 @@ Page({
       .catch(() => {
         if (loadSeq === this.loadSeq) this.setData({ subscriptionGroups: [], courseReminder: null, hasSubscriptionGroups: false });
       });
-    return Promise.allSettled([homeTask, progressTask, subscriptionTask]);
+    const monthlySchedulingTask = api.request("/api/miniapp/monthly-scheduling")
+      .then((data) => {
+        if (loadSeq !== this.loadSeq) return;
+        const rows = data.items || [];
+        const relevant = rows.filter((row) => row.student && row.student.id === studentId);
+        const pending = relevant.filter((row) => !["SUBMITTED", "MATCHED", "SCHEDULED", "PAUSED"].includes(row.status));
+        this.setData({
+          hasMonthlyScheduling: relevant.length > 0,
+          monthlyScheduling: relevant.length ? { month: relevant[0].month, total: relevant.length, pending: pending.length, dueText: relevant[0].dueText } : null
+        });
+      })
+      .catch(() => {
+        if (loadSeq === this.loadSeq) this.setData({ monthlyScheduling: null, hasMonthlyScheduling: false });
+      });
+    return Promise.allSettled([homeTask, progressTask, subscriptionTask, monthlySchedulingTask]);
   },
 
   goFeedbacks() {
@@ -160,6 +178,10 @@ Page({
 
   goSchedule() {
     wx.switchTab({ url: "/pages/schedule/schedule" });
+  },
+
+  goMonthlyScheduling() {
+    wx.navigateTo({ url: "/pages/monthly-scheduling/monthly-scheduling" });
   },
 
   goLatestReport() {

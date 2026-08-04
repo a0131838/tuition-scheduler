@@ -183,13 +183,16 @@ export async function GET(req: Request) {
   const canLeads = canUseMiniappLeadDesk(user);
   const canApprovals = await canUseMiniappApprovalDesk(user);
   if (canAcademic) await syncRenewalTasks(user);
-  const [openTickets, overdueTickets, communications, renewalTasks, renewalXdf, overdueRenewals, dueLeads, approvalData] = await Promise.all([
+  const [openTickets, overdueTickets, communications, monthlyScheduling, renewalTasks, renewalXdf, overdueRenewals, dueLeads, approvalData] = await Promise.all([
     canAcademic ? prisma.ticket.count({ where: { isArchived: false, status: { in: OPEN_TICKET_STATUSES } } }) : 0,
     canAcademic
       ? prisma.ticket.count({ where: { isArchived: false, status: { in: OPEN_TICKET_STATUSES }, nextActionDue: { lt: now } } })
       : 0,
     canAcademic
       ? prisma.parentCommunicationTask.count({ where: { status: { in: OPEN_COMMUNICATION_STATUSES } } })
+      : 0,
+    canAcademic
+      ? prisma.monthlySchedulingItem.count({ where: { campaign: { status: "OPEN" }, status: { in: ["NOT_SENT", "SENT", "VIEWED", "NO_RESPONSE", "NEEDS_CLARIFICATION"] } } })
       : 0,
     canAcademic
       ? prisma.renewalTask.count({ where: { completedAt: null } })
@@ -211,6 +214,7 @@ export async function GET(req: Request) {
       ? [
           { key: "tickets", title: "工单待处理", detail: `${overdueTickets} 条已逾期`, count: openTickets, target: "requests", urgent: overdueTickets > 0 },
           { key: "communications", title: "家长沟通待完成", detail: "审核、转发微信群并留下发送记录", count: communications, target: "communications", urgent: communications > 0 },
+          { key: "monthly-scheduling", title: "下月排课待确认", detail: "按学生和课程跟进家长时间", count: monthlyScheduling, target: "monthly-scheduling", urgent: monthlyScheduling > 0 },
           { key: "renewals", title: "续费待跟进", detail: `博思及其他 ${renewalTasks - renewalXdf} · 新东方 ${renewalXdf} · ${overdueRenewals} 条到期`, count: renewalTasks, target: "renewals", urgent: overdueRenewals > 0 },
         ]
       : []),

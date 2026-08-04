@@ -30,10 +30,40 @@
 - Current release line prepared: `2026-08-03-r303` separates Web and Mini Program training and rebuilds all 35 current modules as complete Chinese-first, English-second, single-function beginner guides.
 - Current release line prepared: `2026-08-03-r304` expands the core Academic Web scheduling module from five generic steps to a 40-page, 15-step beginner workflow with real Web screenshots and a module-only retraining version.
 - Current release line prepared: `2026-08-03-r305` adds the missing click-by-click entry chain and expands Academic Web scheduling to 54 pages and 22 steps from login through final handover.
+- Current release line prepared: `2026-08-04-r306` adds proactive next-month family scheduling confirmation, student/course-specific shared-package handling, real date-availability staffing forecasts, and Web/Mini Program follow-up queues without changing formal lessons automatically.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-04-r306 Ready
+
+- Scope: collect next-month intentions and availability before month end, then let Academic match demand to real teacher date availability before using the existing formal scheduling tools.
+- Business impact:
+  - each student and course has an independent response even when siblings share a package;
+  - explicitly linked families receive one prepared message listing every child and course;
+  - parents can keep, change, pause, or request contact, but their response never writes a formal Session;
+  - Academic can follow up on Web or Staff Mini Program, save private notes, review 3–5 standard matches, and escalate no-match cases to a duplicate-safe teacher-exception ticket;
+  - teachers can maintain 62 days of date-specific availability and see the active campaign deadline;
+  - Finance can view the staffing forecast but cannot update the workflow;
+  - the monthly schedule report distinguishes confirmed unscheduled demand from completed scheduling items.
+- Safety boundaries:
+  - additive migration only; existing business tables and records are not rewritten;
+  - capacity uses `TeacherAvailabilityDate` only, subtracts overlapping commitments, and allocates each teacher minute only once across courses;
+  - no automatic WeChat send and no automatic schedule creation, rescheduling, cancellation, teacher replacement, deduction, billing, or payroll action;
+  - a completed scheduling item is locked against parent overwrite.
+- Verification before deploy:
+  - 22 focused tests, 135 backend tests, and all 325 repository tests passed;
+  - TypeScript, Prisma schema validation, and `git diff --check` passed;
+  - Mini Program release audit passed at 56 pages with zero errors;
+  - complete Next.js production build passed with 235 pages.
+- Post-deploy verification:
+  - confirm local, GitHub, and server commit equality, PM2 online, and `/admin/login` HTTP 200;
+  - confirm the additive migration exists before the new process starts;
+  - confirm ADMIN/CS can manage, FINANCE can only view, and unrelated roles are denied;
+  - create a test campaign, sync without changing a package or Session, and confirm parent and staff Mini Program items are separated by student/course;
+  - confirm teacher forecast counts only date-specific availability and the existing formal scheduling availability check remains unchanged.
+- Task doc: `docs/tasks/TASK-20260804-next-month-scheduling-confirmation.md`.
 
 ## 2026-08-03-r305 Ready
 

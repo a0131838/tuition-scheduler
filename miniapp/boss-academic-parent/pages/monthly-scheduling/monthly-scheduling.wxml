@@ -1,0 +1,68 @@
+<view class="page monthly-page">
+  <view class="hero-band">
+    <view class="eyebrow">NEXT-MONTH SCHEDULING</view>
+    <view class="title">下月排课确认</view>
+    <view class="subtitle">每名学生、每门课程分别确认。提交后由教务匹配老师并生成最终课表。</view>
+  </view>
+
+  <view class="progress-band" wx:if="{{items.length}}">
+    <view><text class="progress-number">{{completedCount}}</text> / {{items.length}} 项已完成</view>
+    <view class="progress-note">家庭消息可合并，课程安排不会合并</view>
+  </view>
+
+  <view class="empty" wx:if="{{!loading && !items.length}}">目前没有需要确认的下月课程安排</view>
+
+  <block wx:if="{{selected}}">
+    <view class="field-card" wx:if="{{items.length > 1}}">
+      <view class="field-label">选择学生与课程</view>
+      <picker mode="selector" range="{{itemLabels}}" value="{{selectedIndex}}" bindchange="changeItem"><view class="picker">{{itemLabels[selectedIndex]}} ›</view></picker>
+    </view>
+
+    <view class="student-band">
+      <view><view class="student-name">{{selected.student.name}}</view><view class="student-meta">{{selected.student.grade || "年级未填写"}} · {{selected.course.name}}</view></view>
+      <view class="status-chip">{{selected.statusLabel}}</view>
+    </view>
+
+    <view class="section-title">目前安排</view>
+    <view class="schedule-list" wx:if="{{selected.currentSchedule.length}}">
+      <view class="schedule-row" wx:for="{{selected.currentSchedule}}" wx:key="sessionId"><view class="schedule-time">{{item.startText}}</view><view class="schedule-meta">{{item.teacher || "老师未定"}} · {{item.campus || "地点未定"}}</view></view>
+    </view>
+    <view class="empty-line" wx:else>下个月尚未安排正式课程</view>
+
+    <view class="form-section">
+      <view class="field-label">下个月如何安排</view>
+      <radio-group value="{{form.intent}}" bindchange="changeIntent">
+        <label class="intent-row" wx:for="{{intentOptions}}" wx:key="value"><radio value="{{item.value}}" checked="{{form.intent === item.value}}" color="#174ea6"/><text>{{item.label}}</text></label>
+      </radio-group>
+
+      <block wx:if="{{form.intent !== 'PAUSE'}}">
+        <view class="field-label">预计每周上课次数</view>
+        <picker mode="selector" range="{{frequencyOptions}}" value="{{frequencyIndex}}" bindchange="changeFrequency"><view class="picker">{{frequencyOptions[frequencyIndex]}}</view></picker>
+        <view class="field-label">预计下月总课时（分钟，可选）</view>
+        <input class="input" type="number" value="{{form.expectedMinutes}}" placeholder="例如 480" bindinput="inputExpectedMinutes"/>
+      </block>
+
+      <block wx:if="{{form.intent === 'CHANGE'}}">
+        <view class="field-label">可以上课的星期</view>
+        <view class="weekday-grid"><view class="weekday {{item.selected ? 'selected' : ''}}" wx:for="{{weekdayOptions}}" wx:key="value" data-value="{{item.value}}" bindtap="toggleWeekday">{{item.label}}</view></view>
+        <view class="field-label">提供最多三组可用时间</view>
+        <view class="time-row" wx:for="{{form.timeRanges}}" wx:key="index"><picker mode="time" value="{{item.start}}" data-index="{{index}}" bindchange="changeTimeStart"><view class="time-picker">{{item.start}}</view></picker><text>至</text><picker mode="time" value="{{item.end}}" data-index="{{index}}" bindchange="changeTimeEnd"><view class="time-picker">{{item.end}}</view></picker></view>
+      </block>
+
+      <block wx:if="{{form.intent !== 'PAUSE'}}">
+        <view class="field-label">上课模式</view>
+        <picker mode="selector" range="{{modeOptions}}" value="{{modeIndex}}" bindchange="changeMode"><view class="picker">{{modeOptions[modeIndex]}}</view></picker>
+        <view class="field-label">校区偏好（可选）</view><input class="input" value="{{form.preferredCampus}}" placeholder="例如 Orchard Plaza" bindinput="inputCampus"/>
+        <view class="field-label">老师偏好（可选，不保证）</view><input class="input" value="{{form.preferredTeacher}}" placeholder="填写老师姓名" bindinput="inputTeacher"/>
+        <view class="field-label">不方便上课的日期</view>
+        <view class="date-add"><picker mode="date" value="{{form.unavailableDateDraft}}" start="{{selected.monthStart}}" end="{{selected.monthEnd}}" bindchange="changeUnavailableDate"><view class="picker">{{form.unavailableDateDraft || "选择日期"}}</view></picker><button class="small-button" bindtap="addUnavailableDate">添加</button></view>
+        <view class="date-tags"><view class="date-tag" wx:for="{{form.unavailableDates}}" wx:key="*this" data-value="{{item}}" bindtap="removeUnavailableDate">{{item}} ×</view></view>
+      </block>
+
+      <view class="field-label">其他说明</view><textarea class="textarea" value="{{form.parentNotes}}" placeholder="需要教务了解的情况" bindinput="inputNotes"/>
+      <view class="lock-note" wx:if="{{selected.locked}}">学校正在匹配或已完成正式排课，如需修改请联系学校。</view>
+      <button class="primary" loading="{{saving}}" disabled="{{saving || selected.locked}}" bindtap="submit">提交这一项安排</button>
+      <view class="submit-note">老师偏好会尽量协调，最终以上课前确认课表为准。</view>
+    </view>
+  </block>
+</view>

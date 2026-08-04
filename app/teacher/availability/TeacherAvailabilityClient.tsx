@@ -142,7 +142,7 @@ export default function TeacherAvailabilityClient(props: {
   const start = useMemo(() => new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0), [today]);
   const end = useMemo(() => {
     const d = new Date(start);
-    d.setDate(d.getDate() + 30);
+    d.setDate(d.getDate() + 62);
     return d;
   }, [start]);
 
@@ -163,9 +163,9 @@ export default function TeacherAvailabilityClient(props: {
 
   const days = useMemo(() => buildCalendarDays(start, end), [start, end]);
   const todayYMD = useMemo(() => ymd(today), [today]);
-  const in4WeeksYMD = useMemo(() => {
+  const in8WeeksYMD = useMemo(() => {
     const d = new Date(today);
-    d.setDate(d.getDate() + 28);
+    d.setDate(d.getDate() + 56);
     return ymd(d);
   }, [today]);
 
@@ -174,11 +174,11 @@ export default function TeacherAvailabilityClient(props: {
     setBulkFormPreset((prev) => ({
       ...prev,
       from: prev.from || todayYMD,
-      to: prev.to || in4WeeksYMD,
+      to: prev.to || in8WeeksYMD,
     }));
     setCopySourceDate((prev) => prev || todayYMD);
     setCopyTargetDate((prev) => prev || addDays(todayYMD, 1));
-  }, [todayYMD, in4WeeksYMD]);
+  }, [todayYMD, in8WeeksYMD]);
 
   function loadQuickTemplate(startHHMM: string, endHHMM: string, offsetDays = 0) {
     setQuickFormPreset((prev) => ({
@@ -201,7 +201,7 @@ export default function TeacherAvailabilityClient(props: {
     setBulkFormPreset((prev) => ({
       version: prev.version + 1,
       from: template.from ?? todayYMD,
-      to: template.to ?? in4WeeksYMD,
+      to: template.to ?? in8WeeksYMD,
       start: template.start,
       end: template.end,
       weekdays: template.weekdays,
@@ -575,7 +575,7 @@ export default function TeacherAvailabilityClient(props: {
             </label>
             <label>
               {tr(lang, "To", "到")}
-              <input name="to" type="date" required defaultValue={bulkFormPreset.to || in4WeeksYMD} style={{ marginLeft: 6 }} />
+              <input name="to" type="date" required defaultValue={bulkFormPreset.to || in8WeeksYMD} style={{ marginLeft: 6 }} />
             </label>
             <label>
               {tr(lang, "Start", "开始")}
@@ -635,7 +635,7 @@ export default function TeacherAvailabilityClient(props: {
       </div>
 
       <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, background: "#fff" }}>
-        <div style={{ fontWeight: 700, marginBottom: 8 }}>{tr(lang, "Availability Calendar (Next 30 days)", "未来30天可上课日历")}</div>
+        <div style={{ fontWeight: 700, marginBottom: 8 }}>{tr(lang, "Availability Calendar (Next 62 days)", "未来62天可上课日历")}</div>
         <table cellPadding={6} style={{ borderCollapse: "collapse", width: "100%" }}>
           <thead>
             <tr style={{ background: "#f8fafc" }}>

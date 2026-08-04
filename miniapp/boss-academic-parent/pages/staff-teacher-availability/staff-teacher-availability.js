@@ -6,12 +6,12 @@ function todayText() {
 }
 
 Page({
-  data: { date: todayText(), start: "09:00", end: "18:00", slots: [], from: "", to: "", saving: false, deletingId: "" },
+  data: { date: todayText(), start: "09:00", end: "18:00", slots: [], from: "", to: "", campaign: null, saving: false, deletingId: "" },
   onShow() { this.load(); },
   onPullDownRefresh() { this.load().finally(() => wx.stopPullDownRefresh()); },
   load() {
     return api.requestStaff("/api/miniapp/staff/teacher/availability", { timeout: 12000 })
-      .then((data) => this.setData({ slots: data.slots || [], from: data.from || "", to: data.to || "" }))
+      .then((data) => this.setData({ slots: data.slots || [], from: data.from || "", to: data.to || "", campaign: data.campaign || null }))
       .catch((err) => api.toast(err.message));
   },
   changeDate(e) { this.setData({ date: e.detail.value }); },

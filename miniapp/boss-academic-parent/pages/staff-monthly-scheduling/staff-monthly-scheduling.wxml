@@ -1,0 +1,27 @@
+<view class="page monthly-staff-page">
+  <view class="top-band">
+    <view class="eyebrow">ACADEMIC FOLLOW-UP</view>
+    <view class="title">下月排课跟进</view>
+    <view class="subtitle" wx:if="{{campaign}}">{{month}} · {{campaign.status}} · 家长确认只形成需求，不会自动修改正式课表</view>
+    <view class="subtitle" wx:else>网页端创建并开放月度活动后，这里显示移动跟进队列。</view>
+  </view>
+
+  <scroll-view scroll-x class="tabs" wx:if="{{campaign}}"><view class="tab-row"><view class="tab {{status === item.value ? 'active' : ''}}" wx:for="{{tabs}}" wx:key="value" data-value="{{item.value}}" bindtap="selectTab">{{item.label}} {{item.value === 'ALL' ? '' : (counts[item.value] || 0)}}</view></view></scroll-view>
+  <view class="empty" wx:if="{{!loading && !items.length}}">当前筛选下没有需要处理的学生课程项</view>
+
+  <view class="item-row" wx:for="{{items}}" wx:key="id">
+    <view class="item-head"><view><view class="student-name">{{item.studentName}}</view><view class="course-name">{{item.courseName}}</view></view><view class="status-chip">{{item.statusLabel}}</view></view>
+    <view class="meta-row">家长：{{item.parentName || "未绑定"}} {{item.parentPhone || ""}}</view>
+    <view class="meta-row" wx:if="{{item.intent}}">意向：{{item.intent}} · {{item.expectedSessionsPerWeek || "-"}} 次/周 · {{item.preferredMode || "模式未填"}}</view>
+    <view class="note" wx:if="{{item.parentNotes}}">{{item.parentNotes}}</view>
+    <textarea class="internal-note" value="{{item.internalNote}}" maxlength="1000" data-index="{{index}}" bindinput="inputNote" placeholder="内部跟进备注（家长不可见）" />
+    <view class="action-grid">
+      <button class="action" data-id="{{item.id}}" bindtap="copyMessage">复制家长消息</button>
+      <button class="action" data-id="{{item.id}}" data-status="{{item.status}}" loading="{{updatingId === item.id}}" bindtap="updateStatus">保存备注</button>
+      <button class="action" wx:if="{{item.status === 'NOT_SENT'}}" data-id="{{item.id}}" data-status="SENT" loading="{{updatingId === item.id}}" bindtap="updateStatus">标记已发送</button>
+      <button class="action" wx:if="{{item.status === 'SUBMITTED'}}" data-id="{{item.id}}" data-status="NEEDS_CLARIFICATION" loading="{{updatingId === item.id}}" bindtap="updateStatus">需要澄清</button>
+      <button class="action" wx:if="{{item.status === 'SUBMITTED' || item.status === 'NEEDS_CLARIFICATION'}}" data-id="{{item.id}}" data-status="MATCHED" loading="{{updatingId === item.id}}" bindtap="updateStatus">标记已匹配</button>
+      <button class="action primary" wx:if="{{item.status === 'MATCHED'}}" data-id="{{item.id}}" data-status="SCHEDULED" loading="{{updatingId === item.id}}" bindtap="updateStatus">完成排课</button>
+    </view>
+  </view>
+</view>

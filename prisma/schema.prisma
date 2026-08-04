@@ -582,16 +582,17 @@ model Course {
   id   String @id @default(uuid())
   name String
 
-  subjects        Subject[]
-  classes         Class[]
-  packages        CoursePackage[]
-  sharedPackages  CoursePackageSharedCourse[]
-  oneOnOneGroups  OneOnOneGroup[]
-  teacherRates    TeacherCourseRate[]
-  midtermReports  MidtermReport[]
-  finalReports    FinalReport[]
-  eduTrustProfile EduTrustCourseProfile?
-  eduTrustRecords EduTrustStudentCourseRecord[]
+  subjects               Subject[]
+  classes                Class[]
+  packages               CoursePackage[]
+  sharedPackages         CoursePackageSharedCourse[]
+  oneOnOneGroups         OneOnOneGroup[]
+  teacherRates           TeacherCourseRate[]
+  monthlySchedulingItems MonthlySchedulingItem[]
+  midtermReports         MidtermReport[]
+  finalReports           FinalReport[]
+  eduTrustProfile        EduTrustCourseProfile?
+  eduTrustRecords        EduTrustStudentCourseRecord[]
 }
 
 model EduTrustCourseProfile {
@@ -1044,6 +1045,7 @@ model Student {
   careRiskCases              CareRiskCase[]
   careServiceReviews         CareServiceReview[]
   renewalTasks               RenewalTask[]
+  monthlySchedulingItems     MonthlySchedulingItem[]
 
   @@index([sourceChannelId])
   @@index([studentTypeId])
@@ -1946,12 +1948,13 @@ model ParentAccount {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  studentLinks    ParentStudentLink[]
-  sessions        ParentPortalSession[]
-  audits          ParentPortalAudit[]
-  notifications   MiniappNotificationOutbox[]
-  careReportViews CareReportView[]
-  careQuestions   CareParentQuestion[]
+  studentLinks           ParentStudentLink[]
+  sessions               ParentPortalSession[]
+  audits                 ParentPortalAudit[]
+  notifications          MiniappNotificationOutbox[]
+  careReportViews        CareReportView[]
+  careQuestions          CareParentQuestion[]
+  monthlySchedulingItems MonthlySchedulingItem[]
 
   @@index([phone])
   @@index([wechatUnionId])
@@ -2329,21 +2332,22 @@ model CoursePackage {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  student            Student                       @relation(fields: [studentId], references: [id])
-  course             Course                        @relation(fields: [courseId], references: [id])
-  txns               PackageTxn[]
-  attendances        Attendance[]
-  sharedStudents     CoursePackageSharedStudent[]
-  sharedCourses      CoursePackageSharedCourse[]
-  settlements        PartnerSettlement[]
-  midtermReports     MidtermReport[]
-  finalReports       FinalReport[]
-  invoiceApprovals   PackageInvoiceApproval[]
-  contracts          StudentContract[]
-  eduTrustRecords    EduTrustStudentCourseRecord[]
-  parentIntakes      StudentParentIntake[]
-  schoolApplications SchoolApplicationService[]
-  renewalTasks       RenewalTask[]
+  student                Student                       @relation(fields: [studentId], references: [id])
+  course                 Course                        @relation(fields: [courseId], references: [id])
+  txns                   PackageTxn[]
+  attendances            Attendance[]
+  sharedStudents         CoursePackageSharedStudent[]
+  sharedCourses          CoursePackageSharedCourse[]
+  settlements            PartnerSettlement[]
+  midtermReports         MidtermReport[]
+  finalReports           FinalReport[]
+  invoiceApprovals       PackageInvoiceApproval[]
+  contracts              StudentContract[]
+  eduTrustRecords        EduTrustStudentCourseRecord[]
+  parentIntakes          StudentParentIntake[]
+  schoolApplications     SchoolApplicationService[]
+  renewalTasks           RenewalTask[]
+  monthlySchedulingItems MonthlySchedulingItem[]
 
   @@index([studentId, courseId])
   @@index([studentId, courseId, status, validFrom, validTo])
@@ -2843,6 +2847,70 @@ model ParentAvailabilityRequest {
 
   @@index([studentId, isActive, createdAt])
   @@index([isActive, submittedAt, createdAt])
+}
+
+model MonthlySchedulingCampaign {
+  id                       String    @id @default(uuid())
+  month                    DateTime  @unique
+  status                   String    @default("DRAFT")
+  opensAt                  DateTime?
+  dueAt                    DateTime?
+  teacherAvailabilityDueAt DateTime?
+  createdByUserId          String?
+  createdByName            String?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  items MonthlySchedulingItem[]
+
+  @@index([status, month])
+}
+
+model MonthlySchedulingItem {
+  id                      String    @id @default(uuid())
+  campaignId              String
+  studentId               String
+  courseId                String
+  packageId               String?
+  parentId                String?
+  token                   String    @unique
+  status                  String    @default("NOT_SENT")
+  intent                  String?
+  expectedSessionsPerWeek Int?
+  expectedMinutes         Int?
+  preferredMode           String?
+  preferredCampus         String?
+  preferredTeacher        String?
+  availabilityJson        Json?
+  unavailableDatesJson    Json?
+  currentScheduleJson     Json?
+  parentNotes             String?
+  internalNote            String?
+  ownerUserId             String?
+  ownerName               String?
+  respondedByParentId     String?
+  sentAt                  DateTime?
+  viewedAt                DateTime?
+  submittedAt             DateTime?
+  clarifiedAt             DateTime?
+  matchedAt               DateTime?
+  scheduledAt             DateTime?
+  pausedAt                DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  campaign MonthlySchedulingCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  student  Student                   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course   Course                    @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  package  CoursePackage?            @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  parent   ParentAccount?            @relation(fields: [parentId], references: [id], onDelete: SetNull)
+
+  @@unique([campaignId, studentId, courseId])
+  @@index([campaignId, status, updatedAt])
+  @@index([studentId, campaignId])
+  @@index([parentId, campaignId])
+  @@index([courseId, status])
+  @@index([ownerUserId, status])
 }
 
 model TicketHandover {

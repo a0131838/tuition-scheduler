@@ -31,6 +31,7 @@ Page({
     const map = {
       requests: "/pages/staff-requests/staff-requests",
       communications: "/pages/staff-communications/staff-communications",
+      "monthly-scheduling": "/pages/staff-monthly-scheduling/staff-monthly-scheduling",
       renewals: "/pages/staff-renewals/staff-renewals",
       approvals: "/pages/staff-approvals/staff-approvals",
       leads: "/pages/staff-leads/staff-leads",

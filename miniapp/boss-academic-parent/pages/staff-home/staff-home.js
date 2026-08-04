@@ -52,6 +52,8 @@ Page({
     renewalCount: 0,
     renewalDetail: "博思及其他与新东方分开处理",
     hasRenewalTasks: false,
+    monthlySchedulingCount: 0,
+    hasMonthlySchedulingTasks: false,
     canViewReminderAttention: false,
     teacherAvailabilityCount: 0,
     teacherUpcomingCount: 0,
@@ -110,11 +112,11 @@ Page({
         workSectionTitle: "运营入口",
         workSectionHint: "异常、排课与家长服务集中处理",
         priorityLabel: hasRisk ? "需要管理关注" : "今日运营",
-        priorityTitle: data.communicationCount > 0 ? `${data.communicationCount} 项家长沟通待完成` : data.coordinationOverdueCount > 0 ? `${data.coordinationOverdueCount} 条排课工单已逾期` : "当前没有逾期排课工单",
-        priorityMeta: `沟通 ${data.communicationCount} · 开放排课 ${data.coordinationCount} · 提醒异常 ${data.reminderAttentionCount}`,
-        priorityAction: data.communicationCount > 0 ? "打开沟通中心" : data.coordinationOverdueCount > 0 ? "处理逾期" : "查看课程工作台",
+        priorityTitle: data.monthlySchedulingCount > 0 ? `${data.monthlySchedulingCount} 项下月排课待跟进` : data.communicationCount > 0 ? `${data.communicationCount} 项家长沟通待完成` : data.coordinationOverdueCount > 0 ? `${data.coordinationOverdueCount} 条排课工单已逾期` : "当前没有逾期排课工单",
+        priorityMeta: `下月确认 ${data.monthlySchedulingCount} · 沟通 ${data.communicationCount} · 开放排课 ${data.coordinationCount}`,
+        priorityAction: data.monthlySchedulingCount > 0 ? "打开下月排课" : data.communicationCount > 0 ? "打开沟通中心" : data.coordinationOverdueCount > 0 ? "处理逾期" : "查看课程工作台",
         priorityTone: hasRisk ? "tone-risk" : "tone-calm",
-        priorityTarget: data.communicationCount > 0 ? "communications" : data.coordinationOverdueCount > 0 ? "coordination" : "schedule"
+        priorityTarget: data.monthlySchedulingCount > 0 ? "monthly-scheduling" : data.communicationCount > 0 ? "communications" : data.coordinationOverdueCount > 0 ? "coordination" : "schedule"
       });
       return;
     }
@@ -125,11 +127,11 @@ Page({
       workSectionTitle: data.isAcademic ? "教务处理" : "工作入口",
       workSectionHint: "从待办进入，处理结果留在系统",
       priorityLabel: hasRequest ? "优先处理" : "今日服务",
-      priorityTitle: data.communicationCount > 0 ? `${data.communicationCount} 项家长沟通待完成` : hasRequest ? `${data.pendingCount} 条家长请求待查看` : "当前没有待处理家长请求",
-      priorityMeta: `沟通 ${data.communicationCount} · 开放排课 ${data.coordinationCount} · 学生关注 ${data.firstSchedulingAttentionCount}`,
-      priorityAction: data.communicationCount > 0 ? "打开沟通中心" : hasRequest ? "处理家长请求" : "查看课程工作台",
+      priorityTitle: data.monthlySchedulingCount > 0 ? `${data.monthlySchedulingCount} 项下月排课待跟进` : data.communicationCount > 0 ? `${data.communicationCount} 项家长沟通待完成` : hasRequest ? `${data.pendingCount} 条家长请求待查看` : "当前没有待处理家长请求",
+      priorityMeta: `下月确认 ${data.monthlySchedulingCount} · 沟通 ${data.communicationCount} · 开放排课 ${data.coordinationCount}`,
+      priorityAction: data.monthlySchedulingCount > 0 ? "打开下月排课" : data.communicationCount > 0 ? "打开沟通中心" : hasRequest ? "处理家长请求" : "查看课程工作台",
       priorityTone: data.coordinationOverdueCount > 0 ? "tone-watch" : "tone-calm",
-      priorityTarget: data.communicationCount > 0 ? "communications" : hasRequest ? "requests" : "schedule"
+      priorityTarget: data.monthlySchedulingCount > 0 ? "monthly-scheduling" : data.communicationCount > 0 ? "communications" : hasRequest ? "requests" : "schedule"
     });
   },
 
@@ -168,6 +170,8 @@ Page({
             renewalCount: ((data.items || []).find((item) => item.key === "renewals") || {}).count || 0,
             renewalDetail: ((data.items || []).find((item) => item.key === "renewals") || {}).detail || "博思及其他与新东方分开处理",
             hasRenewalTasks: Boolean(((data.items || []).find((item) => item.key === "renewals") || {}).count),
+            monthlySchedulingCount: ((data.items || []).find((item) => item.key === "monthly-scheduling") || {}).count || 0,
+            hasMonthlySchedulingTasks: Boolean(((data.items || []).find((item) => item.key === "monthly-scheduling") || {}).count),
             canOpenApprovals: Boolean(capabilities.approvals),
             canOpenLeads: Boolean(capabilities.leads),
             canOpenStudentWorkspace: Boolean(capabilities.studentWorkspace),
@@ -281,6 +285,7 @@ Page({
     if (this.data.priorityTarget === "teacher-todos") return this.goTeacherTodos();
     if (this.data.priorityTarget === "coordination") return this.goCoordination();
     if (this.data.priorityTarget === "communications") return this.goCommunications();
+    if (this.data.priorityTarget === "monthly-scheduling") return this.goMonthlyScheduling();
     if (this.data.priorityTarget === "requests") return this.goRequests();
     return this.goSchedule();
   },
@@ -298,6 +303,7 @@ Page({
   goReminderAttention() { wx.navigateTo({ url: "/pages/staff-reminder-attention/staff-reminder-attention" }); },
   goCommunications() { wx.navigateTo({ url: "/pages/staff-communications/staff-communications" }); },
   goRenewals() { wx.navigateTo({ url: "/pages/staff-renewals/staff-renewals" }); },
+  goMonthlyScheduling() { wx.navigateTo({ url: "/pages/staff-monthly-scheduling/staff-monthly-scheduling" }); },
   goTeacherLeave() { wx.navigateTo({ url: "/pages/staff-teacher-leave/staff-teacher-leave" }); },
   goTeacherAvailability() { wx.navigateTo({ url: "/pages/staff-teacher-availability/staff-teacher-availability" }); },
   goTeacherExpenses() { wx.navigateTo({ url: "/pages/staff-teacher-expenses/staff-teacher-expenses" }); },

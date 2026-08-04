@@ -126,6 +126,11 @@
       <view class="work-copy"><view class="work-title">家长沟通与通知</view><view class="work-detail">审核反馈、转发微信群、提醒老师和家长</view></view>
       <view class="work-badge alert" wx:if="{{hasCommunicationTasks}}">{{communicationCount}}</view><view class="work-arrow">›</view>
     </view>
+    <view class="work-row" bindtap="goMonthlyScheduling">
+      <view class="work-icon icon-orange">排</view>
+      <view class="work-copy"><view class="work-title">下月排课跟进</view><view class="work-detail">收集家长时间、跟进未回复并标记匹配结果</view></view>
+      <view class="work-badge alert" wx:if="{{hasMonthlySchedulingTasks}}">{{monthlySchedulingCount}}</view><view class="work-arrow">›</view>
+    </view>
     <view class="work-row" bindtap="goRenewals">
       <view class="work-icon icon-orange">续</view>
       <view class="work-copy"><view class="work-title">续费跟进</view><view class="work-detail">{{renewalDetail}}</view></view>

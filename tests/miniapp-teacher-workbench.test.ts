@@ -19,11 +19,11 @@ test("teacher workbench falls back to the current business month", () => {
   assert.equal(range.month, "2026-07");
 });
 
-test("teacher availability is limited to today through the next 30 days", () => {
+test("teacher availability is limited to today through the next 62 days", () => {
   const now = new Date("2026-07-13T04:00:00Z");
   assert.equal(validateMiniappTeacherAvailabilityDate("2026-07-13", now).ok, true);
-  assert.equal(validateMiniappTeacherAvailabilityDate("2026-08-12", now).ok, true);
-  assert.equal(validateMiniappTeacherAvailabilityDate("2026-08-13", now).ok, false);
+  assert.equal(validateMiniappTeacherAvailabilityDate("2026-09-13", now).ok, true);
+  assert.equal(validateMiniappTeacherAvailabilityDate("2026-09-14", now).ok, false);
   assert.equal(validateMiniappTeacherAvailabilityDate("2026-07-12", now).ok, false);
 });
 

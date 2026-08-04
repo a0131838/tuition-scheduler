@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-04-r306
+
+- Release ID: `2026-08-04-r306`
+- Date/Time (Asia/Singapore): `2026-08-04`
+- Deployment status: `READY`
+- Scope: add a controlled next-month scheduling confirmation workflow across the Web, Parent Mini Program, Staff Mini Program, and teacher availability surfaces, with one response per student/course and read-only staffing visibility for Finance.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260803193000_add_monthly_scheduling_campaign/migration.sql`
+  - `lib/monthly-scheduling.ts`
+  - `lib/monthly-scheduling-access.ts`
+  - `app/admin/monthly-scheduling/`
+  - `app/api/miniapp/monthly-scheduling/`
+  - `app/api/miniapp/staff/monthly-scheduling/`
+  - `miniapp/boss-academic-parent/pages/monthly-scheduling/`
+  - `miniapp/boss-academic-parent/pages/staff-monthly-scheduling/`
+  - `docs/tasks/TASK-20260804-next-month-scheduling-confirmation.md`
+- Risk impact (if any): Moderate and isolated to the new demand-confirmation tables, new workbench/API routes, two new Mini Program pages, and the teacher availability horizon. Parent responses never mutate formal lessons; shared packages remain student/course-specific; teacher capacity is allocated once across courses; Finance is read-only; no message is sent automatically; existing packages, balances, attendance, contracts, invoices, payroll, tickets, and sessions are not rewritten.
+- Verification: 22 focused tests, 135 backend tests, and all 325 repository tests passed. TypeScript, Prisma schema validation, the 56-page Mini Program release audit, `git diff --check`, and the complete 235-page production build passed.
+- Rollback point: `468e56f` (production-aligned feature baseline before this release candidate).
+
+---
+
 ## 2026-08-03-r305
 
 - Release ID: `2026-08-03-r305`

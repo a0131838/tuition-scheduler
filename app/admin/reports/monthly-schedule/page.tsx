@@ -11,6 +11,7 @@ import {
   resolveSessionStudentsForMonthlySchedule,
 } from "./_lib";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
+import { getMonthlySchedulingCampaign } from "@/lib/monthly-scheduling";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -38,6 +39,7 @@ export default async function MonthlyScheduleReportPage({
   const teacherId = sp?.teacherId ?? "";
   const campusId = sp?.campusId ?? "";
   const data = await loadMonthlyScheduleData({ month, teacherId, campusId });
+  const monthlySchedulingCampaign = await getMonthlySchedulingCampaign(month);
 
   if (!data) {
     return (
@@ -132,6 +134,15 @@ export default async function MonthlyScheduleReportPage({
           <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
             <div style={{ fontSize: 12, color: "#64748b" }}>{choose(lang, "Sessions", "课次数")}</div>
             <div style={{ fontSize: 28, fontWeight: 800 }}>{visibleSessionCount}</div>
+          </div>
+          <div style={{ border: "1px solid #f6c77a", borderRadius: 12, background: "#fffaf0", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#7c4a05" }}>{choose(lang, "Confirmed demand not scheduled", "已确认但未排课")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{monthlySchedulingCampaign?.items.filter((row) => ["SUBMITTED", "NEEDS_CLARIFICATION", "MATCHED", "TEACHER_EXCEPTION"].includes(row.status) && row.intent !== "PAUSE").length ?? 0}</div>
+            <a href={`/admin/monthly-scheduling?month=${month}`} style={{ fontSize: 12 }}>{choose(lang, "Open confirmation desk", "打开排课确认")}</a>
+          </div>
+          <div style={{ border: "1px solid #b7e2c8", borderRadius: 12, background: "#f2fbf5", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#17663a" }}>{choose(lang, "Scheduling items completed", "排课确认已完成")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{monthlySchedulingCampaign?.items.filter((row) => row.status === "SCHEDULED").length ?? 0}</div>
           </div>
           <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
             <div style={{ fontSize: 12, color: "#64748b" }}>{choose(lang, "Teachers", "老师数")}</div>

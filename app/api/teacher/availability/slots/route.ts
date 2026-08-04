@@ -19,7 +19,7 @@ export async function GET(req: Request) {
   const today = new Date();
   const defaultFrom = parseBusinessDateStart(formatBusinessDateOnly(today)) ?? today;
   const defaultToCursor = new Date(today);
-  defaultToCursor.setDate(defaultToCursor.getDate() + 30);
+  defaultToCursor.setDate(defaultToCursor.getDate() + 62);
   const defaultTo = parseBusinessDateEnd(formatBusinessDateOnly(defaultToCursor)) ?? defaultToCursor;
 
   let from = defaultFrom;

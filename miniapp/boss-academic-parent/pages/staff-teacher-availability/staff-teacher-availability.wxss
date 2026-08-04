@@ -1,3 +1,4 @@
 @import "../../styles/teacher-tools.wxss";
 .slot-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; }
 .delete-button { flex: 0 0 auto; min-height: 64rpx; margin: 0; padding: 0 18rpx; border-radius: 8rpx; background: #f8ebe8; color: #9b3d31; font-size: 24rpx; }
+.campaign-band{margin:16rpx 0;padding:22rpx;border-left:7rpx solid #d97706;background:#fff8e8}.campaign-band.complete{border-left-color:#168253;background:#edf9f3}.campaign-title{font-size:28rpx;font-weight:800}.campaign-detail{font-size:23rpx;color:#5f6978;margin-top:8rpx;line-height:1.5}

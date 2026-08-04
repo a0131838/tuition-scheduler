@@ -90,6 +90,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     pathname === "/admin/finance/transport-billing" ||
     pathname === "/admin/finance/business-accounts" ||
     pathname === "/admin/renewals" ||
+    pathname.startsWith("/admin/monthly-scheduling") ||
     pathname === "/admin/reports/teacher-payroll" ||
     pathname.startsWith("/admin/reports/teacher-payroll/") ||
     pathname.startsWith("/admin/reports/partner-settlement") ||
@@ -183,6 +184,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           description: t(lang, "Review the month view without leaving the day-first desk.", "在今天工作台附近直接查看整月课表。"),
           tone: "neutral" as const,
         },
+        ...((user.role === "ADMIN" || user.role === "CS" || user.role === "FINANCE" || user.workspaces.includes("CS") || showManagerConsole)
+          ? [{
+              href: "/admin/monthly-scheduling",
+              label: t(lang, "Next-month Scheduling", "下月排课确认"),
+              description: t(lang, "Collect family preferences and forecast tutor capacity before month end.", "月底前收集家长时间并预测师资缺口。"),
+              tone: "warning" as const,
+            }]
+          : []),
         ...(showManagerConsole
           ? [
               {

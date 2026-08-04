@@ -1,6 +1,6 @@
 import { formatBusinessDateOnly, formatBusinessDateTime, parseBusinessDateStart } from "@/lib/date-only";
 
-export const MINIAPP_TEACHER_AVAILABILITY_DAYS = 30;
+export const MINIAPP_TEACHER_AVAILABILITY_DAYS = 62;
 
 export function miniappTeacherMonthRange(rawMonth: string | null | undefined, now = new Date()) {
   const fallback = formatBusinessDateOnly(now).slice(0, 7);
@@ -21,7 +21,7 @@ export function validateMiniappTeacherAvailabilityDate(rawDate: string, now = ne
   if (!date) return { ok: false as const, message: "日期格式不正确" };
   const today = parseBusinessDateStart(formatBusinessDateOnly(now)) ?? now;
   const last = new Date(today.getTime() + MINIAPP_TEACHER_AVAILABILITY_DAYS * 24 * 60 * 60 * 1000);
-  if (date < today || date > last) return { ok: false as const, message: "只能维护今天起未来30天的可用时间" };
+  if (date < today || date > last) return { ok: false as const, message: "只能维护今天起未来62天的可用时间" };
   return { ok: true as const, date };
 }
 

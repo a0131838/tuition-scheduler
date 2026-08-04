@@ -50,6 +50,17 @@
     <button class="inline-action" wx:if="{{primaryParentAction && permissions.canCreateRequests}}" bindtap="goNewRequest">需要沟通</button>
   </view>
 
+  <view class="monthly-scheduling-band" wx:if="{{hasMonthlyScheduling}}" bindtap="goMonthlyScheduling">
+    <view class="monthly-mark">排</view>
+    <view class="monthly-copy">
+      <view class="label">{{monthlyScheduling.month}} 下月排课确认</view>
+      <view class="monthly-title" wx:if="{{monthlyScheduling.pending}}">还有 {{monthlyScheduling.pending}} 项课程安排待确认</view>
+      <view class="monthly-title done" wx:else>本月安排已全部提交</view>
+      <view class="monthly-note">请于 {{monthlyScheduling.dueText}} 前完成 · 每名学生和课程分别确认</view>
+    </view>
+    <view class="next-arrow">›</view>
+  </view>
+
   <view class="report-entry" wx:if="{{care.active}}" bindtap="goLatestReport">
     <view class="report-copy">
       <view class="label">最新正式报告</view>

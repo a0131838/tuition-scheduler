@@ -5,6 +5,7 @@ import { findDateAvailabilityOverlap, isAvailabilityDuplicateError } from "@/lib
 import { formatBusinessDateOnly, parseBusinessDateEnd, parseBusinessDateStart } from "@/lib/date-only";
 import { MINIAPP_TEACHER_AVAILABILITY_DAYS, validateMiniappTeacherAvailabilityDate } from "@/lib/miniapp-teacher-workbench";
 import { prisma } from "@/lib/prisma";
+import { monthlySchedulingMonthKey, monthlySchedulingRange } from "@/lib/monthly-scheduling";
 
 export async function GET(req: Request) {
   const access = await requireMiniappTeacher(req);
@@ -13,14 +14,28 @@ export async function GET(req: Request) {
   const from = parseBusinessDateStart(todayText) ?? new Date();
   const endCursor = new Date(from.getTime() + MINIAPP_TEACHER_AVAILABILITY_DAYS * 24 * 60 * 60 * 1000);
   const to = parseBusinessDateEnd(formatBusinessDateOnly(endCursor)) ?? endCursor;
-  const slots = await prisma.teacherAvailabilityDate.findMany({
-    where: { teacherId: access.teacherId, date: { gte: from, lte: to } },
-    orderBy: [{ date: "asc" }, { startMin: "asc" }],
-  });
+  const [slots, campaign, weeklyCount] = await Promise.all([
+    prisma.teacherAvailabilityDate.findMany({
+      where: { teacherId: access.teacherId, date: { gte: from, lte: to } },
+      orderBy: [{ date: "asc" }, { startMin: "asc" }],
+    }),
+    prisma.monthlySchedulingCampaign.findFirst({ where: { status: "OPEN" }, orderBy: { month: "asc" } }),
+    prisma.teacherAvailability.count({ where: { teacherId: access.teacherId } }),
+  ]);
+  const campaignRange = campaign ? monthlySchedulingRange(monthlySchedulingMonthKey(campaign.month)) : null;
+  const campaignSlotCount = campaignRange ? slots.filter((row) => row.date >= campaignRange.start && row.date < campaignRange.end).length : 0;
   return ok({
     from: todayText,
     to: formatBusinessDateOnly(endCursor),
     slots: slots.map((row) => ({ id: row.id, date: formatBusinessDateOnly(row.date), start: fromMin(row.startMin), end: fromMin(row.endMin), timeText: `${fromMin(row.startMin)} - ${fromMin(row.endMin)}` })),
+    campaign: campaign ? {
+      month: monthlySchedulingMonthKey(campaign.month),
+      dueAt: campaign.teacherAvailabilityDueAt?.toISOString() ?? null,
+      dueText: campaign.teacherAvailabilityDueAt ? formatBusinessDateOnly(campaign.teacherAvailabilityDueAt) : "-",
+      savedSlotCount: campaignSlotCount,
+      hasRecurringTemplate: weeklyCount > 0,
+      complete: campaignSlotCount > 0,
+    } : null,
   });
 }
 

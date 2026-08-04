@@ -171,6 +171,7 @@ export const OPERATION_AREAS: OperationArea[] = [
     level: "DETAILED_SOP",
     routePrefixes: [
       "/admin/schedule",
+      "/admin/monthly-scheduling",
       "/admin/classes",
       "/admin/enrollments",
       "/admin/booking-links",
@@ -184,6 +185,8 @@ export const OPERATION_AREAS: OperationArea[] = [
       "/miniapp/pages/staff-coordination-detail",
       "/miniapp/pages/staff-first-scheduling",
       "/miniapp/pages/staff-student-scheduling",
+      "/miniapp/pages/staff-monthly-scheduling",
+      "/miniapp/pages/monthly-scheduling",
       "/miniapp/pages/schedule",
     ],
     moduleCodes: ["ACADEMIC_SCHEDULING_MASTER", "ATTENDANCE_EXCEPTION_MASTER"],

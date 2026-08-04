@@ -2,7 +2,12 @@
   <view class="top">
     <view class="eyebrow">教学事务</view>
     <view class="title">我的可用时间</view>
-    <view class="subtitle">设置未来30天可排课的时段。</view>
+    <view class="subtitle">设置未来62天可排课的时段，覆盖下个月完整安排。</view>
+  </view>
+  <view class="campaign-band {{campaign.complete ? 'complete' : 'pending'}}" wx:if="{{campaign}}">
+    <view class="campaign-title">{{campaign.month}} 可授课时间确认</view>
+    <view class="campaign-detail" wx:if="{{campaign.complete}}">已保存 {{campaign.savedSlotCount}} 个当月时段{{campaign.hasRecurringTemplate ? '，并已保留每周固定模板' : ''}}</view>
+    <view class="campaign-detail" wx:else>请于 {{campaign.dueText}} 前填写下月可授课时间</view>
   </view>
   <view class="form-card">
     <view class="field-label">日期</view><picker mode="date" value="{{date}}" start="{{from}}" end="{{to}}" bindchange="changeDate"><view class="picker">{{date}}</view></picker>
@@ -14,5 +19,5 @@
   <block wx:if="{{slots.length}}">
     <view class="list-card" wx:for="{{slots}}" wx:key="id"><view class="slot-head"><view><view class="item-title">{{item.date}}</view><view class="item-meta">{{item.timeText}}</view></view><button class="delete-button" data-id="{{item.id}}" loading="{{deletingId === item.id}}" bindtap="removeSlot">删除</button></view></view>
   </block>
-  <view class="empty" wx:else>未来30天还没有保存可用时段</view>
+  <view class="empty" wx:else>未来62天还没有保存可用时段</view>
 </view>
