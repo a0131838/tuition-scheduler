@@ -2887,6 +2887,18 @@ model MonthlySchedulingItem {
   currentScheduleJson     Json?
   parentNotes             String?
   internalNote            String?
+  responseEntryMode       String?
+  responseChannel         String?
+  respondedByUserId       String?
+  respondedByName         String?
+  parentConfirmationNote  String?
+  parentConfirmedAt       DateTime?
+  offerSelectionEntryMode String?
+  offerSelectionChannel   String?
+  offerSelectedByUserId   String?
+  offerSelectedByName     String?
+  offerSelectionNote      String?
+  offerParentConfirmedAt  DateTime?
   ownerUserId             String?
   ownerName               String?
   respondedByParentId     String?
@@ -2913,6 +2925,7 @@ model MonthlySchedulingItem {
   @@index([parentId, campaignId])
   @@index([courseId, status])
   @@index([ownerUserId, status])
+  @@index([responseEntryMode, updatedAt])
 }
 
 model MonthlySchedulingOffer {

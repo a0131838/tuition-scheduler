@@ -33,6 +33,7 @@
     "pages/staff-reminder-attention/staff-reminder-attention",
     "pages/staff-communications/staff-communications",
     "pages/staff-monthly-scheduling/staff-monthly-scheduling",
+    "pages/staff-monthly-scheduling-proxy/staff-monthly-scheduling-proxy",
     "pages/staff-requests/staff-requests",
     "pages/staff-request-detail/staff-request-detail",
     "pages/staff-request-new/staff-request-new",

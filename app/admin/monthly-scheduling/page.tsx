@@ -14,12 +14,20 @@ import {
   monthlySchedulingParentMessage,
   MONTHLY_SCHEDULING_CAMPAIGN_STATUSES,
   MONTHLY_SCHEDULING_ITEM_STATUSES,
+  MONTHLY_SCHEDULING_INTENTS,
+  MONTHLY_SCHEDULING_PROXY_EDITABLE_STATUSES,
+  MONTHLY_SCHEDULING_RESPONSE_CHANNELS,
   nextMonthlySchedulingMonth,
+  rankMonthlySchedulingOffersByStaff,
+  responseChannelLabels,
   setMonthlySchedulingCampaignStatus,
+  submitMonthlySchedulingPreferenceByStaff,
   syncMonthlySchedulingCampaignItems,
   updateMonthlySchedulingItem,
   type MonthlySchedulingCampaignStatus,
+  type MonthlySchedulingIntent,
   type MonthlySchedulingItemStatus,
+  type MonthlySchedulingResponseChannel,
 } from "@/lib/monthly-scheduling";
 import { allocateTicketNo, composeTicketSituation } from "@/lib/tickets";
 import { formatBusinessDateOnly } from "@/lib/date-only";
@@ -46,6 +54,47 @@ function hours(minutes: number | null | undefined) {
 
 function currentRows(value: unknown) {
   return Array.isArray(value) ? value as Array<{ startText?: string; teacher?: string | null; campus?: string | null }> : [];
+}
+
+function availabilityValue(value: unknown) {
+  const row = value && typeof value === "object" ? value as { weekdays?: unknown; timeRanges?: unknown } : {};
+  return {
+    weekdays: Array.isArray(row.weekdays) ? row.weekdays.map(String) : [],
+    timeRanges: Array.isArray(row.timeRanges)
+      ? row.timeRanges.slice(0, 3).map((entry) => ({ start: String((entry as any)?.start ?? ""), end: String((entry as any)?.end ?? "") }))
+      : [],
+  };
+}
+
+function dateInputValue(value: Date | null | undefined) {
+  return value ? formatBusinessDateOnly(value) : formatBusinessDateOnly(new Date());
+}
+
+function offerOptionLabel(option: { weekdayLabel: string; startMin: number; endMin: number; teacher: { name: string } }) {
+  const time = (value: number) => `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
+  return `${option.weekdayLabel} ${time(option.startMin)}-${time(option.endMin)} · ${option.teacher.name}`;
+}
+
+function proxyAvailabilityFromForm(formData: FormData) {
+  const timeRanges = [1, 2, 3].map((index) => ({
+    start: String(formData.get(`timeStart${index}`) ?? ""),
+    end: String(formData.get(`timeEnd${index}`) ?? ""),
+  })).filter((row) => row.start && row.end && row.end > row.start);
+  return {
+    selectionMode: "weekly",
+    weekdays: formData.getAll("weekday").map(String),
+    timeRanges,
+    dateSelections: [],
+  };
+}
+
+function proxyUnavailableDates(formData: FormData) {
+  return String(formData.get("unavailableDates") ?? "").split(/[\s,，;；]+/).map((value) => value.trim()).filter(Boolean);
+}
+
+function optionalFormNumber(formData: FormData, name: string) {
+  const value = String(formData.get(name) ?? "").trim();
+  return value ? Number(value) : null;
 }
 
 async function createCampaignAction(formData: FormData) {
@@ -101,6 +150,56 @@ async function itemStatusAction(formData: FormData) {
   });
   revalidatePath("/admin/monthly-scheduling");
   redirect(`/admin/monthly-scheduling?month=${encodeURIComponent(month)}&status=${encodeURIComponent(status)}`);
+}
+
+async function proxyPreferenceAction(formData: FormData) {
+  "use server";
+  const access = await requireMonthlySchedulingUser();
+  if (!access.canManage) throw new Error("Read-only access");
+  const month = String(formData.get("month") ?? "");
+  const row = await submitMonthlySchedulingPreferenceByStaff({
+    itemId: String(formData.get("itemId") ?? ""),
+    expectedStatus: String(formData.get("expectedStatus") ?? "") as MonthlySchedulingItemStatus,
+    intent: String(formData.get("intent") ?? "") as MonthlySchedulingIntent,
+    expectedSessionsPerWeek: optionalFormNumber(formData, "expectedSessionsPerWeek"),
+    expectedMinutes: optionalFormNumber(formData, "expectedMinutes"),
+    preferredMode: String(formData.get("preferredMode") ?? ""),
+    preferredCampus: String(formData.get("preferredCampus") ?? ""),
+    preferredTeacher: String(formData.get("preferredTeacher") ?? ""),
+    availability: proxyAvailabilityFromForm(formData),
+    unavailableDates: proxyUnavailableDates(formData),
+    parentNotes: String(formData.get("parentNotes") ?? ""),
+    responseChannel: String(formData.get("responseChannel") ?? "") as MonthlySchedulingResponseChannel,
+    parentConfirmationNote: String(formData.get("parentConfirmationNote") ?? ""),
+    parentConfirmedAt: String(formData.get("parentConfirmedAt") ?? ""),
+    actorUserId: access.user.id,
+    actorEmail: access.user.email,
+    actorName: access.user.name,
+    actorRole: access.user.role,
+  });
+  revalidatePath("/admin/monthly-scheduling");
+  redirect(`/admin/monthly-scheduling?month=${encodeURIComponent(month)}&status=${encodeURIComponent(row.status)}&notice=${encodeURIComponent("Parent response entered by staff")}`);
+}
+
+async function proxyRankOffersAction(formData: FormData) {
+  "use server";
+  const access = await requireMonthlySchedulingUser();
+  if (!access.canManage) throw new Error("Read-only access");
+  const month = String(formData.get("month") ?? "");
+  const offerIds = ["rank1", "rank2", "rank3"].map((name) => String(formData.get(name) ?? "")).filter(Boolean);
+  await rankMonthlySchedulingOffersByStaff({
+    itemId: String(formData.get("itemId") ?? ""),
+    offerIds,
+    responseChannel: String(formData.get("responseChannel") ?? "") as MonthlySchedulingResponseChannel,
+    parentConfirmationNote: String(formData.get("parentConfirmationNote") ?? ""),
+    parentConfirmedAt: String(formData.get("parentConfirmedAt") ?? ""),
+    actorUserId: access.user.id,
+    actorEmail: access.user.email,
+    actorName: access.user.name,
+    actorRole: access.user.role,
+  });
+  revalidatePath("/admin/monthly-scheduling");
+  redirect(`/admin/monthly-scheduling?month=${encodeURIComponent(month)}&status=PARENT_SELECTED&notice=${encodeURIComponent("Parent choices recorded by staff")}`);
 }
 
 async function createExceptionTicketAction(formData: FormData) {
@@ -238,6 +337,9 @@ export default async function MonthlySchedulingPage({
                 <tbody>{items.map((item) => {
                   const schedules = currentRows(item.currentScheduleJson);
                   const concreteOffers = item.offers ?? [];
+                  const availability = availabilityValue(item.availabilityJson);
+                  const defaultRanges = [0, 1, 2].map((index) => availability.timeRanges[index] ?? [{ start: "09:00", end: "12:00" }, { start: "14:00", end: "18:00" }, { start: "19:00", end: "21:00" }][index]);
+                  const canProxyPreference = MONTHLY_SCHEDULING_PROXY_EDITABLE_STATUSES.includes(item.status as (typeof MONTHLY_SCHEDULING_PROXY_EDITABLE_STATUSES)[number]);
                   return <tr key={item.id}>
                     <td style={{ padding: 10, borderBottom: "1px solid #e5ebf3" }}><strong>{item.student.name}</strong><br /><small>{item.student.grade || "-"}</small></td>
                     <td style={{ padding: 10, borderBottom: "1px solid #e5ebf3" }}>{item.course.name}<br /><small>{item.package?.remainingMinutes != null ? `${hours(item.package.remainingMinutes)} remaining` : item.package?.type ?? "-"}</small></td>
@@ -249,8 +351,18 @@ export default async function MonthlySchedulingPage({
                       ? (matchSuggestions.get(item.id) ?? []).map((option, index) => <div key={`${option.teacherId}:${option.startAt}`}>{index + 1}. {option.date} {option.start}-{option.end} · {option.teacherName}</div>)
                       : <span style={{ color: item.intent === "CHANGE" ? "#9a5b00" : "#7b8794" }}>{item.intent === "CHANGE" ? t(lang, "No standard match", "暂无标准匹配") : t(lang, "Not required", "无需匹配")}</span>}</td>
                     <td style={{ padding: 10, borderBottom: "1px solid #e5ebf3" }}>{item.expectedMinutes != null ? hours(item.expectedMinutes) : item.expectedSessionsPerWeek != null ? `${item.expectedSessionsPerWeek}/week` : "-"}</td>
-                    <td style={{ padding: 10, borderBottom: "1px solid #e5ebf3" }}><strong>{itemStatusLabels[item.status as MonthlySchedulingItemStatus]?.zh ?? item.status}</strong><br /><small>{item.parent?.name || "未绑定家长"}</small></td>
-                    <td style={{ padding: 10, borderBottom: "1px solid #e5ebf3", minWidth: 280 }}>
+                    <td style={{ padding: 10, borderBottom: "1px solid #e5ebf3" }}>
+                      <strong>{itemStatusLabels[item.status as MonthlySchedulingItemStatus]?.zh ?? item.status}</strong><br />
+                      <small>{item.parent?.name || "未绑定家长"}</small>
+                      {item.responseEntryMode === "STAFF_PROXY" && <div style={{ marginTop: 6, color: "#8a4b08", fontSize: 12 }}>
+                        教务代录 · {responseChannelLabels[item.responseChannel as MonthlySchedulingResponseChannel]?.zh ?? item.responseChannel ?? "-"}<br />
+                        {item.respondedByName || "-"} · {item.parentConfirmedAt ? formatBusinessDateOnly(item.parentConfirmedAt) : "-"}
+                      </div>}
+                      {item.offerSelectionEntryMode === "STAFF_PROXY" && <div style={{ marginTop: 6, color: "#17663a", fontSize: 12 }}>
+                        代录家长排序 · {item.offerSelectedByName || "-"} · {item.offerParentConfirmedAt ? formatBusinessDateOnly(item.offerParentConfirmedAt) : "-"}
+                      </div>}
+                    </td>
+                    <td style={{ padding: 10, borderBottom: "1px solid #e5ebf3", minWidth: 360 }}>
                       {access.canManage ? <>
                         <form action={itemStatusAction} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 6 }}>
                           <input type="hidden" name="itemId" value={item.id} /><input type="hidden" name="month" value={month} /><input type="hidden" name="expectedStatus" value={item.status} />
@@ -258,6 +370,37 @@ export default async function MonthlySchedulingPage({
                           <button style={buttonStyle}>{t(lang, "Save", "保存")}</button>
                           <input name="internalNote" defaultValue={item.internalNote ?? ""} placeholder="Internal note / 内部备注" style={{ gridColumn: "1 / -1", padding: 8 }} />
                         </form>
+                        {canProxyPreference && <details style={{ marginTop: 8, border: "1px solid #f2c48d", padding: 8, background: "#fffaf3" }}>
+                          <summary style={{ cursor: "pointer", fontWeight: 800, color: "#9a4d08" }}>{t(lang, "Enter response for parent", "代家长录入需求")}</summary>
+                          <form action={proxyPreferenceAction} style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(130px,1fr))", gap: 8, marginTop: 10 }}>
+                            <input type="hidden" name="itemId" value={item.id} /><input type="hidden" name="month" value={month} /><input type="hidden" name="expectedStatus" value={item.status} />
+                            <label>家长安排<select name="intent" defaultValue={item.intent ?? "KEEP"} required style={{ width: "100%", padding: 8 }}>{MONTHLY_SCHEDULING_INTENTS.map((value) => <option key={value} value={value}>{value === "KEEP" ? "保持目前安排" : value === "CHANGE" ? "希望修改时间" : value === "PAUSE" ? "下个月暂停" : "尚未确定"}</option>)}</select></label>
+                            <label>沟通渠道<select name="responseChannel" defaultValue={item.responseChannel ?? "WECHAT_GROUP"} required style={{ width: "100%", padding: 8 }}>{MONTHLY_SCHEDULING_RESPONSE_CHANNELS.map((value) => <option key={value} value={value}>{responseChannelLabels[value].zh}</option>)}</select></label>
+                            <label>每周次数<input name="expectedSessionsPerWeek" type="number" min="0" max="14" defaultValue={item.expectedSessionsPerWeek ?? 1} style={{ width: "100%", padding: 8, boxSizing: "border-box" }} /></label>
+                            <label>预计总分钟<input name="expectedMinutes" type="number" min="0" max="20000" defaultValue={item.expectedMinutes ?? ""} style={{ width: "100%", padding: 8, boxSizing: "border-box" }} /></label>
+                            <label>上课形式<select name="preferredMode" defaultValue={item.preferredMode ?? ""} style={{ width: "100%", padding: 8 }}><option value="">无偏好</option><option value="ONLINE">线上</option><option value="OFFLINE">线下</option></select></label>
+                            <label>家长回复日期<input name="parentConfirmedAt" type="date" required defaultValue={dateInputValue(item.parentConfirmedAt)} style={{ width: "100%", padding: 8, boxSizing: "border-box" }} /></label>
+                            <label>校区偏好<input name="preferredCampus" defaultValue={item.preferredCampus ?? ""} style={{ width: "100%", padding: 8, boxSizing: "border-box" }} /></label>
+                            <label>老师偏好<input name="preferredTeacher" defaultValue={item.preferredTeacher ?? ""} style={{ width: "100%", padding: 8, boxSizing: "border-box" }} /></label>
+                            <fieldset style={{ gridColumn: "1 / -1", border: "1px solid #dbe5f2", padding: 8 }}><legend>可上课星期</legend>{[["MON", "一"], ["TUE", "二"], ["WED", "三"], ["THU", "四"], ["FRI", "五"], ["SAT", "六"], ["SUN", "日"]].map(([value, label]) => <label key={value} style={{ marginRight: 10 }}><input name="weekday" type="checkbox" value={value} defaultChecked={availability.weekdays.includes(value)} />周{label}</label>)}</fieldset>
+                            {defaultRanges.map((range, index) => <div key={index} style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}><label>时段{index + 1}开始<input name={`timeStart${index + 1}`} type="time" defaultValue={range.start} style={{ width: "100%", padding: 8, boxSizing: "border-box" }} /></label><label>结束<input name={`timeEnd${index + 1}`} type="time" defaultValue={range.end} style={{ width: "100%", padding: 8, boxSizing: "border-box" }} /></label></div>)}
+                            <label style={{ gridColumn: "1 / -1" }}>不可上课日期（逗号分隔）<input name="unavailableDates" defaultValue={Array.isArray(item.unavailableDatesJson) ? item.unavailableDatesJson.join(", ") : ""} placeholder="2026-09-05, 2026-09-12" style={{ width: "100%", padding: 8, boxSizing: "border-box" }} /></label>
+                            <label style={{ gridColumn: "1 / -1" }}>家长需求备注<textarea name="parentNotes" defaultValue={item.parentNotes ?? ""} style={{ width: "100%", minHeight: 70, padding: 8, boxSizing: "border-box" }} /></label>
+                            <label style={{ gridColumn: "1 / -1" }}>家长原话或沟通摘要（审计必填）<textarea name="parentConfirmationNote" required defaultValue={item.parentConfirmationNote ?? ""} style={{ width: "100%", minHeight: 80, padding: 8, boxSizing: "border-box" }} /></label>
+                            <button style={{ ...buttonStyle, gridColumn: "1 / -1", background: "#f45b05", color: "#fff" }}>保存并生成候选时间</button>
+                          </form>
+                        </details>}
+                        {["OFFERED", "PARENT_SELECTED"].includes(item.status) && concreteOffers.length > 0 && <details style={{ marginTop: 8, border: "1px solid #9bcfae", padding: 8, background: "#f3fbf5" }}>
+                          <summary style={{ cursor: "pointer", fontWeight: 800, color: "#17663a" }}>{t(lang, "Record parent choices", "代家长选择候选时间")}</summary>
+                          <form action={proxyRankOffersAction} style={{ display: "grid", gap: 8, marginTop: 10 }}>
+                            <input type="hidden" name="itemId" value={item.id} /><input type="hidden" name="month" value={month} />
+                            {[1, 2, 3].map((rank) => <label key={rank}>第{rank}选择<select name={`rank${rank}`} required={rank === 1} defaultValue={concreteOffers.find((option) => option.parentRank === rank)?.id ?? ""} style={{ width: "100%", padding: 8 }}><option value="">{rank === 1 ? "请选择" : "不填写"}</option>{concreteOffers.map((option) => <option key={option.id} value={option.id}>{offerOptionLabel(option)}</option>)}</select></label>)}
+                            <label>沟通渠道<select name="responseChannel" defaultValue={item.offerSelectionChannel ?? item.responseChannel ?? "WECHAT_GROUP"} required style={{ width: "100%", padding: 8 }}>{MONTHLY_SCHEDULING_RESPONSE_CHANNELS.map((value) => <option key={value} value={value}>{responseChannelLabels[value].zh}</option>)}</select></label>
+                            <label>家长回复日期<input name="parentConfirmedAt" type="date" required defaultValue={dateInputValue(item.offerParentConfirmedAt ?? item.parentConfirmedAt)} style={{ width: "100%", padding: 8, boxSizing: "border-box" }} /></label>
+                            <label>家长选择原话或摘要<textarea name="parentConfirmationNote" required defaultValue={item.offerSelectionNote ?? ""} placeholder="例如：家长在微信群回复 2、1、3" style={{ width: "100%", minHeight: 75, padding: 8, boxSizing: "border-box" }} /></label>
+                            <button style={{ ...buttonStyle, background: "#17663a", color: "#fff" }}>按家长排序临时保留24小时</button>
+                          </form>
+                        </details>}
                         {(item.intent === "CHANGE" || item.status === "CHANGE_REQUESTED") && ["SUBMITTED", "NEEDS_CLARIFICATION", "MATCHED", "CHANGE_REQUESTED"].includes(item.status) && <form action={createExceptionTicketAction} style={{ marginTop: 6 }}><input type="hidden" name="itemId" value={item.id} /><input type="hidden" name="month" value={month} /><button style={{ ...buttonStyle, width: "100%" }}>{t(lang, "Escalate teacher exception", "转老师例外工单")}</button></form>}
                       </> : <span>{item.ownerName || "-"}</span>}
                     </td>

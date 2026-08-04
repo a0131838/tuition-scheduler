@@ -44,6 +44,11 @@ Page({
       .catch((err) => api.toast(err.message))
       .finally(() => this.setData({ updatingId: "" }));
   },
+  openProxyEntry(e) {
+    const itemId = e.currentTarget.dataset.id;
+    if (!itemId) return;
+    wx.navigateTo({ url: "/pages/staff-monthly-scheduling-proxy/staff-monthly-scheduling-proxy?itemId=" + encodeURIComponent(itemId) });
+  },
   openScheduling(e) {
     const item = this.data.items.find((row) => row.id === e.currentTarget.dataset.id);
     const offer = item && item.selectedOffer;

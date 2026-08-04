@@ -262,7 +262,7 @@ test("every visible app page is assigned to an operation flow", () => {
   ) as { pages: string[] };
   const routes = [...webRoutes, ...miniapp.pages.map((page) => `/miniapp/${page}`)];
   assert.ok(webRoutes.length >= 140);
-  assert.equal(miniapp.pages.length, 56);
+  assert.equal(miniapp.pages.length, 57);
   assert.ok(routes.length >= 198);
   assert.equal(routes.filter((route) => !operationAreaForRoute(route)).length, 0);
   assert.ok(OPERATION_AREAS.length >= 15);

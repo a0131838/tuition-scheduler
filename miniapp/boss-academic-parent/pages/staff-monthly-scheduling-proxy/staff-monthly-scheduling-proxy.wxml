@@ -1,0 +1,57 @@
+<view class="page">
+  <view class="top-band">
+    <view class="eyebrow">PARENT RESPONSE PROXY</view>
+    <view class="title">代家长录入</view>
+    <view class="subtitle">只记录家长在微信群、私聊或电话中已经确认的内容。不会直接创建正式课程。</view>
+  </view>
+
+  <view class="loading" wx:if="{{loading}}">正在读取排课项目...</view>
+  <block wx:if="{{item}}">
+    <view class="summary-card">
+      <view class="student">{{item.studentName}}</view>
+      <view class="course">{{item.courseName}}</view>
+      <view class="meta">当前状态：{{item.statusLabel}} · 家长：{{item.parentName || "未绑定"}}</view>
+      <view class="audit" wx:if="{{item.responseEntryMode === 'STAFF_PROXY'}}">上次代录：{{item.respondedByName || "-"}} · {{item.responseChannel || "-"}}</view>
+    </view>
+
+    <view class="form-card" wx:if="{{canEditPreference}}">
+      <view class="section-title">第一步：录入家长需求</view>
+      <view class="section-help">家长原话或沟通摘要为必填审计记录，家长不可见。</view>
+
+      <view class="field"><view class="label">家长安排</view><picker range="{{intentOptions}}" range-key="label" value="{{intentIndex}}" bindchange="changeIntent"><view class="picker">{{intentOptions[intentIndex].label}} <text>选择</text></view></picker></view>
+      <view class="field"><view class="label">沟通渠道</view><picker range="{{channelOptions}}" range-key="label" value="{{channelIndex}}" bindchange="changeChannel"><view class="picker">{{channelOptions[channelIndex].label}} <text>选择</text></view></picker></view>
+      <view class="two-col">
+        <view class="field"><view class="label">每周次数</view><input class="input" type="number" value="{{form.expectedSessionsPerWeek}}" data-field="expectedSessionsPerWeek" bindinput="inputNumber" /></view>
+        <view class="field"><view class="label">预计总分钟</view><input class="input" type="number" value="{{form.expectedMinutes}}" data-field="expectedMinutes" bindinput="inputNumber" placeholder="可不填" /></view>
+      </view>
+      <view class="field"><view class="label">上课形式</view><view class="segment"><view class="segment-item {{form.preferredMode === '' ? 'active' : ''}}" data-value="" bindtap="changeMode">无偏好</view><view class="segment-item {{form.preferredMode === 'ONLINE' ? 'active' : ''}}" data-value="ONLINE" bindtap="changeMode">线上</view><view class="segment-item {{form.preferredMode === 'OFFLINE' ? 'active' : ''}}" data-value="OFFLINE" bindtap="changeMode">线下</view></view></view>
+      <view class="two-col">
+        <view class="field"><view class="label">校区偏好</view><input class="input" value="{{form.preferredCampus}}" data-field="preferredCampus" bindinput="inputField" placeholder="可不填" /></view>
+        <view class="field"><view class="label">老师偏好</view><input class="input" value="{{form.preferredTeacher}}" data-field="preferredTeacher" bindinput="inputField" placeholder="可不填" /></view>
+      </view>
+
+      <view class="field" wx:if="{{form.intent === 'CHANGE'}}"><view class="label">可上课星期</view><view class="weekday-grid"><view class="weekday {{item.selected ? 'selected' : ''}}" wx:for="{{weekdayOptions}}" wx:key="value" data-value="{{item.value}}" bindtap="toggleWeekday">{{item.label}}</view></view></view>
+      <view class="time-row" wx:if="{{form.intent === 'CHANGE'}}" wx:for="{{form.timeRanges}}" wx:key="index"><view class="time-label">时段 {{index + 1}}</view><picker mode="time" value="{{item.start}}" data-index="{{index}}" data-field="start" bindchange="changeTime"><view class="time-picker">{{item.start}}</view></picker><text>至</text><picker mode="time" value="{{item.end}}" data-index="{{index}}" data-field="end" bindchange="changeTime"><view class="time-picker">{{item.end}}</view></picker></view>
+      <view class="field" wx:if="{{form.intent === 'CHANGE'}}"><view class="label">不可上课日期</view><input class="input" value="{{form.unavailableDatesText}}" data-field="unavailableDatesText" bindinput="inputField" placeholder="2026-09-05, 2026-09-12" /></view>
+      <view class="field"><view class="label">家长需求备注</view><textarea class="textarea" value="{{form.parentNotes}}" data-field="parentNotes" bindinput="inputField" placeholder="对排课有帮助的补充信息" /></view>
+      <view class="field required"><view class="label">家长原话或沟通摘要</view><textarea class="textarea" value="{{form.parentConfirmationNote}}" data-field="parentConfirmationNote" bindinput="inputField" placeholder="例如：家长在李赫轩家长群回复，周二和周四下午可以，周四优先。" /></view>
+      <view class="field"><view class="label">家长回复日期</view><picker mode="date" end="{{todayDate}}" value="{{form.parentConfirmedAt}}" bindchange="changeConfirmedDate"><view class="picker">{{form.parentConfirmedAt}} <text>选择</text></view></picker></view>
+      <button class="primary" loading="{{saving}}" bindtap="submitPreference">保存并生成候选时间</button>
+    </view>
+
+    <view class="locked" wx:else>当前状态不能再覆盖家长需求。已经匹配或排课后，请使用“再次调整”流程。</view>
+
+    <view class="form-card" wx:if="{{item.offers && item.offers.length}}">
+      <view class="section-title">第二步：代录家长时间排序</view>
+      <view class="section-help">先把候选时间发到微信群，收到家长回复后再按顺序点击，最多三个。</view>
+      <view class="offer {{item.displayRank ? 'selected' : ''}}" wx:for="{{item.offers}}" wx:key="id" data-id="{{item.id}}" bindtap="toggleOffer">
+        <view><view class="offer-title">{{item.weekdayLabel}} {{item.start}}–{{item.end}}</view><view class="offer-meta">{{item.teacherName}} · {{item.sessionCount}} 次 · 每次 {{item.durationMin}} 分钟</view></view>
+        <view class="rank">{{item.displayRank ? '第' + item.displayRank + '选择' : '选择'}}</view>
+      </view>
+      <view class="field"><view class="label">沟通渠道</view><picker range="{{channelOptions}}" range-key="label" value="{{selectionChannelIndex}}" bindchange="changeSelectionChannel"><view class="picker">{{channelOptions[selectionChannelIndex].label}} <text>选择</text></view></picker></view>
+      <view class="field required"><view class="label">家长选择原话或摘要</view><textarea class="textarea" value="{{selectionNote}}" bindinput="inputSelectionNote" placeholder="例如：家长在微信群回复 2、1、3。" /></view>
+      <view class="field"><view class="label">家长回复日期</view><picker mode="date" end="{{todayDate}}" value="{{selectionConfirmedAt}}" bindchange="changeSelectionDate"><view class="picker">{{selectionConfirmedAt}} <text>选择</text></view></picker></view>
+      <button class="confirm" loading="{{saving}}" bindtap="submitRanking">按家长排序临时保留24小时</button>
+    </view>
+  </block>
+</view>

@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
+import { logAudit } from "@/lib/audit-log";
 
 const BIZ_OFFSET_MS = 8 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -24,10 +25,20 @@ export const MONTHLY_SCHEDULING_ITEM_STATUSES = [
   "EXCLUDED",
 ] as const;
 export const MONTHLY_SCHEDULING_INTENTS = ["KEEP", "CHANGE", "PAUSE", "UNSURE"] as const;
+export const MONTHLY_SCHEDULING_RESPONSE_CHANNELS = ["WECHAT_GROUP", "WECHAT_PRIVATE", "PHONE", "OTHER"] as const;
+export const MONTHLY_SCHEDULING_PROXY_EDITABLE_STATUSES = ["NOT_SENT", "SENT", "VIEWED", "SUBMITTED", "OFFERED", "NEEDS_CLARIFICATION", "NO_RESPONSE"] as const;
 
 export type MonthlySchedulingCampaignStatus = (typeof MONTHLY_SCHEDULING_CAMPAIGN_STATUSES)[number];
 export type MonthlySchedulingItemStatus = (typeof MONTHLY_SCHEDULING_ITEM_STATUSES)[number];
 export type MonthlySchedulingIntent = (typeof MONTHLY_SCHEDULING_INTENTS)[number];
+export type MonthlySchedulingResponseChannel = (typeof MONTHLY_SCHEDULING_RESPONSE_CHANNELS)[number];
+
+export const responseChannelLabels: Record<MonthlySchedulingResponseChannel, { en: string; zh: string }> = {
+  WECHAT_GROUP: { en: "WeChat group", zh: "微信群" },
+  WECHAT_PRIVATE: { en: "WeChat private chat", zh: "微信私聊" },
+  PHONE: { en: "Phone", zh: "电话" },
+  OTHER: { en: "Other", zh: "其他" },
+};
 
 export type MonthlyAvailabilityPayload = {
   selectionMode: "weekly" | "calendar";
@@ -470,9 +481,8 @@ export function normalizeMonthlyAvailability(value: unknown): MonthlyAvailabilit
   return { selectionMode, weekdays, timeRanges, dateSelections };
 }
 
-export async function submitMonthlySchedulingPreference(input: {
+type MonthlySchedulingPreferenceInput = {
   itemId: string;
-  parentId: string;
   intent: MonthlySchedulingIntent;
   expectedSessionsPerWeek?: number | null;
   expectedMinutes?: number | null;
@@ -482,21 +492,43 @@ export async function submitMonthlySchedulingPreference(input: {
   availability?: unknown;
   unavailableDates?: unknown;
   parentNotes?: string | null;
-}) {
-  if (!MONTHLY_SCHEDULING_INTENTS.includes(input.intent)) throw new Error("Invalid intent");
-  const item = await prisma.monthlySchedulingItem.findFirst({
-    where: {
-      id: input.itemId,
-      campaign: { status: "OPEN" },
-      student: { parentLinks: { some: { parentId: input.parentId, canCreateRequests: true } } },
-    },
-    include: { campaign: true },
-  });
-  if (!item) throw new Error("Scheduling item is unavailable");
-  if (["OFFERED", "PARENT_SELECTED", "MATCHED", "SCHEDULED", "CHANGE_REQUESTED"].includes(item.status)) {
-    throw new Error("The school is processing the confirmed schedule; please contact the school for changes");
-  }
+};
 
+type MonthlySchedulingProxyAuditInput = {
+  actorUserId: string;
+  actorEmail: string;
+  actorName: string;
+  actorRole: string;
+  responseChannel: MonthlySchedulingResponseChannel;
+  parentConfirmationNote: string;
+  parentConfirmedAt: string | Date;
+};
+
+function proxyAuditValues(input: MonthlySchedulingProxyAuditInput) {
+  if (!MONTHLY_SCHEDULING_RESPONSE_CHANNELS.includes(input.responseChannel)) throw new Error("Invalid parent response channel");
+  const note = cleanText(input.parentConfirmationNote, 1000);
+  if (!note) throw new Error("Parent message or confirmation summary is required");
+  const raw = input.parentConfirmedAt instanceof Date ? input.parentConfirmedAt.toISOString() : String(input.parentConfirmedAt ?? "").trim();
+  const confirmedAt = validDateKey(raw) ? new Date(`${raw}T00:00:00+08:00`) : new Date(raw);
+  if (Number.isNaN(confirmedAt.getTime())) throw new Error("Invalid parent confirmation date");
+  if (confirmedAt.getTime() > Date.now() + 5 * 60 * 1000) throw new Error("Parent confirmation cannot be in the future");
+  return { note, confirmedAt };
+}
+
+async function persistMonthlySchedulingPreference(
+  item: { id: string; status: string; campaign: { month: Date } },
+  input: MonthlySchedulingPreferenceInput,
+  audit: {
+    entryMode: "PARENT" | "STAFF_PROXY";
+    responseChannel: string;
+    respondedByParentId: string | null;
+    respondedByUserId: string | null;
+    respondedByName: string | null;
+    parentConfirmationNote: string | null;
+    parentConfirmedAt: Date;
+  },
+) {
+  if (!MONTHLY_SCHEDULING_INTENTS.includes(input.intent)) throw new Error("Invalid intent");
   const expectedSessionsPerWeek = boundedInteger(input.expectedSessionsPerWeek, 14, "Sessions per week");
   const expectedMinutes = boundedInteger(input.expectedMinutes, 20000, "Expected minutes");
   const availability = normalizeMonthlyAvailability(input.availability);
@@ -514,9 +546,8 @@ export async function submitMonthlySchedulingPreference(input: {
   const updated = await prisma.monthlySchedulingItem.updateMany({
     where: {
       id: item.id,
-      status: { notIn: ["MATCHED", "SCHEDULED"] },
+      status: item.status,
       campaign: { status: "OPEN" },
-      student: { parentLinks: { some: { parentId: input.parentId, canCreateRequests: true } } },
     },
     data: {
       status: input.intent === "PAUSE" ? "PAUSED" : "SUBMITTED",
@@ -529,15 +560,95 @@ export async function submitMonthlySchedulingPreference(input: {
       availabilityJson: availability,
       unavailableDatesJson: unavailableDates,
       parentNotes: cleanText(input.parentNotes, 1000),
-      respondedByParentId: input.parentId,
+      responseEntryMode: audit.entryMode,
+      responseChannel: audit.responseChannel,
+      respondedByParentId: audit.respondedByParentId,
+      respondedByUserId: audit.respondedByUserId,
+      respondedByName: audit.respondedByName,
+      parentConfirmationNote: audit.parentConfirmationNote,
+      parentConfirmedAt: audit.parentConfirmedAt,
+      offerSelectionEntryMode: null,
+      offerSelectionChannel: null,
+      offerSelectedByUserId: null,
+      offerSelectedByName: null,
+      offerSelectionNote: null,
+      offerParentConfirmedAt: null,
       submittedAt: now,
       pausedAt: input.intent === "PAUSE" ? now : null,
     },
   });
   if (updated.count !== 1) throw new Error("The scheduling item changed; refresh before submitting again");
   if (input.intent === "CHANGE") await refreshMonthlySchedulingOffers(item.id);
+  else {
+    await prisma.monthlySchedulingOffer.updateMany({
+      where: { itemId: item.id, status: { in: ["AVAILABLE", "HELD"] } },
+      data: { status: "WITHDRAWN", holdExpiresAt: null, parentRank: null },
+    });
+  }
   const row = await prisma.monthlySchedulingItem.findUnique({ where: { id: item.id } });
   if (!row) throw new Error("Scheduling item is unavailable");
+  return row;
+}
+
+export async function submitMonthlySchedulingPreference(input: MonthlySchedulingPreferenceInput & { parentId: string }) {
+  const item = await prisma.monthlySchedulingItem.findFirst({
+    where: {
+      id: input.itemId,
+      campaign: { status: "OPEN" },
+      student: { parentLinks: { some: { parentId: input.parentId, canCreateRequests: true } } },
+    },
+    include: { campaign: true },
+  });
+  if (!item) throw new Error("Scheduling item is unavailable");
+  if (["OFFERED", "PARENT_SELECTED", "MATCHED", "SCHEDULED", "CHANGE_REQUESTED"].includes(item.status)) {
+    throw new Error("The school is processing the confirmed schedule; please contact the school for changes");
+  }
+  return persistMonthlySchedulingPreference(item, input, {
+    entryMode: "PARENT",
+    responseChannel: "MINIAPP",
+    respondedByParentId: input.parentId,
+    respondedByUserId: null,
+    respondedByName: null,
+    parentConfirmationNote: null,
+    parentConfirmedAt: new Date(),
+  });
+}
+
+export async function submitMonthlySchedulingPreferenceByStaff(
+  input: MonthlySchedulingPreferenceInput & { expectedStatus: MonthlySchedulingItemStatus } & MonthlySchedulingProxyAuditInput,
+) {
+  if (!MONTHLY_SCHEDULING_PROXY_EDITABLE_STATUSES.includes(input.expectedStatus as (typeof MONTHLY_SCHEDULING_PROXY_EDITABLE_STATUSES)[number])) {
+    throw new Error("This item is no longer open for proxy entry");
+  }
+  const item = await prisma.monthlySchedulingItem.findFirst({
+    where: { id: input.itemId, status: input.expectedStatus, campaign: { status: "OPEN" } },
+    include: { campaign: true },
+  });
+  if (!item) throw new Error("This item changed; refresh before entering the parent response");
+  const audit = proxyAuditValues(input);
+  const row = await persistMonthlySchedulingPreference(item, input, {
+    entryMode: "STAFF_PROXY",
+    responseChannel: input.responseChannel,
+    respondedByParentId: null,
+    respondedByUserId: input.actorUserId,
+    respondedByName: cleanText(input.actorName, 120),
+    parentConfirmationNote: audit.note,
+    parentConfirmedAt: audit.confirmedAt,
+  });
+  await logAudit({
+    actor: { email: input.actorEmail, name: input.actorName, role: input.actorRole },
+    module: "MONTHLY_SCHEDULING",
+    action: "PROXY_PARENT_PREFERENCE",
+    entityType: "MonthlySchedulingItem",
+    entityId: item.id,
+    meta: {
+      intent: input.intent,
+      responseChannel: input.responseChannel,
+      parentConfirmedAt: audit.confirmedAt.toISOString(),
+      parentConfirmationNote: audit.note,
+      resultingStatus: row.status,
+    },
+  });
   return row;
 }
 
@@ -760,7 +871,17 @@ export function monthlySchedulingOffersConflict(left: OfferSessionDate[], right:
   return left.some((a) => right.some((b) => new Date(a.startAt) < new Date(b.endAt) && new Date(b.startAt) < new Date(a.endAt)));
 }
 
-export async function rankMonthlySchedulingOffers(input: { itemId: string; parentId: string; offerIds: string[] }) {
+async function rankMonthlySchedulingOffersCore(input: {
+  itemId: string;
+  offerIds: string[];
+  parentId?: string;
+  entryMode: "PARENT" | "STAFF_PROXY";
+  responseChannel: string;
+  selectedByUserId: string | null;
+  selectedByName: string | null;
+  selectionNote: string | null;
+  parentConfirmedAt: Date;
+}) {
   const offerIds = unique(input.offerIds.map((id) => String(id).trim()).filter(Boolean)).slice(0, 3);
   if (!offerIds.length) throw new Error("Please rank at least one available time");
   const now = new Date();
@@ -771,7 +892,7 @@ export async function rankMonthlySchedulingOffers(input: { itemId: string; paren
         id: input.itemId,
         status: { in: ["OFFERED", "PARENT_SELECTED"] },
         campaign: { status: "OPEN" },
-        student: { parentLinks: { some: { parentId: input.parentId, canCreateRequests: true } } },
+        ...(input.parentId ? { student: { parentLinks: { some: { parentId: input.parentId, canCreateRequests: true } } } } : {}),
       },
       include: { offers: { include: { teacher: { select: { name: true } } } } },
     });
@@ -801,12 +922,68 @@ export async function rankMonthlySchedulingOffers(input: { itemId: string; paren
     }
     const held = await tx.monthlySchedulingOffer.update({
       where: { id: chosen.id },
-      data: { status: "HELD", heldByParentId: input.parentId, holdExpiresAt },
+      data: { status: "HELD", heldByParentId: input.parentId ?? item.parentId, holdExpiresAt },
       include: { teacher: { select: { name: true } } },
     });
-    await tx.monthlySchedulingItem.update({ where: { id: item.id }, data: { status: "PARENT_SELECTED", submittedAt: now } });
+    await tx.monthlySchedulingItem.update({
+      where: { id: item.id },
+      data: {
+        status: "PARENT_SELECTED",
+        submittedAt: now,
+        offerSelectionEntryMode: input.entryMode,
+        offerSelectionChannel: input.responseChannel,
+        offerSelectedByUserId: input.selectedByUserId,
+        offerSelectedByName: input.selectedByName,
+        offerSelectionNote: input.selectionNote,
+        offerParentConfirmedAt: input.parentConfirmedAt,
+      },
+    });
     return monthlySchedulingOfferView(held);
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
+export async function rankMonthlySchedulingOffers(input: { itemId: string; parentId: string; offerIds: string[] }) {
+  return rankMonthlySchedulingOffersCore({
+    ...input,
+    entryMode: "PARENT",
+    responseChannel: "MINIAPP",
+    selectedByUserId: null,
+    selectedByName: null,
+    selectionNote: null,
+    parentConfirmedAt: new Date(),
+  });
+}
+
+export async function rankMonthlySchedulingOffersByStaff(input: {
+  itemId: string;
+  offerIds: string[];
+} & MonthlySchedulingProxyAuditInput) {
+  const audit = proxyAuditValues(input);
+  const selected = await rankMonthlySchedulingOffersCore({
+    itemId: input.itemId,
+    offerIds: input.offerIds,
+    entryMode: "STAFF_PROXY",
+    responseChannel: input.responseChannel,
+    selectedByUserId: input.actorUserId,
+    selectedByName: cleanText(input.actorName, 120),
+    selectionNote: audit.note,
+    parentConfirmedAt: audit.confirmedAt,
+  });
+  await logAudit({
+    actor: { email: input.actorEmail, name: input.actorName, role: input.actorRole },
+    module: "MONTHLY_SCHEDULING",
+    action: "PROXY_PARENT_OFFER_RANKING",
+    entityType: "MonthlySchedulingItem",
+    entityId: input.itemId,
+    meta: {
+      offerIds: input.offerIds.slice(0, 3),
+      selectedOfferId: selected.id,
+      responseChannel: input.responseChannel,
+      parentConfirmedAt: audit.confirmedAt.toISOString(),
+      parentConfirmationNote: audit.note,
+    },
+  });
+  return selected;
 }
 
 export async function requestMonthlySchedulingChange(input: { itemId: string; parentId: string; note: string }) {

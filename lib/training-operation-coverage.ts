@@ -186,6 +186,7 @@ export const OPERATION_AREAS: OperationArea[] = [
       "/miniapp/pages/staff-first-scheduling",
       "/miniapp/pages/staff-student-scheduling",
       "/miniapp/pages/staff-monthly-scheduling",
+      "/miniapp/pages/staff-monthly-scheduling-proxy",
       "/miniapp/pages/monthly-scheduling",
       "/miniapp/pages/schedule",
     ],

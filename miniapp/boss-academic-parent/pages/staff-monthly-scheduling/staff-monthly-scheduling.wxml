@@ -14,6 +14,8 @@
     <view class="meta-row">家长：{{item.parentName || "未绑定"}} {{item.parentPhone || ""}}</view>
     <view class="meta-row" wx:if="{{item.intent}}">意向：{{item.intent}} · {{item.expectedSessionsPerWeek || "-"}} 次/周 · {{item.preferredMode || "模式未填"}}</view>
     <view class="note" wx:if="{{item.parentNotes}}">{{item.parentNotes}}</view>
+    <view class="proxy-audit" wx:if="{{item.responseEntryMode === 'STAFF_PROXY'}}">教务代录：{{item.respondedByName || "-"}} · {{item.responseChannel || "-"}}</view>
+    <view class="proxy-audit selected" wx:if="{{item.offerSelectionEntryMode === 'STAFF_PROXY'}}">家长排序由 {{item.offerSelectedByName || "-"}} 代录 · {{item.offerSelectionChannel || "-"}}</view>
     <view class="selected-offer" wx:if="{{item.selectedOffer}}">
       <view class="selected-offer-title">家长首选：{{item.selectedOffer.weekdayLabel}} {{item.selectedOffer.start}}–{{item.selectedOffer.end}}</view>
       <view class="meta-row">{{item.selectedOffer.teacherName}} · {{item.selectedOffer.sessionCount}} 次 · 每次 {{item.selectedOffer.durationMin}} 分钟</view>
@@ -23,6 +25,7 @@
     <view class="action-grid">
       <button class="action" data-id="{{item.id}}" bindtap="copyMessage">复制家长消息</button>
       <button class="action" data-id="{{item.id}}" data-status="{{item.status}}" loading="{{updatingId === item.id}}" bindtap="updateStatus">保存备注</button>
+      <button class="action proxy" wx:if="{{item.status === 'NOT_SENT' || item.status === 'SENT' || item.status === 'VIEWED' || item.status === 'SUBMITTED' || item.status === 'OFFERED' || item.status === 'NEEDS_CLARIFICATION' || item.status === 'NO_RESPONSE' || item.status === 'PARENT_SELECTED'}}" data-id="{{item.id}}" bindtap="openProxyEntry">代家长录入/选择</button>
       <button class="action" wx:if="{{item.status === 'NOT_SENT'}}" data-id="{{item.id}}" data-status="SENT" loading="{{updatingId === item.id}}" bindtap="updateStatus">标记已发送</button>
       <button class="action" wx:if="{{item.status === 'SUBMITTED'}}" data-id="{{item.id}}" data-status="NEEDS_CLARIFICATION" loading="{{updatingId === item.id}}" bindtap="updateStatus">需要澄清</button>
       <button class="action" wx:if="{{item.status === 'PARENT_SELECTED'}}" data-id="{{item.id}}" data-status="MATCHED" loading="{{updatingId === item.id}}" bindtap="updateStatus">确认家长首选</button>

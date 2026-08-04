@@ -8,6 +8,7 @@ const adminPage = fs.readFileSync(path.join(process.cwd(), "app/admin/monthly-sc
 const parentRoute = fs.readFileSync(path.join(process.cwd(), "app/api/miniapp/monthly-scheduling/route.ts"), "utf8");
 const staffRoute = fs.readFileSync(path.join(process.cwd(), "app/api/miniapp/staff/monthly-scheduling/route.ts"), "utf8");
 const exportRoute = fs.readFileSync(path.join(process.cwd(), "app/admin/monthly-scheduling/export/route.ts"), "utf8");
+const staffProxyPage = fs.readFileSync(path.join(process.cwd(), "miniapp/boss-academic-parent/pages/staff-monthly-scheduling-proxy/staff-monthly-scheduling-proxy.js"), "utf8");
 
 test("monthly scheduling status writes use stale-state guards", () => {
   assert.match(service, /expectedStatus\?: MonthlySchedulingItemStatus/);
@@ -17,7 +18,8 @@ test("monthly scheduling status writes use stale-state guards", () => {
 });
 
 test("parent submissions cannot overwrite matched or scheduled work", () => {
-  assert.match(service, /status: \{ notIn: \["MATCHED", "SCHEDULED"\] \}/);
+  assert.match(service, /\["OFFERED", "PARENT_SELECTED", "MATCHED", "SCHEDULED", "CHANGE_REQUESTED"\]\.includes\(item\.status\)/);
+  assert.match(service, /status: item\.status/);
   assert.match(service, /campaign: \{ status: "OPEN" \}/);
   assert.match(parentRoute, /\["MATCHED", "SCHEDULED"\]\.includes\(row\.status\)/);
 });
@@ -33,6 +35,29 @@ test("parent concrete-time selection uses serializable holds and staff acceptanc
   assert.match(service, /monthlySchedulingSessionStudentIds\(row\)\.includes\(item\.studentId\)/);
   assert.match(service, /item: \{ studentId: item\.studentId \}/);
   assert.match(service, /held\.item\.studentId === item\.studentId/);
+});
+
+test("staff proxy entry reuses preference and hold services with an auditable parent source", () => {
+  assert.match(service, /submitMonthlySchedulingPreferenceByStaff/);
+  assert.match(service, /rankMonthlySchedulingOffersByStaff/);
+  assert.match(service, /responseEntryMode: audit\.entryMode/);
+  assert.match(service, /offerSelectionEntryMode: input\.entryMode/);
+  assert.match(service, /Parent message or confirmation summary is required/);
+  assert.match(service, /PROXY_PARENT_PREFERENCE/);
+  assert.match(service, /PROXY_PARENT_OFFER_RANKING/);
+  assert.match(staffRoute, /canUseMiniappAcademicDesk/);
+  assert.match(staffRoute, /PROXY_PREFERENCE/);
+  assert.match(staffRoute, /PROXY_RANK_OFFERS/);
+  assert.match(adminPage, /proxyPreferenceAction/);
+  assert.match(adminPage, /proxyRankOffersAction/);
+  assert.match(staffProxyPage, /PROXY_PREFERENCE/);
+  assert.match(staffProxyPage, /PROXY_RANK_OFFERS/);
+});
+
+test("staff proxy entry cannot replace matched or scheduled work", () => {
+  assert.match(service, /MONTHLY_SCHEDULING_PROXY_EDITABLE_STATUSES/);
+  assert.doesNotMatch(service.match(/MONTHLY_SCHEDULING_PROXY_EDITABLE_STATUSES = \[[^\]]+\]/s)?.[0] ?? "", /MATCHED|SCHEDULED|PARENT_SELECTED/);
+  assert.match(service, /status: input\.expectedStatus/);
 });
 
 test("scheduled completion requires a real target-month lesson", () => {

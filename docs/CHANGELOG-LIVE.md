@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-04-r308
+
+- Release ID: `2026-08-04-r308`
+- Date/Time (Asia/Singapore): `2026-08-04`
+- Deployment status: `READY`
+- Scope: let authorized Academic staff record a parent's next-month preference and ranked concrete-time choices from WeChat or phone replies on the Web and Staff Mini Program, with source evidence and operator audit fields.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260804183000_add_monthly_scheduling_proxy_audit/migration.sql`
+  - `lib/monthly-scheduling.ts`
+  - `app/admin/monthly-scheduling/page.tsx`
+  - `app/api/miniapp/staff/monthly-scheduling/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-monthly-scheduling-proxy/`
+  - `docs/tasks/TASK-20260804-monthly-scheduling-parent-proxy-entry.md`
+- Risk impact (if any): Moderate and isolated to the existing next-month scheduling workflow. Staff proxy entry uses the same availability validation, concrete-offer generation, serializable 24-hour hold, conflict checks, and stale-state guards as direct parent entry. It cannot overwrite matched or scheduled work and never creates or changes a formal Session. Packages, balances, attendance, deductions, reminders, contracts, invoices, receipts, payroll, tickets, and historical lessons remain unchanged.
+- Verification: Prisma formatting and client generation, TypeScript, all 331 repository tests, the 57-page Mini Program release audit, `git diff --check`, and the complete 235-page production build passed.
+- Rollback point: `c31a5c9` (`2026-08-04-r307` concrete-option workflow baseline).
+
+---
+
 ## 2026-08-04-r307
 
 - Release ID: `2026-08-04-r307`

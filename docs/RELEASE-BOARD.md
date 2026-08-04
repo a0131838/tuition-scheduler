@@ -32,10 +32,37 @@
 - Current release line prepared: `2026-08-03-r305` adds the missing click-by-click entry chain and expands Academic Web scheduling to 54 pages and 22 steps from login through final handover.
 - Current release line prepared: `2026-08-04-r306` adds proactive next-month family scheduling confirmation, student/course-specific shared-package handling, real date-availability staffing forecasts, and Web/Mini Program follow-up queues without changing formal lessons automatically.
 - Current release line prepared: `2026-08-04-r307` replaces repeated free-form time negotiation with ranked concrete teacher/time choices, 24-hour holds, a simplified Academic queue, and safe prefilling into the existing formally validated scheduling page.
+- Current release line prepared: `2026-08-04-r308` lets authorized Academic staff record parent preferences and ranked choices received through WeChat or phone, while preserving the same conflict checks, temporary holds, formal scheduling boundary, and audit trail.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-04-r308 Ready
+
+- Scope: support families who reply only in WeChat groups or by phone by letting Academic enter the confirmed response on their behalf.
+- Business impact:
+  - Web and Staff Mini Program both expose a dedicated `代家长录入` flow for one student and one course at a time;
+  - Academic records keep/change/pause/unsure, weekly availability, unavailable dates, mode/campus/teacher preferences, and parent notes;
+  - when a change produces concrete options, Academic can record the parent's first, second, and third choices in the order received;
+  - each proxy entry visibly stores the communication channel, parent reply date, original message or summary, and responsible employee;
+  - exports include the proxy-entry evidence fields for audit and handover.
+- Safety boundaries:
+  - ADMIN/Academic desk permission remains required; Finance stays read-only and unrelated roles stay denied;
+  - stale-state guards prevent two staff members from silently overwriting each other;
+  - matched and scheduled items cannot be replaced through proxy entry;
+  - ranked choices reuse the serializable 24-hour hold and teacher/student conflict logic;
+  - no formal Session, package, balance, attendance, deduction, reminder, contract, invoice, receipt, payroll, ticket, or historical lesson is changed automatically.
+- Verification before deploy:
+  - Prisma format and client generation, TypeScript, all 331 repository tests, and `git diff --check` passed;
+  - the 57-page Mini Program audit passed with the production API, correct AppID, mock login off, source maps off, and zero errors;
+  - the complete 235-page production build passed.
+- Post-deploy verification:
+  - confirm local/GitHub/server commit equality, PM2 online, and `/admin/login` HTTP 200;
+  - confirm the additive proxy-audit migration applied;
+  - upload matching Mini Program development version `1.0.23` after server health is confirmed;
+  - test one Web proxy preference and one Staff Mini Program ranking using non-production sample data before normal operation.
+- Task doc: `docs/tasks/TASK-20260804-monthly-scheduling-parent-proxy-entry.md`.
 
 ## 2026-08-04-r307 Ready
 
@@ -527,6 +554,7 @@
 
 ## Open Risks
 
+- Staff proxy entry relies on the operator faithfully transcribing the parent's actual message. The required source channel, reply date, message summary, named operator, and permanent AuditLog make the record reviewable, but management should still spot-check the first live entries against the WeChat conversation.
 - Four existing TEACHER accounts have no confirmed teacher-profile link. They are now safely gated, but a manager must identify the exact profile or decide whether each legacy account should remain inactive; the system intentionally does not guess by matching names.
 - Multi-role training assignments intentionally do not grant business permissions. Managers must still change the primary role or workspace access separately when the employee genuinely needs operational access.
 - Training-center rollout: no employee is automatically marked complete. Management must review the first practical evidence and establish who is responsible for each role's sign-off.
