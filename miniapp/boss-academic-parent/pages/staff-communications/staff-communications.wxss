@@ -26,6 +26,7 @@
 .completeness { display: grid; gap: 5rpx; padding: 16rpx; border-radius: 10rpx; font-size: 22rpx; font-weight: 750; }.completeness.complete { background: #edf8f0; color: #166534; }.completeness.incomplete { background: #fff1f0; color: #a61b1b; }
 .feedback-section { padding: 16rpx 0; border-bottom: 1rpx solid #ece9e4; }.section-label { margin: 10rpx 0 7rpx; color: #646a73; font-size: 22rpx; font-weight: 800; }.section-value { color: #202328; font-size: 25rpx; line-height: 1.65; white-space: pre-wrap; }
 .original-toggle { margin-top: 16rpx; }.original,.message { max-height: 520rpx; overflow: auto; padding: 18rpx; background: #f6f4f1; border-radius: 10rpx; font-size: 25rpx; line-height: 1.65; white-space: pre-wrap; }.message { border-left: 6rpx solid #ec5e0a; }
+.template-version { margin-top: 8rpx; color: #64748b; font-size: 21rpx; }
 .send-heading { margin-bottom: 8rpx; color: #171a1f; font-size: 28rpx; font-weight: 850; }.send-instruction { margin-bottom: 14rpx; padding: 16rpx; background: #fff4eb; border-left: 6rpx solid #ec5e0a; color: #7c2d12; font-size: 23rpx; line-height: 1.55; }
 .send-instruction.urgent-copy { background: #fff1f0; border-left-color: #c52222; color: #841f1a; }
 .editor { width: 100%; min-height: 320rpx; box-sizing: border-box; padding: 18rpx; border: 1rpx solid #f5a56d; border-radius: 10rpx; font-size: 25rpx; line-height: 1.6; }

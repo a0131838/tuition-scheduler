@@ -8,6 +8,7 @@ type Task = {
   ownerUserId: string | null; ownerName: string | null; wechatGroupName: string | null;
   dueAt: string | null; createdAt: string; copiedAt: string | null; manualSentAt: string | null;
   note: string | null; evidenceUrl: string | null; correctionOfTaskId: string | null;
+  templateCode: string | null; templateVersion: number | null;
   dateLabel: string | null; shortDateLabel: string | null;
   student: { name: string; school: string | null; grade: string | null } | null;
   teacher: { name: string } | null;
@@ -113,7 +114,7 @@ export default function CommunicationCenterClient({ currentUser }: { currentUser
           <div style={{ color: "#64748b", fontSize: 13 }}>先选择审核反馈、发给家长、发给老师或课程变更补发，再处理对应任务。</div>
           <div style={{ color: "#475569", fontSize: 12, marginTop: 5 }}>老师可从员工小程序或<a href="/teacher" target="_blank" rel="noreferrer" style={{ color: "#c2410c", fontWeight: 800, margin: "0 4px" }}>网页版老师端</a>查看课程；家长和学生从家长小程序查看。</div>
         </div>
-        <button style={primary} disabled={loading} onClick={() => load(true)}>{loading ? "同步中…" : "同步反馈与明日提醒"}</button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "start" }}><a href="/admin/communications/templates" style={{ ...button, textDecoration: "none", color: "#0f172a" }}>家长话术模板</a><button style={primary} disabled={loading} onClick={() => load(true)}>{loading ? "同步中…" : "同步反馈与明日提醒"}</button></div>
       </header>
 
       <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 1, background: "#e2e8f0", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
@@ -170,6 +171,7 @@ export default function CommunicationCenterClient({ currentUser }: { currentUser
             {(row.status === "READY_TO_SEND" || row.status === "CLAIMED" || row.status === "ATTENTION" || row.status === "COMPLETED") ? <div style={{ display: "grid", gap: 9 }}>
               <div style={{ fontWeight: 800 }}>微信群/微信人工转发 / Manual WeChat forwarding</div>
               <pre style={{ whiteSpace: "pre-wrap", margin: 0, padding: 12, background: "#f8fafc", borderLeft: "4px solid #ea580c", fontFamily: "inherit", lineHeight: 1.65 }}>{row.messageText}</pre>
+              {row.templateCode ? <div style={{ color: "#64748b", fontSize: 12 }}>固定话术：{row.templateCode} · V{row.templateVersion}</div> : <div style={{ color: "#92400e", fontSize: 12 }}>系统固定业务文案（历史记录未关联模板版本）</div>}
               <div style={{ display: "grid", gridTemplateColumns: "minmax(220px,1fr) minmax(260px,2fr)", gap: 8 }}>
                 <input value={draft.group} onChange={(event) => updateDraft(row.id, { group: event.target.value })} placeholder={row.kind === "COURSE_REMINDER_TEACHER" || (row.kind === "COURSE_CHANGE" && row.teacherId && !row.studentId) ? "老师微信 / Teacher WeChat" : "家长群名称 / Parent group name"} style={{ padding: 9, border: "1px solid #cbd5e1", borderRadius: 8 }} />
                 <input value={draft.note} onChange={(event) => updateDraft(row.id, { note: event.target.value })} placeholder="备注（可选）/ Note (optional)" style={{ padding: 9, border: "1px solid #cbd5e1", borderRadius: 8 }} />

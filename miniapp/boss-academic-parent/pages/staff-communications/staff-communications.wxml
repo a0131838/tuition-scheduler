@@ -77,6 +77,7 @@
         <view class="send-instruction urgent-copy" wx:if="{{item.isCourseChange}}">这是对已发送旧提醒的纠正。请将本条发到原家长群或老师微信，不能只在系统里点完成。</view>
         <view class="send-instruction" wx:if="{{item.isFeedback}}">复制下面文案或保存图片，在微信中发到对应家长群。小程序发布不能代替人工发群。</view>
         <view class="section-label">待发送文案</view><view class="message">{{item.messageText}}</view>
+        <view class="template-version" wx:if="{{item.templateCode}}">固定话术：{{item.templateCode}} · V{{item.templateVersion}}</view>
         <view class="share-card-note" wx:if="{{item.canShareCard}}">推荐：分享小程序卡片后，家长或老师点击即可直达对应内容；仍需人工选择微信群并点击发送。</view>
         <input class="input compact" value="{{item.groupDraft}}" data-index="{{idx}}" bindinput="inputGroup" placeholder="{{item.isTeacherReminder ? '老师微信' : '家长群名称'}}" />
         <input class="input compact" value="{{item.noteDraft}}" data-index="{{idx}}" bindinput="inputNote" placeholder="备注（可选）" />

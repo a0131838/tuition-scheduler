@@ -62,6 +62,7 @@ export const OPERATION_AREAS: OperationArea[] = [
       "/teacher/student-feedbacks",
       "/teacher/alerts",
       "/miniapp/pages/staff-communications",
+      "/miniapp/pages/staff-communication-templates",
       "/miniapp/pages/staff-teacher-feedbacks",
       "/miniapp/pages/feedbacks",
     ],

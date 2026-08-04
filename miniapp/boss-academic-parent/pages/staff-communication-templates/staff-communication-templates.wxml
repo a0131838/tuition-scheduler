@@ -1,0 +1,12 @@
+<view class="page">
+  <view class="top"><view class="kicker">APPROVED PARENT MESSAGES</view><view class="title">家长话术模板</view><view class="help">选择固定场景并填写变量，系统生成已审批话术。员工不能直接改模板正文。</view></view>
+  <view class="loading" wx:if="{{loading}}">正在读取模板...</view>
+  <view class="card" wx:else>
+    <view class="label">业务类别</view><picker range="{{categories}}" value="{{categoryIndex}}" bindchange="changeCategory"><view class="picker">{{categories[categoryIndex] || '暂无模板'}} <text>选择</text></view></picker>
+    <view class="label">沟通场景</view><picker range="{{visibleTemplates}}" range-key="title" value="{{templateIndex}}" bindchange="changeTemplate"><view class="picker">{{selected.title || '请选择'}} <text>选择</text></view></picker>
+    <view class="version" wx:if="{{selected}}">{{selected.code}} · V{{selected.version}} · 已发布</view>
+    <view class="field" wx:for="{{variables}}" wx:key="key"><view class="label">{{item.label}}</view><textarea class="input" auto-height value="{{item.value}}" data-index="{{index}}" bindinput="inputVariable" placeholder="请输入{{item.label}}" /></view>
+    <button class="primary" loading="{{saving}}" bindtap="renderAndCopy">生成并复制已审批话术</button>
+  </view>
+  <view class="preview" wx:if="{{messageText}}"><view class="label">本次生成内容</view><text selectable>{{messageText}}</text></view>
+</view>

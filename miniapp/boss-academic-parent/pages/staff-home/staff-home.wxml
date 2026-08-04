@@ -126,6 +126,11 @@
       <view class="work-copy"><view class="work-title">家长沟通与通知</view><view class="work-detail">审核反馈、转发微信群、提醒老师和家长</view></view>
       <view class="work-badge alert" wx:if="{{hasCommunicationTasks}}">{{communicationCount}}</view><view class="work-arrow">›</view>
     </view>
+    <view class="work-row" wx:if="{{isAcademic}}" bindtap="goCommunicationTemplates">
+      <view class="work-icon">话</view>
+      <view class="work-copy"><view class="work-title">家长话术模板</view><view class="work-detail">选择固定场景，填写变量并复制已审批内容</view></view>
+      <view class="work-arrow">›</view>
+    </view>
     <view class="work-row" bindtap="goMonthlyScheduling">
       <view class="work-icon icon-orange">排</view>
       <view class="work-copy"><view class="work-title">下月排课跟进</view><view class="work-detail">收集家长时间、跟进未回复并标记匹配结果</view></view>

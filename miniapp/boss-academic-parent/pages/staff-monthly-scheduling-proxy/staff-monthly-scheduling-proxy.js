@@ -16,6 +16,10 @@ const weekdayOptions = [
   { value: "MON", label: "周一" }, { value: "TUE", label: "周二" }, { value: "WED", label: "周三" },
   { value: "THU", label: "周四" }, { value: "FRI", label: "周五" }, { value: "SAT", label: "周六" }, { value: "SUN", label: "周日" }
 ];
+const teacherPreferenceOptions = [
+  { value: "NONE", label: "不指定老师" }, { value: "CURRENT", label: "沿用当前老师" },
+  { value: "PREFERRED", label: "选择合格老师" }, { value: "VERIFY", label: "家长提到老师，待核对" }
+];
 const editableStatuses = ["NOT_SENT", "SENT", "VIEWED", "SUBMITTED", "OFFERED", "NEEDS_CLARIFICATION", "NO_RESPONSE"];
 
 function today() {
@@ -36,7 +40,9 @@ function blankForm() {
     expectedMinutes: "",
     preferredMode: "",
     preferredCampus: "",
-    preferredTeacher: "",
+    preferredTeacherId: "",
+    teacherPreferenceType: "NONE",
+    teacherPreferenceNote: "",
     weekdays: [],
     timeRanges: [{ start: "09:00", end: "12:00" }, { start: "14:00", end: "18:00" }, { start: "19:00", end: "21:00" }],
     unavailableDatesText: "",
@@ -59,6 +65,10 @@ Page({
     channelOptions,
     channelIndex: 0,
     weekdayOptions,
+    teacherPreferenceOptions,
+    teacherPreferenceIndex: 0,
+    teacherOptions: [],
+    teacherIndex: 0,
     form: blankForm(),
     rankedOfferIds: [],
     selectionChannelIndex: 0,
@@ -95,7 +105,9 @@ Page({
           expectedMinutes: item.expectedMinutes == null ? "" : String(item.expectedMinutes),
           preferredMode: item.preferredMode || "",
           preferredCampus: item.preferredCampus || "",
-          preferredTeacher: item.preferredTeacher || "",
+          preferredTeacherId: item.preferredTeacherId || "",
+          teacherPreferenceType: item.teacherPreferenceType || (item.preferredTeacher ? "VERIFY" : "NONE"),
+          teacherPreferenceNote: item.teacherPreferenceNote || (!item.teacherPreferenceType ? item.preferredTeacher || "" : ""),
           weekdays: availability.weekdays || [],
           timeRanges: ranges,
           unavailableDatesText: Array.isArray(item.unavailableDates) ? item.unavailableDates.join(", ") : "",
@@ -104,12 +116,16 @@ Page({
           parentConfirmationNote: item.parentConfirmationNote || "",
           parentConfirmedAt: item.parentConfirmedAt ? businessDate(item.parentConfirmedAt) : today()
         };
+        const teacherOptions = [{ id: "", name: "请选择合格老师" }].concat(item.teacherOptions || []);
         this.setData({
           item: displayItem,
           form,
           canEditPreference: editableStatuses.includes(item.status),
           intentIndex: Math.max(0, intentOptions.findIndex((row) => row.value === form.intent)),
           channelIndex: Math.max(0, channelOptions.findIndex((row) => row.value === responseChannel)),
+          teacherPreferenceIndex: Math.max(0, teacherPreferenceOptions.findIndex((row) => row.value === form.teacherPreferenceType)),
+          teacherOptions,
+          teacherIndex: Math.max(0, teacherOptions.findIndex((row) => row.id === form.preferredTeacherId)),
           weekdayOptions: weekdayOptions.map((row) => Object.assign({}, row, { selected: form.weekdays.includes(row.value) })),
           rankedOfferIds,
           selectionChannelIndex: Math.max(0, channelOptions.findIndex((row) => row.value === selectionChannel)),
@@ -130,6 +146,15 @@ Page({
     this.setData({ channelIndex: index, "form.responseChannel": channelOptions[index].value });
   },
   changeMode(e) { this.setData({ "form.preferredMode": e.currentTarget.dataset.value || "" }); },
+  changeTeacherPreference(e) {
+    const index = Number(e.detail.value || 0);
+    const value = teacherPreferenceOptions[index].value;
+    this.setData({ teacherPreferenceIndex: index, "form.teacherPreferenceType": value, ...(value === "PREFERRED" ? {} : { "form.preferredTeacherId": "", teacherIndex: 0 }) });
+  },
+  changeTeacher(e) {
+    const index = Number(e.detail.value || 0);
+    this.setData({ teacherIndex: index, "form.preferredTeacherId": (this.data.teacherOptions[index] || {}).id || "" });
+  },
   changeSelectionChannel(e) { this.setData({ selectionChannelIndex: Number(e.detail.value || 0) }); },
   toggleWeekday(e) {
     const value = e.currentTarget.dataset.value;
@@ -149,6 +174,8 @@ Page({
     const form = this.data.form;
     if (!item || !this.data.canEditPreference || this.data.saving) return;
     if (!form.parentConfirmationNote.trim()) return api.toast("请填写家长原话或沟通摘要");
+    if (form.teacherPreferenceType === "PREFERRED" && !form.preferredTeacherId) return api.toast("请选择合格老师");
+    if (form.teacherPreferenceType === "VERIFY" && !form.teacherPreferenceNote.trim()) return api.toast("请填写家长提到的老师姓名");
     if (form.intent === "CHANGE" && (!form.weekdays.length || !form.timeRanges.some((row) => row.start && row.end && row.end > row.start))) return api.toast("请填写家长可上课星期和时段");
     this.setData({ saving: true });
     api.requestStaff("/api/miniapp/staff/monthly-scheduling", {
@@ -163,7 +190,9 @@ Page({
         expectedMinutes: form.expectedMinutes === "" ? null : Number(form.expectedMinutes),
         preferredMode: form.preferredMode,
         preferredCampus: form.preferredCampus,
-        preferredTeacher: form.preferredTeacher,
+        preferredTeacherId: form.preferredTeacherId,
+        teacherPreferenceType: form.teacherPreferenceType,
+        teacherPreferenceNote: form.teacherPreferenceNote,
         availability: { selectionMode: "weekly", weekdays: form.weekdays, timeRanges: form.timeRanges.filter((row) => row.start && row.end && row.end > row.start), dateSelections: [] },
         unavailableDates: form.unavailableDatesText.split(/[\s,，;；]+/).filter(Boolean),
         parentNotes: form.parentNotes,

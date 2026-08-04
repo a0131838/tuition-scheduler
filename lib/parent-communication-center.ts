@@ -7,6 +7,7 @@ import { getMissingParentFeedbackSections, parseParentFeedbackSections } from "@
 import { prisma } from "@/lib/prisma";
 import { feedbackAttachmentDto } from "@/lib/feedback-attachments";
 import { getVisibleSessionStudents } from "@/lib/session-students";
+import { renderPublishedCommunicationTemplate } from "@/lib/parent-communication-templates";
 
 export type CommunicationActor = {
   id: string;
@@ -168,6 +169,9 @@ async function upsertCommunicationTask(input: {
   parentId?: string | null;
   title: string;
   messageText: string;
+  templateCode?: string | null;
+  templateVersion?: number | null;
+  templateVariables?: Prisma.InputJsonValue;
   dueAt?: Date | null;
   ownerName?: string | null;
   wechatGroupName?: string | null;
@@ -195,7 +199,7 @@ async function upsertCommunicationTask(input: {
   ) {
     return prisma.parentCommunicationTask.update({
       where: { id: existing.id },
-      data: { title: input.title, messageText: input.messageText, contentFingerprint, dueAt: input.dueAt ?? existing.dueAt },
+      data: { title: input.title, messageText: input.messageText, contentFingerprint, dueAt: input.dueAt ?? existing.dueAt, templateCode: input.templateCode, templateVersion: input.templateVersion, templateVariables: input.templateVariables ?? undefined },
     });
   }
 
@@ -209,6 +213,14 @@ async function upsertCommunicationTask(input: {
       currentMessageText: input.messageText,
       forceCancelled: forceCourseCancelled,
     });
+    const renderedCourseChange = courseChange && input.kind === "COURSE_REMINDER_PARENT"
+      ? await renderPublishedCommunicationTemplate("COURSE_CHANGE", {
+          changeLabel: courseChange.label,
+          parentName: recipientGreeting(input.messageText || existing.messageText, input.kind).replace(/[，,]$/, ""),
+          previousSchedule: courseChange.previousLines.length ? courseChange.previousLines.map((line) => `• ${line}`).join("\n") : "• 原安排详情请查看上一条提醒",
+          currentSchedule: courseChange.currentLines.length ? courseChange.currentLines.map((line) => `• ${line}`).join("\n") : "• 该课程已取消，暂无替代课程。 / This class has been cancelled.",
+        })
+      : null;
     await prisma.parentCommunicationTask.update({
       where: { id: existing.id },
       data: { supersededAt: existing.supersededAt ?? new Date() },
@@ -222,16 +234,22 @@ async function upsertCommunicationTask(input: {
         status: feedbackRevision ? input.status : "ATTENTION",
         priority: "HIGH",
         title: feedbackRevision ? `【反馈修订】${input.title}` : `【${courseChange!.label}】${input.title}`,
-        messageText: feedbackRevision ? input.messageText : courseChange!.messageText,
+        messageText: feedbackRevision ? input.messageText : renderedCourseChange?.messageText ?? courseChange!.messageText,
         contentFingerprint,
         correctionOfTaskId: existing.id,
+        templateCode: feedbackRevision ? input.templateCode : renderedCourseChange?.template.code,
+        templateVersion: feedbackRevision ? input.templateVersion : renderedCourseChange?.template.version,
+        templateVariables: feedbackRevision ? input.templateVariables : renderedCourseChange?.variables as Prisma.InputJsonValue | undefined,
       },
       update: {
         title: feedbackRevision ? `【反馈修订】${input.title}` : `【${courseChange!.label}】${input.title}`,
-        messageText: feedbackRevision ? input.messageText : courseChange!.messageText,
+        messageText: feedbackRevision ? input.messageText : renderedCourseChange?.messageText ?? courseChange!.messageText,
         contentFingerprint,
         status: existingCorrection?.manualSentAt || existingCorrection?.status === "COMPLETED" ? "COMPLETED" : feedbackRevision ? input.status : "ATTENTION",
         priority: "HIGH",
+        templateCode: feedbackRevision ? input.templateCode : renderedCourseChange?.template.code,
+        templateVersion: feedbackRevision ? input.templateVersion : renderedCourseChange?.template.version,
+        templateVariables: feedbackRevision ? input.templateVariables : renderedCourseChange?.variables as Prisma.InputJsonValue | undefined,
       },
     });
   }
@@ -242,6 +260,9 @@ async function upsertCommunicationTask(input: {
       title: input.title,
       messageText: input.messageText,
       contentFingerprint,
+      templateCode: input.templateCode,
+      templateVersion: input.templateVersion,
+      templateVariables: input.templateVariables ?? undefined,
       dueAt: input.dueAt ?? existing.dueAt,
       parentId: input.parentId ?? existing.parentId,
       wechatGroupName: input.wechatGroupName ?? existing.wechatGroupName,
@@ -281,14 +302,10 @@ export async function ensureFeedbackCommunicationTasks(feedbackId: string) {
   const messageContent = feedback.reviewStatus === "PENDING_REVIEW" ? feedback.content : feedback.parentContent || feedback.content;
   return Promise.all(students.map(async (student) => {
     const link = await primaryParentLink(student.id);
-    const messageText = [
-      `${link?.parent.name || "家长"}您好，${student.name || "孩子"}本次课程的课后反馈已经更新。`,
-      `课程 / Course：${courseLabel(feedback.session)}`,
-      `时间 / Time：${formatBusinessDateTime(feedback.session.startAt)}`,
-      `老师 / Teacher：${feedback.teacher.name}`,
-      `反馈摘要 / Summary：${compact(messageContent)}`,
-      "详细课堂表现与作业请在家长小程序中查看。 / Please open the parent miniapp for the full feedback and homework.",
-    ].join("\n");
+    const rendered = await renderPublishedCommunicationTemplate("FEEDBACK_PUBLISHED", {
+      parentName: link?.parent.name || "家长", studentName: student.name || "孩子", courseName: courseLabel(feedback.session),
+      sessionTime: formatBusinessDateTime(feedback.session.startAt), teacherName: feedback.teacher.name, feedbackSummary: compact(messageContent),
+    });
     return upsertCommunicationTask({
       taskKey: `FEEDBACK:${feedback.id}:${student.id}`,
       kind: "FEEDBACK",
@@ -299,7 +316,10 @@ export async function ensureFeedbackCommunicationTasks(feedbackId: string) {
       teacherId: feedback.teacherId,
       parentId: link?.parentId ?? null,
       title: `${student.name || "学员"} · ${courseLabel(feedback.session)}课后反馈`,
-      messageText,
+      messageText: rendered.messageText,
+      templateCode: rendered.template.code,
+      templateVersion: rendered.template.version,
+      templateVariables: rendered.variables as Prisma.InputJsonValue,
       dueAt: new Date(feedback.submittedAt.getTime() + 24 * 60 * 60 * 1000),
       ownerName: link?.communicationOwner ?? null,
       wechatGroupName: link?.wechatGroupName ?? null,
@@ -479,6 +499,12 @@ async function syncReminderRange(range: CommunicationReminderRange, now: Date) {
       if (!reminderStudents.length) continue;
       const names = reminderStudents.map((student) => student.name || "学员").join("、");
       activeParentKeys.add(entry.taskKey);
+      const rendered = await renderPublishedCommunicationTemplate("COURSE_REMINDER", {
+        parentName: group.parentName || "家长",
+        subjectName: reminderStudents.length > 1 ? "您家孩子" : reminderStudents[0]?.name || "孩子",
+        dateLabel: fullDateLabel,
+        scheduleLines: reminderStudents.flatMap((student) => student.lines.map((line) => reminderStudents.length > 1 ? `【${student.name || "学员"}】${line}` : line)).join("\n"),
+      });
       await upsertCommunicationTask({
         taskKey: entry.taskKey,
         kind: "COURSE_REMINDER_PARENT",
@@ -488,11 +514,10 @@ async function syncReminderRange(range: CommunicationReminderRange, now: Date) {
         sessionId: sessionsForMessage.length === 1 ? sessionsForMessage[0].id : null,
         parentId: group.parentId,
         title: `${names} · ${shortDateLabel}家长课程提醒`,
-        messageText: buildParentCourseReminderMessage({
-          parentName: group.parentName,
-          dateLabel: fullDateLabel,
-          students: reminderStudents,
-        }),
+        messageText: rendered.messageText,
+        templateCode: rendered.template.code,
+        templateVersion: rendered.template.version,
+        templateVariables: rendered.variables as Prisma.InputJsonValue,
         dueAt: range.isToday ? now : range.start,
         ownerName: group.ownerName,
         wechatGroupName: group.wechatGroupName,

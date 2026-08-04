@@ -3,6 +3,7 @@ import {
   intentLabels,
   itemStatusLabels,
   listParentMonthlyScheduling,
+  listMonthlySchedulingQualifiedTeachers,
   monthlySchedulingOfferView,
   MONTHLY_SCHEDULING_INTENTS,
   monthlySchedulingMonthKey,
@@ -24,6 +25,7 @@ export async function GET(req: Request) {
   if (!auth.ok) return auth.response;
   const markViewed = new URL(req.url).searchParams.get("markViewed") === "1";
   const rows = await listParentMonthlyScheduling(auth.parent.id, { markViewed });
+  const teacherOptionsByCourse = await listMonthlySchedulingQualifiedTeachers(rows.map((row) => row.courseId));
   return ok({
     items: rows.map((row) => {
       const month = monthlySchedulingMonthKey(row.campaign.month);
@@ -49,6 +51,10 @@ export async function GET(req: Request) {
         preferredMode: row.preferredMode,
         preferredCampus: row.preferredCampus,
         preferredTeacher: row.preferredTeacher,
+        preferredTeacherId: row.preferredTeacherId,
+        teacherPreferenceType: row.teacherPreferenceType,
+        teacherPreferenceNote: row.teacherPreferenceNote,
+        teacherOptions: teacherOptionsByCourse.get(row.courseId) ?? [],
         availability: row.availabilityJson,
         unavailableDates: row.unavailableDatesJson,
         parentNotes: row.parentNotes,
@@ -102,6 +108,9 @@ export async function POST(req: Request) {
       preferredMode: (body as any).preferredMode,
       preferredCampus: (body as any).preferredCampus,
       preferredTeacher: (body as any).preferredTeacher,
+      preferredTeacherId: (body as any).preferredTeacherId,
+      teacherPreferenceType: (body as any).teacherPreferenceType,
+      teacherPreferenceNote: (body as any).teacherPreferenceNote,
       availability: (body as any).availability,
       unavailableDates: (body as any).unavailableDates,
       parentNotes: (body as any).parentNotes,

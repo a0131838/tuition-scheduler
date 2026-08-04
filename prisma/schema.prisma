@@ -2133,6 +2133,9 @@ model ParentCommunicationTask {
   parentId           String?
   title              String
   messageText        String
+  templateCode       String?
+  templateVersion    Int?
+  templateVariables  Json?
   contentFingerprint String?
   dueAt              DateTime?
   ownerUserId        String?
@@ -2163,6 +2166,35 @@ model ParentCommunicationTask {
   @@index([sessionId, createdAt])
   @@index([feedbackId, createdAt])
   @@index([ownerUserId, status])
+  @@index([templateCode, templateVersion])
+}
+
+model ParentCommunicationTemplate {
+  id               String    @id @default(uuid())
+  code             String
+  version          Int
+  category         String
+  title            String
+  audience         String    @default("PARENT")
+  channel          String    @default("WECHAT_GROUP")
+  language         String    @default("BILINGUAL")
+  content          String
+  variableKeys     Json?
+  editPolicy       String    @default("LOCKED")
+  status           String    @default("DRAFT")
+  isSystem         Boolean   @default(true)
+  createdByUserId  String?
+  createdByName    String?
+  approvedByUserId String?
+  approvedByName   String?
+  publishedAt      DateTime?
+  retiredAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([code, version])
+  @@index([status, category, code])
+  @@index([code, status, version])
 }
 
 model Enrollment {
@@ -2882,6 +2914,9 @@ model MonthlySchedulingItem {
   preferredMode           String?
   preferredCampus         String?
   preferredTeacher        String?
+  preferredTeacherId      String?
+  teacherPreferenceType   String?
+  teacherPreferenceNote   String?
   availabilityJson        Json?
   unavailableDatesJson    Json?
   currentScheduleJson     Json?
@@ -2926,6 +2961,7 @@ model MonthlySchedulingItem {
   @@index([courseId, status])
   @@index([ownerUserId, status])
   @@index([responseEntryMode, updatedAt])
+  @@index([preferredTeacherId, campaignId])
 }
 
 model MonthlySchedulingOffer {

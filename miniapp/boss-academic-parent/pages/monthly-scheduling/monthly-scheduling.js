@@ -17,6 +17,8 @@ const weekdayOptions = [
 ];
 const frequencyOptions = ["暂不确定", "每周1次", "每周2次", "每周3次", "每周4次", "每周5次", "每周6次", "每周7次"];
 const modeOptions = ["无偏好", "线上", "线下"];
+const teacherPreferenceOptions = ["不指定老师", "沿用当前老师", "选择老师", "其他老师，请教务核对"];
+const teacherPreferenceValues = ["NONE", "CURRENT", "PREFERRED", "VERIFY"];
 
 function blankForm() {
   return {
@@ -25,7 +27,9 @@ function blankForm() {
     expectedMinutes: "",
     preferredMode: "",
     preferredCampus: "",
-    preferredTeacher: "",
+    preferredTeacherId: "",
+    teacherPreferenceType: "NONE",
+    teacherPreferenceNote: "",
     weekdays: [],
     timeRanges: [{ start: "09:00", end: "12:00" }, { start: "14:00", end: "18:00" }, { start: "19:00", end: "21:00" }],
     unavailableDates: [],
@@ -44,7 +48,9 @@ function formFromItem(item) {
     expectedMinutes: item.expectedMinutes == null ? "" : String(item.expectedMinutes),
     preferredMode: item.preferredMode || "",
     preferredCampus: item.preferredCampus || "",
-    preferredTeacher: item.preferredTeacher || "",
+    preferredTeacherId: item.preferredTeacherId || "",
+    teacherPreferenceType: item.teacherPreferenceType || (item.preferredTeacher ? "VERIFY" : "NONE"),
+    teacherPreferenceNote: item.teacherPreferenceNote || (!item.teacherPreferenceType ? item.preferredTeacher || "" : ""),
     weekdays: availability.weekdays || [],
     timeRanges: ranges,
     unavailableDates: Array.isArray(item.unavailableDates) ? item.unavailableDates : [],
@@ -68,6 +74,10 @@ Page({
     frequencyIndex: 1,
     modeOptions,
     modeIndex: 0,
+    teacherPreferenceOptions,
+    teacherPreferenceIndex: 0,
+    teacherOptions: [],
+    teacherIndex: 0,
     form: blankForm(),
     rankedOfferIds: [],
     changeNote: ""
@@ -105,6 +115,7 @@ Page({
         return Object.assign({}, row, { displayRank, rankLabel: displayRank ? `第${displayRank}选择` : "选择" });
       })
     });
+    const teacherOptions = [{ id: "", name: "请选择老师" }].concat(item.teacherOptions || []);
     this.setData({
       selected,
       form,
@@ -112,6 +123,9 @@ Page({
       changeNote: "",
       frequencyIndex: Math.max(0, Math.min(7, form.expectedSessionsPerWeek || 0)),
       modeIndex: form.preferredMode === "ONLINE" ? 1 : form.preferredMode === "OFFLINE" ? 2 : 0,
+      teacherPreferenceIndex: Math.max(0, teacherPreferenceValues.indexOf(form.teacherPreferenceType)),
+      teacherOptions,
+      teacherIndex: Math.max(0, teacherOptions.findIndex((row) => row.id === form.preferredTeacherId)),
       weekdayOptions: weekdayOptions.map((row) => Object.assign({}, row, { selected: form.weekdays.includes(row.value) }))
     });
   },
@@ -156,7 +170,18 @@ Page({
   },
   inputExpectedMinutes(e) { this.setData({ "form.expectedMinutes": e.detail.value }); },
   inputCampus(e) { this.setData({ "form.preferredCampus": e.detail.value }); },
-  inputTeacher(e) { this.setData({ "form.preferredTeacher": e.detail.value }); },
+  changeTeacherPreference(e) {
+    const index = Number(e.detail.value || 0);
+    const type = teacherPreferenceValues[index] || "NONE";
+    const patch = { teacherPreferenceIndex: index, "form.teacherPreferenceType": type };
+    if (type !== "PREFERRED") { patch.teacherIndex = 0; patch["form.preferredTeacherId"] = ""; }
+    this.setData(patch);
+  },
+  changeTeacher(e) {
+    const index = Number(e.detail.value || 0);
+    this.setData({ teacherIndex: index, "form.preferredTeacherId": (this.data.teacherOptions[index] || {}).id || "" });
+  },
+  inputTeacherNote(e) { this.setData({ "form.teacherPreferenceNote": e.detail.value }); },
   inputNotes(e) { this.setData({ "form.parentNotes": e.detail.value }); },
   inputChangeNote(e) { this.setData({ changeNote: e.detail.value || "" }); },
 
@@ -222,6 +247,8 @@ Page({
       api.toast("修改时间时，请至少选择一个星期和一个可用时段");
       return;
     }
+    if (form.teacherPreferenceType === "PREFERRED" && !form.preferredTeacherId) return api.toast("请选择老师");
+    if (form.teacherPreferenceType === "VERIFY" && !form.teacherPreferenceNote.trim()) return api.toast("请填写希望协调的老师姓名");
     this.setData({ saving: true });
     api.request("/api/miniapp/monthly-scheduling", {
       method: "POST",
@@ -233,7 +260,9 @@ Page({
         expectedMinutes: form.expectedMinutes ? Number(form.expectedMinutes) : null,
         preferredMode: form.preferredMode,
         preferredCampus: form.preferredCampus,
-        preferredTeacher: form.preferredTeacher,
+        preferredTeacherId: form.preferredTeacherId,
+        teacherPreferenceType: form.teacherPreferenceType,
+        teacherPreferenceNote: form.teacherPreferenceNote,
         availability: { selectionMode: "weekly", weekdays: form.weekdays, timeRanges: form.timeRanges.filter((row) => row.start && row.end && row.end > row.start), dateSelections: [] },
         unavailableDates: form.unavailableDates,
         parentNotes: form.parentNotes

@@ -302,6 +302,7 @@ Page({
   goFirstScheduling() { wx.navigateTo({ url: "/pages/staff-first-scheduling/staff-first-scheduling" }); },
   goReminderAttention() { wx.navigateTo({ url: "/pages/staff-reminder-attention/staff-reminder-attention" }); },
   goCommunications() { wx.navigateTo({ url: "/pages/staff-communications/staff-communications" }); },
+  goCommunicationTemplates() { wx.navigateTo({ url: "/pages/staff-communication-templates/staff-communication-templates" }); },
   goRenewals() { wx.navigateTo({ url: "/pages/staff-renewals/staff-renewals" }); },
   goMonthlyScheduling() { wx.navigateTo({ url: "/pages/staff-monthly-scheduling/staff-monthly-scheduling" }); },
   goTeacherLeave() { wx.navigateTo({ url: "/pages/staff-teacher-leave/staff-teacher-leave" }); },

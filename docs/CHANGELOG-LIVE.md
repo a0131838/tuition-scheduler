@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-04-r309
+
+- Release ID: `2026-08-04-r309`
+- Date/Time (Asia/Singapore): `2026-08-04`
+- Deployment status: `READY`
+- Scope: replace free-text next-month teacher preferences with qualified teacher IDs and add a controlled, versioned 18-scenario bilingual parent-message catalog across the Web and Staff Mini Program.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260804213000_add_teacher_preferences_and_communication_templates/migration.sql`
+  - `lib/monthly-scheduling.ts`
+  - `lib/parent-communication-templates.ts`
+  - `lib/parent-communication-center.ts`
+  - `app/admin/communications/templates/page.tsx`
+  - `app/admin/monthly-scheduling/page.tsx`
+  - `miniapp/boss-academic-parent/pages/staff-communication-templates/`
+  - `docs/SOP-教务-老师选择与家长固定话术流程-20260804.md`
+- Risk impact (if any): Moderate and isolated to the existing next-month preference fields and message preparation surfaces. Teacher IDs are validated against the item's course and only influence candidate ordering. Templates generate clipboard text but never send automatically. Formal scheduling, package balances, attendance, deductions, finance, contracts, payroll, tickets, and historical lessons remain unchanged.
+- Verification: Prisma, TypeScript, focused tests, full tests, Mini Program release audit, JavaScript syntax checks, `git diff --check`, and production build.
+- Rollback point: `32b6a12` (monthly scheduling proxy SOP baseline).
+
 ## 2026-08-04-r308
 
 - Release ID: `2026-08-04-r308`

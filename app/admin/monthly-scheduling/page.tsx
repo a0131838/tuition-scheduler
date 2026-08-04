@@ -9,9 +9,10 @@ import {
   buildMonthlyMatchSuggestions,
   createMonthlySchedulingCampaign,
   getMonthlySchedulingCampaign,
+  listMonthlySchedulingQualifiedTeachers,
   itemStatusLabels,
   monthlySchedulingMonthKey,
-  monthlySchedulingParentMessage,
+  monthlySchedulingParentMessageFromTemplate,
   MONTHLY_SCHEDULING_CAMPAIGN_STATUSES,
   MONTHLY_SCHEDULING_ITEM_STATUSES,
   MONTHLY_SCHEDULING_INTENTS,
@@ -166,6 +167,9 @@ async function proxyPreferenceAction(formData: FormData) {
     preferredMode: String(formData.get("preferredMode") ?? ""),
     preferredCampus: String(formData.get("preferredCampus") ?? ""),
     preferredTeacher: String(formData.get("preferredTeacher") ?? ""),
+    preferredTeacherId: String(formData.get("preferredTeacherId") ?? ""),
+    teacherPreferenceType: String(formData.get("teacherPreferenceType") ?? "NONE") as any,
+    teacherPreferenceNote: String(formData.get("teacherPreferenceNote") ?? ""),
     availability: proxyAvailabilityFromForm(formData),
     unavailableDates: proxyUnavailableDates(formData),
     parentNotes: String(formData.get("parentNotes") ?? ""),
@@ -267,9 +271,9 @@ export default async function MonthlySchedulingPage({
     ? params.status as MonthlySchedulingItemStatus
     : "ALL";
   const campaign = await getMonthlySchedulingCampaign(month);
-  const [report, matchSuggestions]: [Awaited<ReturnType<typeof buildMonthlyStaffingReport>> | null, Awaited<ReturnType<typeof buildMonthlyMatchSuggestions>>] = campaign
-    ? await Promise.all([buildMonthlyStaffingReport(campaign.id), buildMonthlyMatchSuggestions(campaign.id)])
-    : [null, new Map<string, Array<{ teacherId: string; teacherName: string; date: string; start: string; end: string; startAt: string; endAt: string }>>()];
+  const [report, matchSuggestions, teacherOptionsByCourse]: [Awaited<ReturnType<typeof buildMonthlyStaffingReport>> | null, Awaited<ReturnType<typeof buildMonthlyMatchSuggestions>>, Awaited<ReturnType<typeof listMonthlySchedulingQualifiedTeachers>>] = campaign
+    ? await Promise.all([buildMonthlyStaffingReport(campaign.id), buildMonthlyMatchSuggestions(campaign.id), listMonthlySchedulingQualifiedTeachers(campaign.items.map((row) => row.courseId))])
+    : [null, new Map<string, Array<{ teacherId: string; teacherName: string; date: string; start: string; end: string; startAt: string; endAt: string }>>(), new Map<string, Array<{ id: string; name: string }>>()];
   const items = campaign?.items.filter((row) => selectedStatus === "ALL" || row.status === selectedStatus) ?? [];
   const counts = Object.fromEntries(MONTHLY_SCHEDULING_ITEM_STATUSES.map((status) => [status, campaign?.items.filter((row) => row.status === status).length ?? 0]));
   const familyGroups = new Map<string, typeof campaign extends null ? never : NonNullable<typeof campaign>["items"]>();
@@ -277,6 +281,12 @@ export default async function MonthlySchedulingPage({
     if (item.status === "EXCLUDED") continue;
     const key = item.parentId ?? `STUDENT:${item.studentId}`;
     familyGroups.set(key, [...(familyGroups.get(key) ?? []), item]);
+  }
+  const familyMessages = new Map<string, string>();
+  for (const [key, rows] of familyGroups) {
+    const first = rows[0];
+    if (!first) continue;
+    familyMessages.set(key, await monthlySchedulingParentMessageFromTemplate({ parentName: first.parent?.name, month, dueAt: campaign?.dueAt, students: rows.map((row) => ({ studentName: row.student.name, courseName: row.course.name })) }));
   }
 
   return (
@@ -381,7 +391,9 @@ export default async function MonthlySchedulingPage({
                             <label>上课形式<select name="preferredMode" defaultValue={item.preferredMode ?? ""} style={{ width: "100%", padding: 8 }}><option value="">无偏好</option><option value="ONLINE">线上</option><option value="OFFLINE">线下</option></select></label>
                             <label>家长回复日期<input name="parentConfirmedAt" type="date" required defaultValue={dateInputValue(item.parentConfirmedAt)} style={{ width: "100%", padding: 8, boxSizing: "border-box" }} /></label>
                             <label>校区偏好<input name="preferredCampus" defaultValue={item.preferredCampus ?? ""} style={{ width: "100%", padding: 8, boxSizing: "border-box" }} /></label>
-                            <label>老师偏好<input name="preferredTeacher" defaultValue={item.preferredTeacher ?? ""} style={{ width: "100%", padding: 8, boxSizing: "border-box" }} /></label>
+                            <label>老师偏好类型<select name="teacherPreferenceType" defaultValue={item.teacherPreferenceType ?? (item.preferredTeacher ? "VERIFY" : "NONE")} style={{ width: "100%", padding: 8 }}><option value="NONE">不指定老师</option><option value="CURRENT">沿用当前唯一老师</option><option value="PREFERRED">选择合格老师</option><option value="VERIFY">家长提到的老师需核对</option></select></label>
+                            <label>合格老师<select name="preferredTeacherId" defaultValue={item.preferredTeacherId ?? ""} style={{ width: "100%", padding: 8 }}><option value="">请选择</option>{(teacherOptionsByCourse.get(item.courseId) ?? []).map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}</select></label>
+                            <label style={{ gridColumn: "1 / -1" }}>待核对老师说明<input name="teacherPreferenceNote" defaultValue={item.teacherPreferenceNote ?? (!item.teacherPreferenceType ? item.preferredTeacher ?? "" : "")} placeholder="仅当家长提到的老师不在名单时填写" style={{ width: "100%", padding: 8, boxSizing: "border-box" }} /></label>
                             <fieldset style={{ gridColumn: "1 / -1", border: "1px solid #dbe5f2", padding: 8 }}><legend>可上课星期</legend>{[["MON", "一"], ["TUE", "二"], ["WED", "三"], ["THU", "四"], ["FRI", "五"], ["SAT", "六"], ["SUN", "日"]].map(([value, label]) => <label key={value} style={{ marginRight: 10 }}><input name="weekday" type="checkbox" value={value} defaultChecked={availability.weekdays.includes(value)} />周{label}</label>)}</fieldset>
                             {defaultRanges.map((range, index) => <div key={index} style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}><label>时段{index + 1}开始<input name={`timeStart${index + 1}`} type="time" defaultValue={range.start} style={{ width: "100%", padding: 8, boxSizing: "border-box" }} /></label><label>结束<input name={`timeEnd${index + 1}`} type="time" defaultValue={range.end} style={{ width: "100%", padding: 8, boxSizing: "border-box" }} /></label></div>)}
                             <label style={{ gridColumn: "1 / -1" }}>不可上课日期（逗号分隔）<input name="unavailableDates" defaultValue={Array.isArray(item.unavailableDatesJson) ? item.unavailableDatesJson.join(", ") : ""} placeholder="2026-09-05, 2026-09-12" style={{ width: "100%", padding: 8, boxSizing: "border-box" }} /></label>
@@ -415,7 +427,7 @@ export default async function MonthlySchedulingPage({
             <p style={{ margin: 0, color: "#526071" }}>{t(lang, "One message per family; each child and course remains a separate response item.", "每个家庭只准备一条消息，但每个孩子和课程仍分别填写。")}</p>
             {Array.from(familyGroups.entries()).slice(0, 200).map(([key, rows]) => {
               const first = rows[0];
-              const message = monthlySchedulingParentMessage({ parentName: first.parent?.name, month, dueAt: campaign.dueAt, students: rows.map((row) => ({ studentName: row.student.name, courseName: row.course.name })) });
+              const message = familyMessages.get(key) ?? "";
               return <details key={key}><summary style={{ cursor: "pointer", fontWeight: 800 }}>{first.parent?.name || first.student.name} · {rows.length} {t(lang, "item(s)", "项")}</summary><textarea readOnly value={message} style={{ width: "100%", minHeight: 150, marginTop: 8, padding: 10 }} /></details>;
             })}
           </section>

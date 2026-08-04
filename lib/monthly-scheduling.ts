@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
 import { logAudit } from "@/lib/audit-log";
+import { renderPublishedCommunicationTemplate } from "@/lib/parent-communication-templates";
 
 const BIZ_OFFSET_MS = 8 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -26,12 +27,14 @@ export const MONTHLY_SCHEDULING_ITEM_STATUSES = [
 ] as const;
 export const MONTHLY_SCHEDULING_INTENTS = ["KEEP", "CHANGE", "PAUSE", "UNSURE"] as const;
 export const MONTHLY_SCHEDULING_RESPONSE_CHANNELS = ["WECHAT_GROUP", "WECHAT_PRIVATE", "PHONE", "OTHER"] as const;
+export const MONTHLY_SCHEDULING_TEACHER_PREFERENCE_TYPES = ["NONE", "CURRENT", "PREFERRED", "VERIFY"] as const;
 export const MONTHLY_SCHEDULING_PROXY_EDITABLE_STATUSES = ["NOT_SENT", "SENT", "VIEWED", "SUBMITTED", "OFFERED", "NEEDS_CLARIFICATION", "NO_RESPONSE"] as const;
 
 export type MonthlySchedulingCampaignStatus = (typeof MONTHLY_SCHEDULING_CAMPAIGN_STATUSES)[number];
 export type MonthlySchedulingItemStatus = (typeof MONTHLY_SCHEDULING_ITEM_STATUSES)[number];
 export type MonthlySchedulingIntent = (typeof MONTHLY_SCHEDULING_INTENTS)[number];
 export type MonthlySchedulingResponseChannel = (typeof MONTHLY_SCHEDULING_RESPONSE_CHANNELS)[number];
+export type MonthlySchedulingTeacherPreferenceType = (typeof MONTHLY_SCHEDULING_TEACHER_PREFERENCE_TYPES)[number];
 
 export const responseChannelLabels: Record<MonthlySchedulingResponseChannel, { en: string; zh: string }> = {
   WECHAT_GROUP: { en: "WeChat group", zh: "微信群" },
@@ -144,7 +147,7 @@ export function monthlySchedulingSessionStudentIds(session: any) {
 }
 
 function scheduleRow(session: any) {
-  const teacher = session.teacher?.name ?? session.class?.teacher?.name ?? null;
+  const effectiveTeacher = session.teacher ?? session.class?.teacher ?? null;
   return {
     sessionId: session.id,
     startAt: session.startAt.toISOString(),
@@ -152,7 +155,8 @@ function scheduleRow(session: any) {
     startText: formatBusinessDateTime(session.startAt),
     endText: formatBusinessDateTime(session.endAt),
     durationMin: Math.max(0, Math.round((session.endAt.getTime() - session.startAt.getTime()) / 60000)),
-    teacher,
+    teacher: effectiveTeacher?.name ?? null,
+    teacherId: effectiveTeacher?.id ?? null,
     campus: session.class?.campus?.name ?? null,
     mode: session.class?.campus?.isOnline ? "ONLINE" : "OFFLINE",
   };
@@ -216,10 +220,10 @@ export async function syncMonthlySchedulingCampaignItems(campaignId: string) {
     prisma.session.findMany({
       where: { startAt: { gte: historyStart, lt: range.end } },
       include: {
-        teacher: { select: { name: true } },
+        teacher: { select: { id: true, name: true } },
         class: {
           include: {
-            teacher: { select: { name: true } },
+            teacher: { select: { id: true, name: true } },
             campus: { select: { name: true, isOnline: true } },
             enrollments: { select: { studentId: true } },
           },
@@ -332,6 +336,24 @@ export async function getMonthlySchedulingCampaign(month?: string | null) {
       },
     },
   });
+}
+
+export async function listMonthlySchedulingQualifiedTeachers(courseIds: string[]) {
+  const ids = unique(courseIds.filter(Boolean));
+  if (!ids.length) return new Map<string, Array<{ id: string; name: string }>>();
+  const teachers = await prisma.teacher.findMany({
+    where: { OR: [{ courseRates: { some: { courseId: { in: ids } } } }, { classes: { some: { courseId: { in: ids } } } }] },
+    select: { id: true, name: true, courseRates: { where: { courseId: { in: ids } }, select: { courseId: true } }, classes: { where: { courseId: { in: ids } }, select: { courseId: true } } },
+    orderBy: { name: "asc" },
+  });
+  const result = new Map<string, Array<{ id: string; name: string }>>();
+  for (const courseId of ids) result.set(courseId, []);
+  for (const teacher of teachers) {
+    for (const courseId of unique([...teacher.courseRates.map((row) => row.courseId), ...teacher.classes.map((row) => row.courseId)])) {
+      result.set(courseId, [...(result.get(courseId) ?? []), { id: teacher.id, name: teacher.name }]);
+    }
+  }
+  return result;
 }
 
 export async function setMonthlySchedulingCampaignStatus(campaignId: string, status: MonthlySchedulingCampaignStatus) {
@@ -489,6 +511,9 @@ type MonthlySchedulingPreferenceInput = {
   preferredMode?: string | null;
   preferredCampus?: string | null;
   preferredTeacher?: string | null;
+  preferredTeacherId?: string | null;
+  teacherPreferenceType?: MonthlySchedulingTeacherPreferenceType | null;
+  teacherPreferenceNote?: string | null;
   availability?: unknown;
   unavailableDates?: unknown;
   parentNotes?: string | null;
@@ -516,7 +541,7 @@ function proxyAuditValues(input: MonthlySchedulingProxyAuditInput) {
 }
 
 async function persistMonthlySchedulingPreference(
-  item: { id: string; status: string; campaign: { month: Date } },
+  item: { id: string; status: string; courseId: string; currentScheduleJson: unknown; campaign: { month: Date } },
   input: MonthlySchedulingPreferenceInput,
   audit: {
     entryMode: "PARENT" | "STAFF_PROXY";
@@ -541,6 +566,29 @@ async function persistMonthlySchedulingPreference(
     throw new Error("Unavailable dates must be inside the target month");
   }
   const preferredMode = ["ONLINE", "OFFLINE"].includes(String(input.preferredMode ?? "")) ? String(input.preferredMode) : null;
+  const legacyTeacher = cleanText(input.preferredTeacher, 120);
+  const preferenceType = MONTHLY_SCHEDULING_TEACHER_PREFERENCE_TYPES.includes(input.teacherPreferenceType as MonthlySchedulingTeacherPreferenceType)
+    ? input.teacherPreferenceType as MonthlySchedulingTeacherPreferenceType
+    : input.preferredTeacherId ? "PREFERRED" : legacyTeacher ? "VERIFY" : "NONE";
+  const preferenceNote = preferenceType === "VERIFY" ? cleanText(input.teacherPreferenceNote ?? legacyTeacher, 300) : null;
+  let preferredTeacherId = cleanText(input.preferredTeacherId, 80);
+  let preferredTeacher: string | null = null;
+  if (preferenceType === "CURRENT") {
+    const currentTeachers = unique(jsonRows(item.currentScheduleJson).map((row: any) => String(row.teacherId ?? "")).filter(Boolean));
+    if (currentTeachers.length !== 1) throw new Error("当前课表没有唯一老师，请选择具体老师或标记待核对");
+    preferredTeacherId = currentTeachers[0];
+  }
+  if (preferenceType === "PREFERRED" && !preferredTeacherId) throw new Error("请选择合格老师");
+  if (preferenceType === "VERIFY" && !preferenceNote) throw new Error("请记录家长提到的老师姓名，交由教务核对");
+  if (["CURRENT", "PREFERRED"].includes(preferenceType)) {
+    const options = await listMonthlySchedulingQualifiedTeachers([item.courseId]);
+    const selected = (options.get(item.courseId) ?? []).find((teacher) => teacher.id === preferredTeacherId);
+    if (!selected) throw new Error("所选老师不在该课程的合格老师名单中，请刷新后重选");
+    preferredTeacher = selected.name;
+  } else {
+    preferredTeacherId = null;
+    preferredTeacher = preferenceType === "VERIFY" ? preferenceNote : null;
+  }
 
   const now = new Date();
   const updated = await prisma.monthlySchedulingItem.updateMany({
@@ -556,7 +604,10 @@ async function persistMonthlySchedulingPreference(
       expectedMinutes,
       preferredMode,
       preferredCampus: cleanText(input.preferredCampus, 120),
-      preferredTeacher: cleanText(input.preferredTeacher, 120),
+      preferredTeacher,
+      preferredTeacherId,
+      teacherPreferenceType: preferenceType,
+      teacherPreferenceNote: preferenceNote,
       availabilityJson: availability,
       unavailableDatesJson: unavailableDates,
       parentNotes: cleanText(input.parentNotes, 1000),
@@ -831,7 +882,7 @@ export async function refreshMonthlySchedulingOffers(itemId: string) {
       candidates.push({ teacherId: teacher.id, ...group });
     }
   }
-  candidates.sort((a, b) => b.dates.length - a.dates.length || a.dates[0]?.startAt.localeCompare(b.dates[0]?.startAt ?? "") || 0);
+  candidates.sort((a, b) => Number(b.teacherId === item.preferredTeacherId) - Number(a.teacherId === item.preferredTeacherId) || b.dates.length - a.dates.length || a.dates[0]?.startAt.localeCompare(b.dates[0]?.startAt ?? "") || 0);
   const selected = candidates.slice(0, 5);
   await prisma.$transaction(async (tx) => {
     await tx.monthlySchedulingOffer.deleteMany({
@@ -1354,4 +1405,21 @@ export function monthlySchedulingParentMessage(input: {
   const lines = input.students.map((row) => `${row.studentName}：${row.courseName}`).join("；");
   const due = input.dueAt ? formatBusinessDateOnly(input.dueAt) : "-";
   return `${input.parentName || "家长"}您好，为提前安排${input.month}的课程和老师，请确认${names}下月的上课安排。\n${lines}\n请于${due}前在博思学业管家小程序完成“下月排课确认”。老师偏好将尽量协调，但以最终确认课表为准。\n\nDear Parent, to arrange classes and teaching resources for ${input.month}, please complete the Next-month Scheduling Confirmation in the Boss Academic Parent Mini Program by ${due}. Teacher preferences will be considered but are subject to the final confirmed timetable.`;
+}
+
+export async function monthlySchedulingParentMessageFromTemplate(input: {
+  parentName?: string | null;
+  month: string;
+  students: Array<{ studentName: string; courseName: string }>;
+  dueAt?: Date | null;
+}) {
+  const due = input.dueAt ? formatBusinessDateOnly(input.dueAt) : "-";
+  const rendered = await renderPublishedCommunicationTemplate("MONTHLY_INITIAL", {
+    parentName: input.parentName || "家长",
+    month: input.month,
+    studentNames: unique(input.students.map((row) => row.studentName)).join("、"),
+    studentCourseLines: input.students.map((row) => `${row.studentName}：${row.courseName}`).join("；"),
+    dueDate: due,
+  });
+  return rendered.messageText;
 }

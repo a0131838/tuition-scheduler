@@ -78,7 +78,9 @@
         <view class="field-label">上课模式</view>
         <picker mode="selector" range="{{modeOptions}}" value="{{modeIndex}}" bindchange="changeMode"><view class="picker">{{modeOptions[modeIndex]}}</view></picker>
         <view class="field-label">校区偏好（可选）</view><input class="input" value="{{form.preferredCampus}}" placeholder="例如 Orchard Plaza" bindinput="inputCampus"/>
-        <view class="field-label">老师偏好（可选，不保证）</view><input class="input" value="{{form.preferredTeacher}}" placeholder="填写老师姓名" bindinput="inputTeacher"/>
+        <view class="field-label">老师偏好（可选，不保证）</view><picker mode="selector" range="{{teacherPreferenceOptions}}" value="{{teacherPreferenceIndex}}" bindchange="changeTeacherPreference"><view class="picker">{{teacherPreferenceOptions[teacherPreferenceIndex]}}</view></picker>
+        <picker wx:if="{{form.teacherPreferenceType === 'PREFERRED'}}" mode="selector" range="{{teacherOptions}}" range-key="name" value="{{teacherIndex}}" bindchange="changeTeacher"><view class="picker">{{teacherOptions[teacherIndex].name}}</view></picker>
+        <input wx:if="{{form.teacherPreferenceType === 'VERIFY'}}" class="input" value="{{form.teacherPreferenceNote}}" placeholder="填写希望协调的老师姓名" bindinput="inputTeacherNote"/>
         <view class="field-label">不方便上课的日期</view>
         <view class="date-add"><picker mode="date" value="{{form.unavailableDateDraft}}" start="{{selected.monthStart}}" end="{{selected.monthEnd}}" bindchange="changeUnavailableDate"><view class="picker">{{form.unavailableDateDraft || "选择日期"}}</view></picker><button class="small-button" bindtap="addUnavailableDate">添加</button></view>
         <view class="date-tags"><view class="date-tag" wx:for="{{form.unavailableDates}}" wx:key="*this" data-value="{{item}}" bindtap="removeUnavailableDate">{{item}} ×</view></view>

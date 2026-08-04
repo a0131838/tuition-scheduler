@@ -9,7 +9,8 @@ import {
   MONTHLY_SCHEDULING_INTENTS,
   monthlySchedulingMonthKey,
   monthlySchedulingOfferView,
-  monthlySchedulingParentMessage,
+  monthlySchedulingParentMessageFromTemplate,
+  listMonthlySchedulingQualifiedTeachers,
   nextMonthlySchedulingMonth,
   rankMonthlySchedulingOffersByStaff,
   submitMonthlySchedulingPreferenceByStaff,
@@ -38,6 +39,7 @@ export async function GET(req: Request) {
   await expireMonthlySchedulingOfferHolds();
   const campaign = await getMonthlySchedulingCampaign(month);
   if (!campaign) return ok({ month, campaign: null, items: [], counts: {} });
+  const teacherOptionsByCourse = await listMonthlySchedulingQualifiedTeachers(campaign.items.map((row) => row.courseId));
   const counts = Object.fromEntries([
     ...MONTHLY_SCHEDULING_ITEM_STATUSES.map((value) => [value, campaign.items.filter((row) => row.status === value).length] as const),
     ...Object.entries(QUEUE_LANES).map(([lane, statuses]) => [lane, campaign.items.filter((row) => statuses.includes(row.status as MonthlySchedulingItemStatus)).length] as const),
@@ -52,7 +54,7 @@ export async function GET(req: Request) {
   for (const [key, rows] of familyRows) {
     const row = rows[0];
     if (!row) continue;
-    familyMessages.set(key, monthlySchedulingParentMessage({
+    familyMessages.set(key, await monthlySchedulingParentMessageFromTemplate({
       parentName: row.parent?.name,
       month,
       dueAt: campaign.dueAt,
@@ -78,6 +80,10 @@ export async function GET(req: Request) {
       expectedMinutes: row.expectedMinutes,
       preferredMode: row.preferredMode,
       preferredTeacher: row.preferredTeacher,
+      preferredTeacherId: row.preferredTeacherId,
+      teacherPreferenceType: row.teacherPreferenceType,
+      teacherPreferenceNote: row.teacherPreferenceNote,
+      teacherOptions: teacherOptionsByCourse.get(row.courseId) ?? [],
       parentNotes: row.parentNotes,
       availability: row.availabilityJson,
       unavailableDates: row.unavailableDatesJson,
@@ -121,6 +127,9 @@ export async function POST(req: Request) {
         preferredMode: (body as any).preferredMode,
         preferredCampus: (body as any).preferredCampus,
         preferredTeacher: (body as any).preferredTeacher,
+        preferredTeacherId: (body as any).preferredTeacherId,
+        teacherPreferenceType: (body as any).teacherPreferenceType,
+        teacherPreferenceNote: cleanMiniappText((body as any).teacherPreferenceNote, 300),
         availability: (body as any).availability,
         unavailableDates: (body as any).unavailableDates,
         parentNotes: cleanMiniappText((body as any).parentNotes, 1000),

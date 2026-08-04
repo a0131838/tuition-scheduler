@@ -33,6 +33,7 @@
 - Current release line prepared: `2026-08-04-r306` adds proactive next-month family scheduling confirmation, student/course-specific shared-package handling, real date-availability staffing forecasts, and Web/Mini Program follow-up queues without changing formal lessons automatically.
 - Current release line prepared: `2026-08-04-r307` replaces repeated free-form time negotiation with ranked concrete teacher/time choices, 24-hour holds, a simplified Academic queue, and safe prefilling into the existing formally validated scheduling page.
 - Current release line prepared: `2026-08-04-r308` lets authorized Academic staff record parent preferences and ranked choices received through WeChat or phone, while preserving the same conflict checks, temporary holds, formal scheduling boundary, and audit trail.
+- Current release line prepared: `2026-08-04-r309` validates teacher preferences by course-qualified teacher ID and gives Academic a manager-controlled, versioned 18-scenario bilingual parent-message library on the Web and Staff Mini Program.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
@@ -63,6 +64,24 @@
   - upload matching Mini Program development version `1.0.23` after server health is confirmed;
   - test one Web proxy preference and one Staff Mini Program ranking using non-production sample data before normal operation.
 - Task doc: `docs/tasks/TASK-20260804-monthly-scheduling-parent-proxy-entry.md`.
+
+## 2026-08-04-r309 Ready
+
+- Teacher preference safety:
+  - parent and staff flows use explicit none/current/qualified/verify states instead of relying on typed names;
+  - qualified choices come from real teacher course rates or existing classes and are stored by teacher ID;
+  - the selected teacher is prioritized during option generation but never bypasses availability or conflict checks;
+  - shared packages remain separate student/course work items.
+- Parent-message control:
+  - 18 bilingual scenarios cover monthly scheduling, lesson changes, renewal, contract, finance, feedback, documents and issue updates;
+  - manager publication creates a new version and retires the prior version without rewriting historical tasks;
+  - communication tasks store rendered text, template code, version and variables;
+  - Staff Mini Program users fill required variables and copy published wording, while manual send confirmation remains separate.
+- Safety boundaries:
+  - additive migration only; no destructive SQL;
+  - no automatic WeChat sending and no formal scheduling mutation;
+  - packages, balances, attendance, deductions, contracts, invoices, receipts, payroll, tickets and historical lessons are unchanged.
+- Task doc: `docs/tasks/TASK-20260804-teacher-preference-and-parent-message-control.md`.
 
 ## 2026-08-04-r307 Ready
 
