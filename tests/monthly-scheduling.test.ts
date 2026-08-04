@@ -6,6 +6,7 @@ import {
   monthlySchedulingMonthKey,
   monthlySchedulingBusyOverlapMinutes,
   monthlySchedulingParentMessage,
+  monthlySchedulingOffersConflict,
   monthlySchedulingRange,
   monthlySchedulingRelevantCourseIds,
   monthlySchedulingSessionStudentIds,
@@ -122,4 +123,17 @@ test("staffing capacity is allocated once across courses", () => {
   const gap = Math.max(0, 240 - (allocations.get("math") ?? 0)) + Math.max(0, 240 - (allocations.get("english") ?? 0));
   assert.equal(allocated, 300);
   assert.equal(gap, 180);
+});
+
+test("temporary offers conflict only when actual teacher dates overlap", () => {
+  const first = [
+    { date: "2026-09-01", startAt: "2026-09-01T08:00:00.000Z", endAt: "2026-09-01T09:00:00.000Z" },
+    { date: "2026-09-08", startAt: "2026-09-08T08:00:00.000Z", endAt: "2026-09-08T09:00:00.000Z" },
+  ];
+  assert.equal(monthlySchedulingOffersConflict(first, [
+    { date: "2026-09-01", startAt: "2026-09-01T08:30:00.000Z", endAt: "2026-09-01T09:30:00.000Z" },
+  ]), true);
+  assert.equal(monthlySchedulingOffersConflict(first, [
+    { date: "2026-09-01", startAt: "2026-09-01T09:00:00.000Z", endAt: "2026-09-01T10:00:00.000Z" },
+  ]), false);
 });

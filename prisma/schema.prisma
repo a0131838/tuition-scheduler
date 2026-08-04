@@ -486,6 +486,7 @@ model Teacher {
   midtermReports            MidtermReport[]
   finalReports              FinalReport[]
   leadAssessmentRequests    LeadAssessmentRequest[]
+  monthlySchedulingOffers   MonthlySchedulingOffer[]
 }
 
 model TeacherCourseRate {
@@ -2904,6 +2905,7 @@ model MonthlySchedulingItem {
   course   Course                    @relation(fields: [courseId], references: [id], onDelete: Restrict)
   package  CoursePackage?            @relation(fields: [packageId], references: [id], onDelete: SetNull)
   parent   ParentAccount?            @relation(fields: [parentId], references: [id], onDelete: SetNull)
+  offers   MonthlySchedulingOffer[]
 
   @@unique([campaignId, studentId, courseId])
   @@index([campaignId, status, updatedAt])
@@ -2911,6 +2913,32 @@ model MonthlySchedulingItem {
   @@index([parentId, campaignId])
   @@index([courseId, status])
   @@index([ownerUserId, status])
+}
+
+model MonthlySchedulingOffer {
+  id               String    @id @default(uuid())
+  itemId           String
+  teacherId        String
+  status           String    @default("AVAILABLE")
+  weekdayLabel     String
+  startMin         Int
+  endMin           Int
+  durationMin      Int
+  sessionDatesJson Json
+  parentRank       Int?
+  heldByParentId   String?
+  holdExpiresAt    DateTime?
+  acceptedAt       DateTime?
+  generatedAt      DateTime  @default(now())
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  item    MonthlySchedulingItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  teacher Teacher               @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+
+  @@unique([itemId, teacherId, weekdayLabel, startMin, endMin])
+  @@index([itemId, status, parentRank])
+  @@index([teacherId, status, holdExpiresAt])
 }
 
 model TicketHandover {

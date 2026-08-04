@@ -1,21 +1,15 @@
 const api = require("../../utils/api");
 
 const tabs = [
-  { value: "ALL", label: "全部" },
-  { value: "NOT_SENT", label: "待发送" },
-  { value: "SENT", label: "已发送" },
-  { value: "VIEWED", label: "已查看" },
-  { value: "SUBMITTED", label: "已提交" },
-  { value: "NEEDS_CLARIFICATION", label: "需澄清" },
-  { value: "MATCHED", label: "已匹配" },
-  { value: "TEACHER_EXCEPTION", label: "老师例外" },
-  { value: "SCHEDULED", label: "已排课" },
-  { value: "PAUSED", label: "下月暂停" },
-  { value: "NO_RESPONSE", label: "未回复" }
+  { value: "READY_CONFIRM", label: "待确认" },
+  { value: "WAITING_PARENT", label: "等家长" },
+  { value: "EXCEPTIONS", label: "异常" },
+  { value: "COMPLETED", label: "已处理" },
+  { value: "ALL", label: "全部" }
 ];
 
 Page({
-  data: { loading: true, updatingId: "", month: "", campaign: null, items: [], counts: {}, tabs, status: "ALL" },
+  data: { loading: true, updatingId: "", month: "", campaign: null, items: [], counts: {}, tabs, status: "READY_CONFIRM" },
   onShow() { this.load(); },
   onPullDownRefresh() { this.load().finally(() => wx.stopPullDownRefresh()); },
   load() {
@@ -49,5 +43,19 @@ Page({
       .then(() => { wx.showToast({ title: "已更新", icon: "success" }); return this.load(); })
       .catch((err) => api.toast(err.message))
       .finally(() => this.setData({ updatingId: "" }));
+  },
+  openScheduling(e) {
+    const item = this.data.items.find((row) => row.id === e.currentTarget.dataset.id);
+    const offer = item && item.selectedOffer;
+    if (!item || !offer || !offer.sessionDates || !offer.sessionDates.length) return api.toast("没有可用于预填的具体时间");
+    const first = offer.sessionDates[0];
+    let url = "/pages/staff-student-scheduling/staff-student-scheduling?id=" + encodeURIComponent(item.studentId);
+    url += "&date=" + encodeURIComponent(first.date);
+    url += "&time=" + encodeURIComponent(offer.start);
+    url += "&teacherId=" + encodeURIComponent(offer.teacherId);
+    url += "&courseId=" + encodeURIComponent(item.courseId);
+    url += "&duration=" + encodeURIComponent(String(offer.durationMin));
+    url += "&weeks=" + encodeURIComponent(String(Math.min(12, offer.suggestedWeeks || 1)));
+    wx.navigateTo({ url });
   }
 });

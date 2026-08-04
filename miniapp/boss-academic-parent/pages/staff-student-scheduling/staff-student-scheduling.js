@@ -16,6 +16,8 @@ function scheduleDefaults() {
 Page({
   data: {
     studentId: "",
+    preferredCourseId: "",
+    preferredTeacherId: "",
     student: null,
     loading: false,
     canSchedule: false,
@@ -59,9 +61,15 @@ Page({
   },
 
   onLoad(options) {
-    const values = { studentId: options.id || "" };
+    const values = {
+      studentId: options.id || "",
+      preferredCourseId: options.courseId || "",
+      preferredTeacherId: options.teacherId || ""
+    };
     if (/^\d{4}-\d{2}-\d{2}$/.test(options.date || "")) values.scheduleDate = options.date;
     if (/^\d{2}:\d{2}$/.test(options.time || "")) values.scheduleTime = options.time;
+    if (/^\d{1,3}$/.test(options.duration || "")) values.duration = options.duration;
+    if (/^\d{1,2}$/.test(options.weeks || "")) values.weeks = options.weeks;
     this.setData(values);
     this.load();
   },
@@ -103,7 +111,8 @@ Page({
           allTeachers: options.teachers || [],
           hasScheduleOptions: subjects.length > 0 && Boolean(options.campuses && options.campuses.length)
         });
-        this.applySubject(0);
+        const preferredSubjectIndex = Math.max(0, subjects.findIndex((subject) => subject.courseId === this.data.preferredCourseId));
+        this.applySubject(preferredSubjectIndex);
         this.applyCampus(0);
       })
       .catch((err) => wx.showModal({ title: "无法打开排课", content: err.message || "请稍后重试", showCancel: false }))
@@ -121,6 +130,7 @@ Page({
       if (!subject) return false;
       return teacher.subjectCourseId === subject.id || (teacher.subjects || []).some((row) => row.id === subject.id);
     });
+    const teacherIndex = Math.max(0, teachers.findIndex((teacher) => teacher.id === this.data.preferredTeacherId));
     this.invalidatePreview({
       subjectIndex: index,
       subjectName: subject ? subject.label : "",
@@ -129,8 +139,8 @@ Page({
       levelName: levels[0].name,
       teachers,
       hasTeachers: teachers.length > 0,
-      teacherIndex: 0,
-      teacherName: teachers[0] ? teachers[0].name : ""
+      teacherIndex,
+      teacherName: teachers[teacherIndex] ? teachers[teacherIndex].name : ""
     });
   },
 

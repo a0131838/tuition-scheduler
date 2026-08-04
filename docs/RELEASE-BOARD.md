@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-07-29`
+- Last checked: `2026-08-04`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -31,10 +31,42 @@
 - Current release line prepared: `2026-08-03-r304` expands the core Academic Web scheduling module from five generic steps to a 40-page, 15-step beginner workflow with real Web screenshots and a module-only retraining version.
 - Current release line prepared: `2026-08-03-r305` adds the missing click-by-click entry chain and expands Academic Web scheduling to 54 pages and 22 steps from login through final handover.
 - Current release line prepared: `2026-08-04-r306` adds proactive next-month family scheduling confirmation, student/course-specific shared-package handling, real date-availability staffing forecasts, and Web/Mini Program follow-up queues without changing formal lessons automatically.
+- Current release line prepared: `2026-08-04-r307` replaces repeated free-form time negotiation with ranked concrete teacher/time choices, 24-hour holds, a simplified Academic queue, and safe prefilling into the existing formally validated scheduling page.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-04-r307 Ready
+
+- Scope: convert a family's broad next-month change request into concrete, qualified options that can be ranked without using WeChat chat for every round of coordination.
+- Parent Mini Program:
+  - family members and courses remain separate visible items;
+  - a change request can receive up to five concrete teacher, weekday, time, duration, and target-month session-count options;
+  - the parent ranks up to three options, and the first still-available option is held for 24 hours;
+  - after matching or scheduling, the parent can submit a change request without cancelling the current formal arrangement.
+- Academic Mini Program:
+  - the queue is reduced to `待确认`, `等家长`, `异常`, `已处理`, and `全部`;
+  - a held parent choice appears in `待确认` with a readable expiry time;
+  - confirming the choice accepts the hold, then opens the existing scheduling page with student, course, teacher, date, time, duration, and safe consecutive-week prefills;
+  - `SCHEDULED` remains blocked until a real target-month lesson exists.
+- Safety boundaries:
+  - the migration only adds `MonthlySchedulingOffer` and its indexes/foreign keys;
+  - offer generation reads real teacher date availability and existing lessons/appointments;
+  - serializable transactions and stale-state guards protect competing holds and staff confirmation;
+  - a parent offer never writes a formal Session and never changes an existing schedule;
+  - no automatic WeChat message, package mutation, attendance deduction, invoice, receipt, payroll, contract, or ticket write is introduced.
+- Verification before deploy:
+  - Prisma schema validation and TypeScript passed;
+  - 19 focused monthly-scheduling tests and all 328 repository tests passed;
+  - Mini Program JavaScript syntax checks and the 56-page release audit passed with zero errors;
+  - `git diff --check` and the complete 235-page production build passed.
+- Post-deploy verification:
+  - confirm local/GitHub/server commit equality, PM2 online, and `/admin/login` HTTP 200;
+  - confirm the additive offer migration applied;
+  - upload the matching Mini Program development version after the server is healthy;
+  - designate the uploaded build as an experience version for role-based testing before submitting it for WeChat review and formal publication.
+- Task doc: `docs/tasks/TASK-20260804-monthly-scheduling-concrete-options.md`.
 
 ## 2026-08-04-r306 Ready
 

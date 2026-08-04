@@ -192,7 +192,7 @@ export async function GET(req: Request) {
       ? prisma.parentCommunicationTask.count({ where: { status: { in: OPEN_COMMUNICATION_STATUSES } } })
       : 0,
     canAcademic
-      ? prisma.monthlySchedulingItem.count({ where: { campaign: { status: "OPEN" }, status: { in: ["NOT_SENT", "SENT", "VIEWED", "NO_RESPONSE", "NEEDS_CLARIFICATION"] } } })
+      ? prisma.monthlySchedulingItem.count({ where: { campaign: { status: "OPEN" }, status: { in: ["NOT_SENT", "SENT", "VIEWED", "SUBMITTED", "OFFERED", "PARENT_SELECTED", "NO_RESPONSE", "NEEDS_CLARIFICATION", "TEACHER_EXCEPTION", "CHANGE_REQUESTED"] } } })
       : 0,
     canAcademic
       ? prisma.renewalTask.count({ where: { completedAt: null } })

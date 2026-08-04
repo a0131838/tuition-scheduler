@@ -68,7 +68,9 @@ Page({
     frequencyIndex: 1,
     modeOptions,
     modeIndex: 0,
-    form: blankForm()
+    form: blankForm(),
+    rankedOfferIds: [],
+    changeNote: ""
   },
 
   onShow() { this.load(); },
@@ -83,7 +85,7 @@ Page({
         this.setData({
           items,
           itemLabels: items.map((item) => `${item.student.name} · ${item.course.name}`),
-          completedCount: items.filter((item) => ["SUBMITTED", "MATCHED", "SCHEDULED", "PAUSED"].includes(item.status)).length,
+          completedCount: items.filter((item) => ["PARENT_SELECTED", "MATCHED", "SCHEDULED", "PAUSED", "CHANGE_REQUESTED"].includes(item.status)).length,
           selectedIndex
         });
         this.selectItem(selectedIndex);
@@ -96,9 +98,18 @@ Page({
     const item = this.data.items[index];
     if (!item) { this.setData({ selected: null, form: blankForm() }); return; }
     const form = formFromItem(item);
+    const rankedOfferIds = (item.offers || []).filter((row) => row.parentRank).sort((a, b) => a.parentRank - b.parentRank).map((row) => row.id);
+    const selected = Object.assign({}, item, {
+      offers: (item.offers || []).map((row) => {
+        const displayRank = rankedOfferIds.indexOf(row.id) + 1;
+        return Object.assign({}, row, { displayRank, rankLabel: displayRank ? `第${displayRank}选择` : "选择" });
+      })
+    });
     this.setData({
-      selected: item,
+      selected,
       form,
+      rankedOfferIds,
+      changeNote: "",
       frequencyIndex: Math.max(0, Math.min(7, form.expectedSessionsPerWeek || 0)),
       modeIndex: form.preferredMode === "ONLINE" ? 1 : form.preferredMode === "OFFLINE" ? 2 : 0,
       weekdayOptions: weekdayOptions.map((row) => Object.assign({}, row, { selected: form.weekdays.includes(row.value) }))
@@ -107,6 +118,11 @@ Page({
 
   changeItem(e) {
     const index = Number(e.detail.value || 0);
+    this.setData({ selectedIndex: index });
+    this.selectItem(index);
+  },
+  selectItemCard(e) {
+    const index = Number(e.currentTarget.dataset.index || 0);
     this.setData({ selectedIndex: index });
     this.selectItem(index);
   },
@@ -142,6 +158,61 @@ Page({
   inputCampus(e) { this.setData({ "form.preferredCampus": e.detail.value }); },
   inputTeacher(e) { this.setData({ "form.preferredTeacher": e.detail.value }); },
   inputNotes(e) { this.setData({ "form.parentNotes": e.detail.value }); },
+  inputChangeNote(e) { this.setData({ changeNote: e.detail.value || "" }); },
+
+  toggleOffer(e) {
+    const id = e.currentTarget.dataset.id;
+    if (!id || this.data.saving) return;
+    const current = this.data.rankedOfferIds.slice();
+    const existing = current.indexOf(id);
+    if (existing >= 0) current.splice(existing, 1);
+    else if (current.length < 3) current.push(id);
+    else return api.toast("最多选择三个时间");
+    this.setData({
+      rankedOfferIds: current,
+      "selected.offers": (this.data.selected.offers || []).map((row) => {
+        const displayRank = current.indexOf(row.id) + 1;
+        return Object.assign({}, row, { displayRank, rankLabel: displayRank ? `第${displayRank}选择` : "选择" });
+      })
+    });
+  },
+
+  submitOfferRanking() {
+    const item = this.data.selected;
+    if (!item || !this.data.rankedOfferIds.length || this.data.saving) return api.toast("请按顺序选择至少一个时间");
+    this.setData({ saving: true });
+    api.request("/api/miniapp/monthly-scheduling", {
+      method: "POST",
+      timeout: 15000,
+      data: { action: "RANK_OFFERS", itemId: item.id, offerIds: this.data.rankedOfferIds }
+    })
+      .then((data) => { wx.showToast({ title: "已临时保留", icon: "success" }); return this.load(); })
+      .catch((err) => api.toast(err.message))
+      .finally(() => this.setData({ saving: false }));
+  },
+
+  requestChange() {
+    const item = this.data.selected;
+    const note = this.data.changeNote.trim();
+    if (!item || !note || this.data.saving) return api.toast("请填写需要调整的原因");
+    wx.showModal({
+      title: "申请再次调整",
+      content: "原安排会继续保留，直到学校确认新的时间。",
+      confirmText: "提交申请",
+      success: (result) => {
+        if (!result.confirm) return;
+        this.setData({ saving: true });
+        api.request("/api/miniapp/monthly-scheduling", {
+          method: "POST",
+          timeout: 15000,
+          data: { action: "REQUEST_CHANGE", itemId: item.id, note }
+        })
+          .then(() => { wx.showToast({ title: "申请已提交", icon: "success" }); return this.load(); })
+          .catch((err) => api.toast(err.message))
+          .finally(() => this.setData({ saving: false }));
+      }
+    });
+  },
 
   submit() {
     const item = this.data.selected;

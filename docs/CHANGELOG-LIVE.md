@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-04-r307
+
+- Release ID: `2026-08-04-r307`
+- Date/Time (Asia/Singapore): `2026-08-04`
+- Deployment status: `READY`
+- Scope: reduce repeated parent-Academic time negotiation by turning a submitted change request into up to five qualified concrete teacher/time options, letting the parent rank up to three choices, holding the first available choice for 24 hours, and routing Academic into the existing formally validated scheduling page with safe prefills.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260804123000_add_monthly_scheduling_offers/migration.sql`
+  - `lib/monthly-scheduling.ts`
+  - `app/admin/monthly-scheduling/page.tsx`
+  - `app/api/miniapp/monthly-scheduling/route.ts`
+  - `app/api/miniapp/staff/monthly-scheduling/route.ts`
+  - `miniapp/boss-academic-parent/pages/monthly-scheduling/`
+  - `miniapp/boss-academic-parent/pages/staff-monthly-scheduling/`
+  - `miniapp/boss-academic-parent/pages/staff-student-scheduling/staff-student-scheduling.js`
+  - `docs/tasks/TASK-20260804-monthly-scheduling-concrete-options.md`
+- Risk impact (if any): Moderate and isolated to the new monthly-scheduling offer table and the existing new monthly-scheduling workflow. Parent choices create only temporary offer holds and never create, cancel, or modify a formal Session. Academic still completes scheduling through the original qualification, date-availability, student/teacher/room conflict, appointment, package, and duplicate checks. Existing packages, balances, attendance, reminders, contracts, invoices, receipts, payroll, tickets, and historical lessons are unchanged.
+- Verification: Prisma schema validation, TypeScript, 19 focused tests, all 328 repository tests, three Mini Program JavaScript syntax checks, the 56-page Mini Program release audit, `git diff --check`, and the complete 235-page production build passed.
+- Rollback point: `2aa09cf08d63dd5cdf3d3db6006e7598c8db59e4` (`2026-08-04-r306` code and SOP baseline).
+
+---
+
 ## 2026-08-04-r306
 
 - Release ID: `2026-08-04-r306`

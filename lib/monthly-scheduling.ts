@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
 
@@ -11,12 +12,15 @@ export const MONTHLY_SCHEDULING_ITEM_STATUSES = [
   "SENT",
   "VIEWED",
   "SUBMITTED",
+  "OFFERED",
+  "PARENT_SELECTED",
   "NEEDS_CLARIFICATION",
   "MATCHED",
   "TEACHER_EXCEPTION",
   "SCHEDULED",
   "PAUSED",
   "NO_RESPONSE",
+  "CHANGE_REQUESTED",
   "EXCLUDED",
 ] as const;
 export const MONTHLY_SCHEDULING_INTENTS = ["KEEP", "CHANGE", "PAUSE", "UNSURE"] as const;
@@ -37,12 +41,15 @@ export const itemStatusLabels: Record<MonthlySchedulingItemStatus, { en: string;
   SENT: { en: "Sent", zh: "已发送" },
   VIEWED: { en: "Viewed", zh: "家长已查看" },
   SUBMITTED: { en: "Submitted", zh: "家长已提交" },
+  OFFERED: { en: "Options ready", zh: "待家长选择具体时间" },
+  PARENT_SELECTED: { en: "Parent selected", zh: "家长已选时间" },
   NEEDS_CLARIFICATION: { en: "Needs clarification", zh: "需要澄清" },
   MATCHED: { en: "Matched", zh: "已匹配" },
   TEACHER_EXCEPTION: { en: "Teacher exception", zh: "需要老师例外确认" },
   SCHEDULED: { en: "Scheduled", zh: "已完成排课" },
   PAUSED: { en: "Paused", zh: "下月暂停" },
   NO_RESPONSE: { en: "No response", zh: "未回复" },
+  CHANGE_REQUESTED: { en: "Change requested", zh: "家长申请再次调整" },
   EXCLUDED: { en: "Excluded", zh: "已排除" },
 };
 
@@ -304,6 +311,11 @@ export async function getMonthlySchedulingCampaign(month?: string | null) {
           course: { select: { id: true, name: true } },
           package: { select: { id: true, type: true, remainingMinutes: true, validTo: true } },
           parent: { select: { id: true, name: true, phone: true } },
+          offers: {
+            where: { status: { notIn: ["WITHDRAWN", "EXPIRED"] } },
+            include: { teacher: { select: { name: true } } },
+            orderBy: [{ parentRank: "asc" }, { generatedAt: "asc" }],
+          },
         },
         orderBy: [{ status: "asc" }, { student: { name: "asc" } }],
       },
@@ -329,6 +341,37 @@ export async function updateMonthlySchedulingItem(input: {
 }) {
   if (!MONTHLY_SCHEDULING_ITEM_STATUSES.includes(input.status)) throw new Error("Invalid item status");
   if (input.expectedStatus && !MONTHLY_SCHEDULING_ITEM_STATUSES.includes(input.expectedStatus)) throw new Error("Invalid expected status");
+  if (input.status === "MATCHED" && input.expectedStatus === "PARENT_SELECTED") {
+    const now = new Date();
+    return prisma.$transaction(async (tx) => {
+      const item = await tx.monthlySchedulingItem.findFirst({
+        where: { id: input.itemId, status: "PARENT_SELECTED" },
+        include: { offers: { where: { status: "HELD" }, orderBy: { parentRank: "asc" } } },
+      });
+      const offer = item?.offers[0];
+      if (!item || !offer || !offer.holdExpiresAt || offer.holdExpiresAt <= now) {
+        throw new Error("The parent time hold expired; ask the parent to select again");
+      }
+      await tx.monthlySchedulingOffer.update({
+        where: { id: offer.id },
+        data: { status: "ACCEPTED", acceptedAt: now, holdExpiresAt: null },
+      });
+      await tx.monthlySchedulingOffer.updateMany({
+        where: { itemId: item.id, id: { not: offer.id }, status: { in: ["AVAILABLE", "HELD"] } },
+        data: { status: "WITHDRAWN", holdExpiresAt: null },
+      });
+      return tx.monthlySchedulingItem.update({
+        where: { id: item.id },
+        data: {
+          status: "MATCHED",
+          ownerUserId: input.ownerUserId,
+          ownerName: input.ownerName,
+          internalNote: input.internalNote,
+          matchedAt: now,
+        },
+      });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  }
   if (input.status === "SCHEDULED") {
     const item = await prisma.monthlySchedulingItem.findUnique({
       where: { id: input.itemId },
@@ -366,6 +409,12 @@ export async function updateMonthlySchedulingItem(input: {
   if (updated.count !== 1) throw new Error("This item changed in another session; refresh and try again");
   const row = await prisma.monthlySchedulingItem.findUnique({ where: { id: input.itemId } });
   if (!row) throw new Error("Scheduling item not found");
+  if (input.status === "SCHEDULED") {
+    await prisma.monthlySchedulingOffer.updateMany({
+      where: { itemId: input.itemId, status: "ACCEPTED" },
+      data: { status: "COMPLETED", holdExpiresAt: null },
+    });
+  }
   return row;
 }
 
@@ -444,7 +493,7 @@ export async function submitMonthlySchedulingPreference(input: {
     include: { campaign: true },
   });
   if (!item) throw new Error("Scheduling item is unavailable");
-  if (["MATCHED", "SCHEDULED"].includes(item.status)) {
+  if (["OFFERED", "PARENT_SELECTED", "MATCHED", "SCHEDULED", "CHANGE_REQUESTED"].includes(item.status)) {
     throw new Error("The school is processing the confirmed schedule; please contact the school for changes");
   }
 
@@ -486,12 +535,14 @@ export async function submitMonthlySchedulingPreference(input: {
     },
   });
   if (updated.count !== 1) throw new Error("The scheduling item changed; refresh before submitting again");
+  if (input.intent === "CHANGE") await refreshMonthlySchedulingOffers(item.id);
   const row = await prisma.monthlySchedulingItem.findUnique({ where: { id: item.id } });
   if (!row) throw new Error("Scheduling item is unavailable");
   return row;
 }
 
 export async function listParentMonthlyScheduling(parentId: string, options: { markViewed?: boolean } = {}) {
+  await expireMonthlySchedulingOfferHolds();
   const items = await prisma.monthlySchedulingItem.findMany({
     where: {
       campaign: { status: "OPEN" },
@@ -503,6 +554,11 @@ export async function listParentMonthlyScheduling(parentId: string, options: { m
       student: { select: { id: true, name: true, grade: true } },
       course: { select: { id: true, name: true } },
       package: { select: { type: true, remainingMinutes: true, validTo: true } },
+      offers: {
+        where: { status: { notIn: ["WITHDRAWN", "EXPIRED"] } },
+        include: { teacher: { select: { name: true } } },
+        orderBy: [{ parentRank: "asc" as const }, { generatedAt: "asc" as const }],
+      },
     },
     orderBy: [{ campaign: { month: "desc" } }, { student: { name: "asc" } }, { course: { name: "asc" } }],
   });
@@ -516,6 +572,275 @@ export async function listParentMonthlyScheduling(parentId: string, options: { m
     });
   }
   return items.map((row) => ({ ...row, status: unseenIds.includes(row.id) ? "VIEWED" : row.status }));
+}
+
+type OfferSessionDate = { date: string; startAt: string; endAt: string };
+
+function offerSessionDates(value: unknown): OfferSessionDate[] {
+  return Array.isArray(value)
+    ? value.filter((row): row is OfferSessionDate => Boolean(
+        row && typeof row === "object" && validDateKey(String((row as any).date ?? ""))
+        && !Number.isNaN(new Date(String((row as any).startAt ?? "")).getTime())
+        && !Number.isNaN(new Date(String((row as any).endAt ?? "")).getTime())
+      ))
+    : [];
+}
+
+function monthlyOfferDuration(item: { currentScheduleJson: unknown; expectedMinutes: number | null; expectedSessionsPerWeek: number | null }) {
+  const current = jsonRows(item.currentScheduleJson);
+  const currentDuration = Number(current[0]?.durationMin ?? 0);
+  if (currentDuration >= 15 && currentDuration <= 360) return ceilQuarter(currentDuration);
+  if (item.expectedMinutes && item.expectedSessionsPerWeek) {
+    const estimated = item.expectedMinutes / Math.max(1, item.expectedSessionsPerWeek * 4);
+    return Math.min(180, Math.max(30, ceilQuarter(estimated)));
+  }
+  return 60;
+}
+
+export function monthlySchedulingOfferView(row: any) {
+  const dates = offerSessionDates(row.sessionDatesJson).sort((a, b) => a.startAt.localeCompare(b.startAt));
+  let suggestedWeeks = dates.length ? 1 : 0;
+  while (suggestedWeeks < dates.length) {
+    const previous = new Date(dates[suggestedWeeks - 1].startAt).getTime();
+    const current = new Date(dates[suggestedWeeks].startAt).getTime();
+    if (current - previous !== 7 * DAY_MS) break;
+    suggestedWeeks += 1;
+  }
+  const weekdayLabels: Record<string, string> = { MON: "周一", TUE: "周二", WED: "周三", THU: "周四", FRI: "周五", SAT: "周六", SUN: "周日" };
+  return {
+    id: row.id,
+    status: row.status,
+    teacherId: row.teacherId,
+    teacherName: row.teacher?.name ?? "-",
+    weekdayCode: row.weekdayLabel,
+    weekdayLabel: weekdayLabels[row.weekdayLabel] ?? row.weekdayLabel,
+    start: `${String(Math.floor(row.startMin / 60)).padStart(2, "0")}:${String(row.startMin % 60).padStart(2, "0")}`,
+    end: `${String(Math.floor(row.endMin / 60)).padStart(2, "0")}:${String(row.endMin % 60).padStart(2, "0")}`,
+    durationMin: row.durationMin,
+    sessionDates: dates,
+    sessionCount: dates.length,
+    suggestedWeeks,
+    parentRank: row.parentRank,
+    holdExpiresAt: row.holdExpiresAt?.toISOString?.() ?? null,
+    holdExpiresText: row.holdExpiresAt ? formatBusinessDateTime(row.holdExpiresAt) : null,
+  };
+}
+
+export async function refreshMonthlySchedulingOffers(itemId: string) {
+  const item = await prisma.monthlySchedulingItem.findUnique({
+    where: { id: itemId },
+    include: { campaign: true },
+  });
+  if (!item || item.intent !== "CHANGE") return [];
+  if (["PARENT_SELECTED", "MATCHED", "SCHEDULED"].includes(item.status)) return [];
+  const month = monthlySchedulingMonthKey(item.campaign.month);
+  const range = monthlySchedulingRange(month);
+  if (!range) throw new Error("Invalid campaign month");
+  const parent = normalizeMonthlyAvailability(item.availabilityJson);
+  const unavailableDates = new Set(cleanStringList(item.unavailableDatesJson, /^\d{4}-\d{2}-\d{2}$/, 40));
+  const durationMin = monthlyOfferDuration(item);
+  const [teachers, sessions, appointments] = await Promise.all([
+    prisma.teacher.findMany({
+      include: {
+        dateAvailabilities: { where: { date: { gte: range.start, lt: range.end } } },
+        courseRates: { select: { courseId: true } },
+        classes: { select: { courseId: true } },
+      },
+      orderBy: { name: "asc" },
+    }),
+    prisma.session.findMany({
+      where: { startAt: { gte: range.start, lt: range.end } },
+      select: {
+        startAt: true,
+        endAt: true,
+        teacherId: true,
+        studentId: true,
+        class: {
+          select: {
+            teacherId: true,
+            capacity: true,
+            oneOnOneStudentId: true,
+            enrollments: { select: { studentId: true } },
+          },
+        },
+      },
+      take: 10000,
+    }),
+    prisma.appointment.findMany({
+      where: { startAt: { gte: range.start, lt: range.end } },
+      select: { startAt: true, endAt: true, teacherId: true },
+      take: 5000,
+    }),
+  ]);
+  const busyByTeacher = new Map<string, Array<{ startAt: Date; endAt: Date }>>();
+  for (const row of sessions) {
+    const teacherId = row.teacherId ?? row.class.teacherId;
+    busyByTeacher.set(teacherId, [...(busyByTeacher.get(teacherId) ?? []), row]);
+  }
+  for (const row of appointments) busyByTeacher.set(row.teacherId, [...(busyByTeacher.get(row.teacherId) ?? []), row]);
+  const busyForStudent = sessions.filter((row) => monthlySchedulingSessionStudentIds(row).includes(item.studentId));
+
+  const candidates: Array<{
+    teacherId: string;
+    weekdayLabel: string;
+    startMin: number;
+    endMin: number;
+    dates: OfferSessionDate[];
+  }> = [];
+  for (const teacher of teachers) {
+    const canTeach = new Set([...teacher.courseRates.map((row) => row.courseId), ...teacher.classes.map((row) => row.courseId)]).has(item.courseId);
+    if (!canTeach) continue;
+    const groups = new Map<string, { weekdayLabel: string; startMin: number; endMin: number; dates: OfferSessionDate[] }>();
+    for (const interval of intervalsForTeacher({ month, dates: teacher.dateAvailabilities })) {
+      if (unavailableDates.has(interval.date)) continue;
+      const weekdayLabel = monthlySchedulingWeekdayCode(interval.date);
+      const ranges = parent.selectionMode === "calendar"
+        ? parent.dateSelections.filter((row) => row.date === interval.date).map((row) => ({ start: row.start, end: row.end }))
+        : parent.weekdays.includes(weekdayLabel) ? parent.timeRanges : [];
+      for (const rangeRow of ranges) {
+        const [startHour, startMinute] = rangeRow.start.split(":").map(Number);
+        const [endHour, endMinute] = rangeRow.end.split(":").map(Number);
+        const startMin = ceilQuarter(Math.max(interval.startMin, startHour * 60 + startMinute));
+        const endMin = startMin + durationMin;
+        if (endMin > Math.min(interval.endMin, endHour * 60 + endMinute)) continue;
+        const startAt = dateMinute(interval.date, startMin);
+        const endAt = dateMinute(interval.date, endMin);
+        if ((busyByTeacher.get(teacher.id) ?? []).some((row) => startAt < row.endAt && row.startAt < endAt)) continue;
+        if (busyForStudent.some((row) => startAt < row.endAt && row.startAt < endAt)) continue;
+        const key = `${weekdayLabel}:${startMin}:${endMin}`;
+        const group = groups.get(key) ?? { weekdayLabel, startMin, endMin, dates: [] };
+        if (!group.dates.some((row) => row.date === interval.date)) {
+          group.dates.push({ date: interval.date, startAt: startAt.toISOString(), endAt: endAt.toISOString() });
+        }
+        groups.set(key, group);
+        break;
+      }
+    }
+    for (const group of Array.from(groups.values()).sort((a, b) => b.dates.length - a.dates.length || a.startMin - b.startMin).slice(0, 3)) {
+      candidates.push({ teacherId: teacher.id, ...group });
+    }
+  }
+  candidates.sort((a, b) => b.dates.length - a.dates.length || a.dates[0]?.startAt.localeCompare(b.dates[0]?.startAt ?? "") || 0);
+  const selected = candidates.slice(0, 5);
+  await prisma.$transaction(async (tx) => {
+    await tx.monthlySchedulingOffer.deleteMany({
+      where: { itemId, status: { in: ["AVAILABLE", "EXPIRED", "WITHDRAWN"] } },
+    });
+    for (const candidate of selected) {
+      await tx.monthlySchedulingOffer.create({
+        data: {
+          itemId,
+          teacherId: candidate.teacherId,
+          weekdayLabel: candidate.weekdayLabel,
+          startMin: candidate.startMin,
+          endMin: candidate.endMin,
+          durationMin,
+          sessionDatesJson: candidate.dates,
+        },
+      });
+    }
+    await tx.monthlySchedulingItem.updateMany({
+      where: { id: itemId, status: "SUBMITTED" },
+      data: { status: selected.length ? "OFFERED" : "SUBMITTED" },
+    });
+  });
+  return listMonthlySchedulingOffers(itemId);
+}
+
+export async function listMonthlySchedulingOffers(itemId: string) {
+  const rows = await prisma.monthlySchedulingOffer.findMany({
+    where: { itemId, status: { notIn: ["WITHDRAWN", "EXPIRED"] } },
+    include: { teacher: { select: { name: true } } },
+    orderBy: [{ parentRank: "asc" }, { generatedAt: "asc" }],
+  });
+  return rows.map(monthlySchedulingOfferView);
+}
+
+export function monthlySchedulingOffersConflict(left: OfferSessionDate[], right: OfferSessionDate[]) {
+  return left.some((a) => right.some((b) => new Date(a.startAt) < new Date(b.endAt) && new Date(b.startAt) < new Date(a.endAt)));
+}
+
+export async function rankMonthlySchedulingOffers(input: { itemId: string; parentId: string; offerIds: string[] }) {
+  const offerIds = unique(input.offerIds.map((id) => String(id).trim()).filter(Boolean)).slice(0, 3);
+  if (!offerIds.length) throw new Error("Please rank at least one available time");
+  const now = new Date();
+  const holdExpiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  return prisma.$transaction(async (tx) => {
+    const item = await tx.monthlySchedulingItem.findFirst({
+      where: {
+        id: input.itemId,
+        status: { in: ["OFFERED", "PARENT_SELECTED"] },
+        campaign: { status: "OPEN" },
+        student: { parentLinks: { some: { parentId: input.parentId, canCreateRequests: true } } },
+      },
+      include: { offers: { include: { teacher: { select: { name: true } } } } },
+    });
+    if (!item) throw new Error("This scheduling choice is no longer available");
+    const ranked = offerIds.map((id) => item.offers.find((row) => row.id === id && ["AVAILABLE", "HELD"].includes(row.status))).filter(Boolean) as typeof item.offers;
+    if (ranked.length !== offerIds.length) throw new Error("One or more time choices are invalid");
+    const teacherIds = unique(ranked.map((row) => row.teacherId));
+    const active = await tx.monthlySchedulingOffer.findMany({
+      where: {
+        itemId: { not: item.id },
+        AND: [
+          { OR: [{ status: "ACCEPTED" }, { status: "HELD", holdExpiresAt: { gt: now } }] },
+          { OR: [{ teacherId: { in: teacherIds } }, { item: { studentId: item.studentId } }] },
+        ],
+      },
+      include: { item: { select: { studentId: true } } },
+    });
+    const chosen = ranked.find((candidate) => !active.some((held) =>
+      (held.teacherId === candidate.teacherId || held.item.studentId === item.studentId)
+      && monthlySchedulingOffersConflict(offerSessionDates(candidate.sessionDatesJson), offerSessionDates(held.sessionDatesJson))
+    ));
+    if (!chosen) throw new Error("The selected times were just taken; refresh for new choices");
+    await tx.monthlySchedulingOffer.updateMany({ where: { itemId: item.id, status: "HELD" }, data: { status: "AVAILABLE", holdExpiresAt: null, heldByParentId: null } });
+    await tx.monthlySchedulingOffer.updateMany({ where: { itemId: item.id }, data: { parentRank: null } });
+    for (let index = 0; index < ranked.length; index += 1) {
+      await tx.monthlySchedulingOffer.update({ where: { id: ranked[index].id }, data: { parentRank: index + 1 } });
+    }
+    const held = await tx.monthlySchedulingOffer.update({
+      where: { id: chosen.id },
+      data: { status: "HELD", heldByParentId: input.parentId, holdExpiresAt },
+      include: { teacher: { select: { name: true } } },
+    });
+    await tx.monthlySchedulingItem.update({ where: { id: item.id }, data: { status: "PARENT_SELECTED", submittedAt: now } });
+    return monthlySchedulingOfferView(held);
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
+export async function requestMonthlySchedulingChange(input: { itemId: string; parentId: string; note: string }) {
+  const note = cleanText(input.note, 1000);
+  if (!note) throw new Error("Please explain what needs to change");
+  const item = await prisma.monthlySchedulingItem.findFirst({
+    where: {
+      id: input.itemId,
+      status: { in: ["MATCHED", "SCHEDULED"] },
+      student: { parentLinks: { some: { parentId: input.parentId, canCreateRequests: true } } },
+    },
+  });
+  if (!item) throw new Error("This arrangement cannot be changed here");
+  const updated = await prisma.monthlySchedulingItem.updateMany({
+    where: { id: item.id, status: item.status },
+    data: { status: "CHANGE_REQUESTED", parentNotes: note, submittedAt: new Date() },
+  });
+  if (updated.count !== 1) throw new Error("This arrangement changed; refresh and try again");
+  return prisma.monthlySchedulingItem.findUniqueOrThrow({ where: { id: item.id } });
+}
+
+export async function expireMonthlySchedulingOfferHolds(now = new Date()) {
+  const expired = await prisma.monthlySchedulingOffer.findMany({
+    where: { status: "HELD", holdExpiresAt: { lte: now } },
+    select: { id: true, itemId: true },
+    take: 500,
+  });
+  if (!expired.length) return 0;
+  const itemIds = unique(expired.map((row) => row.itemId));
+  await prisma.$transaction([
+    prisma.monthlySchedulingOffer.updateMany({ where: { id: { in: expired.map((row) => row.id) }, status: "HELD" }, data: { status: "EXPIRED", holdExpiresAt: null } }),
+    prisma.monthlySchedulingItem.updateMany({ where: { id: { in: itemIds }, status: "PARENT_SELECTED" }, data: { status: "OFFERED" } }),
+  ]);
+  return expired.length;
 }
 
 function intervalsForTeacher(input: {
@@ -795,7 +1120,7 @@ export async function buildMonthlyMatchSuggestions(campaignId: string) {
 
   const suggestions = new Map<string, Array<{ teacherId: string; teacherName: string; date: string; start: string; end: string; startAt: string; endAt: string }>>();
   for (const item of campaign.items) {
-    if (!["SUBMITTED", "NEEDS_CLARIFICATION", "MATCHED", "TEACHER_EXCEPTION"].includes(item.status) || item.intent !== "CHANGE") {
+    if (!["SUBMITTED", "OFFERED", "PARENT_SELECTED", "NEEDS_CLARIFICATION", "MATCHED", "TEACHER_EXCEPTION", "CHANGE_REQUESTED"].includes(item.status) || item.intent !== "CHANGE") {
       suggestions.set(item.id, []);
       continue;
     }

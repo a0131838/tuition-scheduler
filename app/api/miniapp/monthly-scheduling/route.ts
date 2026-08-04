@@ -3,9 +3,12 @@ import {
   intentLabels,
   itemStatusLabels,
   listParentMonthlyScheduling,
+  monthlySchedulingOfferView,
   MONTHLY_SCHEDULING_INTENTS,
   monthlySchedulingMonthKey,
   monthlySchedulingRange,
+  rankMonthlySchedulingOffers,
+  requestMonthlySchedulingChange,
   submitMonthlySchedulingPreference,
   type MonthlySchedulingIntent,
   type MonthlySchedulingItemStatus,
@@ -25,6 +28,7 @@ export async function GET(req: Request) {
     items: rows.map((row) => {
       const month = monthlySchedulingMonthKey(row.campaign.month);
       const range = monthlySchedulingRange(month);
+      const selectedOffer = row.offers.find((offer) => ["HELD", "ACCEPTED"].includes(offer.status));
       return {
         id: row.id,
         month,
@@ -49,8 +53,12 @@ export async function GET(req: Request) {
         unavailableDates: row.unavailableDatesJson,
         parentNotes: row.parentNotes,
         currentSchedule: scheduleRows(row.currentScheduleJson),
+        offers: row.offers.map(monthlySchedulingOfferView),
+        selectedOffer: selectedOffer ? monthlySchedulingOfferView(selectedOffer) : null,
         submittedAt: row.submittedAt?.toISOString() ?? null,
-        locked: ["MATCHED", "SCHEDULED"].includes(row.status),
+        locked: ["OFFERED", "PARENT_SELECTED", "MATCHED", "SCHEDULED", "CHANGE_REQUESTED"].includes(row.status),
+        canRankOffers: ["OFFERED", "PARENT_SELECTED"].includes(row.status),
+        canRequestChange: ["MATCHED", "SCHEDULED"].includes(row.status),
       };
     }),
   });
@@ -61,6 +69,27 @@ export async function POST(req: Request) {
   if (!auth.ok) return auth.response;
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") return bad("Invalid JSON");
+  const action = String((body as any).action ?? "PREFERENCE");
+  try {
+    if (action === "RANK_OFFERS") {
+      const selected = await rankMonthlySchedulingOffers({
+        itemId: String((body as any).itemId ?? ""),
+        parentId: auth.parent.id,
+        offerIds: Array.isArray((body as any).offerIds) ? (body as any).offerIds : [],
+      });
+      return ok({ itemId: String((body as any).itemId ?? ""), status: "PARENT_SELECTED", selectedOffer: selected, message: "已临时保留首选时间" });
+    }
+    if (action === "REQUEST_CHANGE") {
+      const item = await requestMonthlySchedulingChange({
+        itemId: String((body as any).itemId ?? ""),
+        parentId: auth.parent.id,
+        note: String((body as any).note ?? ""),
+      });
+      return ok({ itemId: item.id, status: item.status, message: "调整申请已提交，原安排会保留至学校确认新方案" });
+    }
+  } catch (error) {
+    return bad(error instanceof Error ? error.message : "提交失败", 409);
+  }
   const intent = String((body as any).intent ?? "") as MonthlySchedulingIntent;
   if (!MONTHLY_SCHEDULING_INTENTS.includes(intent)) return bad("请选择下个月的安排");
   try {

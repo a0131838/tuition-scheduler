@@ -22,6 +22,19 @@ test("parent submissions cannot overwrite matched or scheduled work", () => {
   assert.match(parentRoute, /\["MATCHED", "SCHEDULED"\]\.includes\(row\.status\)/);
 });
 
+test("parent concrete-time selection uses serializable holds and staff acceptance", () => {
+  assert.match(service, /rankMonthlySchedulingOffers/);
+  assert.match(service, /TransactionIsolationLevel\.Serializable/);
+  assert.match(service, /holdExpiresAt/);
+  assert.match(service, /status: "PARENT_SELECTED"/);
+  assert.match(service, /status: "ACCEPTED"/);
+  assert.match(parentRoute, /RANK_OFFERS/);
+  assert.match(staffRoute, /READY_CONFIRM/);
+  assert.match(service, /monthlySchedulingSessionStudentIds\(row\)\.includes\(item\.studentId\)/);
+  assert.match(service, /item: \{ studentId: item\.studentId \}/);
+  assert.match(service, /held\.item\.studentId === item\.studentId/);
+});
+
 test("scheduled completion requires a real target-month lesson", () => {
   assert.match(service, /Create the formal lesson before marking this item as scheduled/);
   assert.match(service, /monthlySchedulingSessionStudentIds\(session\)\.includes\(item\.studentId\)/);

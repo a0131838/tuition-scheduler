@@ -114,13 +114,13 @@ async function createExceptionTicketAction(formData: FormData) {
     include: { student: true, course: true },
   });
   if (!item) throw new Error("Scheduling item not found");
-  if (item.intent !== "CHANGE" || !["SUBMITTED", "NEEDS_CLARIFICATION", "MATCHED"].includes(item.status)) {
+  if ((item.intent !== "CHANGE" && item.status !== "CHANGE_REQUESTED") || !["SUBMITTED", "NEEDS_CLARIFICATION", "MATCHED", "CHANGE_REQUESTED"].includes(item.status)) {
     throw new Error("Only an active change request can create a teacher exception ticket");
   }
   const tag = `[MONTHLY_SCHEDULING_ITEM:${item.id}]`;
   await prisma.$transaction(async (tx) => {
     const claimed = await tx.monthlySchedulingItem.updateMany({
-      where: { id: item.id, status: item.status, intent: "CHANGE" },
+      where: { id: item.id, status: item.status, ...(item.status === "CHANGE_REQUESTED" ? {} : { intent: "CHANGE" }) },
       data: { status: "TEACHER_EXCEPTION", ownerUserId: access.user.id, ownerName: access.user.name },
     });
     if (claimed.count !== 1) return;
@@ -217,9 +217,9 @@ export default async function MonthlySchedulingPage({
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(145px,1fr))", gap: 10 }}>
               {[
                 ["TOTAL", campaign.items.filter((row) => row.status !== "EXCLUDED").length, t(lang, "Students / courses", "学生课程项")],
-                ["SUBMITTED", counts.SUBMITTED, t(lang, "Submitted", "已提交")],
+                ["SUBMITTED", counts.SUBMITTED + counts.OFFERED, t(lang, "Submitted / choosing", "已提交/待选时间")],
                 ["NO_RESPONSE", counts.NOT_SENT + counts.SENT + counts.VIEWED + counts.NO_RESPONSE, t(lang, "Awaiting response", "等待回复")],
-                ["MATCHED", counts.MATCHED, t(lang, "Matched", "已匹配")],
+                ["MATCHED", counts.PARENT_SELECTED + counts.MATCHED, t(lang, "Selected / matched", "家长已选/已匹配")],
                 ["SCHEDULED", counts.SCHEDULED, t(lang, "Scheduled", "已排课")],
                 ["PAUSED", counts.PAUSED, t(lang, "Paused", "下月暂停")],
               ].map(([key, value, label]) => <div key={String(key)} style={{ padding: 14, background: "#f7f9fc", border: "1px solid #dbe5f2" }}><div style={{ fontSize: 24, fontWeight: 800 }}>{value}</div><div style={{ color: "#526071" }}>{label}</div></div>)}
@@ -237,12 +237,15 @@ export default async function MonthlySchedulingPage({
                 <thead><tr>{["学生 / Student", "课程 / Course", "当前安排 / Current", "家长意向 / Intent", "匹配建议 / Suggested options", "预计课时 / Demand", "状态 / Status", "负责人及处理 / Action"].map((label) => <th key={label} style={{ textAlign: "left", padding: 10, borderBottom: "2px solid #cad6e5" }}>{label}</th>)}</tr></thead>
                 <tbody>{items.map((item) => {
                   const schedules = currentRows(item.currentScheduleJson);
+                  const concreteOffers = item.offers ?? [];
                   return <tr key={item.id}>
                     <td style={{ padding: 10, borderBottom: "1px solid #e5ebf3" }}><strong>{item.student.name}</strong><br /><small>{item.student.grade || "-"}</small></td>
                     <td style={{ padding: 10, borderBottom: "1px solid #e5ebf3" }}>{item.course.name}<br /><small>{item.package?.remainingMinutes != null ? `${hours(item.package.remainingMinutes)} remaining` : item.package?.type ?? "-"}</small></td>
                     <td style={{ padding: 10, borderBottom: "1px solid #e5ebf3" }}>{schedules.length ? schedules.slice(0, 3).map((row, idx) => <div key={idx}>{row.startText} · {row.teacher || "-"}</div>) : <span style={{ color: "#7b8794" }}>Not scheduled / 尚未排课</span>}</td>
                     <td style={{ padding: 10, borderBottom: "1px solid #e5ebf3" }}>{item.intent || "-"}<br /><small>{item.preferredMode || ""} {item.preferredTeacher || ""}</small></td>
-                    <td style={{ padding: 10, borderBottom: "1px solid #e5ebf3", minWidth: 220 }}>{(matchSuggestions.get(item.id) ?? []).length
+                    <td style={{ padding: 10, borderBottom: "1px solid #e5ebf3", minWidth: 220 }}>{concreteOffers.length
+                      ? concreteOffers.map((option, index) => <div key={option.id}><strong>{option.parentRank ? `#${option.parentRank} ` : ""}{option.status}</strong> · {option.weekdayLabel} {String(Math.floor(option.startMin / 60)).padStart(2, "0")}:{String(option.startMin % 60).padStart(2, "0")} · {option.teacher.name}</div>)
+                      : (matchSuggestions.get(item.id) ?? []).length
                       ? (matchSuggestions.get(item.id) ?? []).map((option, index) => <div key={`${option.teacherId}:${option.startAt}`}>{index + 1}. {option.date} {option.start}-{option.end} · {option.teacherName}</div>)
                       : <span style={{ color: item.intent === "CHANGE" ? "#9a5b00" : "#7b8794" }}>{item.intent === "CHANGE" ? t(lang, "No standard match", "暂无标准匹配") : t(lang, "Not required", "无需匹配")}</span>}</td>
                     <td style={{ padding: 10, borderBottom: "1px solid #e5ebf3" }}>{item.expectedMinutes != null ? hours(item.expectedMinutes) : item.expectedSessionsPerWeek != null ? `${item.expectedSessionsPerWeek}/week` : "-"}</td>
@@ -255,7 +258,7 @@ export default async function MonthlySchedulingPage({
                           <button style={buttonStyle}>{t(lang, "Save", "保存")}</button>
                           <input name="internalNote" defaultValue={item.internalNote ?? ""} placeholder="Internal note / 内部备注" style={{ gridColumn: "1 / -1", padding: 8 }} />
                         </form>
-                        {item.intent === "CHANGE" && ["SUBMITTED", "NEEDS_CLARIFICATION", "MATCHED"].includes(item.status) && <form action={createExceptionTicketAction} style={{ marginTop: 6 }}><input type="hidden" name="itemId" value={item.id} /><input type="hidden" name="month" value={month} /><button style={{ ...buttonStyle, width: "100%" }}>{t(lang, "Escalate teacher exception", "转老师例外工单")}</button></form>}
+                        {(item.intent === "CHANGE" || item.status === "CHANGE_REQUESTED") && ["SUBMITTED", "NEEDS_CLARIFICATION", "MATCHED", "CHANGE_REQUESTED"].includes(item.status) && <form action={createExceptionTicketAction} style={{ marginTop: 6 }}><input type="hidden" name="itemId" value={item.id} /><input type="hidden" name="month" value={month} /><button style={{ ...buttonStyle, width: "100%" }}>{t(lang, "Escalate teacher exception", "转老师例外工单")}</button></form>}
                       </> : <span>{item.ownerName || "-"}</span>}
                     </td>
                   </tr>;

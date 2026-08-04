@@ -14,8 +14,11 @@
 
   <block wx:if="{{selected}}">
     <view class="field-card" wx:if="{{items.length > 1}}">
-      <view class="field-label">选择学生与课程</view>
-      <picker mode="selector" range="{{itemLabels}}" value="{{selectedIndex}}" bindchange="changeItem"><view class="picker">{{itemLabels[selectedIndex]}} ›</view></picker>
+      <view class="field-label family-label">本家庭需要分别确认</view>
+      <view class="family-item {{selectedIndex === index ? 'active' : ''}}" wx:for="{{items}}" wx:key="id" data-index="{{index}}" bindtap="selectItemCard">
+        <view><view class="family-student">{{item.student.name}}</view><view class="family-course">{{item.course.name}}</view></view>
+        <view class="family-status">{{item.statusLabel}} ›</view>
+      </view>
     </view>
 
     <view class="student-band">
@@ -29,7 +32,29 @@
     </view>
     <view class="empty-line" wx:else>下个月尚未安排正式课程</view>
 
-    <view class="form-section">
+    <view class="offer-section" wx:if="{{selected.canRankOffers && selected.offers.length}}">
+      <view class="section-title compact">学校初步匹配的具体时间</view>
+      <view class="offer-help">请按优先顺序点击最多三个方案。系统会临时保留第一个仍可用的教师时段 24 小时，最终以学校确认课表为准。</view>
+      <view class="offer-row {{item.displayRank ? 'selected' : ''}}" wx:for="{{selected.offers}}" wx:key="id" data-id="{{item.id}}" bindtap="toggleOffer">
+        <view class="offer-rank">{{item.rankLabel}}</view>
+        <view class="offer-copy"><view class="offer-title">{{item.weekdayLabel}} {{item.start}}–{{item.end}} · {{item.teacherName}}</view><view class="offer-meta">目标月可安排 {{item.sessionCount}} 次 · 每次 {{item.durationMin}} 分钟</view></view>
+      </view>
+      <button class="primary" loading="{{saving}}" disabled="{{saving || !rankedOfferIds.length}}" bindtap="submitOfferRanking">确认时间优先顺序</button>
+    </view>
+
+    <view class="offer-section confirmed" wx:if="{{selected.selectedOffer}}">
+      <view class="section-title compact">当前保留方案</view>
+      <view class="offer-title">{{selected.selectedOffer.weekdayLabel}} {{selected.selectedOffer.start}}–{{selected.selectedOffer.end}} · {{selected.selectedOffer.teacherName}}</view>
+      <view class="offer-meta">{{selected.selectedOffer.sessionCount}} 次 · {{selected.selectedOffer.status === 'HELD' ? '等待学校确认' : '学校已确认匹配'}}</view>
+    </view>
+
+    <view class="empty-line" wx:if="{{selected.status === 'SUBMITTED' && selected.intent === 'CHANGE' && !selected.offers.length}}">目前没有完全匹配的标准时间，教务会在异常队列中联系您。</view>
+    <view class="offer-section change-request" wx:if="{{selected.status === 'CHANGE_REQUESTED'}}">
+      <view class="section-title compact">调整申请已提交</view>
+      <view class="offer-help">教务正在处理。新方案正式确认前，原课表继续有效，不会自动取消。</view>
+    </view>
+
+    <view class="form-section" wx:if="{{!selected.canRankOffers && !selected.selectedOffer && !selected.canRequestChange && selected.status !== 'CHANGE_REQUESTED'}}">
       <view class="field-label">下个月如何安排</view>
       <radio-group value="{{form.intent}}" bindchange="changeIntent">
         <label class="intent-row" wx:for="{{intentOptions}}" wx:key="value"><radio value="{{item.value}}" checked="{{form.intent === item.value}}" color="#174ea6"/><text>{{item.label}}</text></label>
@@ -63,6 +88,13 @@
       <view class="lock-note" wx:if="{{selected.locked}}">学校正在匹配或已完成正式排课，如需修改请联系学校。</view>
       <button class="primary" loading="{{saving}}" disabled="{{saving || selected.locked}}" bindtap="submit">提交这一项安排</button>
       <view class="submit-note">老师偏好会尽量协调，最终以上课前确认课表为准。</view>
+    </view>
+
+    <view class="offer-section change-request" wx:if="{{selected.canRequestChange}}">
+      <view class="section-title compact">正式匹配后需要再调整？</view>
+      <view class="offer-help">请说明原因。新方案确认前，原时间会继续保留，不会直接取消正式课程。</view>
+      <textarea class="textarea" value="{{changeNote}}" placeholder="例如学校活动时间变化，需要改到周四或周六" bindinput="inputChangeNote" />
+      <button class="secondary-action" loading="{{saving}}" bindtap="requestChange">提交调整申请</button>
     </view>
   </block>
 </view>
