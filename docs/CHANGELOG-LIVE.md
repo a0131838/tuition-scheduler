@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-05-r320
+
+- Release ID: `2026-08-05-r320`
+- Date/Time (Asia/Singapore): `2026-08-05`
+- Deployment status: `READY`
+- Scope: require IB/AP pricing at contract generation and block later IB/AP course assignment when a package still has an active standard-tier Full Care contract.
+- Key files:
+  - `lib/full-care-pricing.ts`
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `app/api/admin/packages/[id]/route.ts`
+  - `tests/full-care-pricing.test.ts`
+  - `docs/tasks/TASK-20260805-full-care-ib-ap-tier-guard.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low and limited to validating Full Care contract preparation and package-course edits. The guard reads existing assignments and contracts but does not rewrite courses, signed contracts, prices, invoices, receipts, payments, lesson balances, attendance, payroll or scheduled lessons.
+- Verification:
+  - 25 focused Full Care pricing, contract, correction, scope, sign-page and package-course transition tests passed.
+  - `npm run build` passed for all 240 application pages.
+  - Production read-only audit found 3 IB/AP packages and 0 unsigned standard-tier Full Care mismatches.
+- Rollback point: `139943bb19e08355acf6f9179f8266581b8ba9b4` (`2026-08-05-r319` production head).
+
+---
+
 ## 2026-08-05-r319
 
 - Release ID: `2026-08-05-r319`

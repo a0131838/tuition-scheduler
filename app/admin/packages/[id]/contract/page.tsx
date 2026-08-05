@@ -43,10 +43,11 @@ import {
 } from "@/lib/student-contract-invoice-choice";
 import { CARE_SCOPE_OPTIONS } from "@/lib/care-validation";
 import {
+  assertFullCarePricingPlanMatchesCourses,
   FULL_CARE_PRICING_PLANS,
+  fullCareRequiresIbApTier,
   fullCarePricingPlan,
   fullCarePricingPlanLabel,
-  requireFullCarePricingPlan,
 } from "@/lib/full-care-pricing";
 
 const DEFAULT_CARE_EXCLUSIONS = [
@@ -294,8 +295,21 @@ async function prepareContractSignAction(formData: FormData) {
     if (careServiceIncluded && !careEngagement) {
       throw new Error("Create the student's Full Care project and confirm its scope before generating the contract");
     }
+    const packageCourseData = careServiceIncluded
+      ? await prisma.coursePackage.findUnique({
+          where: { id: packageId },
+          select: {
+            course: { select: { name: true } },
+            sharedCourses: { select: { course: { select: { name: true } } } },
+          },
+        })
+      : null;
+    if (careServiceIncluded && !packageCourseData) throw new Error("Package not found");
+    const packageCourseNames = packageCourseData
+      ? [packageCourseData.course.name, ...packageCourseData.sharedCourses.map((row) => row.course.name)]
+      : [];
     const pricingPlan = careServiceIncluded
-      ? requireFullCarePricingPlan(String(formData.get("carePricingPlan") ?? ""))
+      ? assertFullCarePricingPlanMatchesCourses(String(formData.get("carePricingPlan") ?? ""), packageCourseNames)
       : null;
     const scopeIds = careContractStringArray(careEngagement?.scopeJson);
     const careScopeLabels = CARE_SCOPE_OPTIONS
@@ -420,7 +434,11 @@ export default async function PackageContractPage({
   const [pkg, data, packageContracts, hasRenewalContractParentInfo, latestParentIntakeForPackage, deletedInvoiceHistory] = await Promise.all([
     prisma.coursePackage.findUnique({
       where: { id: packageId },
-      include: { student: true, course: { include: { eduTrustProfile: true } } },
+      include: {
+        student: true,
+        course: { include: { eduTrustProfile: true } },
+        sharedCourses: { select: { course: { select: { name: true } } } },
+      },
     }),
     listParentBillingForPackage(packageId),
     listStudentContractsForPackage(packageId),
@@ -464,7 +482,16 @@ export default async function PackageContractPage({
   const contractSignShare = contractSignPath ? `${baseUrl}${contractSignPath}` || contractSignPath : "";
   const contractBusinessInfo = latestContract?.businessInfo ?? null;
   const contractParentInfo = latestContract?.parentInfo ?? null;
-  const selectedCarePricingPlan = fullCarePricingPlan(contractBusinessInfo?.carePricingPlan) ?? FULL_CARE_PRICING_PLANS[0];
+  const packageCourseNames = [pkg.course.name, ...pkg.sharedCourses.map((row) => row.course.name)];
+  const requiresIbApPricing = fullCareRequiresIbApTier(packageCourseNames);
+  const availableCarePricingPlans = requiresIbApPricing
+    ? FULL_CARE_PRICING_PLANS.filter((plan) => plan.tier === "IB_AP")
+    : FULL_CARE_PRICING_PLANS;
+  const storedCarePricingPlan = fullCarePricingPlan(contractBusinessInfo?.carePricingPlan);
+  const selectedCarePricingPlan =
+    storedCarePricingPlan && (!requiresIbApPricing || storedCarePricingPlan.tier === "IB_AP")
+      ? storedCarePricingPlan
+      : availableCarePricingPlans.find((plan) => plan.hours === storedCarePricingPlan?.hours) ?? availableCarePricingPlans[0];
   const latestContractInvoiceChoice =
     latestContract?.flowType === "RENEWAL"
       ? await getStudentContractInvoiceChoice(latestContract.id)
@@ -749,10 +776,19 @@ export default async function PackageContractPage({
                             <label style={{ display: "grid", gap: 6 }}>
                               <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Full Care price plan", "全程托管价格方案")}</span>
                               <select name="carePricingPlan" defaultValue={selectedCarePricingPlan.value} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #86efac", background: "#fff" }}>
-                                {FULL_CARE_PRICING_PLANS.map((plan) => (
+                                {availableCarePricingPlans.map((plan) => (
                                   <option key={plan.value} value={plan.value}>{plan.labelEn} / {plan.labelZh} — S${plan.totalFee.toLocaleString("en-SG")}</option>
                                 ))}
                               </select>
+                              {requiresIbApPricing ? (
+                                <span style={{ color: "#9a3412", fontSize: 12, lineHeight: 1.5 }}>
+                                  {t(
+                                    lang,
+                                    `IB/AP detected in this package (${packageCourseNames.filter((name) => fullCareRequiresIbApTier([name])).join(", ")}). Standard plans are blocked.`,
+                                    `系统检测到该课包含 IB/AP 课程（${packageCourseNames.filter((name) => fullCareRequiresIbApTier([name])).join("、")}），标准档已被禁止。`
+                                  )}
+                                </span>
+                              ) : null}
                             </label>
                             <label style={{ display: "grid", gap: 6 }}>
                               <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Service start / 服务开始", "Service start / 服务开始")}</span>

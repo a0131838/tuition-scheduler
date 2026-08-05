@@ -14,6 +14,7 @@ import {
   transitionPackageCourse,
   type PackageCourseTransitionResult,
 } from "@/lib/package-course-transition";
+import { assertFullCareCourseAssignmentsMatchPlans } from "@/lib/full-care-pricing";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -131,6 +132,10 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       courseId: true,
       sharedStudents: { select: { studentId: true } },
       sharedCourses: { select: { courseId: true } },
+      contracts: {
+        where: { status: { not: "VOID" } },
+        select: { businessInfoJson: true },
+      },
       financeGateStatus: true,
     },
   });
@@ -230,6 +235,24 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       select: { id: true },
     });
     if (rows.length !== sharedCourseIds.length) return bad("Invalid sharedCourseIds", 409);
+  }
+
+  const resultingCourses = await prisma.course.findMany({
+    where: { id: { in: [resultingPrimaryCourseId, ...sharedCourseIds] } },
+    select: { name: true },
+  });
+  const activeFullCarePlanValues = pkg.contracts.map((contract) => {
+    const info = contract.businessInfoJson;
+    if (!info || typeof info !== "object" || Array.isArray(info)) return null;
+    return String((info as Record<string, unknown>).carePricingPlan ?? "").trim() || null;
+  });
+  try {
+    assertFullCareCourseAssignmentsMatchPlans(
+      resultingCourses.map((course) => course.name),
+      activeFullCarePlanValues
+    );
+  } catch (error) {
+    return bad(error instanceof Error ? error.message : "Full Care price tier does not match the package courses", 409);
   }
 
   if (status === "ACTIVE" && updateMode === "MONTHLY") {

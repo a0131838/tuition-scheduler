@@ -44,10 +44,37 @@
 - Current release line prepared: `2026-08-05-r317` exposes a corrected first-purchase contract action from archived VOID history, preventing a contract correction from being misclassified as a renewal lesson top-up.
 - Current release line prepared: `2026-08-05-r318` aligns Full Care contract scope parsing with the structured care-project format so valid projects can generate sign links without weakening the non-empty-scope gate.
 - Current release line prepared: `2026-08-05-r319` removes the final O Level summary leak, converts exclusion IDs to bilingual parent copy and aligns electronic acceptance with the standalone Full Care Service Agreement.
+- Current release line prepared: `2026-08-05-r320` requires IB/AP pricing at contract generation and blocks later IB/AP course assignment while a standard-tier Full Care contract remains active.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-05-r320 Ready
+
+- Scope: enforce the IB/AP Full Care price tier from real package-course assignments.
+- Business impact:
+  - packages containing IB, IBDP, AP, IB/AP, International Baccalaureate or Advanced Placement courses only show IB/AP Full Care plans;
+  - the server independently rejects a standard-tier submission even if the browser form is bypassed;
+  - both the primary package course and every shared course are checked;
+  - a package with an active standard-tier Full Care contract cannot later switch to or add IB/AP courses without correcting the contract first;
+  - standard-course Full Care packages keep all four approved price plans;
+  - signed contracts, package assignments, invoices, receipts, payments, lesson balances, attendance, payroll and scheduling are unchanged.
+- Files:
+  - `lib/full-care-pricing.ts`
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `app/api/admin/packages/[id]/route.ts`
+  - `tests/full-care-pricing.test.ts`
+- Verification before deploy:
+  - 25 focused Full Care and package-course transition tests;
+  - `npm run build` for all 240 application pages;
+  - production read-only audit: 3 IB/AP packages and 0 unsigned standard-tier Full Care mismatches;
+  - `git diff --check` and guarded release preflight.
+- Post-deploy verification:
+  - open an IB package contract workspace and confirm only the 200-hour and 300-hour IB/AP plans are available;
+  - confirm the server rejects a forged standard-tier submission;
+  - confirm the existing 赵测试 2 standard-course contract and its 12,000-minute package remain unchanged.
+- Task doc: `docs/tasks/TASK-20260805-full-care-ib-ap-tier-guard.md`.
 
 ## 2026-08-05-r319 Ready
 
@@ -794,6 +821,7 @@
 
 ## Open Risks
 
+- Full Care IB/AP tier enforcement depends on the package's primary and shared course assignments being accurate. Operations must add IB/AP as a shared course before contract generation whenever any contracted hours may be delivered as IB/AP tuition.
 - Staff proxy entry relies on the operator faithfully transcribing the parent's actual message. The required source channel, reply date, message summary, named operator, and permanent AuditLog make the record reviewable, but management should still spot-check the first live entries against the WeChat conversation.
 - Four existing TEACHER accounts have no confirmed teacher-profile link. They are now safely gated, but a manager must identify the exact profile or decide whether each legacy account should remain inactive; the system intentionally does not guess by matching names.
 - Multi-role training assignments intentionally do not grant business permissions. Managers must still change the primary role or workspace access separately when the employee genuinely needs operational access.
