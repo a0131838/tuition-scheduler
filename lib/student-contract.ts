@@ -31,6 +31,8 @@ import {
   buildPackageFinanceGateReason,
   createPackageInvoiceApproval,
   getLatestPackageInvoiceApproval,
+  packageInvoiceApprovalMatchesInvoice,
+  removeStalePendingPackageInvoiceApprovals,
   shouldRequirePackageInvoiceGate,
 } from "@/lib/package-finance-gate";
 import { assertGlobalInvoiceNoAvailable, getNextGlobalInvoiceNo } from "@/lib/global-invoice-sequence";
@@ -1543,18 +1545,22 @@ async function ensurePackageGateAfterSignedContract(input: {
     return;
   }
 
-  const existingApproval = await getLatestPackageInvoiceApproval(input.row.packageId);
-  if (!existingApproval) {
-    await createPackageInvoiceApproval({
+  let currentApproval = await getLatestPackageInvoiceApproval(input.row.packageId);
+  if (!packageInvoiceApprovalMatchesInvoice(currentApproval, input.invoiceId)) {
+    await removeStalePendingPackageInvoiceApprovals({
+      packageId: input.row.packageId,
+      currentInvoiceId: input.invoiceId,
+    });
+    currentApproval = await createPackageInvoiceApproval({
       packageId: input.row.packageId,
       invoiceId: input.invoiceId,
       submittedBy: "system.contract@sgtmanage.local",
     });
   }
   const nextStatus =
-    existingApproval?.status === "APPROVED"
+    currentApproval?.status === "APPROVED"
       ? "SCHEDULABLE"
-      : existingApproval?.status === "REJECTED"
+      : currentApproval?.status === "REJECTED"
       ? "BLOCKED"
       : "INVOICE_PENDING_MANAGER";
 
@@ -1565,7 +1571,7 @@ async function ensurePackageGateAfterSignedContract(input: {
       financeGateReason: buildPackageFinanceGateReason({
         status: nextStatus,
         invoiceNo: input.invoiceNo,
-        rejectReason: existingApproval?.managerRejectReason ?? null,
+        rejectReason: currentApproval?.managerRejectReason ?? null,
       }),
       financeGateUpdatedAt: new Date(),
       financeGateUpdatedBy: "system.contract@sgtmanage.local",

@@ -101,6 +101,26 @@ export async function getLatestPackageInvoiceApproval(packageId: string) {
   });
 }
 
+export function packageInvoiceApprovalMatchesInvoice(
+  approval: { invoiceId: string } | null | undefined,
+  invoiceId: string,
+) {
+  return Boolean(approval && approval.invoiceId === invoiceId.trim());
+}
+
+export async function removeStalePendingPackageInvoiceApprovals(input: {
+  packageId: string;
+  currentInvoiceId: string;
+}) {
+  return prisma.packageInvoiceApproval.deleteMany({
+    where: {
+      packageId: input.packageId,
+      status: PackageInvoiceApprovalStatus.PENDING_MANAGER,
+      NOT: { invoiceId: input.currentInvoiceId.trim() },
+    },
+  });
+}
+
 export async function assertActorCanManagePackageInvoiceApproval(actorEmail: string) {
   const cfg = await getApprovalRoleConfig();
   const normalized = actorEmail.trim().toLowerCase();

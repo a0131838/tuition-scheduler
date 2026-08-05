@@ -48,10 +48,34 @@
 - Current release line prepared: `2026-08-05-r321` launches 12 versioned Full Care bundles, audited management special discounts, exact care-project contract binding, distinct accompanied/unaccompanied scopes and parent-visible pricing/service progress.
 - Current release line prepared: `2026-08-05-r322` corrects the annual Full Care boundary to end on the day before the same date next year.
 - Current release line prepared: `2026-08-05-r323` completes the parent signed-service receipt, employee entitlement overview, explicit state-change safety, quality-desk filtering, expiring public contract access and audited legacy-contract review for 赵测试2.
+- Current release line prepared: `2026-08-05-r324` prevents a deleted invoice draft's pending approval from blocking the replacement invoice created by the signed contract, while preserving approval history and all issued financial records.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-05-r324 Ready
+
+- Scope: ensure the package finance gate always follows the invoice created by the current signed contract.
+- Business impact:
+  - deleting an unreceipted invoice draft removes only its pending manager approval;
+  - signing the replacement contract discards any stale pending approval for the package and creates an approval for the new invoice;
+  - approved and rejected history, issued receipts, balances and lessons are preserved.
+- Files:
+  - `lib/package-finance-gate.ts`
+  - `lib/student-contract.ts`
+  - `lib/student-parent-billing.ts`
+  - `tests/package-invoice-approval-replacement.test.ts`
+- Verification before deploy:
+  - focused invoice-deletion, contract-signing and Full Care tests;
+  - TypeScript validation;
+  - production build;
+  - guarded release preflight.
+- Post-deploy verification:
+  - repair only the stale pending approval on test student `赵测试2`;
+  - approve the current invoice through the manager UI;
+  - verify the finance gate becomes schedulable and the parent sees the current financial status.
+- Task doc: `docs/tasks/TASK-20260805-package-invoice-approval-replacement.md`.
 
 ## 2026-08-05-r323 Ready
 

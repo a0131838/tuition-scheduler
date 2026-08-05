@@ -895,13 +895,24 @@ export async function deleteParentInvoice(input: { invoiceId: string; actorEmail
       });
     },
   });
+  const removedPendingApprovals = await prisma.packageInvoiceApproval.deleteMany({
+    where: {
+      invoiceId: input.invoiceId.trim(),
+      status: "PENDING_MANAGER",
+    },
+  });
   await logAudit({
     actor: { email: input.actorEmail, role: "ADMIN" },
     module: "PARENT_BILLING",
     action: "DELETE_INVOICE",
     entityType: "ParentInvoice",
     entityId: input.invoiceId.trim(),
-    meta: { invoiceNo: invoice!.invoiceNo, packageId: invoice!.packageId, studentId: invoice!.studentId },
+    meta: {
+      invoiceNo: invoice!.invoiceNo,
+      packageId: invoice!.packageId,
+      studentId: invoice!.studentId,
+      removedPendingInvoiceApprovals: removedPendingApprovals.count,
+    },
   });
 }
 

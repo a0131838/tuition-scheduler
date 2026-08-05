@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-05-r324
+
+- Release ID: `2026-08-05-r324`
+- Date/Time (Asia/Singapore): `2026-08-05`
+- Deployment status: `READY`
+- Scope: keep the package finance gate bound to the current signed-contract invoice when an earlier invoice draft was deleted, and clean up pending invoice approvals together with a deleted draft.
+- Key files:
+  - `lib/package-finance-gate.ts`
+  - `lib/student-contract.ts`
+  - `lib/student-parent-billing.ts`
+  - `tests/package-invoice-approval-replacement.test.ts`
+  - `docs/tasks/TASK-20260805-package-invoice-approval-replacement.md`
+- Risk impact (if any): Low and limited to pending manager approvals. Historical approved or rejected approvals remain intact; signed invoices, receipts, package balances and lesson records are not rewritten.
+- Verification:
+  - focused invoice-deletion, contract-signing and Full Care UI tests passed;
+  - TypeScript validation passed;
+  - production build passed;
+  - post-deploy repair and four-role E2E verification are restricted to the test student `赵测试2`.
+- Rollback point: `16479185bbadaa7585ea90583ed724598ec02a13` (`2026-08-05-r323` production head).
+
+---
+
 ## 2026-08-05-r323
 
 - Release ID: `2026-08-05-r323`
