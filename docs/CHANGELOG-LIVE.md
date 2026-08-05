@@ -15,11 +15,31 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-05-r317
+
+- Release ID: `2026-08-05-r317`
+- Date/Time (Asia/Singapore): `2026-08-05`
+- Deployment status: `READY`
+- Scope: add the missing corrected-contract entry after signed history is voided, preserving the original first-purchase flow so a correction cannot accidentally create a renewal lesson top-up.
+- Key files:
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `tests/contract-workspace-replacement.test.ts`
+  - `docs/tasks/TASK-20260805-corrected-first-purchase-contract.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low and limited to displaying an existing replacement-contract action when only archived signed history remains. The original flow type and parent/business snapshot are reused; no lesson top-up, package balance, receipt, payment, attendance, payroll or scheduling behavior changes.
+- Verification:
+  - 11 focused contract, pricing and deletion-safety tests passed.
+  - `npm run build` passed for all 240 application pages.
+- Rollback point: `f27f813a6729a1cd5a8c162b5363baff2b6cc543` (`2026-08-05-r316` production head).
+
+---
+
 ## 2026-08-05-r316
 
 - Release ID: `2026-08-05-r316`
 - Date/Time (Asia/Singapore): `2026-08-05`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: allow an unreceipted invoice draft to be deleted after every linked agreement has been explicitly voided, so a corrected Full Care contract can be reissued without erasing signed history.
 - Key files:
   - `lib/invoice-deletion-safety.ts`

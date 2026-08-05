@@ -41,12 +41,35 @@
 - Current release line prepared: `2026-08-05-r314` closes the operator gaps found by the 赵测试 2 E2E journey: explicit manager publication for parent updates, parent-action task entry, active Full Care project discovery independent of legacy student classification, and a reliable signed-contract confirmation.
 - Current release line prepared: `2026-08-05-r315` removes channel commission from the Full Care contract system and replaces course-named bundles with four locked Full Care price plans: standard or IB/AP, each at 200 or 300 hours.
 - Current release line prepared: `2026-08-05-r316` restores the safe correction path for an unreceipted invoice after all linked contracts are explicitly voided, while keeping signed history and active-agreement protections.
+- Current release line prepared: `2026-08-05-r317` exposes a corrected first-purchase contract action from archived VOID history, preventing a contract correction from being misclassified as a renewal lesson top-up.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
-## 2026-08-05-r316 Ready
+## 2026-08-05-r317 Ready
+
+- Scope: complete the safe reissue path for 赵测试 2 and future contract corrections.
+- Business impact:
+  - after the signed contract is voided and its unreceipted invoice removed, staff can create a corrected contract from archived history;
+  - the corrected version preserves NEW_PURCHASE rather than switching to RENEWAL;
+  - reusable parent details and the historical business snapshot remain available for correction;
+  - no renewal purchase transaction or extra lesson minutes are created;
+  - payments, receipts, package balances, attendance, payroll and scheduling remain unchanged.
+- Files:
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `tests/contract-workspace-replacement.test.ts`
+- Verification before deploy:
+  - 11 focused tests;
+  - `npm run build` for all 240 application pages;
+  - `git diff --check` and guarded release preflight.
+- Post-deploy verification:
+  - use the corrected first-purchase action for 赵测试 2;
+  - confirm the contract form offers the four Full Care plans with standard 200 hours selected;
+  - sign the corrected contract and verify package remaining minutes stay 12,000 rather than increasing.
+- Task doc: `docs/tasks/TASK-20260805-corrected-first-purchase-contract.md`.
+
+## 2026-08-05-r316 Live
 
 - Scope: unblock safe contract correction after the incorrect 赵测试 2 agreement was voided.
 - Business impact:

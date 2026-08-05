@@ -453,6 +453,7 @@ export default async function PackageContractPage({
   const voidContracts = packageContracts.filter((contract) => contract.status === "VOID");
   const deletableVoidContracts = voidContracts.filter((contract) => contractCanDeleteVoidDraft(contract));
   const archivedVoidContracts = voidContracts.filter((contract) => !contractCanDeleteVoidDraft(contract));
+  const latestArchivedVoidContract = archivedVoidContracts[0] ?? null;
   const invoiceMap = new Map(data.invoices.map((x) => [x.id, x]));
   const latestContractInvoice = latestContract?.invoiceId ? invoiceMap.get(latestContract.invoiceId) ?? null : null;
   const latestContractInvoiceReceipts = latestContractInvoice
@@ -1029,6 +1030,22 @@ export default async function PackageContractPage({
                   </div>
                 ) : null}
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                  {latestArchivedVoidContract ? (
+                    <form action={createContractDraftAction}>
+                      <input type="hidden" name="packageId" value={packageId} />
+                      <input type="hidden" name="studentId" value={pkg.studentId} />
+                      <input type="hidden" name="flowType" value={latestArchivedVoidContract.flowType} />
+                      <input type="hidden" name="contractMode" value={latestArchivedVoidContract.contractMode} />
+                      <input type="hidden" name="replacementFromContractId" value={latestArchivedVoidContract.id} />
+                      <input type="hidden" name="source" value={sourceWorkflow} />
+                      <input type="hidden" name="receiptsBack" value={receiptsBack} />
+                      <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #991b1b", background: "#991b1b", color: "#fff", fontWeight: 700 }}>
+                        {latestArchivedVoidContract.flowType === "RENEWAL"
+                          ? t(lang, "Create corrected renewal contract", "创建更正版续费合同")
+                          : t(lang, "Create corrected first-purchase contract", "创建更正版首购合同")}
+                      </button>
+                    </form>
+                  ) : null}
                   {!likelyLegacyNoContract ? (
                     <form action={createContractDraftAction}>
                       <input type="hidden" name="packageId" value={packageId} />
