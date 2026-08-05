@@ -51,8 +51,13 @@ export default async function CareQualityPage({
     select: {
       id: true,
       status: true,
+      startDate: true,
+      endDate: true,
+      caseOwnerUserId: true,
       nextReportDueAt: true,
       student: { select: { name: true } },
+      plans: { select: { id: true }, take: 1 },
+      members: { where: { isActive: true, role: { in: ["REVIEWER", "EXECUTIVE_OWNER"] } }, select: { id: true }, take: 1 },
       tasks: {
         where: { status: { notIn: ["DONE", "CANCELLED"] }, dueAt: { lt: now } },
         select: { id: true, title: true, dueAt: true, assignedTo: { select: { name: true } } },
@@ -112,9 +117,42 @@ export default async function CareQualityPage({
   const questionQueue: QueueItem[] = [];
   const coverageQueue: QueueItem[] = [];
   const reviewQueue: QueueItem[] = [];
+  const configQueue: QueueItem[] = [];
+  const renewalQueue: QueueItem[] = [];
 
   for (const engagement of engagements) {
     const studentName = engagement.student.name;
+    if (engagement.status === "ACTIVE") {
+      const gaps = [
+        !engagement.startDate ? t(lang, "service start", "服务开始日") : null,
+        !engagement.endDate ? t(lang, "service end", "服务结束日") : null,
+        !engagement.caseOwnerUserId ? t(lang, "case owner", "负责人") : null,
+        engagement.members.length === 0 ? t(lang, "reviewer", "复核人") : null,
+        engagement.plans.length === 0 ? t(lang, "initial plan", "首期计划") : null,
+        !engagement.nextReportDueAt ? t(lang, "next report date", "下次报告日") : null,
+      ].filter(Boolean);
+      if (gaps.length) configQueue.push({
+        id: `config-${engagement.id}`,
+        engagementId: engagement.id,
+        studentName,
+        title: t(lang, "Launch configuration incomplete", "上线配置不完整"),
+        detail: `${t(lang, "Missing", "缺少")}: ${gaps.join("、")}`,
+        tone: "risk",
+        href: `/admin/care/${engagement.id}`,
+      });
+      if (engagement.endDate) {
+        const daysLeft = Math.ceil((engagement.endDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+        if (daysLeft <= 60) renewalQueue.push({
+          id: `renewal-${engagement.id}`,
+          engagementId: engagement.id,
+          studentName,
+          title: daysLeft < 0 ? t(lang, "Service expired", "服务已到期") : t(lang, "Renewal follow-up", "续约跟进"),
+          detail: daysLeft < 0 ? `${Math.abs(daysLeft)} ${t(lang, "days overdue", "天前到期")}` : `${daysLeft} ${t(lang, "days remaining", "天后到期")} · ${formatBusinessDateOnly(engagement.endDate)}`,
+          tone: daysLeft <= 14 ? "risk" : "neutral",
+          href: `/admin/care/${engagement.id}`,
+        });
+      }
+    }
     if (engagement.status === "ACTIVE" && engagement.nextReportDueAt && engagement.nextReportDueAt < now) {
       reportQueue.push({ id: `due-${engagement.id}`, engagementId: engagement.id, studentName, title: t(lang, "Report overdue", "报告逾期"), detail: formatBusinessDateOnly(engagement.nextReportDueAt), tone: "risk", href: `/admin/care/${engagement.id}` });
     }
@@ -154,7 +192,9 @@ export default async function CareQualityPage({
   const visibleReceiptQueue = visible("RECEIPTS", receiptQueue);
   const visibleCoverageQueue = visible("COVERAGE", coverageQueue);
   const visibleReviewQueue = visible("REVIEWS", reviewQueue);
-  const visibleItems = [...visibleRiskQueue, ...visibleTaskQueue, ...visibleQuestionQueue, ...visibleReportQueue, ...visibleReceiptQueue, ...visibleCoverageQueue, ...visibleReviewQueue];
+  const visibleConfigQueue = visible("CONFIG", configQueue);
+  const visibleRenewalQueue = visible("RENEWALS", renewalQueue);
+  const visibleItems = [...visibleConfigQueue, ...visibleRenewalQueue, ...visibleRiskQueue, ...visibleTaskQueue, ...visibleQuestionQueue, ...visibleReportQueue, ...visibleReceiptQueue, ...visibleCoverageQueue, ...visibleReviewQueue];
   const total = visibleItems.length;
   const urgent = visibleItems.filter((item) => item.tone === "risk").length;
 
@@ -175,7 +215,7 @@ export default async function CareQualityPage({
     </nav>
     <form className={styles.filterBar} method="get">
       <label className={styles.label}>{t(lang, "Search student or item", "搜索学生或事项")}<input className={styles.field} name="q" defaultValue={String(sp?.q ?? "")} placeholder={t(lang, "Student name, task, risk...", "学生姓名、待办、风险……")} /></label>
-      <label className={styles.label}>{t(lang, "Queue", "事项类型")}<select className={styles.select} name="queue" defaultValue={selectedQueue}><option value="ALL">{t(lang, "All queues", "全部类型")}</option><option value="RISKS">{t(lang, "Risks", "风险")}</option><option value="TASKS">{t(lang, "Tasks", "待办")}</option><option value="QUESTIONS">{t(lang, "Parent questions", "家长问答")}</option><option value="REPORTS">{t(lang, "Reports", "报告")}</option><option value="RECEIPTS">{t(lang, "Parent receipt", "家长查看")}</option><option value="COVERAGE">{t(lang, "Coverage", "代班")}</option><option value="REVIEWS">{t(lang, "Reviews", "复盘")}</option></select></label>
+      <label className={styles.label}>{t(lang, "Queue", "事项类型")}<select className={styles.select} name="queue" defaultValue={selectedQueue}><option value="ALL">{t(lang, "All queues", "全部类型")}</option><option value="CONFIG">{t(lang, "Launch configuration", "上线配置")}</option><option value="RENEWALS">{t(lang, "Renewals", "续约")}</option><option value="RISKS">{t(lang, "Risks", "风险")}</option><option value="TASKS">{t(lang, "Tasks", "待办")}</option><option value="QUESTIONS">{t(lang, "Parent questions", "家长问答")}</option><option value="REPORTS">{t(lang, "Reports", "报告")}</option><option value="RECEIPTS">{t(lang, "Parent receipt", "家长查看")}</option><option value="COVERAGE">{t(lang, "Coverage", "代班")}</option><option value="REVIEWS">{t(lang, "Reviews", "复盘")}</option></select></label>
       <label className={styles.label}>{t(lang, "Urgency", "紧急程度")}<select className={styles.select} name="urgency" defaultValue={urgency}><option value="ALL">{t(lang, "All items", "全部事项")}</option><option value="OVERDUE">{t(lang, "Overdue only", "仅已超时")}</option></select></label>
       <button className={styles.button} type="submit">{t(lang, "Apply", "筛选")}</button>
       <Link className={styles.buttonSecondary} href="/admin/care/quality">{t(lang, "Reset", "重置")}</Link>
@@ -187,6 +227,8 @@ export default async function CareQualityPage({
       <div className={styles.metric}><strong>{visibleQuestionQueue.length}</strong><span className={styles.muted}>{t(lang, "Parent questions", "家长问答")}</span></div>
     </div>
     {total ? <div className={styles.queueGrid}>
+      <Queue title={t(lang, "Launch configuration", "上线配置缺口")} items={visibleConfigQueue} empty={t(lang, "No configuration gaps.", "上线配置完整。")} open={t(lang, "Complete", "补齐")} />
+      <Queue title={t(lang, "Expiry and renewal", "到期与续约")} items={visibleRenewalQueue} empty={t(lang, "No renewal action required.", "暂无续约事项。")} open={t(lang, "Follow up", "跟进")} />
       <Queue title={t(lang, "Risk and SLA", "风险与响应时限")} items={visibleRiskQueue} empty={t(lang, "No open risks.", "暂无未结风险。")} open={t(lang, "Handle", "处理")} />
       <Queue title={t(lang, "Overdue tasks", "逾期待办")} items={visibleTaskQueue} empty={t(lang, "No overdue tasks.", "暂无逾期待办。")} open={t(lang, "Open", "打开")} />
       <Queue title={t(lang, "Parent questions", "家长问答")} items={visibleQuestionQueue} empty={t(lang, "No open questions.", "暂无待闭环提问。")} open={t(lang, "Reply", "回复")} />

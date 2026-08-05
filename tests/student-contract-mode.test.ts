@@ -100,19 +100,29 @@ test("Full Care agreement is course-independent and freezes the selected tuition
       careUpdateCadence: "Weekly service review / 每周服务复核",
       careReportCadence: "Monthly formal report / 每月正式报告",
       careDeliveryChannel: "Parent miniapp / 家长小程序",
+      careServiceHours: "Monday-Friday 09:00-18:00 / 周一至周五09:00-18:00",
+      careRoutineResponseTarget: "Within 1 business day / 1个工作日内",
+      careUrgentResponseTarget: "Within 2 hours / 2小时内",
+      careIncludedOnsiteSupport: "0 hours / 0 visits / 0小时、0次",
+      careRefundRule: "Full Care fee earned in 12 service periods / 托管费按12个服务期确认",
+      careComplianceApprovalReference: "LEGAL-2026-08-05-v1",
       careEmergencyAdvanceLimit: 300,
       careScopeLabels: ["School communication / 学校沟通", "Academic progress / 学业进展"],
       careExclusionLabels: ["Legal guardianship / 法定监护"],
     },
     parentInfo,
+    contractMode: "FULL_CARE_AGREEMENT",
   });
 
+  assert.equal(snapshot.contractMode, "FULL_CARE_AGREEMENT");
   assert.equal(snapshot.care?.included, true);
   assert.equal(snapshot.care?.careServiceFeeAmount, 12800);
   assert.match(snapshot.agreementHtml, /Full Care Service Agreement/);
   assert.match(snapshot.agreementHtml, /全程托管服务合同/);
   assert.match(snapshot.agreementHtml, /200h standard tuition/);
   assert.match(snapshot.agreementHtml, /家长可见范围/);
+  assert.match(snapshot.agreementHtml, /Routine response target/);
+  assert.match(snapshot.agreementHtml, /12个服务期/);
   assert.match(snapshot.agreementHtml, /School communication/);
   assert.match(snapshot.agreementHtml, /SGD 12800\.00/);
   assert.match(snapshot.agreementHtml, /SGD 300\.00/);

@@ -15,6 +15,33 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-05-r325
+
+- Release ID: `2026-08-05-r325`
+- Date/Time (Asia/Singapore): `2026-08-05`
+- Deployment status: `READY`
+- Scope: harden Full Care contract identity, service boundaries, launch readiness, renewal alerts, report evidence and staff capacity tracking after the complete parent/employee/technical review.
+- Key files:
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `app/admin/care/[id]/page.tsx`
+  - `app/admin/care/quality/page.tsx`
+  - `app/admin/care/[id]/reports/[reportId]/page.tsx`
+  - `lib/student-contract.ts`
+  - `lib/student-contract-template.ts`
+  - `lib/care-management.ts`
+  - `prisma/migrations/20260805193000_add_full_care_contract_mode/migration.sql`
+  - `prisma/migrations/20260805194000_add_care_activity_service_minutes/migration.sql`
+  - `docs/tasks/TASK-20260805-full-care-operating-hardening.md`
+- Risk impact (if any): Medium. New Full Care sign links now require recorded legal/tax/PDPA approval evidence and explicit service/refund boundaries. Existing signed agreements remain readable and are not rewritten.
+- Verification:
+  - 63 focused Full Care tests passed;
+  - TypeScript validation passed;
+  - dependency audit reduced from 10 findings (6 high) to 2 high findings inside Next.js 15's nested image dependency; upgrading to Next.js 16 remains a separate compatibility project;
+  - production build and guarded release preflight required before deployment.
+- Rollback point: `7f144669b9e6c9313eb4010dc4dccca54df8dd3c` (`2026-08-05-r324` production head).
+
+---
+
 ## 2026-08-05-r324
 
 - Release ID: `2026-08-05-r324`

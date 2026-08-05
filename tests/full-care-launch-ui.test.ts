@@ -56,4 +56,19 @@ test("quality desk supports search, queue and urgency filters", () => {
   assert.match(quality, /name="queue"/);
   assert.match(quality, /name="urgency"/);
   assert.match(quality, /urgency !== "OVERDUE" \|\| item\.tone === "risk"/);
+  assert.match(quality, /Launch configuration incomplete/);
+  assert.match(quality, /Renewal follow-up/);
+});
+
+test("Full Care signing requires service boundaries and compliance evidence", () => {
+  const workspace = read("app/admin/packages/[id]/contract/page.tsx");
+  const contract = read("lib/student-contract.ts");
+
+  assert.match(workspace, /name="careServiceHours" required/);
+  assert.match(workspace, /name="careRoutineResponseTarget" required/);
+  assert.match(workspace, /name="careIncludedOnsiteSupport" required/);
+  assert.match(workspace, /name="careRefundRule" required/);
+  assert.match(workspace, /name="careComplianceApprovalReference" required/);
+  assert.match(contract, /StudentContractMode\.FULL_CARE_AGREEMENT/);
+  assert.match(contract, /legal\/tax\/PDPA approval reference/);
 });

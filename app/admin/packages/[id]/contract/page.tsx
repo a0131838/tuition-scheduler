@@ -368,6 +368,12 @@ async function prepareContractSignAction(formData: FormData) {
         careUpdateCadence: String(formData.get("careUpdateCadence") ?? "").trim(),
         careReportCadence: String(formData.get("careReportCadence") ?? "").trim(),
         careDeliveryChannel: String(formData.get("careDeliveryChannel") ?? "").trim(),
+        careServiceHours: String(formData.get("careServiceHours") ?? "").trim(),
+        careRoutineResponseTarget: String(formData.get("careRoutineResponseTarget") ?? "").trim(),
+        careUrgentResponseTarget: String(formData.get("careUrgentResponseTarget") ?? "").trim(),
+        careIncludedOnsiteSupport: String(formData.get("careIncludedOnsiteSupport") ?? "").trim(),
+        careRefundRule: String(formData.get("careRefundRule") ?? "").trim(),
+        careComplianceApprovalReference: String(formData.get("careComplianceApprovalReference") ?? "").trim(),
         careEmergencyAdvanceLimit: Number(String(formData.get("careEmergencyAdvanceLimit") ?? "").trim() || 0),
         careScopeLabels,
         careExclusionLabels: configuredExclusions.length ? configuredExclusions : DEFAULT_CARE_EXCLUSIONS,
@@ -629,7 +635,7 @@ export default async function PackageContractPage({
                     tone="neutral"
                   />
                   <WorkbenchStatusChip
-                    label={studentContractModeLabel(latestContract.contractMode)}
+                    label={contractBusinessInfo?.careServiceIncluded ? "Full Care Service Agreement / 全程托管服务合同" : studentContractModeLabel(latestContract.contractMode)}
                     tone={latestContract.contractMode === "SSG_STANDARD_PEI_V4" ? "success" : "neutral"}
                   />
                 </div>
@@ -874,6 +880,31 @@ export default async function PackageContractPage({
                             <label style={{ display: "grid", gap: 6 }}>
                               <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Emergency advance ceiling", "紧急代垫上限")}</span>
                               <input name="careEmergencyAdvanceLimit" type="number" min={0} step="0.01" defaultValue={contractBusinessInfo?.careEmergencyAdvanceLimit ?? 300} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #86efac" }} />
+                            </label>
+                            <label style={{ display: "grid", gap: 6 }}>
+                              <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Service hours", "服务时间")}</span>
+                              <input name="careServiceHours" required defaultValue={contractBusinessInfo?.careServiceHours ?? "Monday-Friday 09:00-18:00 Singapore time, excluding public holidays / 新加坡时间周一至周五09:00-18:00，公共假期除外"} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #86efac" }} />
+                            </label>
+                            <label style={{ display: "grid", gap: 6 }}>
+                              <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Routine response target", "常规响应目标")}</span>
+                              <input name="careRoutineResponseTarget" required defaultValue={contractBusinessInfo?.careRoutineResponseTarget ?? "Within 1 business day / 1个工作日内"} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #86efac" }} />
+                            </label>
+                            <label style={{ display: "grid", gap: 6 }}>
+                              <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Urgent response target", "紧急响应目标")}</span>
+                              <input name="careUrgentResponseTarget" required defaultValue={contractBusinessInfo?.careUrgentResponseTarget ?? "Remote acknowledgement within 2 hours during service hours / 服务时间内2小时远程响应"} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #86efac" }} />
+                            </label>
+                            <label style={{ display: "grid", gap: 6 }}>
+                              <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Included on-site support", "包含现场支持额度")}</span>
+                              <input name="careIncludedOnsiteSupport" required defaultValue={contractBusinessInfo?.careIncludedOnsiteSupport ?? "0 hours / 0 visits unless separately written here / 除本栏另行填写外为0小时、0次"} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #86efac" }} />
+                            </label>
+                            <label style={{ display: "grid", gap: 6, gridColumn: "1 / -1" }}>
+                              <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Refund rule", "退款核算规则")}</span>
+                              <textarea name="careRefundRule" required rows={3} defaultValue={contractBusinessInfo?.careRefundRule ?? "Unused tuition is calculated at the effective contracted hourly rate; Full Care service fee is earned monthly in 12 equal service periods; completed/current-period work and approved third-party costs are deducted; changing package size recalculates the applicable bundle discount. / 未使用课时按合同实际成交课时单价核算；托管费按12个服务月分期确认；扣除已完成或当期托管工作及已批准第三方成本；变更课包数量时重新核算适用整包折扣。"} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #86efac", resize: "vertical" }} />
+                            </label>
+                            <label style={{ display: "grid", gap: 6, gridColumn: "1 / -1" }}>
+                              <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Legal / tax / PDPA approval reference", "法务、税务及PDPA审批依据")}</span>
+                              <input name="careComplianceApprovalReference" required defaultValue={contractBusinessInfo?.careComplianceApprovalReference ?? ""} placeholder={t(lang, "Required: approval date, approver and document/version reference", "必填：审批日期、审批人及文件/版本编号")} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #f59e0b", background: "#fffbeb" }} />
+                              <span style={{ color: "#92400e", fontSize: 12 }}>{t(lang, "The signing link is blocked until this evidence is recorded.", "未记录该审批依据前，系统不会生成签字链接。")}</span>
                             </label>
                           </div>
                           <div style={{ borderTop: "1px solid #bbf7d0", paddingTop: 12, color: "#166534", fontSize: 13, lineHeight: 1.6 }}>

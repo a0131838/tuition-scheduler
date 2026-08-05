@@ -236,6 +236,9 @@ export async function changeCareEngagementStatus(input: {
         status: input.nextStatus,
         version: { increment: 1 },
         endDate: input.nextStatus === "COMPLETED" || input.nextStatus === "CANCELLED" ? new Date() : undefined,
+        nextReportDueAt: input.nextStatus === "ACTIVE" && !engagement.nextReportDueAt
+          ? new Date(Math.max(Date.now(), engagement.startDate?.getTime() ?? Date.now()) + 30 * 24 * 60 * 60 * 1000)
+          : undefined,
       },
     });
     if (updated.count !== 1) throw new Error("This project was updated by another user. Refresh and try again");
@@ -253,22 +256,25 @@ export async function updateCareEngagementConfig(input: {
   engagementId: string;
   version: number;
   startDate: unknown;
+  endDate?: unknown;
   caseOwnerUserId: unknown;
   reviewerUserId?: unknown;
   scopeIds: unknown;
 }) {
   const startDate = parseCareDateTime(input.startDate);
+  const endDate = parseCareDateTime(input.endDate);
   const caseOwnerUserId = requiredCareText(input.caseOwnerUserId, "Case owner", 80);
   const reviewerUserId = careText(input.reviewerUserId, 80);
   const scopeIds = careScopeIds(input.scopeIds);
   if (!startDate) throw new Error("Valid start date is required");
+  if (!endDate || endDate <= startDate) throw new Error("A service end date after the start date is required");
   if (scopeIds.length === 0) throw new Error("Select at least one service scope");
 
   return prisma.$transaction(async (tx) => {
     const [engagement, owner, reviewer] = await Promise.all([
       tx.careEngagement.findUnique({
         where: { id: input.engagementId },
-        select: { id: true, status: true, version: true, programType: true, startDate: true, caseOwnerUserId: true, scopeJson: true },
+        select: { id: true, status: true, version: true, programType: true, startDate: true, endDate: true, nextReportDueAt: true, caseOwnerUserId: true, scopeJson: true },
       }),
       tx.user.findUnique({ where: { id: caseOwnerUserId }, select: { id: true } }),
       reviewerUserId ? tx.user.findUnique({ where: { id: reviewerUserId }, select: { id: true } }) : null,
@@ -282,6 +288,8 @@ export async function updateCareEngagementConfig(input: {
       where: { id: engagement.id, version: input.version },
       data: {
         startDate,
+        endDate,
+        nextReportDueAt: engagement.nextReportDueAt ?? new Date(Math.max(Date.now(), startDate.getTime()) + 30 * 24 * 60 * 60 * 1000),
         caseOwnerUserId,
         scopeJson: { serviceIds: scopeIds },
         version: { increment: 1 },
@@ -335,10 +343,11 @@ export async function updateCareEngagementConfig(input: {
       data: auditData(input.actor, "UPDATE_CONFIG", "CareEngagement", engagement.id, {
         before: {
           startDate: engagement.startDate?.toISOString() ?? null,
+          endDate: engagement.endDate?.toISOString() ?? null,
           caseOwnerUserId: engagement.caseOwnerUserId,
           scopeIds: scopeIdsFromJson(engagement.scopeJson),
         },
-        after: { startDate: startDate.toISOString(), caseOwnerUserId, reviewerUserId: reviewerUserId || null, scopeIds },
+        after: { startDate: startDate.toISOString(), endDate: endDate.toISOString(), caseOwnerUserId, reviewerUserId: reviewerUserId || null, scopeIds },
       }),
     });
   });
@@ -491,6 +500,7 @@ export async function addCareActivity(input: {
   subtype: unknown;
   occurredAt: unknown;
   title: unknown;
+  serviceMinutes?: unknown;
   sourceType?: unknown;
   sourceLabel?: unknown;
   factEvidence: unknown;
@@ -509,6 +519,8 @@ export async function addCareActivity(input: {
   const subtype = careText(input.subtype, 80);
   const occurredAt = parseCareDateTime(input.occurredAt) ?? new Date();
   const title = requiredCareText(input.title, "Title", 180);
+  const serviceMinutes = Number(input.serviceMinutes ?? 0);
+  if (!Number.isInteger(serviceMinutes) || serviceMinutes < 0 || serviceMinutes > 1440) throw new Error("Service time must be between 0 and 1440 minutes");
   const sourceType = careActivitySource(input.sourceType);
   const sourceLabel = careText(input.sourceLabel, 240);
   const factEvidence = requiredCareText(input.factEvidence, "Facts", 5000);
@@ -554,6 +566,7 @@ export async function addCareActivity(input: {
         subtype: subtype || null,
         occurredAt,
         title,
+        serviceMinutes,
         sourceType,
         sourceLabel: sourceLabel || null,
         factEvidence,
@@ -593,6 +606,7 @@ export async function addCareActivity(input: {
       data: auditData(input.actor, "CREATE_ACTIVITY", "CareActivity", activity.id, {
         engagementId: engagement.id,
         category,
+        serviceMinutes,
         riskLevel,
         audience,
       }),

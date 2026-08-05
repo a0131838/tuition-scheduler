@@ -169,6 +169,7 @@ export default async function CareDetailPage({
         engagementId: id,
         version: Number(formData.get("version")),
         startDate: formData.get("startDate"),
+        endDate: formData.get("endDate"),
         caseOwnerUserId: formData.get("caseOwnerUserId"),
         reviewerUserId: formData.get("reviewerUserId"),
         scopeIds: formData.getAll("scopeIds"),
@@ -187,6 +188,7 @@ export default async function CareDetailPage({
         subtype: formData.get("subtype"),
         occurredAt: formData.get("occurredAt"),
         title: formData.get("title"),
+        serviceMinutes: formData.get("serviceMinutes"),
         sourceType: formData.get("sourceType"),
         sourceLabel: formData.get("sourceLabel"),
         factEvidence: formData.get("factEvidence"),
@@ -546,6 +548,7 @@ export default async function CareDetailPage({
             <form action={configAction} className={styles.formGrid}>
               <input type="hidden" name="version" value={engagement.version} />
               <label className={styles.label}>{t(lang, "Start date", "开始日期")}<input className={styles.field} name="startDate" type="date" defaultValue={engagement.startDate ? formatBusinessDateOnly(engagement.startDate) : ""} required /></label>
+              <label className={styles.label}>{t(lang, "End date", "结束日期")}<input className={styles.field} name="endDate" type="date" defaultValue={engagement.endDate ? formatBusinessDateOnly(engagement.endDate) : ""} required /></label>
               <label className={styles.label}>{t(lang, "Case owner", "总负责人")}<select className={styles.select} name="caseOwnerUserId" defaultValue={engagement.caseOwnerUserId ?? ""} required>{configurableStaff.map((user) => <option key={user.id} value={user.id}>{user.name} · {user.email} · {user.role}</option>)}</select></label>
               <label className={styles.label}>{t(lang, "Reviewer", "月报审核人")}<select className={styles.select} name="reviewerUserId" defaultValue={reviewerUserId}><option value="">{t(lang, "Assign later", "稍后指定")}</option>{configurableStaff.map((user) => <option key={user.id} value={user.id}>{user.name} · {user.email} · {user.role}</option>)}</select></label>
               <fieldset className={`${styles.full} ${styles.section}`} style={{ borderLeft: 0, borderRight: 0, borderTop: 0, margin: 0 }}>
@@ -669,6 +672,7 @@ export default async function CareDetailPage({
                 <label className={styles.label}>{t(lang, "Source channel", "沟通来源")}<select className={styles.select} name="sourceType" defaultValue=""><option value="">-</option>{CARE_ACTIVITY_SOURCE_OPTIONS.map((item) => <option key={item.value} value={item.value}>{lang === "EN" ? item.en : item.zh}</option>)}</select></label>
                 <label className={styles.label}>{t(lang, "Source detail", "来源说明")}<input className={styles.field} name="sourceLabel" maxLength={240} placeholder={t(lang, "School, contact or subject", "学校、联系人或邮件主题")} /></label>
                 <label className={`${styles.label} ${styles.full}`}>{t(lang, "Title", "标题")}<input className={styles.field} name="title" maxLength={180} required /></label>
+                <label className={styles.label}>{t(lang, "Service time (minutes)", "本次服务用时（分钟）")}<input className={styles.field} name="serviceMinutes" type="number" min={0} max={1440} step={5} defaultValue={0} required /></label>
                 <label className={`${styles.label} ${styles.full}`}>{t(lang, "Facts and evidence", "事实与证据")}<textarea className={styles.textarea} name="factEvidence" required /></label>
                 <label className={`${styles.label} ${styles.full}`}>{t(lang, "Professional judgement", "专业判断")}<textarea className={styles.textarea} name="professionalJudgment" /></label>
                 <label className={`${styles.label} ${styles.full}`}>{t(lang, "Action taken", "已采取行动")}<textarea className={styles.textarea} name="actionTaken" /></label>
@@ -692,6 +696,7 @@ export default async function CareDetailPage({
                     </div>
                     <div className={styles.toolbar}>
                       <span className={styles.badge} data-tone={activity.riskLevel === "HIGH" || activity.riskLevel === "CRITICAL" ? "risk" : "neutral"}>{activity.riskLevel}</span>
+                      <span className={styles.badge}>{activity.serviceMinutes} min</span>
                       <span className={styles.badge}>{audienceLabel(activity.audience)}</span>
                       <span className={styles.badge} data-tone={activity.publicationStatus === "PUBLISHED" ? "active" : "neutral"}>{activity.publicationStatus}</span>
                       {canManageConfig && activity.audience !== "INTERNAL_ONLY" ? (

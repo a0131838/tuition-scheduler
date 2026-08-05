@@ -11,7 +11,7 @@ export const STUDENT_CONTRACT_TEMPLATE_VERSION = 1;
 export const SSG_STANDARD_PEI_CONTRACT_TEMPLATE_SLUG = "ssg-standard-pei-student-contract-v4";
 export const SSG_STANDARD_PEI_CONTRACT_TEMPLATE_VERSION = 1;
 
-export type StudentContractModeValue = "TUITION_AGREEMENT" | "SSG_STANDARD_PEI_V4";
+export type StudentContractModeValue = "TUITION_AGREEMENT" | "FULL_CARE_AGREEMENT" | "SSG_STANDARD_PEI_V4";
 
 export type ContractParentInfo = {
   parentFullNameEn: string;
@@ -87,6 +87,12 @@ export type ContractBusinessInfo = {
   careUpdateCadence?: string | null;
   careReportCadence?: string | null;
   careDeliveryChannel?: string | null;
+  careServiceHours?: string | null;
+  careRoutineResponseTarget?: string | null;
+  careUrgentResponseTarget?: string | null;
+  careIncludedOnsiteSupport?: string | null;
+  careRefundRule?: string | null;
+  careComplianceApprovalReference?: string | null;
   careEmergencyAdvanceLimit?: number | null;
   careScopeLabels?: string[];
   careExclusionLabels?: string[];
@@ -233,6 +239,11 @@ function buildCareServiceAppendix(input: {
   const updateCadence = info.careUpdateCadence?.trim() || "Weekly service review / 每周服务复核";
   const reportCadence = info.careReportCadence?.trim() || "Monthly formal report / 每月正式报告";
   const deliveryChannel = info.careDeliveryChannel?.trim() || "Parent miniapp or the Company's designated official channel / 家长小程序或公司指定官方渠道";
+  const serviceHours = info.careServiceHours?.trim() || "Monday-Friday 09:00-18:00 Singapore time, excluding public holidays / 新加坡时间周一至周五09:00-18:00，公共假期除外";
+  const routineResponse = info.careRoutineResponseTarget?.trim() || "Within 1 business day / 1个工作日内";
+  const urgentResponse = info.careUrgentResponseTarget?.trim() || "Remote acknowledgement within 2 hours during service hours / 服务时间内2小时远程响应";
+  const onsiteSupport = info.careIncludedOnsiteSupport?.trim() || "No on-site hours or visits included unless expressly stated here / 除本栏明确列明外，不包含现场小时或次数";
+  const refundRule = info.careRefundRule?.trim() || "Refunds distinguish unused tuition from completed Full Care service and approved third-party costs / 退款分别核算未使用课时、已交付托管服务及已批准第三方成本";
   const pricingBreakdown = info.carePricingVersion ? `<p>Published tuition price / 课程原价：<strong>${escapeHtml(tuitionListFee)}</strong><br/>
     Published Full Care price / 托管原价：<strong>${escapeHtml(careListFee)}</strong><br/>
     Bundle discount / 整包优惠：<strong>${escapeHtml(`${Math.round(Number(info.bundleDiscountRate || 0) * 100)}%`)}</strong>，节省 <strong>${escapeHtml(bundleSavings)}</strong><br/>
@@ -249,25 +260,32 @@ function buildCareServiceAppendix(input: {
     Routine update / 常规更新：<strong>${escapeHtml(updateCadence)}</strong><br/>
     Formal report / 正式报告：<strong>${escapeHtml(reportCadence)}</strong></p>
 
-    <h3>2. Agreed service scope / 已确认服务范围</h3>
+    <h3>2. Service hours, response targets and included capacity / 服务时间、响应目标与包含额度</h3>
+    <p>Service hours / 服务时间：<strong>${escapeHtml(serviceHours)}</strong><br/>
+    Routine response target / 常规响应目标：<strong>${escapeHtml(routineResponse)}</strong><br/>
+    Urgent response target / 紧急响应目标：<strong>${escapeHtml(urgentResponse)}</strong><br/>
+    Included on-site support / 包含现场支持：<strong>${escapeHtml(onsiteSupport)}</strong></p>
+    <p>Items beyond the stated capacity require written confirmation of staffing, timing and fees. Emergency response is coordination support and is not a substitute for police, ambulance, hospital or other emergency services.</p>
+    <p>超出上述额度的事项须另行书面确认人员、时间和费用。紧急响应属于协调支持，不能替代警察、救护车、医院或其他紧急服务。</p>
+
+    <h3>3. Agreed service scope / 已确认服务范围</h3>
     <ul>${renderCareList(info.careScopeLabels, "Scope to be confirmed in writing / 服务范围以书面确认为准")}</ul>
     <p>The Company will continuously collect relevant information, make professional assessments, coordinate agreed actions, track completion, identify material risks, and provide parent-facing updates. The Company does not guarantee grades, admission, visas, medical outcomes, employment, or other results outside its control.</p>
     <p>公司将持续收集相关信息、作出专业判断、协调约定行动、跟踪完成情况、识别重大风险并向家长汇报。公司不保证成绩、录取、签证、医疗、就业或其他超出公司控制范围的结果。</p>
 
-    <h3>3. Exclusions and third-party costs / 排除事项与第三方费用</h3>
+    <h3>4. Exclusions and third-party costs / 排除事项与第三方费用</h3>
     <ul>${renderCareList(info.careExclusionLabels, "Legal guardianship, 24-hour on-site care, medical or psychological diagnosis, and immigration legal advice / 法定监护、24小时现场看护、医疗或心理诊断及移民法律意见")}</ul>
     <p>Transport, medical, accommodation, visa, government, school, host-family, specialist, and other third-party fees are not included unless expressly stated. On-site support beyond the agreed scope requires written confirmation of availability and charges.</p>
     <p>除非书面明确包含，交通、医疗、住宿、签证、政府、学校、寄宿家庭、专业人士及其他第三方费用均不包含。超出约定范围的现场支持须另行书面确认人员安排和费用。</p>
 
-    <h3>4. Fees, lesson hours, and refunds / 费用、课时与退款</h3>
+    <h3>5. Fees, lesson hours, and refunds / 费用、课时与退款</h3>
     ${pricingBreakdown}
     <p>Tuition component / 补习课时费：<strong>${escapeHtml(tuitionFee)}</strong><br/>
     Full Care service component / 全程托管服务费：<strong>${escapeHtml(careFee)}</strong><br/>
     Total agreement fee / 合同总额：<strong>${escapeHtml(formatCurrencyLabel(info.feeAmount))}</strong></p>
-    <p>Lesson hours and Full Care services are separate deliverables. Unused lesson hours do not offset services already delivered. Any approved termination or refund will distinguish unused tuition from completed or current-period Full Care work and follow the Company's written refund rules and the signed service period.</p>
-    <p>补习课时与全程托管属于不同交付。未使用课时不能抵销已经发生的托管服务。如批准终止或退款，应分别核算未使用课时和已经完成或处于当前服务周期的托管工作，并按公司的书面退款规则及签署的服务期限处理。</p>
+    <p>Lesson hours and Full Care services are separate deliverables. Unused lesson hours do not offset services already delivered. Agreed refund rule / 约定退款规则：<strong>${escapeHtml(refundRule)}</strong></p>
 
-    <h3>5. Parent visibility and progress updates / 家长可见范围与进展更新</h3>
+    <h3>6. Parent visibility and progress updates / 家长可见范围与进展更新</h3>
     <p>The parent may view published service progress, lesson records, teacher feedback, agreed actions, formal reports, and parent action items through <strong>${escapeHtml(deliveryChannel)}</strong>. Internal drafts, unverified allegations, staff-only assessments, third-party private data, and internal commercial notes are not parent-visible.</p>
     <p>家长可通过 <strong>${escapeHtml(deliveryChannel)}</strong> 查看已发布服务进展、课程记录、老师反馈、已确认行动、正式报告和需要家长配合的事项。内部草稿、未经核实的信息、仅供员工使用的判断、第三方隐私和内部商务备注不向家长展示。</p>
     <p>Only reviewed and published content represents the Company's formal update. Routine working notes and chat messages do not replace the formal service record.</p>
@@ -454,7 +472,7 @@ export function buildStudentContractSnapshot(input: {
     refund_event_4_days_after: escapeHtml(scheduleValue(input.businessInfo.refundEvent4DaysAfter)),
     late_payment_grace_value: escapeHtml(scheduleValue(input.businessInfo.latePaymentGraceValue)),
     late_payment_grace_unit: escapeHtml(scheduleValue(input.businessInfo.latePaymentGraceUnit, "days/month")),
-  }) + (contractMode === "TUITION_AGREEMENT" ? buildCareServiceAppendix({
+  }) + (contractMode !== "SSG_STANDARD_PEI_V4" ? buildCareServiceAppendix({
     businessInfo: input.businessInfo,
     studentName: input.studentName,
     parentName: input.parentInfo.parentFullNameEn,

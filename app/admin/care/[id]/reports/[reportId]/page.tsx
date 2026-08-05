@@ -140,6 +140,12 @@ export default async function CareReportPage({
   const canReview = manager || designatedReviewer;
   const editable = canEditCareReport(report.status);
   const metrics = snapshotMetrics(report.sourceSnapshotJson);
+  const metricCounts = Object.fromEntries(metrics.map(([en, , count]) => [en, count]));
+  const sparseMonthlyEvidence = report.reportType === "MONTHLY"
+    && Number(metricCounts.Lessons ?? 0) === 0
+    && Number(metricCounts.Feedback ?? 0) === 0
+    && Number(metricCounts.Evidence ?? 0) === 0
+    && Number(metricCounts.Updates ?? 0) < 2;
   const statusLabel = CARE_REPORT_STATUS_LABELS[report.status][lang === "EN" ? "en" : "zh"];
   const workflowStatuses = ["DRAFT", "SUBMITTED", "APPROVED", "PUBLISHED"] as const;
   const workflowIndex =
@@ -163,6 +169,7 @@ export default async function CareReportPage({
 
       {err ? <div className={styles.noticeError}>{err}</div> : null}
       {msg ? <div className={styles.noticeSuccess}>{msg}</div> : null}
+      {sparseMonthlyEvidence ? <div className={styles.noticeError}>{t(lang, "Evidence warning: this monthly report has no lessons, teacher feedback or files and fewer than two care updates. Add evidence or record a clear no-activity explanation before review.", "证据提醒：本月报没有课程、老师反馈或附件，且托管跟进少于2条。请先补充证据，或明确记录本期无活动的原因，再提交审核。")}</div> : null}
 
       <nav className={styles.moduleNav} aria-label={t(lang, "Report navigation", "报告导航")}>
         <Link href="/admin/care">{t(lang, "All students", "全部学生")}</Link>

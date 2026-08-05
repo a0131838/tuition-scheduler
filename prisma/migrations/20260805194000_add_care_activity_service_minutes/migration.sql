@@ -1,0 +1,1 @@
+ALTER TABLE "CareActivity" ADD COLUMN "serviceMinutes" INTEGER NOT NULL DEFAULT 0;

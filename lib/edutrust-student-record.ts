@@ -58,8 +58,7 @@ export function isEduTrustPackageHoursReady(input: {
 }
 
 export function studentContractModeLabel(mode: StudentContractMode) {
-  return mode === StudentContractMode.SSG_STANDARD_PEI_V4
-    ? "SSG Standard PEI-Student Contract v4.0"
-    : "Tuition Agreement";
+  if (mode === StudentContractMode.SSG_STANDARD_PEI_V4) return "SSG Standard PEI-Student Contract v4.0";
+  if (mode === StudentContractMode.FULL_CARE_AGREEMENT) return "Full Care Service Agreement / 全程托管服务合同";
+  return "Tuition Agreement";
 }
-

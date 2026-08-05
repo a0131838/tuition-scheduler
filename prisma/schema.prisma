@@ -249,6 +249,7 @@ enum StudentContractFlowType {
 
 enum StudentContractMode {
   TUITION_AGREEMENT
+  FULL_CARE_AGREEMENT
   SSG_STANDARD_PEI_V4
 }
 
@@ -1433,6 +1434,7 @@ model CareActivity {
   subtype              String?
   occurredAt           DateTime
   title                String
+  serviceMinutes       Int                   @default(0)
   sourceType           String?
   sourceId             String?
   sourceLabel          String?

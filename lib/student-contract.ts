@@ -1189,6 +1189,16 @@ function normalizeBusinessInfoInput(
       throw new Error("Full Care service start and end dates must form a valid service period");
     }
     if (!careScopeLabels.length) throw new Error("Full Care service scope is missing");
+    for (const [field, label] of [
+      ["careServiceHours", "service hours"],
+      ["careRoutineResponseTarget", "routine response target"],
+      ["careUrgentResponseTarget", "urgent response target"],
+      ["careIncludedOnsiteSupport", "included on-site support"],
+      ["careRefundRule", "refund rule"],
+      ["careComplianceApprovalReference", "legal/tax/PDPA approval reference"],
+    ] as const) {
+      if (!text(field)) throw new Error(`Full Care ${label} is required before the sign link can be generated`);
+    }
     const pricingVersion = text("carePricingVersion");
     if (pricingVersion) {
       const engagementId = text("careEngagementId");
@@ -1281,6 +1291,12 @@ function normalizeBusinessInfoInput(
     careUpdateCadence: careServiceIncluded ? text("careUpdateCadence") : null,
     careReportCadence: careServiceIncluded ? text("careReportCadence") : null,
     careDeliveryChannel: careServiceIncluded ? text("careDeliveryChannel") : null,
+    careServiceHours: careServiceIncluded ? text("careServiceHours") : null,
+    careRoutineResponseTarget: careServiceIncluded ? text("careRoutineResponseTarget") : null,
+    careUrgentResponseTarget: careServiceIncluded ? text("careUrgentResponseTarget") : null,
+    careIncludedOnsiteSupport: careServiceIncluded ? text("careIncludedOnsiteSupport") : null,
+    careRefundRule: careServiceIncluded ? text("careRefundRule") : null,
+    careComplianceApprovalReference: careServiceIncluded ? text("careComplianceApprovalReference") : null,
     careEmergencyAdvanceLimit: careServiceIncluded ? careEmergencyAdvanceLimit : null,
     careScopeLabels: careServiceIncluded ? careScopeLabels : [],
     careExclusionLabels: careServiceIncluded ? careExclusionLabels : [],
@@ -1306,11 +1322,17 @@ export async function saveStudentContractBusinessDraft(input: {
   }
   const defaults = defaultBusinessInfoFromRow(current, current.flowType);
   const businessInfo = normalizeBusinessInfoInput(input.businessInfo, defaults);
+  const contractMode = businessInfo.careServiceIncluded
+    ? StudentContractMode.FULL_CARE_AGREEMENT
+    : current.contractMode === StudentContractMode.FULL_CARE_AGREEMENT
+      ? StudentContractMode.TUITION_AGREEMENT
+      : current.contractMode;
 
   const next = await prisma.studentContract.update({
     where: { id: current.id },
     data: {
       status: StudentContractStatus.CONTRACT_DRAFT,
+      contractMode,
       businessInfoJson: businessInfo as unknown as Prisma.InputJsonValue,
       contractSnapshotJson: Prisma.JsonNull,
       signToken: null,

@@ -49,10 +49,29 @@
 - Current release line prepared: `2026-08-05-r322` corrects the annual Full Care boundary to end on the day before the same date next year.
 - Current release line prepared: `2026-08-05-r323` completes the parent signed-service receipt, employee entitlement overview, explicit state-change safety, quality-desk filtering, expiring public contract access and audited legacy-contract review for 赵测试2.
 - Current release line prepared: `2026-08-05-r324` prevents a deleted invoice draft's pending approval from blocking the replacement invoice created by the signed contract, while preserving approval history and all issued financial records.
+- Current release line prepared: `2026-08-05-r325` gives Full Care its own contract mode, gates signing on explicit service/refund/compliance terms, adds launch-gap and renewal queues, flags sparse monthly-report evidence and records employee service minutes.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-05-r325 Ready
+
+- Scope: make Full Care contract generation, delivery control and renewal monitoring production-safe.
+- Business impact:
+  - parents sign one correctly named Full Care agreement containing tuition, care scope, service boundaries, progress visibility and refund calculation;
+  - employees see configuration and renewal exceptions before service or reporting is missed;
+  - managers can record service time and review weak report evidence;
+  - new sign links require a recorded legal/tax/PDPA approval reference.
+- Verification before deploy:
+  - focused Full Care regression suite and complete backend suite;
+  - TypeScript validation and production build;
+  - guarded migration and release preflight.
+- Post-deploy verification:
+  - confirm Wang/Louis has no Full Care project while all real teaching counts remain unchanged;
+  - complete employee, manager, finance and parent read-only journey on `赵测试2`;
+  - verify the package contract workspace displays `Full Care Service Agreement / 全程托管服务合同`.
+- Task doc: `docs/tasks/TASK-20260805-full-care-operating-hardening.md`.
 
 ## 2026-08-05-r324 Ready
 
