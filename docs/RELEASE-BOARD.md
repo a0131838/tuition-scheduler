@@ -38,10 +38,36 @@
 - Current release line prepared: `2026-08-04-r311` separates exact-source New Oriental students from the combined Boss-and-other next-month scheduling queue on the Web and Staff Mini Program without changing parent or formal scheduling behavior.
 - Current release line: `2026-08-05-r312` is live at runtime feature commit `8aee04fdc1f2334daf0e79cb3a855882cf4ce919`; WeChat development version `1.0.24` was uploaded successfully. It adds the invitation-only 30–45 minute school-entry readiness pilot without changing the existing intelligent-selection, school directory or operational workflows.
 - Current release line: `2026-08-05-r313` is live at runtime feature commit `d8c5068dc5164831395b6fa0c39e0fe5267ea67c`; WeChat development version `1.0.25` was uploaded successfully. It adds the signed Full Care appendix, internal channel settlement snapshot, parent authorisation materials, seven-item activation gate and parent reassurance dashboard for a 3–5-family controlled launch.
+- Current release line prepared: `2026-08-05-r314` closes the operator gaps found by the 赵测试 2 E2E journey: explicit manager publication for parent updates, parent-action task entry, active Full Care project discovery independent of legacy student classification, and a reliable signed-contract confirmation.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-05-r314 Ready
+
+- Scope: finish the operator-to-parent Full Care handoff found missing during the 赵测试 2 production journey.
+- Business impact:
+  - managers can explicitly publish or revoke a reviewed parent summary from the care project;
+  - staff can mark a new task as requiring parent action and enter the exact parent-facing instruction;
+  - the Parent Mini Program discovers an ACTIVE care project whenever report permission exists, without depending on a separately maintained student classification;
+  - the signed-contract success page shows the signer and confirms that the handwritten signature is stored in the signed PDF, avoiding a broken direct image request;
+  - payment, receipt, package balance, attendance, payroll, scheduling and historical lesson behavior are unchanged.
+- Files:
+  - `lib/care-management.ts`
+  - `app/admin/care/[id]/page.tsx`
+  - `app/api/miniapp/students/[studentId]/service-progress/route.ts`
+  - `app/contract/[token]/page.tsx`
+  - `tests/miniapp-parent-service-progress.test.ts`
+- Verification before deploy:
+  - 25 focused care/report/parent tests;
+  - `npm run build` for all 240 application pages;
+  - `git diff --check` and guarded release preflight.
+- Post-deploy verification:
+  - confirm local/GitHub/server commit equality, PM2 online and `/admin/login` HTTP 200;
+  - confirm 赵测试 2 still shows ACTIVE, 7/7, one published update, one parent action, one visible risk and one acknowledged report;
+  - confirm the signed-contract success page no longer requests the direct signature image path.
+- Task doc: `docs/tasks/TASK-20260805-full-care-e2e-followup.md`.
 
 ## 2026-08-05-r313 Live
 

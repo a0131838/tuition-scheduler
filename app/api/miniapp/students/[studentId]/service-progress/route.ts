@@ -55,7 +55,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
   const canViewFeedback = auth.link.canViewFeedback;
   const canViewReports = auth.link.canViewReports;
   const canCreateRequests = auth.link.canCreateRequests;
-  const hasManagedCare = student.servicePlanType === "FULL_CARE" || student.servicePlanType === "ACADEMIC_MANAGEMENT";
 
   const [sessions, tickets, careEngagement] = await Promise.all([
     canViewSchedule
@@ -104,7 +103,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       orderBy: { updatedAt: "desc" },
       take: 30,
     }) : Promise.resolve([]),
-    hasManagedCare && canViewReports
+    canViewReports
       ? prisma.careEngagement.findFirst({
           where: { studentId, status: "ACTIVE" },
           select: {

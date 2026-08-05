@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-05-r314
+
+- Release ID: `2026-08-05-r314`
+- Date/Time (Asia/Singapore): `2026-08-05`
+- Deployment status: `READY`
+- Scope: close the Full Care parent-progress gaps found in the 赵测试 2 end-to-end journey by adding controlled update publication, parent-action task entry, active-project discovery and a reliable signed-contract confirmation.
+- Key files:
+  - `lib/care-management.ts`
+  - `app/admin/care/[id]/page.tsx`
+  - `app/api/miniapp/students/[studentId]/service-progress/route.ts`
+  - `app/contract/[token]/page.tsx`
+  - `tests/miniapp-parent-service-progress.test.ts`
+  - `docs/tasks/TASK-20260805-full-care-e2e-followup.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low to moderate and isolated to Full Care visibility controls. Parent updates still require a parent audience, a public summary and an explicit manager publish action; report permission remains required. No payment, receipt, package balance, attendance, payroll, scheduling or historical lesson logic changes.
+- Verification:
+  - 25 focused care/report/parent tests passed.
+  - `npm run build` passed for all 240 application pages.
+  - 赵测试 2 production E2E confirmed 7/7 activation, signed contract, published report, parent acknowledgement and closed question loop.
+- Rollback point: `cbc0c5ec055f034323ed6884f6156ecb969227d0` (`2026-08-05-r313` production documentation head).
+
+---
+
 ## 2026-08-05-r313
 
 - Release ID: `2026-08-05-r313`

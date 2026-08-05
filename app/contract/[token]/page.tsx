@@ -139,17 +139,12 @@ export default async function ContractSignPage({
             }}
           >
             <div style={{ fontSize: 12, fontWeight: 700, color: "#166534" }}>Signature / 签名</div>
-            {contract.signatureImagePath ? (
-              <img
-                src={contract.signatureImagePath}
-                alt="Contract signature"
-                style={{ maxWidth: 240, maxHeight: 72, objectFit: "contain" }}
-              />
-            ) : (
-              <div style={{ fontWeight: 800, fontSize: 22, color: "#1d4ed8", lineHeight: 1.1 }}>
-                {contract.signerName || "Signature on file"}
-              </div>
-            )}
+            <div style={{ fontWeight: 800, fontSize: 22, color: "#1d4ed8", lineHeight: 1.1 }}>
+              {contract.signerName || "Signature on file"}
+            </div>
+            <div style={{ fontSize: 12, color: "#166534" }}>
+              Handwritten signature stored in the signed PDF. / 手写签名已保存在已签署 PDF 中。
+            </div>
           </div>
           <div>
             <a href={`/api/exports/student-contract/${encodeURIComponent(contract.id)}?token=${encodeURIComponent(token)}&download=1`}>

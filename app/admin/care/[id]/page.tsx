@@ -6,6 +6,7 @@ import {
   addCarePlan,
   addCareTask,
   audienceLabel,
+  changeCareActivityPublicationStatus,
   changeCareEngagementStatus,
   jsonSummary,
   setCareAttachmentArchived,
@@ -36,7 +37,7 @@ import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only"
 import { getLang, t } from "@/lib/i18n";
 import { isManagerUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import type { CareEngagementStatus } from "@prisma/client";
+import type { CareEngagementStatus, CarePublicationStatus } from "@prisma/client";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import styles from "../care.module.css";
@@ -192,6 +193,22 @@ export default async function CareDetailPage({
     );
   }
 
+  async function activityPublicationAction(formData: FormData) {
+    "use server";
+    const current = await requireCareEngagementAccess(id);
+    const canPublish = current.role === "ADMIN" || (await isManagerUser(current));
+    if (!canPublish) redirect(`/admin/care/${encodeURIComponent(id)}?err=${encodeURIComponent("Only managers can publish parent updates")}`);
+    await runCareAction(id, "Parent update publication changed",
+      changeCareActivityPublicationStatus({
+        actor: current,
+        engagementId: id,
+        activityId: String(formData.get("activityId") ?? ""),
+        version: Number(formData.get("version")),
+        nextStatus: String(formData.get("nextStatus")) as CarePublicationStatus,
+      }),
+    );
+  }
+
   async function universityProfileAction(formData: FormData) {
     "use server";
     const current = await requireCareEngagementAccess(id);
@@ -242,6 +259,8 @@ export default async function CareDetailPage({
         assignedToUserId: formData.get("assignedToUserId"),
         priority: formData.get("priority"),
         dueAt: formData.get("dueAt"),
+        parentActionRequired: String(formData.get("parentActionRequired") ?? "") === "on",
+        parentVisibleSummary: formData.get("parentVisibleSummary"),
       }),
     );
   }
@@ -612,6 +631,17 @@ export default async function CareDetailPage({
                     <div className={styles.toolbar}>
                       <span className={styles.badge} data-tone={activity.riskLevel === "HIGH" || activity.riskLevel === "CRITICAL" ? "risk" : "neutral"}>{activity.riskLevel}</span>
                       <span className={styles.badge}>{audienceLabel(activity.audience)}</span>
+                      <span className={styles.badge} data-tone={activity.publicationStatus === "PUBLISHED" ? "active" : "neutral"}>{activity.publicationStatus}</span>
+                      {canManageConfig && activity.audience !== "INTERNAL_ONLY" ? (
+                        <form action={activityPublicationAction}>
+                          <input type="hidden" name="activityId" value={activity.id} />
+                          <input type="hidden" name="version" value={activity.version} />
+                          <input type="hidden" name="nextStatus" value={activity.publicationStatus === "PUBLISHED" ? "REVOKED" : "PUBLISHED"} />
+                          <button className={styles.buttonSecondary} type="submit">
+                            {activity.publicationStatus === "PUBLISHED" ? t(lang, "Revoke", "撤回发布") : t(lang, "Publish to parent", "发布给家长")}
+                          </button>
+                        </form>
+                      ) : null}
                     </div>
                   </div>
                   <div className={styles.evidence}><strong>{t(lang, "Facts", "事实")}</strong>{activity.factEvidence}</div>
@@ -737,6 +767,8 @@ export default async function CareDetailPage({
                 <label className={styles.label}>{t(lang, "Owner", "负责人")}<select className={styles.select} name="assignedToUserId" defaultValue={engagement.caseOwnerUserId ?? ""} required>{staff.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}</select></label>
                 <label className={styles.label}>{t(lang, "Priority", "优先级")}<select className={styles.select} name="priority" defaultValue="NORMAL">{CARE_TASK_PRIORITY_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
                 <label className={styles.label}>{t(lang, "Due", "截止时间")}<input className={styles.field} name="dueAt" type="datetime-local" required /></label>
+                <label className={styles.check}><input name="parentActionRequired" type="checkbox" /><span>{t(lang, "Parent action required", "需要家长配合")}</span></label>
+                <label className={styles.label}>{t(lang, "Parent-facing action", "家长端行动说明")}<textarea className={styles.textarea} name="parentVisibleSummary" placeholder={t(lang, "Required when parent action is checked", "勾选家长配合时必填")} /></label>
                 <button className={styles.button} type="submit">{t(lang, "Save task", "保存待办")}</button>
               </form>
             </details>
@@ -748,6 +780,7 @@ export default async function CareDetailPage({
                     <span className={styles.badge} data-tone={task.priority === "HIGH" || task.priority === "URGENT" ? "risk" : "neutral"}>{task.priority}</span>
                   </div>
                   <div className={styles.muted}>{task.assignedTo.name} · {formatBusinessDateTime(task.dueAt)} · {task.status}</div>
+                  {task.parentActionRequired && task.parentVisibleSummary ? <div><strong>{t(lang, "Parent action", "家长配合")}:</strong> {task.parentVisibleSummary}</div> : null}
                   {task.description ? <div>{task.description}</div> : null}
                   <form action={taskUpdateAction} className={styles.stack}>
                     <input type="hidden" name="taskId" value={task.id} />

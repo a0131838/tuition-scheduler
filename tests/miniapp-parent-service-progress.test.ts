@@ -103,7 +103,8 @@ test("service tab preserves relationship permissions for reports and requests", 
     "utf8",
   );
   assert.match(route, /requireMiniappStudentAccess\(req, studentId\)/);
-  assert.match(route, /hasManagedCare && canViewReports/);
+  assert.match(route, /canViewReports\s*\? prisma\.careEngagement\.findFirst/);
+  assert.doesNotMatch(route, /hasManagedCare && canViewReports/);
   assert.match(route, /canCreateRequests \? prisma\.ticket\.findMany/);
   assert.match(route, /permissions: \{ canViewSchedule, canViewFeedback, canViewReports, canCreateRequests \}/);
   assert.match(route, /riskLabel: canViewReports \? academicRiskLabel/);

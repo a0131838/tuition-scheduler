@@ -3,6 +3,7 @@ import {
   CareEngagementStatus,
   CareMemberRole,
   CarePlanStatus,
+  CarePublicationStatus,
   CareProgramType,
   Prisma,
 } from "@prisma/client";
@@ -588,6 +589,50 @@ export async function addCareActivity(input: {
   });
 }
 
+export async function changeCareActivityPublicationStatus(input: {
+  actor: CareActor;
+  engagementId: string;
+  activityId: string;
+  version: number;
+  nextStatus: CarePublicationStatus;
+}) {
+  if (!(["PUBLISHED", "REVOKED"] as CarePublicationStatus[]).includes(input.nextStatus)) {
+    throw new Error("Invalid publication status");
+  }
+  return prisma.$transaction(async (tx) => {
+    const current = await tx.careActivity.findFirst({
+      where: { id: input.activityId, engagementId: input.engagementId },
+      select: { id: true, audience: true, publicSummary: true, publicationStatus: true },
+    });
+    if (!current) throw new Error("Care update not found");
+    if (input.nextStatus === "PUBLISHED") {
+      if (current.audience === "INTERNAL_ONLY" || !current.publicSummary?.trim()) {
+        throw new Error("Only updates with a parent summary can be published");
+      }
+    }
+    if (current.publicationStatus === input.nextStatus) throw new Error("Publication status is unchanged");
+    const now = new Date();
+    const result = await tx.careActivity.updateMany({
+      where: { id: current.id, engagementId: input.engagementId, version: input.version },
+      data: {
+        publicationStatus: input.nextStatus,
+        publishedAt: input.nextStatus === "PUBLISHED" ? now : undefined,
+        revokedAt: input.nextStatus === "REVOKED" ? now : null,
+        updatedByUserId: input.actor.id,
+        version: { increment: 1 },
+      },
+    });
+    if (result.count !== 1) throw new Error("This update was changed by another user. Refresh and try again");
+    await tx.auditLog.create({
+      data: auditData(input.actor, `PUBLICATION_${input.nextStatus}`, "CareActivity", current.id, {
+        engagementId: input.engagementId,
+        from: current.publicationStatus,
+        to: input.nextStatus,
+      }),
+    });
+  });
+}
+
 export async function createCareAttachment(input: {
   actor: CareActor;
   engagementId: string;
@@ -718,13 +763,18 @@ export async function addCareTask(input: {
   assignedToUserId: unknown;
   priority: unknown;
   dueAt: unknown;
+  parentActionRequired?: boolean;
+  parentVisibleSummary?: unknown;
 }) {
   const title = requiredCareText(input.title, "Task", 180);
   const description = careText(input.description, 3000);
   const assignedToUserId = requiredCareText(input.assignedToUserId, "Assignee", 80);
   const priority = careTaskPriority(input.priority);
   const dueAt = parseCareDateTime(input.dueAt);
+  const parentActionRequired = Boolean(input.parentActionRequired);
+  const parentVisibleSummary = careText(input.parentVisibleSummary, 1000);
   if (!dueAt) throw new Error("Task due time is required");
+  if (parentActionRequired && !parentVisibleSummary) throw new Error("Parent action summary is required");
   return prisma.$transaction(async (tx) => {
     const [engagement, assignee] = await Promise.all([
       tx.careEngagement.findUnique({ where: { id: input.engagementId }, select: { id: true, studentId: true, status: true } }),
@@ -745,10 +795,12 @@ export async function addCareTask(input: {
         assignedToUserId,
         priority,
         dueAt,
+        parentActionRequired,
+        parentVisibleSummary: parentActionRequired ? parentVisibleSummary : null,
         createdByUserId: input.actor.id,
       },
     });
-    await tx.auditLog.create({ data: auditData(input.actor, "CREATE_TASK", "CareTask", task.id, { engagementId: engagement.id, priority }) });
+    await tx.auditLog.create({ data: auditData(input.actor, "CREATE_TASK", "CareTask", task.id, { engagementId: engagement.id, priority, parentActionRequired }) });
     return task;
   });
 }
