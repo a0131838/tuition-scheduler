@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-08-05-r313`
 - Date/Time (Asia/Singapore): `2026-08-05`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: complete the controlled Full Care launch contract, internal channel commission, parent authorisation, seven-item activation gate and parent reassurance dashboard.
 - Key files:
   - `lib/student-contract-template.ts`
@@ -32,7 +32,7 @@ This file is the single source of truth for what changed in production.
   - `miniapp/boss-academic-parent/pages/progress/`
   - `docs/全程托管上线执行手册-20260805.md`
 - Risk impact (if any): Moderate and intentionally gated. New DRAFT Full Care projects cannot activate until contract, parent report access, reviewer and initial plan are present. Existing ACTIVE/PAUSED projects are not retroactively blocked. No schema migration or existing-record rewrite is included. Internal channel data is excluded from parent output.
-- Verification: 23 focused contract/care/parent tests, 135 backend tests, TypeScript, Mini Program 58-page release audit, 237-page production build, diff checks and all-page A4 document visual review passed.
+- Verification: 23 focused contract/care/parent tests, 135 backend tests, TypeScript, the combined 61-page Mini Program release audit, 240-page production build, diff checks and all-page A4 document visual review passed. Runtime feature commit `d8c5068dc5164831395b6fa0c39e0fe5267ea67c` aligned on GitHub and server with PM2 PID `1136442`, 120 migrations current and `/admin/login` HTTP 200. Production source markers confirmed the launch gate, reassurance dashboard and signed-agreement guard; anonymous parent progress access returned 401. WeChat development version `1.0.25` uploaded successfully at 678,298 bytes; experience-version designation and physical-parent acceptance remain separate.
 - Rollback point: `4aaaca4` (`2026-08-05-r312` final production documentation head; runtime feature commit `8aee04f`).
 
 ## 2026-08-05-r312

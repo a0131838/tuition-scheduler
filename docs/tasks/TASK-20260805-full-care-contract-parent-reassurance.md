@@ -2,7 +2,7 @@
 
 - Release: `2026-08-05-r313`
 - Owner: Management / Academic / Finance
-- Status: Ready for controlled production release
+- Status: Server deployed and Mini Program development version uploaded; operator walkthrough pending
 
 ## Outcome
 
