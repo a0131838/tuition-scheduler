@@ -261,8 +261,12 @@ export default async function ContractSignPage({
             </>
           ) : null}
           <div>
-            <div style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>Course / 课程</div>
-            <div style={{ fontWeight: 800, fontSize: 18 }}>{contract.courseName}</div>
+            <div style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>
+              {snapshot.care?.included ? "Tuition price tier / 课时价格档" : "Course / 课程"}
+            </div>
+            <div style={{ fontWeight: 800, fontSize: 18 }}>
+              {snapshot.care?.included ? snapshot.package.courseName : contract.courseName}
+            </div>
           </div>
           <div>
             <div style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>Agreement date / 协议日期</div>
@@ -312,7 +316,7 @@ export default async function ContractSignPage({
         <label style={{ display: "flex", gap: 10, alignItems: "flex-start", color: "#334155" }}>
           <input type="checkbox" name="agreementConfirm" value="yes" required />
           {snapshot.care?.included
-            ? "I have read and understood the tuition agreement and Full Care Service Addendum, including the scope, exclusions, fees, parent visibility, emergency limits, and data-use purposes, and agree to sign electronically. / 我已阅读并理解学费协议及《全程托管服务附件》，包括服务范围、排除事项、费用、家长可见范围、紧急边界和资料使用目的，并同意电子签署。"
+            ? "I have read and understood the Full Care Service Agreement, including its tuition price tier, service scope, exclusions, fees, parent visibility, emergency limits, and data-use purposes, and agree to sign electronically. / 我已阅读并理解《全程托管服务合同》，包括课时价格档、服务范围、排除事项、费用、家长可见范围、紧急边界和资料使用目的，并同意电子签署。"
             : "I have read and understood the tuition agreement and agree to sign it electronically. / 我已阅读并理解本学费协议，并同意以电子方式签署。"}
         </label>
 

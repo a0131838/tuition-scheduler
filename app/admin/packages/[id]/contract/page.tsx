@@ -29,7 +29,7 @@ import {
 } from "@/lib/student-contract";
 import { isPartnerSettlementPackage } from "@/lib/package-finance-gate";
 import { hasNonVoidedAgreementLink } from "@/lib/invoice-deletion-safety";
-import { careContractStringArray } from "@/lib/care-contract-input";
+import { careContractExclusionLabels, careContractStringArray } from "@/lib/care-contract-input";
 import {
   deleteParentInvoice,
   listDeletedParentInvoicesForPackage,
@@ -301,7 +301,7 @@ async function prepareContractSignAction(formData: FormData) {
     const careScopeLabels = CARE_SCOPE_OPTIONS
       .filter((item) => scopeIds.includes(item.id))
       .map((item) => `${item.en} / ${item.zh}`);
-    const configuredExclusions = careContractStringArray(careEngagement?.exclusionsJson);
+    const configuredExclusions = careContractExclusionLabels(careEngagement?.exclusionsJson);
     await saveStudentContractBusinessDraft({
       contractId,
       actorUserId: admin.id,

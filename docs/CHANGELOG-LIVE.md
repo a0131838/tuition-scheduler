@@ -15,11 +15,34 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-05-r319
+
+- Release ID: `2026-08-05-r319`
+- Date/Time (Asia/Singapore): `2026-08-05`
+- Deployment status: `READY`
+- Scope: remove the remaining package-course leak and internal exclusion codes from the Full Care parent sign page, and update electronic acceptance to the standalone Full Care Service Agreement.
+- Key files:
+  - `lib/care-contract-input.ts`
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `app/contract/[token]/page.tsx`
+  - `tests/care-contract-input.test.ts`
+  - `tests/full-care-sign-page.test.ts`
+  - `docs/tasks/TASK-20260805-full-care-parent-contract-copy.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low and parent-presentation only. Non-Full-Care agreements retain their course summary. Contract price, scope IDs, package, invoice, receipt, payment and lesson records are unchanged.
+- Verification:
+  - 16 focused sign-page, scope, correction, deletion, pricing and contract tests passed.
+  - `npm run build` passed for all 240 application pages.
+- Rollback point: `778c61b4cd1ad6da5ab28290be118625bfa6ff9c` (`2026-08-05-r318` production head).
+
+---
+
 ## 2026-08-05-r318
 
 - Release ID: `2026-08-05-r318`
 - Date/Time (Asia/Singapore): `2026-08-05`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: make Full Care contract preparation read the structured service-scope and exclusion shapes produced by the care project, removing the final sign-link generation blocker.
 - Key files:
   - `lib/care-contract-input.ts`

@@ -43,12 +43,38 @@
 - Current release line prepared: `2026-08-05-r316` restores the safe correction path for an unreceipted invoice after all linked contracts are explicitly voided, while keeping signed history and active-agreement protections.
 - Current release line prepared: `2026-08-05-r317` exposes a corrected first-purchase contract action from archived VOID history, preventing a contract correction from being misclassified as a renewal lesson top-up.
 - Current release line prepared: `2026-08-05-r318` aligns Full Care contract scope parsing with the structured care-project format so valid projects can generate sign links without weakening the non-empty-scope gate.
+- Current release line prepared: `2026-08-05-r319` removes the final O Level summary leak, converts exclusion IDs to bilingual parent copy and aligns electronic acceptance with the standalone Full Care Service Agreement.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
-## 2026-08-05-r318 Ready
+## 2026-08-05-r319 Ready
+
+- Scope: finish parent-facing Full Care contract identity and readability.
+- Business impact:
+  - the Full Care summary shows the selected standard or IB/AP tuition price tier, never the package's internal course;
+  - exclusion IDs are translated into clear bilingual boundaries;
+  - the electronic acceptance names the Full Care Service Agreement rather than an old tuition-addendum model;
+  - ordinary tuition-only agreements continue to show their actual course;
+  - no package, invoice, receipt, payment, lesson-balance, attendance, payroll or scheduling logic changes.
+- Files:
+  - `lib/care-contract-input.ts`
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `app/contract/[token]/page.tsx`
+  - `tests/care-contract-input.test.ts`
+  - `tests/full-care-sign-page.test.ts`
+- Verification before deploy:
+  - 16 focused tests;
+  - `npm run build` for all 240 application pages;
+  - `git diff --check` and guarded release preflight.
+- Post-deploy verification:
+  - regenerate the unsigned 赵测试 2 contract snapshot with bilingual exclusions;
+  - confirm no O Level, raw exclusion IDs, channel or commission text remains;
+  - complete the parent signature and confirm the package remains at exactly 12,000 minutes.
+- Task doc: `docs/tasks/TASK-20260805-full-care-parent-contract-copy.md`.
+
+## 2026-08-05-r318 Live
 
 - Scope: remove the final production blocker in Full Care sign-link generation.
 - Business impact:
