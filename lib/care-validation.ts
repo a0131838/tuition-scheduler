@@ -11,8 +11,8 @@ import type {
 } from "@prisma/client";
 
 export const CARE_PROGRAM_OPTIONS: Array<{ value: CareProgramType; zh: string; en: string }> = [
-  { value: "PRE_U_ACADEMIC_CARE", zh: "大学前学业托管", en: "Pre-university academic care" },
-  { value: "PRE_U_FULL_COORDINATION", zh: "大学前全方位托管", en: "Pre-university full coordination" },
+  { value: "PRE_U_ACADEMIC_CARE", zh: "全程学业托管（家人陪读）", en: "Academic Full Care (family accompanied)" },
+  { value: "PRE_U_FULL_COORDINATION", zh: "全方位托管协调服务（家人不陪读）", en: "Comprehensive Care Coordination (family unaccompanied)" },
   { value: "UNIVERSITY_GROWTH", zh: "大学学业管理", en: "University academic management" },
   { value: "POSTGRAD_PREPARATION", zh: "研究生准备", en: "Postgraduate preparation" },
   { value: "CAREER_LAUNCH", zh: "实习与就业支持", en: "Career launch" },
@@ -89,8 +89,17 @@ export const CARE_PROGRAM_SCOPE_IDS: Record<CareProgramType, readonly string[]> 
 };
 
 export const CARE_PROGRAM_DEFAULT_SCOPE_IDS: Record<CareProgramType, readonly string[]> = {
-  PRE_U_ACADEMIC_CARE: CARE_SCOPE_OPTIONS.filter((item) => item.defaultOn).map((item) => item.id),
-  PRE_U_FULL_COORDINATION: CARE_SCOPE_OPTIONS.filter((item) => item.defaultOn).map((item) => item.id),
+  PRE_U_ACADEMIC_CARE: ["academic_management", "school_coordination", "weekly_wellbeing"],
+  PRE_U_FULL_COORDINATION: [
+    "academic_management",
+    "school_coordination",
+    "weekly_wellbeing",
+    "medical_accompaniment",
+    "important_transport",
+    "host_family_support",
+    "holiday_care",
+    "visa_admin",
+  ],
   UNIVERSITY_GROWTH: CARE_PROGRAM_SCOPE_IDS.UNIVERSITY_GROWTH.slice(0, 5),
   POSTGRAD_PREPARATION: CARE_PROGRAM_SCOPE_IDS.POSTGRAD_PREPARATION.slice(0, 6),
   CAREER_LAUNCH: CARE_PROGRAM_SCOPE_IDS.CAREER_LAUNCH.slice(0, 6),

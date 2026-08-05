@@ -45,10 +45,49 @@
 - Current release line prepared: `2026-08-05-r318` aligns Full Care contract scope parsing with the structured care-project format so valid projects can generate sign links without weakening the non-empty-scope gate.
 - Current release line prepared: `2026-08-05-r319` removes the final O Level summary leak, converts exclusion IDs to bilingual parent copy and aligns electronic acceptance with the standalone Full Care Service Agreement.
 - Current release line prepared: `2026-08-05-r320` requires IB/AP pricing at contract generation and blocks later IB/AP course assignment while a standard-tier Full Care contract remains active.
+- Current release line prepared: `2026-08-05-r321` launches 12 versioned Full Care bundles, audited management special discounts, exact care-project contract binding, distinct accompanied/unaccompanied scopes and parent-visible pricing/service progress.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-05-r321 Ready
+
+- Scope: complete the commercial and operational Full Care launch path.
+- Business impact:
+  - provides 100/200/300-hour standard and IB/AP prices for both accompanied academic care and unaccompanied comprehensive coordination;
+  - applies the approved 0%/5%/8% whole-bundle discount and keeps every rounded contract component equal to the published final total;
+  - gives administrators an additional-discount field capped at 15%, requiring an internal reason and approver audit while parents see only the approved amount;
+  - binds new contracts to the exact care project and blocks care-type, IB/AP, package-minute and shared-package mismatches;
+  - creates one immediate full-amount invoice whose description matches the signed hours, service type, component fees and savings;
+  - keeps in-year lesson top-ups tuition-only when the annual care service is already contracted;
+  - distinguishes default service scopes and fixes structured scope plus service-end visibility in the parent miniapp;
+  - preserves every legacy signed snapshot and price-plan lookup without repricing existing business records.
+- Files:
+  - `lib/full-care-pricing.ts`
+  - `lib/student-contract.ts`
+  - `lib/student-contract-template.ts`
+  - `lib/care-management.ts`
+  - `lib/care-validation.ts`
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `app/admin/care/[id]/page.tsx`
+  - `app/contract/[token]/page.tsx`
+  - `app/api/miniapp/students/[studentId]/service-progress/route.ts`
+  - `tests/full-care-pricing.test.ts`
+  - `tests/full-care-sign-page.test.ts`
+  - `tests/care-validation.test.ts`
+  - `tests/care-university-config.test.ts`
+  - `tests/miniapp-parent-service-progress.test.ts`
+- Verification before deploy:
+  - 40 focused Full Care tests;
+  - 136 backend regression tests;
+  - `npm run build` for all 240 application pages;
+  - `git diff --check` and guarded release preflight.
+- Post-deploy verification:
+  - confirm production local/GitHub/server hashes, PM2 PID and `/admin/login` HTTP 200;
+  - use 赵测试2 to verify the academic-care label, one-year end date and three-service parent scope without mutating the existing signed legacy contract or invoice;
+  - preview the current 12-price catalogue and verify IB/AP and shared-package blocking.
+- Task doc: `docs/tasks/TASK-20260805-full-care-price-launch.md`.
 
 ## 2026-08-05-r320 Ready
 

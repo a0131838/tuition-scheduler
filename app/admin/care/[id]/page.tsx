@@ -367,7 +367,11 @@ export default async function CareDetailPage({
   const currentMonthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const currentMonthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
   const currentMonthLabel = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
-  const signedCareContract = engagement.student.contracts.find((contract) => careServiceIncluded(contract.businessInfoJson));
+  const signedCareContract = engagement.student.contracts.find((contract) => {
+    if (!careServiceIncluded(contract.businessInfoJson) || !contract.businessInfoJson || typeof contract.businessInfoJson !== "object" || Array.isArray(contract.businessInfoJson)) return false;
+    const info = contract.businessInfoJson as Record<string, unknown>;
+    return info.careEngagementId === engagement.id && info.careProgramType === engagement.programType;
+  });
   const launchChecks = [
     {
       label: t(lang, "Full Care agreement signed", "全托管协议已签署"),

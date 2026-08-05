@@ -21,8 +21,8 @@ test("university care has three distinct programme types", () => {
   assert.equal(isUniversityCareProgram("POSTGRAD_PREPARATION"), true);
 });
 
-test("pre-university defaults stay unchanged while university defaults are track-specific", () => {
-  const oldDefaults = [
+test("pre-university products and university tracks each keep the correct default scope", () => {
+  const comprehensiveDefaults = [
     "academic_management",
     "school_coordination",
     "weekly_wellbeing",
@@ -32,8 +32,12 @@ test("pre-university defaults stay unchanged while university defaults are track
     "holiday_care",
     "visa_admin",
   ];
-  assert.deepEqual(CARE_PROGRAM_DEFAULT_SCOPE_IDS.PRE_U_ACADEMIC_CARE, oldDefaults);
-  assert.deepEqual(CARE_PROGRAM_DEFAULT_SCOPE_IDS.PRE_U_FULL_COORDINATION, oldDefaults);
+  assert.deepEqual(CARE_PROGRAM_DEFAULT_SCOPE_IDS.PRE_U_ACADEMIC_CARE, [
+    "academic_management",
+    "school_coordination",
+    "weekly_wellbeing",
+  ]);
+  assert.deepEqual(CARE_PROGRAM_DEFAULT_SCOPE_IDS.PRE_U_FULL_COORDINATION, comprehensiveDefaults);
   assert.deepEqual(CARE_PROGRAM_DEFAULT_SCOPE_IDS.UNIVERSITY_GROWTH, [
     "university_semester_planning",
     "university_module_deadlines",

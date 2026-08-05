@@ -120,6 +120,8 @@ test("Full Care parent dashboard answers the four reassurance questions with rev
     "utf8",
   );
   assert.match(route, /serviceCommitments/);
+  assert.match(route, /scopeIdsFromJson\(careEngagement\?\.scopeJson\)/);
+  assert.match(route, /programLabel: careProgramme\?\.labelZh/);
   assert.match(route, /latestPublishedUpdate/);
   assert.match(route, /nextUpdate/);
   assert.match(route, /parentVisible: true/);

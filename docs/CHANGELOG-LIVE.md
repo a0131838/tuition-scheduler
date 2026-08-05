@@ -15,6 +15,35 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-05-r321
+
+- Release ID: `2026-08-05-r321`
+- Date/Time (Asia/Singapore): `2026-08-05`
+- Deployment status: `READY`
+- Scope: launch the complete versioned Full Care price catalogue, bind every new agreement to the exact care project, add audited management discounts, distinguish accompanied and unaccompanied service scopes, and make the same service and savings visible to parents.
+- Key files:
+  - `lib/full-care-pricing.ts`
+  - `lib/student-contract.ts`
+  - `lib/student-contract-template.ts`
+  - `lib/care-management.ts`
+  - `lib/care-validation.ts`
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `app/admin/care/[id]/page.tsx`
+  - `app/contract/[token]/page.tsx`
+  - `app/api/miniapp/students/[studentId]/service-progress/route.ts`
+  - `docs/tasks/TASK-20260805-full-care-price-launch.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Medium because the release controls new Full Care contract pricing and invoice amounts. Existing signed snapshots and legacy plan IDs remain readable and unchanged; no existing invoice, receipt, payment, package balance, attendance, payroll or scheduled lesson is rewritten.
+- Verification:
+  - 40 focused pricing, contract, sign-page, parent-progress and care-scope tests passed.
+  - 136 backend regression tests passed.
+  - `npm run build` passed for all 240 application pages.
+  - all 12 published totals, component splits, 100/200/300-hour minute gates, IB/AP guard and 15% management-discount ceiling are covered by tests.
+- Rollback point: `1a9d3a85960594f38779bdf5ff2990559d8c7fdb` (`2026-08-05-r320` production head).
+
+---
+
 ## 2026-08-05-r320
 
 - Release ID: `2026-08-05-r320`

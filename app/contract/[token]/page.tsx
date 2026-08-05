@@ -258,6 +258,28 @@ export default async function ContractSignPage({
                   Tuition SGD {Number(snapshot.care.tuitionFeeAmount || 0).toFixed(2)} · Full Care SGD {Number(snapshot.care.careServiceFeeAmount || 0).toFixed(2)}
                 </div>
               </div>
+              {snapshot.care.pricingVersion ? (
+                <div>
+                  <div style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>Hours and bundle discount / 课时与整包优惠</div>
+                  <div style={{ fontWeight: 800, fontSize: 16 }}>
+                    {snapshot.care.packageHours ?? Number(snapshot.package.totalMinutes || 0) / 60} hours · {Math.round(Number(snapshot.care.bundleDiscountRate || 0) * 100)}% off
+                  </div>
+                  <div style={{ color: "#475569", fontSize: 13 }}>
+                    Published SGD {(Number(snapshot.care.tuitionListFeeAmount || 0) + Number(snapshot.care.careListFeeAmount || 0)).toFixed(2)} · Bundle savings SGD {Number(snapshot.care.bundleSavingsAmount || 0).toFixed(2)}
+                  </div>
+                </div>
+              ) : null}
+              {Number(snapshot.care.specialDiscountAmount || 0) > 0 ? (
+                <div>
+                  <div style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>Additional approved discount / 额外批准优惠</div>
+                  <div style={{ fontWeight: 800, fontSize: 16 }}>SGD {Number(snapshot.care.specialDiscountAmount || 0).toFixed(2)}</div>
+                  <div style={{ color: "#475569", fontSize: 13 }}>Management approved / 管理层批准</div>
+                </div>
+              ) : null}
+              <div>
+                <div style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>One-time total / 一次性付款总额</div>
+                <div style={{ fontWeight: 900, fontSize: 22 }}>SGD {Number(snapshot.package.feeAmount || 0).toFixed(2)}</div>
+              </div>
             </>
           ) : null}
           <div>

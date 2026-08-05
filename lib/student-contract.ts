@@ -41,6 +41,7 @@ import {
   isEduTrustCourseContractReady,
   isEduTrustPackageHoursReady,
 } from "@/lib/edutrust-student-record";
+import { requireFullCarePricingPlan, validateFullCareSpecialDiscount } from "@/lib/full-care-pricing";
 
 const DEFAULT_TOKEN_TTL_DAYS = 14;
 const CONTRACT_INVOICE_MARKER_PREFIX = "student-contract:";
@@ -321,8 +322,20 @@ function defaultBusinessInfoFromRow(
     fpsProvider: setup?.fpsProvider ?? null,
     fpsPolicyNumber: setup?.fpsPolicyNumber ?? null,
     careServiceIncluded: false,
+    careEngagementId: null,
+    careProgramType: null,
     carePricingPlan: null,
+    carePricingVersion: null,
+    careCourseTier: null,
+    carePackageHours: null,
     careProgramLabel: null,
+    tuitionListFeeAmount: null,
+    careListFeeAmount: null,
+    bundleDiscountRate: null,
+    bundleSavingsAmount: null,
+    specialDiscountAmount: null,
+    specialDiscountReason: null,
+    specialDiscountApprovedBy: null,
     tuitionFeeAmount: null,
     careServiceFeeAmount: null,
     careServiceStartDateIso: null,
@@ -475,8 +488,20 @@ function coerceBusinessInfo(raw: unknown): ContractBusinessInfo | null {
     fpsProvider: trimOrNull(row.fpsProvider),
     fpsPolicyNumber: trimOrNull(row.fpsPolicyNumber),
     careServiceIncluded: Boolean(row.careServiceIncluded),
+    careEngagementId: trimOrNull(row.careEngagementId),
+    careProgramType: trimOrNull(row.careProgramType),
     carePricingPlan: trimOrNull(row.carePricingPlan),
+    carePricingVersion: trimOrNull(row.carePricingVersion),
+    careCourseTier: trimOrNull(row.careCourseTier),
+    carePackageHours: toNumberOrNull(row.carePackageHours),
     careProgramLabel: trimOrNull(row.careProgramLabel),
+    tuitionListFeeAmount: toNumberOrNull(row.tuitionListFeeAmount),
+    careListFeeAmount: toNumberOrNull(row.careListFeeAmount),
+    bundleDiscountRate: toNumberOrNull(row.bundleDiscountRate),
+    bundleSavingsAmount: toNumberOrNull(row.bundleSavingsAmount),
+    specialDiscountAmount: toNumberOrNull(row.specialDiscountAmount),
+    specialDiscountReason: trimOrNull(row.specialDiscountReason),
+    specialDiscountApprovedBy: trimOrNull(row.specialDiscountApprovedBy),
     tuitionFeeAmount: toNumberOrNull(row.tuitionFeeAmount),
     careServiceFeeAmount: toNumberOrNull(row.careServiceFeeAmount),
     careServiceStartDateIso: normalizeDateOnly(row.careServiceStartDateIso as string | Date | null | undefined) ?? null,
@@ -1138,6 +1163,11 @@ function normalizeBusinessInfoInput(
   const careServiceEndDateIso = normalizeDateOnly(input.careServiceEndDateIso ?? defaults.careServiceEndDateIso) ?? null;
   const tuitionFeeAmount = numeric("tuitionFeeAmount");
   const careServiceFeeAmount = numeric("careServiceFeeAmount");
+  const tuitionListFeeAmount = numeric("tuitionListFeeAmount");
+  const careListFeeAmount = numeric("careListFeeAmount");
+  const bundleDiscountRate = numeric("bundleDiscountRate");
+  const bundleSavingsAmount = numeric("bundleSavingsAmount");
+  const specialDiscountAmount = numeric("specialDiscountAmount");
   const careEmergencyAdvanceLimit = numeric("careEmergencyAdvanceLimit");
   const careScopeLabels = stringArray(input.careScopeLabels, defaults.careScopeLabels);
   const careExclusionLabels = stringArray(input.careExclusionLabels, defaults.careExclusionLabels);
@@ -1152,6 +1182,33 @@ function normalizeBusinessInfoInput(
       throw new Error("Full Care service start and end dates must form a valid service period");
     }
     if (!careScopeLabels.length) throw new Error("Full Care service scope is missing");
+    const pricingVersion = text("carePricingVersion");
+    if (pricingVersion) {
+      const engagementId = text("careEngagementId");
+      const programType = text("careProgramType");
+      const selectedPlan = requireFullCarePricingPlan(text("carePricingPlan"));
+      const special = validateFullCareSpecialDiscount(selectedPlan.totalFee, specialDiscountAmount, text("specialDiscountReason"));
+      if (!engagementId || !programType || selectedPlan.programType !== programType) {
+        throw new Error("Full Care contract must be bound to the matching care project");
+      }
+      if (totalMinutes !== selectedPlan.hours * 60 || numeric("carePackageHours") !== selectedPlan.hours) {
+        throw new Error("Full Care contract hours do not match the selected pricing plan");
+      }
+      if (
+        Math.abs(Number(tuitionListFeeAmount) - selectedPlan.tuitionListFee) > 0.01 ||
+        Math.abs(Number(careListFeeAmount) - selectedPlan.careListFee) > 0.01 ||
+        Math.abs(Number(bundleDiscountRate) - selectedPlan.discountRate) > 0.0001 ||
+        Math.abs(Number(bundleSavingsAmount) - selectedPlan.bundleSavings) > 0.01 ||
+        Math.abs(Number(careServiceFeeAmount) - selectedPlan.careServiceFee) > 0.01 ||
+        Math.abs(Number(tuitionFeeAmount) - (selectedPlan.tuitionFee - special.amount)) > 0.01 ||
+        Math.abs(Number(feeAmount) - (selectedPlan.totalFee - special.amount)) > 0.01
+      ) {
+        throw new Error("Full Care contract pricing does not match the approved price catalogue");
+      }
+      if (special.amount > 0 && !text("specialDiscountApprovedBy")) {
+        throw new Error("Management special discount approval is missing");
+      }
+    }
   }
   return {
     courseName,
@@ -1196,8 +1253,20 @@ function normalizeBusinessInfoInput(
     fpsProvider: text("fpsProvider"),
     fpsPolicyNumber: text("fpsPolicyNumber"),
     careServiceIncluded,
+    careEngagementId: careServiceIncluded ? text("careEngagementId") : null,
+    careProgramType: careServiceIncluded ? text("careProgramType") : null,
     carePricingPlan: careServiceIncluded ? text("carePricingPlan") : null,
+    carePricingVersion: careServiceIncluded ? text("carePricingVersion") : null,
+    careCourseTier: careServiceIncluded ? text("careCourseTier") : null,
+    carePackageHours: careServiceIncluded ? numeric("carePackageHours") : null,
     careProgramLabel: careServiceIncluded ? text("careProgramLabel") : null,
+    tuitionListFeeAmount: careServiceIncluded ? tuitionListFeeAmount : null,
+    careListFeeAmount: careServiceIncluded ? careListFeeAmount : null,
+    bundleDiscountRate: careServiceIncluded ? bundleDiscountRate : null,
+    bundleSavingsAmount: careServiceIncluded ? bundleSavingsAmount : null,
+    specialDiscountAmount: careServiceIncluded ? specialDiscountAmount : null,
+    specialDiscountReason: careServiceIncluded ? text("specialDiscountReason") : null,
+    specialDiscountApprovedBy: careServiceIncluded ? text("specialDiscountApprovedBy") : null,
     tuitionFeeAmount: careServiceIncluded ? tuitionFeeAmount : null,
     careServiceFeeAmount: careServiceIncluded ? careServiceFeeAmount : null,
     careServiceStartDateIso: careServiceIncluded ? careServiceStartDateIso : null,
@@ -1255,6 +1324,14 @@ export async function saveStudentContractBusinessDraft(input: {
       billTo: businessInfo.billTo,
       careServiceIncluded: businessInfo.careServiceIncluded || false,
       carePricingPlan: businessInfo.carePricingPlan ?? null,
+      careEngagementId: businessInfo.careEngagementId ?? null,
+      careProgramType: businessInfo.careProgramType ?? null,
+      carePricingVersion: businessInfo.carePricingVersion ?? null,
+      bundleDiscountRate: businessInfo.bundleDiscountRate ?? null,
+      bundleSavingsAmount: businessInfo.bundleSavingsAmount ?? null,
+      specialDiscountAmount: businessInfo.specialDiscountAmount ?? null,
+      specialDiscountReason: businessInfo.specialDiscountReason ?? null,
+      specialDiscountApprovedBy: businessInfo.specialDiscountApprovedBy ?? null,
       tuitionFeeAmount: businessInfo.tuitionFeeAmount ?? null,
       careServiceFeeAmount: businessInfo.careServiceFeeAmount ?? null,
     },
@@ -1383,6 +1460,10 @@ async function ensureInvoiceForSignedContract(row: StudentContractRow, snapshot:
     })
   ) {
     const onlyInvoice = billing.invoices[0];
+    const contractAmount = roundMoney(snapshot.package.feeAmount);
+    if (Math.abs(roundMoney(onlyInvoice.totalAmount) - contractAmount) > 0.01) {
+      throw new Error("The existing invoice total does not match the signed contract. Correct or void the invoice before signing. / 现有发票金额与合同不一致，请先更正或作废发票后再签署。");
+    }
     return {
       invoiceId: onlyInvoice.id,
       invoiceNo: onlyInvoice.invoiceNo,
@@ -1410,6 +1491,9 @@ async function ensureInvoiceForSignedContract(row: StudentContractRow, snapshot:
   const invoiceNo = await getNextGlobalInvoiceNo(agreementIssueDate);
   await assertGlobalInvoiceNoAvailable(invoiceNo);
   const amount = roundMoney(snapshot.package.feeAmount);
+  const invoiceDescription = snapshot.care?.included && snapshot.care.pricingVersion
+    ? `${snapshot.care.programLabel || "Full Care / 全程托管"}; ${snapshot.care.courseTier === "IB_AP" ? "IB/AP" : "Standard / 标准课程"}; ${snapshot.care.packageHours != null ? `${snapshot.care.packageHours}h` : snapshot.package.totalHoursLabel}; tuition SGD ${roundMoney(snapshot.care.tuitionFeeAmount).toFixed(2)} + care SGD ${roundMoney(snapshot.care.careServiceFeeAmount).toFixed(2)}; bundle savings SGD ${roundMoney(snapshot.care.bundleSavingsAmount).toFixed(2)}; special discount SGD ${roundMoney(snapshot.care.specialDiscountAmount).toFixed(2)}; one-time payment / 一次性付款`
+    : `Student contract invoice for ${row.student.name} (${snapshot.package.courseName}, ${snapshot.package.totalHoursLabel})`;
   const invoice = await createParentInvoice({
     packageId: row.packageId,
     studentId: row.studentId,
@@ -1420,7 +1504,7 @@ async function ensureInvoiceForSignedContract(row: StudentContractRow, snapshot:
     courseEndDate: null,
     billTo: snapshot.package.billTo || row.student.name,
     quantity: 1,
-    description: `Student contract invoice for ${row.student.name} (${snapshot.package.courseName}, ${snapshot.package.totalHoursLabel})`,
+    description: invoiceDescription,
     amount,
     gstAmount: 0,
     totalAmount: amount,

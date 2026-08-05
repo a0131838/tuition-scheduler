@@ -66,8 +66,20 @@ export type ContractBusinessInfo = {
   fpsProvider?: string | null;
   fpsPolicyNumber?: string | null;
   careServiceIncluded?: boolean;
+  careEngagementId?: string | null;
+  careProgramType?: string | null;
   carePricingPlan?: string | null;
+  carePricingVersion?: string | null;
+  careCourseTier?: string | null;
+  carePackageHours?: number | null;
   careProgramLabel?: string | null;
+  tuitionListFeeAmount?: number | null;
+  careListFeeAmount?: number | null;
+  bundleDiscountRate?: number | null;
+  bundleSavingsAmount?: number | null;
+  specialDiscountAmount?: number | null;
+  specialDiscountReason?: string | null;
+  specialDiscountApprovedBy?: string | null;
   tuitionFeeAmount?: number | null;
   careServiceFeeAmount?: number | null;
   careServiceStartDateIso?: string | null;
@@ -111,7 +123,18 @@ export type ContractSnapshot = {
   };
   care?: {
     included: boolean;
+    engagementId: string | null;
+    programType: string | null;
     programLabel: string | null;
+    pricingPlan: string | null;
+    pricingVersion: string | null;
+    courseTier: string | null;
+    packageHours: number | null;
+    tuitionListFeeAmount: number | null;
+    careListFeeAmount: number | null;
+    bundleDiscountRate: number | null;
+    bundleSavingsAmount: number | null;
+    specialDiscountAmount: number | null;
     tuitionFeeAmount: number | null;
     careServiceFeeAmount: number | null;
     serviceStartDateIso: string | null;
@@ -200,12 +223,20 @@ function buildCareServiceAppendix(input: {
   if (!info.careServiceIncluded) return "";
   const tuitionFee = formatCurrencyLabel(info.tuitionFeeAmount);
   const careFee = formatCurrencyLabel(info.careServiceFeeAmount);
+  const tuitionListFee = formatCurrencyLabel(info.tuitionListFeeAmount);
+  const careListFee = formatCurrencyLabel(info.careListFeeAmount);
+  const bundleSavings = formatCurrencyLabel(info.bundleSavingsAmount);
+  const specialDiscount = formatCurrencyLabel(info.specialDiscountAmount);
   const advanceLimit = formatCurrencyLabel(info.careEmergencyAdvanceLimit);
   const startDate = formatLongDate(info.careServiceStartDateIso);
   const endDate = formatLongDate(info.careServiceEndDateIso);
   const updateCadence = info.careUpdateCadence?.trim() || "Weekly service review / 每周服务复核";
   const reportCadence = info.careReportCadence?.trim() || "Monthly formal report / 每月正式报告";
   const deliveryChannel = info.careDeliveryChannel?.trim() || "Parent miniapp or the Company's designated official channel / 家长小程序或公司指定官方渠道";
+  const pricingBreakdown = info.carePricingVersion ? `<p>Published tuition price / 课程原价：<strong>${escapeHtml(tuitionListFee)}</strong><br/>
+    Published Full Care price / 托管原价：<strong>${escapeHtml(careListFee)}</strong><br/>
+    Bundle discount / 整包优惠：<strong>${escapeHtml(`${Math.round(Number(info.bundleDiscountRate || 0) * 100)}%`)}</strong>，节省 <strong>${escapeHtml(bundleSavings)}</strong><br/>
+    Management special discount / 管理层特别优惠：<strong>${escapeHtml(specialDiscount)}</strong></p>` : "";
   return `
     <div style="page-break-before: always"></div>
     <h1>Full Care Service Terms / 全程托管服务条款</h1>
@@ -229,6 +260,7 @@ function buildCareServiceAppendix(input: {
     <p>除非书面明确包含，交通、医疗、住宿、签证、政府、学校、寄宿家庭、专业人士及其他第三方费用均不包含。超出约定范围的现场支持须另行书面确认人员安排和费用。</p>
 
     <h3>4. Fees, lesson hours, and refunds / 费用、课时与退款</h3>
+    ${pricingBreakdown}
     <p>Tuition component / 补习课时费：<strong>${escapeHtml(tuitionFee)}</strong><br/>
     Full Care service component / 全程托管服务费：<strong>${escapeHtml(careFee)}</strong><br/>
     Total agreement fee / 合同总额：<strong>${escapeHtml(formatCurrencyLabel(info.feeAmount))}</strong></p>
@@ -455,7 +487,18 @@ export function buildStudentContractSnapshot(input: {
     },
     care: input.businessInfo.careServiceIncluded ? {
       included: true,
+      engagementId: input.businessInfo.careEngagementId ?? null,
+      programType: input.businessInfo.careProgramType ?? null,
       programLabel: input.businessInfo.careProgramLabel ?? null,
+      pricingPlan: input.businessInfo.carePricingPlan ?? null,
+      pricingVersion: input.businessInfo.carePricingVersion ?? null,
+      courseTier: input.businessInfo.careCourseTier ?? null,
+      packageHours: input.businessInfo.carePackageHours ?? null,
+      tuitionListFeeAmount: input.businessInfo.tuitionListFeeAmount ?? null,
+      careListFeeAmount: input.businessInfo.careListFeeAmount ?? null,
+      bundleDiscountRate: input.businessInfo.bundleDiscountRate ?? null,
+      bundleSavingsAmount: input.businessInfo.bundleSavingsAmount ?? null,
+      specialDiscountAmount: input.businessInfo.specialDiscountAmount ?? null,
       tuitionFeeAmount: input.businessInfo.tuitionFeeAmount ?? null,
       careServiceFeeAmount: input.businessInfo.careServiceFeeAmount ?? null,
       serviceStartDateIso: input.businessInfo.careServiceStartDateIso ?? null,

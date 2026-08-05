@@ -40,10 +40,20 @@ type CareActor = { id: string; email: string; name: string; role: string };
 
 const CARE_OWNER_ROLES: CareMemberRole[] = ["CASE_OWNER", "ACADEMIC_OWNER", "SCHOOL_OWNER", "LIFE_OWNER", "COORDINATOR"];
 
-function isSignedFullCareContract(contract: { status: string; businessInfoJson: Prisma.JsonValue | null }) {
+function isSignedFullCareContractForEngagement(
+  contract: { status: string; businessInfoJson: Prisma.JsonValue | null },
+  engagement: { id: string; programType: CareProgramType },
+) {
   if (contract.status !== "SIGNED" && contract.status !== "INVOICE_CREATED") return false;
   if (!contract.businessInfoJson || typeof contract.businessInfoJson !== "object" || Array.isArray(contract.businessInfoJson)) return false;
-  return (contract.businessInfoJson as Record<string, unknown>).careServiceIncluded === true;
+  const info = contract.businessInfoJson as Record<string, unknown>;
+  return info.careServiceIncluded === true && info.careEngagementId === engagement.id && info.careProgramType === engagement.programType;
+}
+
+function annualCareEndDate(startDate: Date) {
+  const endDate = new Date(startDate);
+  endDate.setUTCFullYear(endDate.getUTCFullYear() + 1);
+  return endDate;
 }
 
 export function careOwnerRolesForProgram(programType: CareProgramType): CareMemberRole[] {
@@ -104,20 +114,27 @@ export async function createCareEngagement(input: {
       tx.user.findUnique({ where: { id: caseOwnerUserId }, select: { id: true, name: true } }),
       reviewerUserId ? tx.user.findUnique({ where: { id: reviewerUserId }, select: { id: true, name: true } }) : null,
       tx.careEngagement.findFirst({
-        where: { studentId, programType, status: { in: ["DRAFT", "ACTIVE", "PAUSED"] } },
+        where: {
+          studentId,
+          programType: programType === "PRE_U_ACADEMIC_CARE" || programType === "PRE_U_FULL_COORDINATION"
+            ? { in: ["PRE_U_ACADEMIC_CARE", "PRE_U_FULL_COORDINATION"] }
+            : programType,
+          status: { in: ["DRAFT", "ACTIVE", "PAUSED"] },
+        },
         select: { id: true, status: true },
       }),
     ]);
     if (!student) throw new Error("Student not found");
     if (!owner) throw new Error("Case owner not found");
     if (reviewerUserId && !reviewer) throw new Error("Reviewer not found");
-    if (existing) throw new Error(`This student already has a ${existing.status.toLowerCase()} project of the same type`);
+    if (existing) throw new Error(`This student already has a ${existing.status.toLowerCase()} care project in the same service track`);
 
     const engagement = await tx.careEngagement.create({
       data: {
         studentId,
         programType,
         startDate,
+        endDate: annualCareEndDate(startDate),
         caseOwnerUserId,
         scopeJson: { serviceIds: scopeIds },
         exclusionsJson: {
@@ -211,7 +228,7 @@ export async function changeCareEngagementStatus(input: {
       }
       if (engagement.status === "DRAFT") {
         assertCareLaunchReadiness({
-          hasSignedCareContract: engagement.student.contracts.some(isSignedFullCareContract),
+          hasSignedCareContract: engagement.student.contracts.some((contract) => isSignedFullCareContractForEngagement(contract, engagement)),
           hasParentReportAccess: engagement.student.parentLinks.length > 0,
           hasReviewer: engagement.members.some((item) => item.role === "REVIEWER"),
           hasInitialPlan: engagement.plans.length > 0,

@@ -11,7 +11,8 @@ import {
 import { parseParentFeedbackSections } from "@/lib/parent-feedback-format";
 import { prisma } from "@/lib/prisma";
 import { sessionBelongsToStudentWhere } from "@/lib/session-students";
-import { CARE_SCOPE_OPTIONS } from "@/lib/care-validation";
+import { CARE_SCOPE_OPTIONS, scopeIdsFromJson } from "@/lib/care-validation";
+import { FULL_CARE_PROGRAMS } from "@/lib/full-care-pricing";
 import { bad, courseLabel, ok, requireMiniappStudentAccess, sessionTeacherName } from "../../../_lib";
 
 const CLOSED_TICKET_STATUSES = ["Completed", "Cancelled", "Closed", "已完成", "已关闭"];
@@ -105,11 +106,18 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
     }) : Promise.resolve([]),
     canViewReports
       ? prisma.careEngagement.findFirst({
-          where: { studentId, status: "ACTIVE" },
+          where: {
+            studentId,
+            status: "ACTIVE",
+            ...(student.servicePlanType === "FULL_CARE"
+              ? { programType: { in: ["PRE_U_ACADEMIC_CARE", "PRE_U_FULL_COORDINATION"] as const } }
+              : {}),
+          },
           select: {
             id: true,
             programType: true,
             startDate: true,
+            endDate: true,
             nextReportDueAt: true,
             scopeJson: true,
             caseOwner: { select: { name: true } },
@@ -254,6 +262,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
   );
 
   const service = parentServicePlanCopy(student.servicePlanType);
+  const careProgramme = careEngagement?.programType === "PRE_U_ACADEMIC_CARE" || careEngagement?.programType === "PRE_U_FULL_COORDINATION"
+    ? FULL_CARE_PROGRAMS[careEngagement.programType]
+    : null;
+  if (careProgramme) {
+    service.label = careProgramme.labelZh;
+    service.headline = careEngagement?.programType === "PRE_U_FULL_COORDINATION"
+      ? "学业、学校与生活协调持续跟进"
+      : "学习进展、课程安排与学校沟通持续跟进";
+  }
   const visibleReports = (careEngagement?.reports ?? []).filter((report) => careReportParentAccessAllowed({
     status: report.status,
     engagement: {
@@ -261,9 +278,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       universityProfile: careEngagement?.universityProfile ?? null,
     },
   }));
-  const careScopeIds = Array.isArray(careEngagement?.scopeJson)
-    ? careEngagement.scopeJson.map((item) => String(item ?? "").trim()).filter(Boolean)
-    : [];
+  const careScopeIds = scopeIdsFromJson(careEngagement?.scopeJson);
   const serviceCommitments = CARE_SCOPE_OPTIONS
     .filter((item) => careScopeIds.includes(item.id))
     .map((item) => item.zh)
@@ -339,7 +354,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       : null,
     care: {
       active: Boolean(careEngagement),
+      programType: careEngagement?.programType ?? null,
+      programLabel: careProgramme?.labelZh ?? service.label,
       startDate: careEngagement?.startDate ? formatBusinessDateOnly(careEngagement.startDate) : null,
+      endDate: careEngagement?.endDate ? formatBusinessDateOnly(careEngagement.endDate) : null,
       nextReportDue: careEngagement?.nextReportDueAt ? formatBusinessDateOnly(careEngagement.nextReportDueAt) : null,
       publishedActivityCount: careEngagement?.activities.length ?? 0,
       publishedReportCount: visibleReports.length,

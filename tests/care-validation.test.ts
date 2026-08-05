@@ -1,19 +1,24 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  CARE_SCOPE_OPTIONS,
   assertCareActivation,
   assertCareLaunchReadiness,
   assertCareActivity,
   assertCareStatusTransition,
   assertCareTaskUpdate,
   careScopeIds,
+  defaultCareScopeIdsForProgram,
   parseCareDateTime,
 } from "../lib/care-validation";
 
-test("default full-care scope includes confirmed services but excludes conditional services", () => {
-  const defaults: string[] = CARE_SCOPE_OPTIONS.filter((item) => item.defaultOn).map((item) => item.id);
-  assert.deepEqual(defaults, [
+test("the two pre-university care products have distinct default scopes", () => {
+  assert.deepEqual(defaultCareScopeIdsForProgram("PRE_U_ACADEMIC_CARE"), [
+    "academic_management",
+    "school_coordination",
+    "weekly_wellbeing",
+  ]);
+  const comprehensive = defaultCareScopeIdsForProgram("PRE_U_FULL_COORDINATION");
+  assert.deepEqual(comprehensive, [
     "academic_management",
     "school_coordination",
     "weekly_wellbeing",
@@ -23,8 +28,8 @@ test("default full-care scope includes confirmed services but excludes condition
     "holiday_care",
     "visa_admin",
   ]);
-  assert.equal(defaults.includes("daily_status_check"), false);
-  assert.equal(defaults.includes("after_hours_onsite"), false);
+  assert.equal(comprehensive.includes("daily_status_check"), false);
+  assert.equal(comprehensive.includes("after_hours_onsite"), false);
 });
 
 test("scope normalization ignores unknown values and preserves canonical order", () => {
