@@ -15,6 +15,32 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-05-r315
+
+- Release ID: `2026-08-05-r315`
+- Date/Time (Asia/Singapore): `2026-08-05`
+- Deployment status: `READY`
+- Scope: correct the Full Care commercial model so contracts are course-independent, standard and IB/AP tuition use separate locked price tiers, and channel commission is absent from the student contract system.
+- Key files:
+  - `lib/full-care-pricing.ts`
+  - `lib/student-contract-template.ts`
+  - `lib/student-contract.ts`
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `app/contract/[token]/page.tsx`
+  - `tests/full-care-pricing.test.ts`
+  - `tests/student-contract-mode.test.ts`
+  - `docs/tasks/TASK-20260805-full-care-pricing-contract-correction.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Moderate and limited to new Full Care contract preparation and presentation. Existing signed contracts remain immutable and must be voided/reissued when incorrect. No receipt, payment, package balance, attendance, payroll, scheduling or lesson-deduction logic changes.
+- Verification:
+  - 18 focused pricing, contract, care safety and parent-progress tests passed.
+  - `npm run build` passed for all 240 application pages.
+  - Price rules reconcile to the published price list: standard S$14,380/100h; IB/AP S$24,800/100h; annual Full Care service S$12,800.
+- Rollback point: `80573db8c1a019047fd9c6e977b779c0b7ac8161` (`2026-08-05-r314` production head).
+
+---
+
 ## 2026-08-05-r314
 
 - Release ID: `2026-08-05-r314`

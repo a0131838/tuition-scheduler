@@ -78,19 +78,23 @@ test("student contract snapshots default to the existing tuition agreement mode"
   assert.equal(snapshot.templateSlug, STUDENT_CONTRACT_TEMPLATE_SLUG);
 });
 
-test("tuition agreement can freeze a parent-facing Full Care addendum without exposing channel commission", () => {
+test("Full Care agreement is course-independent and freezes the selected tuition price tier", () => {
   const { snapshot } = buildStudentContractSnapshot({
     studentId: "student-care",
     studentName: "Student Care",
     packageId: "package-care",
     businessInfo: {
       ...businessInfo,
-      feeAmount: 40800,
+      feeAmount: 41560,
       totalMinutes: 12000,
       careServiceIncluded: true,
-      careProgramLabel: "Pre-university academic care / 大学前学业托管",
+      carePricingPlan: "STANDARD_200",
+      careProgramLabel: "Full Care / 全程托管",
+      courseName: "Full Care + 200h standard tuition / 全程托管 + 200小时标准课程",
+      packageType: "200-hour Full Care package / 200小时全程托管课包",
+      contractTypeLabel: "Full Care Service Agreement / 全程托管服务合同",
       tuitionFeeAmount: 28760,
-      careServiceFeeAmount: 12040,
+      careServiceFeeAmount: 12800,
       careServiceStartDateIso: "2026-08-10",
       careServiceEndDateIso: "2027-08-09",
       careUpdateCadence: "Weekly service review / 每周服务复核",
@@ -99,21 +103,21 @@ test("tuition agreement can freeze a parent-facing Full Care addendum without ex
       careEmergencyAdvanceLimit: 300,
       careScopeLabels: ["School communication / 学校沟通", "Academic progress / 学业进展"],
       careExclusionLabels: ["Legal guardianship / 法定监护"],
-      careChannelName: "Channel Secret",
-      careChannelCommissionRate: 15,
     },
     parentInfo,
   });
 
   assert.equal(snapshot.care?.included, true);
-  assert.equal(snapshot.care?.careServiceFeeAmount, 12040);
-  assert.match(snapshot.agreementHtml, /Full Care Service Addendum/);
+  assert.equal(snapshot.care?.careServiceFeeAmount, 12800);
+  assert.match(snapshot.agreementHtml, /Full Care Service Agreement/);
+  assert.match(snapshot.agreementHtml, /全程托管服务合同/);
+  assert.match(snapshot.agreementHtml, /200h standard tuition/);
   assert.match(snapshot.agreementHtml, /家长可见范围/);
   assert.match(snapshot.agreementHtml, /School communication/);
-  assert.match(snapshot.agreementHtml, /SGD 12040\.00/);
+  assert.match(snapshot.agreementHtml, /SGD 12800\.00/);
   assert.match(snapshot.agreementHtml, /SGD 300\.00/);
-  assert.doesNotMatch(snapshot.agreementHtml, /Channel Secret/);
-  assert.doesNotMatch(snapshot.agreementHtml, /15%/);
+  assert.doesNotMatch(snapshot.agreementHtml, /O Level|Olevel/);
+  assert.doesNotMatch(snapshot.agreementHtml, /commission|佣金/i);
 });
 
 test("student contract snapshots can use the SSG standard PEI contract mode", () => {

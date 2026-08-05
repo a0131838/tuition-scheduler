@@ -66,6 +66,7 @@ export type ContractBusinessInfo = {
   fpsProvider?: string | null;
   fpsPolicyNumber?: string | null;
   careServiceIncluded?: boolean;
+  carePricingPlan?: string | null;
   careProgramLabel?: string | null;
   tuitionFeeAmount?: number | null;
   careServiceFeeAmount?: number | null;
@@ -77,8 +78,6 @@ export type ContractBusinessInfo = {
   careEmergencyAdvanceLimit?: number | null;
   careScopeLabels?: string[];
   careExclusionLabels?: string[];
-  careChannelName?: string | null;
-  careChannelCommissionRate?: number | null;
 };
 
 export type ContractSnapshot = {
@@ -209,9 +208,9 @@ function buildCareServiceAppendix(input: {
   const deliveryChannel = info.careDeliveryChannel?.trim() || "Parent miniapp or the Company's designated official channel / 家长小程序或公司指定官方渠道";
   return `
     <div style="page-break-before: always"></div>
-    <h1>Full Care Service Addendum / 全程托管服务附件</h1>
-    <p>This Addendum forms part of the Tuition Agreement for <strong>${escapeHtml(input.studentName)}</strong>. The contracting parent is <strong>${escapeHtml(input.parentName)}</strong>.</p>
-    <p>本附件构成 <strong>${escapeHtml(input.studentName)}</strong>《学费协议》的一部分，签约家长为 <strong>${escapeHtml(input.parentName)}</strong>。</p>
+    <h1>Full Care Service Terms / 全程托管服务条款</h1>
+    <p>These terms form part of the Full Care Service Agreement for <strong>${escapeHtml(input.studentName)}</strong>. The contracting parent is <strong>${escapeHtml(input.parentName)}</strong>.</p>
+    <p>本条款构成 <strong>${escapeHtml(input.studentName)}</strong>《全程托管服务合同》的一部分，签约家长为 <strong>${escapeHtml(input.parentName)}</strong>。</p>
 
     <h3>1. Service programme and period / 服务方案与期限</h3>
     <p>Programme / 方案：<strong>${escapeHtml(info.careProgramLabel?.trim() || "Full Care / 全程托管")}</strong><br/>
@@ -259,8 +258,8 @@ function buildCareServiceAppendix(input: {
     <p>个人资料仅可用于公司已经告知的服务交付、安全协调、收费、审计及法律或监管目的。家长可通过公司指定联系人提出查阅、更正、撤回和保存期限相关要求。学生成年后，家长可见范围须以学生本人已记录的授权为基础，并可能受到限制或被撤回。</p>
 
     <h3>10. Acknowledgement / 确认</h3>
-    <p>By signing the Tuition Agreement with this Addendum, the parent confirms that the service scope, exclusions, fees, update cadence, visibility rules, cooperation duties, emergency limits, and data-use purposes have been reviewed and accepted.</p>
-    <p>家长签署包含本附件的《学费协议》，即确认已经审阅并接受服务范围、排除事项、费用、更新节奏、可见范围、配合义务、紧急协调边界及资料使用目的。</p>
+    <p>By signing the Full Care Service Agreement, the parent confirms that the service scope, exclusions, fees, update cadence, visibility rules, cooperation duties, emergency limits, and data-use purposes have been reviewed and accepted.</p>
+    <p>家长签署《全程托管服务合同》，即确认已经审阅并接受服务范围、排除事项、费用、更新节奏、可见范围、配合义务、紧急协调边界及资料使用目的。</p>
   `.trim();
 }
 
@@ -271,13 +270,13 @@ export function getDefaultStudentContractTemplateInput() {
     version: STUDENT_CONTRACT_TEMPLATE_VERSION,
     languageMode: "BILINGUAL",
     bodyHtml: `
-      <h1>Tuition Agreement / 学费协议</h1>
+      <h1>{{agreement_title}}</h1>
       <p><strong>{{company_brand}}</strong></p>
       <p>
         Applying Parent / 签约家长: <strong>{{parent_full_name_en}}</strong>{{parent_full_name_zh}}<br/>
         Student / 学生: <strong>{{student_name}}</strong><br/>
         Contract type / 合同类型: <strong>{{contract_type_label}}</strong><br/>
-        Course / 课程: <strong>{{course_name}}</strong><br/>
+        {{course_label}}: <strong>{{course_name}}</strong><br/>
         Package / 课包: <strong>{{package_type}}</strong><br/>
         Package hours / 课时: <strong>{{total_hours}}</strong><br/>
         Fee / 费用: <strong>{{fee_amount}}</strong><br/>
@@ -367,6 +366,7 @@ export function buildStudentContractSnapshot(input: {
     ? ` / ${escapeHtml(input.parentInfo.parentFullNameZh.trim())}`
     : "";
   const contractTypeLabel = input.businessInfo.contractTypeLabel?.trim() || "Tuition agreement / 学费合同";
+  const isFullCare = Boolean(input.businessInfo.careServiceIncluded);
   const address = input.parentInfo.address?.trim() || "";
   const html = renderTemplatePlaceholders(template.bodyHtml, {
     company_brand: escapeHtml(company.brandName),
@@ -379,6 +379,8 @@ export function buildStudentContractSnapshot(input: {
     contracting_party_identity_no: "______________________",
     student_identity_no: "______________________",
     student_name: escapeHtml(input.studentName.trim()),
+    agreement_title: isFullCare ? "Full Care Service Agreement / 全程托管服务合同" : "Tuition Agreement / 学费协议",
+    course_label: isFullCare ? "Service and tuition tier / 服务及课时价格档" : "Course / 课程",
     contract_type_label: escapeHtml(contractTypeLabel),
     course_name: escapeHtml(input.businessInfo.courseName.trim()),
     package_type: escapeHtml(input.businessInfo.packageType.trim()),

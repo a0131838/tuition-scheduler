@@ -39,12 +39,42 @@
 - Current release line: `2026-08-05-r312` is live at runtime feature commit `8aee04fdc1f2334daf0e79cb3a855882cf4ce919`; WeChat development version `1.0.24` was uploaded successfully. It adds the invitation-only 30–45 minute school-entry readiness pilot without changing the existing intelligent-selection, school directory or operational workflows.
 - Current release line: `2026-08-05-r313` is live at runtime feature commit `d8c5068dc5164831395b6fa0c39e0fe5267ea67c`; WeChat development version `1.0.25` was uploaded successfully. It adds the signed Full Care appendix, internal channel settlement snapshot, parent authorisation materials, seven-item activation gate and parent reassurance dashboard for a 3–5-family controlled launch.
 - Current release line prepared: `2026-08-05-r314` closes the operator gaps found by the 赵测试 2 E2E journey: explicit manager publication for parent updates, parent-action task entry, active Full Care project discovery independent of legacy student classification, and a reliable signed-contract confirmation.
+- Current release line prepared: `2026-08-05-r315` removes channel commission from the Full Care contract system and replaces course-named bundles with four locked Full Care price plans: standard or IB/AP, each at 200 or 300 hours.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
-## 2026-08-05-r314 Ready
+## 2026-08-05-r315 Ready
+
+- Scope: correct Full Care pricing and contract identity before real-family launch.
+- Business impact:
+  - Full Care contracts are titled and described as Full Care Service Agreements rather than O Level or another current course;
+  - all non-IB/AP tuition uses the same published standard rate, while IB/AP uses a separate premium rate;
+  - the approved 200/300-hour plan locks hours, tuition, annual care fee and total contract value on the server;
+  - channel name, commission rate and commission preview are removed from the student contract workflow and contract audit payload;
+  - existing signed contracts are not silently rewritten; the 赵测试 2 test contract will be voided and reissued after deploy;
+  - receipts, payment, package balances, attendance, payroll, scheduling and lesson deductions are unchanged.
+- Files:
+  - `lib/full-care-pricing.ts`
+  - `lib/student-contract-template.ts`
+  - `lib/student-contract.ts`
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `app/contract/[token]/page.tsx`
+  - `tests/full-care-pricing.test.ts`
+  - `tests/student-contract-mode.test.ts`
+- Verification before deploy:
+  - 18 focused tests;
+  - `npm run build` for all 240 application pages;
+  - `git diff --check` and guarded release preflight.
+- Post-deploy verification:
+  - confirm local/GitHub/server commit equality, PM2 online and `/admin/login` HTTP 200;
+  - confirm the Full Care contract form shows four locked plans and no channel or commission fields;
+  - void the incorrect 赵测试 2 test contract/invoice and reissue the standard 200-hour Full Care agreement at S$41,560;
+  - confirm the parent signing page contains no O Level or commission language.
+- Task doc: `docs/tasks/TASK-20260805-full-care-pricing-contract-correction.md`.
+
+## 2026-08-05-r314 Live
 
 - Scope: finish the operator-to-parent Full Care handoff found missing during the 赵测试 2 production journey.
 - Business impact:

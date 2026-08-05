@@ -39,7 +39,13 @@ import {
   listStudentContractInvoiceOptions,
   saveStudentContractInvoiceChoice,
 } from "@/lib/student-contract-invoice-choice";
-import { CARE_PROGRAM_OPTIONS, CARE_SCOPE_OPTIONS } from "@/lib/care-validation";
+import { CARE_SCOPE_OPTIONS } from "@/lib/care-validation";
+import {
+  FULL_CARE_PRICING_PLANS,
+  fullCarePricingPlan,
+  fullCarePricingPlanLabel,
+  requireFullCarePricingPlan,
+} from "@/lib/full-care-pricing";
 
 const DEFAULT_CARE_EXCLUSIONS = [
   "法定监护、24 小时现场看护 / Legal guardianship and 24-hour on-site care",
@@ -50,11 +56,6 @@ const DEFAULT_CARE_EXCLUSIONS = [
 
 function jsonStringArray(value: unknown) {
   return Array.isArray(value) ? value.map((item) => String(item ?? "").trim()).filter(Boolean) : [];
-}
-
-function careProgramLabel(value: string | null | undefined) {
-  const option = CARE_PROGRAM_OPTIONS.find((item) => item.value === value);
-  return option ? `${option.en} / ${option.zh}` : "Full Care / 全程托管";
 }
 
 function normalizePackageBillingSource(value: string | null | undefined) {
@@ -295,6 +296,9 @@ async function prepareContractSignAction(formData: FormData) {
     if (careServiceIncluded && !careEngagement) {
       throw new Error("Create the student's Full Care project and confirm its scope before generating the contract");
     }
+    const pricingPlan = careServiceIncluded
+      ? requireFullCarePricingPlan(String(formData.get("carePricingPlan") ?? ""))
+      : null;
     const scopeIds = jsonStringArray(careEngagement?.scopeJson);
     const careScopeLabels = CARE_SCOPE_OPTIONS
       .filter((item) => scopeIds.includes(item.id))
@@ -305,14 +309,20 @@ async function prepareContractSignAction(formData: FormData) {
       actorUserId: admin.id,
       actorLabel: admin.email,
       businessInfo: {
-        totalMinutes: Number(String(formData.get("totalMinutes") ?? "").trim() || 0),
-        feeAmount: Number(String(formData.get("feeAmount") ?? "").trim() || 0),
+        ...(pricingPlan ? {
+          courseName: fullCarePricingPlanLabel(pricingPlan.value),
+          packageType: `${pricingPlan.hours}-hour Full Care package / ${pricingPlan.hours}小时全程托管课包`,
+          contractTypeLabel: "Full Care Service Agreement / 全程托管服务合同",
+        } : {}),
+        totalMinutes: pricingPlan ? pricingPlan.hours * 60 : Number(String(formData.get("totalMinutes") ?? "").trim() || 0),
+        feeAmount: pricingPlan ? pricingPlan.totalFee : Number(String(formData.get("feeAmount") ?? "").trim() || 0),
         billTo: String(formData.get("billTo") ?? "").trim(),
         agreementDateIso: String(formData.get("agreementDateIso") ?? "").trim(),
         careServiceIncluded,
-        careProgramLabel: careServiceIncluded ? careProgramLabel(careEngagement?.programType) : null,
-        tuitionFeeAmount: Number(String(formData.get("tuitionFeeAmount") ?? "").trim() || 0),
-        careServiceFeeAmount: Number(String(formData.get("careServiceFeeAmount") ?? "").trim() || 0),
+        carePricingPlan: pricingPlan?.value ?? null,
+        careProgramLabel: careServiceIncluded ? "Full Care / 全程托管" : null,
+        tuitionFeeAmount: pricingPlan?.tuitionFee ?? null,
+        careServiceFeeAmount: pricingPlan?.careServiceFee ?? null,
         careServiceStartDateIso: String(formData.get("careServiceStartDateIso") ?? "").trim(),
         careServiceEndDateIso: String(formData.get("careServiceEndDateIso") ?? "").trim(),
         careUpdateCadence: String(formData.get("careUpdateCadence") ?? "").trim(),
@@ -321,8 +331,6 @@ async function prepareContractSignAction(formData: FormData) {
         careEmergencyAdvanceLimit: Number(String(formData.get("careEmergencyAdvanceLimit") ?? "").trim() || 0),
         careScopeLabels,
         careExclusionLabels: configuredExclusions.length ? configuredExclusions : DEFAULT_CARE_EXCLUSIONS,
-        careChannelName: String(formData.get("careChannelName") ?? "").trim(),
-        careChannelCommissionRate: Number(String(formData.get("careChannelCommissionRate") ?? "").trim() || 0),
       },
     });
     if (flowType === "RENEWAL") {
@@ -457,10 +465,7 @@ export default async function PackageContractPage({
   const contractSignShare = contractSignPath ? `${baseUrl}${contractSignPath}` || contractSignPath : "";
   const contractBusinessInfo = latestContract?.businessInfo ?? null;
   const contractParentInfo = latestContract?.parentInfo ?? null;
-  const careChannelRate = Number(contractBusinessInfo?.careChannelCommissionRate ?? 0);
-  const careContractTotal = Number(contractBusinessInfo?.feeAmount ?? 0);
-  const provisionalChannelCommission = careContractTotal * careChannelRate / 100;
-  const provisionalCompanyReceipt = careContractTotal - provisionalChannelCommission;
+  const selectedCarePricingPlan = fullCarePricingPlan(contractBusinessInfo?.carePricingPlan) ?? FULL_CARE_PRICING_PLANS[0];
   const latestContractInvoiceChoice =
     latestContract?.flowType === "RENEWAL"
       ? await getStudentContractInvoiceChoice(latestContract.id)
@@ -704,11 +709,11 @@ export default async function PackageContractPage({
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
                         <label style={{ display: "grid", gap: 6 }}>
                           <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Total minutes / 总课时分钟", "Total minutes / 总课时分钟")}</span>
-                          <input name="totalMinutes" type="number" min={0} defaultValue={contractBusinessInfo?.totalMinutes ?? pkg.totalMinutes ?? ""} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
+                          <input name="totalMinutes" type="number" min={0} readOnly={Boolean(careEngagement || contractBusinessInfo?.careServiceIncluded)} defaultValue={contractBusinessInfo?.careServiceIncluded ? selectedCarePricingPlan.hours * 60 : contractBusinessInfo?.totalMinutes ?? pkg.totalMinutes ?? ""} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1", background: careEngagement || contractBusinessInfo?.careServiceIncluded ? "#f8fafc" : "#fff" }} />
                         </label>
                         <label style={{ display: "grid", gap: 6 }}>
                           <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Fee amount / 合同金额", "Fee amount / 合同金额")}</span>
-                          <input name="feeAmount" type="number" min={0} step="0.01" defaultValue={contractBusinessInfo?.feeAmount ?? pkg.paidAmount ?? ""} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
+                          <input name="feeAmount" type="number" min={0} step="0.01" readOnly={Boolean(careEngagement || contractBusinessInfo?.careServiceIncluded)} defaultValue={contractBusinessInfo?.careServiceIncluded ? selectedCarePricingPlan.totalFee : contractBusinessInfo?.feeAmount ?? pkg.paidAmount ?? ""} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1", background: careEngagement || contractBusinessInfo?.careServiceIncluded ? "#f8fafc" : "#fff" }} />
                         </label>
                         <label style={{ display: "grid", gap: 6 }}>
                           <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Bill to / 开票对象", "Bill to / 开票对象")}</span>
@@ -724,15 +729,15 @@ export default async function PackageContractPage({
                           <div style={{ display: "grid", gap: 4 }}>
                             <label style={{ display: "flex", alignItems: "flex-start", gap: 9, fontWeight: 800, color: "#166534" }}>
                               <input name="careServiceIncluded" type="checkbox" defaultChecked={contractBusinessInfo?.careServiceIncluded ?? Boolean(careEngagement)} />
-                              <span>{t(lang, "Include the signed Full Care Service Addendum", "加入并签署《全程托管服务附件》")}</span>
+                              <span>{t(lang, "Prepare the Full Care Service Agreement", "生成《全程托管服务合同》")}</span>
                             </label>
                             <div style={{ color: "#166534", fontSize: 13, lineHeight: 1.55 }}>
-                              {t(lang, "The parent will review and sign the tuition agreement and Full Care scope together. Channel commission stays internal and is not printed in the parent agreement.", "家长会一次性审阅并签署学费协议和全托管范围；渠道佣金只供内部核算，不会打印在家长合同里。")}
+                              {t(lang, "The parent signs one Full Care Service Agreement. The service is not named after the student's current course; only the standard or IB/AP tuition price tier is selected.", "家长签署一份《全程托管服务合同》。合同不以学生当前课程命名，只选择标准课程或 IB/AP 课程价格档。")}
                             </div>
                           </div>
 
                           <div style={{ borderTop: "1px solid #bbf7d0", paddingTop: 12, display: "grid", gap: 8 }}>
-                            <div style={{ fontWeight: 800 }}>{careProgramLabel(careEngagement?.programType)}</div>
+                            <div style={{ fontWeight: 800 }}>Full Care / 全程托管</div>
                             <div style={{ color: "#475569", fontSize: 13 }}>{t(lang, "Signed scope snapshot", "签署时冻结的服务范围")}</div>
                             <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
                               {currentCareScopeLabels.length ? currentCareScopeLabels.map((label) => (
@@ -743,12 +748,12 @@ export default async function PackageContractPage({
 
                           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 10 }}>
                             <label style={{ display: "grid", gap: 6 }}>
-                              <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Tuition component / 补习课时费", "Tuition component / 补习课时费")}</span>
-                              <input name="tuitionFeeAmount" type="number" min={0} step="0.01" defaultValue={contractBusinessInfo?.tuitionFeeAmount ?? ""} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #86efac" }} />
-                            </label>
-                            <label style={{ display: "grid", gap: 6 }}>
-                              <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Full Care component / 托管服务费", "Full Care component / 托管服务费")}</span>
-                              <input name="careServiceFeeAmount" type="number" min={0} step="0.01" defaultValue={contractBusinessInfo?.careServiceFeeAmount ?? (careEngagement?.programType === "PRE_U_FULL_COORDINATION" ? 19600 : 12800)} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #86efac" }} />
+                              <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Full Care price plan", "全程托管价格方案")}</span>
+                              <select name="carePricingPlan" defaultValue={selectedCarePricingPlan.value} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #86efac", background: "#fff" }}>
+                                {FULL_CARE_PRICING_PLANS.map((plan) => (
+                                  <option key={plan.value} value={plan.value}>{plan.labelEn} / {plan.labelZh} — S${plan.totalFee.toLocaleString("en-SG")}</option>
+                                ))}
+                              </select>
                             </label>
                             <label style={{ display: "grid", gap: 6 }}>
                               <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Service start / 服务开始", "Service start / 服务开始")}</span>
@@ -775,20 +780,8 @@ export default async function PackageContractPage({
                               <input name="careEmergencyAdvanceLimit" type="number" min={0} step="0.01" defaultValue={contractBusinessInfo?.careEmergencyAdvanceLimit ?? 300} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #86efac" }} />
                             </label>
                           </div>
-
-                          <div style={{ borderTop: "1px solid #bbf7d0", paddingTop: 12, display: "grid", gap: 10 }}>
-                            <div style={{ fontWeight: 800, color: "#0f172a" }}>{t(lang, "Internal channel accounting — not shown to parent", "内部渠道核算——不向家长展示")}</div>
-                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 10 }}>
-                              <label style={{ display: "grid", gap: 6 }}>
-                                <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Channel name", "渠道名称")}</span>
-                                <input name="careChannelName" defaultValue={contractBusinessInfo?.careChannelName ?? ""} placeholder={t(lang, "Leave blank for direct sale", "直营订单留空")} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
-                              </label>
-                              <label style={{ display: "grid", gap: 6 }}>
-                                <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Commission rate (%)", "佣金比例（%）")}</span>
-                                <input name="careChannelCommissionRate" type="number" min={0} max={50} step="0.01" defaultValue={contractBusinessInfo?.careChannelCommissionRate ?? 0} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
-                              </label>
-                            </div>
-                            <div style={{ color: "#64748b", fontSize: 12 }}>{t(lang, "Commission is settled only on actual collected service revenue under the signed channel agreement; refunds, taxes, advances, and third-party costs are excluded.", "佣金只按渠道协议约定的实际到账服务款结算；退款、税费、代垫和第三方费用不计佣。")}</div>
+                          <div style={{ borderTop: "1px solid #bbf7d0", paddingTop: 12, color: "#166534", fontSize: 13, lineHeight: 1.6 }}>
+                            {t(lang, "Standard tuition uses the published 100-hour price of S$14,380; IB/AP uses S$24,800. The annual Full Care service fee is S$12,800. Selecting a plan locks the hours and fees in the contract.", "标准课程按价目表100小时S$14,380计算；IB/AP按100小时S$24,800计算；全年全程托管服务费为S$12,800。选择方案后，系统会锁定合同课时与金额。")}
                           </div>
                         </div>
                       ) : null}
@@ -926,21 +919,6 @@ export default async function PackageContractPage({
                         </div>
                       </div>
                     ) : null}
-                  </div>
-                ) : null}
-
-                {contractBusinessInfo?.careServiceIncluded && careChannelRate > 0 ? (
-                  <div style={{ border: "1px solid #fde68a", borderRadius: 12, background: "#fffbeb", padding: 14, display: "grid", gap: 8 }}>
-                    <div style={{ fontWeight: 800, color: "#92400e" }}>{t(lang, "Internal channel settlement preview", "内部渠道结算预览")}</div>
-                    <div style={{ display: "flex", gap: 16, flexWrap: "wrap", color: "#92400e", fontSize: 13 }}>
-                      <span>{t(lang, "Channel", "渠道")}: {contractBusinessInfo.careChannelName || "-"}</span>
-                      <span>{t(lang, "Rate", "比例")}: {careChannelRate.toFixed(2)}%</span>
-                      <span>{t(lang, "Provisional commission", "暂估佣金")}: S${provisionalChannelCommission.toFixed(2)}</span>
-                      <span>{t(lang, "Provisional company receipt", "暂估公司留存")}: S${provisionalCompanyReceipt.toFixed(2)}</span>
-                    </div>
-                    <div style={{ color: "#92400e", fontSize: 12 }}>
-                      {t(lang, "This is a maximum preview based on the contract total. Finance settles only eligible net service revenue actually received after tax, refund, chargeback, advance and third-party-cost exclusions under the signed channel agreement.", "这是按合同总额计算的上限预览。财务最终只按渠道协议核准的实际到账合格服务净收入结算，并扣除税费、退款、拒付、代垫及第三方费用。")}
-                    </div>
                   </div>
                 ) : null}
 

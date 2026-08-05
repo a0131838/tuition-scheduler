@@ -321,6 +321,7 @@ function defaultBusinessInfoFromRow(
     fpsProvider: setup?.fpsProvider ?? null,
     fpsPolicyNumber: setup?.fpsPolicyNumber ?? null,
     careServiceIncluded: false,
+    carePricingPlan: null,
     careProgramLabel: null,
     tuitionFeeAmount: null,
     careServiceFeeAmount: null,
@@ -332,8 +333,6 @@ function defaultBusinessInfoFromRow(
     careEmergencyAdvanceLimit: null,
     careScopeLabels: [],
     careExclusionLabels: [],
-    careChannelName: null,
-    careChannelCommissionRate: null,
   };
 }
 
@@ -476,6 +475,7 @@ function coerceBusinessInfo(raw: unknown): ContractBusinessInfo | null {
     fpsProvider: trimOrNull(row.fpsProvider),
     fpsPolicyNumber: trimOrNull(row.fpsPolicyNumber),
     careServiceIncluded: Boolean(row.careServiceIncluded),
+    carePricingPlan: trimOrNull(row.carePricingPlan),
     careProgramLabel: trimOrNull(row.careProgramLabel),
     tuitionFeeAmount: toNumberOrNull(row.tuitionFeeAmount),
     careServiceFeeAmount: toNumberOrNull(row.careServiceFeeAmount),
@@ -487,8 +487,6 @@ function coerceBusinessInfo(raw: unknown): ContractBusinessInfo | null {
     careEmergencyAdvanceLimit: toNumberOrNull(row.careEmergencyAdvanceLimit),
     careScopeLabels: stringArray(row.careScopeLabels),
     careExclusionLabels: stringArray(row.careExclusionLabels),
-    careChannelName: trimOrNull(row.careChannelName),
-    careChannelCommissionRate: toNumberOrNull(row.careChannelCommissionRate),
   };
 }
 
@@ -1141,7 +1139,6 @@ function normalizeBusinessInfoInput(
   const tuitionFeeAmount = numeric("tuitionFeeAmount");
   const careServiceFeeAmount = numeric("careServiceFeeAmount");
   const careEmergencyAdvanceLimit = numeric("careEmergencyAdvanceLimit");
-  const careChannelCommissionRate = numeric("careChannelCommissionRate");
   const careScopeLabels = stringArray(input.careScopeLabels, defaults.careScopeLabels);
   const careExclusionLabels = stringArray(input.careExclusionLabels, defaults.careExclusionLabels);
   if (careServiceIncluded) {
@@ -1155,7 +1152,6 @@ function normalizeBusinessInfoInput(
       throw new Error("Full Care service start and end dates must form a valid service period");
     }
     if (!careScopeLabels.length) throw new Error("Full Care service scope is missing");
-    if ((careChannelCommissionRate ?? 0) > 50) throw new Error("Channel commission rate must be between 0% and 50%");
   }
   return {
     courseName,
@@ -1200,6 +1196,7 @@ function normalizeBusinessInfoInput(
     fpsProvider: text("fpsProvider"),
     fpsPolicyNumber: text("fpsPolicyNumber"),
     careServiceIncluded,
+    carePricingPlan: careServiceIncluded ? text("carePricingPlan") : null,
     careProgramLabel: careServiceIncluded ? text("careProgramLabel") : null,
     tuitionFeeAmount: careServiceIncluded ? tuitionFeeAmount : null,
     careServiceFeeAmount: careServiceIncluded ? careServiceFeeAmount : null,
@@ -1211,8 +1208,6 @@ function normalizeBusinessInfoInput(
     careEmergencyAdvanceLimit: careServiceIncluded ? careEmergencyAdvanceLimit : null,
     careScopeLabels: careServiceIncluded ? careScopeLabels : [],
     careExclusionLabels: careServiceIncluded ? careExclusionLabels : [],
-    careChannelName: careServiceIncluded ? text("careChannelName") : null,
-    careChannelCommissionRate: careServiceIncluded ? careChannelCommissionRate : null,
   };
 }
 
@@ -1259,10 +1254,9 @@ export async function saveStudentContractBusinessDraft(input: {
       totalMinutes: businessInfo.totalMinutes,
       billTo: businessInfo.billTo,
       careServiceIncluded: businessInfo.careServiceIncluded || false,
+      carePricingPlan: businessInfo.carePricingPlan ?? null,
       tuitionFeeAmount: businessInfo.tuitionFeeAmount ?? null,
       careServiceFeeAmount: businessInfo.careServiceFeeAmount ?? null,
-      careChannelName: businessInfo.careChannelName ?? null,
-      careChannelCommissionRate: businessInfo.careChannelCommissionRate ?? null,
     },
   });
   return summarize(next);

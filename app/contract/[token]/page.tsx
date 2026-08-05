@@ -120,10 +120,10 @@ export default async function ContractSignPage({
     return (
       <div style={{ maxWidth: 960, margin: "40px auto", padding: "0 16px", display: "grid", gap: 16 }}>
         <div style={{ ...cardStyle("#ecfdf3"), borderColor: "#86efac" }}>
-          <h1 style={{ margin: 0 }}>{includesCare ? "Tuition + Full Care Agreement Signed / 补习及全程托管合同已签署" : "Contract Signed / 合同已完成签署"}</h1>
+          <h1 style={{ margin: 0 }}>{includesCare ? "Full Care Service Agreement Signed / 全程托管服务合同已签署" : "Contract Signed / 合同已完成签署"}</h1>
           <div style={{ color: "#166534" }}>
             {includesCare
-              ? "Thank you. The tuition agreement and Full Care Service Addendum have been signed successfully. / 感谢您，学费协议及《全程托管服务附件》已经完成签署。"
+              ? "Thank you. The Full Care Service Agreement has been signed successfully. / 感谢您，《全程托管服务合同》已经完成签署。"
               : "Thank you. The tuition agreement has been signed successfully and the invoice draft has been prepared for the school team. / 感谢您，学费协议已经签署完成，系统也已为校方准备好对应发票草稿。"}
           </div>
           {contract.invoiceNo ? <div style={{ color: "#166534" }}>Invoice / 发票: {contract.invoiceNo}</div> : null}
@@ -207,7 +207,7 @@ export default async function ContractSignPage({
     <div style={{ maxWidth: 1040, margin: "32px auto 48px", padding: "0 16px", display: "grid", gap: 18 }}>
       <div style={{ display: "grid", gap: 8 }}>
         <h1 style={{ margin: 0, fontSize: 38, lineHeight: 1.05 }}>
-          {snapshot.care?.included ? "Tuition + Full Care Agreement / 补习及全程托管合同" : "Tuition Agreement / 学费协议"}
+          {snapshot.care?.included ? "Full Care Service Agreement / 全程托管服务合同" : "Tuition Agreement / 学费协议"}
         </h1>
         <div style={{ color: "#475569", fontSize: 16, lineHeight: 1.6 }}>
           Please review the agreement below and sign electronically if everything is correct. Once signed, the system will create the matching invoice draft automatically.
