@@ -1,18 +1,12 @@
-<scroll-view class="page" scroll-y scroll-into-view="{{scrollTarget}}">
-  <view class="top">
-    <view class="eyebrow">{{studentName}}</view>
-    <view class="title">课后反馈</view>
-    <view class="subtitle">查看老师发布的课后记录。</view>
-  </view>
-
-  <block wx:if="{{feedbacks.length}}">
-    <view wx:for="{{feedbacks}}" wx:key="id" wx:for-index="feedbackIndex" id="feedback-{{item.id}}" class="card {{focusFeedbackId === item.id ? 'focused' : ''}}">
-      <view class="label">{{item.sessionStartText || item.sessionStartAt}}</view>
-      <view class="value">{{item.teacherName || "老师"}}</view>
-      <view class="subtitle">{{item.summary || item.content}}</view>
-      <view class="homework" wx:if="{{item.homework}}">课后作业：{{item.homework}}</view>
-      <view class="attachments" wx:if="{{item.attachments.length}}"><view class="attachment-title">作业与课堂附件</view><button class="attachment" wx:for="{{item.attachments}}" wx:key="id" data-feedback-index="{{feedbackIndex}}" data-attachment-index="{{index}}" bindtap="openAttachment">{{item.name}} · 查看</button></view>
+<scroll-view class="page feedback-page" scroll-y scroll-into-view="{{scrollTarget}}">
+  <view class="top"><view class="eyebrow">{{studentName}}</view><view class="title">课后反馈</view><view class="subtitle">按时间查看老师发布的课堂表现、学习重点和作业。</view></view>
+  <view class="feedback-list" wx:if="{{feedbacks.length}}">
+    <view wx:for="{{feedbacks}}" wx:key="id" wx:for-index="feedbackIndex" id="feedback-{{item.id}}" class="feedback-row {{focusFeedbackId === item.id ? 'focused' : ''}}">
+      <view class="feedback-meta"><text>{{item.sessionStartText || item.sessionStartAt}}</text><text>{{item.teacherName || "老师"}}</text></view>
+      <view class="feedback-summary">{{item.summary || item.content}}</view>
+      <view class="homework" wx:if="{{item.homework}}"><view class="homework-label">课后作业</view><view>{{item.homework}}</view></view>
+      <view class="attachments" wx:if="{{item.attachments.length}}"><button class="attachment" wx:for="{{item.attachments}}" wx:key="id" data-feedback-index="{{feedbackIndex}}" data-attachment-index="{{index}}" bindtap="openAttachment">{{item.name}} · 查看</button></view>
     </view>
-  </block>
+  </view>
   <view wx:else class="empty">暂无课后反馈</view>
 </scroll-view>

@@ -1,5 +1,11 @@
 const api = require("../../utils/api");
 
+function updatedText(value) {
+  const date = new Date(value); if (Number.isNaN(date.getTime())) return "-";
+  const shifted = new Date(date.getTime() + 8 * 60 * 60 * 1000);
+  return `${shifted.getUTCMonth() + 1}月${shifted.getUTCDate()}日 ${String(shifted.getUTCHours()).padStart(2, "0")}:${String(shifted.getUTCMinutes()).padStart(2, "0")}`;
+}
+
 Page({
   data: {
     studentName: "",
@@ -19,7 +25,7 @@ Page({
     if (!studentId) return Promise.resolve();
     this.setData({ studentName: getApp().globalData.currentStudentName || "当前学生" });
     return api.request(`/api/miniapp/students/${studentId}/requests`)
-      .then((data) => this.setData({ requests: data.requests || [] }))
+      .then((data) => this.setData({ requests: (data.requests || []).map((item) => Object.assign({}, item, { updatedAtText: updatedText(item.updatedAt) })) }))
       .catch((err) => api.toast(err.message));
   },
 

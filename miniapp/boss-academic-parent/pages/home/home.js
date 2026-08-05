@@ -1,227 +1,102 @@
 const api = require("../../utils/api");
 const presentation = require("../../utils/parent-presentation");
 
-function buildSubscriptionActions(groups) {
-  const labels = {
-    service: ["开启请求状态提醒", "开启待付提醒"],
-    documents: ["开启发票提醒", "开启收据提醒"],
-    learning: ["开启课后反馈提醒"]
-  };
-  return groups.reduce((actions, group) => {
-    if (!group.configured) return actions;
-    if (group.key === "course") {
-      actions.push(Object.assign({}, group, { groupKey: group.key }));
-      return actions;
-    }
-    (group.templateIds || []).forEach((templateId, index) => {
-      actions.push({
-        key: `${group.key}:${index}`,
-        groupKey: group.key,
-        label: (labels[group.key] || [])[index] || group.label,
-        templateIds: [templateId]
-      });
-    });
-    return actions;
-  }, []);
+function singaporeTimeText(value) {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) return "刚刚";
+  const shifted = new Date(date.getTime() + 8 * 60 * 60 * 1000);
+  const nowShifted = new Date(Date.now() + 8 * 60 * 60 * 1000);
+  const sameDay = shifted.toISOString().slice(0, 10) === nowShifted.toISOString().slice(0, 10);
+  const time = `${String(shifted.getUTCHours()).padStart(2, "0")}:${String(shifted.getUTCMinutes()).padStart(2, "0")}`;
+  return sameDay ? `今天 ${time}` : `${shifted.getUTCMonth() + 1}月${shifted.getUTCDate()}日 ${time}`;
+}
+
+function latestUpdate(progress, home) {
+  const careUpdate = progress.care && progress.care.latestPublishedUpdate;
+  if (careUpdate) return { kind: careUpdate.kind || "服务动态", title: careUpdate.title, summary: careUpdate.summary, timeText: careUpdate.occurredAtText || singaporeTimeText(careUpdate.occurredAt) };
+  if (home.latestFeedback) return { kind: "课后反馈", title: `${home.latestFeedback.teacherName || "老师"}已发布反馈`, summary: home.latestFeedback.summary || "本次课程反馈已更新", timeText: singaporeTimeText(home.latestFeedback.sessionStartAt) };
+  const item = (progress.timeline || [])[0];
+  if (item) return { kind: item.kindLabel || "服务动态", title: item.title, summary: item.summary, timeText: item.occurredAtText || singaporeTimeText(item.occurredAt) };
+  return { kind: "服务动态", title: "当前服务按计划推进", summary: "有新的课程、反馈或服务进展后会在这里更新。", timeText: "等待更新" };
+}
+
+function primaryAction(progress, monthly) {
+  const parentAction = (progress.parentActions || [])[0];
+  if (parentAction) return { type: "CARE", title: parentAction.summary, meta: parentAction.dueAtText ? `请于 ${parentAction.dueAtText} 前处理` : "服务团队正在等待您的回复" };
+  if (monthly.pendingCount) return { type: "MONTHLY", title: `${monthly.month || "下月"}排课还有 ${monthly.pendingCount} 项待确认`, meta: monthly.dueText ? `请于 ${monthly.dueText} 前完成` : "点击确认安排" };
+  const report = progress.care && progress.care.latestReport;
+  if (report && !report.acknowledged) return { type: "REPORT", title: `请确认收到《${report.title}》`, meta: report.periodLabel || "最新正式报告" };
+  return null;
 }
 
 Page({
   data: {
+    loading: true,
+    error: "",
     student: {},
-    nextSession: null,
-    latestFeedback: null,
-    financeSummary: {},
-    requestSummary: {},
-    requestCountText: "-",
     permissions: {},
-    metricClass: "three",
-    serviceSummary: {},
-    progressAvailable: false,
-    completedLessonText: "-",
-    feedbackCountText: "-",
-    nextStep: {},
+    summary: {},
     care: {},
-    parentActions: [],
-    primaryParentAction: null,
+    nextSession: null,
+    latestUpdate: {},
+    nextUpdateText: "",
     parentStatus: presentation.parentStatus(null),
-    lessonBalanceText: "暂无剩余课时",
-    subscriptionGroups: [],
-    courseReminder: null,
-    monthlyScheduling: null,
-    hasMonthlyScheduling: false,
-    hasSubscriptionGroups: false,
-    subscriptionLoadingKey: "",
-    subscriptionLoading: false
+    primaryAction: null,
+    freshness: {},
+    lessonBalanceText: "暂无剩余课时", hasFormalReports: false,
+    lastUpdatedText: "刚刚"
   },
 
-  onShow() {
-    this.load();
-  },
-
-  onPullDownRefresh() {
-    this.load().finally(() => wx.stopPullDownRefresh());
-  },
+  onShow() { this.load(); },
+  onPullDownRefresh() { this.load().finally(() => wx.stopPullDownRefresh()); },
 
   load() {
     const studentId = api.requireStudentPage();
     if (!studentId) return Promise.resolve();
     const loadSeq = (this.loadSeq || 0) + 1;
     this.loadSeq = loadSeq;
-    this.setData({
-      student: {},
-      nextSession: null,
-      latestFeedback: null,
-      financeSummary: {},
-      requestSummary: {},
-      requestCountText: "-",
-      permissions: {},
-      metricClass: "three",
-      parentStatus: presentation.parentStatus(null, false),
-      serviceSummary: {},
-      nextStep: {},
-      care: {},
-      parentActions: [],
-      primaryParentAction: null,
-      progressAvailable: false,
-      completedLessonText: "-",
-      feedbackCountText: "-",
-      lessonBalanceText: "暂无剩余课时",
-      subscriptionGroups: [],
-      courseReminder: null,
-      monthlyScheduling: null,
-      hasMonthlyScheduling: false,
-      hasSubscriptionGroups: false
-    });
-    const homeTask = api.request(`/api/miniapp/students/${studentId}/home`)
+    this.setData({ loading: true, error: "", student: {}, care: {} });
+    return api.request(`/api/miniapp/students/${studentId}/dashboard`)
       .then((data) => {
         if (loadSeq !== this.loadSeq) return;
-        const permissions = data.permissions || {};
-        const metricCount = [permissions.canViewSchedule, permissions.canViewFeedback, permissions.canCreateRequests].filter(Boolean).length;
+        const home = data.home || {};
+        const progress = data.progress || {};
+        const permissions = home.permissions || progress.permissions || {};
+        const care = progress.care || {};
         this.setData({
-          student: data.student || {},
-          nextSession: data.nextSession || null,
-          latestFeedback: data.latestFeedback || null,
-          financeSummary: data.financeSummary || {},
-          requestSummary: data.requestSummary || {},
-          requestCountText: permissions.canCreateRequests
-            ? String((data.requestSummary || {}).openCount || 0)
-            : "-",
+          student: home.student || progress.student || {},
           permissions,
-          metricClass: metricCount <= 1 ? "one" : metricCount === 2 ? "two" : "three",
-          parentStatus: presentation.parentStatus(
-            (data.student || {}).academicRiskLevel,
-            permissions.canViewReports
-          ),
-          lessonBalanceText: presentation.lessonBalance((data.financeSummary || {}).totalRemainingMinutes)
+          summary: progress.summary || {},
+          care,
+          nextSession: home.nextSession || progress.nextSession || null,
+          latestUpdate: latestUpdate(progress, home),
+          nextUpdateText: care.active && care.nextUpdate ? care.nextUpdate.dateText : "",
+          parentStatus: presentation.parentStatus((home.student || {}).academicRiskLevel, permissions.canViewReports),
+          hasFormalReports: Boolean(permissions.canViewReports && (care.active || (home.student || {}).servicePlanType === "ACADEMIC_MANAGEMENT")),
+          primaryAction: primaryAction(progress, data.monthlyScheduling || {}),
+          freshness: data.freshness || {},
+          lessonBalanceText: presentation.lessonBalance((home.financeSummary || {}).totalRemainingMinutes),
+          lastUpdatedText: singaporeTimeText((data.freshness || {}).serverTime),
+          loading: false
         });
+        api.request(`/api/miniapp/students/${studentId}/dashboard`, { method: "POST" }).catch(() => null);
       })
       .catch((err) => {
-        if (loadSeq === this.loadSeq) api.toast(err.message);
+        if (loadSeq === this.loadSeq) this.setData({ loading: false, error: err.message || "家长看板加载失败" });
       });
-    const progressTask = api.request(`/api/miniapp/students/${studentId}/service-progress`)
-      .then((data) => {
-        if (loadSeq !== this.loadSeq) return;
-        this.setData({
-          serviceSummary: data.summary || {},
-          nextStep: data.nextStep || {},
-          care: data.care || {},
-          parentActions: data.parentActions || [],
-          primaryParentAction: (data.parentActions || [])[0] || null,
-          progressAvailable: true,
-          completedLessonText: String((data.summary || {}).completedLessons || 0),
-          feedbackCountText: (data.permissions || {}).canViewFeedback
-            ? String((data.summary || {}).feedbackCount || 0)
-            : "-"
-        });
-      })
-      .catch(() => {
-        if (loadSeq !== this.loadSeq) return;
-        this.setData({
-          serviceSummary: {}, nextStep: {}, care: {}, parentActions: [], primaryParentAction: null,
-          progressAvailable: false, completedLessonText: "-", feedbackCountText: "-"
-        });
-      });
-    const subscriptionTask = api.request(`/api/miniapp/subscriptions/intent?studentId=${encodeURIComponent(studentId)}`)
-      .then((data) => {
-        if (loadSeq !== this.loadSeq) return;
-        const groups = (data.groups || []).filter((group) => group.configured);
-        const actions = buildSubscriptionActions(groups);
-        this.setData({ subscriptionGroups: actions, courseReminder: data.courseReminder || null, hasSubscriptionGroups: actions.length > 0 });
-      })
-      .catch(() => {
-        if (loadSeq === this.loadSeq) this.setData({ subscriptionGroups: [], courseReminder: null, hasSubscriptionGroups: false });
-      });
-    const monthlySchedulingTask = api.request("/api/miniapp/monthly-scheduling")
-      .then((data) => {
-        if (loadSeq !== this.loadSeq) return;
-        const rows = data.items || [];
-        const relevant = rows.filter((row) => row.student && row.student.id === studentId);
-        const pending = relevant.filter((row) => !["SUBMITTED", "MATCHED", "SCHEDULED", "PAUSED"].includes(row.status));
-        this.setData({
-          hasMonthlyScheduling: relevant.length > 0,
-          monthlyScheduling: relevant.length ? { month: relevant[0].month, total: relevant.length, pending: pending.length, dueText: relevant[0].dueText } : null
-        });
-      })
-      .catch(() => {
-        if (loadSeq === this.loadSeq) this.setData({ monthlyScheduling: null, hasMonthlyScheduling: false });
-      });
-    return Promise.allSettled([homeTask, progressTask, subscriptionTask, monthlySchedulingTask]);
   },
 
-  goFeedbacks() {
-    wx.navigateTo({ url: "/pages/feedbacks/feedbacks" });
-  },
-
-  goProgress() {
-    wx.switchTab({ url: "/pages/progress/progress" });
-  },
-
-  goSchedule() {
-    wx.switchTab({ url: "/pages/schedule/schedule" });
-  },
-
-  goMonthlyScheduling() {
-    wx.navigateTo({ url: "/pages/monthly-scheduling/monthly-scheduling" });
-  },
-
-  goLatestReport() {
-    const report = this.data.care.latestReport;
-    if (report && report.id) {
-      wx.navigateTo({ url: `/pages/care-report-detail/care-report-detail?id=${report.id}` });
-      return;
-    }
-    wx.navigateTo({ url: "/pages/care-reports/care-reports" });
-  },
-
-  goNewRequest() {
-    wx.navigateTo({ url: "/pages/request-new/request-new" });
-  },
-
-  goStudents() {
-    wx.switchTab({ url: "/pages/students/students" });
-  },
-
-  requestSubscription(e) {
-    const key = e.currentTarget.dataset.key;
-    const group = this.data.subscriptionGroups.find((item) => item.key === key);
-    if (!group || !group.templateIds || !group.templateIds.length || this.data.subscriptionLoadingKey) return;
-    this.setData({ subscriptionLoadingKey: key, subscriptionLoading: true });
-    wx.requestSubscribeMessage({
-      tmplIds: group.templateIds.slice(0, 3),
-      success: (result) => {
-        const studentId = api.currentStudentId();
-        api.request("/api/miniapp/subscriptions/intent", { method: "POST", data: { groupKey: group.groupKey || key, studentId, result } })
-          .then((data) => {
-            if (data.courseReminder) this.setData({ courseReminder: data.courseReminder });
-            api.toast(data.message || "提醒设置已记录");
-          })
-          .catch((err) => api.toast(err.message))
-          .finally(() => this.setData({ subscriptionLoadingKey: "", subscriptionLoading: false }));
-      },
-      fail: (err) => {
-        api.toast(err.errMsg || "未能打开提醒授权");
-        this.setData({ subscriptionLoadingKey: "", subscriptionLoading: false });
-      }
-    });
+  goStudents() { wx.switchTab({ url: "/pages/students/students" }); },
+  goProgress() { wx.switchTab({ url: "/pages/progress/progress" }); },
+  goSchedule() { wx.switchTab({ url: "/pages/schedule/schedule" }); },
+  goFeedbacks() { wx.navigateTo({ url: "/pages/feedbacks/feedbacks" }); },
+  goFinance() { wx.navigateTo({ url: "/pages/finance/finance" }); },
+  goReports() { wx.navigateTo({ url: "/pages/care-reports/care-reports" }); },
+  goNewRequest() { wx.navigateTo({ url: "/pages/request-new/request-new" }); },
+  goPrimaryAction() {
+    if (!this.data.primaryAction) return;
+    if (this.data.primaryAction.type === "MONTHLY") wx.navigateTo({ url: "/pages/monthly-scheduling/monthly-scheduling" });
+    else if (this.data.primaryAction.type === "REPORT") this.goReports();
+    else this.goProgress();
   }
 });

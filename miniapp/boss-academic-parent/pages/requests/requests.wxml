@@ -1,22 +1,8 @@
-<view class="page">
-  <view class="top">
-    <view class="eyebrow">{{studentName}}</view>
-    <view class="title">服务请求</view>
-    <view class="subtitle">查看处理进度，或提交新请求。</view>
+<view class="page request-list-page page-enter">
+  <view class="top"><view class="eyebrow">{{studentName}}</view><view class="title">服务请求</view><view class="subtitle">每项请求都可以查看当前状态和最终处理结果。</view></view>
+  <button class="new-request-button" bindtap="goNew">联系服务团队</button>
+  <view class="request-list" wx:if="{{requests.length}}">
+    <view class="request-row" wx:for="{{requests}}" wx:key="id" bindtap="openDetail" data-id="{{item.id}}"><view class="request-meta"><text>{{item.type}}</text><text class="request-status">{{item.statusLabel}}</text></view><view class="request-title">{{item.title || item.ticketNo}}</view><view class="request-time">最近更新 {{item.updatedAtText || item.updatedAt}}</view></view>
   </view>
-
-  <button class="btn" bindtap="goNew">提交新请求</button>
-
-  <block wx:if="{{requests.length}}">
-    <view wx:for="{{requests}}" wx:key="id" class="card" bindtap="openDetail" data-id="{{item.id}}">
-      <view class="row">
-        <view class="pill">{{item.type}}</view>
-        <view class="pill">{{item.statusLabel}}</view>
-      </view>
-      <view class="value">{{item.title || item.ticketNo}}</view>
-      <view class="subtitle">负责人：{{item.owner || item.mainOwner}} · 关闭：{{item.closeOwner}}</view>
-      <view class="label">{{item.updatedAt}}</view>
-    </view>
-  </block>
-  <view wx:else class="empty">暂无请求记录</view>
+  <view class="empty" wx:else>暂无服务请求</view>
 </view>

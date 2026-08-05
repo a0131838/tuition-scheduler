@@ -128,10 +128,10 @@ test("Full Care parent dashboard answers the four reassurance questions with rev
   assert.match(route, /publicSummary: \{ not: null \}/);
   assert.doesNotMatch(route, /riskCases:[\s\S]{0,500}facts: true/);
   assert.doesNotMatch(route, /riskCases:[\s\S]{0,500}immediateAction: true/);
-  assert.match(page, /孩子现在怎么样？/);
-  assert.match(page, /我们最近做了什么？/);
-  assert.match(page, /接下来做什么？/);
-  assert.match(page, /下次什么时候更新？/);
+  assert.match(page, /当前状态/);
+  assert.match(page, /最近完成/);
+  assert.match(page, /接下来/);
+  assert.match(page, /下次更新/);
   assert.match(page, /重大事项会主动联系，不会等待月报/);
 });
 

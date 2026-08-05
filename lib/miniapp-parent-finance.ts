@@ -40,6 +40,7 @@ export function miniappPackageDto(pkg: PackageWithCourse) {
     courseName: pkg.course.name,
     type: pkg.type as PackageType,
     status: pkg.status as PackageStatus,
+    statusLabel: pkg.status === "ACTIVE" ? "使用中" : pkg.status === "PAUSED" ? "已暂停" : "已到期",
     totalMinutes,
     remainingMinutes,
     usedMinutes,

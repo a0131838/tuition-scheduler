@@ -44,6 +44,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ student
   const latestDeadlineText = cleanString((body as any).latestDeadlineText, 200);
   const contactPhone = cleanString((body as any).contactPhone, 80);
   const contactWechat = cleanString((body as any).contactWechat, 120);
+  const urgency = cleanString((body as any).urgency, 20) === "URGENT" ? "URGENT" : "ROUTINE";
   if (!content) return bad("Content is required");
 
   const student = await prisma.student.findUnique({
@@ -68,7 +69,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ student
         studentId: student.id,
         source: "家长小程序",
         type,
-        priority: cfg.priority,
+        priority: urgency === "URGENT" ? "24小时紧急" : cfg.priority,
         studentName: student.name,
         grade: student.grade,
         wechat: contactWechat || auth.parent.wechatOpenId || null,
@@ -95,7 +96,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ student
     action: "miniapp.request.create",
     targetType: "Ticket",
     targetId: ticket.id,
-    meta: { type, ticketNo: ticket.ticketNo, owner: cfg.owner, closeOwner: cfg.closer },
+    meta: { type, urgency, ticketNo: ticket.ticketNo, owner: cfg.owner, closeOwner: cfg.closer },
   }).catch(() => null);
 
   return ok({

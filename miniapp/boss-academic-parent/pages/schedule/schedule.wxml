@@ -1,28 +1,21 @@
-<view class="page">
-  <view class="top">
-    <view class="eyebrow">{{studentName}}</view>
-    <view class="title">课程安排</view>
-    <view class="subtitle">近期课程与出勤状态</view>
+<view class="page schedule-page page-enter">
+  <view class="top"><view class="eyebrow">{{studentName}}</view><view class="title">课程日程</view><view class="subtitle">查看近期课程、老师、地点和状态。</view></view>
+
+  <view class="next-lesson" wx:if="{{nextSession}}">
+    <view class="next-label">下一节课</view><view class="next-date">{{nextSession.dateLabel}} · {{nextSession.timeRange}}</view><view class="next-course">{{nextSession.courseLabel}}</view><view class="next-meta">{{nextSession.teacherName || "老师待确认"}} · {{nextSession.mode === "ONLINE" ? "线上" : (nextSession.campusName || "地点待确认")}}</view>
   </view>
 
-  <view class="reminder-band" wx:if="{{courseReminder}}">
-    <view>
-      <view class="label">微信课程提醒</view>
-      <view class="value">剩余 {{courseReminder.availableCount}} 条额度</view>
-      <view class="subtitle">{{courseReminder.summaryText}}</view>
-    </view>
-    <button class="reminder-action" wx:if="{{courseGroup}}" disabled="{{subscriptionLoading}}" bindtap="requestCourseReminder">{{courseGroup.label}}</button>
-  </view>
+  <view class="schedule-tabs"><view class="schedule-tab {{filter === 'upcoming' ? 'active' : ''}}" data-filter="upcoming" bindtap="changeFilter">未来课程</view><view class="schedule-tab {{filter === 'history' ? 'active' : ''}}" data-filter="history" bindtap="changeFilter">已完成</view></view>
 
-  <block wx:if="{{sessions.length}}">
-    <view wx:for="{{sessions}}" wx:key="id" class="card">
-      <view class="row">
-        <view class="value">{{item.startText}}</view>
-        <view class="pill">{{item.reminderStatusLabel || item.attendanceStatus || "待上课"}}</view>
-      </view>
-      <view class="subtitle">{{item.courseLabel}}</view>
-      <view class="label">{{item.teacherName || "老师未定"}} · {{item.mode === "ONLINE" ? "线上" : "线下"}} · {{item.campusName || ""}} {{item.roomName || ""}}</view>
+  <view class="reminder-line" wx:if="{{courseReminder}}"><view><view class="reminder-title">课程微信提醒</view><view class="reminder-note">剩余 {{courseReminder.availableCount}} 条 · {{courseReminder.summaryText}}</view></view><button class="reminder-button" wx:if="{{courseGroup}}" disabled="{{subscriptionLoading}}" bindtap="requestCourseReminder">开启</button></view>
+
+  <view class="date-group" wx:for="{{visibleGroups}}" wx:key="dateLabel">
+    <view class="date-label">{{item.dateLabel}}</view>
+    <view class="session-row" wx:for="{{item.sessions}}" wx:key="id" wx:for-item="session">
+      <view class="session-time">{{session.timeRange}}</view>
+      <view class="session-copy"><view class="session-title">{{session.courseLabel}}</view><view class="session-meta">{{session.teacherName || "老师待确认"}} · {{session.mode === "ONLINE" ? "线上" : (session.campusName || "地点待确认")}} {{session.roomName || ""}}</view></view>
+      <view class="status status-{{session.statusTone}}">{{session.reminderStatusLabel || session.statusLabel}}</view>
     </view>
-  </block>
-  <view wx:else class="empty">暂无课程安排</view>
+  </view>
+  <view class="empty" wx:if="{{!visibleGroups.length}}">{{filter === 'upcoming' ? '暂无未来课程安排' : '暂无近期已完成课程'}}</view>
 </view>

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { sessionBelongsToStudentWhere } from "@/lib/session-students";
+import { formatBusinessDateWithWeekday, formatBusinessTimeOnly } from "@/lib/date-only";
 import { ok, parseDateRange, requireMiniappStudentAccess, sessionDto } from "../../../_lib";
 
 export async function GET(req: Request, { params }: { params: Promise<{ studentId: string }> }) {
@@ -23,9 +24,26 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
     take: 500,
   });
 
+  const now = new Date();
   return ok({
     from: from.toISOString(),
     to: to.toISOString(),
-    sessions: sessions.map((session) => sessionDto(session, session.attendances[0])),
+    sessions: sessions.map((session) => {
+      const attendance = session.attendances[0];
+      const status = attendance?.status === "EXCUSED"
+        ? { label: "已请假", tone: "muted" }
+        : session.endAt <= now
+          ? { label: "已完成", tone: "done" }
+          : session.startAt <= now
+            ? { label: "进行中", tone: "active" }
+            : { label: "待上课", tone: "upcoming" };
+      return {
+        ...sessionDto(session, attendance),
+        dateLabel: formatBusinessDateWithWeekday(session.startAt, { short: true }),
+        timeRange: `${formatBusinessTimeOnly(session.startAt)}–${formatBusinessTimeOnly(session.endAt)}`,
+        statusLabel: status.label,
+        statusTone: status.tone,
+      };
+    }),
   });
 }

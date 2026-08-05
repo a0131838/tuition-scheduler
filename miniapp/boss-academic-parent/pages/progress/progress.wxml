@@ -1,186 +1,78 @@
-<view class="page progress-page">
-  <view class="top progress-top">
+<view class="page progress-page page-enter">
+  <view class="progress-head">
     <view class="eyebrow">{{student.name || "当前学生"}}</view>
-    <view class="title">服务进展</view>
-    <view class="subtitle">{{service.description}}</view>
+    <view class="title">学习与服务进展</view>
+    <view class="progress-subline">{{service.label || "普通课程"}} · 负责人 {{responsiblePerson || "博思服务团队"}}</view>
   </view>
 
-  <view wx:if="{{loading}}" class="progress-loading">正在汇总服务记录...</view>
-  <view wx:elif="{{error}}" class="progress-error">
-    <view class="value">暂时无法读取</view>
-    <view class="subtitle">{{error}}</view>
-    <button class="btn progress-retry" bindtap="load">重新加载</button>
-  </view>
+  <view wx:if="{{loading}}" class="progress-loading"><view class="loading-line wide"></view><view class="loading-line"></view><view class="loading-block"></view></view>
+  <view wx:elif="{{error}}" class="progress-error"><view class="error-title">暂时无法读取</view><view class="error-copy">{{error}}</view><button class="quiet-button" bindtap="load">重新加载</button></view>
 
   <block wx:else>
-    <view class="reassurance-panel" wx:if="{{care.active}}">
-      <view class="reassurance-head">
-        <view>
-          <view class="eyebrow">家长安心看板</view>
-          <view class="reassurance-title">孩子的情况，我们持续跟进</view>
-        </view>
-        <view class="reassurance-owner">负责人 {{responsiblePerson}}</view>
+    <view class="progress-tabs" style="{{hasFormalReports ? '' : 'grid-template-columns:repeat(2,1fr)'}}">
+      <view class="progress-tab {{viewMode === 'updates' ? 'active' : ''}}" data-mode="updates" bindtap="changeView">最新动态</view>
+      <view class="progress-tab {{viewMode === 'reports' ? 'active' : ''}}" wx:if="{{hasFormalReports}}" data-mode="reports" bindtap="changeView">正式报告</view>
+      <view class="progress-tab {{viewMode === 'entitlements' ? 'active' : ''}}" data-mode="entitlements" bindtap="changeView">服务权益</view>
+    </view>
+
+    <view wx:if="{{viewMode === 'updates'}}" class="view-section">
+      <view class="status-line tone-{{parentStatus.tone}}">
+        <view><view class="status-label">当前状态</view><view class="status-title">{{parentStatus.label}}</view></view>
+        <view class="status-copy">{{parentStatus.summary}}</view>
       </view>
-      <view class="reassurance-grid">
-        <view class="reassurance-card tone-{{parentStatus.tone}}">
-          <view class="question-label">孩子现在怎么样？</view>
-          <view class="answer-title">{{parentStatus.label}}</view>
-          <view class="answer-copy">{{parentStatus.summary}}</view>
-        </view>
-        <view class="reassurance-card">
-          <view class="question-label">我们最近做了什么？</view>
-          <block wx:if="{{reassurance.latest}}">
-            <view class="answer-title">{{reassurance.latest.title}}</view>
-            <view class="answer-copy">{{reassurance.latest.summary}}</view>
-            <view class="answer-meta">{{reassurance.latest.occurredAtText}}</view>
-          </block>
-          <view class="answer-copy" wx:else>首条正式服务动态经审核后会显示在这里。</view>
-        </view>
-        <view class="reassurance-card">
-          <view class="question-label">接下来做什么？</view>
-          <view class="answer-title">{{nextStep.label}}</view>
-          <view class="answer-copy">{{nextStep.text}}</view>
-          <view class="answer-meta" wx:if="{{nextStep.dueText}}">计划日期 {{nextStep.dueText}}</view>
-        </view>
-        <view class="reassurance-card update-card">
-          <view class="question-label">下次什么时候更新？</view>
-          <view class="answer-title">{{care.nextUpdate.dateText}}</view>
-          <view class="answer-copy">{{care.nextUpdate.promise}}</view>
+
+      <view class="answer-list" wx:if="{{care.active}}">
+        <view class="answer-row"><view class="answer-label">最近完成</view><view class="answer-value">{{reassurance.latest ? reassurance.latest.title : "等待首条正式服务动态"}}</view><view class="answer-note" wx:if="{{reassurance.latest}}">{{reassurance.latest.summary}}</view></view>
+        <view class="answer-row"><view class="answer-label">接下来</view><view class="answer-value">{{nextStep.text || "当前服务按计划推进"}}</view><view class="answer-note" wx:if="{{nextStep.dueText}}">计划日期 {{nextStep.dueText}}</view></view>
+        <view class="answer-row"><view class="answer-label">下次更新</view><view class="answer-value">{{care.nextUpdate.dateText}}</view><view class="answer-note">{{care.nextUpdate.promise}}</view></view>
+      </view>
+
+      <view class="risk-section" wx:if="{{care.visibleRisks.length}}">
+        <view class="section-row"><view class="section-title">正在重点处理</view><view class="count-badge">{{care.visibleRisks.length}}</view></view>
+        <view class="risk-row" wx:for="{{care.visibleRisks}}" wx:key="id"><view class="risk-status">{{item.statusText}}</view><view class="risk-summary">{{item.summary}}</view><view class="risk-time">最近更新 {{item.updatedAtText}}</view></view>
+        <view class="section-note">重大事项会主动联系，不会等待月报。</view>
+      </view>
+
+      <view class="week-summary">
+        <view class="section-row"><view class="section-title">本周概览</view><view class="section-note">{{period.label}}</view></view>
+        <view class="summary-grid">
+          <view class="summary-item" wx:if="{{permissions.canViewSchedule}}" bindtap="goSchedule"><view class="summary-number">{{summary.completedLessons || 0}}</view><view class="summary-label">完成课程</view></view>
+          <view class="summary-item" wx:if="{{permissions.canViewFeedback}}" bindtap="goFeedbacks"><view class="summary-number">{{summary.feedbackCount || 0}}</view><view class="summary-label">课后反馈</view></view>
+          <view class="summary-item" wx:if="{{permissions.canCreateRequests}}" bindtap="goRequests"><view class="summary-number">{{summary.openRequestCount || 0}}</view><view class="summary-label">处理中请求</view></view>
         </view>
       </view>
-    </view>
 
-    <view class="status-band tone-{{parentStatus.tone}}" wx:else>
-      <view class="status-copy">
-        <view class="label">当前状态</view>
-        <view class="status-title">{{parentStatus.label}}</view>
-        <view class="status-summary">{{parentStatus.summary}}</view>
-      </view>
-    </view>
-
-    <view class="commitment-band" wx:if="{{care.active && care.serviceCommitments.length}}">
-      <view class="label">我们正在负责的事项</view>
-      <view class="commitment-list">
-        <view class="commitment-chip" wx:for="{{care.serviceCommitments}}" wx:key="*this">{{item}}</view>
-      </view>
-      <view class="commitment-note">这里只显示合同范围内、适合向家长公开的服务承诺。</view>
-    </view>
-
-    <view class="visible-risk-band" wx:if="{{care.active && care.visibleRisks.length}}">
-      <view class="visible-risk-head">
-        <view class="section-title">正在重点处理</view>
-        <view class="risk-badge">{{care.visibleRisks.length}} 项</view>
-      </view>
-      <view class="visible-risk-row" wx:for="{{care.visibleRisks}}" wx:key="id">
-        <view class="visible-risk-status">{{item.statusText}}</view>
-        <view class="visible-risk-summary">{{item.summary}}</view>
-        <view class="answer-meta">最近更新 {{item.updatedAtText}}</view>
-      </view>
-      <view class="visible-risk-note">团队只展示已经核实并适合向家长公开的风险信息；重大事项会主动联系，不会等待月报。</view>
-    </view>
-
-    <view class="service-band">
-      <view class="service-band-head">
-        <view>
-          <view class="label">当前服务</view>
-          <view class="service-name">{{service.label}}</view>
+      <view class="timeline-head"><view class="section-title">最近进展</view><view class="section-note">按时间合并课程、反馈与服务记录</view></view>
+      <view class="timeline" wx:if="{{timeline.length}}">
+        <view class="timeline-row" wx:for="{{timeline}}" wx:key="id">
+          <view class="timeline-marker"><view class="timeline-dot kind-{{item.kind}}"></view><view class="timeline-line"></view></view>
+          <view class="timeline-body"><view class="timeline-meta"><text>{{item.kindLabel}}</text><text>{{item.occurredAtText}}</text></view><view class="timeline-title">{{item.title}}</view><view class="timeline-summary">{{item.summary}}</view></view>
         </view>
       </view>
-      <view class="service-cadence">{{service.cadence}}</view>
-      <view class="owner-line">
-        <text class="owner-label">主要负责人</text>
-        <text class="owner-name">{{responsiblePerson}}</text>
-      </view>
+      <view class="empty-line" wx:else>课程完成或团队发布进展后会显示在这里。</view>
     </view>
 
-    <view class="section-head">
-      <view>
-        <view class="section-title">本周服务</view>
-        <view class="section-note">{{period.label}}</view>
+    <view wx:if="{{viewMode === 'reports'}}" class="view-section">
+      <view class="report-feature" wx:if="{{care.latestReport}}" bindtap="openLatestReport">
+        <view class="report-label">最新正式报告</view><view class="report-title">{{care.latestReport.title}}</view><view class="report-meta">{{care.latestReport.periodLabel}} · {{care.latestReport.acknowledged ? "已确认收到" : "待确认收到"}}</view><view class="report-link">查看报告 ›</view>
       </view>
-    </view>
-    <view class="progress-metrics {{metricClass}}">
-      <view class="progress-metric" wx:if="{{permissions.canViewSchedule}}" bindtap="goSchedule">
-        <view class="metric-number">{{summary.completedLessons || 0}}</view>
-        <view class="metric-label">完成课程</view>
-        <view class="metric-note">本周共 {{summary.scheduledLessons || 0}} 节</view>
-      </view>
-      <view class="progress-metric" wx:if="{{permissions.canViewFeedback}}" bindtap="goFeedbacks">
-        <view class="metric-number">{{summary.feedbackCount || 0}}</view>
-        <view class="metric-label">课后反馈</view>
-        <view class="metric-note">查看学习记录</view>
-      </view>
-      <view class="progress-metric" wx:if="{{permissions.canCreateRequests}}" bindtap="goRequests">
-        <view class="metric-number">{{summary.openRequestCount || 0}}</view>
-        <view class="metric-label">处理中请求</view>
-        <view class="metric-note">查看处理进度</view>
-      </view>
+      <view class="empty-state" wx:else><view class="empty-title">暂无已发布报告</view><view class="empty-copy">服务团队完成整理和审核后会在这里发布。</view></view>
+      <button class="outline-button" wx:if="{{care.active}}" bindtap="goCareReports">查看全部正式报告</button>
+      <view class="report-explain"><view class="section-title">报告如何产生</view><view class="section-note">只有完成资料整理和团队审核的内容才会向家长发布。重大事项不会等待正式报告。</view></view>
     </view>
 
-    <view class="next-band">
-      <view class="next-marker"></view>
-      <view class="next-content">
-        <view class="label">{{nextStep.label}}</view>
-        <view class="next-text">{{nextStep.text}}</view>
-        <view class="next-due" wx:if="{{nextStep.dueText}}">计划日期 {{nextStep.dueText}}</view>
+    <view wx:if="{{viewMode === 'entitlements'}}" class="view-section">
+      <view class="entitlement-lead"><view class="entitlement-label">当前方案</view><view class="entitlement-title">{{care.active ? care.programLabel : service.label}}</view><view class="entitlement-copy">{{service.description}}</view></view>
+      <view class="entitlement-list">
+        <view class="entitlement-row"><view class="row-label">主要负责人</view><view class="row-value">{{responsiblePerson}}</view></view>
+        <view class="entitlement-row" wx:if="{{care.active}}"><view class="row-label">服务周期</view><view class="row-value">{{care.startDate}} 至 {{care.endDate}}</view></view>
+        <view class="entitlement-row"><view class="row-label">剩余课时</view><view class="row-value">{{lessonBalanceText}}</view></view>
+        <view class="entitlement-row"><view class="row-label">更新节奏</view><view class="row-value">{{care.active ? care.nextUpdate.dateText : service.cadence}}</view></view>
       </view>
+      <view class="scope-section" wx:if="{{care.active && care.serviceCommitments.length}}"><view class="section-title">本方案包含</view><view class="scope-list"><view class="scope-item" wx:for="{{care.serviceCommitments}}" wx:key="*this">{{item}}</view></view><view class="section-note">以上内容来自当前已确认的服务范围。</view></view>
+      <button class="outline-button" wx:if="{{permissions.canViewFinance}}" bindtap="goFinance">查看课包、财务与合同</button>
     </view>
 
-    <view class="parent-actions" wx:if="{{parentActions.length}}">
-      <view class="section-title">需要家长配合</view>
-      <view class="action-row" wx:for="{{parentActions}}" wx:key="id">
-        <view class="action-copy">{{item.summary}}</view>
-        <view class="action-date">{{item.dueAtText}}</view>
-      </view>
-      <button class="btn secondary action-contact" wx:if="{{permissions.canCreateRequests}}" bindtap="goNewRequest">需要沟通</button>
-    </view>
-    <view class="parent-clear" wx:else>
-      <view class="label">需要家长配合</view>
-      <view class="parent-clear-text">目前无需家长处理</view>
-    </view>
-
-    <view class="report-band" wx:if="{{care.active}}" bindtap="goCareReports">
-      <view>
-        <view class="label">正式进展报告</view>
-        <view class="report-title">{{care.latestReport ? care.latestReport.title : "等待服务团队发布"}}</view>
-        <view class="section-note" wx:if="{{care.latestReport}}">
-          {{care.latestReport.periodLabel}} · {{care.latestReport.acknowledged ? "已确认" : "待确认"}}
-        </view>
-      </view>
-      <view class="report-arrow">›</view>
-    </view>
-
-    <view class="section-head timeline-head">
-      <view>
-        <view class="section-title">最近服务记录</view>
-        <view class="section-note">课程、反馈、请求和已发布的服务进展</view>
-      </view>
-    </view>
-    <view class="timeline" wx:if="{{timeline.length}}">
-      <view class="timeline-row" wx:for="{{timeline}}" wx:key="id">
-        <view class="timeline-rail">
-          <view class="timeline-dot kind-{{item.kind}}"></view>
-          <view class="timeline-line"></view>
-        </view>
-        <view class="timeline-body">
-          <view class="timeline-meta">
-            <text class="timeline-kind">{{item.kindLabel}}</text>
-            <text class="timeline-date">{{item.occurredAtText}}</text>
-          </view>
-          <view class="timeline-title">{{item.title}}</view>
-          <view class="timeline-summary">{{item.summary}}</view>
-        </view>
-      </view>
-    </view>
-    <view class="timeline-empty" wx:else>服务记录会在课程完成或进度更新后显示。</view>
-
-    <view class="service-actions" wx:if="{{permissions.canCreateRequests}}">
-      <button class="btn" bindtap="goNewRequest">提交服务请求</button>
-      <button class="btn secondary" bindtap="goRequests">查看请求记录</button>
-    </view>
-
-    <view class="care-note" wx:if="{{student.servicePlanType === 'FULL_CARE' && permissions.canViewReports && !care.active}}">
-      全程托管动态将在服务团队正式发布后显示，课程与请求记录不受影响。
-    </view>
+    <view class="service-footer" wx:if="{{permissions.canCreateRequests}}"><button class="contact-button" bindtap="goNewRequest">联系服务团队</button><button class="text-button" bindtap="goRequests">查看历史请求</button></view>
   </block>
 </view>

@@ -123,12 +123,12 @@ assert(studentSchedulingJs.includes("本次直接排课不会创建工单"), "di
 const parentHomeMarkup = read("pages/home/home.wxml");
 const parentHomeScript = read("pages/home/home.js");
 const parentProgressMarkup = read("pages/progress/progress.wxml");
-assert(parentHomeMarkup.includes("本周服务") && parentHomeMarkup.includes("需要家长配合") && parentHomeScript.includes("/pages/progress/progress"), "parent home must lead with service status and parent action");
-assert(parentProgressMarkup.includes("本周服务") && parentProgressMarkup.includes("最近服务记录"), "parent progress must show weekly summary and timeline");
-assert(parentProgressMarkup.includes("主要负责人") && parentProgressMarkup.includes("需要家长配合"), "parent progress must show ownership and parent actions");
+assert(parentHomeMarkup.includes("孩子现在怎么样") && parentHomeMarkup.includes("需要您处理") && parentHomeScript.includes("/dashboard"), "parent home must answer status and parent action from the stable dashboard");
+assert(parentProgressMarkup.includes("本周概览") && parentProgressMarkup.includes("最近进展"), "parent progress must show weekly summary and timeline");
+assert(parentProgressMarkup.includes("负责人") && parentProgressMarkup.includes("下次更新"), "parent progress must show ownership and the next update commitment");
 assert(!parentProgressMarkup.includes("内部") && !parentProgressMarkup.includes("草稿"), "parent progress must not expose internal workflow wording");
-assert(read("app.json").includes('"pages/progress/progress"') && read("app.json").includes('"text": "服务"'), "parent tab bar must keep service progress as a primary destination");
-assert(read("pages/students/students.wxml").includes("查看学习与服务进展") && !read("pages/students/students.wxml").includes("风险未设置"), "parent student picker must not expose raw risk wording");
+assert(read("app.json").includes('"pages/progress/progress"') && read("app.json").includes('"text": "进展"') && !read("app.json").includes('"text": "财务"'), "parent tab bar must use the four-destination information architecture");
+assert(read("pages/students/students.wxml").includes("课包、财务与合同") && !read("pages/students/students.wxml").includes("风险未设置"), "parent account centre must expose parent services without raw risk wording");
 
 json("sitemap.json");
 

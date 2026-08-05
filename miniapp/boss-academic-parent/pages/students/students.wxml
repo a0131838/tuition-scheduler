@@ -1,24 +1,26 @@
-<view class="page">
-  <view class="top">
-    <view class="eyebrow">我的</view>
-    <view class="title">选择学生</view>
-    <view class="subtitle">切换后，首页、服务、课表和财务会显示对应信息。</view>
+<view class="page my-page page-enter">
+  <view class="my-head"><view class="eyebrow">家长中心</view><view class="title">我的</view><view class="subtitle">孩子、课包文件、提醒和服务记录集中在这里。</view></view>
+
+  <view class="current-student" wx:if="{{currentStudent}}">
+    <view class="current-label">当前查看</view><view class="current-name">{{currentStudent.name}}</view><view class="current-meta">{{currentStudent.school || "学校未填写"}} · {{currentStudent.grade || "年级未填写"}} · {{currentStudent.servicePlanLabel || "普通课程"}}</view>
   </view>
 
-  <block wx:if="{{students.length}}">
-    <view wx:for="{{students}}" wx:key="id" class="card" bindtap="selectStudent" data-index="{{index}}">
-      <view class="row">
-        <view>
-          <view class="value">{{item.name}}</view>
-          <view class="label">{{item.school || "学校未填写"}} · {{item.grade || "年级未填写"}}</view>
-        </view>
-        <view class="pill" wx:if="{{item.id === currentStudentId}}">当前</view>
-      </view>
-      <view class="subtitle">{{item.servicePlanLabel || "普通课程"}} · 查看学习与服务进展</view>
-    </view>
-  </block>
-  <view wx:else class="empty">还没有绑定学生</view>
+  <view class="menu-section">
+    <view class="menu-row" bindtap="goFinance"><view><view class="menu-title">课包、财务与合同</view><view class="menu-note">剩余课时、发票、收据和已签合同</view></view><view class="menu-arrow">›</view></view>
+    <view class="menu-row" bindtap="goRequests"><view><view class="menu-title">服务请求</view><view class="menu-note">查看处理进度和历史记录</view></view><view class="menu-arrow">›</view></view>
+    <view class="menu-row" wx:if="{{currentStudent.servicePlanType !== 'STANDARD_COURSE'}}" bindtap="goReports"><view><view class="menu-title">正式报告</view><view class="menu-note">查看已审核发布的阶段报告</view></view><view class="menu-arrow">›</view></view>
+    <view class="menu-row" bindtap="goReminders"><view><view class="menu-title">微信提醒设置</view><view class="menu-note">课程、反馈、请求和财务提醒</view></view><view class="menu-arrow">›</view></view>
+  </view>
 
-  <button class="btn secondary" bindtap="goBind">绑定新学生</button>
-  <button class="portal-foot-link" loading="{{loggingOut}}" disabled="{{loggingOut}}" bindtap="logout">退出家长登录</button>
+  <view class="section-heading"><view class="section-title">切换孩子</view><view class="section-note">切换后其他页面同步更新</view></view>
+  <view class="student-list" wx:if="{{students.length}}">
+    <view class="student-row {{item.id === currentStudentId ? 'active' : ''}}" wx:for="{{students}}" wx:key="id" bindtap="selectStudent" data-index="{{index}}">
+      <view><view class="student-name">{{item.name}}</view><view class="student-meta">{{item.school || "学校未填写"}} · {{item.grade || "年级未填写"}}</view></view>
+      <view class="current-badge" wx:if="{{item.id === currentStudentId}}">当前</view><view class="menu-arrow" wx:else>›</view>
+    </view>
+  </view>
+  <view class="empty" wx:else>还没有绑定学生</view>
+
+  <button class="bind-button" bindtap="goBind">绑定新学生</button>
+  <button class="logout-button" loading="{{loggingOut}}" disabled="{{loggingOut}}" bindtap="logout">退出家长登录</button>
 </view>

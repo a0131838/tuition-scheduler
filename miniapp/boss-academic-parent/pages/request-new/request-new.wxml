@@ -1,30 +1,16 @@
-<view class="page">
-  <view class="top">
-    <view class="eyebrow">{{studentName}}</view>
-    <view class="title">提交请求</view>
-    <view class="subtitle">请填写需要处理的事项。</view>
-  </view>
-
-  <view class="card">
-    <view class="field">
-      <view class="label">请求类型</view>
-      <picker mode="selector" range="{{types}}" value="{{typeIndex}}" bindchange="onTypeChange">
-        <view class="picker">{{types[typeIndex]}}</view>
-      </picker>
-    </view>
-    <view class="field">
-      <view class="label">你想告诉我们什么</view>
-      <textarea class="textarea" value="{{content}}" placeholder="请尽量写清楚背景、希望处理的事项和紧急程度" bindinput="onContentInput" />
-    </view>
-    <view class="field">
-      <view class="label">希望工作人员怎么处理</view>
-      <textarea class="textarea" value="{{requiredAction}}" placeholder="可选填写" bindinput="onActionInput" />
-    </view>
-    <view class="field">
-      <view class="label">附件</view>
-      <button class="btn secondary" bindtap="chooseFiles">选择图片/文件</button>
-      <view class="label" wx:if="{{files.length}}">已选择 {{files.length}} 个附件</view>
-    </view>
-    <button class="btn" loading="{{loading}}" bindtap="submit">提交</button>
+<view class="page request-page page-enter">
+  <view class="top"><view class="eyebrow">{{studentName}}</view><view class="title">联系服务团队</view><view class="subtitle">告诉我们发生了什么，其余处理方式由团队判断和跟进。</view></view>
+  <view class="form-section">
+    <view class="field-label">事项类型</view>
+    <picker mode="selector" range="{{types}}" value="{{typeIndex}}" bindchange="onTypeChange"><view class="picker">{{types[typeIndex]}}　›</view></picker>
+    <view class="field-label">紧急程度</view>
+    <view class="urgency-switch"><view class="urgency-option {{urgency === 'ROUTINE' ? 'active' : ''}}" data-value="ROUTINE" bindtap="setUrgency"><view class="urgency-title">一般事项</view><view class="urgency-note">1个工作日内回复</view></view><view class="urgency-option {{urgency === 'URGENT' ? 'urgent' : ''}}" data-value="URGENT" bindtap="setUrgency"><view class="urgency-title">紧急事项</view><view class="urgency-note">请尽快联系处理</view></view></view>
+    <view class="field-label">需要我们了解的情况</view>
+    <textarea class="request-input" maxlength="2000" value="{{content}}" placeholder="请说明发生了什么、涉及的课程或日期；如有希望完成的时间，也可以一起写下。" bindinput="onContentInput" />
+    <view class="field-label">附件（可选）</view>
+    <button class="file-button" bindtap="chooseFiles">选择图片或文件</button>
+    <view class="file-count" wx:if="{{files.length}}">已选择 {{files.length}} 个附件</view>
+    <view class="response-note">提交后会生成可查询的服务记录。紧急安全问题请同时通过公司指定电话或微信联系。</view>
+    <button class="submit-button" loading="{{loading}}" disabled="{{loading || !content}}" bindtap="submit">提交给服务团队</button>
   </view>
 </view>

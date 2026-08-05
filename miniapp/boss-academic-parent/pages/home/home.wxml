@@ -1,118 +1,86 @@
 <view class="page home-page page-enter">
   <view class="student-head">
     <view class="student-copy">
-      <view class="eyebrow">家长安心看板</view>
+      <view class="eyebrow">博思学业管家</view>
       <view class="student-name">{{student.name || "当前学生"}}</view>
-      <view class="student-meta">{{student.school || "学校未填写"}} · {{student.grade || "年级未填写"}}</view>
+      <view class="student-meta">{{student.school || "学校未填写"}} · {{student.grade || "年级未填写"}} · {{student.servicePlanLabel || "普通课程"}}</view>
     </view>
     <button class="student-switch" bindtap="goStudents">切换</button>
   </view>
 
-  <view class="status-band tone-{{parentStatus.tone}}">
-    <view class="status-label">{{parentStatus.label}}</view>
-    <view class="status-summary">{{parentStatus.summary}}</view>
-    <view class="status-service">{{student.servicePlanLabel || "普通课程"}}</view>
+  <view wx:if="{{loading}}" class="home-skeleton">
+    <view class="skeleton-line wide"></view><view class="skeleton-line"></view><view class="skeleton-block"></view>
+  </view>
+  <view wx:elif="{{error}}" class="home-error">
+    <view class="home-error-title">暂时无法读取</view>
+    <view class="home-error-copy">{{error}}</view>
+    <button class="quiet-button" bindtap="load">重新加载</button>
   </view>
 
-  <view class="section-heading">
-    <view class="section-title">本周服务</view>
-    <view class="section-link" bindtap="goProgress">查看详情 ›</view>
-  </view>
-  <view class="service-metrics {{metricClass}}">
-    <view class="service-metric" wx:if="{{permissions.canViewSchedule}}" bindtap="goSchedule">
-      <view class="metric-number">{{completedLessonText}}</view>
-      <view class="metric-label">完成课程</view>
-    </view>
-    <view class="service-metric" wx:if="{{permissions.canViewFeedback}}" bindtap="goFeedbacks">
-      <view class="metric-number">{{feedbackCountText}}</view>
-      <view class="metric-label">课后反馈</view>
-    </view>
-    <view class="service-metric" wx:if="{{permissions.canCreateRequests}}" bindtap="goProgress">
-      <view class="metric-number">{{requestCountText}}</view>
-      <view class="metric-label">处理中请求</view>
-    </view>
-  </view>
-
-  <view class="next-panel" bindtap="goProgress">
-    <view class="next-accent"></view>
-    <view class="next-copy">
-      <view class="label">{{nextStep.label || "下一步"}}</view>
-      <view class="next-title">{{nextStep.text || student.nextAction || "当前服务按计划推进"}}</view>
-      <view class="next-date" wx:if="{{nextStep.dueText}}">计划日期 {{nextStep.dueText}}</view>
-    </view>
-    <view class="next-arrow">›</view>
-  </view>
-
-  <view class="parent-action-band {{parentActions.length ? 'has-action' : ''}}" wx:if="{{progressAvailable}}">
-    <view class="label">需要家长配合</view>
-    <view class="parent-action-text" wx:if="{{primaryParentAction}}">{{primaryParentAction.summary}}</view>
-    <view class="parent-action-text quiet" wx:else>目前无需家长处理</view>
-    <button class="inline-action" wx:if="{{primaryParentAction && permissions.canCreateRequests}}" bindtap="goNewRequest">需要沟通</button>
-  </view>
-
-  <view class="monthly-scheduling-band" wx:if="{{hasMonthlyScheduling}}" bindtap="goMonthlyScheduling">
-    <view class="monthly-mark">排</view>
-    <view class="monthly-copy">
-      <view class="label">{{monthlyScheduling.month}} 下月排课确认</view>
-      <view class="monthly-title" wx:if="{{monthlyScheduling.pending}}">还有 {{monthlyScheduling.pending}} 项课程安排待确认</view>
-      <view class="monthly-title done" wx:else>本月安排已全部提交</view>
-      <view class="monthly-note">请于 {{monthlyScheduling.dueText}} 前完成 · 每名学生和课程分别确认</view>
-    </view>
-    <view class="next-arrow">›</view>
-  </view>
-
-  <view class="report-entry" wx:if="{{care.active}}" bindtap="goLatestReport">
-    <view class="report-copy">
-      <view class="label">最新正式报告</view>
-      <view class="report-title">{{care.latestReport ? care.latestReport.title : "等待服务团队发布"}}</view>
-      <view class="report-meta" wx:if="{{care.latestReport}}">
-        {{care.latestReport.periodLabel}} · {{care.latestReport.acknowledged ? "已确认" : "待确认"}}
+  <block wx:else>
+    <view class="status-hero tone-{{parentStatus.tone}}">
+      <view class="status-topline">
+        <view class="status-kicker">孩子现在怎么样</view>
+        <view class="fresh-badge" wx:if="{{freshness.unreadTimelineCount}}">{{freshness.unreadTimelineCount}} 条新进展</view>
       </view>
+      <view class="status-title">{{parentStatus.label}}</view>
+      <view class="status-summary">{{parentStatus.summary}}</view>
+      <view class="status-updated">更新于 {{lastUpdatedText}}</view>
     </view>
-    <view class="next-arrow">›</view>
-  </view>
 
-  <view class="section-heading detail-heading">
-    <view class="section-title">课程与学习</view>
-  </view>
-  <view class="detail-list">
-    <view class="detail-row" wx:if="{{nextSession}}" bindtap="goSchedule">
-      <view class="detail-copy">
-        <view class="label">下一节课</view>
-        <view class="detail-title">{{nextSession.startText}}</view>
-        <view class="detail-note">{{nextSession.courseLabel}} · {{nextSession.teacherName || "老师未定"}}</view>
+    <view class="parent-task" wx:if="{{primaryAction}}" bindtap="goPrimaryAction">
+      <view class="task-marker"></view>
+      <view class="task-copy">
+        <view class="task-label">需要您处理</view>
+        <view class="task-title">{{primaryAction.title}}</view>
+        <view class="task-meta" wx:if="{{primaryAction.meta}}">{{primaryAction.meta}}</view>
       </view>
       <view class="row-arrow">›</view>
     </view>
-    <view class="detail-row" wx:if="{{latestFeedback}}" bindtap="goFeedbacks">
-      <view class="detail-copy">
-        <view class="label">最新课后反馈</view>
-        <view class="detail-title">{{latestFeedback.teacherName}}</view>
-        <view class="detail-note">{{latestFeedback.summary}}</view>
-      </view>
-      <view class="row-arrow">›</view>
-    </view>
-    <view class="detail-row" wx:if="{{permissions.canViewFinance}}">
-      <view class="detail-copy">
-        <view class="label">剩余课时</view>
-        <view class="detail-title">{{lessonBalanceText}}</view>
-      </view>
-    </view>
-  </view>
 
-  <view class="notification-band" wx:if="{{hasSubscriptionGroups}}">
-    <view class="section-title">微信提醒</view>
-    <view class="reminder-status" wx:if="{{courseReminder}}">
-      <view class="notification-summary">{{courseReminder.availableCount}} 条课程提醒额度</view>
-      <view class="notification-note">{{courseReminder.summaryText}}</view>
+    <view class="section-heading">
+      <view class="section-title">接下来</view>
+      <view class="section-link" bindtap="goSchedule">查看日程 ›</view>
     </view>
-    <view class="notification-note" wx:else>按需开启课程、请求、财务和反馈提醒。</view>
-    <view class="notification-actions">
-      <button class="reminder-button" wx:for="{{subscriptionGroups}}" wx:key="key" data-key="{{item.key}}" disabled="{{subscriptionLoading}}" bindtap="requestSubscription">{{item.label}}</button>
+    <view class="next-session" wx:if="{{nextSession}}" bindtap="goSchedule">
+      <view class="session-time">{{nextSession.startText}}</view>
+      <view class="session-course">{{nextSession.courseLabel}}</view>
+      <view class="session-meta">{{nextSession.teacherName || "老师待确认"}} · {{nextSession.mode === "ONLINE" ? "线上" : (nextSession.campusName || "地点待确认")}}</view>
     </view>
-  </view>
+    <view class="quiet-empty" wx:else>目前没有已确认的近期课程</view>
 
-  <view class="home-actions" wx:if="{{permissions.canCreateRequests}}">
-    <button class="btn" bindtap="goNewRequest">提交服务请求</button>
-  </view>
+    <view class="section-heading update-heading">
+      <view class="section-title">最新进展</view>
+      <view class="section-link" bindtap="goProgress">全部进展 ›</view>
+    </view>
+    <view class="latest-update" bindtap="goProgress">
+      <view class="update-kind">{{latestUpdate.kind}}</view>
+      <view class="update-title">{{latestUpdate.title}}</view>
+      <view class="update-summary">{{latestUpdate.summary}}</view>
+      <view class="update-footer">
+        <view>{{latestUpdate.timeText}}</view>
+        <view wx:if="{{nextUpdateText}}">下次更新 {{nextUpdateText}}</view>
+      </view>
+    </view>
+
+    <view class="week-strip">
+      <view class="week-item" wx:if="{{permissions.canViewSchedule}}" bindtap="goSchedule">
+        <view class="week-number">{{summary.completedLessons || 0}}</view><view class="week-label">本周完成课程</view>
+      </view>
+      <view class="week-item" wx:if="{{permissions.canViewFeedback}}" bindtap="goFeedbacks">
+        <view class="week-number">{{summary.feedbackCount || 0}}</view><view class="week-label">本周课后反馈</view>
+      </view>
+      <view class="week-item" wx:if="{{permissions.canViewFinance}}" bindtap="goFinance">
+        <view class="week-number balance">{{lessonBalanceText}}</view><view class="week-label">剩余课时</view>
+      </view>
+    </view>
+
+    <view class="section-heading quick-heading"><view class="section-title">常用服务</view></view>
+    <view class="quick-grid">
+      <view class="quick-entry" wx:if="{{hasFormalReports}}" bindtap="goReports"><view class="quick-title">正式报告</view><view class="quick-note">查看阶段结论</view></view>
+      <view class="quick-entry" wx:if="{{permissions.canViewFeedback}}" bindtap="goFeedbacks"><view class="quick-title">课后反馈</view><view class="quick-note">课堂表现与作业</view></view>
+      <view class="quick-entry" wx:if="{{permissions.canViewFinance}}" bindtap="goFinance"><view class="quick-title">课包与文件</view><view class="quick-note">余额、发票和合同</view></view>
+      <view class="quick-entry" wx:if="{{permissions.canCreateRequests}}" bindtap="goNewRequest"><view class="quick-title">联系团队</view><view class="quick-note">提交需要跟进的事项</view></view>
+    </view>
+  </block>
 </view>

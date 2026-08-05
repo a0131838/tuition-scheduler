@@ -65,6 +65,7 @@ export const OPERATION_AREAS: OperationArea[] = [
       "/miniapp/pages/staff-communication-templates",
       "/miniapp/pages/staff-teacher-feedbacks",
       "/miniapp/pages/feedbacks",
+      "/miniapp/pages/reminders",
     ],
     moduleCodes: ["PARENT_COMMUNICATION", "MANAGEMENT_COMMUNICATION", "MANAGER_FEEDBACK", "TEACHER_DAILY"],
     outcome: "内部反馈经审核后发布给正确对象，并保留转发、更正、确认和审计记录。",

@@ -1,73 +1,35 @@
-<view class="page">
-  <view class="top">
-    <view class="eyebrow">{{studentName}}</view>
-    <view class="title">课包与财务</view>
-    <view class="subtitle">{{note}}</view>
+<view class="page finance-page page-enter">
+  <view class="top"><view class="eyebrow">{{studentName}}</view><view class="title">课包、财务与合同</view><view class="subtitle">先看是否需要处理，再按需打开文件。</view></view>
+
+  <view class="finance-summary">
+    <view class="summary-primary"><view class="summary-label">剩余课时</view><view class="summary-value">{{summary.totalRemainingHours || 0}} 小时</view></view>
+    <view class="summary-secondary {{summary.unpaidAmount > 0 ? 'attention' : ''}}"><view class="summary-label">当前待付</view><view class="secondary-value">SGD {{summary.unpaidAmount || 0}}</view><view class="secondary-note">{{summary.unpaidAmount > 0 ? "如已付款，请等待财务核对" : "目前无需付款"}}</view></view>
   </view>
 
-  <view class="grid-2">
-    <view class="metric">
-      <view class="label">剩余课时</view>
-      <view class="value">{{summary.totalRemainingHours || 0}} h</view>
-    </view>
-    <view class="metric">
-      <view class="label">待付金额</view>
-      <view class="value">SGD {{summary.unpaidAmount || 0}}</view>
+  <view class="section-heading"><view class="section-title">当前课包</view><view class="section-note">{{summary.activePackageCount || 0}} 个使用中</view></view>
+  <view class="package-list" wx:if="{{packages.length}}">
+    <view class="package-row" wx:for="{{packages}}" wx:key="package.id">
+      <view class="package-head"><view><view class="package-title">{{item.package.courseName}}</view><view class="package-meta">{{item.package.statusLabel}} · {{item.package.validFrom}} 至 {{item.package.validTo || "长期"}}</view></view><view class="hours-badge">{{item.package.remainingHours || 0}} h</view></view>
+      <view class="document-group" wx:if="{{item.invoices.length || item.receipts.length}}">
+        <view class="document-row" wx:for="{{item.invoices}}" wx:key="id" wx:for-item="invoice" bindtap="openInvoice" data-url="{{invoice.downloadUrl}}"><view><view class="document-title">发票 {{invoice.invoiceNo}}</view><view class="document-meta">{{invoice.issueDate}} · SGD {{invoice.totalAmount}}</view></view><view class="document-open">查看 ›</view></view>
+        <view class="document-row" wx:for="{{item.receipts}}" wx:key="id" wx:for-item="receipt" bindtap="openReceipt" data-url="{{receipt.downloadUrl}}"><view><view class="document-title">收据 {{receipt.receiptNo}}</view><view class="document-meta">{{receipt.receiptDate}} · SGD {{receipt.amountReceived}}</view></view><view class="document-open">查看 ›</view></view>
+      </view>
     </view>
   </view>
+  <view class="empty-line" wx:else>暂无课包记录</view>
 
-  <block wx:if="{{packages.length}}">
-    <view wx:for="{{packages}}" wx:key="package.id" class="card">
-      <view class="row">
-        <view>
-          <view class="value">{{item.package.courseName}}</view>
-          <view class="label">{{item.package.status}} · {{item.package.validFrom}} - {{item.package.validTo || "长期"}}</view>
-        </view>
-        <view class="pill">{{item.package.remainingHours || 0}} h</view>
-      </view>
+  <view class="section-heading contract-heading"><view class="section-title">全程托管服务合同</view><view class="section-note">{{fullCareContracts.length}} 份</view></view>
+  <view class="contract-list" wx:if="{{fullCareContracts.length}}">
+    <view class="contract-row" wx:for="{{fullCareContracts}}" wx:key="id" bindtap="openContract" data-url="{{item.downloadUrl}}"><view><view class="document-title">{{item.title}}</view><view class="document-meta">独立服务协议 · {{item.signedAtText}}</view></view><view class="document-open">查看 PDF ›</view></view>
+  </view>
+  <view class="empty-line" wx:else>当前没有已签署的全程托管服务合同</view>
 
-      <view class="grid-2">
-        <view class="metric">
-          <view class="label">已付</view>
-          <view class="value">SGD {{item.summary.paidAmount || 0}}</view>
-        </view>
-        <view class="metric">
-          <view class="label">待付</view>
-          <view class="value">SGD {{item.summary.unpaidAmount || 0}}</view>
-        </view>
-      </view>
+  <view class="section-heading contract-heading"><view class="section-title">课程合同</view><view class="section-note">{{tuitionContracts.length}} 份</view></view>
+  <view class="contract-list" wx:if="{{tuitionContracts.length}}">
+    <view class="contract-row" wx:for="{{tuitionContracts}}" wx:key="id" bindtap="openContract" data-url="{{item.downloadUrl}}"><view><view class="document-title">{{item.title}}</view><view class="document-meta">{{item.courseName}} · {{item.signedAtText}}</view></view><view class="document-open">查看 PDF ›</view></view>
+  </view>
+  <view class="empty-line" wx:else>当前没有已签署的课程合同</view>
 
-      <view class="field" wx:if="{{item.invoices.length}}">
-        <view class="label">发票</view>
-        <view wx:for="{{item.invoices}}" wx:key="id" wx:for-item="invoice" class="row doc-row">
-          <view>
-            <view class="value">{{invoice.invoiceNo}}</view>
-            <view class="label">{{invoice.issueDate}} · SGD {{invoice.totalAmount}}</view>
-          </view>
-          <button class="btn secondary small" bindtap="openInvoice" data-url="{{invoice.downloadUrl}}">打开</button>
-        </view>
-      </view>
-
-      <view class="field" wx:if="{{item.receipts.length}}">
-        <view class="label">收据</view>
-        <view wx:for="{{item.receipts}}" wx:key="id" wx:for-item="receipt" class="row doc-row">
-          <view>
-            <view class="value">{{receipt.receiptNo}}</view>
-            <view class="label">{{receipt.receiptDate}} · SGD {{receipt.amountReceived}}</view>
-          </view>
-          <button class="btn secondary small" bindtap="openReceipt" data-url="{{receipt.downloadUrl}}">打开</button>
-        </view>
-      </view>
-
-      <view class="field" wx:if="{{item.paymentRecords.length}}">
-        <view class="label">付款记录</view>
-        <view wx:for="{{item.paymentRecords}}" wx:key="id" wx:for-item="payment" class="label payment-row">
-          {{payment.paymentDate || payment.uploadedAt}} · SGD {{payment.paymentAmount || 0}} · {{payment.paymentMethod || "方式未填"}}
-        </view>
-      </view>
-    </view>
-  </block>
-  <view wx:else class="empty">暂无财务记录</view>
-
-  <button class="btn secondary" bindtap="contactFinance">联系财务</button>
+  <view class="finance-note">{{note}}</view>
+  <button class="contact-button" bindtap="contactFinance">联系财务</button>
 </view>

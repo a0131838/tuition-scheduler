@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-05-r328
+
+- Release ID: `2026-08-05-r328`
+- Date/Time (Asia/Singapore): `2026-08-05`
+- Deployment status: `READY`
+- Scope: reorganize the parent mini program around child status, progress, schedule and account tasks, add a stable dashboard aggregate, and keep signed contracts and Full Care content behind the correct student permissions.
+- Key files:
+  - `app/api/miniapp/students/[studentId]/dashboard/route.ts`
+  - `app/api/miniapp/students/[studentId]/finance/route.ts`
+  - `app/api/exports/student-contract/[id]/route.ts`
+  - `miniapp/boss-academic-parent/app.json`
+  - `miniapp/boss-academic-parent/pages/home/home.wxml`
+  - `miniapp/boss-academic-parent/pages/progress/progress.wxml`
+  - `miniapp/boss-academic-parent/pages/students/students.wxml`
+  - `tests/miniapp-parent-information-architecture.test.ts`
+  - `docs/tasks/TASK-20260805-parent-miniapp-information-architecture.md`
+- Risk impact (if any): Medium. Parent navigation and presentation change materially, but lesson, package, invoice, contract and Full Care records are not rewritten. Contract PDFs remain limited to authorised parents and signed or invoiced agreements.
+- Verification: 174 backend tests passed, focused parent tests passed, mini-program release audit passed, TypeScript validation passed, production build passed for all 240 application pages, and WeChat Developer Tools compiled the 62-page mini program.
+- Rollback point: `8b588a0498831cb7379d4d7e7df63f67f26be87b` (`2026-08-05-r327` production head).
+
+---
+
 ## 2026-08-05-r327
 
 - Release ID: `2026-08-05-r327`

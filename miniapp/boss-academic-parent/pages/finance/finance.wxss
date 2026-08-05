@@ -1,14 +1,1 @@
-.small {
-  min-height: 60rpx;
-  padding: 0 20rpx;
-  font-size: 24rpx;
-}
-
-.doc-row {
-  padding: 18rpx 0;
-  border-bottom: 1rpx solid #f0f1f3;
-}
-
-.payment-row {
-  padding-top: 14rpx;
-}
+.finance-summary{display:grid;grid-template-columns:1.1fr .9fr;border-top:6rpx solid #287a62;border-bottom:1rpx solid #dedbd6}.summary-primary,.summary-secondary{padding:26rpx 20rpx 25rpx 0}.summary-secondary{padding-left:22rpx;border-left:1rpx solid #dedbd6}.summary-secondary.attention{border-top:5rpx solid #c56a25}.summary-label{color:#747a76;font-size:21rpx;font-weight:700}.summary-value{margin-top:8rpx;font-size:40rpx;font-weight:860}.secondary-value{margin-top:8rpx;font-size:29rpx;font-weight:830}.secondary-note{margin-top:6rpx;color:#777d79;font-size:19rpx;line-height:1.4}.section-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:18rpx;margin-top:38rpx}.section-title{font-size:30rpx;font-weight:830}.section-note{color:#7b817d;font-size:21rpx}.package-list,.contract-list{margin-top:13rpx;border-top:1rpx solid #dedbd6}.package-row{padding:24rpx 0;border-bottom:1rpx solid #dedbd6}.package-head,.document-row,.contract-row{display:flex;align-items:center;justify-content:space-between;gap:20rpx}.package-title,.document-title{font-size:26rpx;font-weight:800;line-height:1.4}.package-meta,.document-meta{margin-top:6rpx;color:#777d79;font-size:21rpx;line-height:1.45}.hours-badge{flex:0 0 auto;padding:8rpx 13rpx;border-radius:999rpx;background:#edf7f2;color:#24634f;font-size:21rpx;font-weight:780}.document-group{margin-top:18rpx;padding-left:18rpx;border-left:4rpx solid #e3e0db}.document-row,.contract-row{padding:17rpx 0;border-top:1rpx solid #eceae6}.document-open{flex:0 0 auto;color:#9b3e08;font-size:21rpx;font-weight:700}.contract-heading{margin-top:42rpx}.contract-row{padding:22rpx 0;border-top:0;border-bottom:1rpx solid #dedbd6}.empty-line{padding:36rpx 0;color:#7b817d;font-size:23rpx}.finance-note{margin-top:34rpx;color:#7b817d;font-size:21rpx;line-height:1.6}.contact-button{min-height:78rpx;margin-top:22rpx;border-radius:12rpx;background:#ec5e0a;color:#fff;font-size:24rpx;font-weight:780;line-height:78rpx}

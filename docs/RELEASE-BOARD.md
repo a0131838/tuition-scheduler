@@ -52,10 +52,31 @@
 - Current release line prepared: `2026-08-05-r325` gives Full Care its own contract mode, gates signing on explicit service/refund/compliance terms, adds launch-gap and renewal queues, flags sparse monthly-report evidence and records employee service minutes.
 - Current release line prepared: `2026-08-05-r326` completes the Full Care mobile navigation and compact-badge polish without changing data or workflow logic.
 - Current release line prepared: `2026-08-05-r327` separates ordinary tuition contracts from Full Care agreements at the workspace, history and draft-creation layers, without rewriting existing contract or finance records.
+- Current release line prepared: `2026-08-05-r328` gives parents a four-destination mini-program structure, one stable child dashboard, separate progress/report/entitlement views, and a protected account area for finance, contracts and reminders.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-05-r328 Ready
+
+- Scope: simplify the parent mini program and make the child-service state, next action and signed documents easy to find.
+- Business impact:
+  - the home page answers child status, latest progress, required parent action and next update without duplicating every service module;
+  - progress separates updates, formal reports and purchased entitlements, while ordinary students do not see Full Care-only material;
+  - schedule prioritises the next lesson and groups upcoming/history records with parent-readable statuses;
+  - finance, signed contracts, requests and reminder settings live under My and remain permission-scoped;
+  - the request form asks for one description plus routine/urgent handling instead of exposing internal workflow fields.
+- Verification before deploy:
+  - 174 backend tests;
+  - focused parent mini-program tests;
+  - TypeScript validation and production build;
+  - mini-program release audit and WeChat Developer Tools compilation.
+- Post-deploy verification:
+  - use `赵测试2` to check Home, Progress, Schedule, My, signed contract download and service request entry;
+  - confirm ordinary and Full Care report/entitlement visibility remain separated;
+  - confirm `/admin/login` and the new parent dashboard API are healthy.
+- Task doc: `docs/tasks/TASK-20260805-parent-miniapp-information-architecture.md`.
 
 ## 2026-08-05-r327 Ready
 

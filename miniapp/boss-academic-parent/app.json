@@ -58,6 +58,7 @@
     "pages/monthly-scheduling/monthly-scheduling",
     "pages/feedbacks/feedbacks",
     "pages/finance/finance",
+    "pages/reminders/reminders",
     "pages/requests/requests",
     "pages/request-detail/request-detail",
     "pages/request-new/request-new"
@@ -84,15 +85,11 @@
       },
       {
         "pagePath": "pages/progress/progress",
-        "text": "服务"
+        "text": "进展"
       },
       {
         "pagePath": "pages/schedule/schedule",
         "text": "课表"
-      },
-      {
-        "pagePath": "pages/finance/finance",
-        "text": "财务"
       },
       {
         "pagePath": "pages/students/students",

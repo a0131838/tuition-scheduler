@@ -1,3 +1,1 @@
-.btn {
-  margin-bottom: 12rpx;
-}
+.new-request-button{min-height:78rpx;margin:0;border-radius:12rpx;background:#ec5e0a;color:#fff;font-size:24rpx;font-weight:780;line-height:78rpx}.request-list{margin-top:24rpx;border-top:1rpx solid #dedbd6}.request-row{padding:23rpx 0;border-bottom:1rpx solid #dedbd6}.request-meta{display:flex;justify-content:space-between;gap:16rpx;color:#777d79;font-size:21rpx}.request-status{color:#287a62;font-weight:750}.request-title{margin-top:8rpx;font-size:27rpx;font-weight:790;line-height:1.45}.request-time{margin-top:8rpx;color:#848985;font-size:20rpx}

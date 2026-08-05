@@ -38,5 +38,5 @@ test("shared miniapp UI uses the restrained workspace visual system", () => {
   assert.match(appStyles, /\.page-enter/);
   assert.match(appStyles, /border-radius: 16rpx/);
   assert.match(appConfig, /"navigationBarBackgroundColor": "#EC5E0A"/);
-  assert.match(parentHome, /家长安心看板/);
+  assert.match(parentHome, /孩子现在怎么样/);
 });

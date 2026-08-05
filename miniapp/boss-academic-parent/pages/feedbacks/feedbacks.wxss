@@ -1,9 +1,1 @@
-.subtitle {
-  white-space: pre-wrap;
-}
-.page { height: 100vh; box-sizing: border-box; }
-.card.focused { border: 2rpx solid #ec5e0a; box-shadow: 0 0 0 6rpx rgba(236,94,10,.08); }
-.homework { margin-top: 18rpx; padding: 16rpx; border-left: 6rpx solid #ec5e0a; background: #fff7ed; white-space: pre-wrap; }
-.attachments { border-top: 1rpx solid #e5e7eb; margin-top: 20rpx; padding-top: 18rpx; }
-.attachment-title { font-weight: 800; margin-bottom: 10rpx; }
-.attachment { margin: 10rpx 0 0; background: #f0f1f3; color: #272a2f; text-align: left; font-size: 24rpx; }
+.feedback-page{height:100vh}.feedback-list{border-top:1rpx solid #dedbd6}.feedback-row{padding:25rpx 0;border-bottom:1rpx solid #dedbd6}.feedback-row.focused{padding-left:18rpx;border-left:6rpx solid #ec5e0a;background:#fff9f5}.feedback-meta{display:flex;justify-content:space-between;gap:16rpx;color:#777d79;font-size:21rpx}.feedback-summary{margin-top:10rpx;font-size:26rpx;line-height:1.6}.homework{margin-top:18rpx;padding:17rpx 19rpx;border-left:5rpx solid #287a62;background:#f3f8f5;font-size:23rpx;line-height:1.55}.homework-label{margin-bottom:6rpx;color:#24634f;font-size:21rpx;font-weight:780}.attachments{display:grid;gap:10rpx;margin-top:15rpx}.attachment{min-height:66rpx;margin:0;border:1rpx solid #d1cec8;border-radius:10rpx;background:#fff;color:#9b3e08;font-size:22rpx;line-height:66rpx}

@@ -1,0 +1,12 @@
+<view class="page reminder-page page-enter">
+  <view class="top"><view class="eyebrow">{{studentName}}</view><view class="title">微信提醒设置</view><view class="subtitle">微信提醒需要家长主动授权。每次授权只用于对应类型的服务通知。</view></view>
+  <view class="coverage-band" wx:if="{{courseReminder}}"><view class="coverage-label">课程提醒额度</view><view class="coverage-number">{{courseReminder.availableCount || 0}}</view><view class="coverage-copy">{{courseReminder.summaryText}}</view></view>
+  <view class="reminder-list" wx:if="{{groups.length}}">
+    <view class="reminder-row" wx:for="{{groups}}" wx:key="key">
+      <view class="reminder-copy"><view class="reminder-title">{{item.label}}</view><view class="reminder-note">{{item.note}}</view></view>
+      <button class="enable-button" data-key="{{item.key}}" disabled="{{loadingKey}}" loading="{{loadingKey === item.key}}" bindtap="requestSubscription">开启</button>
+    </view>
+  </view>
+  <view class="empty" wx:else>当前没有可配置的微信提醒模板。</view>
+  <view class="privacy-note">提醒授权不会改变您在家长端能够查看的学生范围。您可以在微信的通知设置中随时管理授权。</view>
+</view>

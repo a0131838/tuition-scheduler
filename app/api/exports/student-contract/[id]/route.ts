@@ -15,6 +15,7 @@ import {
   generateSignedStudentContractPdfBuffer,
 } from "@/lib/student-contract-pdf";
 import { StudentContractFlowType, StudentContractStatus } from "@prisma/client";
+import { getParentPortalSession } from "@/lib/parent-portal";
 
 function compactDateLabel(input: Date | string | null | undefined) {
   if (!input) return "";
@@ -81,7 +82,7 @@ export async function GET(
       signedAt: true,
       signedPdfPath: true,
       flowType: true,
-      student: { select: { name: true } },
+      student: { select: { id: true, name: true } },
       package: { select: { type: true, course: { select: { name: true } } } },
     },
   });
@@ -90,11 +91,19 @@ export async function GET(
   }
 
   const adminAllowed = Boolean(user && (user.role === "ADMIN" || user.role === "FINANCE"));
+  const bearer = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim() || "";
+  const parentSession = bearer ? await getParentPortalSession(bearer) : null;
+  const parentAllowed = parentSession && (contract.status === "SIGNED" || contract.status === "INVOICE_CREATED")
+    ? Boolean(await prisma.parentStudentLink.findFirst({
+        where: { parentId: parentSession.parentId, studentId: contract.student.id, canViewFinance: true },
+        select: { id: true },
+      }))
+    : false;
   const now = Date.now();
   const intakeTokenAllowed = Boolean(token && token === contract.intakeToken && contract.intakeExpiresAt && contract.intakeExpiresAt.getTime() >= now);
   const signTokenAllowed = Boolean(token && token === contract.signToken && contract.signExpiresAt && contract.signExpiresAt.getTime() >= now);
   const tokenAllowed = intakeTokenAllowed || signTokenAllowed;
-  if (!adminAllowed && !tokenAllowed) {
+  if (!adminAllowed && !tokenAllowed && !parentAllowed) {
     return new Response("Forbidden", { status: 403 });
   }
 
