@@ -41,7 +41,7 @@ import {
   listStudentContractInvoiceOptions,
   saveStudentContractInvoiceChoice,
 } from "@/lib/student-contract-invoice-choice";
-import { CARE_SCOPE_OPTIONS } from "@/lib/care-validation";
+import { annualCareEndDate, CARE_SCOPE_OPTIONS } from "@/lib/care-validation";
 import { formatBusinessDateOnly } from "@/lib/date-only";
 import {
   assertFullCarePricingPlanMatchesCourses,
@@ -570,11 +570,9 @@ export default async function PackageContractPage({
   const contractFromParentIntake =
     Boolean(latestContract && latestParentIntakeForPackage && latestParentIntakeForPackage.contractId === latestContract.id);
   const today = new Date().toISOString().slice(0, 10);
-  const defaultCareEnd = (() => {
-    const start = new Date(`${careEngagement?.startDate ? formatBusinessDateOnly(careEngagement.startDate) : today}T00:00:00.000Z`);
-    start.setUTCFullYear(start.getUTCFullYear() + 1);
-    return start.toISOString().slice(0, 10);
-  })();
+  const defaultCareEnd = formatBusinessDateOnly(annualCareEndDate(
+    careEngagement?.startDate ?? new Date(`${today}T00:00:00+08:00`),
+  ));
   const currentCareScopeIds = careContractStringArray(careEngagement?.scopeJson);
   const currentCareScopeLabels = CARE_SCOPE_OPTIONS
     .filter((item) => currentCareScopeIds.includes(item.id))

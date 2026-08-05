@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-05-r322
+
+- Release ID: `2026-08-05-r322`
+- Date/Time (Asia/Singapore): `2026-08-05`
+- Deployment status: `READY`
+- Scope: make an annual Full Care period end on the day before the same calendar date next year.
+- Key files:
+  - `lib/care-validation.ts`
+  - `lib/care-management.ts`
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `tests/care-validation.test.ts`
+  - `docs/tasks/TASK-20260805-full-care-annual-boundary.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low and limited to the default end date of newly created care projects and unsigned contract drafts. Existing signed snapshots, invoices and historical service dates are not rewritten.
+- Verification:
+  - focused date-boundary, pricing, contract and care tests passed.
+  - `npm run build` passed for all 240 application pages.
+- Rollback point: `8393cbd8bb2671754baa2259c6123987ca9efe3f` (`2026-08-05-r321` production head).
+
+---
+
 ## 2026-08-05-r321
 
 - Release ID: `2026-08-05-r321`

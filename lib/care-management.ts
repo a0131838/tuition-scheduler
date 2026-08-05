@@ -32,6 +32,7 @@ import {
   isUniversityCareProgram,
   parentVisibilityIdsFromJson,
   parseCareDateTime,
+  annualCareEndDate,
   requiredCareText,
   scopeIdsFromJson,
 } from "@/lib/care-validation";
@@ -48,12 +49,6 @@ function isSignedFullCareContractForEngagement(
   if (!contract.businessInfoJson || typeof contract.businessInfoJson !== "object" || Array.isArray(contract.businessInfoJson)) return false;
   const info = contract.businessInfoJson as Record<string, unknown>;
   return info.careServiceIncluded === true && info.careEngagementId === engagement.id && info.careProgramType === engagement.programType;
-}
-
-function annualCareEndDate(startDate: Date) {
-  const endDate = new Date(startDate);
-  endDate.setUTCFullYear(endDate.getUTCFullYear() + 1);
-  return endDate;
 }
 
 export function careOwnerRolesForProgram(programType: CareProgramType): CareMemberRole[] {

@@ -9,6 +9,7 @@ import {
   careScopeIds,
   defaultCareScopeIdsForProgram,
   parseCareDateTime,
+  annualCareEndDate,
 } from "../lib/care-validation";
 
 test("the two pre-university care products have distinct default scopes", () => {
@@ -42,6 +43,11 @@ test("scope normalization ignores unknown values and preserves canonical order",
 test("care date-time input is interpreted in Singapore time", () => {
   assert.equal(parseCareDateTime("2026-07-13T09:30")?.toISOString(), "2026-07-13T01:30:00.000Z");
   assert.equal(parseCareDateTime("bad"), null);
+});
+
+test("annual care ends on the day before the same date next year", () => {
+  const start = parseCareDateTime("2026-08-05")!;
+  assert.equal(annualCareEndDate(start).toISOString(), "2027-08-03T16:00:00.000Z");
 });
 
 test("activation requires date, scope and active case owner", () => {

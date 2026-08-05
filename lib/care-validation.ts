@@ -229,6 +229,13 @@ export function parseCareDateTime(value: unknown) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+export function annualCareEndDate(startDate: Date) {
+  const endDate = new Date(startDate);
+  endDate.setUTCFullYear(endDate.getUTCFullYear() + 1);
+  endDate.setUTCDate(endDate.getUTCDate() - 1);
+  return endDate;
+}
+
 export function careProgramType(value: unknown): CareProgramType {
   const normalized = careText(value, 80) as CareProgramType;
   if (!PROGRAM_TYPES.has(normalized)) throw new Error("Invalid care program type");

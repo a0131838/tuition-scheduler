@@ -46,10 +46,31 @@
 - Current release line prepared: `2026-08-05-r319` removes the final O Level summary leak, converts exclusion IDs to bilingual parent copy and aligns electronic acceptance with the standalone Full Care Service Agreement.
 - Current release line prepared: `2026-08-05-r320` requires IB/AP pricing at contract generation and blocks later IB/AP course assignment while a standard-tier Full Care contract remains active.
 - Current release line prepared: `2026-08-05-r321` launches 12 versioned Full Care bundles, audited management special discounts, exact care-project contract binding, distinct accompanied/unaccompanied scopes and parent-visible pricing/service progress.
+- Current release line prepared: `2026-08-05-r322` corrects the annual Full Care boundary to end on the day before the same date next year.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-05-r322 Ready
+
+- Scope: correct the inclusive one-year service boundary.
+- Business impact:
+  - a service beginning 2026-08-05 ends 2027-08-04;
+  - new care projects and unsigned Full Care contract defaults use the same rule;
+  - existing signed contract snapshots, invoices, receipts and package balances remain unchanged.
+- Files:
+  - `lib/care-validation.ts`
+  - `lib/care-management.ts`
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `tests/care-validation.test.ts`
+- Verification before deploy:
+  - focused date-boundary and Full Care tests;
+  - `npm run build` for all 240 application pages;
+  - guarded release preflight.
+- Post-deploy verification:
+  - configure 赵测试2 project end date as 2027-08-04 and confirm the parent-facing service period.
+- Task doc: `docs/tasks/TASK-20260805-full-care-annual-boundary.md`.
 
 ## 2026-08-05-r321 Ready
 
