@@ -40,12 +40,37 @@
 - Current release line: `2026-08-05-r313` is live at runtime feature commit `d8c5068dc5164831395b6fa0c39e0fe5267ea67c`; WeChat development version `1.0.25` was uploaded successfully. It adds the signed Full Care appendix, internal channel settlement snapshot, parent authorisation materials, seven-item activation gate and parent reassurance dashboard for a 3–5-family controlled launch.
 - Current release line prepared: `2026-08-05-r314` closes the operator gaps found by the 赵测试 2 E2E journey: explicit manager publication for parent updates, parent-action task entry, active Full Care project discovery independent of legacy student classification, and a reliable signed-contract confirmation.
 - Current release line prepared: `2026-08-05-r315` removes channel commission from the Full Care contract system and replaces course-named bundles with four locked Full Care price plans: standard or IB/AP, each at 200 or 300 hours.
+- Current release line prepared: `2026-08-05-r316` restores the safe correction path for an unreceipted invoice after all linked contracts are explicitly voided, while keeping signed history and active-agreement protections.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
-## 2026-08-05-r315 Ready
+## 2026-08-05-r316 Ready
+
+- Scope: unblock safe contract correction after the incorrect 赵测试 2 agreement was voided.
+- Business impact:
+  - an invoice with only VOID agreement links is shown as archived rather than active;
+  - the invoice can be deleted only through the existing no-receipt deletion path;
+  - active, signed or invoiced non-VOID agreement links continue to block deletion;
+  - signed PDFs and VOID agreement history remain preserved;
+  - payments, receipts, package balances, attendance, payroll, scheduling and lesson deductions are unchanged.
+- Files:
+  - `lib/invoice-deletion-safety.ts`
+  - `app/admin/packages/[id]/billing/page.tsx`
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `tests/invoice-deletion-safety.test.ts`
+- Verification before deploy:
+  - 10 focused tests;
+  - `npm run build` for all 240 application pages;
+  - `git diff --check` and guarded release preflight.
+- Post-deploy verification:
+  - delete only the unreceipted RGT-202608-0003 test invoice after confirming its linked contract is VOID;
+  - reissue the corrected standard 200-hour Full Care contract for 赵测试 2;
+  - confirm active agreement links still show a blocked deletion state.
+- Task doc: `docs/tasks/TASK-20260805-void-contract-invoice-reissue.md`.
+
+## 2026-08-05-r315 Live
 
 - Scope: correct Full Care pricing and contract identity before real-family launch.
 - Business impact:

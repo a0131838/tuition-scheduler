@@ -15,11 +15,33 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-05-r316
+
+- Release ID: `2026-08-05-r316`
+- Date/Time (Asia/Singapore): `2026-08-05`
+- Deployment status: `READY`
+- Scope: allow an unreceipted invoice draft to be deleted after every linked agreement has been explicitly voided, so a corrected Full Care contract can be reissued without erasing signed history.
+- Key files:
+  - `lib/invoice-deletion-safety.ts`
+  - `app/admin/packages/[id]/billing/page.tsx`
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `tests/invoice-deletion-safety.test.ts`
+  - `docs/tasks/TASK-20260805-void-contract-invoice-reissue.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low to moderate and guarded by both conditions: every linked agreement must be VOID and the existing invoice deletion workflow still refuses invoices with receipts. Active/signed agreements, payments and receipts remain protected.
+- Verification:
+  - 10 focused contract, pricing and deletion-safety tests passed.
+  - `npm run build` passed for all 240 application pages.
+- Rollback point: `7f17cb9e9c6c1bcbc1644dc122141c4109b72820` (`2026-08-05-r315` production head).
+
+---
+
 ## 2026-08-05-r315
 
 - Release ID: `2026-08-05-r315`
 - Date/Time (Asia/Singapore): `2026-08-05`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: correct the Full Care commercial model so contracts are course-independent, standard and IB/AP tuition use separate locked price tiers, and channel commission is absent from the student contract system.
 - Key files:
   - `lib/full-care-pricing.ts`

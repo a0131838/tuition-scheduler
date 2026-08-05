@@ -28,6 +28,7 @@ import {
   voidStudentContract,
 } from "@/lib/student-contract";
 import { isPartnerSettlementPackage } from "@/lib/package-finance-gate";
+import { hasNonVoidedAgreementLink } from "@/lib/invoice-deletion-safety";
 import {
   deleteParentInvoice,
   listDeletedParentInvoicesForPackage,
@@ -180,14 +181,14 @@ async function deleteInvoiceAction(formData: FormData) {
       where: { invoiceId },
       select: { id: true, status: true, invoiceNo: true },
     });
-    if (linkedContracts.length > 0) {
+    if (hasNonVoidedAgreementLink(linkedContracts)) {
       throw new Error("Invoice is linked to contract history. Void or review the contract link before deleting the invoice.");
     }
     const linkedSchoolApplications = await prisma.schoolApplicationService.findMany({
       where: { invoiceId },
       select: { id: true, status: true, invoiceNo: true },
     });
-    if (linkedSchoolApplications.length > 0) {
+    if (hasNonVoidedAgreementLink(linkedSchoolApplications)) {
       throw new Error("Invoice is linked to a school application service agreement. Void or review that agreement before deleting the invoice.");
     }
     await deleteParentInvoice({ invoiceId, actorEmail: admin.email });

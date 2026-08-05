@@ -56,6 +56,7 @@ import {
   studentContractStatusLabelZh,
   voidStudentContract,
 } from "@/lib/student-contract";
+import { hasNonVoidedAgreementLink } from "@/lib/invoice-deletion-safety";
 
 function billingSummaryCardStyle(background: string, border: string) {
   return {
@@ -352,14 +353,14 @@ async function deleteInvoiceAction(formData: FormData) {
       where: { invoiceId },
       select: { id: true, status: true, invoiceNo: true },
     });
-    if (linkedContracts.length > 0) {
+    if (hasNonVoidedAgreementLink(linkedContracts)) {
       throw new Error("Invoice is linked to contract history. Void or review the contract link before deleting the invoice.");
     }
     const linkedSchoolApplications = await prisma.schoolApplicationService.findMany({
       where: { invoiceId },
       select: { id: true, status: true, invoiceNo: true },
     });
-    if (linkedSchoolApplications.length > 0) {
+    if (hasNonVoidedAgreementLink(linkedSchoolApplications)) {
       throw new Error("Invoice is linked to a school application service agreement. Void or review that agreement before deleting the invoice.");
     }
     await deleteParentInvoice({ invoiceId, actorEmail: admin.email });
@@ -1329,6 +1330,7 @@ export default async function PackageBillingPage({
               };
               const nextReceiptLabel = progress.nextReceiptNo.split("-").pop() ?? progress.nextReceiptNo;
               const invoiceContractLinks = contractLinksByInvoiceId.get(r.id) ?? [];
+              const blocksInvoiceDeletion = hasNonVoidedAgreementLink(invoiceContractLinks);
               return (
                 <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
                   <td>{r.invoiceNo}</td>
@@ -1359,9 +1361,11 @@ export default async function PackageBillingPage({
                   </td>
                   <td>
                     <div style={{ display: "grid", gap: 4, fontSize: 12 }}>
-                      <div style={{ fontWeight: 700, color: invoiceContractLinks.length ? "#166534" : "#92400e" }}>
+                      <div style={{ fontWeight: 700, color: blocksInvoiceDeletion ? "#166534" : invoiceContractLinks.length ? "#b91c1c" : "#92400e" }}>
                         {invoiceContractLinks.length === 0
                           ? t(lang, "No linked contract", "未关联合同")
+                          : !blocksInvoiceDeletion
+                          ? t(lang, "Archived contract link", "已作废合同关联")
                           : invoiceContractLinks.length === 1
                           ? t(lang, "Linked contract active", "已关联合同")
                           : t(lang, "Linked to multiple contracts", "多合同关联")}
@@ -1408,7 +1412,7 @@ export default async function PackageBillingPage({
                   </td>
                   <td><a href={`/api/exports/parent-invoice/${encodeURIComponent(r.id)}`}>Export PDF</a></td>
                   <td>
-                    {invoiceContractLinks.length > 0 ? (
+                    {blocksInvoiceDeletion ? (
                       <div style={{ fontSize: 12, color: "#92400e" }}>
                         {t(lang, "Blocked: linked contract", "已阻止：关联合同")}
                       </div>
