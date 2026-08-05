@@ -42,12 +42,36 @@
 - Current release line prepared: `2026-08-05-r315` removes channel commission from the Full Care contract system and replaces course-named bundles with four locked Full Care price plans: standard or IB/AP, each at 200 or 300 hours.
 - Current release line prepared: `2026-08-05-r316` restores the safe correction path for an unreceipted invoice after all linked contracts are explicitly voided, while keeping signed history and active-agreement protections.
 - Current release line prepared: `2026-08-05-r317` exposes a corrected first-purchase contract action from archived VOID history, preventing a contract correction from being misclassified as a renewal lesson top-up.
+- Current release line prepared: `2026-08-05-r318` aligns Full Care contract scope parsing with the structured care-project format so valid projects can generate sign links without weakening the non-empty-scope gate.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
-## 2026-08-05-r317 Ready
+## 2026-08-05-r318 Ready
+
+- Scope: remove the final production blocker in Full Care sign-link generation.
+- Business impact:
+  - contract preparation reads `serviceIds` from the care project's structured service scope;
+  - contract exclusions read the matching structured `items` list;
+  - legacy array data remains supported;
+  - genuinely empty scope still blocks contract generation;
+  - package, invoices, receipts, payments, lesson balances, attendance, payroll and scheduling remain unchanged.
+- Files:
+  - `lib/care-contract-input.ts`
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `tests/care-contract-input.test.ts`
+- Verification before deploy:
+  - 13 focused tests;
+  - `npm run build` for all 240 application pages;
+  - `git diff --check` and guarded release preflight.
+- Post-deploy verification:
+  - save the corrected standard 200-hour 赵测试 2 contract;
+  - confirm the parent sign page includes all frozen service scope items;
+  - confirm no O Level, channel or commission appears in the new contract.
+- Task doc: `docs/tasks/TASK-20260805-care-contract-scope-shape.md`.
+
+## 2026-08-05-r317 Live
 
 - Scope: complete the safe reissue path for 赵测试 2 and future contract corrections.
 - Business impact:

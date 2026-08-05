@@ -15,11 +15,32 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-05-r318
+
+- Release ID: `2026-08-05-r318`
+- Date/Time (Asia/Singapore): `2026-08-05`
+- Deployment status: `READY`
+- Scope: make Full Care contract preparation read the structured service-scope and exclusion shapes produced by the care project, removing the final sign-link generation blocker.
+- Key files:
+  - `lib/care-contract-input.ts`
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `tests/care-contract-input.test.ts`
+  - `docs/tasks/TASK-20260805-care-contract-scope-shape.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. The parser remains compatible with legacy arrays and adds support for the current `{ serviceIds }` and `{ items }` objects. Empty scope remains rejected; no service scope, contract fee, package, invoice, receipt, payment or lesson record is rewritten.
+- Verification:
+  - 13 focused scope, correction, deletion, pricing and contract tests passed.
+  - `npm run build` passed for all 240 application pages.
+- Rollback point: `5045ad523ef349eeafbd889cba2fbcc56e5b8953` (`2026-08-05-r317` production head).
+
+---
+
 ## 2026-08-05-r317
 
 - Release ID: `2026-08-05-r317`
 - Date/Time (Asia/Singapore): `2026-08-05`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: add the missing corrected-contract entry after signed history is voided, preserving the original first-purchase flow so a correction cannot accidentally create a renewal lesson top-up.
 - Key files:
   - `app/admin/packages/[id]/contract/page.tsx`

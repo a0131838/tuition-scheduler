@@ -29,6 +29,7 @@ import {
 } from "@/lib/student-contract";
 import { isPartnerSettlementPackage } from "@/lib/package-finance-gate";
 import { hasNonVoidedAgreementLink } from "@/lib/invoice-deletion-safety";
+import { careContractStringArray } from "@/lib/care-contract-input";
 import {
   deleteParentInvoice,
   listDeletedParentInvoicesForPackage,
@@ -54,10 +55,6 @@ const DEFAULT_CARE_EXCLUSIONS = [
   "移民法律服务或签证结果保证 / Immigration legal advice or visa outcome guarantees",
   "无限次现场陪同、交通、住宿及第三方费用 / Unlimited on-site support, transport, accommodation, and third-party costs",
 ];
-
-function jsonStringArray(value: unknown) {
-  return Array.isArray(value) ? value.map((item) => String(item ?? "").trim()).filter(Boolean) : [];
-}
 
 function normalizePackageBillingSource(value: string | null | undefined) {
   return String(value ?? "").trim().toLowerCase() === "receipts" ? "receipts" : "";
@@ -300,11 +297,11 @@ async function prepareContractSignAction(formData: FormData) {
     const pricingPlan = careServiceIncluded
       ? requireFullCarePricingPlan(String(formData.get("carePricingPlan") ?? ""))
       : null;
-    const scopeIds = jsonStringArray(careEngagement?.scopeJson);
+    const scopeIds = careContractStringArray(careEngagement?.scopeJson);
     const careScopeLabels = CARE_SCOPE_OPTIONS
       .filter((item) => scopeIds.includes(item.id))
       .map((item) => `${item.en} / ${item.zh}`);
-    const configuredExclusions = jsonStringArray(careEngagement?.exclusionsJson);
+    const configuredExclusions = careContractStringArray(careEngagement?.exclusionsJson);
     await saveStudentContractBusinessDraft({
       contractId,
       actorUserId: admin.id,
@@ -503,7 +500,7 @@ export default async function PackageContractPage({
     start.setUTCFullYear(start.getUTCFullYear() + 1);
     return start.toISOString().slice(0, 10);
   })();
-  const currentCareScopeIds = jsonStringArray(careEngagement?.scopeJson);
+  const currentCareScopeIds = careContractStringArray(careEngagement?.scopeJson);
   const currentCareScopeLabels = CARE_SCOPE_OPTIONS
     .filter((item) => currentCareScopeIds.includes(item.id))
     .map((item) => lang === "EN" ? item.en : lang === "ZH" ? item.zh : `${item.en} / ${item.zh}`);
