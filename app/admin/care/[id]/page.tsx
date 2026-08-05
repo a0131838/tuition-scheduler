@@ -303,6 +303,12 @@ export default async function CareDetailPage({
             school: true,
             grade: true,
             parentLinks: { where: { canViewReports: true }, select: { id: true }, take: 1 },
+            packages: {
+              where: { type: "HOURS", totalMinutes: { in: [6000, 12000, 18000] } },
+              select: { id: true, status: true, totalMinutes: true },
+              orderBy: { createdAt: "desc" },
+              take: 10,
+            },
             contracts: {
               where: { status: { in: ["SIGNED", "INVOICE_CREATED"] } },
               select: {
@@ -406,6 +412,7 @@ export default async function CareDetailPage({
     ? engagement.student.contracts.find((contract) => contract.id === reviewedLegacyContractId && careServiceIncluded(contract.businessInfoJson))
     : undefined;
   const serviceContract = signedCareContract ?? reviewedLegacyContract;
+  const careContractPackageId = serviceContract?.packageId ?? engagement.student.packages.find((pkg) => pkg.status === "ACTIVE")?.id ?? engagement.student.packages[0]?.id;
   const legacyReviewApplied = Boolean(reviewedLegacyContract);
   const contractedMinutes = serviceContract?.package.totalMinutes ?? 0;
   const remainingMinutes = serviceContract?.package.remainingMinutes ?? 0;
@@ -419,8 +426,8 @@ export default async function CareDetailPage({
         ? t(lang, "Legacy Full Care agreement reviewed", "旧版全托管合同已复核")
         : t(lang, "Full Care agreement signed", "全托管协议已签署"),
       done: Boolean(serviceContract),
-      href: serviceContract ? `/admin/packages/${encodeURIComponent(serviceContract.packageId)}/contract` : undefined,
-      action: serviceContract ? t(lang, "View contract", "查看合同") : t(lang, "Complete from the student's package", "请从学生课包完成签约"),
+      href: careContractPackageId ? `/admin/packages/${encodeURIComponent(careContractPackageId)}/contract?workspace=full-care` : undefined,
+      action: serviceContract ? t(lang, "View Full Care contract", "查看全托管合同") : careContractPackageId ? t(lang, "Create Full Care contract", "创建全托管合同") : t(lang, "Create the annual lesson package first", "请先创建全年课时包"),
     },
     {
       label: t(lang, "Parent miniapp bound with report access", "家长小程序已绑定并可看报告"),

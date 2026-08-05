@@ -752,6 +752,7 @@ export async function createStudentContractDraft(input: {
   contractMode?: StudentContractMode;
   replacementFromContractId?: string | null;
 }) {
+  const requestedContractMode = input.contractMode ?? StudentContractMode.TUITION_AGREEMENT;
   const existing = await prisma.studentContract.findFirst({
     where: {
       packageId: input.packageId,
@@ -762,9 +763,21 @@ export async function createStudentContractDraft(input: {
     include: studentContractInclude,
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
   });
-  if (existing) return summarize(existing);
+  if (existing) {
+    const existingBusinessInfo = coerceBusinessInfo(existing.businessInfoJson);
+    const existingIsFullCare = existing.contractMode === StudentContractMode.FULL_CARE_AGREEMENT || existingBusinessInfo?.careServiceIncluded === true;
+    const requestedIsFullCare = requestedContractMode === StudentContractMode.FULL_CARE_AGREEMENT;
+    if (existingIsFullCare !== requestedIsFullCare) {
+      throw new Error(
+        requestedIsFullCare
+          ? "An ordinary contract draft is already open for this package. Void or complete it before creating the separate Full Care agreement. / 当前课包已有普通合同草稿，请先完成或作废，再创建独立的全托管合同。"
+          : "A Full Care agreement draft is already open for this package. Complete it in the Full Care contract workspace. / 当前课包已有全托管合同草稿，请到全托管合同工作台继续完成。",
+      );
+    }
+    return summarize(existing);
+  }
 
-  const contractMode = input.contractMode ?? StudentContractMode.TUITION_AGREEMENT;
+  const contractMode = requestedContractMode;
   const [pkg, template] = await Promise.all([
     prisma.coursePackage.findUnique({
       where: { id: input.packageId },

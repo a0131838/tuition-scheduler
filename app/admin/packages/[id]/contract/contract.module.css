@@ -1,0 +1,189 @@
+.workspaceHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 18px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #dbe4df;
+}
+
+.workspaceHeader h2 {
+  margin: 3px 0 6px;
+  color: #17211d;
+  font-size: 25px;
+  letter-spacing: -0.02em;
+}
+
+.workspaceHeader p {
+  max-width: 760px;
+  margin: 0;
+  color: #5b6862;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.workspaceEyebrow {
+  color: #297253;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+}
+
+.workspaceSwitch {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid #cfdad4;
+  border-radius: 10px;
+  background: #f4f7f5;
+}
+
+.workspaceSwitch a {
+  min-height: 38px;
+  padding: 9px 13px;
+  border-radius: 7px;
+  color: #56635d;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.workspaceSwitch a[data-active="true"] {
+  background: #fff;
+  color: #176b49;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 10%);
+}
+
+.separationNotice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
+  padding: 14px 16px;
+  border-left: 3px solid #2c8b62;
+  background: #f2f8f5;
+}
+
+.separationNotice > div,
+.workspaceError {
+  display: grid;
+  gap: 3px;
+}
+
+.separationNotice span,
+.workspaceError span {
+  color: #5d6b64;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.separationNotice a,
+.workspaceError a,
+.primaryCareAction {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 14px;
+  border: 1px solid #1d7652;
+  border-radius: 8px;
+  background: #1d7652;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 850;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.workspaceError {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #f3c98b;
+  border-radius: 10px;
+  background: #fff9ed;
+  color: #8a4b08;
+}
+
+.workspaceError a {
+  width: fit-content;
+  margin-top: 7px;
+  border-color: #b96b15;
+  background: #fff;
+  color: #8a4b08;
+}
+
+.fullCareWorkspace {
+  --full-care-green: #176b49;
+}
+
+.careAgreementPanel {
+  display: grid;
+  gap: 20px;
+  max-width: 1120px;
+  padding: 22px;
+  border: 1px solid #b9daca;
+  border-radius: 12px;
+  background: #f5faf7;
+}
+
+.careAgreementTitle {
+  color: var(--full-care-green);
+  font-size: 18px;
+  font-weight: 850;
+  letter-spacing: -0.01em;
+}
+
+.careFormGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 22px;
+}
+
+.careFormGrid label {
+  min-width: 0;
+}
+
+.careFormGrid input,
+.careFormGrid select,
+.careFormGrid textarea {
+  width: 100%;
+  min-width: 0;
+}
+
+.primaryCareAction {
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .workspaceHeader,
+  .separationNotice {
+    display: grid;
+  }
+
+  .workspaceSwitch {
+    width: 100%;
+  }
+
+  .workspaceSwitch a {
+    flex: 1 1 0;
+    text-align: center;
+  }
+
+  .careFormGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .workspaceSwitch {
+    display: grid;
+  }
+
+  .careAgreementPanel {
+    padding: 16px;
+  }
+}

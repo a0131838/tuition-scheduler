@@ -51,10 +51,31 @@
 - Current release line prepared: `2026-08-05-r324` prevents a deleted invoice draft's pending approval from blocking the replacement invoice created by the signed contract, while preserving approval history and all issued financial records.
 - Current release line prepared: `2026-08-05-r325` gives Full Care its own contract mode, gates signing on explicit service/refund/compliance terms, adds launch-gap and renewal queues, flags sparse monthly-report evidence and records employee service minutes.
 - Current release line prepared: `2026-08-05-r326` completes the Full Care mobile navigation and compact-badge polish without changing data or workflow logic.
+- Current release line prepared: `2026-08-05-r327` separates ordinary tuition contracts from Full Care agreements at the workspace, history and draft-creation layers, without rewriting existing contract or finance records.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-05-r327 Ready
+
+- Scope: give each package a separate ordinary-contract workspace and Full Care contract workspace.
+- Business impact:
+  - ordinary purchase, top-up and renewal contracts no longer display Full Care pricing or service fields;
+  - Full Care history and preparation fields appear only in the dedicated Full Care workspace;
+  - an open draft of the other contract type is shown as a clear blocker instead of being silently reused;
+  - the Full Care project checklist opens the correct workspace directly;
+  - the Full Care form uses a readable two-column desktop layout and one-column mobile layout.
+- Verification before deploy:
+  - 166 backend tests;
+  - TypeScript validation;
+  - production build for all 240 application pages;
+  - guarded release preflight.
+- Post-deploy verification:
+  - confirm the `赵测试` package ordinary URL contains only ordinary contract controls;
+  - confirm `?workspace=full-care` opens the separate Full Care workspace and reports the existing ordinary draft as a blocker;
+  - do not change or delete the existing test contract during this read-only verification.
+- Task doc: `docs/tasks/TASK-20260805-separate-full-care-contract-workspace.md`.
 
 ## 2026-08-05-r326 Ready
 

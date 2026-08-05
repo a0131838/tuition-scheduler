@@ -52,6 +52,7 @@ import {
   FULL_CARE_PROGRAMS,
   validateFullCareSpecialDiscount,
 } from "@/lib/full-care-pricing";
+import styles from "./contract.module.css";
 
 const DEFAULT_CARE_EXCLUSIONS = [
   "法定监护、24 小时现场看护 / Legal guardianship and 24-hour on-site care",
@@ -68,6 +69,10 @@ function sanitizeReceiptsBack(value: string | null | undefined) {
   const normalized = String(value ?? "").trim();
   if (!normalized.startsWith("/admin/receipts-approvals")) return "/admin/receipts-approvals";
   return normalized.slice(0, 2000);
+}
+
+function normalizeContractWorkspace(value: string | null | undefined) {
+  return String(value ?? "").trim().toLowerCase() === "full-care" ? "full-care" : "standard";
 }
 
 function buildPackageBillingHref(
@@ -97,6 +102,7 @@ function buildPackageContractHref(
     receiptsBack?: string;
     msg?: string;
     err?: string;
+    workspace?: string;
   }
 ) {
   const params = new URLSearchParams();
@@ -106,6 +112,7 @@ function buildPackageContractHref(
   }
   if (options?.msg) params.set("msg", options.msg);
   if (options?.err) params.set("err", options.err);
+  if (normalizeContractWorkspace(options?.workspace) === "full-care") params.set("workspace", "full-care");
   const query = params.toString();
   return `/admin/packages/${encodeURIComponent(packageId)}/contract${query ? `?${query}` : ""}`;
 }
@@ -144,6 +151,18 @@ function contractCanEditDraft(status: string) {
     status === "CONTRACT_DRAFT" ||
     status === "READY_TO_SIGN" ||
     status === "EXPIRED"
+  );
+}
+
+function contractIsOpenDraft(status: string) {
+  return (
+    status === "DRAFT" ||
+    status === "INFO_PENDING" ||
+    status === "INFO_SUBMITTED" ||
+    status === "INTAKE_PENDING" ||
+    status === "INTAKE_SUBMITTED" ||
+    status === "CONTRACT_DRAFT" ||
+    status === "READY_TO_SIGN"
   );
 }
 
@@ -219,8 +238,9 @@ async function createContractDraftAction(formData: FormData) {
   const replacementFromContractId = String(formData.get("replacementFromContractId") ?? "").trim() || null;
   const sourceWorkflow = normalizePackageBillingSource(String(formData.get("source") ?? ""));
   const receiptsBack = sanitizeReceiptsBack(String(formData.get("receiptsBack") ?? ""));
+  const workspace = normalizeContractWorkspace(String(formData.get("workspace") ?? ""));
   if (!packageId || !studentId) {
-    redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, err: "Missing contract target" }));
+    redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, workspace, err: "Missing contract target" }));
   }
   try {
     await createStudentContractDraft({
@@ -231,17 +251,20 @@ async function createContractDraftAction(formData: FormData) {
       contractMode:
         contractModeRaw === StudentContractMode.SSG_STANDARD_PEI_V4
           ? StudentContractMode.SSG_STANDARD_PEI_V4
+          : contractModeRaw === StudentContractMode.FULL_CARE_AGREEMENT
+            ? StudentContractMode.FULL_CARE_AGREEMENT
           : StudentContractMode.TUITION_AGREEMENT,
       replacementFromContractId,
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Create contract draft failed";
-    redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, err: msg }));
+    redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, workspace, err: msg }));
   }
   redirect(
     buildPackageContractHref(packageId, {
       sourceWorkflow,
       receiptsBack,
+      workspace,
       msg: replacementFromContractId
         ? "Replacement contract draft created"
         : flowTypeRaw === "RENEWAL"
@@ -258,8 +281,9 @@ async function resendContractIntakeAction(formData: FormData) {
   const contractId = String(formData.get("contractId") ?? "").trim();
   const sourceWorkflow = normalizePackageBillingSource(String(formData.get("source") ?? ""));
   const receiptsBack = sanitizeReceiptsBack(String(formData.get("receiptsBack") ?? ""));
+  const workspace = normalizeContractWorkspace(String(formData.get("workspace") ?? ""));
   if (!packageId || !contractId) {
-    redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, err: "Missing contract id" }));
+    redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, workspace, err: "Missing contract id" }));
   }
   try {
     await refreshStudentContractIntakeLink({
@@ -269,9 +293,9 @@ async function resendContractIntakeAction(formData: FormData) {
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Refresh intake link failed";
-    redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, err: msg }));
+    redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, workspace, err: msg }));
   }
-  redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, msg: "Parent info link refreshed" }));
+  redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, workspace, msg: "Parent info link refreshed" }));
 }
 
 async function prepareContractSignAction(formData: FormData) {
@@ -283,11 +307,22 @@ async function prepareContractSignAction(formData: FormData) {
   const flowType = String(formData.get("flowType") ?? "").trim();
   const sourceWorkflow = normalizePackageBillingSource(String(formData.get("source") ?? ""));
   const receiptsBack = sanitizeReceiptsBack(String(formData.get("receiptsBack") ?? ""));
+  const workspace = normalizeContractWorkspace(String(formData.get("workspace") ?? ""));
   if (!packageId || !contractId) {
-    redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, err: "Missing contract id" }));
+    redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, workspace, err: "Missing contract id" }));
   }
   try {
-    const careServiceIncluded = String(formData.get("careServiceIncluded") ?? "") === "on";
+    const contractIdentity = await prisma.studentContract.findUnique({
+      where: { id: contractId },
+      select: { packageId: true, contractMode: true, businessInfoJson: true },
+    });
+    if (!contractIdentity || contractIdentity.packageId !== packageId) throw new Error("Contract not found for this package");
+    const existingBusinessInfo = contractIdentity.businessInfoJson && typeof contractIdentity.businessInfoJson === "object" && !Array.isArray(contractIdentity.businessInfoJson)
+      ? contractIdentity.businessInfoJson as Record<string, unknown>
+      : null;
+    const careServiceIncluded = contractIdentity.contractMode === StudentContractMode.FULL_CARE_AGREEMENT || existingBusinessInfo?.careServiceIncluded === true;
+    if (careServiceIncluded && workspace !== "full-care") throw new Error("Open this agreement in the separate Full Care contract workspace / 请到独立的全托管合同工作台处理这份合同");
+    if (!careServiceIncluded && workspace === "full-care") throw new Error("This is an ordinary contract draft. Return to the ordinary contract workspace / 这是一份普通合同草稿，请返回普通合同工作台处理");
     const careEngagementId = String(formData.get("careEngagementId") ?? "").trim();
     const careEngagement = careServiceIncluded && studentId && careEngagementId
       ? await prisma.careEngagement.findFirst({
@@ -411,9 +446,9 @@ async function prepareContractSignAction(formData: FormData) {
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Prepare sign link failed";
-    redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, err: msg }));
+    redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, workspace, err: msg }));
   }
-  redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, msg: "Contract details saved and sign link is ready" }));
+  redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, workspace, msg: "Contract details saved and sign link is ready" }));
 }
 
 async function voidContractAction(formData: FormData) {
@@ -424,8 +459,9 @@ async function voidContractAction(formData: FormData) {
   const reason = String(formData.get("reason") ?? "").trim();
   const sourceWorkflow = normalizePackageBillingSource(String(formData.get("source") ?? ""));
   const receiptsBack = sanitizeReceiptsBack(String(formData.get("receiptsBack") ?? ""));
+  const workspace = normalizeContractWorkspace(String(formData.get("workspace") ?? ""));
   if (!packageId || !contractId) {
-    redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, err: "Missing contract id" }));
+    redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, workspace, err: "Missing contract id" }));
   }
   try {
     await voidStudentContract({
@@ -436,9 +472,9 @@ async function voidContractAction(formData: FormData) {
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Void contract failed";
-    redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, err: msg }));
+    redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, workspace, err: msg }));
   }
-  redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, msg: "Contract marked as void" }));
+  redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, workspace, msg: "Contract marked as void" }));
 }
 
 async function deleteVoidContractDraftAction(formData: FormData) {
@@ -448,8 +484,9 @@ async function deleteVoidContractDraftAction(formData: FormData) {
   const contractId = String(formData.get("contractId") ?? "").trim();
   const sourceWorkflow = normalizePackageBillingSource(String(formData.get("source") ?? ""));
   const receiptsBack = sanitizeReceiptsBack(String(formData.get("receiptsBack") ?? ""));
+  const workspace = normalizeContractWorkspace(String(formData.get("workspace") ?? ""));
   if (!packageId || !contractId) {
-    redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, err: "Missing contract id" }));
+    redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, workspace, err: "Missing contract id" }));
   }
   try {
     await deleteVoidStudentContractDraft({
@@ -459,9 +496,9 @@ async function deleteVoidContractDraftAction(formData: FormData) {
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Delete void contract draft failed";
-    redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, err: msg }));
+    redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, workspace, err: msg }));
   }
-  redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, msg: "Void draft deleted" }));
+  redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, workspace, msg: "Void draft deleted" }));
 }
 
 export default async function PackageContractPage({
@@ -469,7 +506,7 @@ export default async function PackageContractPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ msg?: string; err?: string; source?: string; receiptsBack?: string }>;
+  searchParams?: Promise<{ msg?: string; err?: string; source?: string; receiptsBack?: string; workspace?: string }>;
 }) {
   await requireAdmin();
   const { id: packageId } = await params;
@@ -478,6 +515,8 @@ export default async function PackageContractPage({
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
   const sourceWorkflow = normalizePackageBillingSource(sp?.source);
   const receiptsBack = sanitizeReceiptsBack(sp?.receiptsBack);
+  const contractWorkspace = normalizeContractWorkspace(sp?.workspace);
+  const fullCareWorkspace = contractWorkspace === "full-care";
   const lang = await getLang();
 
   const [pkg, data, packageContracts, hasRenewalContractParentInfo, latestParentIntakeForPackage, deletedInvoiceHistory] = await Promise.all([
@@ -513,8 +552,13 @@ export default async function PackageContractPage({
   ]);
 
   const usesStudentContractFlow = !isPartnerSettlementPackage(pkg.settlementMode);
-  const latestContract = packageContracts.find((contract) => contract.status !== "VOID") ?? null;
-  const voidContracts = packageContracts.filter((contract) => contract.status === "VOID");
+  const isFullCareContract = (contract: typeof packageContracts[number]) =>
+    contract.contractMode === StudentContractMode.FULL_CARE_AGREEMENT || contract.businessInfo?.careServiceIncluded === true;
+  const hasFullCareContract = packageContracts.some(isFullCareContract);
+  const workspaceContracts = packageContracts.filter((contract) => fullCareWorkspace ? isFullCareContract(contract) : !isFullCareContract(contract));
+  const otherOpenContract = packageContracts.find((contract) => contractIsOpenDraft(contract.status) && !workspaceContracts.some((visible) => visible.id === contract.id)) ?? null;
+  const latestContract = workspaceContracts.find((contract) => contract.status !== "VOID") ?? null;
+  const voidContracts = workspaceContracts.filter((contract) => contract.status === "VOID");
   const deletableVoidContracts = voidContracts.filter((contract) => contractCanDeleteVoidDraft(contract));
   const archivedVoidContracts = voidContracts.filter((contract) => !contractCanDeleteVoidDraft(contract));
   const latestArchivedVoidContract = archivedVoidContracts[0] ?? null;
@@ -592,8 +636,20 @@ export default async function PackageContractPage({
     });
 
   return (
-    <div>
-      <h2>{t(lang, "Package Contract Workspace", "课包合同工作台")}</h2>
+    <div className={fullCareWorkspace ? styles.fullCareWorkspace : undefined}>
+      <div className={styles.workspaceHeader}>
+        <div>
+          <div className={styles.workspaceEyebrow}>{fullCareWorkspace ? t(lang, "FULL CARE CONTRACTS", "全托管签约") : t(lang, "TUITION CONTRACTS", "普通课时签约")}</div>
+          <h2>{fullCareWorkspace ? t(lang, "Full Care Contract Workspace", "全托管合同工作台") : t(lang, "Ordinary Contract Workspace", "普通合同工作台")}</h2>
+          <p>{fullCareWorkspace
+            ? t(lang, "One combined agreement for the selected annual tuition package and Full Care service. Ordinary top-ups and tuition-only renewals stay outside this workspace.", "这里只生成包含全年课时包与全托管服务的一份整合合同。普通加课和仅课时续费不在这里处理。")
+            : t(lang, "Tuition-only purchases, top-ups and renewals. Full Care agreements are handled in their own workspace.", "这里只处理普通课时首购、加课和续费；全托管合同在独立工作台处理。")}</p>
+        </div>
+        <div className={styles.workspaceSwitch} aria-label={t(lang, "Contract workspace", "合同工作台切换")}>
+          <a data-active={!fullCareWorkspace} href={buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack })}>{t(lang, "Ordinary contracts", "普通合同")}</a>
+          {careEngagement || hasFullCareContract ? <a data-active={fullCareWorkspace} href={buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, workspace: "full-care" })}>{t(lang, "Full Care contracts", "全托管合同")}</a> : null}
+        </div>
+      </div>
       <div style={{ marginBottom: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <a href={buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack })}>← {t(lang, "Back to Package Billing", "返回课包账单")}</a>
         <span style={{ color: "#94a3b8" }}>·</span>
@@ -605,6 +661,15 @@ export default async function PackageContractPage({
       </div>
       {err ? <div style={{ marginBottom: 12, color: "#b00" }}>{err}</div> : null}
       {msg ? <div style={{ marginBottom: 12, color: "#166534" }}>{msg}</div> : null}
+
+      {!fullCareWorkspace && careEngagement ? (
+        <div className={styles.separationNotice}>
+          <div><strong>{t(lang, "Full Care is separated from ordinary contracts", "全托管合同已经与普通合同分开")}</strong><span>{t(lang, "Open the dedicated workspace to select the annual plan, service scope and service terms.", "全年方案、服务范围和服务条款只在全托管合同工作台填写。")}</span></div>
+          <a href={buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, workspace: "full-care" })}>{t(lang, "Open Full Care workspace", "进入全托管合同工作台")}</a>
+        </div>
+      ) : null}
+
+      {fullCareWorkspace && !careEngagement && !latestContract ? <div className={styles.workspaceError}>{t(lang, "Create the student's Full Care project before preparing this agreement.", "请先建立该学生的全托管项目，再准备全托管合同。")}</div> : null}
 
       {!usesStudentContractFlow ? (
         <div style={{ border: "1px solid #dbe4f0", borderRadius: 14, background: "#f8fafc", padding: 16, display: "grid", gap: 10 }}>
@@ -620,7 +685,9 @@ export default async function PackageContractPage({
               <div style={{ display: "grid", gap: 4 }}>
                 <div style={{ fontWeight: 800 }}>{t(lang, "Contract flow", "合同流程")}</div>
                 <div style={{ color: "#475569", fontSize: 13 }}>
-                  {t(lang, "This page keeps parent links, draft details, signed history, and replacement versions together so package billing can stay focused on invoices and receipts.", "这个页面集中处理家长链接、合同草稿、已签历史和更正版本，课包账单页则聚焦发票与收据。")}
+                  {fullCareWorkspace
+                    ? t(lang, "Only Full Care drafts and signed Full Care history appear here.", "这里只显示全托管草稿及已签全托管合同历史。")
+                    : t(lang, "Only tuition-only drafts and ordinary signed history appear here.", "这里只显示普通课时合同草稿及普通合同历史。")}
                 </div>
               </div>
               {latestContract ? (
@@ -785,14 +852,15 @@ export default async function PackageContractPage({
                       <input type="hidden" name="flowType" value={latestContract.flowType} />
                       <input type="hidden" name="source" value={sourceWorkflow} />
                       <input type="hidden" name="receiptsBack" value={receiptsBack} />
+                      <input type="hidden" name="workspace" value={contractWorkspace} />
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
                         <label style={{ display: "grid", gap: 6 }}>
                           <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Total minutes / 总课时分钟", "Total minutes / 总课时分钟")}</span>
-                          <input name="totalMinutes" type="number" min={0} readOnly={Boolean(careEngagement || contractBusinessInfo?.careServiceIncluded)} defaultValue={contractBusinessInfo?.careServiceIncluded ? contractBusinessInfo.totalMinutes ?? selectedCarePricingPlan.hours * 60 : contractBusinessInfo?.totalMinutes ?? pkg.totalMinutes ?? ""} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1", background: careEngagement || contractBusinessInfo?.careServiceIncluded ? "#f8fafc" : "#fff" }} />
+                          <input name="totalMinutes" type="number" min={0} readOnly={fullCareWorkspace} defaultValue={contractBusinessInfo?.careServiceIncluded ? contractBusinessInfo.totalMinutes ?? selectedCarePricingPlan.hours * 60 : contractBusinessInfo?.totalMinutes ?? pkg.totalMinutes ?? ""} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1", background: fullCareWorkspace ? "#f8fafc" : "#fff" }} />
                         </label>
                         <label style={{ display: "grid", gap: 6 }}>
                           <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Fee amount / 合同金额", "Fee amount / 合同金额")}</span>
-                          <input name="feeAmount" type="number" min={0} step="0.01" readOnly={Boolean(careEngagement || contractBusinessInfo?.careServiceIncluded)} defaultValue={contractBusinessInfo?.careServiceIncluded ? contractBusinessInfo.feeAmount ?? selectedCarePricingPlan.totalFee : contractBusinessInfo?.feeAmount ?? pkg.paidAmount ?? ""} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1", background: careEngagement || contractBusinessInfo?.careServiceIncluded ? "#f8fafc" : "#fff" }} />
+                          <input name="feeAmount" type="number" min={0} step="0.01" readOnly={fullCareWorkspace} defaultValue={contractBusinessInfo?.careServiceIncluded ? contractBusinessInfo.feeAmount ?? selectedCarePricingPlan.totalFee : contractBusinessInfo?.feeAmount ?? pkg.paidAmount ?? ""} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1", background: fullCareWorkspace ? "#f8fafc" : "#fff" }} />
                         </label>
                         <label style={{ display: "grid", gap: 6 }}>
                           <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Bill to / 开票对象", "Bill to / 开票对象")}</span>
@@ -803,19 +871,17 @@ export default async function PackageContractPage({
                           <input name="agreementDateIso" type="date" defaultValue={contractBusinessInfo?.agreementDateIso ?? today} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
                         </label>
                       </div>
-                      {careEngagement || contractBusinessInfo?.careServiceIncluded ? (
-                        <div style={{ border: "1px solid #bbf7d0", borderRadius: 12, background: "#f0fdf4", padding: 14, display: "grid", gap: 12 }}>
+                      {fullCareWorkspace ? (
+                        <div className={styles.careAgreementPanel}>
                           <div style={{ display: "grid", gap: 4 }}>
-                            <label style={{ display: "flex", alignItems: "flex-start", gap: 9, fontWeight: 800, color: "#166534" }}>
-                              <input name="careServiceIncluded" type="checkbox" defaultChecked={contractBusinessInfo?.careServiceIncluded ?? (Boolean(careEngagement) && !careAlreadyContracted)} />
-                              <span>{t(lang, "Prepare the Full Care Service Agreement", "生成《全程托管服务合同》")}</span>
-                            </label>
+                            <input name="careServiceIncluded" type="hidden" value="on" />
+                            <div className={styles.careAgreementTitle}>{t(lang, "Full Care agreement details", "全托管合同信息")}</div>
                             <div style={{ color: "#166534", fontSize: 13, lineHeight: 1.55 }}>
                               {t(lang, "The parent signs one Full Care Service Agreement. The service is not named after the student's current course; only the standard or IB/AP tuition price tier is selected.", "家长签署一份《全程托管服务合同》。合同不以学生当前课程命名，只选择标准课程或 IB/AP 课程价格档。")}
                             </div>
                             {careAlreadyContracted ? (
                               <div style={{ color: "#9a3412", fontSize: 13, lineHeight: 1.55 }}>
-                                {t(lang, "This care year already has a signed Full Care agreement. For an in-year lesson top-up, leave Full Care unchecked: charge tuition only and do not extend the care end date.", "本托管年度已经有全程托管合同。同一年度追加课时请不要勾选全程托管：只收课程费，也不延长托管结束日期。")}
+                                {t(lang, "This care year already has another Full Care agreement. Do not use this draft for an in-year tuition top-up; return to the ordinary contract workspace instead.", "本托管年度已经有另一份全托管合同。本年度追加课时不要使用这份草稿，请返回普通合同工作台，只处理课时续费。")}
                               </div>
                             ) : null}
                           </div>
@@ -830,7 +896,7 @@ export default async function PackageContractPage({
                             </div>
                           </div>
 
-                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 10 }}>
+                          <div className={styles.careFormGrid}>
                             <label style={{ display: "grid", gap: 6 }}>
                               <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Full Care price plan", "全程托管价格方案")}</span>
                               <select name="carePricingPlan" defaultValue={selectedCarePricingPlan.value} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #86efac", background: "#fff" }}>
@@ -1049,7 +1115,7 @@ export default async function PackageContractPage({
                   </div>
                 ) : null}
 
-                {careEngagement ? (
+                {fullCareWorkspace && careEngagement ? (
                   <details style={{ border: "1px solid #cbd5e1", borderRadius: 12, background: "#f8fafc", overflow: "hidden" }}>
                     <summary style={{ cursor: "pointer", padding: 14, fontWeight: 800, color: "#334155" }}>
                       {t(lang, "Current Full Care price catalogue (preview only)", "当前全托管价目表（仅预览）")}
@@ -1078,6 +1144,7 @@ export default async function PackageContractPage({
                       <input type="hidden" name="contractId" value={latestContract.id} />
                       <input type="hidden" name="source" value={sourceWorkflow} />
                       <input type="hidden" name="receiptsBack" value={receiptsBack} />
+                      <input type="hidden" name="workspace" value={contractWorkspace} />
                       <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #2563eb", background: "#fff", color: "#2563eb", fontWeight: 700 }}>
                         {t(lang, "Resend parent info link", "重发资料链接")}
                       </button>
@@ -1089,6 +1156,7 @@ export default async function PackageContractPage({
                       <input type="hidden" name="contractId" value={latestContract.id} />
                       <input type="hidden" name="source" value={sourceWorkflow} />
                       <input type="hidden" name="receiptsBack" value={receiptsBack} />
+                      <input type="hidden" name="workspace" value={contractWorkspace} />
                       <input name="reason" placeholder={t(lang, "Void reason", "作废原因")} style={{ minWidth: 220, padding: "8px 10px", borderRadius: 10, border: "1px solid #fca5a5" }} />
                       <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #dc2626", background: "#fff1f2", color: "#b91c1c", fontWeight: 700 }}>
                         {t(lang, "Void contract", "作废合同")}
@@ -1121,6 +1189,7 @@ export default async function PackageContractPage({
                         <input type="hidden" name="contractId" value={latestContract.id} />
                         <input type="hidden" name="source" value={sourceWorkflow} />
                         <input type="hidden" name="receiptsBack" value={receiptsBack} />
+                        <input type="hidden" name="workspace" value={contractWorkspace} />
                         <input required name="reason" placeholder={t(lang, "Required void reason", "必填作废原因")} style={{ minWidth: 220, padding: "8px 10px", borderRadius: 10, border: "1px solid #fca5a5" }} />
                         <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #dc2626", background: "#fff1f2", color: "#b91c1c", fontWeight: 700 }}>
                           {t(lang, "Void signed contract", "作废已签合同")}
@@ -1134,6 +1203,7 @@ export default async function PackageContractPage({
                           <input type="hidden" name="contractMode" value={StudentContractMode.TUITION_AGREEMENT} />
                           <input type="hidden" name="source" value={sourceWorkflow} />
                           <input type="hidden" name="receiptsBack" value={receiptsBack} />
+                          <input type="hidden" name="workspace" value={contractWorkspace} />
                           <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #166534", background: "#f0fdf4", color: "#166534", fontWeight: 700 }}>
                             {t(lang, "Create renewal contract", "创建续费合同")}
                           </button>
@@ -1147,6 +1217,7 @@ export default async function PackageContractPage({
                         <input type="hidden" name="replacementFromContractId" value={latestContract.id} />
                         <input type="hidden" name="source" value={sourceWorkflow} />
                         <input type="hidden" name="receiptsBack" value={receiptsBack} />
+                        <input type="hidden" name="workspace" value={contractWorkspace} />
                         <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #991b1b", background: "#991b1b", color: "#fff", fontWeight: 700 }}>
                           {latestContract.flowType === "RENEWAL"
                             ? t(lang, "Create replacement renewal contract", "创建新的续费合同版本")
@@ -1160,16 +1231,18 @@ export default async function PackageContractPage({
             ) : (
               <div style={{ display: "grid", gap: 12 }}>
                 <div style={{ color: "#475569", fontSize: 13 }}>
-                  {likelyLegacyNoContract
+                  {fullCareWorkspace
+                    ? t(lang, "Create one combined Full Care agreement for this annual package. This will not appear in ordinary contract history.", "为这个全年课包创建一份整合的全托管合同；它不会混入普通合同历史。")
+                    : likelyLegacyNoContract
                     ? t(lang, "This is an existing direct-billing package, so new sales should start as renewal even if parent details need to be collected first.", "这是已有直客课包，所以新的销售应走续费流程；即使还需要先收集家长资料，也不要再走首购。")
                     : t(lang, "Use first-purchase flow only for a genuinely new package. Existing packages and top-ups should use renewal.", "只有真正新课包才走首购；已有课包和增购续费应走续费。")}
                 </div>
-                {likelyLegacyNoContract ? (
+                {!fullCareWorkspace && likelyLegacyNoContract ? (
                   <div style={{ border: "1px solid #fed7aa", borderRadius: 12, background: "#fff7ed", padding: 12, color: "#9a3412", fontSize: 13, lineHeight: 1.6 }}>
                     {t(lang, "Legacy direct-billing package without contract history detected. The current package can continue, but the next renewal should use the renewal contract flow instead of manual top-up.", "系统识别到这像是一条历史存量直客课包，目前还没有合同历史。当前课包可继续使用，但下一次续费应改走续费合同流程，而不是手工 top-up。")}
                   </div>
                 ) : null}
-                {eduTrustProfile?.isEduTrustCourse ? (
+                {!fullCareWorkspace && eduTrustProfile?.isEduTrustCourse ? (
                   <div style={{ border: `1px solid ${canCreateSsgContract ? "#bbf7d0" : "#fed7aa"}`, borderRadius: 12, background: canCreateSsgContract ? "#f0fdf4" : "#fff7ed", padding: 12, color: canCreateSsgContract ? "#166534" : "#9a3412", fontSize: 13, lineHeight: 1.6 }}>
                     {canCreateSsgContract
                       ? t(lang, "This package is ready for SSG Standard PEI-Student Contract v4.0 creation.", "该课包已满足创建 SSG Standard PEI-Student Contract v4.0 的系统条件。")
@@ -1177,6 +1250,25 @@ export default async function PackageContractPage({
                   </div>
                 ) : null}
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                  {fullCareWorkspace && !latestArchivedVoidContract && !otherOpenContract && careEngagement ? (
+                    <form action={createContractDraftAction}>
+                      <input type="hidden" name="packageId" value={packageId} />
+                      <input type="hidden" name="studentId" value={pkg.studentId} />
+                      <input type="hidden" name="flowType" value={hasRenewalContractParentInfo || likelyLegacyNoContract ? "RENEWAL" : "NEW_PURCHASE"} />
+                      <input type="hidden" name="contractMode" value={StudentContractMode.FULL_CARE_AGREEMENT} />
+                      <input type="hidden" name="workspace" value="full-care" />
+                      <input type="hidden" name="source" value={sourceWorkflow} />
+                      <input type="hidden" name="receiptsBack" value={receiptsBack} />
+                      <button type="submit" className={styles.primaryCareAction}>{t(lang, "Create Full Care agreement", "创建全托管合同")}</button>
+                    </form>
+                  ) : null}
+                  {fullCareWorkspace && otherOpenContract ? (
+                    <div className={styles.workspaceError}>
+                      <strong>{t(lang, "An ordinary contract draft is still open", "当前还有一份普通合同草稿未处理")}</strong>
+                      <span>{t(lang, "Complete or void that draft first. The system will not silently turn it into a Full Care agreement.", "请先完成或作废普通合同草稿；系统不会再把普通合同静默变成全托管合同。")}</span>
+                      <a href={buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack })}>{t(lang, "Return to ordinary contracts", "返回普通合同工作台")}</a>
+                    </div>
+                  ) : null}
                   {latestArchivedVoidContract ? (
                     <form action={createContractDraftAction}>
                       <input type="hidden" name="packageId" value={packageId} />
@@ -1186,6 +1278,7 @@ export default async function PackageContractPage({
                       <input type="hidden" name="replacementFromContractId" value={latestArchivedVoidContract.id} />
                       <input type="hidden" name="source" value={sourceWorkflow} />
                       <input type="hidden" name="receiptsBack" value={receiptsBack} />
+                      <input type="hidden" name="workspace" value={contractWorkspace} />
                       <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #991b1b", background: "#991b1b", color: "#fff", fontWeight: 700 }}>
                         {latestArchivedVoidContract.flowType === "RENEWAL"
                           ? t(lang, "Create corrected renewal contract", "创建更正版续费合同")
@@ -1193,7 +1286,7 @@ export default async function PackageContractPage({
                       </button>
                     </form>
                   ) : null}
-                  {!likelyLegacyNoContract ? (
+                  {!fullCareWorkspace && !likelyLegacyNoContract ? (
                     <form action={createContractDraftAction}>
                       <input type="hidden" name="packageId" value={packageId} />
                       <input type="hidden" name="studentId" value={pkg.studentId} />
@@ -1206,7 +1299,7 @@ export default async function PackageContractPage({
                       </button>
                     </form>
                   ) : null}
-                  {!likelyLegacyNoContract && canCreateSsgContract ? (
+                  {!fullCareWorkspace && !likelyLegacyNoContract && canCreateSsgContract ? (
                     <form action={createContractDraftAction}>
                       <input type="hidden" name="packageId" value={packageId} />
                       <input type="hidden" name="studentId" value={pkg.studentId} />
@@ -1219,7 +1312,7 @@ export default async function PackageContractPage({
                       </button>
                     </form>
                   ) : null}
-                  {hasRenewalContractParentInfo || likelyLegacyNoContract ? (
+                  {!fullCareWorkspace && (hasRenewalContractParentInfo || likelyLegacyNoContract) ? (
                     <form action={createContractDraftAction}>
                       <input type="hidden" name="packageId" value={packageId} />
                       <input type="hidden" name="studentId" value={pkg.studentId} />
@@ -1233,11 +1326,11 @@ export default async function PackageContractPage({
                           : t(lang, "Start renewal intake", "发起续费资料链接")}
                       </button>
                     </form>
-                  ) : (
+                  ) : !fullCareWorkspace ? (
                     <div style={{ fontSize: 13, color: "#475569" }}>
                       {t(lang, "No reusable parent profile yet, so renewal contract is hidden until the first purchase intake has been completed once.", "当前还没有可复用的家长资料，所以在首购资料流程至少完成一次前，不展示续费合同入口。")}
                     </div>
-                  )}
+                  ) : null}
                 </div>
               </div>
             )}
@@ -1323,6 +1416,7 @@ export default async function PackageContractPage({
                             <input type="hidden" name="contractId" value={contract.id} />
                             <input type="hidden" name="source" value={sourceWorkflow} />
                             <input type="hidden" name="receiptsBack" value={receiptsBack} />
+                            <input type="hidden" name="workspace" value={contractWorkspace} />
                             <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #dc2626", background: "#fff1f2", color: "#b91c1c", fontWeight: 700 }}>
                               {t(lang, "Delete void draft", "删除作废草稿")}
                             </button>

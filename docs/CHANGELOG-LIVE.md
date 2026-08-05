@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-05-r327
+
+- Release ID: `2026-08-05-r327`
+- Date/Time (Asia/Singapore): `2026-08-05`
+- Deployment status: `READY`
+- Scope: separate ordinary tuition contracts and Full Care agreements into two explicit package workspaces, prevent cross-mode draft reuse, and route the Full Care launch checklist directly to the dedicated workspace.
+- Key files:
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `app/admin/packages/[id]/contract/contract.module.css`
+  - `app/admin/care/[id]/page.tsx`
+  - `lib/student-contract.ts`
+  - `tests/full-care-launch-ui.test.ts`
+  - `docs/tasks/TASK-20260805-separate-full-care-contract-workspace.md`
+- Risk impact (if any): Low to medium. No contracts, invoices or package balances are rewritten. An open ordinary draft now intentionally blocks creation of a Full Care draft on the same package until staff complete or void it.
+- Verification: 166 backend tests passed, TypeScript validation passed, and the production build passed for all 240 application pages.
+- Rollback point: `e35119fda107fa4931dea9889651fb060a7e90bd` (`2026-08-05-r326` production head).
+
+---
+
 ## 2026-08-05-r326
 
 - Release ID: `2026-08-05-r326`

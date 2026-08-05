@@ -73,6 +73,26 @@ test("Full Care signing requires service boundaries and compliance evidence", ()
   assert.match(contract, /legal\/tax\/PDPA approval reference/);
 });
 
+test("ordinary and Full Care contracts use separate workspaces", () => {
+  const workspace = read("app/admin/packages/[id]/contract/page.tsx");
+  const css = read("app/admin/packages/[id]/contract/contract.module.css");
+  const contract = read("lib/student-contract.ts");
+
+  assert.match(workspace, /workspace: "full-care"/);
+  assert.match(workspace, /Ordinary Contract Workspace/);
+  assert.match(workspace, /Full Care Contract Workspace/);
+  assert.match(workspace, /fullCareWorkspace \? isFullCareContract\(contract\) : !isFullCareContract\(contract\)/);
+  assert.match(workspace, /careEngagement \|\| hasFullCareContract/);
+  assert.match(workspace, /fullCareWorkspace && otherOpenContract/);
+  assert.match(workspace, /name="contractMode" value=\{StudentContractMode\.FULL_CARE_AGREEMENT\}/);
+  assert.match(workspace, /name="careServiceIncluded" type="hidden" value="on"/);
+  assert.doesNotMatch(workspace, /name="careServiceIncluded" type="checkbox"/);
+  assert.match(css, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(css, /@media \(max-width: 900px\)[\s\S]*grid-template-columns: 1fr/);
+  assert.match(contract, /existingIsFullCare !== requestedIsFullCare/);
+  assert.match(contract, /当前课包已有普通合同草稿/);
+});
+
 test("Full Care mobile navigation and compact badges do not clip or wrap", () => {
   const css = read("app/admin/care/care.module.css");
 
