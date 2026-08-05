@@ -1,7 +1,7 @@
 <view class="page login-page">
   <view class="login-main">
     <view class="top login-top">
-      <image class="brand-logo" src="/assets/boss-logo.png" mode="widthFix" />
+      <image class="brand-logo" src="/assets/gt-educational-institute-logo.png" mode="widthFix" />
       <view class="eyebrow">家长入口</view>
       <view class="title">家长登录</view>
       <view class="subtitle">使用已绑定的微信继续。</view>

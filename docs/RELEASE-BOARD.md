@@ -54,10 +54,22 @@
 - Current release line prepared: `2026-08-05-r327` separates ordinary tuition contracts from Full Care agreements at the workspace, history and draft-creation layers, without rewriting existing contract or finance records.
 - Current release line prepared: `2026-08-05-r328` gives parents a four-destination mini-program structure, one stable child dashboard, separate progress/report/entitlement views, and a protected account area for finance, contracts and reminders.
 - Current release line prepared: `2026-08-05-r329` makes the active Full Care project authoritative for the parent-facing service label, correcting legacy-null students such as `赵测试 2` without rewriting their classification.
+- Current release line prepared: `2026-08-05-r330` replaces the Mini Program login artwork with the official GT Educational Institute logo while retaining the “博思学业管家” product name.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-05-r330 Ready
+
+- Scope: use the official GT Educational Institute artwork on Mini Program login screens without renaming the “博思学业管家” product.
+- Business impact:
+  - parent and staff login pages use the official GT Educational Institute bilingual logo from `public/GTI2.png`;
+  - the approved “博思学业管家” navigation, home, service-team, sharing and project text remains unchanged;
+  - internal `BOSS_OTHER` scheduling cohort labels remain unchanged because they are operational classifications, not customer branding.
+- Verification before deploy: focused tests, JSON validation, mini-program release audit and production build.
+- Post-deploy verification: upload WeChat development version `1.0.27`, reopen both login portals and confirm the GT Educational Institute logo is rendered without clipping while “博思学业管家” text remains.
+- Task doc: `docs/tasks/TASK-20260805-miniapp-gti-brand.md`.
 
 ## 2026-08-05-r329 Ready
 

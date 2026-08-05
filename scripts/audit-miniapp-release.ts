@@ -82,9 +82,9 @@ for (const searchPage of searchPages) {
   assert(markup.includes('class="search-submit"') && markup.includes('class="search-clear"'), `${searchPage}: search and clear controls are required`);
 }
 
-assert(fs.existsSync(path.join(ROOT, "assets", "boss-logo.png")), "assets/boss-logo.png: brand logo is required");
+assert(fs.existsSync(path.join(ROOT, "assets", "gt-educational-institute-logo.png")), "assets/gt-educational-institute-logo.png: brand logo is required");
 for (const loginPage of ["pages/login/login.wxml", "pages/staff-login/staff-login.wxml"]) {
-  assert(read(loginPage).includes('/assets/boss-logo.png'), `${loginPage}: brand logo is required`);
+  assert(read(loginPage).includes('/assets/gt-educational-institute-logo.png'), `${loginPage}: GT Educational Institute logo is required`);
 }
 const parentLoginMarkup = read("pages/login/login.wxml");
 const parentLoginScript = read("pages/login/login.js");

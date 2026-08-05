@@ -1,7 +1,7 @@
 <view class="page staff-login-page">
   <view class="staff-login-main">
     <view class="top staff-login-top">
-      <image class="brand-logo" src="/assets/boss-logo.png" mode="widthFix" />
+      <image class="brand-logo" src="/assets/gt-educational-institute-logo.png" mode="widthFix" />
       <view class="eyebrow">员工入口</view>
       <view class="title">{{choosing ? "选择工作账号" : "员工登录"}}</view>
       <view class="subtitle">{{choosing ? "同一微信已绑定多个身份，请选择本次进入的工作台。" : "使用已绑定的微信继续。"}}</view>

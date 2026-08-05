@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-05-r330
+
+- Release ID: `2026-08-05-r330`
+- Date/Time (Asia/Singapore): `2026-08-05`
+- Deployment status: `READY`
+- Scope: replace the Mini Program login artwork with the official GT Educational Institute logo while retaining the approved “博思学业管家” product name and service copy.
+- Key files:
+  - `miniapp/boss-academic-parent/assets/gt-educational-institute-logo.png`
+  - `miniapp/boss-academic-parent/pages/login/login.wxml`
+  - `miniapp/boss-academic-parent/pages/staff-login/staff-login.wxml`
+  - `scripts/audit-miniapp-release.ts`
+  - `docs/tasks/TASK-20260805-miniapp-gti-brand.md`
+- Risk impact (if any): Low. Branding and presentation only; authentication, student access, Full Care, scheduling and finance logic are unchanged.
+- Verification: focused parent communication and mini-program tests, JSON validation, mini-program release audit, production build and WeChat Developer Tools upload.
+- Rollback point: `0015a926d2ccd53f8bfac3191b43fa957b2c0a6d` (`2026-08-05-r329` production head).
+
+---
+
 ## 2026-08-05-r329
 
 - Release ID: `2026-08-05-r329`
