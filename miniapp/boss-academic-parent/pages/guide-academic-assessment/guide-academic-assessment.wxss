@@ -1,0 +1,91 @@
+@import "../../styles/school-guide.wxss";
+
+.assessment-progress {
+  margin-top: 26rpx;
+}
+
+.assessment-progress-track {
+  height: 12rpx;
+  overflow: hidden;
+  border-radius: 999rpx;
+  background: #deddd9;
+}
+
+.assessment-progress-fill {
+  height: 100%;
+  border-radius: 999rpx;
+  background: #ec5e0a;
+}
+
+.assessment-progress-text {
+  margin-top: 12rpx;
+  color: #66707c;
+  font-size: 22rpx;
+}
+
+.assessment-card {
+  margin-top: 26rpx;
+  padding: 30rpx;
+  border: 1rpx solid #d9dcdf;
+  border-top: 7rpx solid #18202a;
+  border-radius: 10rpx;
+  background: #fff;
+}
+
+.assessment-domain {
+  color: #a83c05;
+  font-size: 22rpx;
+  font-weight: 850;
+}
+
+.assessment-prompt {
+  margin-top: 22rpx;
+  color: #18202a;
+  font-size: 30rpx;
+  font-weight: 700;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.assessment-option {
+  margin-top: 16rpx;
+  padding: 22rpx;
+  border: 2rpx solid #d8dadd;
+  border-radius: 8rpx;
+  color: #28333f;
+  font-size: 27rpx;
+  line-height: 1.5;
+}
+
+.assessment-option.active {
+  border-color: #ec5e0a;
+  background: #fff3ea;
+  color: #9a3806;
+  font-weight: 800;
+}
+
+.assessment-textarea {
+  width: 100%;
+  min-height: 240rpx;
+  box-sizing: border-box;
+  margin-top: 22rpx;
+  padding: 22rpx;
+  border: 2rpx solid #d8dadd;
+  border-radius: 8rpx;
+  background: #fafafa;
+  color: #18202a;
+  font-size: 27rpx;
+  line-height: 1.55;
+}
+
+.assessment-report-score {
+  margin-top: 14rpx;
+  color: #18202a;
+  font-size: 64rpx;
+  font-weight: 900;
+}
+
+.assessment-report-row {
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid #d9dcdf;
+}

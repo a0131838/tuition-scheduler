@@ -1,0 +1,31 @@
+<view class="page" wx:if="{{session}}">
+  <view class="hero">
+    <view class="kicker">{{session.status}}</view>
+    <view class="title">{{session.studentNickname || session.studentCode}}</view>
+    <view class="note">{{session.studentCode}} · {{session.ageBand}} · {{session.formVariant}}卷 · 用时约{{durationMinutes}}分钟</view>
+  </view>
+
+  <view class="card" wx:if="{{session.status === 'COMPLETED'}}">
+    <view class="row-title">{{session.overallScore}} · {{session.overallBand}} · 可信度{{session.confidence}}</view>
+    <view class="row-meta">评分完成于 {{session.reviewedAt || session.submittedAt}}</view>
+  </view>
+
+  <view class="section-title">需人工评分 {{manualQuestions.length}} 题</view>
+  <view class="question" wx:for="{{manualQuestions}}" wx:key="id">
+    <view class="kicker">第{{item.index}}题 · {{item.domain}} · {{item.rubricId || '通用量表'}}</view>
+    <view class="prompt">{{item.prompt}}</view>
+    <view class="answer">学生原答：{{item.studentAnswer || '未作答'}}</view>
+    <view class="rubric">评分依据：{{item.answerRule}}<br/>参考说明：{{item.explanation}}</view>
+    <view class="score-row">
+      <input class="score-input" type="digit" placeholder="0-{{item.maxScore}}" value="{{item.manualScore}}" data-id="{{item.id}}" bindinput="setScore" />
+      <view class="label">满分 {{item.maxScore}}</view>
+    </view>
+    <input class="input" style="margin-top: 14rpx;" maxlength="500" placeholder="本题评分备注（可选）" value="{{item.reviewerNote}}" data-id="{{item.id}}" bindinput="setQuestionNote" />
+  </view>
+
+  <block wx:if="{{capabilities.canReview && session.status !== 'COMPLETED'}}">
+    <view class="section-title">总体复核备注</view>
+    <textarea class="textarea" maxlength="1200" value="{{reviewerNote}}" bindinput="setReviewerNote" placeholder="记录异常、提示程度、疲劳或技术情况" />
+    <button class="btn" loading="{{saving}}" bindtap="submitReview">保存评分并生成报告</button>
+  </block>
+</view>

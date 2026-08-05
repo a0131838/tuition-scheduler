@@ -1857,6 +1857,73 @@ model AuditLog {
   @@index([entityType, entityId, createdAt])
 }
 
+model SchoolGuideAssessmentCode {
+  id                 String   @id @default(uuid())
+  codeHash           String   @unique
+  codeHint           String
+  status             String   @default("ACTIVE")
+  expiresAt          DateTime
+  maxUses            Int      @default(1)
+  usedCount          Int      @default(0)
+  ageBand            String?
+  targetPath         String?
+  studentNickname    String?
+  note               String?
+  createdByUserId    String?
+  createdByName      String
+  createdByEmail     String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  sessions SchoolGuideAssessmentSession[]
+
+  @@index([status, expiresAt])
+  @@index([createdByUserId, createdAt])
+}
+
+model SchoolGuideAssessmentSession {
+  id                   String    @id @default(uuid())
+  accessCodeId         String
+  sessionTokenHash     String    @unique
+  studentCode          String    @unique
+  studentNickname      String?
+  ageBand              String
+  currentGrade         String?
+  targetPath           String
+  languageBackground   String?
+  formId               String
+  formVariant          String
+  bankVersion          String
+  route                String?
+  status               String    @default("IN_PROGRESS")
+  questionIds          Json
+  answers              Json
+  currentQuestionId    String?
+  startedAt            DateTime  @default(now())
+  lastActiveAt         DateTime  @default(now())
+  submittedAt          DateTime?
+  completedAt          DateTime?
+  durationSeconds      Int       @default(0)
+  completionRate       Float     @default(0)
+  confidence           String?
+  domainScores         Json?
+  overallScore         Float?
+  overallBand          String?
+  report               Json?
+  reviewerNote         String?
+  reviewedByUserId     String?
+  reviewedByName       String?
+  reviewedAt           DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  accessCode SchoolGuideAssessmentCode @relation(fields: [accessCodeId], references: [id], onDelete: Restrict)
+
+  @@index([status, updatedAt])
+  @@index([accessCodeId, createdAt])
+  @@index([ageBand, formVariant, createdAt])
+}
+
 model ManagerAcl {
   id        String   @id @default(uuid())
   email     String   @unique

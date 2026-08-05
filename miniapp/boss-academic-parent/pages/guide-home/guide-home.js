@@ -44,6 +44,10 @@ Page({
     wx.navigateTo({ url: "/pages/guide-assessment/guide-assessment" });
   },
 
+  goAcademicAssessment() {
+    wx.navigateTo({ url: "/pages/guide-academic-assessment/guide-academic-assessment" });
+  },
+
   goCompare() {
     wx.navigateTo({ url: "/pages/guide-compare/guide-compare" });
   },

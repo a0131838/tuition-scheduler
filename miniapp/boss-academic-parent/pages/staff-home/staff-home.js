@@ -65,6 +65,8 @@ Page({
     teacherPayrollPending: 0,
     teacherUnreadFeedbackCount: 0,
     actionCenterCount: 0,
+    assessmentAwaitingCount: 0,
+    canViewAssessments: false,
     canOpenApprovals: false,
     canOpenLeads: false,
     canOpenStudentWorkspace: false,
@@ -185,6 +187,12 @@ Page({
           this.refreshPresentation();
         })
         .catch(() => this.setData({ todaySessionCount: 0 }));
+      const assessmentTask = api.requestStaff("/api/miniapp/staff/academic-assessments?limit=1", { timeout: 12000 })
+        .then((data) => this.setData({
+          assessmentAwaitingCount: data.awaitingCount || 0,
+          canViewAssessments: true
+        }))
+        .catch(() => this.setData({ assessmentAwaitingCount: 0, canViewAssessments: false }));
 
       if (this.data.isTeacher) {
         const teacherTask = api.requestStaff("/api/miniapp/staff/teacher/dashboard", { timeout: 12000 })
@@ -220,7 +228,7 @@ Page({
             this.setData({ teacherTodoCount: 0, teacherUrgentCount: 0, teacherMetricClass: "", teacherPayrollPending: 0, teacherUnreadFeedbackCount: 0 });
             this.refreshPresentation();
           });
-        return Promise.allSettled([scheduleTask, teacherTask, todoTask, actionCenterTask]);
+        return Promise.allSettled([scheduleTask, teacherTask, todoTask, actionCenterTask, assessmentTask]);
       }
 
       const requestsTask = api.requestStaff("/api/miniapp/staff/parent-requests?limit=200", { timeout: 12000 })
@@ -276,7 +284,7 @@ Page({
         })
         .catch(() => this.setData({ canManageFirstScheduling: false, firstSchedulingCount: 0, firstSchedulingReadyCount: 0, firstSchedulingFirstCount: 0, firstSchedulingAttentionCount: 0 }));
 
-      return Promise.allSettled([requestsTask, scheduleTask, coordinationTask, reminderTask, communicationTask, firstSchedulingTask, actionCenterTask]);
+      return Promise.allSettled([requestsTask, scheduleTask, coordinationTask, reminderTask, communicationTask, firstSchedulingTask, actionCenterTask, assessmentTask]);
     }).finally(() => this.setData({ loading: false }));
   },
 
@@ -319,6 +327,7 @@ Page({
   goApprovals() { wx.navigateTo({ url: "/pages/staff-approvals/staff-approvals" }); },
   goLeads() { wx.navigateTo({ url: "/pages/staff-leads/staff-leads" }); },
   goTeacherReports() { wx.navigateTo({ url: "/pages/staff-teacher-reports/staff-teacher-reports" }); },
+  goAssessments() { wx.navigateTo({ url: "/pages/staff-assessments/staff-assessments" }); },
   goIssueReport() { wx.navigateTo({ url: "/pages/staff-issue-report/staff-issue-report?page=staff-home" }); },
   toggleAllTools() { this.setData({ showAllTools: !this.data.showAllTools }); },
   goAccountSwitch() { wx.navigateTo({ url: "/pages/staff-account-switch/staff-account-switch" }); },

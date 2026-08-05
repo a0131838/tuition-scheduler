@@ -14,9 +14,10 @@
     <view class="guide-task-list">
       <view class="guide-task" bindtap="goSchools"><text>01</text><view><b>找学校</b><small>按教育阶段和学校类型查找</small></view><i>›</i></view>
       <view class="guide-task" bindtap="goAssessment"><text>02</text><view><b>智能选校</b><small>生成候选清单</small></view><i>›</i></view>
-      <view class="guide-task" bindtap="goCases"><text>03</text><view><b>真实案例</b><small>了解相似家庭的选择</small></view><i>›</i></view>
-      <view class="guide-task" bindtap="goPlan"><text>04</text><view><b>我的方案</b><small>已加入 {{planCount}} 所学校</small></view><i>›</i></view>
-      <view class="guide-task" bindtap="goConsult"><text>05</text><view><b>人工评估</b><small>提交需要确认的问题</small></view><i>›</i></view>
+      <view class="guide-task" bindtap="goAcademicAssessment"><text>03</text><view><b>入学准备度测评</b><small>持评估码完成30–45分钟受控试测</small></view><i>›</i></view>
+      <view class="guide-task" bindtap="goCases"><text>04</text><view><b>真实案例</b><small>了解相似家庭的选择</small></view><i>›</i></view>
+      <view class="guide-task" bindtap="goPlan"><text>05</text><view><b>我的方案</b><small>已加入 {{planCount}} 所学校</small></view><i>›</i></view>
+      <view class="guide-task" bindtap="goConsult"><text>06</text><view><b>人工咨询</b><small>提交需要确认的问题</small></view><i>›</i></view>
     </view>
   </view>
 

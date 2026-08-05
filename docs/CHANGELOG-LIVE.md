@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-05-r312
+
+- Release ID: `2026-08-05-r312`
+- Date/Time (Asia/Singapore): `2026-08-05`
+- Deployment status: `READY`
+- Scope: add an invitation-only 30–45 minute school-entry readiness pilot to the existing Singapore School Guide, including one-use assessment codes, age/path form allocation, saved answers, objective scoring, teacher review, internal reports, operation logs, and parent/staff Mini Program entry points.
+- Key files:
+  - `lib/school-guide-academic-assessment.ts`
+  - `lib/school-guide-academic-assessment-bank.generated.json`
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260805113000_add_school_guide_academic_assessment/migration.sql`
+  - `app/api/public/school-guide/academic-assessment/`
+  - `app/api/miniapp/staff/academic-assessments/`
+  - `lib/training-operation-coverage.ts`
+  - `miniapp/boss-academic-parent/pages/guide-academic-assessment/`
+  - `miniapp/boss-academic-parent/pages/staff-assessments/`
+  - `miniapp/boss-academic-parent/pages/staff-assessment-detail/`
+- Risk impact (if any): Moderate and isolated to a new controlled pilot. The migration is additive; the existing school directory, intelligent selection, consultation ownership, lessons, scheduling, attendance, packages, balances, finance, payroll, tickets and parent accounts are unchanged. Results are internal readiness observations, not official school, MOE or AEIS scores and not admission predictions.
+- Verification: Prisma validation/generation, assessment and school-guide tests, complete page-to-training-flow coverage, full backend tests, Mini Program syntax/release audit, `git diff --check`, and production build before guarded deployment.
+- Rollback point: `1392ae6b06b1a364aea6571d1bf9ff30bb5d92a5` (`2026-08-04-r311` production baseline).
+
 ## 2026-08-04-r311
 
 - Release ID: `2026-08-04-r311`

@@ -36,6 +36,7 @@
 - Current release line prepared: `2026-08-04-r309` validates teacher preferences by course-qualified teacher ID and gives Academic a manager-controlled, versioned 18-scenario bilingual parent-message library on the Web and Staff Mini Program.
 - Current release line prepared: `2026-08-04-r310` reduces routine next-month coordination with previous-month carry-forward suggestions, one family decision, prioritized time windows, sibling conflict protection, consolidated communication tasks, and an exception-only Academic queue across Web and Mini Program.
 - Current release line prepared: `2026-08-04-r311` separates exact-source New Oriental students from the combined Boss-and-other next-month scheduling queue on the Web and Staff Mini Program without changing parent or formal scheduling behavior.
+- Current release line prepared: `2026-08-05-r312` adds the invitation-only 30–45 minute school-entry readiness pilot, one-use codes, resumable answers, teacher review, internal reports and full audit logs without changing the existing intelligent-selection, school directory or operational workflows.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
@@ -72,6 +73,24 @@
 - Direct item links still open the correct item even when it belongs to the non-default group.
 - The filter performs no data migration and does not change parent responses, matching, temporary holds or formal lesson creation.
 - Task doc: `docs/tasks/TASK-20260804-monthly-scheduling-xdf-filter.md`.
+
+## 2026-08-05-r312 Ready
+
+- Parent/public Mini Program:
+  - the existing fast intelligent-selection page remains unchanged and is clearly separated from the academic readiness assessment;
+  - a guardian-approved assessment code starts an age/path-specific A, B or C form and saves every answer for resume on the same device;
+  - six anchor items select an easy, standard or hard route; DSA uses its configured task route;
+  - the public session payload never returns answer keys, explanations or scoring rules.
+- Staff Mini Program:
+  - ADMIN, Academic/CS and SALES can issue one-use, 14-day codes; ADMIN and TEACHER can review open tasks;
+  - staff can see pending/completed sessions, code status and assessment operation logs;
+  - review correction creates a separate audit action instead of silently rewriting history.
+- Safety boundaries:
+  - additive assessment tables only; no existing table or business record is deleted or rewritten;
+  - all assessment writes are recorded in `AuditLog`;
+  - results are internal readiness observations, not official school, MOE or AEIS scores, percentiles or admission predictions;
+  - school data, intelligent selection, consultation assignment, lessons, scheduling, packages, balances, attendance, finance and payroll remain unchanged.
+- Task doc: `docs/tasks/TASK-20260805-school-guide-academic-assessment-pilot.md`.
 
 ## 2026-08-04-r308 Ready
 

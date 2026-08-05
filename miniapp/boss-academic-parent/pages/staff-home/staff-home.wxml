@@ -55,6 +55,11 @@
       <view class="work-copy"><view class="work-title">我的待办</view><view class="work-detail">工资、点名、反馈和报销集中处理</view></view>
       <view class="work-badge alert" wx:if="{{teacherTodoCount}}">{{teacherTodoCount}}</view><view class="work-arrow">›</view>
     </view>
+    <view class="work-row" wx:if="{{canViewAssessments}}" bindtap="goAssessments">
+      <view class="work-icon icon-orange">测</view>
+      <view class="work-copy"><view class="work-title">入学准备度测评</view><view class="work-detail">查看受控试测；有开放任务时按评分量表复核</view></view>
+      <view class="work-badge alert" wx:if="{{assessmentAwaitingCount}}">{{assessmentAwaitingCount}}</view><view class="work-arrow">›</view>
+    </view>
     <view class="work-row" wx:if="{{hasNextTeacherSession}}" bindtap="goNextTeacherSession">
       <view class="work-icon icon-orange">课</view>
       <view class="work-copy"><view class="work-title">下一节课</view><view class="work-detail">{{nextTeacherSessionText}}</view></view>
@@ -140,6 +145,11 @@
       <view class="work-icon icon-orange">续</view>
       <view class="work-copy"><view class="work-title">续费跟进</view><view class="work-detail">{{renewalDetail}}</view></view>
       <view class="work-badge alert" wx:if="{{hasRenewalTasks}}">{{renewalCount}}</view><view class="work-arrow">›</view>
+    </view>
+    <view class="work-row" wx:if="{{canViewAssessments}}" bindtap="goAssessments">
+      <view class="work-icon icon-orange">测</view>
+      <view class="work-copy"><view class="work-title">入学准备度测评</view><view class="work-detail">发放评估码、查看提交、跟进老师复核和操作日志</view></view>
+      <view class="work-badge alert" wx:if="{{assessmentAwaitingCount}}">{{assessmentAwaitingCount}}</view><view class="work-arrow">›</view>
     </view>
     <view class="work-row" bindtap="goSchedule">
       <view class="work-icon icon-orange">课</view>

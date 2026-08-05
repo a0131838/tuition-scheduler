@@ -148,6 +148,10 @@ Page({
     wx.navigateTo({ url: "/pages/guide-consult/guide-consult?summary=" + encodeURIComponent(summary) });
   },
 
+  goAcademicAssessment() {
+    wx.navigateTo({ url: "/pages/guide-academic-assessment/guide-academic-assessment" });
+  },
+
   onShareAppMessage() {
     return { title: "新加坡学校路径测评", path: "/pages/guide-assessment/guide-assessment" };
   }

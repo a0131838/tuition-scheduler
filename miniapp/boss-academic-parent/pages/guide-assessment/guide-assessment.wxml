@@ -5,6 +5,11 @@
     <view class="guide-subtitle">填写基本条件，查看匹配学校。</view>
   </view>
 
+  <view class="guide-notice">
+    本页用于快速生成候选学校，不测试学术能力。已有顾问或教务发放的评估码，可进入30–45分钟入学准备度测评。
+    <button class="guide-action secondary" style="margin-top: 18rpx;" bindtap="goAcademicAssessment">进入入学准备度测评</button>
+  </view>
+
   <view class="guide-field">
     <view class="guide-label">孩子出生日期</view>
     <picker mode="date" value="{{birthDate}}" bindchange="setBirthDate">

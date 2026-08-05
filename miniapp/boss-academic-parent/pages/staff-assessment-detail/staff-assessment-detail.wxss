@@ -1,0 +1,7 @@
+@import "../staff-assessments/staff-assessments.wxss";
+.question { margin-top: 20rpx; padding: 24rpx; border-left: 6rpx solid #20242a; background: #fff; }
+.prompt { margin-top: 14rpx; color: #1e252c; font-size: 27rpx; line-height: 1.6; white-space: pre-wrap; }
+.answer { margin-top: 16rpx; padding: 18rpx; background: #f2f1ee; color: #303a44; font-size: 25rpx; line-height: 1.6; white-space: pre-wrap; }
+.rubric { margin-top: 14rpx; color: #8f3609; font-size: 22rpx; line-height: 1.55; }
+.score-row { display: flex; align-items: center; gap: 14rpx; margin-top: 18rpx; }
+.score-input { width: 150rpx; min-height: 72rpx; padding: 12rpx; border: 2rpx solid #ec5e0a; border-radius: 7rpx; font-size: 28rpx; text-align: center; }
