@@ -31,12 +31,13 @@ export async function POST(req: NextRequest) {
   if (!allowed(ip)) return NextResponse.json({ ok: false, message: "尝试次数过多，请稍后再试。" }, { status: 429 });
   const body = await req.json().catch(() => null);
   const rawCode = normalizeAssessmentCode(body?.code);
+  const requestToken = cleanText(body?.requestToken, 128);
   const requestedAgeBand = cleanText(body?.ageBand, 20);
   const requestedTargetPath = cleanText(body?.targetPath, 30);
   if (cleanText(body?.consent, 10) !== "yes") {
     return NextResponse.json({ ok: false, message: "开始前需要家长或监护人确认资料使用授权。" }, { status: 400 });
   }
-  if (!rawCode) return NextResponse.json({ ok: false, message: "请输入评估码。" }, { status: 400 });
+  if (!rawCode && !requestToken) return NextResponse.json({ ok: false, message: "请输入评估码，或从申请进度中开始测评。" }, { status: 400 });
   if (!ACADEMIC_ASSESSMENT_AGE_BANDS.includes(requestedAgeBand as never)) {
     return NextResponse.json({ ok: false, message: "请选择正确的年龄段。" }, { status: 400 });
   }
@@ -49,8 +50,14 @@ export async function POST(req: NextRequest) {
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      const code = await tx.schoolGuideAssessmentCode.findUnique({ where: { codeHash: sha256(rawCode) } });
+      const assessmentRequest = requestToken
+        ? await tx.schoolGuideAssessmentRequest.findUnique({ where: { publicTokenHash: sha256(requestToken) }, select: { id: true, status: true } })
+        : null;
+      const code = assessmentRequest
+        ? await tx.schoolGuideAssessmentCode.findUnique({ where: { assessmentRequestId: assessmentRequest.id } })
+        : await tx.schoolGuideAssessmentCode.findUnique({ where: { codeHash: sha256(rawCode) } });
       if (!code || code.status !== "ACTIVE") throw new Error("INVALID_CODE");
+      if (assessmentRequest && ["DECLINED", "CLOSED"].includes(assessmentRequest.status)) throw new Error("INVALID_CODE");
       if (code.expiresAt < new Date()) throw new Error("EXPIRED_CODE");
       if (code.usedCount >= code.maxUses) throw new Error("USED_CODE");
       if (code.ageBand && code.ageBand !== requestedAgeBand) throw new Error("AGE_MISMATCH");
@@ -105,6 +112,12 @@ export async function POST(req: NextRequest) {
         where: { id: code.id },
         data: { usedCount: { increment: 1 }, status: code.usedCount + 1 >= code.maxUses ? "USED" : "ACTIVE" },
       });
+      if (code.assessmentRequestId) {
+        await tx.schoolGuideAssessmentRequest.update({
+          where: { id: code.assessmentRequestId },
+          data: { status: "IN_PROGRESS", startedAt: new Date() },
+        });
+      }
       await tx.auditLog.create({
         data: {
           actorEmail: "public-assessment@system.local",
@@ -114,7 +127,7 @@ export async function POST(req: NextRequest) {
           action: "START",
           entityType: "SchoolGuideAssessmentSession",
           entityId: session.id,
-          meta: { ageBand: requestedAgeBand, targetPath: requestedTargetPath, formId, bankVersion: ACADEMIC_ASSESSMENT_VERSION, sourceStatus: ACADEMIC_ASSESSMENT_STATUS },
+          meta: { ageBand: requestedAgeBand, targetPath: requestedTargetPath, formId, bankVersion: ACADEMIC_ASSESSMENT_VERSION, sourceStatus: ACADEMIC_ASSESSMENT_STATUS, assessmentRequestId: code.assessmentRequestId || null },
         },
       });
       return { session, sessionToken };

@@ -1,106 +1,85 @@
-<view class="guide-page">
-  <view class="guide-hero">
-    <view class="guide-kicker">INVITATION-ONLY PILOT</view>
-    <view class="guide-title">30–45分钟入学准备度测评</view>
-    <view class="guide-subtitle">评估码由老师或顾问发放；系统自动保存每道题，退出后可在本机继续。</view>
-  </view>
+<view class="guide-page assessment-page">
+  <block wx:if="{{phase === 'hub'}}">
+    <view class="assessment-hero">
+      <view class="guide-kicker">入学准备度测评</view>
+      <view class="assessment-title">先知道孩子现在在哪里，<br/>再决定怎么准备。</view>
+      <view class="assessment-lead">30–45分钟在线测评。顾问确认后发码，老师复核报告。</view>
+      <button class="assessment-primary" bindtap="openRequestForm">申请评估码</button>
+    </view>
+    <view class="assessment-choice-list">
+      <view class="assessment-choice" bindtap="openCodeSetup"><view><b>我已有评估码</b><text>输入一次性评估码，立即开始</text></view><i>›</i></view>
+      <view class="assessment-choice" wx:if="{{hasRequest}}" bindtap="openSavedRequest"><view><b>查看申请进度</b><text>{{request ? request.statusLabel : '继续查看顾问处理状态'}}</text></view><i>›</i></view>
+      <view class="assessment-choice" wx:if="{{hasSession}}" bindtap="loadSession"><view><b>继续测评或查看报告</b><text>使用本机已保存的测评记录</text></view><i>›</i></view>
+    </view>
+    <view class="assessment-boundary"><b>开始前请了解</b><text>学生独立完成 · 建议预留45分钟 · 不是学校、MOE或AEIS官方成绩 · 不预测录取</text></view>
+  </block>
+
+  <block wx:if="{{phase === 'requestForm'}}">
+    <view class="assessment-nav" bindtap="backToHub">‹ 返回测评首页</view>
+    <view class="assessment-form-head"><view class="guide-kicker">评估码申请</view><view class="assessment-section-title">留下联系方式</view><view class="assessment-form-note">只填写安排测评需要的资料。顾问确认后发放一次性评估码。</view></view>
+    <view class="guide-field"><view class="guide-label">家长称呼 *</view><input class="guide-input" data-key="parentName" value="{{requestForm.parentName}}" bindinput="setRequestField" placeholder="怎么称呼您" /></view>
+    <view class="guide-field"><view class="guide-label">学生昵称 *</view><input class="guide-input" data-key="studentNickname" value="{{requestForm.studentNickname}}" bindinput="setRequestField" placeholder="不必填写完整证件姓名" /></view>
+    <view class="assessment-form-grid">
+      <view class="guide-field"><view class="guide-label">年龄段 *</view><picker range="{{ageOptions}}" value="{{requestAgeIndex}}" bindchange="setRequestAge"><view class="guide-picker">{{ageOptions[requestAgeIndex]}}</view></picker></view>
+      <view class="guide-field"><view class="guide-label">当前年级</view><input class="guide-input" data-key="currentGrade" value="{{requestForm.currentGrade}}" bindinput="setRequestField" placeholder="如 P4 / Grade 4" /></view>
+    </view>
+    <view class="guide-field"><view class="guide-label">目标方向 *</view><picker range="{{pathLabels}}" value="{{requestPathIndex}}" bindchange="setRequestPath"><view class="guide-picker">{{pathLabels[requestPathIndex]}}</view></picker></view>
+    <view class="guide-field"><view class="guide-label">最想解决的问题 *</view><picker range="{{needOptions}}" value="{{needIndex}}" bindchange="setRequestNeed"><view class="guide-picker">{{needOptions[needIndex]}}</view></picker></view>
+    <view class="assessment-form-grid">
+      <view class="guide-field"><view class="guide-label">微信号</view><input class="guide-input" data-key="parentWechat" value="{{requestForm.parentWechat}}" bindinput="setRequestField" placeholder="微信或电话至少一项" /></view>
+      <view class="guide-field"><view class="guide-label">联系电话</view><input class="guide-input" data-key="parentPhone" value="{{requestForm.parentPhone}}" bindinput="setRequestField" placeholder="微信或电话至少一项" /></view>
+    </view>
+    <view class="guide-field"><view class="guide-label">希望测试日期</view><picker mode="date" value="{{requestForm.preferredTestDate}}" bindchange="setRequestDate"><view class="guide-picker">{{requestForm.preferredTestDate}}</view></picker></view>
+    <view class="guide-field"><view class="guide-label">补充说明（可选）</view><textarea class="guide-textarea compact" data-key="note" value="{{requestForm.note}}" maxlength="800" bindinput="setRequestField" placeholder="只写顾问需要提前知道的情况" /></view>
+    <checkbox-group class="guide-check" bindchange="toggleRequestConsent"><checkbox value="yes" color="#ec5e0a"/><text>我同意GT Educational Institute Pte. Ltd.使用以上资料联系我、安排受控测评并完成后续教育咨询。</text></checkbox-group>
+    <view class="guide-text-link" bindtap="openPrivacy">查看隐私说明</view>
+    <button class="assessment-primary sticky-action" loading="{{loading}}" bindtap="submitRequest">提交申请</button>
+  </block>
+
+  <block wx:if="{{phase === 'requestStatus' && request}}">
+    <view class="assessment-nav" bindtap="backToHub">‹ 返回测评首页</view>
+    <view class="request-status-head">
+      <view class="guide-kicker">{{request.requestNo}}</view>
+      <view class="assessment-section-title">{{request.statusLabel}}</view>
+      <view class="request-progress"><view style="width: {{requestProgress}}%;"></view></view>
+      <view class="assessment-form-note">{{request.nextAction}}</view>
+    </view>
+    <view class="request-facts" wx:if="{{!request.redacted}}">
+      <view><text>学生</text><b>{{request.studentNickname}}</b></view>
+      <view><text>年龄与年级</text><b>{{request.ageBand}} {{request.currentGrade}}</b></view>
+      <view><text>目标方向</text><b>{{request.targetPath}}</b></view>
+      <view><text>希望测试日期</text><b>{{request.preferredTestDate || '未指定'}}</b></view>
+    </view>
+    <view class="assessment-boundary"><b>负责人</b><text>入学顾问会通过申请时填写的微信号或电话联系您。评估码不会自动公开发放。</text></view>
+    <button class="assessment-primary" wx:if="{{request.canStart}}" loading="{{loading}}" bindtap="startFromRequest">评估已就绪，开始测评</button>
+    <button class="assessment-secondary" wx:if="{{request.canRefresh}}" loading="{{loading}}" bindtap="openSavedRequest">刷新进度</button>
+    <button class="assessment-text-button" wx:if="{{request.requestNo}}" bindtap="copyRequestNo">复制申请编号</button>
+  </block>
 
   <block wx:if="{{phase === 'setup'}}">
-    <view class="guide-notice">当前题库为受控试测版。结果仅用于内部能力定位与备考建议，不是学校、MOE或AEIS官方成绩，也不预测录取。</view>
-    <view class="guide-field">
-      <view class="guide-label">评估码</view>
-      <input class="guide-input" maxlength="12" placeholder="例如 SGAB-C234" value="{{code}}" bindinput="setCode" />
+    <view class="assessment-nav" bindtap="backToHub">‹ 返回测评首页</view>
+    <view class="assessment-form-head"><view class="guide-kicker">已有评估码</view><view class="assessment-section-title">输入评估码</view><view class="assessment-form-note">请按照顾问确认的信息填写。评估码默认只能开始一次。</view></view>
+    <view class="guide-field"><view class="guide-label">评估码 *</view><input class="guide-input code-input" maxlength="12" placeholder="例如 SGAB-C234" value="{{code}}" bindinput="setCode" /></view>
+    <view class="guide-field"><view class="guide-label">学生昵称</view><input class="guide-input" maxlength="60" placeholder="不必填写完整证件姓名" value="{{studentNickname}}" bindinput="setNickname" /></view>
+    <view class="assessment-form-grid">
+      <view class="guide-field"><view class="guide-label">年龄段</view><picker range="{{ageOptions}}" value="{{ageIndex}}" bindchange="setAge"><view class="guide-picker">{{ageOptions[ageIndex]}}</view></picker></view>
+      <view class="guide-field"><view class="guide-label">当前年级</view><input class="guide-input" maxlength="40" placeholder="如 P4 / Grade 4" value="{{currentGrade}}" bindinput="setGrade" /></view>
     </view>
-    <view class="guide-field">
-      <view class="guide-label">学生称呼或昵称</view>
-      <input class="guide-input" maxlength="60" placeholder="不必填写完整证件姓名" value="{{studentNickname}}" bindinput="setNickname" />
-    </view>
-    <view class="guide-field">
-      <view class="guide-label">年龄段</view>
-      <picker range="{{ageOptions}}" value="{{ageIndex}}" bindchange="setAge">
-        <view class="guide-picker">{{ageOptions[ageIndex]}}</view>
-      </picker>
-    </view>
-    <view class="guide-field">
-      <view class="guide-label">当前在读年级（可选）</view>
-      <input class="guide-input" maxlength="40" placeholder="例如 P4 / Grade 4" value="{{currentGrade}}" bindinput="setGrade" />
-    </view>
-    <view class="guide-field">
-      <view class="guide-label">目标路径</view>
-      <picker range="{{pathLabels}}" value="{{pathIndex}}" bindchange="setPath">
-        <view class="guide-picker">{{pathLabels[pathIndex]}}</view>
-      </picker>
-    </view>
-    <view class="guide-field">
-      <view class="guide-label">语言背景（可选）</view>
-      <input class="guide-input" maxlength="160" placeholder="例如 中文为主，英文学习3年" value="{{languageBackground}}" bindinput="setLanguage" />
-    </view>
-    <checkbox-group class="guide-check" bindchange="toggleConsent">
-      <checkbox value="yes" color="#ec5e0a" />
-      <text>我是家长或监护人，并同意GT Educational Institute Pte. Ltd.保存本次题目作答、用时、老师评分和必要操作日志，用于完成测评、人工复核及后续教育咨询。</text>
-    </checkbox-group>
+    <view class="guide-field"><view class="guide-label">目标路径</view><picker range="{{pathLabels}}" value="{{pathIndex}}" bindchange="setPath"><view class="guide-picker">{{pathLabels[pathIndex]}}</view></picker></view>
+    <view class="guide-field"><view class="guide-label">语言背景（可选）</view><input class="guide-input" maxlength="160" placeholder="如 中文为主，英文学习3年" value="{{languageBackground}}" bindinput="setLanguage" /></view>
+    <checkbox-group class="guide-check" bindchange="toggleConsent"><checkbox value="yes" color="#ec5e0a"/><text>我是家长或监护人，并同意保存本次作答、用时、老师评分和必要操作日志，用于测评、人工复核和后续教育咨询。</text></checkbox-group>
     <view class="guide-text-link" bindtap="openPrivacy">查看隐私说明</view>
-    <button class="guide-action" style="margin-top: 30rpx;" loading="{{loading}}" bindtap="start">验证评估码并开始</button>
-    <button class="guide-action secondary" style="margin-top: 18rpx;" bindtap="goConsult">没有评估码，联系顾问领取</button>
+    <button class="assessment-primary sticky-action" loading="{{loading}}" bindtap="start">验证评估码并开始</button>
   </block>
 
   <block wx:if="{{phase === 'test'}}">
-    <view class="guide-meta-row" style="margin-top: 30rpx;">
-      <text>{{session.studentCode}}</text><text>{{session.ageBand}}</text><text>{{session.formVariant}}卷</text>
-    </view>
-    <view class="assessment-progress">
-      <view class="assessment-progress-track"><view class="assessment-progress-fill" style="width: {{session.progressPercent}}%;"></view></view>
-      <view class="assessment-progress-text">已完成 {{session.answeredCount}} / {{session.totalQuestions}} · 自动保存</view>
-    </view>
-
-    <view class="assessment-card" wx:if="{{session.question}}">
-      <view class="assessment-domain">第 {{session.currentIndex + 1}} 题 · {{session.question.domain}} · {{session.question.stage}}</view>
-      <view class="assessment-prompt">{{session.question.prompt}}</view>
-      <view wx:if="{{session.question.options.length}}">
-        <view class="assessment-option {{answerInput === item.key ? 'active' : ''}}" wx:for="{{session.question.options}}" wx:key="key" data-key="{{item.key}}" bindtap="chooseOption">
-          {{item.key}}. {{item.text}}
-        </view>
-      </view>
-      <textarea wx:else class="assessment-textarea" maxlength="8000" value="{{answerInput}}" bindinput="setAnswer" placeholder="{{session.question.requiresReviewer ? '请填写学生原话、作答过程或完整答案；口头任务由陪同老师/家长记录要点' : '请输入答案'}}" />
-      <view class="guide-section-note" wx:if="{{session.question.requiresReviewer}}">本题由老师按量表复核；请尽量保留学生原始表达，不要代答。</view>
-      <button class="guide-action" style="margin-top: 26rpx;" loading="{{loading}}" bindtap="saveAnswer">保存并进入下一题</button>
-    </view>
-    <button wx:if="{{session.canSubmit}}" class="guide-action" style="margin-top: 26rpx;" loading="{{loading}}" bindtap="submitAssessment">全部完成，提交测评</button>
+    <view class="assessment-test-head"><view><b>{{session.studentCode}}</b><text>{{session.ageBand}} · {{session.formVariant}}卷</text></view><view>{{session.progressPercent}}%</view></view>
+    <view class="assessment-progress"><view class="assessment-progress-track"><view class="assessment-progress-fill" style="width: {{session.progressPercent}}%;"></view></view><view class="assessment-progress-text">已完成 {{session.answeredCount}} / {{session.totalQuestions}} · 自动保存</view></view>
+    <view class="assessment-card" wx:if="{{session.question}}"><view class="assessment-domain">第 {{session.currentIndex + 1}} 题 · {{session.question.domain}}</view><view class="assessment-prompt">{{session.question.prompt}}</view><view wx:if="{{session.question.options.length}}"><view class="assessment-option {{answerInput === item.key ? 'active' : ''}}" wx:for="{{session.question.options}}" wx:key="key" data-key="{{item.key}}" bindtap="chooseOption">{{item.key}}. {{item.text}}</view></view><textarea wx:else class="assessment-textarea" maxlength="8000" value="{{answerInput}}" bindinput="setAnswer" placeholder="{{session.question.requiresReviewer ? '保留学生原话、作答过程或完整答案，不要代答' : '请输入答案'}}"/><view class="guide-section-note" wx:if="{{session.question.requiresReviewer}}">本题由老师按量表复核，请保留学生原始表达。</view><button class="assessment-primary" loading="{{loading}}" bindtap="saveAnswer">保存并进入下一题</button></view>
+    <button wx:if="{{session.canSubmit}}" class="assessment-primary" loading="{{loading}}" bindtap="submitAssessment">全部完成，提交测评</button>
   </block>
 
-  <block wx:if="{{phase === 'awaiting'}}">
-    <view class="guide-result">
-      <view class="guide-result-block">
-        <view class="guide-kicker">SUBMITTED</view>
-        <view class="guide-result-title">已提交，等待老师复核</view>
-        <view class="guide-result-note">选择题和可自动判断的短答题已经保存；写作、口语或观察任务需要老师评分，完成后本页会显示完整内部报告。</view>
-      </view>
-      <button class="guide-action" loading="{{loading}}" bindtap="refresh">刷新评分状态</button>
-    </view>
-  </block>
+  <block wx:if="{{phase === 'awaiting'}}"><view class="assessment-result"><view class="guide-kicker">已提交</view><view class="assessment-section-title">等待老师复核</view><view class="assessment-form-note">选择题已经保存；写作、口语或观察任务评分完成后，本页会显示完整测评报告。</view><button class="assessment-primary" loading="{{loading}}" bindtap="refresh">刷新评分状态</button></view></block>
 
-  <block wx:if="{{phase === 'report'}}">
-    <view class="guide-result">
-      <view class="guide-result-block">
-        <view class="guide-kicker">INTERNAL READINESS REPORT</view>
-        <view class="assessment-report-score">{{session.overallScore}}</view>
-        <view class="guide-result-title">{{session.overallBand}} · 可信度{{session.confidence}}</view>
-        <view class="guide-result-note">{{session.report.standard}}</view>
-      </view>
-      <view class="guide-result-block">
-        <view class="guide-result-title">能力域</view>
-        <view class="assessment-report-row" wx:for="{{domainRows}}" wx:key="name">{{item.name}}：{{item.score}}</view>
-      </view>
-      <view class="guide-result-block">
-        <view class="guide-result-title">本次相对优势</view>
-        <view class="guide-result-note" wx:for="{{session.report.strengths}}" wx:key="*this">• {{item}}</view>
-      </view>
-      <view class="guide-result-block">
-        <view class="guide-result-title">优先补强</view>
-        <view class="guide-result-note" wx:for="{{session.report.priorities}}" wx:key="*this">• {{item}}</view>
-        <view class="guide-notice">{{session.report.nextStep}}</view>
-      </view>
-      <button class="guide-action" bindtap="goConsult">预约人工解读</button>
-    </view>
-  </block>
+  <block wx:if="{{phase === 'report'}}"><view class="assessment-result"><view class="guide-kicker">学习准备度报告</view><view class="assessment-report-score">{{session.overallScore}}</view><view class="assessment-section-title">{{session.overallBand}} · 可信度{{session.confidence}}</view><view class="assessment-form-note">{{session.report.standard}}</view><view class="report-section"><b>能力域</b><view class="assessment-report-row" wx:for="{{domainRows}}" wx:key="name">{{item.name}}：{{item.score}}</view></view><view class="report-section"><b>本次相对优势</b><text wx:for="{{session.report.strengths}}" wx:key="*this">• {{item}}</text></view><view class="report-section"><b>优先补强</b><text wx:for="{{session.report.priorities}}" wx:key="*this">• {{item}}</text><view class="assessment-boundary">{{session.report.nextStep}}</view></view><button class="assessment-primary" bindtap="goConsult">预约人工解读</button></view></block>
 </view>

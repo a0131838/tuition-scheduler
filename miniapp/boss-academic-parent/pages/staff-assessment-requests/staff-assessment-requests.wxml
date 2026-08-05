@@ -1,0 +1,7 @@
+<view class="page">
+  <view class="hero"><view class="kicker">测评管理</view><view class="title">评估码申请</view><view class="note">联系家长、确认资料、发码、跟进完成。</view></view>
+  <view class="summary"><view><b>{{summary.requested || 0}}</b><text>待联系</text></view><view><b>{{summary.contacted || 0}}</b><text>已联系</text></view><view><b>{{summary.ready || 0}}</b><text>可发码</text></view><view><b>{{summary.open || 0}}</b><text>开放总数</text></view></view>
+  <view class="filters"><picker range="{{statusLabels}}" value="{{statusIndex}}" bindchange="setStatus"><view class="filter-picker">{{statusLabels[statusIndex]}}⌄</view></picker><view class="search"><input value="{{query}}" bindinput="setQuery" bindconfirm="load" placeholder="学生 / 家长 / 微信 / 编号"/><button bindtap="load">查找</button></view></view>
+  <view class="request-row" wx:for="{{requests}}" wx:key="id" data-id="{{item.id}}" bindtap="openRequest"><view class="request-main"><view class="request-top"><b>{{item.studentNickname}}</b><text class="status">{{item.statusLabel}}</text></view><view class="request-meta">{{item.ageBand}} · {{item.currentGrade || '未填年级'}} · {{item.targetPath}}</view><view class="request-next">{{item.needType}} · {{item.contactText}}</view><view class="request-time">{{item.requestNo}} · {{item.createdAt}}</view></view><i>›</i></view>
+  <view class="empty" wx:if="{{!loading && requests.length === 0}}">当前筛选下没有申请</view>
+</view>

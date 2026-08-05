@@ -57,7 +57,7 @@
     </view>
     <view class="work-row" wx:if="{{canViewAssessments}}" bindtap="goAssessments">
       <view class="work-icon icon-orange">测</view>
-      <view class="work-copy"><view class="work-title">入学准备度测评</view><view class="work-detail">查看受控试测；有开放任务时按评分量表复核</view></view>
+      <view class="work-copy"><view class="work-title">入学准备度测评</view><view class="work-detail">{{assessmentDetail}}</view></view>
       <view class="work-badge alert" wx:if="{{assessmentAwaitingCount}}">{{assessmentAwaitingCount}}</view><view class="work-arrow">›</view>
     </view>
     <view class="work-row" wx:if="{{hasNextTeacherSession}}" bindtap="goNextTeacherSession">
@@ -148,8 +148,8 @@
     </view>
     <view class="work-row" wx:if="{{canViewAssessments}}" bindtap="goAssessments">
       <view class="work-icon icon-orange">测</view>
-      <view class="work-copy"><view class="work-title">入学准备度测评</view><view class="work-detail">发放评估码、查看提交、跟进老师复核和操作日志</view></view>
-      <view class="work-badge alert" wx:if="{{assessmentAwaitingCount}}">{{assessmentAwaitingCount}}</view><view class="work-arrow">›</view>
+      <view class="work-copy"><view class="work-title">入学准备度测评</view><view class="work-detail">{{assessmentDetail}}</view></view>
+      <view class="work-badge alert" wx:if="{{assessmentActionCount}}">{{assessmentActionCount}}</view><view class="work-arrow">›</view>
     </view>
     <view class="work-row" bindtap="goSchedule">
       <view class="work-icon icon-orange">课</view>

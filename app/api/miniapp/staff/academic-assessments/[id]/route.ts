@@ -114,7 +114,14 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
         meta: { studentCode: session.studentCode, manualQuestionCount: manualIds.length, overallScore: result.overallScore, overallBand: result.overallBand, confidence: result.confidence },
       },
     });
+    const accessCode = await tx.schoolGuideAssessmentCode.findUnique({ where: { id: session.accessCodeId }, select: { assessmentRequestId: true } });
+    if (accessCode?.assessmentRequestId) {
+      await tx.schoolGuideAssessmentRequest.update({
+        where: { id: accessCode.assessmentRequestId },
+        data: { status: "REPORT_READY", reviewedAt: new Date() },
+      });
+    }
     return row;
   });
-  return NextResponse.json({ ok: true, message: "评分已保存，家长端现在可以查看完整内部报告。", session: { id: updated.id, status: updated.status, overallScore: updated.overallScore, overallBand: updated.overallBand } });
+  return NextResponse.json({ ok: true, message: "评分已保存，家长端现在可以查看完整测评报告。", session: { id: updated.id, status: updated.status, overallScore: updated.overallScore, overallBand: updated.overallBand } });
 }

@@ -55,10 +55,25 @@
 - Current release line prepared: `2026-08-05-r328` gives parents a four-destination mini-program structure, one stable child dashboard, separate progress/report/entitlement views, and a protected account area for finance, contracts and reminders.
 - Current release line prepared: `2026-08-05-r329` makes the active Full Care project authoritative for the parent-facing service label, correcting legacy-null students such as `赵测试 2` without rewriting their classification.
 - Current release line prepared: `2026-08-05-r330` replaces the Mini Program login artwork with the official GT Educational Institute logo while retaining the “博思学业管家” product name.
+- Current release line prepared: `2026-08-05-r331` adds the parent assessment-code request, private follow-up, one-click staff issuance, progress tracking and teacher-review handoff without changing existing teaching, scheduling or finance workflows.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-05-r331 Ready
+
+- Scope: turn the invitation-only readiness assessment into a complete private-domain conversion and delivery journey.
+- Business impact:
+  - parents can request a code with a short form, retain a private progress credential on the original device, and start after staff approval;
+  - new requests default to Zhao Hongwei and create or update the matching lead with a 24-hour contact action;
+  - ADMIN, CS and SALES receive a simple contact/issue/follow-up queue and one-click WeChat copy;
+  - TEACHER remains limited to answer review and receives no lead, contact or student-commercial data;
+  - repeated public submissions cannot retrieve another request's student details or progress token.
+- Verification before deploy: Prisma validate, 19 focused assessment tests, 174 backend tests, TypeScript, 64-page Mini Program audit and 242-page production build.
+- Post-deploy verification: submit one test request, confirm Zhao assignment, issue and copy a code, start from the parent request page, submit, complete teacher review and mark the parent interpretation complete.
+- WeChat development version: `1.0.28` after successful server release.
+- Task doc: `docs/tasks/TASK-20260805-assessment-code-request-flow.md`.
 
 ## 2026-08-05-r330 Ready
 

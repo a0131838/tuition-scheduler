@@ -29,7 +29,7 @@ export async function GET(req: Request) {
   if (!canAccess(auth.user.role)) return NextResponse.json({ ok: false, message: "没有评估工作台权限。" }, { status: 403 });
   const url = new URL(req.url);
   const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit")) || 50));
-  const [sessions, codes, awaitingCount, auditLogs] = await Promise.all([
+  const [sessions, codes, awaitingCount, auditLogs, requestOpenCount] = await Promise.all([
     prisma.schoolGuideAssessmentSession.findMany({
       where: { status: { in: ["AWAITING_REVIEW", "COMPLETED"] } },
       orderBy: [{ status: "desc" }, { updatedAt: "desc" }],
@@ -61,12 +61,16 @@ export async function GET(req: Request) {
       take: 40,
       select: { id: true, actorName: true, actorRole: true, action: true, entityType: true, entityId: true, meta: true, createdAt: true },
     }),
+    canIssue(auth.user.role)
+      ? prisma.schoolGuideAssessmentRequest.count({ where: { status: { notIn: ["CLOSED", "DECLINED", "INTERPRETED"] } } })
+      : Promise.resolve(0),
   ]);
   return NextResponse.json({
     ok: true,
     capabilities: { canIssue: canIssue(auth.user.role), canReview: ["ADMIN", "TEACHER"].includes(auth.user.role) },
     bank: { version: ACADEMIC_ASSESSMENT_VERSION, status: ACADEMIC_ASSESSMENT_STATUS },
     awaitingCount,
+    requestOpenCount,
     sessions,
     codes,
     auditLogs,
@@ -84,10 +88,13 @@ export async function POST(req: Request) {
     const code = await prisma.schoolGuideAssessmentCode.findUnique({ where: { id } });
     if (!code) return NextResponse.json({ ok: false, message: "评估码不存在。" }, { status: 404 });
     if (code.usedCount > 0) return NextResponse.json({ ok: false, message: "已经开始使用的评估码不能撤销，请通过日志发起人工纠正。" }, { status: 409 });
-    await prisma.$transaction([
-      prisma.schoolGuideAssessmentCode.update({ where: { id }, data: { status: "REVOKED" } }),
-      prisma.auditLog.create({ data: { actorEmail: auth.user.email, actorName: auth.user.name, actorRole: auth.user.role, module: "SCHOOL_GUIDE_ASSESSMENT", action: "CODE_REVOKE", entityType: "SchoolGuideAssessmentCode", entityId: id, meta: { codeHint: code.codeHint } } }),
-    ]);
+    await prisma.$transaction(async (tx) => {
+      await tx.schoolGuideAssessmentCode.update({ where: { id }, data: { status: "REVOKED", assessmentRequestId: null } });
+      if (code.assessmentRequestId) {
+        await tx.schoolGuideAssessmentRequest.update({ where: { id: code.assessmentRequestId }, data: { status: "READY_TO_ISSUE", codeIssuedAt: null } });
+      }
+      await tx.auditLog.create({ data: { actorEmail: auth.user.email, actorName: auth.user.name, actorRole: auth.user.role, module: "SCHOOL_GUIDE_ASSESSMENT", action: "CODE_REVOKE", entityType: "SchoolGuideAssessmentCode", entityId: id, meta: { codeHint: code.codeHint, assessmentRequestId: code.assessmentRequestId || null } } });
+    });
     return NextResponse.json({ ok: true, message: "评估码已撤销。" });
   }
 

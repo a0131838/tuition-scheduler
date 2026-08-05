@@ -1,49 +1,24 @@
 <view class="page">
-  <view class="hero">
-    <view class="kicker">CONTROLLED ASSESSMENT PILOT</view>
-    <view class="title">测评工作台</view>
-    <view class="note">发码、学生提交、老师评分均写入操作日志。当前题库 {{bank.version}} / {{bank.status}}，仅限受控试测。</view>
+  <view class="hero"><view class="kicker">READINESS OPERATIONS</view><view class="title">入学测评</view><view class="note">先处理申请，再跟进作答和老师复核。题库 {{bank.version}} / {{bank.status}}，仅限受控试测。</view></view>
+  <view class="metric-strip">
+    <view wx:if="{{capabilities.canIssue}}"><b>{{requestOpenCount}}</b><text>开放申请</text></view>
+    <view><b>{{awaitingCount}}</b><text>待老师复核</text></view>
+    <view><b>{{completedCount}}</b><text>最近已完成</text></view>
   </view>
 
-  <block wx:if="{{capabilities.canIssue}}">
-    <view class="section-title">发放一次性评估码</view>
-    <view class="card">
-      <view class="field"><view class="label">学生称呼（可选）</view><input class="input" maxlength="60" value="{{studentNickname}}" bindinput="setNickname" /></view>
-      <view class="field"><view class="label">锁定年龄段（可选）</view><picker range="{{ageLabels}}" value="{{ageIndex}}" bindchange="setAge"><view class="picker">{{ageLabels[ageIndex]}}</view></picker></view>
-      <view class="field"><view class="label">锁定目标路径（可选）</view><picker range="{{pathLabels}}" value="{{pathIndex}}" bindchange="setPath"><view class="picker">{{pathLabels[pathIndex]}}</view></picker></view>
-      <view class="field"><view class="label">发码备注（可选）</view><textarea class="textarea" maxlength="500" value="{{note}}" bindinput="setNote" /></view>
-      <button class="btn" loading="{{issuing}}" bindtap="issueCode">生成评估码</button>
-      <view class="code-box" wx:if="{{issuedCode}}">
-        <view class="label">请把完整评估码发给家长（这里只显示这一次）</view>
-        <view class="code">{{issuedCode}}</view>
-        <view class="note">14天有效，默认仅可使用一次。</view>
-        <button class="btn secondary" bindtap="copyCode">复制评估码</button>
-      </view>
-    </view>
-  </block>
-
-  <view class="section-title">待评分与已完成（{{awaitingCount}} 待处理）</view>
-  <view class="card row" wx:for="{{sessions}}" wx:key="id" data-id="{{item.id}}" bindtap="openSession">
-    <view class="row-main">
-      <view class="row-title">{{item.studentNickname || item.studentCode}} · {{item.ageBand}} · {{item.formVariant}}卷</view>
-      <view class="row-meta">{{item.studentCode}} · {{item.targetPath}} · {{item.overallBand || '等待老师评分'}}</view>
-    </view>
-    <view class="status">{{item.status === 'AWAITING_REVIEW' ? '待评分' : '已完成'}}</view>
+  <view class="primary-work" wx:if="{{capabilities.canIssue}}" bindtap="goRequestQueue">
+    <view><view class="work-kicker">第一步</view><view class="work-title">处理评估码申请</view><view class="work-note">待联系 {{requestSummary.requested || 0}} · 已联系 {{requestSummary.contacted || 0}} · 可发码 {{requestSummary.ready || 0}}</view></view><i>›</i>
   </view>
+
+  <view class="section-head"><view><view class="section-title">评分与报告</view><view class="section-note">老师和管理只处理已提交的人工评分题。</view></view></view>
+  <view class="session-row" wx:for="{{sessions}}" wx:key="id" data-id="{{item.id}}" bindtap="openSession"><view class="session-main"><view class="session-title">{{item.studentNickname || item.studentCode}}</view><view class="session-meta">{{item.ageBand}} · {{item.formVariant}}卷 · {{item.targetPath}}</view></view><view class="status">{{item.status === 'AWAITING_REVIEW' ? '待评分' : '已完成'}}</view><view class="arrow">›</view></view>
   <view class="empty" wx:if="{{!loading && sessions.length === 0}}">还没有已提交的测评</view>
 
-  <view class="section-title" wx:if="{{capabilities.canIssue}}">最近评估码</view>
-  <view class="card row" wx:for="{{codes}}" wx:key="id">
-    <view class="row-main">
-      <view class="row-title">尾号 {{item.codeHint}} · {{item.studentNickname || '未指定学生'}}</view>
-      <view class="row-meta">{{item.status}} · 已用 {{item.usedCount}}/{{item.maxUses}} · {{item.ageBand || '年龄不限'}}</view>
-    </view>
-    <button wx:if="{{item.status === 'ACTIVE' && item.usedCount === 0}}" class="mini-btn" data-id="{{item.id}}" catchtap="revokeCode">撤销</button>
-  </view>
-
-  <view class="section-title">最近操作日志</view>
-  <view class="card" wx:for="{{auditLogs}}" wx:key="id">
-    <view class="row-title">{{item.action}} · {{item.actorName || '系统'}}</view>
-    <view class="row-meta">{{item.createdAt}} · {{item.entityType}} · {{item.entityId}}</view>
-  </view>
+  <button class="tool-toggle" wx:if="{{capabilities.canIssue}}" bindtap="toggleTools">{{showTools ? '收起直接发码与日志' : '临时直接发码、撤销与操作日志'}}</button>
+  <block wx:if="{{showTools && capabilities.canIssue}}">
+    <view class="section-title">临时直接发码</view><view class="section-note">只用于已经在微信里确认完成的家庭；新申请优先从申请队列发码。</view>
+    <view class="tool-form"><view class="field"><view class="label">学生昵称</view><input class="input" maxlength="60" value="{{studentNickname}}" bindinput="setNickname" /></view><view class="field"><view class="label">锁定年龄段</view><picker range="{{ageLabels}}" value="{{ageIndex}}" bindchange="setAge"><view class="picker">{{ageLabels[ageIndex]}}</view></picker></view><view class="field"><view class="label">锁定目标路径</view><picker range="{{pathLabels}}" value="{{pathIndex}}" bindchange="setPath"><view class="picker">{{pathLabels[pathIndex]}}</view></picker></view><view class="field"><view class="label">备注</view><textarea class="textarea" maxlength="500" value="{{note}}" bindinput="setNote" /></view><button class="btn" loading="{{issuing}}" bindtap="issueCode">生成评估码</button><view class="code-box" wx:if="{{issuedCode}}"><view class="label">完整评估码只显示这一次</view><view class="code">{{issuedCode}}</view><button class="btn secondary" bindtap="copyCode">复制评估码</button></view></view>
+    <view class="section-title">最近评估码</view><view class="compact-row" wx:for="{{codes}}" wx:key="id"><view><b>尾号 {{item.codeHint}} · {{item.studentNickname || '未指定学生'}}</b><text>{{item.status}} · 已用 {{item.usedCount}}/{{item.maxUses}} · {{item.ageBand || '年龄不限'}}</text></view><button wx:if="{{item.status === 'ACTIVE' && item.usedCount === 0}}" class="mini-btn" data-id="{{item.id}}" catchtap="revokeCode">撤销</button></view>
+    <view class="section-title">最近操作日志</view><view class="audit-row" wx:for="{{auditLogs}}" wx:key="id"><view><b>{{item.action}} · {{item.actorName || '系统'}}</b><text>{{item.createdAt}} · {{item.entityType}}</text></view></view>
+  </block>
 </view>

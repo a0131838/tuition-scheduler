@@ -1,0 +1,17 @@
+<view class="page" wx:if="{{request}}">
+  <view class="hero"><view class="kicker">{{request.requestNo}}</view><view class="title">{{request.studentNickname}}</view><view class="status-line"><b>{{request.statusLabel}}</b><text>负责人 {{request.ownerName}}</text></view></view>
+  <view class="next-step"><b>现在要做</b><text>{{request.nextAction}}</text></view>
+  <view class="facts"><view><text>家长</text><b>{{request.parentName}}</b></view><view><text>联系方式</text><b>{{request.contactText}}</b></view><view><text>年龄与年级</text><b>{{request.ageBand}} · {{request.currentGrade || '未填年级'}}</b></view><view><text>目标方向</text><b>{{request.targetPath}}</b></view><view><text>主要需求</text><b>{{request.needType}}</b></view><view><text>希望测试日期</text><b>{{request.preferredTestDate || '未指定'}}</b></view><view><text>资源编号</text><b>{{request.leadNo}}</b></view></view>
+  <view class="note-block" wx:if="{{request.note}}"><b>家长补充</b><text>{{request.note}}</text></view>
+
+  <button class="primary" wx:if="{{request.canMarkContacted}}" loading="{{saving}}" bindtap="markContacted">已联系家长</button>
+  <button class="primary" wx:if="{{request.canIssue}}" loading="{{saving}}" bindtap="issueCode">确认资料并生成评估码</button>
+  <button class="secondary" wx:if="{{request.canOpenSession}}" bindtap="openSession">查看学生作答或老师复核</button>
+  <button class="primary" wx:if="{{request.canInterpret}}" loading="{{saving}}" bindtap="markInterpreted">标记已完成人工解读</button>
+  <button class="secondary" wx:if="{{request.canClose}}" loading="{{saving}}" bindtap="close">关闭本次申请</button>
+
+  <view class="issued" wx:if="{{issuedCode}}"><view class="issued-label">完整评估码只显示这一次</view><view class="issued-code">{{issuedCode}}</view><button class="primary" bindtap="copyCode">复制评估码</button><view class="message">{{wechatMessage}}</view><button class="secondary" bindtap="copyMessage">复制完整微信通知</button></view>
+
+  <view class="decline" wx:if="{{request.canDecline}}"><view class="section-title">暂不适合测试</view><textarea value="{{declineReason}}" bindinput="setDeclineReason" maxlength="500" placeholder="写清需要补充什么或为什么暂不建议测试"/><button class="text-action" loading="{{saving}}" bindtap="decline">记录原因并暂不发码</button></view>
+  <view class="history"><view class="section-title">处理记录</view><text>申请 {{request.createdAt}}</text><text wx:if="{{request.contactedAt}}">联系 {{request.contactedAt}}</text><text wx:if="{{request.codeIssuedAt}}">发码 {{request.codeIssuedAt}} · 尾号 {{request.codeHint}}</text><text wx:if="{{request.interpretedAt}}">人工解读 {{request.interpretedAt}}</text></view>
+</view>

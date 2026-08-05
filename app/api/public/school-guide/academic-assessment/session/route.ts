@@ -118,6 +118,17 @@ export async function POST(req: Request) {
           meta: { status, pendingManual: result.pendingManual, completionRate: result.completionRate },
         },
       });
+      const accessCode = await tx.schoolGuideAssessmentCode.findUnique({ where: { id: session.accessCodeId }, select: { assessmentRequestId: true } });
+      if (accessCode?.assessmentRequestId) {
+        await tx.schoolGuideAssessmentRequest.update({
+          where: { id: accessCode.assessmentRequestId },
+          data: {
+            status: status === "COMPLETED" ? "REPORT_READY" : "AWAITING_REVIEW",
+            submittedAt: new Date(),
+            reviewedAt: status === "COMPLETED" ? new Date() : null,
+          },
+        });
+      }
       return row;
     });
     return NextResponse.json({ ok: true, message: status === "AWAITING_REVIEW" ? "已提交，开放任务等待老师评分。" : "测评已完成。", session: publicSessionView(updated) });

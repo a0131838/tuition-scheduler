@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-05-r331
+
+- Release ID: `2026-08-05-r331`
+- Date/Time (Asia/Singapore): `2026-08-05`
+- Deployment status: `READY`
+- Scope: add the complete parent assessment-code request journey and the role-separated staff follow-up queue, while simplifying the assessment UI and preserving the existing controlled test and teacher review flow.
+- Key files:
+  - `prisma/migrations/20260805213000_add_school_guide_assessment_requests/migration.sql`
+  - `app/api/public/school-guide/academic-assessment/request/route.ts`
+  - `app/api/miniapp/staff/academic-assessment-requests/route.ts`
+  - `miniapp/boss-academic-parent/pages/guide-academic-assessment/`
+  - `miniapp/boss-academic-parent/pages/staff-assessment-requests/`
+  - `miniapp/boss-academic-parent/pages/staff-assessment-request-detail/`
+  - `docs/tasks/TASK-20260805-assessment-code-request-flow.md`
+- Risk impact (if any): Medium and isolated to the school-guide assessment flow. The migration is additive; scheduling, lessons, attendance, packages, finance, payroll, renewals, tickets and the current teacher-review permissions are unchanged.
+- Verification: Prisma validation, 19 focused assessment tests, 174 backend regression tests, TypeScript validation, 64-page mini-program release audit and 242-page production build.
+- Rollback point: `7c30362` (`2026-08-05-r330` production head).
+
+---
+
 ## 2026-08-05-r330
 
 - Release ID: `2026-08-05-r330`

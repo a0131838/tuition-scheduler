@@ -101,6 +101,8 @@ export const OPERATION_AREAS: OperationArea[] = [
       "/miniapp/pages/staff-leads",
       "/miniapp/pages/staff-assessments",
       "/miniapp/pages/staff-assessment-detail",
+      "/miniapp/pages/staff-assessment-requests",
+      "/miniapp/pages/staff-assessment-request-detail",
     ],
     moduleCodes: ["RESOURCE_HANDOFF_MASTER"],
     outcome: "咨询完成查重、跟进、评估、负责人和成交后交接。",

@@ -66,6 +66,9 @@ Page({
     teacherUnreadFeedbackCount: 0,
     actionCenterCount: 0,
     assessmentAwaitingCount: 0,
+    assessmentRequestCount: 0,
+    assessmentActionCount: 0,
+    assessmentDetail: "评估码申请、提交与老师复核集中处理",
     canViewAssessments: false,
     canOpenApprovals: false,
     canOpenLeads: false,
@@ -188,11 +191,18 @@ Page({
         })
         .catch(() => this.setData({ todaySessionCount: 0 }));
       const assessmentTask = api.requestStaff("/api/miniapp/staff/academic-assessments?limit=1", { timeout: 12000 })
-        .then((data) => this.setData({
-          assessmentAwaitingCount: data.awaitingCount || 0,
-          canViewAssessments: true
-        }))
-        .catch(() => this.setData({ assessmentAwaitingCount: 0, canViewAssessments: false }));
+        .then((data) => {
+          const awaiting = data.awaitingCount || 0;
+          const requests = data.requestOpenCount || 0;
+          this.setData({
+            assessmentAwaitingCount: awaiting,
+            assessmentRequestCount: requests,
+            assessmentActionCount: awaiting + requests,
+            assessmentDetail: this.data.isTeacher ? "查看受控试测；有开放任务时按评分量表复核" : `申请 ${requests} · 待复核 ${awaiting}`,
+            canViewAssessments: true
+          });
+        })
+        .catch(() => this.setData({ assessmentAwaitingCount: 0, assessmentRequestCount: 0, assessmentActionCount: 0, canViewAssessments: false }));
 
       if (this.data.isTeacher) {
         const teacherTask = api.requestStaff("/api/miniapp/staff/teacher/dashboard", { timeout: 12000 })

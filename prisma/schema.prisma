@@ -1860,64 +1860,113 @@ model AuditLog {
 }
 
 model SchoolGuideAssessmentCode {
-  id                 String   @id @default(uuid())
-  codeHash           String   @unique
-  codeHint           String
-  status             String   @default("ACTIVE")
-  expiresAt          DateTime
-  maxUses            Int      @default(1)
-  usedCount          Int      @default(0)
-  ageBand            String?
-  targetPath         String?
-  studentNickname    String?
-  note               String?
-  createdByUserId    String?
-  createdByName      String
-  createdByEmail     String
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                  String   @id @default(uuid())
+  codeHash            String   @unique
+  codeHint            String
+  status              String   @default("ACTIVE")
+  expiresAt           DateTime
+  maxUses             Int      @default(1)
+  usedCount           Int      @default(0)
+  ageBand             String?
+  targetPath          String?
+  studentNickname     String?
+  note                String?
+  createdByUserId     String?
+  createdByName       String
+  createdByEmail      String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  assessmentRequestId String?  @unique
 
-  sessions SchoolGuideAssessmentSession[]
+  sessions          SchoolGuideAssessmentSession[]
+  assessmentRequest SchoolGuideAssessmentRequest?  @relation(fields: [assessmentRequestId], references: [id], onDelete: SetNull)
 
   @@index([status, expiresAt])
   @@index([createdByUserId, createdAt])
 }
 
+model SchoolGuideAssessmentRequest {
+  id                  String    @id @default(uuid())
+  requestNo           String    @unique
+  publicTokenHash     String    @unique
+  leadId              String
+  status              String    @default("REQUESTED")
+  parentName          String
+  studentNickname     String
+  parentWechat        String?
+  parentPhone         String?
+  ageBand             String
+  currentGrade        String?
+  targetPath          String
+  preferredTestDate   String?
+  needType            String
+  note                String?
+  ownerUserId         String?
+  ownerName           String
+  consentAt           DateTime  @default(now())
+  contactedAt         DateTime?
+  contactedByUserId   String?
+  contactedByName     String?
+  readyAt             DateTime?
+  codeIssuedAt        DateTime?
+  startedAt           DateTime?
+  submittedAt         DateTime?
+  reviewedAt          DateTime?
+  interpretedAt       DateTime?
+  interpretedByUserId String?
+  interpretedByName   String?
+  closedAt            DateTime?
+  closedByUserId      String?
+  closedByName        String?
+  declineReason       String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  lead       Lead                       @relation(fields: [leadId], references: [id], onDelete: Restrict)
+  issuedCode SchoolGuideAssessmentCode?
+
+  @@index([status, createdAt])
+  @@index([ownerUserId, status, createdAt])
+  @@index([leadId, createdAt])
+  @@index([parentWechat, status])
+  @@index([parentPhone, status])
+}
+
 model SchoolGuideAssessmentSession {
-  id                   String    @id @default(uuid())
-  accessCodeId         String
-  sessionTokenHash     String    @unique
-  studentCode          String    @unique
-  studentNickname      String?
-  ageBand              String
-  currentGrade         String?
-  targetPath           String
-  languageBackground   String?
-  formId               String
-  formVariant          String
-  bankVersion          String
-  route                String?
-  status               String    @default("IN_PROGRESS")
-  questionIds          Json
-  answers              Json
-  currentQuestionId    String?
-  startedAt            DateTime  @default(now())
-  lastActiveAt         DateTime  @default(now())
-  submittedAt          DateTime?
-  completedAt          DateTime?
-  durationSeconds      Int       @default(0)
-  completionRate       Float     @default(0)
-  confidence           String?
-  domainScores         Json?
-  overallScore         Float?
-  overallBand          String?
-  report               Json?
-  reviewerNote         String?
-  reviewedByUserId     String?
-  reviewedByName       String?
-  reviewedAt           DateTime?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  id                 String    @id @default(uuid())
+  accessCodeId       String
+  sessionTokenHash   String    @unique
+  studentCode        String    @unique
+  studentNickname    String?
+  ageBand            String
+  currentGrade       String?
+  targetPath         String
+  languageBackground String?
+  formId             String
+  formVariant        String
+  bankVersion        String
+  route              String?
+  status             String    @default("IN_PROGRESS")
+  questionIds        Json
+  answers            Json
+  currentQuestionId  String?
+  startedAt          DateTime  @default(now())
+  lastActiveAt       DateTime  @default(now())
+  submittedAt        DateTime?
+  completedAt        DateTime?
+  durationSeconds    Int       @default(0)
+  completionRate     Float     @default(0)
+  confidence         String?
+  domainScores       Json?
+  overallScore       Float?
+  overallBand        String?
+  report             Json?
+  reviewerNote       String?
+  reviewedByUserId   String?
+  reviewedByName     String?
+  reviewedAt         DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   accessCode SchoolGuideAssessmentCode @relation(fields: [accessCodeId], references: [id], onDelete: Restrict)
 
@@ -3140,11 +3189,12 @@ model Lead {
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
 
-  owner                  User?                   @relation("LeadOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
-  convertedStudent       Student?                @relation("LeadConvertedStudent", fields: [convertedStudentId], references: [id], onDelete: SetNull)
-  convertedSourceChannel StudentSourceChannel?   @relation("LeadConvertedSourceChannel", fields: [convertedSourceChannelId], references: [id], onDelete: SetNull)
-  followUps              LeadFollowUp[]
-  assessmentRequests     LeadAssessmentRequest[]
+  owner                         User?                          @relation("LeadOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  convertedStudent              Student?                       @relation("LeadConvertedStudent", fields: [convertedStudentId], references: [id], onDelete: SetNull)
+  convertedSourceChannel        StudentSourceChannel?          @relation("LeadConvertedSourceChannel", fields: [convertedSourceChannelId], references: [id], onDelete: SetNull)
+  followUps                     LeadFollowUp[]
+  assessmentRequests            LeadAssessmentRequest[]
+  schoolGuideAssessmentRequests SchoolGuideAssessmentRequest[]
 
   @@index([status, createdAt])
   @@index([isArchived, createdAt])
