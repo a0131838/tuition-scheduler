@@ -109,6 +109,29 @@ test("service tab preserves relationship permissions for reports and requests", 
   assert.match(route, /riskLabel: canViewReports \? academicRiskLabel/);
 });
 
+test("Full Care parent dashboard answers the four reassurance questions with reviewed data only", () => {
+  const route = fs.readFileSync(
+    path.join(process.cwd(), "app/api/miniapp/students/[studentId]/service-progress/route.ts"),
+    "utf8",
+  );
+  const page = fs.readFileSync(
+    path.join(process.cwd(), "miniapp/boss-academic-parent/pages/progress/progress.wxml"),
+    "utf8",
+  );
+  assert.match(route, /serviceCommitments/);
+  assert.match(route, /latestPublishedUpdate/);
+  assert.match(route, /nextUpdate/);
+  assert.match(route, /parentVisible: true/);
+  assert.match(route, /publicSummary: \{ not: null \}/);
+  assert.doesNotMatch(route, /riskCases:[\s\S]{0,500}facts: true/);
+  assert.doesNotMatch(route, /riskCases:[\s\S]{0,500}immediateAction: true/);
+  assert.match(page, /孩子现在怎么样？/);
+  assert.match(page, /我们最近做了什么？/);
+  assert.match(page, /接下来做什么？/);
+  assert.match(page, /下次什么时候更新？/);
+  assert.match(page, /重大事项会主动联系，不会等待月报/);
+});
+
 test("parent home discards stale responses after switching students", () => {
   const homeScript = fs.readFileSync(
     path.join(process.cwd(), "miniapp/boss-academic-parent/pages/home/home.js"),

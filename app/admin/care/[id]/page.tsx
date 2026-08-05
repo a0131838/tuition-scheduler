@@ -59,6 +59,10 @@ function jsonList(value: unknown, field: string) {
   return Array.isArray(raw) ? raw.filter((item): item is string => typeof item === "string") : [];
 }
 
+function careServiceIncluded(value: unknown) {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value) && (value as Record<string, unknown>).careServiceIncluded === true);
+}
+
 function fileSizeLabel(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.ceil(bytes / 1024)} KB`;
@@ -260,7 +264,21 @@ export default async function CareDetailPage({
   const [engagement, configurableStaff] = await Promise.all([prisma.careEngagement.findUnique({
       where: { id },
       include: {
-        student: { select: { id: true, name: true, school: true, grade: true } },
+        student: {
+          select: {
+            id: true,
+            name: true,
+            school: true,
+            grade: true,
+            parentLinks: { where: { canViewReports: true }, select: { id: true }, take: 1 },
+            contracts: {
+              where: { status: { in: ["SIGNED", "INVOICE_CREATED"] } },
+              select: { id: true, packageId: true, status: true, businessInfoJson: true },
+              orderBy: { createdAt: "desc" },
+              take: 20,
+            },
+          },
+        },
         caseOwner: { select: { id: true, name: true, email: true } },
         members: {
           where: { isActive: true },
@@ -330,6 +348,28 @@ export default async function CareDetailPage({
   const currentMonthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const currentMonthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
   const currentMonthLabel = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
+  const signedCareContract = engagement.student.contracts.find((contract) => careServiceIncluded(contract.businessInfoJson));
+  const launchChecks = [
+    {
+      label: t(lang, "Full Care agreement signed", "全托管协议已签署"),
+      done: Boolean(signedCareContract),
+      href: signedCareContract ? `/admin/packages/${encodeURIComponent(signedCareContract.packageId)}/contract` : undefined,
+      action: signedCareContract ? t(lang, "View contract", "查看合同") : t(lang, "Complete from the student's package", "请从学生课包完成签约"),
+    },
+    {
+      label: t(lang, "Parent miniapp bound with report access", "家长小程序已绑定并可看报告"),
+      done: engagement.student.parentLinks.length > 0,
+      href: `/admin/students/${encodeURIComponent(engagement.student.id)}#parent-portal`,
+      action: t(lang, "Open parent binding", "打开家长绑定"),
+    },
+    { label: t(lang, "Service start date set", "服务开始日期已设置"), done: Boolean(engagement.startDate) },
+    { label: t(lang, "Service scope frozen", "服务范围已冻结"), done: scopeIds.length > 0 },
+    { label: t(lang, "Case owner assigned", "总负责人已指定"), done: Boolean(engagement.caseOwnerUserId) },
+    { label: t(lang, "Monthly report reviewer assigned", "月报审核人已指定"), done: Boolean(reviewerUserId) },
+    { label: t(lang, "Initial service plan created", "首期服务计划已创建"), done: engagement.plans.length > 0 },
+  ];
+  const launchReadyCount = launchChecks.filter((item) => item.done).length;
+  const launchReady = launchReadyCount === launchChecks.length;
 
   return (
     <main className={styles.page}>
@@ -372,7 +412,32 @@ export default async function CareDetailPage({
         <div className={styles.metric}><strong>{engagement.reports.length}</strong><span className={styles.muted}>{t(lang, "Reports", "正式报告")}</span></div>
       </div>
 
-      <section className={styles.section}>
+      <section className={styles.section} data-tone={launchReady ? "active" : "risk"}>
+        <div className={styles.sectionHeader}>
+          <div className={styles.sectionHeading}>
+            <h2>{t(lang, "Go-live readiness", "全托管启动门槛")}</h2>
+            <div className={styles.muted}>
+              {launchReady
+                ? t(lang, "All controls are ready. The project may be activated.", "七项控制均已就绪，可以启用项目。")
+                : t(lang, "Complete every item before changing a draft project to ACTIVE.", "草稿项目变为 ACTIVE 前必须完成全部项目，系统会阻止带缺口启动。")}
+            </div>
+          </div>
+          <span className={styles.badge} data-tone={launchReady ? "active" : "risk"}>{launchReadyCount}/{launchChecks.length}</span>
+        </div>
+        <div className={styles.overviewGrid}>
+          {launchChecks.map((item) => (
+            <div className={styles.summaryBlock} key={item.label}>
+              <div className={styles.timelineHead}>
+                <strong>{item.label}</strong>
+                <span className={styles.badge} data-tone={item.done ? "active" : "risk"}>{item.done ? t(lang, "Ready", "已就绪") : t(lang, "Missing", "待完成")}</span>
+              </div>
+              {item.href ? <Link className={styles.buttonSecondary} href={item.href}>{item.action}</Link> : null}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className={styles.section} id="service-configuration">
         <div className={styles.overviewGrid}>
           <div className={styles.summaryBlock}>
             <h2>{t(lang, "Service scope", "服务范围")}</h2>

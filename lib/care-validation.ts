@@ -355,6 +355,20 @@ export function assertCareActivation(input: {
   if (input.scopeIds.length === 0) throw new Error("At least one service scope is required before activation");
 }
 
+export function assertCareLaunchReadiness(input: {
+  hasSignedCareContract: boolean;
+  hasParentReportAccess: boolean;
+  hasReviewer: boolean;
+  hasInitialPlan: boolean;
+}) {
+  const missing: string[] = [];
+  if (!input.hasSignedCareContract) missing.push("signed Full Care agreement");
+  if (!input.hasParentReportAccess) missing.push("parent miniapp binding with report access");
+  if (!input.hasReviewer) missing.push("monthly report reviewer");
+  if (!input.hasInitialPlan) missing.push("initial service plan");
+  if (missing.length) throw new Error(`Cannot activate Full Care project. Complete: ${missing.join(", ")}`);
+}
+
 const ENGAGEMENT_TRANSITIONS: Record<CareEngagementStatus, CareEngagementStatus[]> = {
   DRAFT: ["ACTIVE", "CANCELLED"],
   ACTIVE: ["PAUSED", "COMPLETED", "CANCELLED"],

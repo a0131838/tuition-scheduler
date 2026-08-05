@@ -14,6 +14,7 @@ Page({
     nextStep: {},
     nextSession: null,
     care: {},
+    reassurance: {},
     parentActions: [],
     timeline: [],
     parentStatus: presentation.parentStatus(null),
@@ -49,6 +50,7 @@ Page({
           nextStep: data.nextStep || {},
           nextSession: data.nextSession || null,
           care: data.care || {},
+          reassurance: data.reassurance || {},
           parentActions: data.parentActions || [],
           timeline: data.timeline || [],
           parentStatus: presentation.parentStatus(

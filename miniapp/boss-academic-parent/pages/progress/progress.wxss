@@ -6,6 +6,173 @@
   padding-bottom: 30rpx;
 }
 
+.reassurance-panel {
+  padding: 28rpx;
+  border: 1rpx solid #d6e6df;
+  border-radius: 18rpx;
+  background: linear-gradient(145deg, #f7fbf9 0%, #ffffff 72%);
+  box-shadow: 0 12rpx 34rpx rgba(25, 74, 57, 0.08);
+}
+
+.reassurance-head,
+.visible-risk-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18rpx;
+}
+
+.reassurance-title {
+  margin-top: 7rpx;
+  color: #173f34;
+  font-size: 34rpx;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.reassurance-owner {
+  flex: 0 0 auto;
+  padding: 8rpx 12rpx;
+  border-radius: 999rpx;
+  background: #e5f3ed;
+  color: #23634f;
+  font-size: 20rpx;
+  font-weight: 700;
+}
+
+.reassurance-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14rpx;
+  margin-top: 24rpx;
+}
+
+.reassurance-card {
+  min-width: 0;
+  padding: 22rpx;
+  border: 1rpx solid #e1e7e4;
+  border-radius: 14rpx;
+  background: #ffffff;
+}
+
+.reassurance-card.tone-watch {
+  border-color: #f0cfac;
+  background: #fffaf5;
+}
+
+.reassurance-card.tone-attention {
+  border-color: #efc1bb;
+  background: #fff7f6;
+}
+
+.reassurance-card.update-card {
+  border-color: #f2c9ae;
+  background: #fff8f3;
+}
+
+.question-label {
+  color: #6b746f;
+  font-size: 21rpx;
+  font-weight: 650;
+}
+
+.answer-title {
+  margin-top: 9rpx;
+  color: #202824;
+  font-size: 27rpx;
+  font-weight: 780;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.answer-copy {
+  margin-top: 8rpx;
+  color: #555f5a;
+  font-size: 23rpx;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.answer-meta {
+  margin-top: 9rpx;
+  color: #8a7467;
+  font-size: 20rpx;
+}
+
+.commitment-band {
+  margin-top: 24rpx;
+  padding: 24rpx 0;
+  border-top: 1rpx solid #dfe2e5;
+  border-bottom: 1rpx solid #dfe2e5;
+}
+
+.commitment-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-top: 16rpx;
+}
+
+.commitment-chip {
+  padding: 9rpx 14rpx;
+  border: 1rpx solid #c9ddd4;
+  border-radius: 999rpx;
+  background: #f4faf7;
+  color: #245c49;
+  font-size: 21rpx;
+  font-weight: 650;
+}
+
+.commitment-note,
+.visible-risk-note {
+  margin-top: 14rpx;
+  color: #7b817e;
+  font-size: 20rpx;
+  line-height: 1.5;
+}
+
+.visible-risk-band {
+  margin-top: 26rpx;
+  padding: 24rpx;
+  border: 1rpx solid #efc4bd;
+  border-radius: 14rpx;
+  background: #fff8f7;
+}
+
+.risk-badge {
+  padding: 6rpx 11rpx;
+  border-radius: 999rpx;
+  background: #f8ded9;
+  color: #963d32;
+  font-size: 20rpx;
+  font-weight: 700;
+}
+
+.visible-risk-row {
+  margin-top: 18rpx;
+  padding-top: 18rpx;
+  border-top: 1rpx solid #f0d8d4;
+}
+
+.visible-risk-status {
+  color: #963d32;
+  font-size: 21rpx;
+  font-weight: 750;
+}
+
+.visible-risk-summary {
+  margin-top: 8rpx;
+  color: #453d3b;
+  font-size: 25rpx;
+  line-height: 1.55;
+}
+
+@media (max-width: 360px) {
+  .reassurance-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .status-band {
   padding: 26rpx 28rpx;
   border-left: 8rpx solid #287a62;

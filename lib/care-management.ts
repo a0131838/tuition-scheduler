@@ -9,6 +9,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import {
   assertCareActivation,
+  assertCareLaunchReadiness,
   assertCareActivity,
   assertCareActivityProgramType,
   assertCareStatusTransition,
@@ -37,6 +38,12 @@ import {
 type CareActor = { id: string; email: string; name: string; role: string };
 
 const CARE_OWNER_ROLES: CareMemberRole[] = ["CASE_OWNER", "ACADEMIC_OWNER", "SCHOOL_OWNER", "LIFE_OWNER", "COORDINATOR"];
+
+function isSignedFullCareContract(contract: { status: string; businessInfoJson: Prisma.JsonValue | null }) {
+  if (contract.status !== "SIGNED" && contract.status !== "INVOICE_CREATED") return false;
+  if (!contract.businessInfoJson || typeof contract.businessInfoJson !== "object" || Array.isArray(contract.businessInfoJson)) return false;
+  return (contract.businessInfoJson as Record<string, unknown>).careServiceIncluded === true;
+}
 
 export function careOwnerRolesForProgram(programType: CareProgramType): CareMemberRole[] {
   if (programType === "UNIVERSITY_GROWTH") return ["CASE_OWNER", "ACADEMIC_OWNER"];
@@ -165,6 +172,18 @@ export async function changeCareEngagementStatus(input: {
       where: { id: input.engagementId },
       include: {
         members: { where: { isActive: true }, select: { userId: true, role: true } },
+        plans: { select: { id: true }, take: 1 },
+        student: {
+          select: {
+            parentLinks: { where: { canViewReports: true }, select: { id: true }, take: 1 },
+            contracts: {
+              where: { status: { in: ["SIGNED", "INVOICE_CREATED"] } },
+              select: { status: true, businessInfoJson: true },
+              orderBy: { createdAt: "desc" },
+              take: 20,
+            },
+          },
+        },
         universityProfile: {
           select: { institution: true, degreeProgram: true, currentTerm: true, expectedGraduationDate: true },
         },
@@ -187,6 +206,14 @@ export async function changeCareEngagementStatus(input: {
           degreeProgram: engagement.universityProfile?.degreeProgram ?? null,
           currentTerm: engagement.universityProfile?.currentTerm ?? null,
           expectedGraduationDate: engagement.universityProfile?.expectedGraduationDate ?? null,
+        });
+      }
+      if (engagement.status === "DRAFT") {
+        assertCareLaunchReadiness({
+          hasSignedCareContract: engagement.student.contracts.some(isSignedFullCareContract),
+          hasParentReportAccess: engagement.student.parentLinks.length > 0,
+          hasReviewer: engagement.members.some((item) => item.role === "REVIEWER"),
+          hasInitialPlan: engagement.plans.length > 0,
         });
       }
     }

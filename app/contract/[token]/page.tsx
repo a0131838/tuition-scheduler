@@ -116,13 +116,15 @@ export default async function ContractSignPage({
   }
 
   if (contract.status === "SIGNED" || contract.status === "INVOICE_CREATED") {
+    const includesCare = Boolean(contract.contractSnapshot?.care?.included);
     return (
       <div style={{ maxWidth: 960, margin: "40px auto", padding: "0 16px", display: "grid", gap: 16 }}>
         <div style={{ ...cardStyle("#ecfdf3"), borderColor: "#86efac" }}>
-          <h1 style={{ margin: 0 }}>Contract Signed / 合同已完成签署</h1>
+          <h1 style={{ margin: 0 }}>{includesCare ? "Tuition + Full Care Agreement Signed / 补习及全程托管合同已签署" : "Contract Signed / 合同已完成签署"}</h1>
           <div style={{ color: "#166534" }}>
-            Thank you. The tuition agreement has been signed successfully and the invoice draft has been prepared for the school team.
-            / 感谢您，学费协议已经签署完成，系统也已为校方准备好对应发票草稿。
+            {includesCare
+              ? "Thank you. The tuition agreement and Full Care Service Addendum have been signed successfully. / 感谢您，学费协议及《全程托管服务附件》已经完成签署。"
+              : "Thank you. The tuition agreement has been signed successfully and the invoice draft has been prepared for the school team. / 感谢您，学费协议已经签署完成，系统也已为校方准备好对应发票草稿。"}
           </div>
           {contract.invoiceNo ? <div style={{ color: "#166534" }}>Invoice / 发票: {contract.invoiceNo}</div> : null}
           <div
@@ -209,7 +211,9 @@ export default async function ContractSignPage({
   return (
     <div style={{ maxWidth: 1040, margin: "32px auto 48px", padding: "0 16px", display: "grid", gap: 18 }}>
       <div style={{ display: "grid", gap: 8 }}>
-        <h1 style={{ margin: 0, fontSize: 38, lineHeight: 1.05 }}>Tuition Agreement / 学费协议</h1>
+        <h1 style={{ margin: 0, fontSize: 38, lineHeight: 1.05 }}>
+          {snapshot.care?.included ? "Tuition + Full Care Agreement / 补习及全程托管合同" : "Tuition Agreement / 学费协议"}
+        </h1>
         <div style={{ color: "#475569", fontSize: 16, lineHeight: 1.6 }}>
           Please review the agreement below and sign electronically if everything is correct. Once signed, the system will create the matching invoice draft automatically.
           / 请先阅读以下正式合同，确认无误后再进行电子签字。签字完成后，系统会自动生成对应发票草稿。
@@ -247,6 +251,20 @@ export default async function ContractSignPage({
             <div style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>Student / 学生</div>
             <div style={{ fontWeight: 800, fontSize: 22 }}>{contract.studentName}</div>
           </div>
+          {snapshot.care?.included ? (
+            <>
+              <div>
+                <div style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>Full Care programme / 托管方案</div>
+                <div style={{ fontWeight: 800, fontSize: 18 }}>{snapshot.care.programLabel || "Full Care / 全程托管"}</div>
+              </div>
+              <div>
+                <div style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>Fee split / 费用拆分</div>
+                <div style={{ fontWeight: 800, fontSize: 16 }}>
+                  Tuition SGD {Number(snapshot.care.tuitionFeeAmount || 0).toFixed(2)} · Full Care SGD {Number(snapshot.care.careServiceFeeAmount || 0).toFixed(2)}
+                </div>
+              </div>
+            </>
+          ) : null}
           <div>
             <div style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>Course / 课程</div>
             <div style={{ fontWeight: 800, fontSize: 18 }}>{contract.courseName}</div>
@@ -298,8 +316,9 @@ export default async function ContractSignPage({
 
         <label style={{ display: "flex", gap: 10, alignItems: "flex-start", color: "#334155" }}>
           <input type="checkbox" name="agreementConfirm" value="yes" required />
-          I have read and understood the tuition agreement and agree to sign it electronically.
-          / 我已阅读并理解本学费协议，并同意以电子方式签署。
+          {snapshot.care?.included
+            ? "I have read and understood the tuition agreement and Full Care Service Addendum, including the scope, exclusions, fees, parent visibility, emergency limits, and data-use purposes, and agree to sign electronically. / 我已阅读并理解学费协议及《全程托管服务附件》，包括服务范围、排除事项、费用、家长可见范围、紧急边界和资料使用目的，并同意电子签署。"
+            : "I have read and understood the tuition agreement and agree to sign it electronically. / 我已阅读并理解本学费协议，并同意以电子方式签署。"}
         </label>
 
         <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.6 }}>

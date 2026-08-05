@@ -65,6 +65,20 @@ export type ContractBusinessInfo = {
   fpsRequired?: boolean | null;
   fpsProvider?: string | null;
   fpsPolicyNumber?: string | null;
+  careServiceIncluded?: boolean;
+  careProgramLabel?: string | null;
+  tuitionFeeAmount?: number | null;
+  careServiceFeeAmount?: number | null;
+  careServiceStartDateIso?: string | null;
+  careServiceEndDateIso?: string | null;
+  careUpdateCadence?: string | null;
+  careReportCadence?: string | null;
+  careDeliveryChannel?: string | null;
+  careEmergencyAdvanceLimit?: number | null;
+  careScopeLabels?: string[];
+  careExclusionLabels?: string[];
+  careChannelName?: string | null;
+  careChannelCommissionRate?: number | null;
 };
 
 export type ContractSnapshot = {
@@ -95,6 +109,17 @@ export type ContractSnapshot = {
     lessonMode: string | null;
     campusName: string | null;
     contractTypeLabel: string | null;
+  };
+  care?: {
+    included: boolean;
+    programLabel: string | null;
+    tuitionFeeAmount: number | null;
+    careServiceFeeAmount: number | null;
+    serviceStartDateIso: string | null;
+    serviceEndDateIso: string | null;
+    updateCadence: string | null;
+    reportCadence: string | null;
+    deliveryChannel: string | null;
   };
   parent: ContractParentInfo;
   agreementHtml: string;
@@ -159,6 +184,84 @@ function scheduleValue(value: string | null | undefined, fallback = "___________
 
 function renderTemplatePlaceholders(html: string, values: Record<string, string>) {
   return html.replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, (_, key: string) => values[key] ?? "");
+}
+
+function renderCareList(items: string[] | null | undefined, emptyLabel: string) {
+  const values = (items ?? []).map((item) => item.trim()).filter(Boolean);
+  if (!values.length) return `<li>${escapeHtml(emptyLabel)}</li>`;
+  return values.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+}
+
+function buildCareServiceAppendix(input: {
+  businessInfo: ContractBusinessInfo;
+  studentName: string;
+  parentName: string;
+}) {
+  const info = input.businessInfo;
+  if (!info.careServiceIncluded) return "";
+  const tuitionFee = formatCurrencyLabel(info.tuitionFeeAmount);
+  const careFee = formatCurrencyLabel(info.careServiceFeeAmount);
+  const advanceLimit = formatCurrencyLabel(info.careEmergencyAdvanceLimit);
+  const startDate = formatLongDate(info.careServiceStartDateIso);
+  const endDate = formatLongDate(info.careServiceEndDateIso);
+  const updateCadence = info.careUpdateCadence?.trim() || "Weekly service review / 每周服务复核";
+  const reportCadence = info.careReportCadence?.trim() || "Monthly formal report / 每月正式报告";
+  const deliveryChannel = info.careDeliveryChannel?.trim() || "Parent miniapp or the Company's designated official channel / 家长小程序或公司指定官方渠道";
+  return `
+    <div style="page-break-before: always"></div>
+    <h1>Full Care Service Addendum / 全程托管服务附件</h1>
+    <p>This Addendum forms part of the Tuition Agreement for <strong>${escapeHtml(input.studentName)}</strong>. The contracting parent is <strong>${escapeHtml(input.parentName)}</strong>.</p>
+    <p>本附件构成 <strong>${escapeHtml(input.studentName)}</strong>《学费协议》的一部分，签约家长为 <strong>${escapeHtml(input.parentName)}</strong>。</p>
+
+    <h3>1. Service programme and period / 服务方案与期限</h3>
+    <p>Programme / 方案：<strong>${escapeHtml(info.careProgramLabel?.trim() || "Full Care / 全程托管")}</strong><br/>
+    Service period / 服务期：<strong>${escapeHtml(startDate)}</strong> 至 <strong>${escapeHtml(endDate)}</strong><br/>
+    Routine update / 常规更新：<strong>${escapeHtml(updateCadence)}</strong><br/>
+    Formal report / 正式报告：<strong>${escapeHtml(reportCadence)}</strong></p>
+
+    <h3>2. Agreed service scope / 已确认服务范围</h3>
+    <ul>${renderCareList(info.careScopeLabels, "Scope to be confirmed in writing / 服务范围以书面确认为准")}</ul>
+    <p>The Company will continuously collect relevant information, make professional assessments, coordinate agreed actions, track completion, identify material risks, and provide parent-facing updates. The Company does not guarantee grades, admission, visas, medical outcomes, employment, or other results outside its control.</p>
+    <p>公司将持续收集相关信息、作出专业判断、协调约定行动、跟踪完成情况、识别重大风险并向家长汇报。公司不保证成绩、录取、签证、医疗、就业或其他超出公司控制范围的结果。</p>
+
+    <h3>3. Exclusions and third-party costs / 排除事项与第三方费用</h3>
+    <ul>${renderCareList(info.careExclusionLabels, "Legal guardianship, 24-hour on-site care, medical or psychological diagnosis, and immigration legal advice / 法定监护、24小时现场看护、医疗或心理诊断及移民法律意见")}</ul>
+    <p>Transport, medical, accommodation, visa, government, school, host-family, specialist, and other third-party fees are not included unless expressly stated. On-site support beyond the agreed scope requires written confirmation of availability and charges.</p>
+    <p>除非书面明确包含，交通、医疗、住宿、签证、政府、学校、寄宿家庭、专业人士及其他第三方费用均不包含。超出约定范围的现场支持须另行书面确认人员安排和费用。</p>
+
+    <h3>4. Fees, lesson hours, and refunds / 费用、课时与退款</h3>
+    <p>Tuition component / 补习课时费：<strong>${escapeHtml(tuitionFee)}</strong><br/>
+    Full Care service component / 全程托管服务费：<strong>${escapeHtml(careFee)}</strong><br/>
+    Total agreement fee / 合同总额：<strong>${escapeHtml(formatCurrencyLabel(info.feeAmount))}</strong></p>
+    <p>Lesson hours and Full Care services are separate deliverables. Unused lesson hours do not offset services already delivered. Any approved termination or refund will distinguish unused tuition from completed or current-period Full Care work and follow the Company's written refund rules and the signed service period.</p>
+    <p>补习课时与全程托管属于不同交付。未使用课时不能抵销已经发生的托管服务。如批准终止或退款，应分别核算未使用课时和已经完成或处于当前服务周期的托管工作，并按公司的书面退款规则及签署的服务期限处理。</p>
+
+    <h3>5. Parent visibility and progress updates / 家长可见范围与进展更新</h3>
+    <p>The parent may view published service progress, lesson records, teacher feedback, agreed actions, formal reports, and parent action items through <strong>${escapeHtml(deliveryChannel)}</strong>. Internal drafts, unverified allegations, staff-only assessments, third-party private data, and internal commercial notes are not parent-visible.</p>
+    <p>家长可通过 <strong>${escapeHtml(deliveryChannel)}</strong> 查看已发布服务进展、课程记录、老师反馈、已确认行动、正式报告和需要家长配合的事项。内部草稿、未经核实的信息、仅供员工使用的判断、第三方隐私和内部商务备注不向家长展示。</p>
+    <p>Only reviewed and published content represents the Company's formal update. Routine working notes and chat messages do not replace the formal service record.</p>
+    <p>只有经过审核并正式发布的内容才构成公司的正式更新。日常工作草稿和聊天信息不能替代正式服务记录。</p>
+
+    <h3>6. Parent and student cooperation / 家长与学生配合</h3>
+    <p>The parent and student shall provide accurate information, disclose relevant school deadlines and material risks, respond to action requests within a reasonable period, and notify the Company when circumstances change. Delays or missing information may affect the Company's ability to act or report on time.</p>
+    <p>家长和学生应提供准确资料、告知相关学校截止日期和重大风险、在合理时间内回应配合事项，并在情况变化时通知公司。资料延误或缺失可能影响公司及时行动或汇报。</p>
+
+    <h3>7. School and third-party communication authorisation / 学校及第三方沟通授权</h3>
+    <p>The parent authorises the Company's assigned staff to communicate with the student's school, teachers, accommodation provider, and parent-approved service providers for the agreed service purposes. This does not authorise the Company to sign enrolment, withdrawal, medical, financial, or other legally binding decisions on behalf of the parent or student.</p>
+    <p>家长授权公司指定员工为约定服务目的与学生学校、老师、住宿方及家长确认的服务方沟通。本授权不代表公司可以代替家长或学生签署入学、退学、医疗、财务或其他具有法律约束力的决定。</p>
+
+    <h3>8. Emergency coordination / 紧急协调</h3>
+    <p>The Company may coordinate emergency contacts, the school, emergency services, police, transport, accommodation, or other appropriate parties based on the available facts. The suggested emergency advance ceiling is <strong>${escapeHtml(advanceLimit)}</strong>; any advance remains payable by the parent. This clause does not grant medical decision-making authority or guarantee on-site attendance.</p>
+    <p>公司可根据已知事实协调紧急联系人、学校、急救、警方、交通、住宿方或其他适当机构。建议的紧急代垫上限为 <strong>${escapeHtml(advanceLimit)}</strong>，所有代垫款仍由家长承担。本条不授予公司医疗决定权，也不保证一定能够到场。</p>
+
+    <h3>9. Personal data and adult-student consent / 个人资料与成年学生授权</h3>
+    <p>Personal data may be collected, used, stored, and disclosed only for service delivery, safety coordination, billing, audit, and legal or regulatory purposes notified by the Company. The parent may ask about access, correction, withdrawal, and retention through the Company's designated contact. For an adult student, parent visibility requires the student's recorded consent and may be limited or withdrawn.</p>
+    <p>个人资料仅可用于公司已经告知的服务交付、安全协调、收费、审计及法律或监管目的。家长可通过公司指定联系人提出查阅、更正、撤回和保存期限相关要求。学生成年后，家长可见范围须以学生本人已记录的授权为基础，并可能受到限制或被撤回。</p>
+
+    <h3>10. Acknowledgement / 确认</h3>
+    <p>By signing the Tuition Agreement with this Addendum, the parent confirms that the service scope, exclusions, fees, update cadence, visibility rules, cooperation duties, emergency limits, and data-use purposes have been reviewed and accepted.</p>
+    <p>家长签署包含本附件的《学费协议》，即确认已经审阅并接受服务范围、排除事项、费用、更新节奏、可见范围、配合义务、紧急协调边界及资料使用目的。</p>
+  `.trim();
 }
 
 export function getDefaultStudentContractTemplateInput() {
@@ -317,7 +420,11 @@ export function buildStudentContractSnapshot(input: {
     refund_event_4_days_after: escapeHtml(scheduleValue(input.businessInfo.refundEvent4DaysAfter)),
     late_payment_grace_value: escapeHtml(scheduleValue(input.businessInfo.latePaymentGraceValue)),
     late_payment_grace_unit: escapeHtml(scheduleValue(input.businessInfo.latePaymentGraceUnit, "days/month")),
-  });
+  }) + (contractMode === "TUITION_AGREEMENT" ? buildCareServiceAppendix({
+    businessInfo: input.businessInfo,
+    studentName: input.studentName,
+    parentName: input.parentInfo.parentFullNameEn,
+  }) : "");
 
   const snapshot: ContractSnapshot = {
     templateSlug: template.slug,
@@ -344,6 +451,17 @@ export function buildStudentContractSnapshot(input: {
       campusName: input.businessInfo.campusName?.trim() || null,
       contractTypeLabel,
     },
+    care: input.businessInfo.careServiceIncluded ? {
+      included: true,
+      programLabel: input.businessInfo.careProgramLabel ?? null,
+      tuitionFeeAmount: input.businessInfo.tuitionFeeAmount ?? null,
+      careServiceFeeAmount: input.businessInfo.careServiceFeeAmount ?? null,
+      serviceStartDateIso: input.businessInfo.careServiceStartDateIso ?? null,
+      serviceEndDateIso: input.businessInfo.careServiceEndDateIso ?? null,
+      updateCadence: input.businessInfo.careUpdateCadence ?? null,
+      reportCadence: input.businessInfo.careReportCadence ?? null,
+      deliveryChannel: input.businessInfo.careDeliveryChannel ?? null,
+    } : undefined,
     parent: input.parentInfo,
     agreementHtml: html,
   };

@@ -11,6 +11,7 @@ import {
 import { parseParentFeedbackSections } from "@/lib/parent-feedback-format";
 import { prisma } from "@/lib/prisma";
 import { sessionBelongsToStudentWhere } from "@/lib/session-students";
+import { CARE_SCOPE_OPTIONS } from "@/lib/care-validation";
 import { bad, courseLabel, ok, requireMiniappStudentAccess, sessionTeacherName } from "../../../_lib";
 
 const CLOSED_TICKET_STATUSES = ["Completed", "Cancelled", "Closed", "已完成", "已关闭"];
@@ -111,6 +112,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
             programType: true,
             startDate: true,
             nextReportDueAt: true,
+            scopeJson: true,
             caseOwner: { select: { name: true } },
             universityProfile: true,
             reports: {
@@ -149,6 +151,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
               },
               select: { id: true, parentVisibleSummary: true, dueAt: true, status: true },
               orderBy: { dueAt: "asc" },
+              take: 5,
+            },
+            riskCases: {
+              where: {
+                parentVisible: true,
+                publicSummary: { not: null },
+                status: { in: ["OPEN", "ACKNOWLEDGED"] },
+              },
+              select: { id: true, publicSummary: true, status: true, updatedAt: true },
+              orderBy: { updatedAt: "desc" },
               take: 5,
             },
           },
@@ -250,6 +262,53 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       universityProfile: careEngagement?.universityProfile ?? null,
     },
   }));
+  const careScopeIds = Array.isArray(careEngagement?.scopeJson)
+    ? careEngagement.scopeJson.map((item) => String(item ?? "").trim()).filter(Boolean)
+    : [];
+  const serviceCommitments = CARE_SCOPE_OPTIONS
+    .filter((item) => careScopeIds.includes(item.id))
+    .map((item) => item.zh)
+    .slice(0, 8);
+  const latestCareActivity = careEngagement?.activities[0] ?? null;
+  const latestReport = visibleReports[0] ?? null;
+  const latestPublishedUpdate = latestCareActivity
+    ? {
+        kind: "服务动态",
+        title: latestCareActivity.title,
+        summary: compactParentProgressText(latestCareActivity.publicSummary, 180),
+        occurredAt: latestCareActivity.occurredAt.toISOString(),
+        occurredAtText: formatBusinessDateTime(latestCareActivity.occurredAt),
+      }
+    : latestReport?.publishedAt
+      ? {
+          kind: "正式报告",
+          title: latestReport.title,
+          summary: `${latestReport.periodLabel}正式进展报告已发布`,
+          occurredAt: latestReport.publishedAt.toISOString(),
+          occurredAtText: formatBusinessDateTime(latestReport.publishedAt),
+        }
+      : null;
+  const visibleRisks = (careEngagement?.riskCases ?? [])
+    .map((risk) => ({
+      id: risk.id,
+      summary: compactParentProgressText(risk.publicSummary, 180),
+      statusText: risk.status === "ACKNOWLEDGED" ? "团队已确认并处理中" : "团队正在响应",
+      updatedAtText: formatBusinessDateTime(risk.updatedAt),
+    }))
+    .filter((risk) => risk.summary);
+  const nextUpdate = careEngagement?.nextReportDueAt
+    ? {
+        label: "下次正式更新",
+        date: careEngagement.nextReportDueAt.toISOString(),
+        dateText: formatBusinessDateOnly(careEngagement.nextReportDueAt),
+        promise: "团队会在此日期前完成整理、审核并向家长发布；重大事项不会等待月报。",
+      }
+    : {
+        label: "更新承诺",
+        date: null,
+        dateText: service.cadence,
+        promise: "常规进展按约定节奏更新；重大事项确认基本事实后及时联系家长。",
+      };
   return ok({
     student: {
       id: student.id,
@@ -285,6 +344,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       nextReportDue: careEngagement?.nextReportDueAt ? formatBusinessDateOnly(careEngagement.nextReportDueAt) : null,
       publishedActivityCount: careEngagement?.activities.length ?? 0,
       publishedReportCount: visibleReports.length,
+      serviceCommitments,
+      latestPublishedUpdate,
+      nextUpdate,
+      visibleRisks,
       latestReport: visibleReports[0] ? {
         id: visibleReports[0].id,
         reportType: visibleReports[0].reportType,
@@ -293,6 +356,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
         publishedAt: visibleReports[0].publishedAt?.toISOString() ?? null,
         acknowledged: Boolean(visibleReports[0].views[0]?.acknowledgedAt),
       } : null,
+    },
+    reassurance: {
+      latest: latestPublishedUpdate,
+      next: nextStep,
+      nextUpdate,
     },
     parentActions,
     timeline: sortParentProgressTimeline([...careTimeline, ...feedbackTimeline, ...requestTimeline, ...lessonTimeline]),

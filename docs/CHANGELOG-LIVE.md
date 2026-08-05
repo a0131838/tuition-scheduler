@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-05-r313
+
+- Release ID: `2026-08-05-r313`
+- Date/Time (Asia/Singapore): `2026-08-05`
+- Deployment status: `READY`
+- Scope: complete the controlled Full Care launch contract, internal channel commission, parent authorisation, seven-item activation gate and parent reassurance dashboard.
+- Key files:
+  - `lib/student-contract-template.ts`
+  - `lib/student-contract.ts`
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `app/contract/[token]/page.tsx`
+  - `lib/care-management.ts`
+  - `app/admin/care/[id]/page.tsx`
+  - `app/api/miniapp/students/[studentId]/service-progress/route.ts`
+  - `miniapp/boss-academic-parent/pages/progress/`
+  - `docs/全程托管上线执行手册-20260805.md`
+- Risk impact (if any): Moderate and intentionally gated. New DRAFT Full Care projects cannot activate until contract, parent report access, reviewer and initial plan are present. Existing ACTIVE/PAUSED projects are not retroactively blocked. No schema migration or existing-record rewrite is included. Internal channel data is excluded from parent output.
+- Verification: 23 focused contract/care/parent tests, 135 backend tests, TypeScript, Mini Program 58-page release audit, 237-page production build, diff checks and all-page A4 document visual review passed.
+- Rollback point: `4aaaca4` (`2026-08-05-r312` final production documentation head; runtime feature commit `8aee04f`).
+
 ## 2026-08-05-r312
 
 - Release ID: `2026-08-05-r312`

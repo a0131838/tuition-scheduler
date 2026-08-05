@@ -320,6 +320,20 @@ function defaultBusinessInfoFromRow(
     fpsRequired: setup?.fpsRequired ?? false,
     fpsProvider: setup?.fpsProvider ?? null,
     fpsPolicyNumber: setup?.fpsPolicyNumber ?? null,
+    careServiceIncluded: false,
+    careProgramLabel: null,
+    tuitionFeeAmount: null,
+    careServiceFeeAmount: null,
+    careServiceStartDateIso: null,
+    careServiceEndDateIso: null,
+    careUpdateCadence: null,
+    careReportCadence: null,
+    careDeliveryChannel: null,
+    careEmergencyAdvanceLimit: null,
+    careScopeLabels: [],
+    careExclusionLabels: [],
+    careChannelName: null,
+    careChannelCommissionRate: null,
   };
 }
 
@@ -418,6 +432,9 @@ function coerceBusinessInfo(raw: unknown): ContractBusinessInfo | null {
     new Date()
   );
   if (!courseName || !packageType || !billTo || !agreementDateIso) return null;
+  const stringArray = (value: unknown) => Array.isArray(value)
+    ? value.map((item) => coerceString(item)).filter(Boolean)
+    : [];
   return {
     courseName,
     packageType,
@@ -458,6 +475,20 @@ function coerceBusinessInfo(raw: unknown): ContractBusinessInfo | null {
     fpsRequired: Boolean(row.fpsRequired),
     fpsProvider: trimOrNull(row.fpsProvider),
     fpsPolicyNumber: trimOrNull(row.fpsPolicyNumber),
+    careServiceIncluded: Boolean(row.careServiceIncluded),
+    careProgramLabel: trimOrNull(row.careProgramLabel),
+    tuitionFeeAmount: toNumberOrNull(row.tuitionFeeAmount),
+    careServiceFeeAmount: toNumberOrNull(row.careServiceFeeAmount),
+    careServiceStartDateIso: normalizeDateOnly(row.careServiceStartDateIso as string | Date | null | undefined) ?? null,
+    careServiceEndDateIso: normalizeDateOnly(row.careServiceEndDateIso as string | Date | null | undefined) ?? null,
+    careUpdateCadence: trimOrNull(row.careUpdateCadence),
+    careReportCadence: trimOrNull(row.careReportCadence),
+    careDeliveryChannel: trimOrNull(row.careDeliveryChannel),
+    careEmergencyAdvanceLimit: toNumberOrNull(row.careEmergencyAdvanceLimit),
+    careScopeLabels: stringArray(row.careScopeLabels),
+    careExclusionLabels: stringArray(row.careExclusionLabels),
+    careChannelName: trimOrNull(row.careChannelName),
+    careChannelCommissionRate: toNumberOrNull(row.careChannelCommissionRate),
   };
 }
 
@@ -1096,6 +1127,36 @@ function normalizeBusinessInfoInput(
   const feeAmountRaw = Number(input.feeAmount ?? defaults.feeAmount ?? 0);
   const feeAmount = Number.isFinite(feeAmountRaw) && feeAmountRaw > 0 ? roundMoney(feeAmountRaw) : null;
   const text = (key: keyof ContractBusinessInfo) => trimOrNull(input[key] ?? defaults[key]);
+  const careServiceIncluded = Boolean(input.careServiceIncluded ?? defaults.careServiceIncluded);
+  const numeric = (key: keyof ContractBusinessInfo) => {
+    const value = Number(input[key] ?? defaults[key] ?? 0);
+    return Number.isFinite(value) && value >= 0 ? roundMoney(value) : null;
+  };
+  const stringArray = (value: unknown, fallback: unknown) => {
+    const source = Array.isArray(value) ? value : Array.isArray(fallback) ? fallback : [];
+    return source.map((item) => coerceString(item)).filter(Boolean);
+  };
+  const careServiceStartDateIso = normalizeDateOnly(input.careServiceStartDateIso ?? defaults.careServiceStartDateIso) ?? null;
+  const careServiceEndDateIso = normalizeDateOnly(input.careServiceEndDateIso ?? defaults.careServiceEndDateIso) ?? null;
+  const tuitionFeeAmount = numeric("tuitionFeeAmount");
+  const careServiceFeeAmount = numeric("careServiceFeeAmount");
+  const careEmergencyAdvanceLimit = numeric("careEmergencyAdvanceLimit");
+  const careChannelCommissionRate = numeric("careChannelCommissionRate");
+  const careScopeLabels = stringArray(input.careScopeLabels, defaults.careScopeLabels);
+  const careExclusionLabels = stringArray(input.careExclusionLabels, defaults.careExclusionLabels);
+  if (careServiceIncluded) {
+    if (!feeAmount || !tuitionFeeAmount || !careServiceFeeAmount) {
+      throw new Error("Tuition fee, Full Care fee, and total agreement fee are required for a Full Care contract");
+    }
+    if (Math.abs(tuitionFeeAmount + careServiceFeeAmount - feeAmount) > 0.01) {
+      throw new Error("Tuition fee plus Full Care fee must equal the total agreement fee");
+    }
+    if (!careServiceStartDateIso || !careServiceEndDateIso || careServiceEndDateIso <= careServiceStartDateIso) {
+      throw new Error("Full Care service start and end dates must form a valid service period");
+    }
+    if (!careScopeLabels.length) throw new Error("Full Care service scope is missing");
+    if ((careChannelCommissionRate ?? 0) > 50) throw new Error("Channel commission rate must be between 0% and 50%");
+  }
   return {
     courseName,
     packageType,
@@ -1138,6 +1199,20 @@ function normalizeBusinessInfoInput(
     fpsRequired: Boolean(input.fpsRequired ?? defaults.fpsRequired),
     fpsProvider: text("fpsProvider"),
     fpsPolicyNumber: text("fpsPolicyNumber"),
+    careServiceIncluded,
+    careProgramLabel: careServiceIncluded ? text("careProgramLabel") : null,
+    tuitionFeeAmount: careServiceIncluded ? tuitionFeeAmount : null,
+    careServiceFeeAmount: careServiceIncluded ? careServiceFeeAmount : null,
+    careServiceStartDateIso: careServiceIncluded ? careServiceStartDateIso : null,
+    careServiceEndDateIso: careServiceIncluded ? careServiceEndDateIso : null,
+    careUpdateCadence: careServiceIncluded ? text("careUpdateCadence") : null,
+    careReportCadence: careServiceIncluded ? text("careReportCadence") : null,
+    careDeliveryChannel: careServiceIncluded ? text("careDeliveryChannel") : null,
+    careEmergencyAdvanceLimit: careServiceIncluded ? careEmergencyAdvanceLimit : null,
+    careScopeLabels: careServiceIncluded ? careScopeLabels : [],
+    careExclusionLabels: careServiceIncluded ? careExclusionLabels : [],
+    careChannelName: careServiceIncluded ? text("careChannelName") : null,
+    careChannelCommissionRate: careServiceIncluded ? careChannelCommissionRate : null,
   };
 }
 
@@ -1183,6 +1258,11 @@ export async function saveStudentContractBusinessDraft(input: {
       feeAmount: businessInfo.feeAmount,
       totalMinutes: businessInfo.totalMinutes,
       billTo: businessInfo.billTo,
+      careServiceIncluded: businessInfo.careServiceIncluded || false,
+      tuitionFeeAmount: businessInfo.tuitionFeeAmount ?? null,
+      careServiceFeeAmount: businessInfo.careServiceFeeAmount ?? null,
+      careChannelName: businessInfo.careChannelName ?? null,
+      careChannelCommissionRate: businessInfo.careChannelCommissionRate ?? null,
     },
   });
   return summarize(next);

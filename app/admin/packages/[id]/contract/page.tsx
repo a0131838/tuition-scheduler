@@ -39,6 +39,23 @@ import {
   listStudentContractInvoiceOptions,
   saveStudentContractInvoiceChoice,
 } from "@/lib/student-contract-invoice-choice";
+import { CARE_PROGRAM_OPTIONS, CARE_SCOPE_OPTIONS } from "@/lib/care-validation";
+
+const DEFAULT_CARE_EXCLUSIONS = [
+  "法定监护、24 小时现场看护 / Legal guardianship and 24-hour on-site care",
+  "医疗或心理诊断与决定 / Medical or psychological diagnosis and decisions",
+  "移民法律服务或签证结果保证 / Immigration legal advice or visa outcome guarantees",
+  "无限次现场陪同、交通、住宿及第三方费用 / Unlimited on-site support, transport, accommodation, and third-party costs",
+];
+
+function jsonStringArray(value: unknown) {
+  return Array.isArray(value) ? value.map((item) => String(item ?? "").trim()).filter(Boolean) : [];
+}
+
+function careProgramLabel(value: string | null | undefined) {
+  const option = CARE_PROGRAM_OPTIONS.find((item) => item.value === value);
+  return option ? `${option.en} / ${option.zh}` : "Full Care / 全程托管";
+}
 
 function normalizePackageBillingSource(value: string | null | undefined) {
   return String(value ?? "").trim().toLowerCase() === "receipts" ? "receipts" : "";
@@ -259,6 +276,7 @@ async function prepareContractSignAction(formData: FormData) {
   const admin = await requireAdmin();
   const packageId = String(formData.get("packageId") ?? "").trim();
   const contractId = String(formData.get("contractId") ?? "").trim();
+  const studentId = String(formData.get("studentId") ?? "").trim();
   const flowType = String(formData.get("flowType") ?? "").trim();
   const sourceWorkflow = normalizePackageBillingSource(String(formData.get("source") ?? ""));
   const receiptsBack = sanitizeReceiptsBack(String(formData.get("receiptsBack") ?? ""));
@@ -266,6 +284,22 @@ async function prepareContractSignAction(formData: FormData) {
     redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, err: "Missing contract id" }));
   }
   try {
+    const careServiceIncluded = String(formData.get("careServiceIncluded") ?? "") === "on";
+    const careEngagement = careServiceIncluded && studentId
+      ? await prisma.careEngagement.findFirst({
+          where: { studentId, status: { in: ["DRAFT", "ACTIVE", "PAUSED"] } },
+          select: { programType: true, scopeJson: true, exclusionsJson: true },
+          orderBy: { createdAt: "desc" },
+        })
+      : null;
+    if (careServiceIncluded && !careEngagement) {
+      throw new Error("Create the student's Full Care project and confirm its scope before generating the contract");
+    }
+    const scopeIds = jsonStringArray(careEngagement?.scopeJson);
+    const careScopeLabels = CARE_SCOPE_OPTIONS
+      .filter((item) => scopeIds.includes(item.id))
+      .map((item) => `${item.en} / ${item.zh}`);
+    const configuredExclusions = jsonStringArray(careEngagement?.exclusionsJson);
     await saveStudentContractBusinessDraft({
       contractId,
       actorUserId: admin.id,
@@ -275,6 +309,20 @@ async function prepareContractSignAction(formData: FormData) {
         feeAmount: Number(String(formData.get("feeAmount") ?? "").trim() || 0),
         billTo: String(formData.get("billTo") ?? "").trim(),
         agreementDateIso: String(formData.get("agreementDateIso") ?? "").trim(),
+        careServiceIncluded,
+        careProgramLabel: careServiceIncluded ? careProgramLabel(careEngagement?.programType) : null,
+        tuitionFeeAmount: Number(String(formData.get("tuitionFeeAmount") ?? "").trim() || 0),
+        careServiceFeeAmount: Number(String(formData.get("careServiceFeeAmount") ?? "").trim() || 0),
+        careServiceStartDateIso: String(formData.get("careServiceStartDateIso") ?? "").trim(),
+        careServiceEndDateIso: String(formData.get("careServiceEndDateIso") ?? "").trim(),
+        careUpdateCadence: String(formData.get("careUpdateCadence") ?? "").trim(),
+        careReportCadence: String(formData.get("careReportCadence") ?? "").trim(),
+        careDeliveryChannel: String(formData.get("careDeliveryChannel") ?? "").trim(),
+        careEmergencyAdvanceLimit: Number(String(formData.get("careEmergencyAdvanceLimit") ?? "").trim() || 0),
+        careScopeLabels,
+        careExclusionLabels: configuredExclusions.length ? configuredExclusions : DEFAULT_CARE_EXCLUSIONS,
+        careChannelName: String(formData.get("careChannelName") ?? "").trim(),
+        careChannelCommissionRate: Number(String(formData.get("careChannelCommissionRate") ?? "").trim() || 0),
       },
     });
     if (flowType === "RENEWAL") {
@@ -382,6 +430,15 @@ export default async function PackageContractPage({
 
   if (!pkg) redirect("/admin/packages?err=Package+not+found");
 
+  const [careEngagement, parentReportLinkCount] = await Promise.all([
+    prisma.careEngagement.findFirst({
+      where: { studentId: pkg.studentId, status: { in: ["DRAFT", "ACTIVE", "PAUSED"] } },
+      select: { id: true, programType: true, startDate: true, endDate: true, scopeJson: true, exclusionsJson: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.parentStudentLink.count({ where: { studentId: pkg.studentId, canViewReports: true } }),
+  ]);
+
   const usesStudentContractFlow = !isPartnerSettlementPackage(pkg.settlementMode);
   const latestContract = packageContracts.find((contract) => contract.status !== "VOID") ?? null;
   const voidContracts = packageContracts.filter((contract) => contract.status === "VOID");
@@ -400,6 +457,10 @@ export default async function PackageContractPage({
   const contractSignShare = contractSignPath ? `${baseUrl}${contractSignPath}` || contractSignPath : "";
   const contractBusinessInfo = latestContract?.businessInfo ?? null;
   const contractParentInfo = latestContract?.parentInfo ?? null;
+  const careChannelRate = Number(contractBusinessInfo?.careChannelCommissionRate ?? 0);
+  const careContractTotal = Number(contractBusinessInfo?.feeAmount ?? 0);
+  const provisionalChannelCommission = careContractTotal * careChannelRate / 100;
+  const provisionalCompanyReceipt = careContractTotal - provisionalChannelCommission;
   const latestContractInvoiceChoice =
     latestContract?.flowType === "RENEWAL"
       ? await getStudentContractInvoiceChoice(latestContract.id)
@@ -430,6 +491,15 @@ export default async function PackageContractPage({
   const contractFromParentIntake =
     Boolean(latestContract && latestParentIntakeForPackage && latestParentIntakeForPackage.contractId === latestContract.id);
   const today = new Date().toISOString().slice(0, 10);
+  const defaultCareEnd = (() => {
+    const start = new Date(`${careEngagement?.startDate?.toISOString().slice(0, 10) ?? today}T00:00:00.000Z`);
+    start.setUTCFullYear(start.getUTCFullYear() + 1);
+    return start.toISOString().slice(0, 10);
+  })();
+  const currentCareScopeIds = jsonStringArray(careEngagement?.scopeJson);
+  const currentCareScopeLabels = CARE_SCOPE_OPTIONS
+    .filter((item) => currentCareScopeIds.includes(item.id))
+    .map((item) => lang === "EN" ? item.en : lang === "ZH" ? item.zh : `${item.en} / ${item.zh}`);
   const eduTrustProfile = pkg.course.eduTrustProfile;
   const canCreateSsgContract =
     Boolean(eduTrustProfile && isEduTrustCourseContractReady(eduTrustProfile)) &&
@@ -627,6 +697,7 @@ export default async function PackageContractPage({
                     <form action={prepareContractSignAction} style={{ display: "grid", gap: 12 }}>
                       <input type="hidden" name="packageId" value={packageId} />
                       <input type="hidden" name="contractId" value={latestContract.id} />
+                      <input type="hidden" name="studentId" value={pkg.studentId} />
                       <input type="hidden" name="flowType" value={latestContract.flowType} />
                       <input type="hidden" name="source" value={sourceWorkflow} />
                       <input type="hidden" name="receiptsBack" value={receiptsBack} />
@@ -648,6 +719,79 @@ export default async function PackageContractPage({
                           <input name="agreementDateIso" type="date" defaultValue={contractBusinessInfo?.agreementDateIso ?? today} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
                         </label>
                       </div>
+                      {careEngagement || contractBusinessInfo?.careServiceIncluded ? (
+                        <div style={{ border: "1px solid #bbf7d0", borderRadius: 12, background: "#f0fdf4", padding: 14, display: "grid", gap: 12 }}>
+                          <div style={{ display: "grid", gap: 4 }}>
+                            <label style={{ display: "flex", alignItems: "flex-start", gap: 9, fontWeight: 800, color: "#166534" }}>
+                              <input name="careServiceIncluded" type="checkbox" defaultChecked={contractBusinessInfo?.careServiceIncluded ?? Boolean(careEngagement)} />
+                              <span>{t(lang, "Include the signed Full Care Service Addendum", "加入并签署《全程托管服务附件》")}</span>
+                            </label>
+                            <div style={{ color: "#166534", fontSize: 13, lineHeight: 1.55 }}>
+                              {t(lang, "The parent will review and sign the tuition agreement and Full Care scope together. Channel commission stays internal and is not printed in the parent agreement.", "家长会一次性审阅并签署学费协议和全托管范围；渠道佣金只供内部核算，不会打印在家长合同里。")}
+                            </div>
+                          </div>
+
+                          <div style={{ borderTop: "1px solid #bbf7d0", paddingTop: 12, display: "grid", gap: 8 }}>
+                            <div style={{ fontWeight: 800 }}>{careProgramLabel(careEngagement?.programType)}</div>
+                            <div style={{ color: "#475569", fontSize: 13 }}>{t(lang, "Signed scope snapshot", "签署时冻结的服务范围")}</div>
+                            <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+                              {currentCareScopeLabels.length ? currentCareScopeLabels.map((label) => (
+                                <span key={label} style={{ border: "1px solid #86efac", background: "#fff", color: "#166534", borderRadius: 999, padding: "5px 9px", fontSize: 12, fontWeight: 700 }}>{label}</span>
+                              )) : <span style={{ color: "#b45309", fontSize: 13 }}>{t(lang, "Complete the project scope before generating the sign link.", "请先在全托管项目中完成服务范围，再生成签字链接。")}</span>}
+                            </div>
+                          </div>
+
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 10 }}>
+                            <label style={{ display: "grid", gap: 6 }}>
+                              <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Tuition component / 补习课时费", "Tuition component / 补习课时费")}</span>
+                              <input name="tuitionFeeAmount" type="number" min={0} step="0.01" defaultValue={contractBusinessInfo?.tuitionFeeAmount ?? ""} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #86efac" }} />
+                            </label>
+                            <label style={{ display: "grid", gap: 6 }}>
+                              <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Full Care component / 托管服务费", "Full Care component / 托管服务费")}</span>
+                              <input name="careServiceFeeAmount" type="number" min={0} step="0.01" defaultValue={contractBusinessInfo?.careServiceFeeAmount ?? (careEngagement?.programType === "PRE_U_FULL_COORDINATION" ? 19600 : 12800)} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #86efac" }} />
+                            </label>
+                            <label style={{ display: "grid", gap: 6 }}>
+                              <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Service start / 服务开始", "Service start / 服务开始")}</span>
+                              <input name="careServiceStartDateIso" type="date" defaultValue={contractBusinessInfo?.careServiceStartDateIso ?? careEngagement?.startDate?.toISOString().slice(0, 10) ?? today} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #86efac" }} />
+                            </label>
+                            <label style={{ display: "grid", gap: 6 }}>
+                              <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Service end / 服务结束", "Service end / 服务结束")}</span>
+                              <input name="careServiceEndDateIso" type="date" defaultValue={contractBusinessInfo?.careServiceEndDateIso ?? careEngagement?.endDate?.toISOString().slice(0, 10) ?? defaultCareEnd} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #86efac" }} />
+                            </label>
+                            <label style={{ display: "grid", gap: 6 }}>
+                              <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Routine update cadence", "常规更新节奏")}</span>
+                              <input name="careUpdateCadence" defaultValue={contractBusinessInfo?.careUpdateCadence ?? "Weekly service review / 每周服务复核"} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #86efac" }} />
+                            </label>
+                            <label style={{ display: "grid", gap: 6 }}>
+                              <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Formal report cadence", "正式报告节奏")}</span>
+                              <input name="careReportCadence" defaultValue={contractBusinessInfo?.careReportCadence ?? "Monthly formal report / 每月正式报告"} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #86efac" }} />
+                            </label>
+                            <label style={{ display: "grid", gap: 6 }}>
+                              <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Parent delivery channel", "家长交付渠道")}</span>
+                              <input name="careDeliveryChannel" defaultValue={contractBusinessInfo?.careDeliveryChannel ?? "Parent miniapp and designated company WeChat / 家长小程序及公司指定微信"} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #86efac" }} />
+                            </label>
+                            <label style={{ display: "grid", gap: 6 }}>
+                              <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Emergency advance ceiling", "紧急代垫上限")}</span>
+                              <input name="careEmergencyAdvanceLimit" type="number" min={0} step="0.01" defaultValue={contractBusinessInfo?.careEmergencyAdvanceLimit ?? 300} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #86efac" }} />
+                            </label>
+                          </div>
+
+                          <div style={{ borderTop: "1px solid #bbf7d0", paddingTop: 12, display: "grid", gap: 10 }}>
+                            <div style={{ fontWeight: 800, color: "#0f172a" }}>{t(lang, "Internal channel accounting — not shown to parent", "内部渠道核算——不向家长展示")}</div>
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 10 }}>
+                              <label style={{ display: "grid", gap: 6 }}>
+                                <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Channel name", "渠道名称")}</span>
+                                <input name="careChannelName" defaultValue={contractBusinessInfo?.careChannelName ?? ""} placeholder={t(lang, "Leave blank for direct sale", "直营订单留空")} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
+                              </label>
+                              <label style={{ display: "grid", gap: 6 }}>
+                                <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Commission rate (%)", "佣金比例（%）")}</span>
+                                <input name="careChannelCommissionRate" type="number" min={0} max={50} step="0.01" defaultValue={contractBusinessInfo?.careChannelCommissionRate ?? 0} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
+                              </label>
+                            </div>
+                            <div style={{ color: "#64748b", fontSize: 12 }}>{t(lang, "Commission is settled only on actual collected service revenue under the signed channel agreement; refunds, taxes, advances, and third-party costs are excluded.", "佣金只按渠道协议约定的实际到账服务款结算；退款、税费、代垫和第三方费用不计佣。")}</div>
+                          </div>
+                        </div>
+                      ) : null}
                       {latestContract.flowType === "RENEWAL" ? (
                         <div style={{ border: "1px solid #fed7aa", borderRadius: 12, background: "#fff7ed", padding: 12, display: "grid", gap: 10 }}>
                           <div style={{ display: "grid", gap: 4 }}>
@@ -767,6 +911,35 @@ export default async function PackageContractPage({
                           </button>
                         </form>
                       ) : null}
+                    </div>
+                    {contractBusinessInfo?.careServiceIncluded ? (
+                      <div style={{ borderTop: "1px solid #86efac", paddingTop: 10, display: "grid", gap: 8 }}>
+                        <strong>{t(lang, "Required handover after signature", "签约后的必做交接")}</strong>
+                        <div style={{ color: "#166534", fontSize: 13 }}>
+                          {parentReportLinkCount > 0
+                            ? t(lang, "Parent report access is bound. Continue to the care project and complete the launch gate.", "家长报告权限已绑定，请进入全托管项目完成启动门槛。")
+                            : t(lang, "Parent report access is not bound yet. Generate the parent invite before activating the care project.", "家长报告权限尚未绑定；启用全托管项目之前，请先生成家长邀请并完成绑定。")}
+                        </div>
+                        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                          <a href={`/admin/students/${encodeURIComponent(pkg.studentId)}#parent-portal`}>{t(lang, "Parent binding", "家长绑定")}</a>
+                          {careEngagement ? <a href={`/admin/care/${encodeURIComponent(careEngagement.id)}`}>{t(lang, "Open launch gate", "打开启动门槛")}</a> : null}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {contractBusinessInfo?.careServiceIncluded && careChannelRate > 0 ? (
+                  <div style={{ border: "1px solid #fde68a", borderRadius: 12, background: "#fffbeb", padding: 14, display: "grid", gap: 8 }}>
+                    <div style={{ fontWeight: 800, color: "#92400e" }}>{t(lang, "Internal channel settlement preview", "内部渠道结算预览")}</div>
+                    <div style={{ display: "flex", gap: 16, flexWrap: "wrap", color: "#92400e", fontSize: 13 }}>
+                      <span>{t(lang, "Channel", "渠道")}: {contractBusinessInfo.careChannelName || "-"}</span>
+                      <span>{t(lang, "Rate", "比例")}: {careChannelRate.toFixed(2)}%</span>
+                      <span>{t(lang, "Provisional commission", "暂估佣金")}: S${provisionalChannelCommission.toFixed(2)}</span>
+                      <span>{t(lang, "Provisional company receipt", "暂估公司留存")}: S${provisionalCompanyReceipt.toFixed(2)}</span>
+                    </div>
+                    <div style={{ color: "#92400e", fontSize: 12 }}>
+                      {t(lang, "This is a maximum preview based on the contract total. Finance settles only eligible net service revenue actually received after tax, refund, chargeback, advance and third-party-cost exclusions under the signed channel agreement.", "这是按合同总额计算的上限预览。财务最终只按渠道协议核准的实际到账合格服务净收入结算，并扣除税费、退款、拒付、代垫及第三方费用。")}
                     </div>
                   </div>
                 ) : null}

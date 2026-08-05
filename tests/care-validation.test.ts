@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   CARE_SCOPE_OPTIONS,
   assertCareActivation,
+  assertCareLaunchReadiness,
   assertCareActivity,
   assertCareStatusTransition,
   assertCareTaskUpdate,
@@ -54,6 +55,24 @@ test("activation requires date, scope and active case owner", () => {
   assert.doesNotThrow(() =>
     assertCareActivation({ startDate: new Date(), caseOwnerUserId: "u1", scopeIds: ["academic_management"], hasActiveCaseOwner: true }),
   );
+});
+
+test("new Full Care activation requires signed agreement, parent access, reviewer and initial plan", () => {
+  assert.throws(
+    () => assertCareLaunchReadiness({
+      hasSignedCareContract: false,
+      hasParentReportAccess: false,
+      hasReviewer: true,
+      hasInitialPlan: false,
+    }),
+    /signed Full Care agreement.*parent miniapp binding.*initial service plan/,
+  );
+  assert.doesNotThrow(() => assertCareLaunchReadiness({
+    hasSignedCareContract: true,
+    hasParentReportAccess: true,
+    hasReviewer: true,
+    hasInitialPlan: true,
+  }));
 });
 
 test("engagement status machine blocks reopening closed projects", () => {

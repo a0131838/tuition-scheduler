@@ -37,10 +37,21 @@
 - Current release line prepared: `2026-08-04-r310` reduces routine next-month coordination with previous-month carry-forward suggestions, one family decision, prioritized time windows, sibling conflict protection, consolidated communication tasks, and an exception-only Academic queue across Web and Mini Program.
 - Current release line prepared: `2026-08-04-r311` separates exact-source New Oriental students from the combined Boss-and-other next-month scheduling queue on the Web and Staff Mini Program without changing parent or formal scheduling behavior.
 - Current release line: `2026-08-05-r312` is live at runtime feature commit `8aee04fdc1f2334daf0e79cb3a855882cf4ce919`; WeChat development version `1.0.24` was uploaded successfully. It adds the invitation-only 30–45 minute school-entry readiness pilot without changing the existing intelligent-selection, school directory or operational workflows.
+- Current release line prepared: `2026-08-05-r313` adds the signed Full Care appendix, internal channel settlement snapshot, parent authorisation materials, seven-item activation gate and parent reassurance dashboard for a 3–5-family controlled launch.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-05-r313 Ready
+
+- Parent contract: the ordinary tuition agreement can include a bilingual Full Care appendix with frozen scope, exclusions, fee split, period, cadence, delivery, emergency and consent boundaries.
+- Internal channel control: channel name/rate stay staff-only; the workbench shows a provisional 15% preview while formal settlement follows actual eligible receipts, refund/clawback and third-party exclusions.
+- Launch gate: a new DRAFT project needs the signed Full Care agreement, parent report access, start date, scope, owner, reviewer and initial plan before ACTIVE.
+- Parent reassurance: the Parent Mini Program answers current situation, latest reviewed action, next action and next update; only published parent-audience records and verified parent-visible risks are selected.
+- Documents: A4 bilingual channel agreement and parent authorisation form plus a complete launch execution handbook are included.
+- Safety: no database migration, no production data seeding, no automatic message sending and no retroactive activation block for existing projects.
+- Task doc: `docs/tasks/TASK-20260805-full-care-contract-parent-reassurance.md`.
 
 ## 2026-08-04-r310 Ready
 

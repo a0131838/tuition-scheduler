@@ -13,12 +13,70 @@
   </view>
 
   <block wx:else>
-    <view class="status-band tone-{{parentStatus.tone}}">
+    <view class="reassurance-panel" wx:if="{{care.active}}">
+      <view class="reassurance-head">
+        <view>
+          <view class="eyebrow">家长安心看板</view>
+          <view class="reassurance-title">孩子的情况，我们持续跟进</view>
+        </view>
+        <view class="reassurance-owner">负责人 {{responsiblePerson}}</view>
+      </view>
+      <view class="reassurance-grid">
+        <view class="reassurance-card tone-{{parentStatus.tone}}">
+          <view class="question-label">孩子现在怎么样？</view>
+          <view class="answer-title">{{parentStatus.label}}</view>
+          <view class="answer-copy">{{parentStatus.summary}}</view>
+        </view>
+        <view class="reassurance-card">
+          <view class="question-label">我们最近做了什么？</view>
+          <block wx:if="{{reassurance.latest}}">
+            <view class="answer-title">{{reassurance.latest.title}}</view>
+            <view class="answer-copy">{{reassurance.latest.summary}}</view>
+            <view class="answer-meta">{{reassurance.latest.occurredAtText}}</view>
+          </block>
+          <view class="answer-copy" wx:else>首条正式服务动态经审核后会显示在这里。</view>
+        </view>
+        <view class="reassurance-card">
+          <view class="question-label">接下来做什么？</view>
+          <view class="answer-title">{{nextStep.label}}</view>
+          <view class="answer-copy">{{nextStep.text}}</view>
+          <view class="answer-meta" wx:if="{{nextStep.dueText}}">计划日期 {{nextStep.dueText}}</view>
+        </view>
+        <view class="reassurance-card update-card">
+          <view class="question-label">下次什么时候更新？</view>
+          <view class="answer-title">{{care.nextUpdate.dateText}}</view>
+          <view class="answer-copy">{{care.nextUpdate.promise}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="status-band tone-{{parentStatus.tone}}" wx:else>
       <view class="status-copy">
         <view class="label">当前状态</view>
         <view class="status-title">{{parentStatus.label}}</view>
         <view class="status-summary">{{parentStatus.summary}}</view>
       </view>
+    </view>
+
+    <view class="commitment-band" wx:if="{{care.active && care.serviceCommitments.length}}">
+      <view class="label">我们正在负责的事项</view>
+      <view class="commitment-list">
+        <view class="commitment-chip" wx:for="{{care.serviceCommitments}}" wx:key="*this">{{item}}</view>
+      </view>
+      <view class="commitment-note">这里只显示合同范围内、适合向家长公开的服务承诺。</view>
+    </view>
+
+    <view class="visible-risk-band" wx:if="{{care.active && care.visibleRisks.length}}">
+      <view class="visible-risk-head">
+        <view class="section-title">正在重点处理</view>
+        <view class="risk-badge">{{care.visibleRisks.length}} 项</view>
+      </view>
+      <view class="visible-risk-row" wx:for="{{care.visibleRisks}}" wx:key="id">
+        <view class="visible-risk-status">{{item.statusText}}</view>
+        <view class="visible-risk-summary">{{item.summary}}</view>
+        <view class="answer-meta">最近更新 {{item.updatedAtText}}</view>
+      </view>
+      <view class="visible-risk-note">团队只展示已经核实并适合向家长公开的风险信息；重大事项会主动联系，不会等待月报。</view>
     </view>
 
     <view class="service-band">

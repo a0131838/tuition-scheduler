@@ -78,6 +78,44 @@ test("student contract snapshots default to the existing tuition agreement mode"
   assert.equal(snapshot.templateSlug, STUDENT_CONTRACT_TEMPLATE_SLUG);
 });
 
+test("tuition agreement can freeze a parent-facing Full Care addendum without exposing channel commission", () => {
+  const { snapshot } = buildStudentContractSnapshot({
+    studentId: "student-care",
+    studentName: "Student Care",
+    packageId: "package-care",
+    businessInfo: {
+      ...businessInfo,
+      feeAmount: 40800,
+      totalMinutes: 12000,
+      careServiceIncluded: true,
+      careProgramLabel: "Pre-university academic care / 大学前学业托管",
+      tuitionFeeAmount: 28760,
+      careServiceFeeAmount: 12040,
+      careServiceStartDateIso: "2026-08-10",
+      careServiceEndDateIso: "2027-08-09",
+      careUpdateCadence: "Weekly service review / 每周服务复核",
+      careReportCadence: "Monthly formal report / 每月正式报告",
+      careDeliveryChannel: "Parent miniapp / 家长小程序",
+      careEmergencyAdvanceLimit: 300,
+      careScopeLabels: ["School communication / 学校沟通", "Academic progress / 学业进展"],
+      careExclusionLabels: ["Legal guardianship / 法定监护"],
+      careChannelName: "Channel Secret",
+      careChannelCommissionRate: 15,
+    },
+    parentInfo,
+  });
+
+  assert.equal(snapshot.care?.included, true);
+  assert.equal(snapshot.care?.careServiceFeeAmount, 12040);
+  assert.match(snapshot.agreementHtml, /Full Care Service Addendum/);
+  assert.match(snapshot.agreementHtml, /家长可见范围/);
+  assert.match(snapshot.agreementHtml, /School communication/);
+  assert.match(snapshot.agreementHtml, /SGD 12040\.00/);
+  assert.match(snapshot.agreementHtml, /SGD 300\.00/);
+  assert.doesNotMatch(snapshot.agreementHtml, /Channel Secret/);
+  assert.doesNotMatch(snapshot.agreementHtml, /15%/);
+});
+
 test("student contract snapshots can use the SSG standard PEI contract mode", () => {
   const { snapshot } = buildStudentContractSnapshot({
     studentId: "student-1",
