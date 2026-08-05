@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-08-05-r312`
 - Date/Time (Asia/Singapore): `2026-08-05`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: add an invitation-only 30–45 minute school-entry readiness pilot to the existing Singapore School Guide, including one-use assessment codes, age/path form allocation, saved answers, objective scoring, teacher review, internal reports, operation logs, and parent/staff Mini Program entry points.
 - Key files:
   - `lib/school-guide-academic-assessment.ts`
@@ -33,7 +33,7 @@ This file is the single source of truth for what changed in production.
   - `miniapp/boss-academic-parent/pages/staff-assessments/`
   - `miniapp/boss-academic-parent/pages/staff-assessment-detail/`
 - Risk impact (if any): Moderate and isolated to a new controlled pilot. The migration is additive; the existing school directory, intelligent selection, consultation ownership, lessons, scheduling, attendance, packages, balances, finance, payroll, tickets and parent accounts are unchanged. Results are internal readiness observations, not official school, MOE or AEIS scores and not admission predictions.
-- Verification: Prisma validation/generation, assessment and school-guide tests, complete page-to-training-flow coverage, full backend tests, Mini Program syntax/release audit, `git diff --check`, and production build before guarded deployment.
+- Verification: Prisma validation/generation, 12 focused assessment tests, all 135 backend tests, complete page-to-training-flow coverage, 61-page Mini Program audit, JavaScript/app.json checks, `git diff --check`, and the 240-page production build passed. Runtime feature commit `8aee04fdc1f2334daf0e79cb3a855882cf4ce919` aligned on GitHub and server with PM2 PID `1130086` and `/admin/login` HTTP 200. The public catalog returned 43 schools; invalid assessment code returned a controlled 409 and anonymous staff access returned 401. WeChat development version `1.0.24` uploaded successfully at 673,220 bytes; formal review submission and physical-device pilot acceptance remain separate.
 - Rollback point: `1392ae6b06b1a364aea6571d1bf9ff30bb5d92a5` (`2026-08-04-r311` production baseline).
 
 ## 2026-08-04-r311

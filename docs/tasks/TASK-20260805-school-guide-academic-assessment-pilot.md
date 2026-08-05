@@ -38,7 +38,7 @@
 ## 6) Verification
 
 - Build: the latest-production integration passed `npm run build`; 240 application routes/pages were generated and the five new API routes were included.
-- Runtime: guarded release preflight passed against production baseline `1392ae6`; production runtime verification remains the deployment gate, and the native experience-version upload remains separate.
+- Runtime: guarded release completed at feature commit `8aee04fdc1f2334daf0e79cb3a855882cf4ce919`; local/GitHub/server were aligned, PM2 PID `1130086` was online with zero restarts, `/admin/login` returned 200, catalog returned 43 schools, invalid code returned controlled 409 and anonymous staff access returned 401.
 - Key checks: Prisma validation/generation passed; 15 forms/504 assignments/279 questions/132 path assignments converted; 12 focused tests and all 135 backend tests passed; the 61-page Mini Program audit passed; all single-choice items expose options; student DTOs exclude answers/explanations; Mini Program JavaScript syntax, app.json parsing and `git diff --check` passed.
 
 ## 7) Risks / Follow-up
@@ -49,5 +49,5 @@
 ## 8) Release Record
 
 - Release ID: `2026-08-05-r312`
-- Deploy time: Pending guarded deployment.
+- Deploy time: 2026-08-05 (Asia/Singapore); WeChat development version `1.0.24` uploaded successfully at 673,220 bytes. It has not been submitted for formal review.
 - Rollback command/point: revert the r312 commit and deploy the previous runtime; pre-release production point is `1392ae6b06b1a364aea6571d1bf9ff30bb5d92a5`.
