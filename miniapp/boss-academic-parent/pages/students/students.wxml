@@ -8,7 +8,7 @@
   <view class="menu-section">
     <view class="menu-row" bindtap="goFinance"><view><view class="menu-title">课包、财务与合同</view><view class="menu-note">剩余课时、发票、收据和已签合同</view></view><view class="menu-arrow">›</view></view>
     <view class="menu-row" bindtap="goRequests"><view><view class="menu-title">服务请求</view><view class="menu-note">查看处理进度和历史记录</view></view><view class="menu-arrow">›</view></view>
-    <view class="menu-row" wx:if="{{currentStudent.servicePlanType !== 'STANDARD_COURSE'}}" bindtap="goReports"><view><view class="menu-title">正式报告</view><view class="menu-note">查看已审核发布的阶段报告</view></view><view class="menu-arrow">›</view></view>
+    <view class="menu-row" wx:if="{{currentStudent.fullCareActive || currentStudent.servicePlanType !== 'STANDARD_COURSE'}}" bindtap="goReports"><view><view class="menu-title">正式报告</view><view class="menu-note">查看已审核发布的阶段报告</view></view><view class="menu-arrow">›</view></view>
     <view class="menu-row" bindtap="goReminders"><view><view class="menu-title">微信提醒设置</view><view class="menu-note">课程、反馈、请求和财务提醒</view></view><view class="menu-arrow">›</view></view>
   </view>
 

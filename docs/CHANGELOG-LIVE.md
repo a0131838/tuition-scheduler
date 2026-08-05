@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-05-r329
+
+- Release ID: `2026-08-05-r329`
+- Date/Time (Asia/Singapore): `2026-08-05`
+- Deployment status: `READY`
+- Scope: make active Full Care engagement the authoritative parent-facing service label even when the legacy student service-plan field is empty.
+- Key files:
+  - `app/api/miniapp/students/route.ts`
+  - `miniapp/boss-academic-parent/pages/home/home.js`
+  - `miniapp/boss-academic-parent/pages/home/home.wxml`
+  - `miniapp/boss-academic-parent/pages/students/students.wxml`
+  - `tests/miniapp-parent-information-architecture.test.ts`
+  - `docs/tasks/TASK-20260805-parent-full-care-label-source.md`
+- Risk impact (if any): Low. Read-only presentation correction; no student classification, care project, contract or finance data is changed.
+- Verification: focused parent tests, TypeScript validation, mini-program release audit, production build and live `赵测试 2` API check.
+- Rollback point: `27332657b6b24a7977ece0756ea65b095fd1af82` (`2026-08-05-r328` production head).
+
+---
+
 ## 2026-08-05-r328
 
 - Release ID: `2026-08-05-r328`

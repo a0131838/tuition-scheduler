@@ -53,10 +53,22 @@
 - Current release line prepared: `2026-08-05-r326` completes the Full Care mobile navigation and compact-badge polish without changing data or workflow logic.
 - Current release line prepared: `2026-08-05-r327` separates ordinary tuition contracts from Full Care agreements at the workspace, history and draft-creation layers, without rewriting existing contract or finance records.
 - Current release line prepared: `2026-08-05-r328` gives parents a four-destination mini-program structure, one stable child dashboard, separate progress/report/entitlement views, and a protected account area for finance, contracts and reminders.
+- Current release line prepared: `2026-08-05-r329` makes the active Full Care project authoritative for the parent-facing service label, correcting legacy-null students such as `赵测试 2` without rewriting their classification.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-05-r329 Ready
+
+- Scope: correct the parent-facing service label for students with an active Full Care engagement and an empty legacy service-plan field.
+- Business impact:
+  - `赵测试 2` displays `全程学业托管（家人陪读）` on Home and My;
+  - the formal-report entry remains available from the active engagement;
+  - ordinary students without an active engagement keep ordinary-course wording.
+- Verification before deploy: focused parent tests, TypeScript, release audit and production build.
+- Post-deploy verification: inspect the live `赵测试 2` dashboard and student-list payload, then repeat the WeChat Developer Tools journey.
+- Task doc: `docs/tasks/TASK-20260805-parent-full-care-label-source.md`.
 
 ## 2026-08-05-r328 Ready
 

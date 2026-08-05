@@ -39,10 +39,14 @@ test("progress separates updates, reports and entitlements without leaking Full 
 
 test("account centre contains low-frequency parent services and reminder settings", () => {
   const page = readMiniapp("pages/students/students.wxml");
+  const route = read("app/api/miniapp/students/route.ts");
   assert.match(page, /课包、财务与合同/);
   assert.match(page, /服务请求/);
   assert.match(page, /微信提醒设置/);
   assert.match(page, /切换孩子/);
+  assert.match(page, /currentStudent\.fullCareActive/);
+  assert.match(route, /careEngagements/);
+  assert.match(route, /FULL_CARE_PROGRAMS/);
 });
 
 test("dashboard aggregates parent data, records freshness and keeps loading stable", () => {

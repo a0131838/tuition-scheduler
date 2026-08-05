@@ -3,7 +3,7 @@
     <view class="student-copy">
       <view class="eyebrow">博思学业管家</view>
       <view class="student-name">{{student.name || "当前学生"}}</view>
-      <view class="student-meta">{{student.school || "学校未填写"}} · {{student.grade || "年级未填写"}} · {{student.servicePlanLabel || "普通课程"}}</view>
+      <view class="student-meta">{{student.school || "学校未填写"}} · {{student.grade || "年级未填写"}} · {{student.displayServicePlanLabel || student.servicePlanLabel || "普通课程"}}</view>
     </view>
     <button class="student-switch" bindtap="goStudents">切换</button>
   </view>

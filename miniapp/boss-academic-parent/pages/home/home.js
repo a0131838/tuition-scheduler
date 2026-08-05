@@ -64,7 +64,9 @@ Page({
         const permissions = home.permissions || progress.permissions || {};
         const care = progress.care || {};
         this.setData({
-          student: home.student || progress.student || {},
+          student: Object.assign({}, home.student || progress.student || {}, {
+            displayServicePlanLabel: care.active ? (care.programLabel || "全程托管") : ((home.student || progress.student || {}).servicePlanLabel || "普通课程")
+          }),
           permissions,
           summary: progress.summary || {},
           care,
