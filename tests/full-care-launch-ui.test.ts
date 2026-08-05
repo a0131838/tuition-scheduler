@@ -72,3 +72,12 @@ test("Full Care signing requires service boundaries and compliance evidence", ()
   assert.match(contract, /StudentContractMode\.FULL_CARE_AGREEMENT/);
   assert.match(contract, /legal\/tax\/PDPA approval reference/);
 });
+
+test("Full Care mobile navigation and compact badges do not clip or wrap", () => {
+  const css = read("app/admin/care/care.module.css");
+
+  assert.match(css, /\.moduleNav a \{[\s\S]*flex: 0 0 auto/);
+  assert.match(css, /scroll-snap-type: x proximity/);
+  assert.match(css, /\.badge \{[\s\S]*white-space: nowrap/);
+  assert.doesNotMatch(css, /\.moduleNav \{\s*margin-right: -10px/);
+});

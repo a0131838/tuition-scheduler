@@ -50,10 +50,18 @@
 - Current release line prepared: `2026-08-05-r323` completes the parent signed-service receipt, employee entitlement overview, explicit state-change safety, quality-desk filtering, expiring public contract access and audited legacy-contract review for 赵测试2.
 - Current release line prepared: `2026-08-05-r324` prevents a deleted invoice draft's pending approval from blocking the replacement invoice created by the signed contract, while preserving approval history and all issued financial records.
 - Current release line prepared: `2026-08-05-r325` gives Full Care its own contract mode, gates signing on explicit service/refund/compliance terms, adds launch-gap and renewal queues, flags sparse monthly-report evidence and records employee service minutes.
+- Current release line prepared: `2026-08-05-r326` completes the Full Care mobile navigation and compact-badge polish without changing data or workflow logic.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-05-r326 Ready
+
+- Scope: ensure Full Care navigation tabs remain reachable on narrow screens and SLA/status badges remain horizontal.
+- Risk: low, CSS-only.
+- Verification: production build and post-deploy HTTP health check.
+- Task doc: `docs/tasks/TASK-20260805-full-care-mobile-navigation-polish.md`.
 
 ## 2026-08-05-r325 Ready
 

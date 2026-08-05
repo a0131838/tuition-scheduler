@@ -15,6 +15,21 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-05-r326
+
+- Release ID: `2026-08-05-r326`
+- Date/Time (Asia/Singapore): `2026-08-05`
+- Deployment status: `READY`
+- Scope: finish the Full Care mobile UI pass by keeping navigation tabs fully scrollable and preventing compact SLA/status badges from wrapping vertically.
+- Key files:
+  - `app/admin/care/care.module.css`
+  - `docs/tasks/TASK-20260805-full-care-mobile-navigation-polish.md`
+- Risk impact (if any): Low, CSS-only and limited to Full Care pages.
+- Verification: production build and mobile-width source regression check.
+- Rollback point: `164ec43ffcaf45e2874ae7cc5ba80fb00808bec5` (`2026-08-05-r325` production head).
+
+---
+
 ## 2026-08-05-r325
 
 - Release ID: `2026-08-05-r325`
