@@ -54,6 +54,17 @@ function nextStatuses(status: CareEngagementStatus): CareEngagementStatus[] {
   return [];
 }
 
+function engagementStatusLabel(lang: string, status: CareEngagementStatus) {
+  const labels: Record<CareEngagementStatus, [string, string]> = {
+    DRAFT: ["Draft", "草稿"],
+    ACTIVE: ["Active", "服务中"],
+    PAUSED: ["Paused", "已暂停"],
+    COMPLETED: ["Completed", "已完成"],
+    CANCELLED: ["Cancelled", "已取消"],
+  };
+  return lang === "EN" ? labels[status][0] : lang === "ZH" ? labels[status][1] : `${labels[status][0]} / ${labels[status][1]}`;
+}
+
 function jsonList(value: unknown, field: string) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return [];
   const raw = (value as Record<string, unknown>)[field];
@@ -280,7 +291,7 @@ export default async function CareDetailPage({
     );
   }
 
-  const [engagement, configurableStaff] = await Promise.all([prisma.careEngagement.findUnique({
+  const [engagement, configurableStaff, legacyContractReview] = await Promise.all([prisma.careEngagement.findUnique({
       where: { id },
       include: {
         student: {
@@ -292,7 +303,13 @@ export default async function CareDetailPage({
             parentLinks: { where: { canViewReports: true }, select: { id: true }, take: 1 },
             contracts: {
               where: { status: { in: ["SIGNED", "INVOICE_CREATED"] } },
-              select: { id: true, packageId: true, status: true, businessInfoJson: true },
+              select: {
+                id: true,
+                packageId: true,
+                status: true,
+                businessInfoJson: true,
+                package: { select: { totalMinutes: true, remainingMinutes: true, validFrom: true, validTo: true } },
+              },
               orderBy: { createdAt: "desc" },
               take: 20,
             },
@@ -341,7 +358,15 @@ export default async function CareDetailPage({
       where: { role: { in: ["ADMIN", "CS", "TEACHER"] } },
       select: { id: true, name: true, email: true, role: true },
       orderBy: [{ name: "asc" }, { email: "asc" }],
-    }) : []]);
+    }) : [], prisma.auditLog.findFirst({
+      where: {
+        action: "LEGACY_FULL_CARE_CONTRACT_REVIEWED",
+        entityType: "CareEngagement",
+        entityId: id,
+      },
+      orderBy: { createdAt: "desc" },
+      select: { meta: true, actorName: true, actorEmail: true, createdAt: true },
+    })]);
   if (!engagement) notFound();
 
   const staff = Array.from(
@@ -372,12 +397,28 @@ export default async function CareDetailPage({
     const info = contract.businessInfoJson as Record<string, unknown>;
     return info.careEngagementId === engagement.id && info.careProgramType === engagement.programType;
   });
+  const reviewedLegacyContractId = legacyContractReview?.meta && typeof legacyContractReview.meta === "object" && !Array.isArray(legacyContractReview.meta)
+    ? String((legacyContractReview.meta as Record<string, unknown>).contractId ?? "")
+    : "";
+  const reviewedLegacyContract = !signedCareContract && engagement.status !== "DRAFT"
+    ? engagement.student.contracts.find((contract) => contract.id === reviewedLegacyContractId && careServiceIncluded(contract.businessInfoJson))
+    : undefined;
+  const serviceContract = signedCareContract ?? reviewedLegacyContract;
+  const legacyReviewApplied = Boolean(reviewedLegacyContract);
+  const contractedMinutes = serviceContract?.package.totalMinutes ?? 0;
+  const remainingMinutes = serviceContract?.package.remainingMinutes ?? 0;
+  const usedMinutes = Math.max(0, contractedMinutes - remainingMinutes);
+  const daysRemaining = engagement.endDate
+    ? Math.max(0, Math.ceil((engagement.endDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
+    : null;
   const launchChecks = [
     {
-      label: t(lang, "Full Care agreement signed", "全托管协议已签署"),
-      done: Boolean(signedCareContract),
-      href: signedCareContract ? `/admin/packages/${encodeURIComponent(signedCareContract.packageId)}/contract` : undefined,
-      action: signedCareContract ? t(lang, "View contract", "查看合同") : t(lang, "Complete from the student's package", "请从学生课包完成签约"),
+      label: legacyReviewApplied
+        ? t(lang, "Legacy Full Care agreement reviewed", "旧版全托管合同已复核")
+        : t(lang, "Full Care agreement signed", "全托管协议已签署"),
+      done: Boolean(serviceContract),
+      href: serviceContract ? `/admin/packages/${encodeURIComponent(serviceContract.packageId)}/contract` : undefined,
+      action: serviceContract ? t(lang, "View contract", "查看合同") : t(lang, "Complete from the student's package", "请从学生课包完成签约"),
     },
     {
       label: t(lang, "Parent miniapp bound with report access", "家长小程序已绑定并可看报告"),
@@ -403,12 +444,13 @@ export default async function CareDetailPage({
           <div className={styles.muted}>{engagement.student.school ?? "-"} · {engagement.student.grade ?? "-"} · {program ? (lang === "EN" ? program.en : program.zh) : engagement.programType}</div>
         </div>
         <div className={styles.headerActions}>
-          <span className={styles.badge} data-tone={engagement.status === "ACTIVE" ? "active" : engagement.status === "CANCELLED" ? "risk" : "neutral"}>{engagement.status}</span>
+          <span className={styles.badge} data-tone={engagement.status === "ACTIVE" ? "active" : engagement.status === "CANCELLED" ? "risk" : "neutral"}>{engagementStatusLabel(lang, engagement.status)}</span>
           {nextStatuses(engagement.status).length ? (
             <form action={statusAction} className={styles.inlineForm}>
               <input type="hidden" name="version" value={engagement.version} />
-              <select className={styles.select} style={{ width: "auto" }} name="nextStatus" defaultValue={nextStatuses(engagement.status)[0]}>
-                {nextStatuses(engagement.status).map((status) => <option value={status} key={status}>{status}</option>)}
+              <select className={styles.select} style={{ width: "auto" }} name="nextStatus" defaultValue="" required>
+                <option value="" disabled>{t(lang, "Select a status change", "请选择状态变更")}</option>
+                {nextStatuses(engagement.status).map((status) => <option value={status} key={status}>{engagementStatusLabel(lang, status)}</option>)}
               </select>
               <button className={styles.buttonSecondary} type="submit">{t(lang, "Update status", "更新状态")}</button>
             </form>
@@ -434,6 +476,22 @@ export default async function CareDetailPage({
         <div className={styles.metric}><strong>{activeAttachments.length}</strong><span className={styles.muted}>{t(lang, "Evidence", "证据文件")}</span></div>
         <div className={styles.metric}><strong>{engagement.reports.length}</strong><span className={styles.muted}>{t(lang, "Reports", "正式报告")}</span></div>
       </div>
+
+      <section className={styles.entitlementBand} aria-label={t(lang, "Service entitlement", "服务权益")}>
+        <div className={styles.entitlementIntro}>
+          <div className={styles.eyebrow}>{t(lang, "Service entitlement", "服务权益")}</div>
+          <strong>{program ? (lang === "EN" ? program.en : program.zh) : engagement.programType}</strong>
+          <span className={styles.muted}>
+            {legacyReviewApplied
+              ? t(lang, "Legacy signed agreement verified by an administrator; the original signed record is unchanged.", "管理员已复核旧版已签合同；原合同记录保持不变。")
+              : t(lang, "Contract, service term and lesson balance in one view.", "合同、服务周期和课时余额集中展示。")}
+          </span>
+        </div>
+        <div><span>{t(lang, "Service period", "服务周期")}</span><strong>{engagement.startDate ? formatBusinessDateOnly(engagement.startDate) : "-"} — {engagement.endDate ? formatBusinessDateOnly(engagement.endDate) : "-"}</strong></div>
+        <div><span>{t(lang, "Contracted hours", "签约课时")}</span><strong>{contractedMinutes ? `${contractedMinutes / 60}h` : "-"}</strong></div>
+        <div><span>{t(lang, "Used / remaining", "已用 / 剩余")}</span><strong>{contractedMinutes ? `${usedMinutes / 60}h / ${remainingMinutes / 60}h` : "-"}</strong></div>
+        <div><span>{t(lang, "Days remaining", "服务剩余")}</span><strong>{daysRemaining == null ? "-" : `${daysRemaining} ${t(lang, "days", "天")}`}</strong></div>
+      </section>
 
       <section className={styles.section} data-tone={launchReady ? "active" : "risk"}>
         <div className={styles.sectionHeader}>

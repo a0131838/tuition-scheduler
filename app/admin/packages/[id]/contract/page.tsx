@@ -1010,12 +1010,34 @@ export default async function PackageContractPage({
                             : t(lang, "Parent report access is not bound yet. Generate the parent invite before activating the care project.", "家长报告权限尚未绑定；启用全托管项目之前，请先生成家长邀请并完成绑定。")}
                         </div>
                         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                          <a href={`/admin/students/${encodeURIComponent(pkg.studentId)}#parent-portal`}>{t(lang, "Parent binding", "家长绑定")}</a>
-                          {careEngagement ? <a href={`/admin/care/${encodeURIComponent(careEngagement.id)}`}>{t(lang, "Open launch gate", "打开启动门槛")}</a> : null}
+                          <a href={`/admin/students/${encodeURIComponent(pkg.studentId)}#parent-portal`} style={{ display: "inline-flex", minHeight: 40, alignItems: "center", padding: "8px 12px", border: "1px solid #86efac", borderRadius: 8, color: "#166534", fontWeight: 750, textDecoration: "none" }}>{t(lang, "Parent binding", "家长绑定")}</a>
+                          {careEngagement ? <a href={`/admin/care/${encodeURIComponent(careEngagement.id)}`} style={{ display: "inline-flex", minHeight: 40, alignItems: "center", padding: "8px 12px", border: "1px solid #15803d", borderRadius: 8, background: "#15803d", color: "#fff", fontWeight: 800, textDecoration: "none" }}>{t(lang, "Open launch gate", "打开启动门槛")}</a> : null}
                         </div>
                       </div>
                     ) : null}
                   </div>
+                ) : null}
+
+                {careEngagement ? (
+                  <details style={{ border: "1px solid #cbd5e1", borderRadius: 12, background: "#f8fafc", overflow: "hidden" }}>
+                    <summary style={{ cursor: "pointer", padding: 14, fontWeight: 800, color: "#334155" }}>
+                      {t(lang, "Current Full Care price catalogue (preview only)", "当前全托管价目表（仅预览）")}
+                    </summary>
+                    <div style={{ borderTop: "1px solid #e2e8f0", padding: 14, display: "grid", gap: 12 }}>
+                      <div style={{ color: "#64748b", fontSize: 13, lineHeight: 1.55 }}>
+                        {t(lang, "Use this to explain options to the parent. Opening this preview never changes the signed contract, package balance or invoice.", "用于向家长解释可选方案。打开此预览不会修改已签合同、课包余额或发票。")}
+                      </div>
+                      <div style={{ overflowX: "auto" }}>
+                        <table style={{ width: "100%", minWidth: 720, borderCollapse: "collapse", fontSize: 13 }}>
+                          <thead><tr style={{ color: "#475569", textAlign: "left" }}><th style={{ padding: "8px 10px", borderBottom: "1px solid #cbd5e1" }}>{t(lang, "Tier", "价格档")}</th><th style={{ padding: "8px 10px", borderBottom: "1px solid #cbd5e1" }}>{t(lang, "Hours", "课时")}</th><th style={{ padding: "8px 10px", borderBottom: "1px solid #cbd5e1" }}>{t(lang, "Published", "原价")}</th><th style={{ padding: "8px 10px", borderBottom: "1px solid #cbd5e1" }}>{t(lang, "Bundle discount", "整包优惠")}</th><th style={{ padding: "8px 10px", borderBottom: "1px solid #cbd5e1" }}>{t(lang, "One-time total", "一次性总价")}</th></tr></thead>
+                          <tbody>{availableCarePricingPlans.map((plan) => <tr key={plan.value}><td style={{ padding: "9px 10px", borderBottom: "1px solid #e2e8f0", fontWeight: 750 }}>{plan.tier === "IB_AP" ? "IB/AP" : t(lang, "Standard", "标准")}</td><td style={{ padding: "9px 10px", borderBottom: "1px solid #e2e8f0" }}>{plan.hours}h</td><td style={{ padding: "9px 10px", borderBottom: "1px solid #e2e8f0" }}>S${plan.listFee.toLocaleString("en-SG")}</td><td style={{ padding: "9px 10px", borderBottom: "1px solid #e2e8f0", color: "#166534", fontWeight: 750 }}>{Math.round(plan.discountRate * 100)}% · S${plan.bundleSavings.toLocaleString("en-SG")}</td><td style={{ padding: "9px 10px", borderBottom: "1px solid #e2e8f0", fontWeight: 850 }}>S${plan.totalFee.toLocaleString("en-SG")}</td></tr>)}</tbody>
+                        </table>
+                      </div>
+                      <div style={{ color: "#92400e", fontSize: 12, lineHeight: 1.55 }}>
+                        {t(lang, "A management discount can be entered only while preparing a new contract, requires a reason, is audited, and is capped at 15% of the published bundle total.", "管理层优惠只能在准备新合同时填写，必须说明原因并留痕，最高不超过公布整包成交价的15%。")}
+                      </div>
+                    </div>
+                  </details>
                 ) : null}
 
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-start" }}>

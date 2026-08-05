@@ -15,6 +15,32 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-05-r323
+
+- Release ID: `2026-08-05-r323`
+- Date/Time (Asia/Singapore): `2026-08-05`
+- Deployment status: `READY`
+- Scope: finish the Full Care launch experience for parents and employees: a complete signed-service receipt, visible annual entitlement, explicit status transitions, scalable quality filters, time-limited public contract access, and an audited compatibility review for the already-active legacy 赵测试2 agreement.
+- Key files:
+  - `app/contract/[token]/page.tsx`
+  - `app/api/exports/student-contract/[id]/route.ts`
+  - `app/admin/care/[id]/page.tsx`
+  - `app/admin/care/[id]/operations/page.tsx`
+  - `app/admin/care/quality/page.tsx`
+  - `app/admin/care/care.module.css`
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `lib/student-contract.ts`
+  - `tests/full-care-launch-ui.test.ts`
+  - `docs/tasks/TASK-20260805-full-care-launch-readiness.md`
+- Risk impact (if any): Medium because public signed-contract access and the care launch gate change. New care activation still requires an exact signed contract bound to the same care project and programme. The legacy review applies only to a non-draft project with an audited contract ID; it never rewrites a signed contract, invoice, receipt, payment or lesson balance.
+- Verification:
+  - TypeScript validation passed.
+  - 31 focused Full Care, care-state and UI safety tests passed.
+  - `npm run build` passed for all 240 application pages.
+- Rollback point: `a582a11c1ed83da869ab4cc6623a02ba9e12edd0` (`2026-08-05-r322` production head).
+
+---
+
 ## 2026-08-05-r322
 
 - Release ID: `2026-08-05-r322`

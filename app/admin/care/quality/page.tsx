@@ -28,9 +28,17 @@ function Queue({ title, items, empty, open }: { title: string; items: QueueItem[
   </section>;
 }
 
-export default async function CareQualityPage() {
+export default async function CareQualityPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ q?: string; queue?: string; urgency?: string }>;
+}) {
   const actor = await requireCareStaff();
   const lang = await getLang();
+  const sp = await searchParams;
+  const query = String(sp?.q ?? "").trim().toLowerCase();
+  const selectedQueue = String(sp?.queue ?? "ALL").toUpperCase();
+  const urgency = String(sp?.urgency ?? "ALL").toUpperCase();
   const broadAccess = actor.role === "ADMIN" || await isManagerUser(actor);
   const accessWhere = broadAccess ? {} : { members: { some: { userId: actor.id, isActive: true } } };
   const now = new Date();
@@ -134,8 +142,21 @@ export default async function CareQualityPage() {
     for (const review of engagement.serviceReviews) reviewQueue.push({ id: review.id, engagementId: engagement.id, studentName, title: review.periodLabel, detail: `${t(lang, "Submitted", "已提交")}: ${review.submittedAt ? formatBusinessDateTime(review.submittedAt) : "-"}`, href: `/admin/care/${engagement.id}/operations#reviews` });
   }
 
-  const total = reportQueue.length + receiptQueue.length + taskQueue.length + riskQueue.length + questionQueue.length + coverageQueue.length + reviewQueue.length;
-  const urgent = [...reportQueue, ...receiptQueue, ...taskQueue, ...riskQueue, ...questionQueue].filter((item) => item.tone === "risk").length;
+  const matches = (item: QueueItem) => {
+    const text = `${item.studentName} ${item.title} ${item.detail}`.toLowerCase();
+    return (!query || text.includes(query)) && (urgency !== "OVERDUE" || item.tone === "risk");
+  };
+  const visible = (key: string, items: QueueItem[]) => (selectedQueue === "ALL" || selectedQueue === key) ? items.filter(matches) : [];
+  const visibleRiskQueue = visible("RISKS", riskQueue);
+  const visibleTaskQueue = visible("TASKS", taskQueue);
+  const visibleQuestionQueue = visible("QUESTIONS", questionQueue);
+  const visibleReportQueue = visible("REPORTS", reportQueue);
+  const visibleReceiptQueue = visible("RECEIPTS", receiptQueue);
+  const visibleCoverageQueue = visible("COVERAGE", coverageQueue);
+  const visibleReviewQueue = visible("REVIEWS", reviewQueue);
+  const visibleItems = [...visibleRiskQueue, ...visibleTaskQueue, ...visibleQuestionQueue, ...visibleReportQueue, ...visibleReceiptQueue, ...visibleCoverageQueue, ...visibleReviewQueue];
+  const total = visibleItems.length;
+  const urgent = visibleItems.filter((item) => item.tone === "risk").length;
 
   return <main className={styles.page}>
     <header className={styles.header}>
@@ -152,20 +173,27 @@ export default async function CareQualityPage() {
       <Link href="/admin/care">{t(lang, "Students", "学生项目")}</Link>
       <Link data-active="true" href="/admin/care/quality">{t(lang, "Quality", "质量工作台")}</Link>
     </nav>
+    <form className={styles.filterBar} method="get">
+      <label className={styles.label}>{t(lang, "Search student or item", "搜索学生或事项")}<input className={styles.field} name="q" defaultValue={String(sp?.q ?? "")} placeholder={t(lang, "Student name, task, risk...", "学生姓名、待办、风险……")} /></label>
+      <label className={styles.label}>{t(lang, "Queue", "事项类型")}<select className={styles.select} name="queue" defaultValue={selectedQueue}><option value="ALL">{t(lang, "All queues", "全部类型")}</option><option value="RISKS">{t(lang, "Risks", "风险")}</option><option value="TASKS">{t(lang, "Tasks", "待办")}</option><option value="QUESTIONS">{t(lang, "Parent questions", "家长问答")}</option><option value="REPORTS">{t(lang, "Reports", "报告")}</option><option value="RECEIPTS">{t(lang, "Parent receipt", "家长查看")}</option><option value="COVERAGE">{t(lang, "Coverage", "代班")}</option><option value="REVIEWS">{t(lang, "Reviews", "复盘")}</option></select></label>
+      <label className={styles.label}>{t(lang, "Urgency", "紧急程度")}<select className={styles.select} name="urgency" defaultValue={urgency}><option value="ALL">{t(lang, "All items", "全部事项")}</option><option value="OVERDUE">{t(lang, "Overdue only", "仅已超时")}</option></select></label>
+      <button className={styles.button} type="submit">{t(lang, "Apply", "筛选")}</button>
+      <Link className={styles.buttonSecondary} href="/admin/care/quality">{t(lang, "Reset", "重置")}</Link>
+    </form>
     <div className={styles.metrics}>
       <div className={styles.metric}><strong>{total}</strong><span className={styles.muted}>{t(lang, "Action items", "待处理")}</span></div>
       <div className={styles.metric} data-tone={urgent ? "risk" : "active"}><strong>{urgent}</strong><span className={styles.muted}>{t(lang, "Overdue", "已超时")}</span></div>
-      <div className={styles.metric} data-tone={riskQueue.length ? "risk" : "active"}><strong>{riskQueue.length}</strong><span className={styles.muted}>{t(lang, "Open risks", "未结风险")}</span></div>
-      <div className={styles.metric}><strong>{questionQueue.length}</strong><span className={styles.muted}>{t(lang, "Parent questions", "家长问答")}</span></div>
+      <div className={styles.metric} data-tone={visibleRiskQueue.length ? "risk" : "active"}><strong>{visibleRiskQueue.length}</strong><span className={styles.muted}>{t(lang, "Open risks", "未结风险")}</span></div>
+      <div className={styles.metric}><strong>{visibleQuestionQueue.length}</strong><span className={styles.muted}>{t(lang, "Parent questions", "家长问答")}</span></div>
     </div>
     {total ? <div className={styles.queueGrid}>
-      <Queue title={t(lang, "Risk and SLA", "风险与响应时限")} items={riskQueue} empty={t(lang, "No open risks.", "暂无未结风险。")} open={t(lang, "Handle", "处理")} />
-      <Queue title={t(lang, "Overdue tasks", "逾期待办")} items={taskQueue} empty={t(lang, "No overdue tasks.", "暂无逾期待办。")} open={t(lang, "Open", "打开")} />
-      <Queue title={t(lang, "Parent questions", "家长问答")} items={questionQueue} empty={t(lang, "No open questions.", "暂无待闭环提问。")} open={t(lang, "Reply", "回复")} />
-      <Queue title={t(lang, "Reports awaiting action", "报告待处理")} items={reportQueue} empty={t(lang, "No report exceptions.", "报告无异常。")} open={t(lang, "Open", "打开")} />
-      <Queue title={t(lang, "Parent receipt", "家长查看与确认")} items={receiptQueue} empty={t(lang, "No receipt exceptions.", "家长查看确认无异常。")} open={t(lang, "Open", "打开")} />
-      <Queue title={t(lang, "Coverage handover", "代班交接")} items={coverageQueue} empty={t(lang, "No active or upcoming coverage.", "暂无进行中或即将开始的代班。")} open={t(lang, "Open", "打开")} />
-      <Queue title={t(lang, "Service review approval", "服务复盘审核")} items={reviewQueue} empty={t(lang, "No reviews awaiting approval.", "暂无待审核复盘。")} open={t(lang, "Review", "审核")} />
+      <Queue title={t(lang, "Risk and SLA", "风险与响应时限")} items={visibleRiskQueue} empty={t(lang, "No open risks.", "暂无未结风险。")} open={t(lang, "Handle", "处理")} />
+      <Queue title={t(lang, "Overdue tasks", "逾期待办")} items={visibleTaskQueue} empty={t(lang, "No overdue tasks.", "暂无逾期待办。")} open={t(lang, "Open", "打开")} />
+      <Queue title={t(lang, "Parent questions", "家长问答")} items={visibleQuestionQueue} empty={t(lang, "No open questions.", "暂无待闭环提问。")} open={t(lang, "Reply", "回复")} />
+      <Queue title={t(lang, "Reports awaiting action", "报告待处理")} items={visibleReportQueue} empty={t(lang, "No report exceptions.", "报告无异常。")} open={t(lang, "Open", "打开")} />
+      <Queue title={t(lang, "Parent receipt", "家长查看与确认")} items={visibleReceiptQueue} empty={t(lang, "No receipt exceptions.", "家长查看确认无异常。")} open={t(lang, "Open", "打开")} />
+      <Queue title={t(lang, "Coverage handover", "代班交接")} items={visibleCoverageQueue} empty={t(lang, "No active or upcoming coverage.", "暂无进行中或即将开始的代班。")} open={t(lang, "Open", "打开")} />
+      <Queue title={t(lang, "Service review approval", "服务复盘审核")} items={visibleReviewQueue} empty={t(lang, "No reviews awaiting approval.", "暂无待审核复盘。")} open={t(lang, "Review", "审核")} />
     </div> : <section className={styles.section}><div className={styles.emptyState}><strong>{t(lang, "Everything is clear", "目前没有异常")}</strong><span>{t(lang, "No overdue reports, risks, questions or tasks require action.", "没有逾期报告、风险、家长问题或待办需要处理。")}</span></div></section>}
   </main>;
 }

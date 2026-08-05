@@ -47,6 +47,21 @@ function coverageNextStatuses(status: CareCoverageStatus): CareCoverageStatus[] 
   return [];
 }
 
+function riskStatusLabel(lang: string, status: CareRiskCaseStatus) {
+  const labels: Record<CareRiskCaseStatus, [string, string]> = {
+    OPEN: ["Open", "待响应"], ACKNOWLEDGED: ["Acknowledged", "已确认"], MONITORING: ["Monitoring", "跟进中"],
+    RESOLVED: ["Resolved", "已解决"], CLOSED: ["Closed", "已关闭"],
+  };
+  return lang === "EN" ? labels[status][0] : lang === "ZH" ? labels[status][1] : `${labels[status][0]} / ${labels[status][1]}`;
+}
+
+function coverageStatusLabel(lang: string, status: CareCoverageStatus) {
+  const labels: Record<CareCoverageStatus, [string, string]> = {
+    SCHEDULED: ["Scheduled", "已安排"], ACTIVE: ["Active", "代班中"], COMPLETED: ["Completed", "已完成"], CANCELLED: ["Cancelled", "已取消"],
+  };
+  return lang === "EN" ? labels[status][0] : lang === "ZH" ? labels[status][1] : `${labels[status][0]} / ${labels[status][1]}`;
+}
+
 export default async function CareOperationsPage({
   params,
   searchParams,
@@ -274,12 +289,12 @@ export default async function CareOperationsPage({
             const slaBreached = isCareRiskSlaBreached(risk, now);
             const next = riskNextStatuses(risk.status);
             return <article className={styles.timelineItem} data-tone={slaBreached || risk.riskLevel === "HIGH" || risk.riskLevel === "CRITICAL" ? "risk" : risk.status === "CLOSED" ? "active" : "neutral"} key={risk.id}>
-              <div className={styles.timelineHead}><div><strong>{risk.title}</strong><div className={styles.muted}>{formatBusinessDateTime(risk.detectedAt)} · {risk.owner.name}{risk.backupOwner ? ` / ${risk.backupOwner.name}` : ""}</div></div><div className={styles.toolbar}><span className={styles.badge} data-tone={risk.riskLevel === "HIGH" || risk.riskLevel === "CRITICAL" ? "risk" : "neutral"}>{risk.riskLevel}</span><span className={styles.badge} data-tone={slaBreached ? "risk" : risk.status === "CLOSED" ? "active" : "neutral"}>{slaBreached ? t(lang, "SLA overdue", "响应超时") : risk.status}</span></div></div>
+              <div className={styles.timelineHead}><div><strong>{risk.title}</strong><div className={styles.muted}>{formatBusinessDateTime(risk.detectedAt)} · {risk.owner.name}{risk.backupOwner ? ` / ${risk.backupOwner.name}` : ""}</div></div><div className={styles.toolbar}><span className={styles.badge} data-tone={risk.riskLevel === "HIGH" || risk.riskLevel === "CRITICAL" ? "risk" : "neutral"}>{risk.riskLevel}</span><span className={styles.badge} data-tone={slaBreached ? "risk" : risk.status === "CLOSED" ? "active" : "neutral"}>{slaBreached ? t(lang, "SLA overdue", "响应超时") : riskStatusLabel(lang, risk.status)}</span></div></div>
               <div className={styles.evidence}><strong>{t(lang, "Facts", "事实")}</strong>{risk.facts}</div>
               <div className={styles.evidence}><strong>{t(lang, "Immediate action", "立即行动")}</strong>{risk.immediateAction}</div>
               <div className={styles.muted}>{t(lang, "Response due", "最晚响应")}: {formatBusinessDateTime(risk.responseDueAt)}</div>
               {risk.resolutionEvidence ? <div className={styles.evidence}><strong>{t(lang, "Resolution", "解决证据")}</strong>{risk.resolutionEvidence}</div> : null}
-              {next.length ? <form action={riskStatusAction} className={styles.inlineForm}><input type="hidden" name="riskCaseId" value={risk.id} /><input type="hidden" name="version" value={risk.version} /><select className={styles.select} style={{ width: "auto" }} name="nextStatus">{next.map((status) => <option key={status} value={status}>{status}</option>)}</select>{next.includes("RESOLVED") ? <input className={styles.field} style={{ maxWidth: 420 }} name="resolutionEvidence" placeholder={t(lang, "Required when resolving", "解决时必须填写证据")} /> : null}<button className={styles.buttonSecondary} type="submit">{t(lang, "Update", "更新")}</button></form> : null}
+              {next.length ? <form action={riskStatusAction} className={styles.inlineForm}><input type="hidden" name="riskCaseId" value={risk.id} /><input type="hidden" name="version" value={risk.version} /><select className={styles.select} style={{ width: "auto" }} name="nextStatus" defaultValue="" required><option value="" disabled>{t(lang, "Choose next status", "选择下一状态")}</option>{next.map((status) => <option key={status} value={status}>{riskStatusLabel(lang, status)}</option>)}</select>{next.includes("RESOLVED") ? <input className={styles.field} style={{ maxWidth: 420 }} name="resolutionEvidence" placeholder={t(lang, "Required when resolving", "解决时必须填写证据")} /> : null}<button className={styles.buttonSecondary} type="submit">{t(lang, "Update", "更新")}</button></form> : null}
             </article>;
           })}
           {!engagement.riskCases.length ? <div className={styles.muted}>{t(lang, "No risk records.", "暂无风险记录。")}</div> : null}
@@ -304,7 +319,7 @@ export default async function CareOperationsPage({
             <button className={styles.button} type="submit">{t(lang, "Schedule", "保存安排")}</button>
           </form>
         </details> : null}
-        {engagement.coveragePeriods.map((coverage) => <article className={styles.timelineItem} data-tone={coverage.status === "ACTIVE" ? "active" : "neutral"} key={coverage.id}><div className={styles.timelineHead}><strong>{coverage.primary.name} → {coverage.backup.name}</strong><span className={styles.badge} data-tone={coverage.status === "ACTIVE" ? "active" : "neutral"}>{coverage.status}</span></div><div className={styles.muted}>{formatBusinessDateTime(coverage.startAt)} - {formatBusinessDateTime(coverage.endAt)} · {coverage.reason}</div><div className={styles.evidence}><strong>{t(lang, "Handover", "交接")}</strong>{coverage.handoverSummary}</div><div className={styles.evidence}><strong>{t(lang, "Critical actions", "关键事项")}</strong>{coverage.criticalActions}</div>{manager && coverageNextStatuses(coverage.status).length ? <form action={coverageStatusAction} className={styles.inlineForm}><input type="hidden" name="coverageId" value={coverage.id} /><input type="hidden" name="version" value={coverage.version} /><select className={styles.select} style={{ width: "auto" }} name="nextStatus">{coverageNextStatuses(coverage.status).map((status) => <option key={status} value={status}>{status}</option>)}</select><button className={styles.buttonSecondary} type="submit">{t(lang, "Update", "更新")}</button></form> : null}</article>)}
+        {engagement.coveragePeriods.map((coverage) => <article className={styles.timelineItem} data-tone={coverage.status === "ACTIVE" ? "active" : "neutral"} key={coverage.id}><div className={styles.timelineHead}><strong>{coverage.primary.name} → {coverage.backup.name}</strong><span className={styles.badge} data-tone={coverage.status === "ACTIVE" ? "active" : "neutral"}>{coverageStatusLabel(lang, coverage.status)}</span></div><div className={styles.muted}>{formatBusinessDateTime(coverage.startAt)} - {formatBusinessDateTime(coverage.endAt)} · {coverage.reason}</div><div className={styles.evidence}><strong>{t(lang, "Handover", "交接")}</strong>{coverage.handoverSummary}</div><div className={styles.evidence}><strong>{t(lang, "Critical actions", "关键事项")}</strong>{coverage.criticalActions}</div>{manager && coverageNextStatuses(coverage.status).length ? <form action={coverageStatusAction} className={styles.inlineForm}><input type="hidden" name="coverageId" value={coverage.id} /><input type="hidden" name="version" value={coverage.version} /><select className={styles.select} style={{ width: "auto" }} name="nextStatus" defaultValue="" required><option value="" disabled>{t(lang, "Choose next status", "选择下一状态")}</option>{coverageNextStatuses(coverage.status).map((status) => <option key={status} value={status}>{coverageStatusLabel(lang, status)}</option>)}</select><button className={styles.buttonSecondary} type="submit">{t(lang, "Update", "更新")}</button></form> : null}</article>)}
         {!engagement.coveragePeriods.length ? <div className={styles.muted}>{t(lang, "No coverage periods.", "暂无代班安排。")}</div> : null}
       </section>
 

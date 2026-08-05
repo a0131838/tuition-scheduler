@@ -1055,6 +1055,11 @@ export async function getStudentContractByIntakeToken(token: string) {
 export async function getStudentContractBySignToken(token: string) {
   const row = await getContractRow({ signToken: token });
   if (!row) return null;
+  const canonical = canonicalStudentContractStatus(row.status);
+  if (
+    (canonical === StudentContractStatus.SIGNED || canonical === StudentContractStatus.INVOICE_CREATED) &&
+    (!row.signExpiresAt || row.signExpiresAt.getTime() < Date.now())
+  ) return null;
   return summarize(await expireContractIfNeeded(row));
 }
 
@@ -1750,6 +1755,7 @@ export async function signStudentContract(input: {
       signerIp: trimOrNull(input.signerIp),
       invoiceId: invoice.invoiceId,
       invoiceNo: invoice.invoiceNo,
+      signExpiresAt: addDays(signedAt, 7),
     },
     include: studentContractInclude,
   });

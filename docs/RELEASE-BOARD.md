@@ -47,10 +47,44 @@
 - Current release line prepared: `2026-08-05-r320` requires IB/AP pricing at contract generation and blocks later IB/AP course assignment while a standard-tier Full Care contract remains active.
 - Current release line prepared: `2026-08-05-r321` launches 12 versioned Full Care bundles, audited management special discounts, exact care-project contract binding, distinct accompanied/unaccompanied scopes and parent-visible pricing/service progress.
 - Current release line prepared: `2026-08-05-r322` corrects the annual Full Care boundary to end on the day before the same date next year.
+- Current release line prepared: `2026-08-05-r323` completes the parent signed-service receipt, employee entitlement overview, explicit state-change safety, quality-desk filtering, expiring public contract access and audited legacy-contract review for 赵测试2.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-05-r323 Ready
+
+- Scope: make the complete Full Care signing and delivery journey safe and reassuring for parents and employees.
+- Business impact:
+  - turns the signed-link result into a branded service receipt showing the programme, price tier, lesson entitlement, fee split, one-time total, service dates, reporting rhythm and next steps;
+  - gives employees one visible service-entitlement band with contracted, used and remaining hours plus service days remaining;
+  - requires an explicit choice before any project, risk or coverage status transition and replaces common raw status codes with bilingual labels;
+  - adds student/item search, queue filters and overdue-only filtering to the quality desk;
+  - shows the current six programme-specific price options in a read-only contract-workspace preview without creating packages, contracts or invoices;
+  - limits newly signed public contract links to seven days and enforces token expiry for PDF exports;
+  - supports the already-active 赵测试2 legacy signed agreement through a narrow audited review record while preserving exact new-contract activation checks.
+- Files:
+  - `app/contract/[token]/page.tsx`
+  - `app/api/exports/student-contract/[id]/route.ts`
+  - `app/admin/care/[id]/page.tsx`
+  - `app/admin/care/[id]/operations/page.tsx`
+  - `app/admin/care/quality/page.tsx`
+  - `app/admin/care/care.module.css`
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `lib/student-contract.ts`
+  - `tests/full-care-launch-ui.test.ts`
+- Verification before deploy:
+  - TypeScript validation;
+  - focused Full Care, care-state and UI safety tests;
+  - full backend regression tests;
+  - `npm run build` for all 240 application pages;
+  - guarded release preflight.
+- Post-deploy verification:
+  - create one guarded `LEGACY_FULL_CARE_CONTRACT_REVIEWED` audit record for the exact 赵测试2 project and signed contract only;
+  - confirm its launch gate is 7/7 and marked as a reviewed legacy agreement without changing contract, package or invoice data;
+  - confirm the signed parent receipt, current price preview, explicit state selectors and quality filters in production.
+- Task doc: `docs/tasks/TASK-20260805-full-care-launch-readiness.md`.
 
 ## 2026-08-05-r322 Ready
 

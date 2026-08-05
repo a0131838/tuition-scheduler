@@ -72,6 +72,8 @@ export async function GET(
       status: true,
       intakeToken: true,
       signToken: true,
+      intakeExpiresAt: true,
+      signExpiresAt: true,
       contractSnapshotJson: true,
       signerName: true,
       signerIp: true,
@@ -88,7 +90,10 @@ export async function GET(
   }
 
   const adminAllowed = Boolean(user && (user.role === "ADMIN" || user.role === "FINANCE"));
-  const tokenAllowed = Boolean(token && (token === contract.intakeToken || token === contract.signToken));
+  const now = Date.now();
+  const intakeTokenAllowed = Boolean(token && token === contract.intakeToken && contract.intakeExpiresAt && contract.intakeExpiresAt.getTime() >= now);
+  const signTokenAllowed = Boolean(token && token === contract.signToken && contract.signExpiresAt && contract.signExpiresAt.getTime() >= now);
+  const tokenAllowed = intakeTokenAllowed || signTokenAllowed;
   if (!adminAllowed && !tokenAllowed) {
     return new Response("Forbidden", { status: 403 });
   }

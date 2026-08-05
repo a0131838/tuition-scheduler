@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import Image from "next/image";
 import ContractSignaturePad from "@/app/contract/_components/ContractSignaturePad";
 import {
   buildStudentContractSignPath,
@@ -10,6 +11,7 @@ import {
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+export const metadata = { title: "Full Care Service Agreement | GT Educational Institute" };
 
 function isNextRedirectError(error: unknown) {
   if (!error || typeof error !== "object") return false;
@@ -117,42 +119,67 @@ export default async function ContractSignPage({
 
   if (contract.status === "SIGNED" || contract.status === "INVOICE_CREATED") {
     const includesCare = Boolean(contract.contractSnapshot?.care?.included);
+    const snapshot = contract.contractSnapshot;
+    const care = snapshot?.care;
+    const totalFee = Number(snapshot?.package.feeAmount || 0);
+    const packageHours = care?.packageHours ?? Number(snapshot?.package.totalMinutes || 0) / 60;
+    const money = (value: unknown) => `SGD ${Number(value || 0).toLocaleString("en-SG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     return (
-      <div style={{ maxWidth: 960, margin: "40px auto", padding: "0 16px", display: "grid", gap: 16 }}>
-        <div style={{ ...cardStyle("#ecfdf3"), borderColor: "#86efac" }}>
-          <h1 style={{ margin: 0 }}>{includesCare ? "Full Care Service Agreement Signed / 全程托管服务合同已签署" : "Contract Signed / 合同已完成签署"}</h1>
-          <div style={{ color: "#166534" }}>
-            {includesCare
-              ? "Thank you. The Full Care Service Agreement has been signed successfully. / 感谢您，《全程托管服务合同》已经完成签署。"
-              : "Thank you. The tuition agreement has been signed successfully and the invoice draft has been prepared for the school team. / 感谢您，学费协议已经签署完成，系统也已为校方准备好对应发票草稿。"}
-          </div>
-          {contract.invoiceNo ? <div style={{ color: "#166534" }}>Invoice / 发票: {contract.invoiceNo}</div> : null}
-          <div
-            style={{
-              border: "1px solid #bbf7d0",
-              borderRadius: 14,
-              background: "#f0fdf4",
-              padding: 14,
-              display: "grid",
-              gap: 8,
-              maxWidth: 360,
-            }}
-          >
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#166534" }}>Signature / 签名</div>
-            <div style={{ fontWeight: 800, fontSize: 22, color: "#1d4ed8", lineHeight: 1.1 }}>
-              {contract.signerName || "Signature on file"}
+      <main style={{ minHeight: "100vh", background: "linear-gradient(180deg, #f1f7f4 0, #f8faf9 360px, #fff 100%)", color: "#17211d", padding: "24px 16px 56px" }}>
+        <div style={{ maxWidth: 980, margin: "0 auto", display: "grid", gap: 18 }}>
+          <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+            <Image src="/logo.png" alt="GT Educational Institute" width={150} height={48} style={{ width: 150, height: "auto" }} priority />
+            <div style={{ color: "#52605a", fontSize: 13, fontWeight: 700 }}>Secure signed record / 安全签署凭证</div>
+          </header>
+
+          <section style={{ border: "1px solid #b6d8c7", borderRadius: 20, background: "rgba(255,255,255,.94)", padding: "clamp(22px, 5vw, 42px)", boxShadow: "0 18px 50px rgba(30,70,52,.09)", display: "grid", gap: 22 }}>
+            <div style={{ display: "grid", gap: 10 }}>
+              <span style={{ width: "fit-content", borderRadius: 999, background: "#e7f5ed", color: "#12613f", padding: "7px 11px", fontSize: 12, fontWeight: 850 }}>✓ Signed and recorded / 已签署并留档</span>
+              <h1 style={{ margin: 0, fontSize: "clamp(30px, 5vw, 44px)", lineHeight: 1.08, letterSpacing: "-.025em" }}>{includesCare ? "Full Care Service Agreement" : "Tuition Agreement"}</h1>
+              <div style={{ color: "#52605a", fontSize: 17 }}>{includesCare ? "全程托管服务合同已签署" : "学费协议已签署"}</div>
+              <p style={{ margin: 0, maxWidth: 720, color: "#425149", lineHeight: 1.65 }}>
+                {includesCare
+                  ? "Thank you for your trust. The signed agreement, service term, lesson entitlement and delivery rhythm are confirmed below. / 感谢您的信任。已签合同、服务周期、课时权益和交付节奏已在下方确认。"
+                  : "Thank you. The signed agreement is now on record. / 感谢您，合同已完成签署并留档。"}
+              </p>
             </div>
-            <div style={{ fontSize: 12, color: "#166534" }}>
-              Handwritten signature stored in the signed PDF. / 手写签名已保存在已签署 PDF 中。
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", borderTop: "1px solid #e0e8e4", borderBottom: "1px solid #e0e8e4" }}>
+              <div style={{ padding: "18px 14px 18px 0", display: "grid", gap: 5 }}><span style={{ color: "#6b7771", fontSize: 12, fontWeight: 700 }}>Student / 学生</span><strong style={{ fontSize: 20 }}>{contract.studentName}</strong></div>
+              <div style={{ padding: "18px 14px", display: "grid", gap: 5 }}><span style={{ color: "#6b7771", fontSize: 12, fontWeight: 700 }}>Signer / 签署人</span><strong style={{ fontSize: 20 }}>{contract.signerName || "Signature on file"}</strong></div>
+              <div style={{ padding: "18px 0 18px 14px", display: "grid", gap: 5 }}><span style={{ color: "#6b7771", fontSize: 12, fontWeight: 700 }}>Invoice / 发票</span><strong style={{ fontSize: 18 }}>{contract.invoiceNo || "Being prepared / 准备中"}</strong></div>
             </div>
-          </div>
-          <div>
-            <a href={`/api/exports/student-contract/${encodeURIComponent(contract.id)}?token=${encodeURIComponent(token)}&download=1`}>
-              Download signed PDF / 下载已签署合同 PDF
-            </a>
-          </div>
+
+            {includesCare && snapshot && care ? <>
+              <div style={{ display: "grid", gap: 12 }}>
+                <h2 style={{ margin: 0, fontSize: 20 }}>Your confirmed plan / 您已确认的方案</h2>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 10 }}>
+                  <div style={cardStyle("#f7faf8")}><span style={{ color: "#66736d", fontSize: 12, fontWeight: 700 }}>Full Care programme / 托管方案</span><strong>{care.programLabel || "Full Care / 全程托管"}</strong><span style={{ color: "#52605a", fontSize: 13 }}>{care.courseTier === "IB_AP" ? "IB/AP tuition tier / IB/AP课程价格档" : "Standard tuition tier / 标准课程价格档"}</span></div>
+                  <div style={cardStyle("#f7faf8")}><span style={{ color: "#66736d", fontSize: 12, fontWeight: 700 }}>Lesson entitlement / 课时权益</span><strong style={{ fontSize: 25 }}>{packageHours} hours / 小时</strong><span style={{ color: "#52605a", fontSize: 13 }}>Tuition {money(care.tuitionFeeAmount)} · Care {money(care.careServiceFeeAmount)}</span></div>
+                  <div style={{ ...cardStyle("#edf8f2"), borderColor: "#a8d6bf" }}><span style={{ color: "#12613f", fontSize: 12, fontWeight: 750 }}>One-time total / 一次性付款总额</span><strong style={{ color: "#0f553a", fontSize: 27 }}>{money(totalFee)}</strong>{Number(care.bundleSavingsAmount || 0) > 0 ? <span style={{ color: "#12613f", fontSize: 13 }}>Bundle savings / 整包优惠 {money(care.bundleSavingsAmount)}</span> : null}{Number(care.specialDiscountAmount || 0) > 0 ? <span style={{ color: "#12613f", fontSize: 13 }}>Approved additional discount / 获批额外优惠 {money(care.specialDiscountAmount)}</span> : null}</div>
+                  <div style={cardStyle("#f7faf8")}><span style={{ color: "#66736d", fontSize: 12, fontWeight: 700 }}>Service period / 服务周期</span><strong>{care.serviceStartDateIso || "-"} — {care.serviceEndDateIso || "-"}</strong><span style={{ color: "#52605a", fontSize: 13 }}>{care.updateCadence || "Weekly service review / 每周服务复核"}<br />{care.reportCadence || "Monthly formal report / 每月正式报告"}</span></div>
+                </div>
+              </div>
+
+              <div style={{ ...cardStyle("#fff"), padding: 20 }}>
+                <h2 style={{ margin: 0, fontSize: 20 }}>What happens next / 接下来会发生什么</h2>
+                <div style={{ display: "grid", gap: 14 }}>
+                  {["1. Your dedicated service team confirms the launch checklist and ownership. / 专属服务团队确认启动清单与负责人。", "2. Routine progress is shared through the parent miniapp and designated company WeChat. / 日常进展通过家长小程序及公司指定微信同步。", "3. A reviewed formal report is delivered monthly, with actions and risks followed through. / 每月交付经审核的正式报告，并闭环行动与风险。"].map((item) => <div key={item} style={{ display: "flex", gap: 11, alignItems: "flex-start", lineHeight: 1.55 }}><span style={{ width: 8, height: 8, flex: "0 0 auto", marginTop: 8, borderRadius: 999, background: "#146c4b" }} />{item}</div>)}
+                </div>
+              </div>
+            </> : null}
+
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
+              <div style={{ color: "#52605a", fontSize: 13, lineHeight: 1.55 }}>Questions? Contact your designated company WeChat or service group. / 如有疑问，请联系公司指定微信或服务群。</div>
+              <a href={`/api/exports/student-contract/${encodeURIComponent(contract.id)}?token=${encodeURIComponent(token)}&download=1`} style={{ display: "inline-flex", minHeight: 46, alignItems: "center", justifyContent: "center", borderRadius: 8, background: "#146c4b", color: "#fff", padding: "11px 17px", fontWeight: 850, textDecoration: "none" }}>
+                Download signed PDF / 下载已签合同
+              </a>
+            </div>
+          </section>
+
+          <div style={{ textAlign: "center", color: "#7a867f", fontSize: 12, lineHeight: 1.6 }}>This page contains personal contract information. Please do not forward the link. / 本页面含个人合同信息，请勿转发链接。</div>
         </div>
-      </div>
+      </main>
     );
   }
 
