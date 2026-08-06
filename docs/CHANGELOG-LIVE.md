@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-08-06-r342`
 - Date/Time (Asia/Singapore): `2026-08-06`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: redesign the public Mini Program school guide around readable parent tasks, with a shorter home, larger supporting type, text-only navigation, horizontally browsable popular schools, collapsed long detail sections, and low-priority update/source metadata at the bottom of pages.
 - Key files:
   - `miniapp/boss-academic-parent/pages/guide-home/`
@@ -31,7 +31,7 @@ This file is the single source of truth for what changed in production.
   - `tests/miniapp-consumer-entry.test.ts`
   - `docs/tasks/TASK-20260806-school-guide-readable-ui.md`
 - Risk impact (if any): Low and isolated to the public school-guide Mini Program's copy, visual hierarchy, disclosure state and catalog cache version. Full school, fee, result, partner-programme and pathway content remains available. No change to parent/staff authentication, assessment scoring, scheduling, attendance, packages, finance, payroll, renewals, tickets or messages.
-- Verification: 37 focused consumer-entry and school-guide tests, the 67-page Mini Program release audit and the WeChat developer-tool preview compile passed before release. Complete backend regression, TypeScript, native Mini Program JavaScript checks, production build, guarded deployment, live API health and WeChat development-version upload remain in the release gate.
+- Verification: 37 focused consumer-entry and school-guide tests, all 174 backend regression tests, TypeScript, native Mini Program JavaScript/JSON checks, the 67-page Mini Program release audit, WeChat developer-tool preview compile and the 243-page production build passed. Runtime commit `5152e85533a8424b39477791b0a329f749d4edb2` aligned locally, on GitHub and on production with PM2 PID `1832298` and `/admin/login` HTTP 200. WeChat development version `1.0.39` uploaded successfully at 714,352 bytes; experience-version designation and physical-phone typography acceptance remain manual.
 - Rollback point: `9ec8ca9f5ad3f9f77da3b748c21a12a0c4948b76` (`2026-08-06-r341` final aligned release head).
 
 ---

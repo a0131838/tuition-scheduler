@@ -66,13 +66,13 @@
 - Current release line: `2026-08-06-r339` is live at runtime feature commit `43215a913999a282016a9d11e11979147adb55de`; WeChat development version `1.0.36` was uploaded successfully. It adds a structured awarding-partner, exact-programme and QS World University Rankings 2027 matrix to all ten priority private higher-education profiles without touching authenticated operations.
 - Current release line: `2026-08-06-r340` is live at runtime feature commit `f11b025d2736357b2550f56c8c8b8f69db412690`; WeChat development version `1.0.37` was uploaded successfully. It removes the public assessment-code gate and replaces reputation-biased school suggestions with evidence-aware, four-tier balanced recommendations.
 - Current release line: `2026-08-06-r341` is live at runtime feature commit `95152f2a8f6bc4b404c91b952198d770bea71df0`; WeChat development version `1.0.38` was uploaded successfully. It replaces all four public school-entry sample packs with longer English-only practice and fixes the PDF font embedding.
-- Current release line prepared: `2026-08-06-r342` makes the public Mini Program school guide calmer and easier to read, with four clear home tasks, larger supporting text, text-only bottom navigation, collapsed long detail content and update/source metadata moved to the page bottom.
+- Current release line: `2026-08-06-r342` is live at runtime commit `5152e85533a8424b39477791b0a329f749d4edb2`; WeChat development version `1.0.39` was uploaded successfully. It makes the public Mini Program school guide calmer and easier to read, with four clear home tasks, larger supporting text, text-only bottom navigation, collapsed long detail content and update/source metadata moved to the page bottom.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
-## 2026-08-06-r342 Ready
+## 2026-08-06-r342 Live
 
 - Scope: public Mini Program school-guide readability and information hierarchy.
 - Business impact:
@@ -90,8 +90,8 @@
   - `miniapp/boss-academic-parent/pages/guide-institution-detail/`
   - `miniapp/boss-academic-parent/pages/guide-pathway/`
   - `tests/miniapp-consumer-entry.test.ts`
-- Verification before deploy: 37 focused tests, 67-page Mini Program audit and WeChat developer-tool preview compile passed; complete backend regression, TypeScript, native checks and production build remain in the final gate.
-- Post-deploy verification: local/GitHub/server commit equality, PM2 online, HTTP 200, live catalog `2026-08-06-r342`, WeChat development version `1.0.39`, then physical-phone typography and horizontal-scroll acceptance.
+- Verification: 37 focused tests, all 174 backend regression tests, TypeScript, native JavaScript/JSON checks, the 67-page Mini Program audit, WeChat developer-tool preview compile and the 243-page production build passed.
+- Deployment: local/GitHub/server runtime commit `5152e85533a8424b39477791b0a329f749d4edb2`, PM2 PID `1832298`, health HTTP 200, WeChat development version `1.0.39` uploaded at 714,352 bytes. Physical-phone typography and horizontal-scroll acceptance remain manual.
 - Rollback point: `9ec8ca9f5ad3f9f77da3b748c21a12a0c4948b76`.
 
 ## 2026-08-06-r341 Live
