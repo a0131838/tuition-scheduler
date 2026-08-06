@@ -11,7 +11,7 @@ Page({
 
   onLoad(options) {
     const slug = decodeURIComponent(options.slug || "");
-    api.request("/api/public/school-guide/catalog?v=r335")
+    api.request("/api/public/school-guide/catalog?v=r336")
       .then((data) => {
         const groups = data.schoolGroups || data.schools || [];
         const school = groups.find((item) => item.slug === slug || (item.memberSlugs || []).includes(slug));
@@ -48,7 +48,11 @@ Page({
             snapshot,
             communityMetrics: school.communityMetrics || [],
             campusProfiles: school.campusProfiles || [],
-            academicRecords: school.academicResults ? school.academicResults.records || [] : [],
+            academicRecords: school.academicResults ? (school.academicResults.records || []).map((record) => ({
+              ...record,
+              displayScore: record.average || record.passRate || "已公布",
+              displayLabel: record.scoreLabel || (record.average ? "平均分" : record.passRate ? "通过率" : "成绩摘要")
+            })) : [],
             universityOutcomes: school.universityOutcomes || []
           },
           detailSections,

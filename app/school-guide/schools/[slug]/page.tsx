@@ -46,13 +46,14 @@ export default async function SchoolGuideSchoolDetailPage({ params }: { params: 
             )) : <div className="sg-school-unpublished">暂无详细资料</div>}
 
             <h2>历年学术成绩</h2>
-            {school.academicResults?.records.length ? <>
+            {school.academicResults ? <>
               <p>{school.academicResults.programme} · {school.academicResults.note}</p>
-              <div className="sg-result-scroll"><div className="sg-result-row">{school.academicResults.records.map((record) => <div className="sg-result-item" key={record.year}><small>{record.year}</small><strong>{record.average || "—"}</strong><span>平均分</span>{record.passRate ? <p>通过率 {record.passRate}</p> : null}{record.cohort ? <p>考生 {record.cohort}</p> : null}{record.highlight ? <em>{record.highlight}</em> : null}</div>)}</div></div>
-            </> : <div className="sg-school-unpublished">暂无连续公开成绩</div>}
+              {school.academicResults.records.length ? <div className="sg-result-scroll"><div className="sg-result-row">{school.academicResults.records.map((record) => <div className="sg-result-item" key={record.year}><small>{record.year}</small><strong>{record.average || record.passRate || "已公布"}</strong><span>{record.scoreLabel || (record.average ? "平均分" : record.passRate ? "通过率" : "成绩摘要")}</span>{record.average && record.passRate ? <p>通过率 {record.passRate}</p> : null}{record.cohort ? <p>考生 {record.cohort}</p> : null}{record.highlight ? <em>{record.highlight}</em> : null}</div>)}</div></div> : null}
+              {school.academicResults.sourceLabel ? <div className="sg-school-update">资料：{school.academicResults.sourceLabel} · 核对于 {school.academicResults.checkedAt}</div> : null}
+            </> : <div className="sg-school-unpublished">尚未完成成绩核对</div>}
 
             <h2>大学录取与去向</h2>
-            {school.universityOutcomes?.length ? <div className="sg-school-outcomes">{school.universityOutcomes.map((outcome) => <div key={outcome.year}><strong>{outcome.year}</strong><p>{outcome.summary}</p></div>)}</div> : <div className="sg-school-unpublished">暂无按届公开数据</div>}
+            {school.universityOutcomes?.length ? <div className="sg-school-outcomes">{school.universityOutcomes.map((outcome) => <div key={outcome.year}><strong>{outcome.year}</strong><p>{outcome.summary}</p></div>)}</div> : <div className="sg-school-unpublished">{school.universityOutcomeNote || "暂无按届公开数据"}</div>}
 
             {school.costProfile ? (
               <section className="sg-cost-box">

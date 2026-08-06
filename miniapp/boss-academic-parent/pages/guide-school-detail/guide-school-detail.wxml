@@ -60,22 +60,23 @@
 
   <view class="guide-section">
     <view class="guide-section-title">历年学术成绩</view>
-    <view wx:if="{{school.academicRecords.length}}">
+    <view wx:if="{{school.academicResults}}">
       <view class="guide-section-note">{{school.academicResults.programme}} · {{school.academicResults.note}}</view>
-      <scroll-view class="school-result-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
+      <scroll-view wx:if="{{school.academicRecords.length}}" class="school-result-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
         <view class="school-result-row">
           <view class="school-result" wx:for="{{school.academicRecords}}" wx:key="year">
             <view class="school-result-year">{{item.year}}</view>
-            <view class="school-result-score">{{item.average || "—"}}</view>
-            <view class="school-result-label">平均分</view>
-            <view class="school-result-meta" wx:if="{{item.passRate}}">通过率 {{item.passRate}}</view>
+            <view class="school-result-score">{{item.displayScore}}</view>
+            <view class="school-result-label">{{item.displayLabel}}</view>
+            <view class="school-result-meta" wx:if="{{item.average && item.passRate}}">通过率 {{item.passRate}}</view>
             <view class="school-result-meta" wx:if="{{item.cohort}}">考生 {{item.cohort}}</view>
             <view class="school-result-highlight" wx:if="{{item.highlight}}">{{item.highlight}}</view>
           </view>
         </view>
       </scroll-view>
+      <view class="school-update-note" wx:if="{{school.academicResults.sourceLabel}}">资料：{{school.academicResults.sourceLabel}} · 核对于 {{school.academicResults.checkedAt}}</view>
     </view>
-    <view class="school-unpublished" wx:else>暂无连续公开成绩</view>
+    <view class="school-unpublished" wx:else>尚未完成成绩核对</view>
   </view>
 
   <view class="guide-section">
@@ -86,7 +87,7 @@
         <view class="school-outcome-summary">{{item.summary}}</view>
       </view>
     </view>
-    <view class="school-unpublished" wx:else>暂无按届公开数据</view>
+    <view class="school-unpublished" wx:else>{{school.universityOutcomeNote || "暂无按届公开数据"}}</view>
   </view>
 
   <view class="guide-cost-box" wx:if="{{school.costProfile}}">

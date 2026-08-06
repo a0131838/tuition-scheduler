@@ -60,10 +60,26 @@
 - Current release line prepared: `2026-08-06-r333` gives all 43 current school/campus records bilingual profiles and review dates, adds official-data results and outcomes where verified, and removes public school-phone and external website dependency.
 - Current release line prepared: `2026-08-06-r334` reorganises Find Schools into six peer categories and 34 unique school brands while retaining all 43 source records and every legacy campus link.
 - Current release line prepared: `2026-08-06-r335` makes every school-guide category open into detailed internal profiles, adds official-data MOE school records, admissions paths and downloadable preparation packs, and corrects public/assessment QR share entry paths.
+- Current release line prepared: `2026-08-06-r336` expands verifiable international-school academic results beyond official homepages, gives every school an explicit data-status explanation, and adds tiered detailed profiles for popular private universities and secondary routes.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-06-r336 Ready
+
+- Scope: make result coverage and private-education discovery substantially more complete without inventing missing cohort data or turning the directory into a ranking.
+- Business impact:
+  - more than 20 international-school source records now contain structured year-by-year academic results, including IB, AP, French Baccalauréat, HSC, IGCSE and other applicable routes;
+  - every international-school profile now explains whether cohort results exist, are not applicable, or could not yet be verified, so blank cards are removed;
+  - result cards distinguish averages, pass rates and published highlights instead of presenting every system as an IB average;
+  - 11 popular or commonly considered private higher-education and secondary routes receive detailed programme, admissions and payment-check profiles;
+  - lower-priority PEIs remain a concise searchable name list until course-level checks are complete;
+  - the directory label is clarified to `高中、大学与PEI`, and priority profiles sort before generic entries;
+  - existing authenticated parent/staff and operating-system workflows remain unchanged.
+- Verification before deploy: focused school-guide tests, complete backend regression, TypeScript, Mini Program audit and production build.
+- Post-deploy verification: verify catalog version `2026-08-06-r336`, academic-result status on a school with and without results, private-profile ordering, and upload WeChat development version `1.0.33`.
+- Task doc: `docs/tasks/TASK-20260806-school-results-and-private-education.md`.
 
 ## 2026-08-06-r335 Ready
 

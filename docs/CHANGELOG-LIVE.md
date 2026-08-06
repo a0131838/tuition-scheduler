@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-06-r336
+
+- Release ID: `2026-08-06-r336`
+- Date/Time (Asia/Singapore): `2026-08-06`
+- Deployment status: `READY`
+- Scope: expand international-school academic-result coverage using verifiable official and reputable public sources, provide a clear data status for every school, and add tiered detailed profiles for popular private higher-education and secondary-school routes.
+- Key files:
+  - `lib/school-guide-school-metadata.ts`
+  - `lib/school-guide-official-institutions.ts`
+  - `lib/school-guide-directory.ts`
+  - `app/school-guide/schools/[slug]/page.tsx`
+  - `miniapp/boss-academic-parent/pages/guide-school-detail/`
+  - `tests/school-guide-complete-profiles.test.ts`
+  - `docs/tasks/TASK-20260806-school-results-and-private-education.md`
+- Risk impact (if any): Medium-low and isolated to public guide content, ordering and presentation. No database migration or change to authentication, scheduling, attendance, packages, finance, payroll, renewals, tickets or permissions.
+- Verification: focused school-guide tests, complete backend regression, TypeScript, 67-page Mini Program release audit and production build.
+- Rollback point: `5d96ac0709d8375195742f1a77d0c8ff95ea7eaa` (`2026-08-06-r335`).
+
+---
+
 ## 2026-08-06-r335
 
 - Release ID: `2026-08-06-r335`

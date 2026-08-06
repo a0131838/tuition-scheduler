@@ -19,7 +19,7 @@ Page({
   },
 
   onLoad() {
-    api.request("/api/public/school-guide/catalog?v=r335")
+    api.request("/api/public/school-guide/catalog?v=r336")
       .then((data) => {
         const counts = data.institutionCounts || {};
         const categories = (data.directoryCategories || []).map((item) => Object.assign({}, item, {
@@ -95,7 +95,7 @@ Page({
     const offset = reset ? 0 : this.data.institutions.length;
     this.setData({ institutionLoading: true });
     const path = "/api/public/school-guide/institutions?category=" + encodeURIComponent(this.data.activeCategory) +
-      "&q=" + encodeURIComponent(this.data.query.trim()) + "&limit=40&offset=" + offset + "&v=r335";
+      "&q=" + encodeURIComponent(this.data.query.trim()) + "&limit=40&offset=" + offset + "&v=r336";
     return api.request(path)
       .then((data) => this.setData({
         institutions: reset ? (data.items || []) : this.data.institutions.concat(data.items || []),

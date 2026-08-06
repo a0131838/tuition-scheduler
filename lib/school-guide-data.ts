@@ -51,6 +51,7 @@ export type SchoolGuideSchool = {
   communityMetrics?: SchoolGuideMetric[];
   academicResults?: SchoolGuideAcademicResults;
   universityOutcomes?: SchoolGuideUniversityOutcome[];
+  universityOutcomeNote?: string;
   updateCadence: string;
   publicUpdatedAt: string;
   nextPublicReviewAt: string;
@@ -64,6 +65,7 @@ type SchoolGuideSchoolBase = Omit<
   | "communityMetrics"
   | "academicResults"
   | "universityOutcomes"
+  | "universityOutcomeNote"
   | "updateCadence"
   | "publicUpdatedAt"
   | "nextPublicReviewAt"
@@ -99,7 +101,7 @@ export type SchoolGuideCase = {
   summary: string;
 };
 
-export const SCHOOL_GUIDE_DATA_VERSION = "2026-08-06-r335";
+export const SCHOOL_GUIDE_DATA_VERSION = "2026-08-06-r336";
 
 export const officialSources: OfficialSource[] = [
   {

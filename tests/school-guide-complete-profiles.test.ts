@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
+import { schoolGuideOfficialInstitutions } from "../lib/school-guide-official-institutions";
 import { schoolGuideSchools } from "../lib/school-guide-data";
 
 const root = path.resolve(__dirname, "..");
@@ -22,7 +23,7 @@ test("every catalogued school or campus has a bilingual maintained profile", () 
 
 test("published result histories are structured, chronological and source-safe", () => {
   const schools = schoolGuideSchools.filter((school) => school.academicResults?.records.length);
-  assert.ok(schools.length >= 5);
+  assert.ok(schools.length >= 25);
   for (const school of schools) {
     assert.ok(school.academicResults?.programme);
     assert.ok(school.academicResults?.note);
@@ -31,6 +32,33 @@ test("published result histories are structured, chronological and source-safe",
       assert.ok(record.average || record.passRate || record.highlight);
     }
   }
+});
+
+test("every international school explains the current academic-result status", () => {
+  for (const school of schoolGuideSchools) {
+    assert.ok(school.academicResults?.programme, `${school.name} is missing an academic programme label`);
+    assert.ok(school.academicResults?.note, `${school.name} is missing an academic result status`);
+    assert.ok(
+      school.universityOutcomeNote || school.universityOutcomes?.length,
+      `${school.name} is missing a university outcome status`,
+    );
+  }
+});
+
+test("popular private higher education and secondary routes have detailed profiles", () => {
+  const detailed = schoolGuideOfficialInstitutions.filter((item) =>
+    item.badges.some((badge) => ["重点热门", "重点高中路线", "常见选择"].includes(badge)),
+  );
+  assert.ok(detailed.length >= 11);
+  for (const item of detailed) {
+    assert.ok(item.sections.length >= 3, `${item.name} needs structured detail`);
+    assert.ok(item.sections.some((section) => section.title.includes("申请")), `${item.name} needs admissions detail`);
+    assert.ok(item.sourceAuthority, `${item.name} needs source provenance`);
+    assert.ok(item.sourceNote, `${item.name} needs a source note`);
+  }
+  const namesOnly = schoolGuideOfficialInstitutions.find((item) => item.slug === "private-other-peis");
+  assert.ok(namesOnly);
+  assert.ok(namesOnly.sections.flatMap((section) => section.items).length >= 5);
 });
 
 test("consumer school pages keep research inside the product", () => {

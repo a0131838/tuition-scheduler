@@ -133,8 +133,8 @@ export const schoolGuideDirectoryCategories: SchoolGuideDirectoryCategory[] = [
   { id: "international", title: "国际学校", subtitle: `${schoolGuideSchoolGroups.length}所学校品牌`, sectorIds: ["international-schools"] },
   { id: "government", title: "政府学校", subtitle: "小学、中学与特色路线", sectorIds: ["primary-schools", "secondary-schools", "independent-specialised"] },
   { id: "preschool", title: "幼儿园与学前", subtitle: "MOE与持牌学前教育", sectorIds: ["moe-kindergarten", "licensed-preschools"] },
-  { id: "private-specialist", title: "私立与特色学校", subtitle: "私立、回教与特色教育", sectorIds: ["private-schools", "madrasahs"] },
-  { id: "postsecondary", title: "高中与专上", subtitle: "JC、理工、大学与PEI", sectorIds: ["jc-mi", "ite-poly-arts", "autonomous-universities", "private-education-institutions"] },
+  { id: "private-specialist", title: "私立与特色学校", subtitle: "私立中小学、回教与特色教育", sectorIds: ["private-schools", "madrasahs"] },
+  { id: "postsecondary", title: "高中、大学与PEI", subtitle: "JC、理工、大学与热门私立院校", sectorIds: ["jc-mi", "ite-poly-arts", "autonomous-universities", "private-education-institutions"] },
   { id: "special-support", title: "特殊教育支持", subtitle: "SPED与主流学校支持", sectorIds: ["sped-schools"] },
 ];
 
