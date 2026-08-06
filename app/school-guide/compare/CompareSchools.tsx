@@ -3,6 +3,11 @@
 import { useMemo, useState } from "react";
 import type { SchoolGuideSchool } from "@/lib/school-guide-data";
 
+const popularCompareSlugs = [
+  "singapore-american-school", "dulwich-college-singapore-8", "united-world-college-of-south-east-asia-38", "tanglin-trust-school-36",
+  "north-london-collegiate-school-singapore-21", "acs-international-singapore-1", "hwa-chong-international-school-16", "st-joseph-s-institution-international-ltd-34",
+];
+
 export default function CompareSchools({ schools }: { schools: SchoolGuideSchool[] }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [query, setQuery] = useState("");
@@ -14,7 +19,12 @@ export default function CompareSchools({ schools }: { schools: SchoolGuideSchool
     const q = query.trim().toLowerCase();
     return uniqueSchools
       .filter((school) => !q || school.name.toLowerCase().includes(q))
-      .sort((a, b) => (a.editorialTier === 1 ? 0 : 1) - (b.editorialTier === 1 ? 0 : 1))
+      .sort((a, b) => {
+        const aPopular = popularCompareSlugs.indexOf(a.slug);
+        const bPopular = popularCompareSlugs.indexOf(b.slug);
+        if (aPopular !== -1 || bPopular !== -1) return (aPopular === -1 ? 99 : aPopular) - (bPopular === -1 ? 99 : bPopular);
+        return (a.editorialTier === 1 ? 0 : 1) - (b.editorialTier === 1 ? 0 : 1);
+      })
       .slice(0, 18);
   }, [query, uniqueSchools]);
   const compared = uniqueSchools.filter((school) => selected.includes(school.slug));

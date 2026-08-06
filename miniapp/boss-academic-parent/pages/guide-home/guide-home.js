@@ -1,4 +1,15 @@
 const api = require("../../utils/api");
+const POPULAR_COMPARE_SLUGS = [
+  "singapore-american-school",
+  "dulwich-college-singapore-8",
+  "united-world-college-of-south-east-asia-38",
+  "tanglin-trust-school-36",
+  "north-london-collegiate-school-singapore-21",
+  "acs-international-singapore-1",
+  "hwa-chong-international-school-16",
+  "st-joseph-s-institution-international-ltd-34"
+];
+const HOME_PATHWAY_SLUGS = ["aeis-primary", "aeis-secondary", "s-aeis", "international-school-direct"];
 
 Page({
   data: {
@@ -28,13 +39,17 @@ Page({
 
   loadData() {
     this.setData({ loading: true });
-    return api.request("/api/public/school-guide/catalog?v=r337")
-      .then((data) => this.setData({
+    return api.request("/api/public/school-guide/catalog?v=r338")
+      .then((data) => {
+        const schoolGroups = data.schoolGroups || data.schools || [];
+        const pathways = data.pathways || [];
+        this.setData({
         version: data.version || "",
         schools: data.schools || [],
-        pathways: data.pathways || [],
-        popularSchools: (data.schoolGroups || data.schools || []).filter((item) => item.editorialTier === 1 && item.dataStatus === "VERIFIED").slice(0, 3)
-      }))
+        pathways: HOME_PATHWAY_SLUGS.map((slug) => pathways.find((item) => item.slug === slug)).filter(Boolean),
+        popularSchools: POPULAR_COMPARE_SLUGS.map((slug) => schoolGroups.find((item) => item.slug === slug || (item.memberSlugs || []).includes(slug))).filter(Boolean)
+      });
+      })
       .catch((err) => api.toast(err.message))
       .finally(() => this.setData({ loading: false }));
   },
@@ -60,7 +75,7 @@ Page({
   },
 
   goCompare() {
-    wx.navigateTo({ url: "/pages/guide-compare/guide-compare" });
+    wx.navigateTo({ url: "/pages/guide-compare/guide-compare?preset=popular" });
   },
 
   goConsult() {

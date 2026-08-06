@@ -21,7 +21,7 @@ Page({
   },
 
   onLoad() {
-    api.request("/api/public/school-guide/catalog?v=r337")
+    api.request("/api/public/school-guide/catalog?v=r338")
       .then((data) => {
         const counts = data.institutionCounts || {};
         const categories = (data.directoryCategories || []).map((item) => Object.assign({}, item, {
@@ -100,7 +100,7 @@ Page({
     this.setData({ institutionLoading: true });
     const path = "/api/public/school-guide/institutions?category=" + encodeURIComponent(this.data.activeCategory) +
       "&group=" + encodeURIComponent(this.data.institutionGroup) +
-      "&q=" + encodeURIComponent(this.data.query.trim()) + "&limit=40&offset=" + offset + "&v=r337";
+      "&q=" + encodeURIComponent(this.data.query.trim()) + "&limit=40&offset=" + offset + "&v=r338";
     return api.request(path)
       .then((data) => this.setData({
         institutions: reset ? (data.items || []) : this.data.institutions.concat(data.items || []),
@@ -132,6 +132,10 @@ Page({
 
   showAllSchools() {
     this.setData({ showAllSchools: true });
+  },
+
+  goAssessment() {
+    wx.navigateTo({ url: "/pages/guide-assessment/guide-assessment" });
   },
 
   openSchool(event) {

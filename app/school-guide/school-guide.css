@@ -376,6 +376,18 @@
   font-size: 12px;
 }
 
+.sg-popular-compact {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.sg-popular-compact .sg-popular-card {
+  min-height: 150px !important;
+}
+
+.sg-popular-compact .sg-popular-card strong {
+  margin-top: 0;
+}
+
 .sg-page-head {
   padding: 70px 0 42px;
   border-bottom: 1px solid var(--sg-line);

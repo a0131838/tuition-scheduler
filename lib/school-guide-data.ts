@@ -101,7 +101,7 @@ export type SchoolGuideCase = {
   summary: string;
 };
 
-export const SCHOOL_GUIDE_DATA_VERSION = "2026-08-06-r337";
+export const SCHOOL_GUIDE_DATA_VERSION = "2026-08-06-r338";
 
 export const officialSources: OfficialSource[] = [
   {

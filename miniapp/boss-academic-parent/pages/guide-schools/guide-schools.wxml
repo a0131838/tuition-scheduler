@@ -8,6 +8,10 @@
     <input class="guide-input" value="{{query}}" bindinput="inputQuery" placeholder="搜索学校中文名或英文名" />
   </view>
 
+  <view class="consumer-start" hover-class="guide-press" bindtap="goAssessment">
+    <view><view class="guide-kicker">还没有目标学校？</view><view class="consumer-start-title">2分钟智能选校</view><view class="guide-section-note">按年龄、预算和课程偏好生成候选清单。</view></view><view class="guide-arrow">›</view>
+  </view>
+
   <view class="school-category-grid">
     <view class="school-category {{activeCategory === item.id ? 'active' : ''}}" wx:for="{{categories}}" wx:key="id" data-id="{{item.id}}" bindtap="selectCategory">
       <view class="school-category-title">{{item.title}}</view>

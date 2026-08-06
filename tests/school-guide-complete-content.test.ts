@@ -33,6 +33,7 @@ test("official institution directory exposes detailed profiles in every category
 
 test("all pathway downloads resolve to generated PDFs", () => {
   const packSlugs = new Set(schoolGuideSamplePacks.map((item) => item.slug));
+  assert.deepEqual([...packSlugs].sort(), ["aeis-primary-sample", "aeis-secondary-sample", "international-primary-sample", "international-secondary-sample"]);
   for (const pathway of schoolGuideDetailedPathways) {
     assert.ok(pathway.steps.length > 0, `${pathway.slug} has no steps`);
     assert.ok(pathway.examSections.length > 0, `${pathway.slug} has no assessment details`);

@@ -62,10 +62,28 @@
 - Current release line prepared: `2026-08-06-r335` makes every school-guide category open into detailed internal profiles, adds official-data MOE school records, admissions paths and downloadable preparation packs, and corrects public/assessment QR share entry paths.
 - Current release line prepared: `2026-08-06-r336` expands verifiable international-school academic results beyond official homepages, gives every school an explicit data-status explanation, and adds tiered detailed profiles for popular private universities and secondary routes.
 - Current release line prepared: `2026-08-06-r337` separates private higher education from public postsecondary routes, adds Furen International School and a detailed popular-eight private higher-education set, and adds parent-facing subcategory filters on Web and Mini Program.
+- Current release line prepared: `2026-08-06-r338` simplifies the consumer home, promotes an eight-school comparison set, moves San Yu and St Francis Methodist into church schools, adds detailed Amity and Kingston profiles, separates preschool routes and limits practice downloads to international-school and AEIS/S-AEIS preparation.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-06-r338 Ready
+
+- Scope: make the guide easier for a parent to enter, browse and trust while keeping each public/private route correctly classified.
+- Business impact:
+  - the Web and Mini Program home now lead with three clear actions: find a school, check entrance exams and assess current learning level;
+  - the eight schools parents most often compare appear near the top and lead to a 2–4-school comparison flow;
+  - `私立与特色学校` separates private secondary/exam-preparation, ten detailed popular private higher-education profiles, other PEIs and church/religious routes;
+  - San Yu Adventist School and St Francis Methodist School are classified as church schools rather than generic private secondary schools;
+  - Amity Global Institute and Kingston International College have course-level profiles covering awarding partners, programmes, ranking scope, 2026 fees/intakes and entry standards;
+  - every popular private higher-education profile explains that a partner university ranking belongs to that university, not to the Singapore PEI;
+  - preschool discovery separates Infant Care, Child Care, Kindergarten and MOE Kindergarten, with age, care, fee and application checks;
+  - downloadable practice is limited to international-school and AEIS/S-AEIS routes; private universities, public postsecondary routes and preschool no longer show generic examples;
+  - authenticated parent/staff and all operating-system workflows remain unchanged.
+- Verification before deploy: focused school-guide tests, complete backend regression, TypeScript, Mini Program release audit, JavaScript/JSON validation and production build.
+- Post-deploy verification: catalog version `2026-08-06-r338`; private-higher count 10; San Yu and St Francis in `faith-special`; Amity and Kingston detail sections; preschool groups; four remaining sample packs; Web and Mini Program home and comparison flow; upload WeChat development version `1.0.35`.
+- Task doc: `docs/tasks/TASK-20260806-school-guide-consumer-structure-and-private-he.md`.
 
 ## 2026-08-06-r337 Ready
 

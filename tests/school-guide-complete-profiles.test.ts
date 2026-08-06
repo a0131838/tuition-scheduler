@@ -48,10 +48,10 @@ test("every international school explains the current academic-result status", (
 
 test("popular private higher education and secondary routes have detailed profiles", () => {
   const popularHigherEducation = schoolGuideOfficialInstitutions.filter((item) =>
-    item.categoryId === "private-specialist" && item.badges.includes("热门8所"),
+    item.categoryId === "private-specialist" && item.badges.includes("热门私立高校"),
   );
-  assert.equal(popularHigherEducation.length, 8);
-  assert.equal(new Set(popularHigherEducation.map((item) => item.slug)).size, 8);
+  assert.equal(popularHigherEducation.length, 10);
+  assert.equal(new Set(popularHigherEducation.map((item) => item.slug)).size, 10);
   const detailed = schoolGuideOfficialInstitutions.filter((item) =>
     item.badges.some((badge) => ["重点热门", "重点高中路线", "常见选择"].includes(badge)),
   );
@@ -69,6 +69,13 @@ test("popular private higher education and secondary routes have detailed profil
   assert.ok(furen);
   assert.equal(furen.nameZh, "辅仁国际学校");
   assert.ok(furen.sections.some((section) => section.items.join(" ").includes("入学测试")));
+  for (const slug of ["private-amity-singapore", "private-kingston-international-college"]) {
+    const institution = schoolGuideOfficialInstitutions.find((item) => item.slug === slug);
+    assert.ok(institution, `${slug} is missing`);
+    for (const title of ["合作院校与颁证", "专业与课程", "排名说明", "2026学费与开学时间", "申请与入学标准"]) {
+      assert.ok(institution.sections.some((section) => section.title === title), `${slug} is missing ${title}`);
+    }
+  }
 });
 
 test("private higher education and public postsecondary routes stay separated and easy to filter", () => {
@@ -79,13 +86,19 @@ test("private higher education and public postsecondary routes stay separated an
   assert.deepEqual(publicCategory?.groups?.map((item) => item.id), ["ALL", "jc-mi", "polytechnics", "ite", "arts", "autonomous-universities"]);
   assert.deepEqual(privateCategory?.groups?.map((item) => item.id), ["ALL", "private-secondary", "private-higher", "private-higher-other", "faith-special"]);
 
-  const popularPrivate = schoolGuideOfficialInstitutions.filter((item) => item.badges.includes("热门8所"));
-  assert.equal(popularPrivate.length, 8);
+  const popularPrivate = schoolGuideOfficialInstitutions.filter((item) => item.badges.includes("热门私立高校"));
+  assert.equal(popularPrivate.length, 10);
   assert.ok(popularPrivate.every((item) => item.categoryId === "private-specialist"));
   assert.ok(popularPrivate.every((item) => getSchoolGuideInstitutionDirectoryGroup(item) === "private-higher"));
-  assert.equal(schoolGuideOfficialInstitutions.filter((item) => getSchoolGuideInstitutionDirectoryGroup(item) === "private-higher").length, 8);
+  assert.equal(schoolGuideOfficialInstitutions.filter((item) => getSchoolGuideInstitutionDirectoryGroup(item) === "private-higher").length, 10);
   assert.ok(schoolGuideOfficialInstitutions.some((item) => getSchoolGuideInstitutionDirectoryGroup(item) === "private-higher-other"));
-  assert.equal(schoolGuideOfficialInstitutions.filter((item) => item.categoryId === "postsecondary" && item.badges.includes("热门8所")).length, 0);
+  assert.equal(schoolGuideOfficialInstitutions.filter((item) => item.categoryId === "postsecondary" && item.badges.includes("热门私立高校")).length, 0);
+
+  for (const slug of ["private-san-yu-adventist", "private-st-francis-methodist"]) {
+    const institution = schoolGuideOfficialInstitutions.find((item) => item.slug === slug);
+    assert.ok(institution?.badges.includes("教会学校"));
+    assert.equal(institution && getSchoolGuideInstitutionDirectoryGroup(institution), "faith-special");
+  }
 
   for (const group of ["jc-mi", "polytechnics", "ite", "arts", "autonomous-universities"]) {
     assert.ok(schoolGuideOfficialInstitutions.some((item) => item.categoryId === "postsecondary" && getSchoolGuideInstitutionDirectoryGroup(item) === group), `${group} has no public profile`);

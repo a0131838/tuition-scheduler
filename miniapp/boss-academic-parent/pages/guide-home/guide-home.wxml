@@ -11,24 +11,22 @@
     <view class="consumer-action" hover-class="guide-press" bindtap="goAcademicAssessment"><text>03</text><view><b>测学习水平</b><small>申请评估码，完成30–45分钟在线测评</small></view><i>›</i></view>
   </view>
 
-  <view class="consumer-start" hover-class="guide-press" bindtap="goAssessment">
-    <view><view class="guide-kicker">不知道从哪里开始？</view><view class="consumer-start-title">先做2分钟智能选校</view><view class="guide-section-note">根据年龄、预算和课程偏好生成候选学校。</view></view><view class="guide-arrow">›</view>
+  <view class="guide-section">
+    <view class="guide-section-title">常被比较的8所学校</view>
+    <view class="guide-section-note">第一梯队加英华国际、华中国际和圣约瑟国际；可选2–4所并排比较。</view>
+    <view class="consumer-compare-grid">
+      <view class="consumer-compare-school" hover-class="guide-press" wx:for="{{popularSchools}}" wx:key="slug" data-slug="{{item.slug}}" bindtap="openSchool">
+        <view class="consumer-compare-name">{{item.nameZh}}</view><view class="consumer-compare-en">{{item.name}}</view>
+      </view>
+    </view>
+    <button class="guide-action" bindtap="goCompare">选择学校开始比较</button>
   </view>
 
   <view class="guide-section" id="admission-pathways">
-    <view class="guide-section-title">入学考试与申请路径</view>
+    <view class="guide-section-title">入学考试与申请</view>
     <view class="guide-list">
       <view class="guide-row" wx:for="{{pathways}}" wx:key="slug" data-slug="{{item.slug}}" bindtap="openPathway">
         <view class="guide-row-main"><view class="guide-row-title">{{item.title}}</view><view class="guide-row-note">{{item.audience}}</view></view><view class="guide-arrow">›</view>
-      </view>
-    </view>
-  </view>
-
-  <view class="guide-section">
-    <view class="guide-section-title">常被比较的学校</view>
-    <view class="guide-list">
-      <view class="guide-row" wx:for="{{popularSchools}}" wx:key="slug" data-slug="{{item.slug}}" bindtap="openSchool">
-        <view class="guide-row-main"><view class="guide-row-title">{{item.nameZh}}</view><view class="guide-row-name-en">{{item.name}}</view><view class="guide-row-note">{{item.comparison.curriculum}}</view></view><view class="guide-arrow">›</view>
       </view>
     </view>
   </view>

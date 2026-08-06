@@ -132,9 +132,9 @@ export const schoolGuideSchoolGroups: SchoolGuideSchoolGroup[] = (() => {
 
 export const schoolGuideDirectoryCategories: SchoolGuideDirectoryCategory[] = [
   { id: "international", title: "国际学校", subtitle: `${schoolGuideSchoolGroups.length}所学校品牌`, sectorIds: ["international-schools"] },
-  { id: "government", title: "政府学校", subtitle: "小学、中学与特色路线", sectorIds: ["primary-schools", "secondary-schools", "independent-specialised"], groups: [{ id: "ALL", title: "全部" }, { id: "government-primary", title: "小学" }, { id: "government-secondary", title: "中学与直通车" }] },
-  { id: "preschool", title: "幼儿园与学前", subtitle: "MOE与持牌学前教育", sectorIds: ["moe-kindergarten", "licensed-preschools"] },
-  { id: "private-specialist", title: "私立与特色学校", subtitle: "私立中学、热门私立高校与特色教育", sectorIds: ["private-schools", "private-education-institutions", "madrasahs"], groups: [{ id: "ALL", title: "全部" }, { id: "private-secondary", title: "私立中学" }, { id: "private-higher", title: "热门私立高校" }, { id: "private-higher-other", title: "其他私立高校" }, { id: "faith-special", title: "回教与特色" }] },
+  { id: "government", title: "政府小学与中学", subtitle: "小学、中学与直通车分开查找", sectorIds: ["primary-schools", "secondary-schools", "independent-specialised"], groups: [{ id: "ALL", title: "全部" }, { id: "government-primary", title: "政府小学" }, { id: "government-secondary", title: "政府中学与直通车" }] },
+  { id: "preschool", title: "幼儿园与学前", subtitle: "按婴儿托育、全日托儿与幼儿园查找", sectorIds: ["moe-kindergarten", "licensed-preschools"], groups: [{ id: "ALL", title: "全部" }, { id: "infant-care", title: "婴儿托育" }, { id: "child-care", title: "全日托儿" }, { id: "kindergarten", title: "幼儿园" }, { id: "moe-kindergarten", title: "MOE幼儿园" }, { id: "preschool-overview", title: "政策与运营商" }] },
+  { id: "private-specialist", title: "私立与特色学校", subtitle: "考试预备、热门私立高校与教会学校分开查找", sectorIds: ["private-schools", "private-education-institutions", "madrasahs"], groups: [{ id: "ALL", title: "全部" }, { id: "private-secondary", title: "私立中学与考试预备" }, { id: "private-higher", title: "热门私立高校" }, { id: "private-higher-other", title: "其他私立高校" }, { id: "faith-special", title: "教会、回教与特色" }] },
   { id: "postsecondary", title: "公立高中与大学", subtitle: "JC/MI、理工、ITE、艺术院校与自治大学", sectorIds: ["jc-mi", "ite-poly-arts", "autonomous-universities"], groups: [{ id: "ALL", title: "全部" }, { id: "jc-mi", title: "JC / MI" }, { id: "polytechnics", title: "理工学院" }, { id: "ite", title: "ITE" }, { id: "arts", title: "艺术院校" }, { id: "autonomous-universities", title: "自治大学" }] },
   { id: "special-support", title: "特殊教育支持", subtitle: "SPED与主流学校支持", sectorIds: ["sped-schools"] },
 ];
