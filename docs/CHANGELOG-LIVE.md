@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-08-06-r341`
 - Date/Time (Asia/Singapore): `2026-08-06`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: replace the four public AEIS and international-school preparation downloads with expanded English-only practice packs, increasing each from a few mixed-subject prompts to 19-23 structured vocabulary, grammar, cloze, reading, writing and reflection items with reference answers and parent observation pages.
 - Key files:
   - `lib/school-guide-pathways.ts`
@@ -30,7 +30,7 @@ This file is the single source of truth for what changed in production.
   - `public/school-guide/downloads/international-secondary-sample.pdf`
   - `tests/school-guide-complete-content.test.ts`
 - Risk impact (if any): Low and isolated to public downloadable preparation material and catalog cache versioning. Official pathway descriptions continue to state the real subjects and requirements; removing mathematics from the public practice packs does not imply that an official examination excludes mathematics. No change to assessment scoring, admissions facts, login, permissions, scheduling, packages, finance, payroll, tickets or messages.
-- Verification: focused content tests, PDF text extraction, all-page visual rendering, native Mini Program syntax, Mini Program audit, TypeScript, backend regression and production build are required before LIVE.
+- Verification: 32 focused school-guide/assessment tests, all 174 backend regression tests, TypeScript, native Mini Program JavaScript checks, the 67-page Mini Program audit and the 243-page production build passed. All 28 pages across the four PDFs were rendered and visually inspected; extracted text confirmed 19-23 questions per pack, no English mathematics section or mathematics question, visible embedded Chinese/English text, reference answers and parent observation pages. Runtime feature commit `95152f2a8f6bc4b404c91b952198d770bea71df0` aligned locally, on GitHub and on production with PM2 PID `1791300` and `/admin/login` HTTP 200. Live catalog returned `2026-08-06-r341`; all four live PDFs passed page/text checks. WeChat development version `1.0.38` uploaded successfully at 712,253 bytes; experience-version designation and physical-phone download acceptance remain manual.
 - Rollback point: `fef606a2e6c9e0da8dd5bd0de6269fad80949599` (`2026-08-06-r340` final aligned release head).
 
 ---

@@ -28,3 +28,13 @@ Make public entry-test examples easier for families to use by focusing only on E
 - Render and visually inspect all pages for visible text, clipping, spacing and page numbering.
 - Run focused school-guide tests, complete backend regression, TypeScript, native Mini Program checks, Mini Program release audit and production build.
 - Expected release: `2026-08-06-r341`; planned WeChat development version: `1.0.38`.
+
+## Rollout result
+
+- Runtime feature commit: `95152f2a8f6bc4b404c91b952198d770bea71df0`.
+- All 28 PDF pages were rendered and visually inspected; embedded Chinese and English text, spacing, tables, answer pages, page numbers and footers were readable with no clipping.
+- Extracted text confirmed 22, 23, 19 and 20 numbered English tasks respectively, with no mathematics section or mathematics question.
+- 32 focused tests, 174 backend tests, TypeScript, native Mini Program checks, the 67-page audit and 243-page build passed.
+- Production returned `2026-08-06-r341`; PM2 PID `1791300` was online and health returned HTTP 200.
+- WeChat development version `1.0.38` uploaded successfully at 712,253 bytes.
+- Remaining manual action: designate `1.0.38` as the experience version and open one PDF on a physical phone.
