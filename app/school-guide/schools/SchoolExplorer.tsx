@@ -33,7 +33,7 @@ export default function SchoolExplorer({ schools }: { schools: SchoolGuideSchool
     return schools.filter((school) => {
       if (tier === "first" && school.editorialTier !== 1) return false;
       if (tier === "unassigned" && school.editorialTier !== null) return false;
-      return !q || school.name.toLowerCase().includes(q);
+      return !q || school.name.toLowerCase().includes(q) || school.nameZh.toLowerCase().includes(q);
     }).sort((a, b) => (a.editorialTier === 1 ? 0 : 1) - (b.editorialTier === 1 ? 0 : 1));
   }, [query, schools, tier]);
 
@@ -41,8 +41,8 @@ export default function SchoolExplorer({ schools }: { schools: SchoolGuideSchool
     <>
       <div className="sg-filter-grid is-compact">
         <label className="sg-field">
-          搜索学校英文名
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="例如 Canadian、Stamford、UWCSEA" />
+          搜索学校中文名或英文名
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="例如 德威、Canadian、UWCSEA" />
         </label>
         <label className="sg-field">
           学校梯队
@@ -57,21 +57,22 @@ export default function SchoolExplorer({ schools }: { schools: SchoolGuideSchool
         {rows.map((school) => (
           <div className="sg-school-row" key={school.slug}>
             <div>
-              <h3>{school.name}</h3>
-              {school.editorialTier === 1 ? <span className="sg-tier-badge">第一梯队</span> : <span className="sg-tier-muted">待分梯队</span>}
+              <h3>{school.nameZh}</h3>
+              <small className="sg-school-name-en">{school.name}</small>
+              {school.editorialTier === 1 ? <span className="sg-tier-badge">第一梯队</span> : null}
               <p>{school.verifiedFacts[0]}</p>
             </div>
             <span className="sg-badge">{school.category}</span>
             <button
               className="sg-favorite"
               type="button"
-              aria-label={`${favorites.includes(school.slug) ? "移出方案" : "加入方案"}${school.name}`}
+              aria-label={`${favorites.includes(school.slug) ? "移出方案" : "加入方案"}${school.nameZh}`}
               aria-pressed={favorites.includes(school.slug)}
               onClick={() => toggleFavorite(school.slug)}
             >
               {favorites.includes(school.slug) ? "已加入" : "加入方案"}
             </button>
-            <Link href={`/school-guide/schools/${school.slug}`} aria-label={`查看${school.name}`}>→</Link>
+            <Link href={`/school-guide/schools/${school.slug}`} aria-label={`查看${school.nameZh}`}>→</Link>
           </div>
         ))}
       </div>

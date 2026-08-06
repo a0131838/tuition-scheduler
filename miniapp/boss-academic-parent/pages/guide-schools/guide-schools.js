@@ -51,7 +51,7 @@ Page({
   buildVisibleSchools(allSchools, query, favorites, tier) {
     const lower = String(query || "").trim().toLowerCase();
     return allSchools
-      .filter((school) => !lower || String(school.name || "").toLowerCase().includes(lower))
+      .filter((school) => !lower || [school.name, school.nameZh].some((value) => String(value || "").toLowerCase().includes(lower)))
       .filter((school) => tier === "ALL" || (tier === "FIRST" ? school.editorialTier === 1 : school.editorialTier === null))
       .sort((a, b) => (a.editorialTier === 1 ? 0 : 1) - (b.editorialTier === 1 ? 0 : 1))
       .map((school) => ({ ...school, favorite: favorites.includes(school.slug) }));

@@ -28,11 +28,11 @@
   </view>
 
   <view class="guide-section" id="international-directory">
-    <view class="guide-section-title">国际学校详细目录</view>
-    <view class="guide-section-note">已核实学校显示详细资料，其余记录只保留官方目录事实。</view>
+    <view class="guide-section-title">国际学校完整目录</view>
+    <view class="guide-section-note">当前43条学校与校区记录均有独立中英文档案；未公开数据会明确留空，不使用估算值。</view>
   </view>
   <view class="guide-search">
-    <input class="guide-input" value="{{query}}" bindinput="inputQuery" placeholder="搜索学校英文名" />
+    <input class="guide-input" value="{{query}}" bindinput="inputQuery" placeholder="搜索学校中文名或英文名" />
   </view>
   <view class="guide-tier-tabs">
     <view class="guide-tier-tab {{tier === 'ALL' ? 'active' : ''}}" data-tier="ALL" bindtap="setTier">全部</view>
@@ -43,8 +43,9 @@
     <view class="guide-row" wx:for="{{schools}}" wx:key="slug">
       <view class="guide-row-main">
         <view data-slug="{{item.slug}}" bindtap="openSchool">
-          <view class="guide-row-title">{{item.name}}</view>
-          <view class="guide-tier-label {{item.editorialTier === 1 ? 'first' : ''}}">{{item.editorialTier === 1 ? "第一梯队" : "待分梯队"}}</view>
+          <view class="guide-row-title">{{item.nameZh}}</view>
+          <view class="guide-row-name-en">{{item.name}}</view>
+          <view class="guide-tier-label first" wx:if="{{item.editorialTier === 1}}">第一梯队</view>
           <view class="guide-row-note">{{item.verifiedFacts[0]}}</view>
         </view>
       </view>

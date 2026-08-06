@@ -15,11 +15,7 @@
     </view>
     <view class="guide-field">
       <view class="guide-label">微信号</view>
-      <input class="guide-input" name="parentWechat" maxlength="80" placeholder="微信或电话至少填写一项" />
-    </view>
-    <view class="guide-field">
-      <view class="guide-label">联系电话</view>
-      <input class="guide-input" name="parentPhone" type="number" maxlength="40" placeholder="微信或电话至少填写一项" />
+      <input class="guide-input" name="parentWechat" maxlength="80" placeholder="请输入用于联系的微信号" />
     </view>
     <view class="guide-field">
       <view class="guide-label">目前最想解决的问题</view>

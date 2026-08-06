@@ -1,24 +1,81 @@
 <view class="guide-page" wx:if="{{school}}">
-  <view class="guide-hero">
-    <view class="guide-kicker">{{school.category}} · {{school.editorialTier === 1 ? "第一梯队" : "待分梯队"}}</view>
-    <view class="guide-title" style="font-size: 48rpx;">{{school.name}}</view>
+  <view class="guide-hero school-hero">
+    <view class="guide-kicker">{{school.category}}{{school.editorialTier === 1 ? " · 第一梯队" : ""}}</view>
+    <view class="guide-title school-name-zh">{{school.nameZh}}</view>
+    <view class="school-name-en">{{school.name}}</view>
+    <view class="school-data-line">资料更新于 {{school.publicUpdatedAt}} · {{school.updateCadence}}</view>
   </view>
 
-  <view class="guide-section">
-    <view class="guide-meta-row" wx:if="{{school.verifiedAt}}">
-      <text>适用 {{school.applicableYear}}</text>
+  <view class="school-snapshot">
+    <view class="school-snapshot-item" wx:for="{{school.snapshot}}" wx:key="label">
+      <view class="school-snapshot-label">{{item.label}}</view>
+      <view class="school-snapshot-value">{{item.value}}</view>
     </view>
+  </view>
+
+  <view class="guide-section school-overview">
     <view class="guide-section-title">学校概览</view>
     <view class="guide-list">
       <view class="guide-fact" wx:for="{{school.verifiedFacts}}" wx:key="*this">{{item}}</view>
     </view>
   </view>
 
-  <view class="guide-section" wx:for="{{school.detailSections}}" wx:key="title" wx:for-item="section">
-    <view class="guide-section-title">{{section.title}}</view>
-    <view class="guide-list">
-      <view class="guide-fact" wx:for="{{section.items}}" wx:key="*this" wx:for-item="fact">{{fact}}</view>
+  <view class="guide-section">
+    <view class="guide-section-title">在校规模</view>
+    <view class="school-metric-grid" wx:if="{{school.communityMetrics.length}}">
+      <view class="school-metric" wx:for="{{school.communityMetrics}}" wx:key="label">
+        <view class="school-metric-value">{{item.value}}</view>
+        <view class="school-metric-label">{{item.label}}</view>
+        <view class="school-metric-asof">{{item.asOf}}</view>
+      </view>
     </view>
+    <view class="school-unpublished" wx:else>学校暂未公开可核实的在校人数或师生比例，GT不会使用估算数字。</view>
+  </view>
+
+  <view class="guide-section">
+    <view class="guide-section-title">招生、课程与费用</view>
+    <view class="school-accordion" wx:if="{{detailSections.length}}">
+      <view class="school-accordion-item" wx:for="{{detailSections}}" wx:key="title" wx:for-item="section" wx:for-index="sectionIndex">
+        <view class="school-accordion-head" data-index="{{sectionIndex}}" bindtap="toggleSection">
+          <text>{{section.title}}</text><text>{{section.open ? "−" : "+"}}</text>
+        </view>
+        <view class="school-accordion-body" wx:if="{{section.open}}">
+          <view class="guide-fact" wx:for="{{section.items}}" wx:key="*this" wx:for-item="fact">{{fact}}</view>
+        </view>
+      </view>
+    </view>
+    <view class="school-unpublished" wx:else>当前只完成基础学校档案。招生、考试与费用资料将在下一次官方资料复核后补充。</view>
+  </view>
+
+  <view class="guide-section">
+    <view class="guide-section-title">历年学术成绩</view>
+    <view wx:if="{{school.academicRecords.length}}">
+      <view class="guide-section-note">{{school.academicResults.programme}} · {{school.academicResults.note}}</view>
+      <scroll-view class="school-result-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
+        <view class="school-result-row">
+          <view class="school-result" wx:for="{{school.academicRecords}}" wx:key="year">
+            <view class="school-result-year">{{item.year}}</view>
+            <view class="school-result-score">{{item.average || "—"}}</view>
+            <view class="school-result-label">平均分</view>
+            <view class="school-result-meta" wx:if="{{item.passRate}}">通过率 {{item.passRate}}</view>
+            <view class="school-result-meta" wx:if="{{item.cohort}}">考生 {{item.cohort}}</view>
+            <view class="school-result-highlight" wx:if="{{item.highlight}}">{{item.highlight}}</view>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+    <view class="school-unpublished" wx:else>学校暂未连续公开可核实的历年成绩。未公布不代表学校没有相关课程。</view>
+  </view>
+
+  <view class="guide-section">
+    <view class="guide-section-title">大学录取与去向</view>
+    <view class="school-outcomes" wx:if="{{school.universityOutcomes.length}}">
+      <view class="school-outcome" wx:for="{{school.universityOutcomes}}" wx:key="year">
+        <view class="school-outcome-year">{{item.year}}</view>
+        <view class="school-outcome-summary">{{item.summary}}</view>
+      </view>
+    </view>
+    <view class="school-unpublished" wx:else>学校暂未公开可按毕业年份核实的大学录取或最终入读数据。</view>
   </view>
 
   <view class="guide-cost-box" wx:if="{{school.costProfile}}">
@@ -29,16 +86,18 @@
     <view class="guide-cost-foot">{{school.costProfile.note}}</view>
   </view>
 
-  <view class="guide-section">
-    <view class="guide-section-title">官方来源</view>
-    <view class="guide-list">
-      <view class="guide-source" wx:for="{{sources}}" wx:key="id">
-        <view class="guide-source-title">{{item.title}}</view>
-        <view class="guide-source-meta">{{item.authority}}</view>
-        <button class="guide-action secondary" style="margin-top: 16rpx;" data-url="{{item.url}}" bindtap="copyLink">复制官方链接</button>
-      </view>
+  <view class="school-update-note">
+    <view>下次计划复核：{{school.nextPublicReviewAt}}</view>
+    <view>资料由GT定期整理。学校未公开的数据会保持空缺，不使用网络推测值。</view>
+  </view>
+
+  <view class="school-final-action">
+    <view class="guide-section-title">判断是否适合孩子</view>
+    <view class="guide-section-note">结合年龄、课程方向和当前能力形成下一步准备方案。</view>
+    <view class="guide-action-row">
+      <button class="guide-action secondary" bindtap="goAssessment">先做测评</button>
+      <button class="guide-action" bindtap="goConsult">咨询这所学校</button>
     </view>
-    <button class="guide-action" wx:if="{{school.officialWebsiteUrl}}" style="margin-top: 24rpx;" data-url="{{school.officialWebsiteUrl}}" bindtap="copyLink">复制学校官网</button>
   </view>
 </view>
 <guide-nav active="schools" />

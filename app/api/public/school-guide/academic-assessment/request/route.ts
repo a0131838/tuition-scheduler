@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
   const parentName = text(body?.parentName, 80);
   const studentNickname = text(body?.studentNickname, 80);
   const parentWechat = text(body?.parentWechat, 80);
-  const parentPhone = text(body?.parentPhone, 40);
+  const parentPhone = "";
   const ageBand = text(body?.ageBand, 20);
   const currentGrade = text(body?.currentGrade, 40);
   const targetPath = text(body?.targetPath, 30);
@@ -100,8 +100,8 @@ export async function POST(req: NextRequest) {
   const needType = text(body?.needType, 80);
   const note = text(body?.note, 800);
   const consent = text(body?.consent, 10);
-  if (!parentName || !studentNickname || (!parentWechat && !parentPhone) || consent !== "yes") {
-    return NextResponse.json({ ok: false, message: "请填写家长称呼、学生昵称、至少一种联系方式并确认授权。" }, { status: 400 });
+  if (!parentName || !studentNickname || !parentWechat || consent !== "yes") {
+    return NextResponse.json({ ok: false, message: "请填写家长称呼、学生昵称和微信号，并确认授权。" }, { status: 400 });
   }
   if (!ACADEMIC_ASSESSMENT_AGE_BANDS.includes(ageBand as never)) {
     return NextResponse.json({ ok: false, message: "请选择正确的年龄段。" }, { status: 400 });

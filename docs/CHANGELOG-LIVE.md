@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-06-r333
+
+- Release ID: `2026-08-06-r333`
+- Date/Time (Asia/Singapore): `2026-08-06`
+- Deployment status: `READY`
+- Scope: expand the school guide from selected headline schools to all 43 current school/campus records, give every record a bilingual profile and review schedule, add official-data academic/community detail where verified, and remove public school-phone and website-link dependency.
+- Key files:
+  - `lib/school-guide-school-metadata.ts`
+  - `lib/school-guide-data.ts`
+  - `app/school-guide/schools/`
+  - `miniapp/boss-academic-parent/pages/guide-schools/`
+  - `miniapp/boss-academic-parent/pages/guide-school-detail/`
+  - `tests/school-guide-complete-profiles.test.ts`
+  - `docs/tasks/TASK-20260806-complete-school-profiles.md`
+- Risk impact (if any): Medium-low and isolated to public school-guide content, search, presentation and public contact-field validation. Existing authenticated staff/parent workflows, scheduling, teaching, packages, finance, payroll, renewals, tickets and permissions are unchanged.
+- Verification: 18 focused school-guide tests, 174 backend tests, TypeScript validation, 66-page Mini Program release audit, JavaScript/WXML checks and 242-page production build.
+- Rollback point: `742a8aafc76949a8be5607b6bd0bd1306e579cd3` (`2026-08-06-r332`).
+
+---
+
 ## 2026-08-06-r332
 
 - Release ID: `2026-08-06-r332`

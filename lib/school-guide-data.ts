@@ -1,3 +1,10 @@
+import {
+  getSchoolGuidePublicMetadata,
+  type SchoolGuideAcademicResults,
+  type SchoolGuideMetric,
+  type SchoolGuideUniversityOutcome,
+} from "./school-guide-school-metadata";
+
 export type OfficialSource = {
   id: string;
   title: string;
@@ -10,6 +17,8 @@ export type OfficialSource = {
 export type SchoolGuideSchool = {
   slug: string;
   name: string;
+  nameZh: string;
+  nameZhBasis: "学校官方中文名" | "通用中文译名";
   category: "IB World School" | "International School";
   sourcePage?: 1 | 2 | 3;
   editorialTier: 1 | null;
@@ -38,8 +47,26 @@ export type SchoolGuideSchool = {
   verifiedAt?: string;
   nextReviewAt?: string;
   lastChangeSummary?: string;
+  communityMetrics?: SchoolGuideMetric[];
+  academicResults?: SchoolGuideAcademicResults;
+  universityOutcomes?: SchoolGuideUniversityOutcome[];
+  updateCadence: string;
+  publicUpdatedAt: string;
+  nextPublicReviewAt: string;
   sourceIds: string[];
 };
+
+type SchoolGuideSchoolBase = Omit<
+  SchoolGuideSchool,
+  | "nameZh"
+  | "nameZhBasis"
+  | "communityMetrics"
+  | "academicResults"
+  | "universityOutcomes"
+  | "updateCadence"
+  | "publicUpdatedAt"
+  | "nextPublicReviewAt"
+>;
 
 export type SchoolGuidePathway = {
   slug: string;
@@ -71,7 +98,7 @@ export type SchoolGuideCase = {
   summary: string;
 };
 
-export const SCHOOL_GUIDE_DATA_VERSION = "2026-07-28";
+export const SCHOOL_GUIDE_DATA_VERSION = "2026-08-06";
 
 export const officialSources: OfficialSource[] = [
   {
@@ -910,7 +937,7 @@ const firstTierSchools = new Set([
   "United World College of South East Asia - East",
 ]);
 
-function makeSchool(name: string, page: 1 | 2 | 3, index: number): SchoolGuideSchool {
+function makeSchool(name: string, page: 1 | 2 | 3, index: number): SchoolGuideSchoolBase {
   const detail = knownOfficialDetails[name];
   return {
     slug: slugifySchool(name, index),
@@ -935,7 +962,7 @@ function makeSchool(name: string, page: 1 | 2 | 3, index: number): SchoolGuideSc
   };
 }
 
-export const schoolGuideSchools: SchoolGuideSchool[] = [
+const schoolGuideSchoolBase = [
   {
     slug: "singapore-american-school",
     name: "Singapore American School",
@@ -952,7 +979,7 @@ export const schoolGuideSchools: SchoolGuideSchool[] = [
       { title: "2026/27新生年度总固定费用", items: ["Early Childhood（PS / Pre-K）：Lane 1 S$52,700；Lanes 2–4 S$53,940。", "Kindergarten–Grade 5：Lane 1 S$57,830；Lanes 2–4 S$59,070。", "Grades 6–8：Lane 1 S$61,750；Lanes 2–4 S$62,990。", "Grades 9–12：Lane 1 S$63,970；Lanes 2–4 S$65,210。", "总额由申请费、一次性注册费、Facility Fee和Tuition构成；所有金额为新币并含现行GST。"] },
       { title: "2026/27学费与设施费组成", items: ["Tuition：Early Childhood S$32,510；Kindergarten–Grade 5 S$37,640；Grades 6–8 S$41,560；Grades 9–12 S$43,780。", "Facility Fee按入学时间为S$7,770或S$9,030；新生使用S$9,030。"] },
       { title: "其他可能成本", items: ["Foundational Level EAL（Kindergarten–Grade 3）年费S$7,230。", "双程校车每学期S$1,320–3,500；午餐约S$6–9/天；校服三套常服加一套体育服约S$160–215。", "高中AP考试每科S$220；高中需自备笔记本电脑，官网估算S$1,500–2,800。", "EAA、IASAS、Interim Semester及其他海外活动可能另收费，具体以项目通知为准。"] },
-      { title: "地址与联系", items: ["地址：40 Woodlands Street 41, Singapore 738547。", "学校公开电话：(65) 6363 3403。"] },
+      { title: "校区", items: ["地址：40 Woodlands Street 41, Singapore 738547。"] },
     ],
     comparison: { ageAndGrades: "Preschool–Grade 12", curriculum: "美式课程与高中课程体系", campuses: "Woodlands", admissions: "低年级按生日；高年级按学校记录与完成年级", englishSupport: "K–Grade 3 Foundational EAL，另收费", boarding: "无寄宿" },
     costProfile: { academicYear: "2026/27", fixedFirstYearLow: 52700, fixedFirstYearHigh: 65210, includes: ["申请费", "一次性Registration Fee", "Facility Fee", "Tuition"], optionalItems: ["EAL", "校车", "餐食", "校服", "AP考试与活动"], note: "按Lane 1与Lanes 2–4及不同年级的新生固定费用总额。" },
@@ -988,7 +1015,12 @@ export const schoolGuideSchools: SchoolGuideSchool[] = [
   ...ibPage1.map((name, index) => makeSchool(name, 1, index)),
   ...ibPage2.map((name, index) => makeSchool(name, 2, ibPage1.length + index)),
   ...ibPage3.map((name, index) => makeSchool(name, 3, ibPage1.length + ibPage2.length + index)),
-];
+] satisfies SchoolGuideSchoolBase[];
+
+export const schoolGuideSchools: SchoolGuideSchool[] = schoolGuideSchoolBase.map((school) => ({
+  ...school,
+  ...getSchoolGuidePublicMetadata(school.name, school.dataStatus === "VERIFIED", school.verifiedAt),
+}));
 
 // Public cases remain empty until written consent, anonymisation and human review are all recorded.
 export const schoolGuideCases: SchoolGuideCase[] = [];

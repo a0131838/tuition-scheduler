@@ -57,10 +57,26 @@
 - Current release line prepared: `2026-08-05-r330` replaces the Mini Program login artwork with the official GT Educational Institute logo while retaining the “博思学业管家” product name.
 - Current release line prepared: `2026-08-05-r331` adds the parent assessment-code request, private follow-up, one-click staff issuance, progress tracking and teacher-review handoff without changing existing teaching, scheduling or finance workflows.
 - Current release line prepared: `2026-08-06-r332` makes `新加坡学校指南` the Mini Program's public first screen and nests parent/employee login under `我的`, while preserving every existing authenticated service workflow.
+- Current release line prepared: `2026-08-06-r333` gives all 43 current school/campus records bilingual profiles and review dates, adds official-data results and outcomes where verified, and removes public school-phone and external website dependency.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-06-r333 Ready
+
+- Scope: complete the current school-guide directory instead of limiting rich profiles to the first tier.
+- Business impact:
+  - all 43 current school/campus records are searchable and displayed in Chinese and English;
+  - every record has a baseline admissions/curriculum/fee profile, public update date, cadence and next review date;
+  - verified headline schools additionally show structured student-community, historical results and university-outcome data;
+  - unavailable official fields state `学校未公开` and are never replaced by estimates;
+  - parents stay inside the product for assessment and WeChat consultation; public school phone and website links are removed;
+  - authenticated parent/staff and all operational workflows remain unchanged.
+- Verification before deploy: 18 focused tests, 174 backend tests, TypeScript, 66-page Mini Program audit, JavaScript/WXML checks and 242-page production build.
+- Post-deploy verification: open the complete directory, search one Chinese and one English name, inspect a verified first-tier profile and a partial profile, then submit one non-production consultation only if explicitly authorised.
+- Planned WeChat development version: `1.0.30` after successful server release.
+- Task doc: `docs/tasks/TASK-20260806-complete-school-profiles.md`.
 
 ## 2026-08-06-r332 Ready
 

@@ -21,6 +21,18 @@ Page({
 
   submit(event) {
     const values = event.detail.value || {};
+    if (!String(values.parentName || "").trim() || !String(values.studentName || "").trim()) {
+      api.toast("请填写家长称呼和孩子称呼");
+      return;
+    }
+    if (!String(values.parentWechat || "").trim()) {
+      api.toast("请填写微信号");
+      return;
+    }
+    if (!String(values.needs || "").trim()) {
+      api.toast("请填写目前最想解决的问题");
+      return;
+    }
     if (!this.data.consent) {
       api.toast("请确认资料使用授权");
       return;
@@ -32,7 +44,6 @@ Page({
         parentName: values.parentName,
         studentName: values.studentName,
         parentWechat: values.parentWechat,
-        parentPhone: values.parentPhone,
         needs: values.needs,
         assessmentSummary: this.data.summary,
         consent: "yes",

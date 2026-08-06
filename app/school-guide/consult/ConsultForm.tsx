@@ -35,8 +35,7 @@ export default function ConsultForm({ assessmentSummary }: { assessmentSummary: 
       <div className="sg-form-grid">
         <label className="sg-field">家长称呼<input name="parentName" required maxLength={80} /></label>
         <label className="sg-field">孩子称呼或昵称<input name="studentName" required maxLength={80} /></label>
-        <label className="sg-field">微信号<input name="parentWechat" maxLength={80} /></label>
-        <label className="sg-field">联系电话<input name="parentPhone" maxLength={40} /></label>
+        <label className="sg-field">微信号<input name="parentWechat" required maxLength={80} /></label>
       </div>
       <label className="sg-field" style={{ marginTop: 14 }}>
         目前最想解决的问题

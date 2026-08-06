@@ -25,10 +25,7 @@
     </view>
     <view class="guide-field"><view class="guide-label">目标方向 *</view><picker range="{{pathLabels}}" value="{{requestPathIndex}}" bindchange="setRequestPath"><view class="guide-picker">{{pathLabels[requestPathIndex]}}</view></picker></view>
     <view class="guide-field"><view class="guide-label">最想解决的问题 *</view><picker range="{{needOptions}}" value="{{needIndex}}" bindchange="setRequestNeed"><view class="guide-picker">{{needOptions[needIndex]}}</view></picker></view>
-    <view class="assessment-form-grid">
-      <view class="guide-field"><view class="guide-label">微信号</view><input class="guide-input" data-key="parentWechat" value="{{requestForm.parentWechat}}" bindinput="setRequestField" placeholder="微信或电话至少一项" /></view>
-      <view class="guide-field"><view class="guide-label">联系电话</view><input class="guide-input" data-key="parentPhone" value="{{requestForm.parentPhone}}" bindinput="setRequestField" placeholder="微信或电话至少一项" /></view>
-    </view>
+    <view class="guide-field"><view class="guide-label">微信号 *</view><input class="guide-input" data-key="parentWechat" value="{{requestForm.parentWechat}}" bindinput="setRequestField" placeholder="顾问将通过微信联系您" /></view>
     <view class="guide-field"><view class="guide-label">希望测试日期</view><picker mode="date" value="{{requestForm.preferredTestDate}}" bindchange="setRequestDate"><view class="guide-picker">{{requestForm.preferredTestDate}}</view></picker></view>
     <view class="guide-field"><view class="guide-label">补充说明（可选）</view><textarea class="guide-textarea compact" data-key="note" value="{{requestForm.note}}" maxlength="800" bindinput="setRequestField" placeholder="只写顾问需要提前知道的情况" /></view>
     <checkbox-group class="guide-check" bindchange="toggleRequestConsent"><checkbox value="yes" color="#ec5e0a"/><text>我同意GT Educational Institute Pte. Ltd.使用以上资料联系我、安排受控测评并完成后续教育咨询。</text></checkbox-group>
@@ -50,7 +47,7 @@
       <view><text>目标方向</text><b>{{request.targetPath}}</b></view>
       <view><text>希望测试日期</text><b>{{request.preferredTestDate || '未指定'}}</b></view>
     </view>
-    <view class="assessment-boundary"><b>负责人</b><text>入学顾问会通过申请时填写的微信号或电话联系您。评估码不会自动公开发放。</text></view>
+    <view class="assessment-boundary"><b>负责人</b><text>入学顾问会通过申请时填写的微信号联系您。评估码不会自动公开发放。</text></view>
     <button class="assessment-primary" wx:if="{{request.canStart}}" loading="{{loading}}" bindtap="startFromRequest">评估已就绪，开始测评</button>
     <button class="assessment-secondary" wx:if="{{request.canRefresh}}" loading="{{loading}}" bindtap="openSavedRequest">刷新进度</button>
     <button class="assessment-text-button" wx:if="{{request.requestNo}}" bindtap="copyRequestNo">复制申请编号</button>

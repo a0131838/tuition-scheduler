@@ -33,12 +33,12 @@ export async function POST(req: NextRequest) {
   const parentName = text(body.parentName, 80);
   const studentName = text(body.studentName, 80);
   const parentWechat = text(body.parentWechat, 80);
-  const parentPhone = text(body.parentPhone, 40);
+  const parentPhone = "";
   const needs = text(body.needs, 1800);
   const assessmentSummary = text(body.assessmentSummary, 500);
   const consent = text(body.consent, 10);
-  if (!parentName || !studentName || !needs || (!parentWechat && !parentPhone) || consent !== "yes") {
-    return NextResponse.json({ ok: false, message: "请填写家长、孩子、需求、至少一种联系方式并确认授权。" }, { status: 400 });
+  if (!parentName || !studentName || !needs || !parentWechat || consent !== "yes") {
+    return NextResponse.json({ ok: false, message: "请填写家长、孩子、微信号和需求，并确认授权。" }, { status: 400 });
   }
 
   const content = [

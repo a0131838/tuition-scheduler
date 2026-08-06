@@ -497,6 +497,45 @@
   line-height: 1.35;
 }
 
+.sg-school-name-en {
+  display: block;
+  margin-top: 4px;
+  color: var(--sg-muted);
+  font-size: 12px;
+}
+
+.sg-school-profile { max-width: 920px; }
+.sg-school-snapshot { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 2px solid var(--sg-ink); border-bottom: 1px solid var(--sg-line); }
+.sg-school-snapshot > div { min-height: 124px; padding: 22px 18px; border-right: 1px solid var(--sg-line); }
+.sg-school-snapshot > div:last-child { border-right: 0; }
+.sg-school-snapshot small,.sg-school-snapshot strong { display: block; }
+.sg-school-snapshot small { color: var(--sg-muted); font-size: 11px; font-weight: 800; }
+.sg-school-snapshot strong { margin-top: 10px; color: var(--sg-ink); font-size: 15px; line-height: 1.5; }
+.sg-school-metrics { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 2px solid var(--sg-ink); }
+.sg-school-metrics > div { min-height: 128px; padding: 22px 16px; border-right: 1px solid var(--sg-line); border-bottom: 1px solid var(--sg-line); }
+.sg-school-metrics > div:last-child { border-right: 0; }
+.sg-school-metrics strong,.sg-school-metrics span,.sg-school-metrics small { display: block; }
+.sg-school-metrics strong { color: var(--sg-orange); font-size: 28px; }
+.sg-school-metrics span { margin-top: 6px; color: var(--sg-ink); font-weight: 800; }
+.sg-school-metrics small { margin-top: 6px; color: var(--sg-muted); }
+.sg-school-unpublished { padding: 18px 0; border-top: 2px solid var(--sg-ink); border-bottom: 1px solid var(--sg-line); color: var(--sg-muted); line-height: 1.7; }
+.sg-school-detail-section { border-top: 1px solid var(--sg-line); }
+.sg-school-detail-section:last-of-type { border-bottom: 1px solid var(--sg-line); }
+.sg-school-detail-section summary { padding: 18px 0; color: var(--sg-ink); font-weight: 850; cursor: pointer; }
+.sg-result-scroll { overflow-x: auto; padding-bottom: 8px; }
+.sg-result-row { display: flex; gap: 14px; width: max-content; }
+.sg-result-item { width: 220px; min-height: 220px; padding: 20px; border-top: 4px solid var(--sg-orange); background: white; box-sizing: border-box; }
+.sg-result-item small,.sg-result-item strong,.sg-result-item span { display: block; }
+.sg-result-item strong { margin-top: 8px; color: var(--sg-ink); font-size: 42px; }
+.sg-result-item span,.sg-result-item p { color: var(--sg-muted); font-size: 12px; }
+.sg-result-item p { margin: 7px 0 0; }
+.sg-result-item em { display: block; margin-top: 12px; color: var(--sg-accent-dark); font-size: 12px; font-style: normal; line-height: 1.55; }
+.sg-school-outcomes { border-top: 2px solid var(--sg-ink); }
+.sg-school-outcomes > div { padding: 18px 0; border-bottom: 1px solid var(--sg-line); }
+.sg-school-outcomes strong { color: var(--sg-orange); }
+.sg-school-outcomes p { margin: 8px 0 0; }
+.sg-school-update { margin: 32px 0; padding: 16px 18px; border-left: 4px solid #9ca3aa; background: rgba(255,255,255,.56); color: var(--sg-muted); line-height: 1.65; }
+
 .sg-school-row p {
   margin: 7px 0 0;
   color: var(--sg-muted);
@@ -938,6 +977,16 @@
 
   .sg-source-list {
     position: static;
+  }
+
+  .sg-school-snapshot,
+  .sg-school-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sg-school-snapshot > div:nth-child(2),
+  .sg-school-metrics > div:nth-child(2) {
+    border-right: 0;
   }
 
   .sg-compare-grid {

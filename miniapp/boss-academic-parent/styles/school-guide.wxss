@@ -184,6 +184,13 @@
   line-height: 1.4;
 }
 
+.guide-row-name-en {
+  margin-top: 5rpx;
+  color: #737c85;
+  font-size: 20rpx;
+  line-height: 1.45;
+}
+
 .guide-row-note {
   margin-top: 8rpx;
   color: #69737d;

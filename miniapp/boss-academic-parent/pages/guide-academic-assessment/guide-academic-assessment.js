@@ -39,7 +39,6 @@ Page({
       parentName: "",
       studentNickname: "",
       parentWechat: "",
-      parentPhone: "",
       currentGrade: "",
       preferredTestDate: dateAfter(3),
       note: ""
@@ -125,7 +124,7 @@ Page({
   submitRequest() {
     const form = this.data.requestForm;
     if (!form.parentName.trim() || !form.studentNickname.trim()) return api.toast("请填写家长称呼和学生昵称");
-    if (!form.parentWechat.trim() && !form.parentPhone.trim()) return api.toast("请至少填写微信号或联系电话");
+    if (!form.parentWechat.trim()) return api.toast("请填写微信号");
     if (!this.data.requestConsent) return api.toast("请确认资料使用授权");
     this.setData({ loading: true });
     api.request("/api/public/school-guide/academic-assessment/request", {
@@ -135,7 +134,6 @@ Page({
         parentName: form.parentName,
         studentNickname: form.studentNickname,
         parentWechat: form.parentWechat,
-        parentPhone: form.parentPhone,
         ageBand: this.data.ageOptions[this.data.requestAgeIndex],
         currentGrade: form.currentGrade,
         targetPath: this.data.pathValues[this.data.requestPathIndex],
