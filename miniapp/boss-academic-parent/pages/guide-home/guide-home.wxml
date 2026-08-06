@@ -1,23 +1,27 @@
-<view class="guide-page">
-  <view class="guide-hero">
-    <view class="guide-kicker">SINGAPORE SCHOOL GUIDE</view>
-    <view class="guide-title">找到适合孩子的新加坡学校。</view>
-    <view class="guide-subtitle">从学前、政府学校到国际学校、专上院校和大学，按官方资料查找。</view>
-    <view class="guide-action-row">
-      <button class="guide-action" bindtap="goAssessment">开始智能选校</button>
-      <button class="guide-action secondary" bindtap="goSchools">找学校</button>
-    </view>
+<view class="guide-page consumer-home">
+  <view class="guide-hero consumer-hero">
+    <view class="guide-kicker">新加坡学校指南</view>
+    <view class="guide-title">选学校、查考试、<br/>测孩子现在的水平。</view>
+    <view class="guide-subtitle">先获得清楚的信息，再决定是否需要咨询。</view>
   </view>
 
-  <view class="guide-section">
-    <view class="guide-section-title">你想先做什么？</view>
-    <view class="guide-task-list">
-      <view class="guide-task" bindtap="goSchools"><text>01</text><view><b>找学校</b><small>按教育阶段和学校类型查找</small></view><i>›</i></view>
-      <view class="guide-task" bindtap="goAssessment"><text>02</text><view><b>智能选校</b><small>生成候选清单</small></view><i>›</i></view>
-      <view class="guide-task" bindtap="goAcademicAssessment"><text>03</text><view><b>入学准备度测评</b><small>申请评估码，完成30–45分钟受控试测</small></view><i>›</i></view>
-      <view class="guide-task" bindtap="goCases"><text>04</text><view><b>真实案例</b><small>了解相似家庭的选择</small></view><i>›</i></view>
-      <view class="guide-task" bindtap="goPlan"><text>05</text><view><b>我的方案</b><small>已加入 {{planCount}} 所学校</small></view><i>›</i></view>
-      <view class="guide-task" bindtap="goConsult"><text>06</text><view><b>人工咨询</b><small>提交需要确认的问题</small></view><i>›</i></view>
+  <view class="consumer-actions">
+    <view class="consumer-action" hover-class="guide-press" bindtap="goSchools"><text>01</text><view><b>找学校</b><small>按教育阶段、课程和学校类型查找</small></view><i>›</i></view>
+    <view class="consumer-action" hover-class="guide-press" bindtap="goPathways"><text>02</text><view><b>查入学考试</b><small>查看AEIS、政府学校与国际学校申请路径</small></view><i>›</i></view>
+    <view class="consumer-action" hover-class="guide-press" bindtap="goAcademicAssessment"><text>03</text><view><b>测学习水平</b><small>申请评估码，完成30–45分钟在线测评</small></view><i>›</i></view>
+  </view>
+
+  <view class="consumer-start" hover-class="guide-press" bindtap="goAssessment">
+    <view><view class="guide-kicker">不知道从哪里开始？</view><view class="consumer-start-title">先做2分钟智能选校</view><view class="guide-section-note">根据年龄、预算和课程偏好生成候选学校。</view></view><view class="guide-arrow">›</view>
+  </view>
+
+  <view class="guide-section" id="admission-pathways">
+    <view class="guide-section-title">入学考试与申请路径</view>
+    <view class="guide-section-note">内容来自MOE、IB与学校官方来源，具体日期以当年官网为准。</view>
+    <view class="guide-list">
+      <view class="guide-row" wx:for="{{pathways}}" wx:key="slug" data-slug="{{item.slug}}" bindtap="openPathway">
+        <view class="guide-row-main"><view class="guide-row-title">{{item.title}}</view><view class="guide-row-note">{{item.audience}}</view></view><view class="guide-arrow">›</view>
+      </view>
     </view>
   </view>
 
@@ -28,6 +32,12 @@
         <view class="guide-row-main"><view class="guide-row-title">{{item.name}}</view><view class="guide-row-note">{{item.comparison.curriculum}}</view></view><view class="guide-arrow">›</view>
       </view>
     </view>
+  </view>
+
+  <view class="consumer-final">
+    <view class="guide-section-title">需要结合孩子情况判断？</view>
+    <view class="guide-section-note">整理好学校和问题后，再交给顾问继续确认。</view>
+    <view class="guide-action-row"><button class="guide-action secondary" bindtap="goPlan">我的方案 {{planCount}}</button><button class="guide-action" bindtap="goConsult">预约顾问</button></view>
   </view>
 </view>
 <guide-nav active="home" />

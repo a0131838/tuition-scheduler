@@ -1,7 +1,6 @@
 <view class="guide-dock">
-  <view class="dock-item {{active === 'home' ? 'active' : ''}}" data-page="home" bindtap="go"><text>⌂</text><view>首页</view></view>
-  <view class="dock-item {{active === 'schools' ? 'active' : ''}}" data-page="schools" bindtap="go"><text>⌕</text><view>找学校</view></view>
-  <view class="dock-item {{active === 'assessment' ? 'active' : ''}}" data-page="assessment" bindtap="go"><text>◎</text><view>选校</view></view>
-  <view class="dock-item {{active === 'cases' ? 'active' : ''}}" data-page="cases" bindtap="go"><text>▤</text><view>案例</view></view>
-  <view class="dock-item {{active === 'plan' ? 'active' : ''}}" data-page="plan" bindtap="go"><text>◇</text><view>我的</view></view>
+  <view class="dock-item {{active === 'home' ? 'active' : ''}}" data-page="home" bindtap="go"><text class="dock-icon">⌂</text><view>首页</view></view>
+  <view class="dock-item {{active === 'schools' ? 'active' : ''}}" data-page="schools" bindtap="go"><text class="dock-icon">⌕</text><view>找学校</view></view>
+  <view class="dock-item {{active === 'assessment' ? 'active' : ''}}" data-page="assessment" bindtap="go"><text class="dock-icon">◎</text><view>测评</view></view>
+  <view class="dock-item {{active === 'account' ? 'active' : ''}}" data-page="account" bindtap="go"><text class="dock-icon">◇</text><view>我的</view></view>
 </view>

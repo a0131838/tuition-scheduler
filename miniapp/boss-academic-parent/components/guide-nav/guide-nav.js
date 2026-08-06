@@ -8,9 +8,8 @@ Component({
       const routes = {
         home: "/pages/guide-home/guide-home",
         schools: "/pages/guide-schools/guide-schools",
-        assessment: "/pages/guide-assessment/guide-assessment",
-        cases: "/pages/guide-cases/guide-cases",
-        plan: "/pages/guide-plan/guide-plan"
+        assessment: "/pages/guide-assessments/guide-assessments",
+        account: "/pages/guide-account/guide-account"
       };
       if (page === this.data.active || !routes[page]) return;
       wx.redirectTo({ url: routes[page] });

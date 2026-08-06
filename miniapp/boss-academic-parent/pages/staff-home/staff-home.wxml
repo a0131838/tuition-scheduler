@@ -208,6 +208,6 @@
       <view class="account-switch-link">账号管理 ›</view>
     </button>
     <button class="btn secondary" bindtap="logout">退出员工登录</button>
-    <button class="portal-foot-link" bindtap="goParentPortal">切换到家长端</button>
+    <button class="portal-foot-link" bindtap="goParentPortal">返回学校指南</button>
   </view>
 </view>

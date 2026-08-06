@@ -34,7 +34,7 @@ Page({
       if (!result.confirm) return;
       this.setData({ loggingOut: true });
       api.request("/api/miniapp/auth/logout", { method: "POST", timeout: 12000 }).catch(() => null).finally(() => {
-        const app = getApp(); app.setSession(""); app.setCurrentStudent(null); app.setCurrentPortal("parent"); wx.reLaunch({ url: "/pages/login/login" });
+        const app = getApp(); app.setSession(""); app.setCurrentStudent(null); app.setCurrentPortal(""); wx.reLaunch({ url: "/pages/guide-account/guide-account" });
       });
     }});
   }

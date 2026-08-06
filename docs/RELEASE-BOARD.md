@@ -56,10 +56,24 @@
 - Current release line prepared: `2026-08-05-r329` makes the active Full Care project authoritative for the parent-facing service label, correcting legacy-null students such as `赵测试 2` without rewriting their classification.
 - Current release line prepared: `2026-08-05-r330` replaces the Mini Program login artwork with the official GT Educational Institute logo while retaining the “博思学业管家” product name.
 - Current release line prepared: `2026-08-05-r331` adds the parent assessment-code request, private follow-up, one-click staff issuance, progress tracking and teacher-review handoff without changing existing teaching, scheduling or finance workflows.
+- Current release line prepared: `2026-08-06-r332` makes `新加坡学校指南` the Mini Program's public first screen and nests parent/employee login under `我的`, while preserving every existing authenticated service workflow.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-06-r332 Ready
+
+- Scope: reorganise the Mini Program around consumer intent before authentication.
+- Business impact:
+  - first-time visitors immediately see school search, admissions information and learning assessment;
+  - public navigation is reduced to `首页 / 找学校 / 测评 / 我的`;
+  - the assessment hub distinguishes the two-minute school selector from the controlled 30–45 minute readiness assessment;
+  - saved plans, assessment progress and consultation remain usable before parent or employee login;
+  - parent and staff systems remain available from `我的`, and logout returns users to the public guide.
+- Verification before deploy: 174 backend tests, 11 focused Mini Program tests, TypeScript, 66-page Mini Program audit, 242-page production build and WeChat Developer Tools visual QA.
+- Post-deploy verification: upload WeChat development version `1.0.29`, confirm all four public destinations, then enter and leave parent/staff portals without changing production business data.
+- Task doc: `docs/tasks/TASK-20260806-consumer-first-miniapp-entry.md`.
 
 ## 2026-08-05-r331 Ready
 

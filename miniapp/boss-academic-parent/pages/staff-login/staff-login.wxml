@@ -23,6 +23,6 @@
 
   <view class="parent-switch">
     <view class="parent-switch-label">家长查看孩子的课程与服务</view>
-    <button class="parent-link" bindtap="goParent">返回家长端</button>
+    <button class="parent-link" bindtap="goParent">返回学校指南</button>
   </view>
 </view>

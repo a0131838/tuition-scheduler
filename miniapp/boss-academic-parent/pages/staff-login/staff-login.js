@@ -58,7 +58,7 @@ Page({
   },
 
   goParent() {
-    getApp().setCurrentPortal("parent");
-    wx.redirectTo({ url: "/pages/login/login" });
+    getApp().setCurrentPortal("");
+    wx.reLaunch({ url: "/pages/guide-account/guide-account" });
   }
 });

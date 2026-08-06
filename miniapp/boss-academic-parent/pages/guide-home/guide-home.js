@@ -30,7 +30,7 @@ Page({
         version: data.version || "",
         schools: data.schools || [],
         pathways: data.pathways || [],
-        popularSchools: (data.schools || []).filter((item) => item.editorialTier === 1 && item.dataStatus === "VERIFIED").slice(0, 5)
+        popularSchools: (data.schools || []).filter((item) => item.editorialTier === 1 && item.dataStatus === "VERIFIED").slice(0, 3)
       }))
       .catch((err) => api.toast(err.message))
       .finally(() => this.setData({ loading: false }));
@@ -46,6 +46,14 @@ Page({
 
   goAcademicAssessment() {
     wx.navigateTo({ url: "/pages/guide-academic-assessment/guide-academic-assessment" });
+  },
+
+  goAssessmentHub() {
+    wx.navigateTo({ url: "/pages/guide-assessments/guide-assessments" });
+  },
+
+  goPathways() {
+    wx.pageScrollTo({ selector: "#admission-pathways", duration: 320 });
   },
 
   goCompare() {

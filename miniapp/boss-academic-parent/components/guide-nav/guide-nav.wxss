@@ -5,7 +5,7 @@
   bottom: calc(16rpx + env(safe-area-inset-bottom));
   left: 18rpx;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   overflow: hidden;
   border: 1rpx solid rgba(24, 32, 42, .16);
   border-radius: 24rpx;
@@ -22,6 +22,7 @@
   font-size: 19rpx;
   font-weight: 750;
 }
-.dock-item text { color: #18202a; font-size: 31rpx; line-height: 1.15; }
+.dock-icon { color: #18202a; font-size: 31rpx; line-height: 1.15; }
 .dock-item.active { color: #a83c05; background: #fff7f0; }
-.dock-item.active text { color: #ec5e0a; }
+.dock-item.active .dock-icon { color: #ec5e0a; }
+.dock-item:active { transform: translateY(1rpx); background: #fff7f0; }

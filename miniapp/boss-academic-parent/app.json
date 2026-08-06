@@ -1,10 +1,10 @@
 {
   "pages": [
-    "pages/login/login",
     "pages/guide-home/guide-home",
     "pages/guide-schools/guide-schools",
     "pages/guide-school-detail/guide-school-detail",
     "pages/guide-pathway/guide-pathway",
+    "pages/guide-assessments/guide-assessments",
     "pages/guide-assessment/guide-assessment",
     "pages/guide-academic-assessment/guide-academic-assessment",
     "pages/guide-cases/guide-cases",
@@ -12,6 +12,8 @@
     "pages/guide-compare/guide-compare",
     "pages/guide-consult/guide-consult",
     "pages/guide-privacy/guide-privacy",
+    "pages/guide-account/guide-account",
+    "pages/login/login",
     "pages/staff-login/staff-login",
     "pages/staff-bind/staff-bind",
     "pages/staff-account-switch/staff-account-switch",
@@ -69,7 +71,7 @@
     "guide-nav": "/components/guide-nav/guide-nav"
   },
   "window": {
-    "navigationBarTitleText": "博思学业管家",
+    "navigationBarTitleText": "新加坡学校指南",
     "navigationBarBackgroundColor": "#EC5E0A",
     "navigationBarTextStyle": "white",
     "backgroundColor": "#f6f4f1",

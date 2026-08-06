@@ -1,0 +1,25 @@
+<view class="guide-page account-page">
+  <view class="guide-hero account-hero">
+    <view class="guide-kicker">我的</view>
+    <view class="guide-title">选校记录与专属服务。</view>
+    <view class="guide-subtitle">游客工具无需登录；正式学员和员工从这里进入各自工作区。</view>
+  </view>
+
+  <view class="account-section">
+    <view class="account-label">我的选校</view>
+    <view class="account-row" hover-class="guide-press" bindtap="goPlan"><view><b>选校方案</b><text>已保存 {{planCount}} 所学校</text></view><i>›</i></view>
+    <view class="account-row" hover-class="guide-press" bindtap="goAssessment"><view><b>{{hasAssessmentRequest || hasAssessmentSession ? '评估进度与报告' : '申请学习评估'}}</b><text>{{hasAssessmentSession ? '继续测评或查看报告' : hasAssessmentRequest ? '查看评估码申请进度' : '申请评估码，了解孩子当前水平'}}</text></view><i>›</i></view>
+    <view class="account-row" hover-class="guide-press" bindtap="goConsult"><view><b>我的咨询</b><text>提交需要顾问进一步确认的问题</text></view><i>›</i></view>
+  </view>
+
+  <view class="service-entry">
+    <view class="account-label">已有GT服务</view>
+    <view class="service-title">{{parentLoggedIn ? (currentStudentName ? currentStudentName + '的家长中心' : '进入家长服务中心') : '我是GT学员家长'}}</view>
+    <view class="service-note">课程、课后反馈、服务进度、课表、课时和合同。</view>
+    <button class="guide-action" bindtap="goParent">{{parentLoggedIn ? '进入家长服务中心' : '家长微信登录'}}</button>
+  </view>
+
+  <view class="staff-entry" hover-class="guide-press" bindtap="goStaff"><view><b>{{staffLoggedIn ? '进入员工工作台' : '工作人员入口'}}</b><text>管理、教务、老师与顾问</text></view><i>›</i></view>
+  <view class="privacy-link" bindtap="openPrivacy">隐私说明</view>
+</view>
+<guide-nav active="account" />

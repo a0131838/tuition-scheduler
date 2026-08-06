@@ -343,12 +343,14 @@ Page({
   goAccountSwitch() { wx.navigateTo({ url: "/pages/staff-account-switch/staff-account-switch" }); },
 
   logout() {
-    getApp().setStaffSession("", null);
-    wx.redirectTo({ url: "/pages/staff-login/staff-login" });
+    const app = getApp();
+    app.setStaffSession("", null);
+    app.setCurrentPortal("");
+    wx.reLaunch({ url: "/pages/guide-account/guide-account" });
   },
 
   goParentPortal() {
-    getApp().setCurrentPortal("parent");
-    wx.reLaunch({ url: "/pages/login/login" });
+    getApp().setCurrentPortal("");
+    wx.reLaunch({ url: "/pages/guide-account/guide-account" });
   }
 });

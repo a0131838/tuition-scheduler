@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-06-r332
+
+- Release ID: `2026-08-06-r332`
+- Date/Time (Asia/Singapore): `2026-08-06`
+- Deployment status: `READY`
+- Scope: make `新加坡学校指南` the Mini Program's consumer-first entry, move parent and staff login under `我的`, and add clear public school-selection and assessment hubs without changing authenticated business workflows.
+- Key files:
+  - `miniapp/boss-academic-parent/app.json`
+  - `miniapp/boss-academic-parent/components/guide-nav/`
+  - `miniapp/boss-academic-parent/pages/guide-home/`
+  - `miniapp/boss-academic-parent/pages/guide-assessments/`
+  - `miniapp/boss-academic-parent/pages/guide-account/`
+  - `tests/miniapp-consumer-entry.test.ts`
+  - `docs/tasks/TASK-20260806-consumer-first-miniapp-entry.md`
+- Risk impact (if any): Medium-low and isolated to Mini Program public navigation and presentation. Parent/staff authentication APIs, scheduling, lessons, attendance, packages, finance, payroll, renewals, tickets and Web routes are unchanged.
+- Verification: 174 backend tests, 11 focused Mini Program tests, TypeScript validation, 66-page Mini Program release audit, 242-page production build and visual WeChat Developer Tools inspection.
+- Rollback point: `74b0df0a0dbf6c92cf0afee031b648a04626a0d9` (`2026-08-05-r331` production head).
+
+---
+
 ## 2026-08-05-r331
 
 - Release ID: `2026-08-05-r331`
