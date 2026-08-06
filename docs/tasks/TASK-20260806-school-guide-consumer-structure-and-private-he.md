@@ -53,3 +53,7 @@ Make the public guide feel like a focused consumer product, correctly classify c
 - Added the same dedicated matrix to Web and Mini Program detail pages.
 - Data release: `2026-08-06-r339`; planned Mini Program development version: `1.0.36`.
 - Safety boundary remains public guide content only, with no schema, operational workflow or authenticated-role changes.
+- Runtime feature commit `43215a913999a282016a9d11e11979147adb55de` is live with PM2 PID `1759072` and health HTTP 200.
+- Live catalog returned `2026-08-06-r339`; representative APIs returned the expected partner and programme matrices.
+- WeChat development version `1.0.36` uploaded successfully at 713,226 bytes.
+- Remaining manual action: designate `1.0.36` as the experience version and inspect long programme lists on a physical phone.

@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-08-06-r339`
 - Date/Time (Asia/Singapore): `2026-08-06`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: replace vague private-higher-education summaries with a partner-by-partner programme matrix across the ten priority providers, showing the awarding relationship, exact published degree names and that partner university's QS World University Rankings 2027 context on Web and Mini Program.
 - Key files:
   - `lib/school-guide-private-programmes.ts`
@@ -29,7 +29,7 @@ This file is the single source of truth for what changed in production.
   - `tests/school-guide-complete-profiles.test.ts`
   - `docs/tasks/TASK-20260806-school-guide-consumer-structure-and-private-he.md`
 - Risk impact (if any): Low and isolated to public school-guide content and presentation. No database migration or change to login, permissions, scheduling, attendance, packages, finance, payroll, renewals, tickets or communication workflows.
-- Verification: TypeScript, focused school-guide tests, backend regression, Mini Program release audit, native JavaScript/JSON validation and production build; live API/page checks and WeChat development upload follow the standard release.
+- Verification: 45 focused school-guide tests, 174 backend regression tests, TypeScript, the 67-page Mini Program release audit, native JavaScript/JSON checks and the 243-page production build passed. Runtime feature commit `43215a913999a282016a9d11e11979147adb55de` aligned locally, on GitHub and on the production server with PM2 PID `1759072` and `/admin/login` HTTP 200. Live catalog returned `2026-08-06-r339`; seven representative private-provider APIs returned 38 partner cards and 238 programme lines, and the SIM Web page rendered the matrix. WeChat development version `1.0.36` uploaded successfully at 713,226 bytes; experience-version designation and physical-phone acceptance remain manual.
 - Rollback point: `44826cdbb8751c3ec10b262ec94c66d5e32e5d57` (`2026-08-06-r338` documentation head; runtime feature commit `2fd3518146ad870b88c4c8bef333b8795805765e`).
 
 ---
