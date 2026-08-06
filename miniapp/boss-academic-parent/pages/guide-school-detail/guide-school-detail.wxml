@@ -13,6 +13,17 @@
     </view>
   </view>
 
+  <view class="guide-section" wx:if="{{school.campusProfiles.length}}">
+    <view class="guide-section-title">校区与学段</view>
+    <view class="school-campus-list">
+      <view class="school-campus-row" wx:for="{{school.campusProfiles}}" wx:key="slug">
+        <view class="school-campus-name">{{item.nameZh}}</view>
+        <view class="school-campus-name-en">{{item.name}}</view>
+        <view class="school-campus-note">{{item.note}}</view>
+      </view>
+    </view>
+  </view>
+
   <view class="guide-section school-overview">
     <view class="guide-section-title">学校概览</view>
     <view class="guide-list">
@@ -29,7 +40,7 @@
         <view class="school-metric-asof">{{item.asOf}}</view>
       </view>
     </view>
-    <view class="school-unpublished" wx:else>学校暂未公开可核实的在校人数或师生比例，GT不会使用估算数字。</view>
+    <view class="school-unpublished" wx:else>暂无公开数据</view>
   </view>
 
   <view class="guide-section">
@@ -44,7 +55,7 @@
         </view>
       </view>
     </view>
-    <view class="school-unpublished" wx:else>当前只完成基础学校档案。招生、考试与费用资料将在下一次官方资料复核后补充。</view>
+    <view class="school-unpublished" wx:else>暂无详细资料</view>
   </view>
 
   <view class="guide-section">
@@ -64,7 +75,7 @@
         </view>
       </scroll-view>
     </view>
-    <view class="school-unpublished" wx:else>学校暂未连续公开可核实的历年成绩。未公布不代表学校没有相关课程。</view>
+    <view class="school-unpublished" wx:else>暂无连续公开成绩</view>
   </view>
 
   <view class="guide-section">
@@ -75,11 +86,11 @@
         <view class="school-outcome-summary">{{item.summary}}</view>
       </view>
     </view>
-    <view class="school-unpublished" wx:else>学校暂未公开可按毕业年份核实的大学录取或最终入读数据。</view>
+    <view class="school-unpublished" wx:else>暂无按届公开数据</view>
   </view>
 
   <view class="guide-cost-box" wx:if="{{school.costProfile}}">
-    <view class="guide-cost-label">{{school.costProfile.academicYear}}首年固定费用估算</view>
+    <view class="guide-cost-label">{{school.costProfile.academicYear}}首年固定费用</view>
     <view class="guide-cost-value">{{school.costProfile.rangeText}}</view>
     <view class="guide-cost-note">已计：{{school.costProfile.includesText}}</view>
     <view class="guide-cost-note">未计：{{school.costProfile.optionalText}}</view>
@@ -87,13 +98,11 @@
   </view>
 
   <view class="school-update-note">
-    <view>下次计划复核：{{school.nextPublicReviewAt}}</view>
-    <view>资料由GT定期整理。学校未公开的数据会保持空缺，不使用网络推测值。</view>
+    <view>更新于 {{school.publicUpdatedAt}} · 下次复核 {{school.nextPublicReviewAt}}</view>
   </view>
 
   <view class="school-final-action">
-    <view class="guide-section-title">判断是否适合孩子</view>
-    <view class="guide-section-note">结合年龄、课程方向和当前能力形成下一步准备方案。</view>
+    <view class="guide-section-title">下一步</view>
     <view class="guide-action-row">
       <button class="guide-action secondary" bindtap="goAssessment">先做测评</button>
       <button class="guide-action" bindtap="goConsult">咨询这所学校</button>

@@ -7,6 +7,10 @@ import {
   schoolGuideSectors,
   schoolGuideSchools,
 } from "@/lib/school-guide-data";
+import {
+  getSchoolGuideDirectoryCategories,
+  schoolGuideSchoolGroups,
+} from "@/lib/school-guide-directory";
 
 export async function GET() {
   return NextResponse.json(
@@ -14,6 +18,8 @@ export async function GET() {
       ok: true,
       version: SCHOOL_GUIDE_DATA_VERSION,
       schools: schoolGuideSchools,
+      schoolGroups: schoolGuideSchoolGroups,
+      directoryCategories: getSchoolGuideDirectoryCategories(schoolGuideSectors),
       sectors: schoolGuideSectors,
       cases: schoolGuideCases.filter((item) => item.published && item.consentRecorded && item.anonymized),
       pathways: schoolGuidePathways,

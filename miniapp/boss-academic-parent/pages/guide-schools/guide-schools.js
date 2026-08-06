@@ -5,19 +5,24 @@ Page({
   data: {
     loading: true,
     query: "",
-    tier: "ALL",
-    sectorGroups: [],
-    allSchools: [],
+    activeCategory: "international",
+    focus: "ALL",
+    showAllSchools: false,
+    categories: [],
+    activeSections: [],
+    allSchoolGroups: [],
     schools: []
   },
 
   onLoad() {
-    api.request("/api/public/school-guide/catalog")
+    api.request("/api/public/school-guide/catalog?v=r334")
       .then((data) => {
-        const schools = data.schools || [];
+        const categories = data.directoryCategories || [];
+        const schools = data.schoolGroups || data.schools || [];
         this.setData({
-          sectorGroups: this.buildSectorGroups(data.sectors || []),
-          allSchools: schools,
+          categories,
+          activeSections: (categories.find((item) => item.id === "international") || {}).sections || [],
+          allSchoolGroups: schools,
           schools: this.buildVisibleSchools(schools, "", this.loadFavorites(), "ALL")
         });
       })
@@ -26,9 +31,9 @@ Page({
   },
 
   onShow() {
-    if (!this.data.allSchools.length) return;
+    if (!this.data.allSchoolGroups.length) return;
     this.setData({
-      schools: this.buildVisibleSchools(this.data.allSchools, this.data.query, this.loadFavorites(), this.data.tier)
+      schools: this.buildVisibleSchools(this.data.allSchoolGroups, this.data.query, this.loadFavorites(), this.data.focus)
     });
   },
 
@@ -37,54 +42,53 @@ Page({
     return Array.isArray(favorites) ? favorites : [];
   },
 
-  buildSectorGroups(sectors) {
-    return ["学前", "小学", "中学", "高中与专上", "特殊与其他"]
-      .map((stage) => ({
-        stage,
-        sectors: sectors
-          .filter((item) => item.stage === stage)
-          .map((item) => ({ ...item, includesText: (item.includes || []).join(" · ") }))
-      }))
-      .filter((group) => group.sectors.length);
-  },
-
-  buildVisibleSchools(allSchools, query, favorites, tier) {
+  buildVisibleSchools(allSchools, query, favorites, focus) {
     const lower = String(query || "").trim().toLowerCase();
     return allSchools
-      .filter((school) => !lower || [school.name, school.nameZh].some((value) => String(value || "").toLowerCase().includes(lower)))
-      .filter((school) => tier === "ALL" || (tier === "FIRST" ? school.editorialTier === 1 : school.editorialTier === null))
+      .filter((school) => !lower || [school.name, school.nameZh]
+        .concat((school.campusProfiles || []).flatMap((campus) => [campus.name, campus.nameZh]))
+        .some((value) => String(value || "").toLowerCase().includes(lower)))
+      .filter((school) => focus === "ALL" || (school.directoryTags || []).includes(focus))
       .sort((a, b) => (a.editorialTier === 1 ? 0 : 1) - (b.editorialTier === 1 ? 0 : 1))
-      .map((school) => ({ ...school, favorite: favorites.includes(school.slug) }));
+      .map((school) => ({
+        ...school,
+        campusCountText: (school.campusProfiles || []).length > 1 ? `${school.campusProfiles.length}个收录校区` : "",
+        favorite: [school.slug].concat(school.memberSlugs || []).some((slug) => favorites.includes(slug))
+      }));
   },
 
   inputQuery(event) {
     const query = String(event.detail.value || "");
     this.setData({
       query,
-      schools: this.buildVisibleSchools(this.data.allSchools, query, this.loadFavorites(), this.data.tier)
+      showAllSchools: false,
+      activeCategory: "international",
+      activeSections: (this.data.categories.find((item) => item.id === "international") || {}).sections || [],
+      schools: this.buildVisibleSchools(this.data.allSchoolGroups, query, this.loadFavorites(), this.data.focus)
     });
   },
 
-  setTier(event) {
-    const tier = event.currentTarget.dataset.tier || "ALL";
+  selectCategory(event) {
+    const activeCategory = event.currentTarget.dataset.id || "international";
+    const category = this.data.categories.find((item) => item.id === activeCategory) || {};
     this.setData({
-      tier,
-      schools: this.buildVisibleSchools(this.data.allSchools, this.data.query, this.loadFavorites(), tier)
+      activeCategory,
+      showAllSchools: false,
+      activeSections: category.sections || []
     });
   },
 
-  openSector(event) {
-    const id = event.currentTarget.dataset.id;
-    const url = event.currentTarget.dataset.url;
-    if (id === "international-schools") {
-      wx.pageScrollTo({ selector: "#international-directory", duration: 300 });
-      return;
-    }
-    if (!url) return;
-    wx.setClipboardData({
-      data: url,
-      success: () => api.toast("官方链接已复制，请在浏览器打开")
+  setFocus(event) {
+    const focus = event.currentTarget.dataset.focus || "ALL";
+    this.setData({
+      focus,
+      showAllSchools: false,
+      schools: this.buildVisibleSchools(this.data.allSchoolGroups, this.data.query, this.loadFavorites(), focus)
     });
+  },
+
+  showAllSchools() {
+    this.setData({ showAllSchools: true });
   },
 
   openSchool(event) {
@@ -99,7 +103,7 @@ Page({
       : favorites.concat(slug);
     wx.setStorageSync(FAVORITES_KEY, next);
     this.setData({
-      schools: this.buildVisibleSchools(this.data.allSchools, this.data.query, next, this.data.tier)
+      schools: this.buildVisibleSchools(this.data.allSchoolGroups, this.data.query, next, this.data.focus)
     });
     api.toast(next.includes(slug) ? "已加入我的方案" : "已移出方案");
   },

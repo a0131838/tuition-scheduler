@@ -25,12 +25,12 @@ Page({
 
   loadData() {
     this.setData({ loading: true });
-    return api.request("/api/public/school-guide/catalog")
+    return api.request("/api/public/school-guide/catalog?v=r334")
       .then((data) => this.setData({
         version: data.version || "",
         schools: data.schools || [],
         pathways: data.pathways || [],
-        popularSchools: (data.schools || []).filter((item) => item.editorialTier === 1 && item.dataStatus === "VERIFIED").slice(0, 3)
+        popularSchools: (data.schoolGroups || data.schools || []).filter((item) => item.editorialTier === 1 && item.dataStatus === "VERIFIED").slice(0, 3)
       }))
       .catch((err) => api.toast(err.message))
       .finally(() => this.setData({ loading: false }));

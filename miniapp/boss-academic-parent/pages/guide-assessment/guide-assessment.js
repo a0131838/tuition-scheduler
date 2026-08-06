@@ -25,8 +25,8 @@ Page({
   },
 
   onLoad() {
-    api.request("/api/public/school-guide/catalog")
-      .then((data) => this.setData({ pathways: data.pathways || [], schools: data.schools || [] }))
+    api.request("/api/public/school-guide/catalog?v=r334")
+      .then((data) => this.setData({ pathways: data.pathways || [], schools: data.schoolGroups || data.schools || [] }))
       .catch((err) => api.toast(err.message));
   },
 

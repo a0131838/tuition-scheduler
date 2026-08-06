@@ -38,3 +38,30 @@
 
 @keyframes schoolRise { from { opacity: 0; transform: translateY(14rpx); } to { opacity: 1; transform: translateY(0); } }
 @keyframes schoolReveal { from { opacity: 0; transform: translateY(-8rpx); } to { opacity: 1; transform: translateY(0); } }
+.school-campus-row {
+  padding: 24rpx 0;
+  border-top: 2rpx solid #e3ded8;
+}
+
+.school-campus-row:first-child {
+  border-top: 0;
+}
+
+.school-campus-name {
+  font-size: 29rpx;
+  font-weight: 800;
+  color: #191d23;
+}
+
+.school-campus-name-en {
+  margin-top: 4rpx;
+  font-size: 21rpx;
+  color: #777c84;
+}
+
+.school-campus-note {
+  margin-top: 10rpx;
+  font-size: 23rpx;
+  line-height: 1.55;
+  color: #4e555e;
+}

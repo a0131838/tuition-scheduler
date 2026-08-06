@@ -1,5 +1,6 @@
 import AssessmentForm from "./AssessmentForm";
-import { schoolGuidePathways, schoolGuideSchools } from "@/lib/school-guide-data";
+import { schoolGuidePathways } from "@/lib/school-guide-data";
+import { schoolGuideSchoolGroups } from "@/lib/school-guide-directory";
 
 export default function SchoolGuideAssessmentPage() {
   return (
@@ -13,7 +14,7 @@ export default function SchoolGuideAssessmentPage() {
       </section>
       <section className="sg-section">
         <div className="sg-shell">
-          <AssessmentForm pathways={schoolGuidePathways} schools={schoolGuideSchools} />
+          <AssessmentForm pathways={schoolGuidePathways} schools={schoolGuideSchoolGroups} />
         </div>
       </section>
     </main>

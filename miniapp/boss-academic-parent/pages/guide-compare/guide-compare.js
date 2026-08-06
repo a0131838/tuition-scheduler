@@ -10,11 +10,9 @@ Page({
   },
 
   onLoad() {
-    api.request("/api/public/school-guide/catalog")
+    api.request("/api/public/school-guide/catalog?v=r334")
       .then((data) => {
-        const allSchools = (data.schools || []).filter((school, index, all) =>
-          all.findIndex((item) => item.name === school.name) === index
-        );
+        const allSchools = data.schoolGroups || data.schools || [];
         this.setData({
           allSchools,
           schools: this.buildVisibleSchools(allSchools, "", [])
@@ -26,7 +24,7 @@ Page({
   buildVisibleSchools(allSchools, query, selectedSlugs) {
     const lower = String(query || "").trim().toLowerCase();
     return allSchools
-      .filter((school) => !lower || String(school.name || "").toLowerCase().includes(lower))
+      .filter((school) => !lower || [school.name, school.nameZh].some((value) => String(value || "").toLowerCase().includes(lower)))
       .slice(0, 18)
       .map((school) => ({
         ...school,

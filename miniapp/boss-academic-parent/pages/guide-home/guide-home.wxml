@@ -17,7 +17,6 @@
 
   <view class="guide-section" id="admission-pathways">
     <view class="guide-section-title">入学考试与申请路径</view>
-    <view class="guide-section-note">内容来自MOE、IB与学校官方来源，具体日期以当年官网为准。</view>
     <view class="guide-list">
       <view class="guide-row" wx:for="{{pathways}}" wx:key="slug" data-slug="{{item.slug}}" bindtap="openPathway">
         <view class="guide-row-main"><view class="guide-row-title">{{item.title}}</view><view class="guide-row-note">{{item.audience}}</view></view><view class="guide-arrow">›</view>
@@ -29,7 +28,7 @@
     <view class="guide-section-title">常被比较的学校</view>
     <view class="guide-list">
       <view class="guide-row" wx:for="{{popularSchools}}" wx:key="slug" data-slug="{{item.slug}}" bindtap="openSchool">
-        <view class="guide-row-main"><view class="guide-row-title">{{item.name}}</view><view class="guide-row-note">{{item.comparison.curriculum}}</view></view><view class="guide-arrow">›</view>
+        <view class="guide-row-main"><view class="guide-row-title">{{item.nameZh}}</view><view class="guide-row-name-en">{{item.name}}</view><view class="guide-row-note">{{item.comparison.curriculum}}</view></view><view class="guide-arrow">›</view>
       </view>
     </view>
   </view>

@@ -58,10 +58,25 @@
 - Current release line prepared: `2026-08-05-r331` adds the parent assessment-code request, private follow-up, one-click staff issuance, progress tracking and teacher-review handoff without changing existing teaching, scheduling or finance workflows.
 - Current release line prepared: `2026-08-06-r332` makes `新加坡学校指南` the Mini Program's public first screen and nests parent/employee login under `我的`, while preserving every existing authenticated service workflow.
 - Current release line prepared: `2026-08-06-r333` gives all 43 current school/campus records bilingual profiles and review dates, adds official-data results and outcomes where verified, and removes public school-phone and external website dependency.
+- Current release line prepared: `2026-08-06-r334` reorganises Find Schools into six peer categories and 34 unique school brands while retaining all 43 source records and every legacy campus link.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-06-r334 Ready
+
+- Scope: make Find Schools short, direct and brand-based instead of a long list of agencies, external links and duplicate campuses.
+- Business impact:
+  - international schools and government schools appear together at the top as peer choices;
+  - six large categories reveal concise subcategories inside the product with no copied external links;
+  - 43 raw school/campus records become 34 parent-facing brands;
+  - EtonHouse, Odyssey and UWCSEA display their campuses inside one profile;
+  - default international results stop at 12, with search, curriculum filters and one explicit show-all action;
+  - old campus URLs, favorites and shared links still resolve to the merged profile.
+- Verification before deploy: 22 focused tests, TypeScript, JavaScript syntax, Mini Program audit, complete backend regression, production build and responsive browser QA.
+- Post-deploy verification: confirm live API returns 43 source records, 34 groups and six categories; inspect government-school content and a merged UWCSEA profile; upload WeChat development version `1.0.31`.
+- Task doc: `docs/tasks/TASK-20260806-school-directory-information-architecture.md`.
 
 ## 2026-08-06-r333 Ready
 

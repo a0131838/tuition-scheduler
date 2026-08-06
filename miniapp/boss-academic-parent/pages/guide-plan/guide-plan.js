@@ -8,8 +8,9 @@ Page({
   load() {
     const favorites = wx.getStorageSync(favoritesKey);
     const meta = wx.getStorageSync(metaKey) || {};
-    api.request("/api/public/school-guide/catalog").then((data) => {
-      const selected = (Array.isArray(favorites) ? favorites : []).map((slug) => (data.schools || []).find((school) => school.slug === slug)).filter(Boolean).map((school) => ({
+    api.request("/api/public/school-guide/catalog?v=r334").then((data) => {
+      const groups = data.schoolGroups || data.schools || [];
+      const selected = (Array.isArray(favorites) ? favorites : []).map((slug) => groups.find((school) => school.slug === slug || (school.memberSlugs || []).includes(slug))).filter(Boolean).filter((school, index, all) => all.findIndex((item) => item.slug === school.slug) === index).map((school) => ({
         ...school,
         status: (meta[school.slug] || {}).status || "关注中",
         note: (meta[school.slug] || {}).note || "",

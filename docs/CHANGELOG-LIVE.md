@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-06-r334
+
+- Release ID: `2026-08-06-r334`
+- Date/Time (Asia/Singapore): `2026-08-06`
+- Deployment status: `READY`
+- Scope: replace the long external-link school directory with six peer parent-facing categories, merge 43 raw school/campus records into 34 unique consumer brands, keep legacy campus links working, and remove repetitive internal-status copy.
+- Key files:
+  - `lib/school-guide-directory.ts`
+  - `app/api/public/school-guide/catalog/route.ts`
+  - `app/school-guide/schools/`
+  - `miniapp/boss-academic-parent/pages/guide-schools/`
+  - `miniapp/boss-academic-parent/pages/guide-school-detail/`
+  - `tests/school-guide-directory-ia.test.ts`
+  - `docs/tasks/TASK-20260806-school-directory-information-architecture.md`
+- Risk impact (if any): Medium-low and isolated to public school-guide discovery, grouping, local favorites and comparison presentation. The 43 source records remain intact; authenticated parent/staff workflows and all operational data are unchanged.
+- Verification: 22 focused school-guide tests, TypeScript, JavaScript syntax, 66-page Mini Program audit, responsive Web QA and production regression/build before release.
+- Rollback point: `b4520989a45b515aafcc4f4222fb959ffc3aea68` (`2026-08-06-r333`).
+
+---
+
 ## 2026-08-06-r333
 
 - Release ID: `2026-08-06-r333`

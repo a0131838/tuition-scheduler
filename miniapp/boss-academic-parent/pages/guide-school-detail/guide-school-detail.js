@@ -8,9 +8,10 @@ Page({
 
   onLoad(options) {
     const slug = decodeURIComponent(options.slug || "");
-    api.request("/api/public/school-guide/catalog")
+    api.request("/api/public/school-guide/catalog?v=r334")
       .then((data) => {
-        const school = (data.schools || []).find((item) => item.slug === slug);
+        const groups = data.schoolGroups || data.schools || [];
+        const school = groups.find((item) => item.slug === slug || (item.memberSlugs || []).includes(slug));
         if (!school) throw new Error("没有找到学校记录");
         const costProfile = school.costProfile
           ? {
@@ -38,6 +39,7 @@ Page({
             costProfile,
             snapshot,
             communityMetrics: school.communityMetrics || [],
+            campusProfiles: school.campusProfiles || [],
             academicRecords: school.academicResults ? school.academicResults.records || [] : [],
             universityOutcomes: school.universityOutcomes || []
           },

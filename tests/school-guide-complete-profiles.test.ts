@@ -40,7 +40,7 @@ test("consumer school pages keep research inside the product", () => {
   assert.doesNotMatch(webDetail, /学校官网|IB官方详情|官方来源/);
   assert.match(miniDetail, /历年学术成绩/);
   assert.match(miniDetail, /大学录取与去向/);
-  assert.match(miniDetail, /下次计划复核/);
+  assert.match(miniDetail, /下次复核/);
 });
 
 test("public guide forms collect WeChat rather than phone numbers", () => {

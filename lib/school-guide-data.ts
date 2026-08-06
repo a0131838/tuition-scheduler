@@ -98,7 +98,7 @@ export type SchoolGuideCase = {
   summary: string;
 };
 
-export const SCHOOL_GUIDE_DATA_VERSION = "2026-08-06";
+export const SCHOOL_GUIDE_DATA_VERSION = "2026-08-06-r334";
 
 export const officialSources: OfficialSource[] = [
   {
@@ -948,7 +948,7 @@ function makeSchool(name: string, page: 1 | 2 | 3, index: number): SchoolGuideSc
     officialProfileUrl: detail?.officialProfileUrl,
     officialWebsiteUrl: detail?.officialWebsiteUrl,
     verifiedFacts: detail?.verifiedFacts ?? [
-      "IB官方新加坡目录列有该校；学校性质、具体课程、年龄、费用和申请要求尚未完成逐校官方核实。",
+      "IB世界学校名录收录。",
     ],
     detailSections: detail?.detailSections,
     comparison: detail?.comparison,

@@ -1,52 +1,40 @@
 <view class="guide-page">
   <view class="guide-hero">
     <view class="guide-kicker">找学校</view>
-    <view class="guide-title">新加坡学校与教育机构</view>
-    <view class="guide-subtitle">按教育阶段和学校类型选择。</view>
+    <view class="guide-title">你想找哪类学校？</view>
   </view>
 
-  <view class="guide-section">
-    <view class="guide-section-title">从学前到大学</view>
-    <view class="guide-section-note">政府学校以MOE为准，学前教育以ECDA为准，私立教育机构以SSG为准。</view>
-    <view class="guide-sector-group" wx:for="{{sectorGroups}}" wx:key="stage" wx:for-item="group">
-      <view class="guide-sector-stage">{{group.stage}}</view>
-      <view
-        class="guide-sector-card"
-        wx:for="{{group.sectors}}"
-        wx:key="id"
-        data-id="{{item.id}}"
-        data-url="{{item.officialUrl}}"
-        bindtap="openSector"
-      >
-        <view class="guide-sector-authority">{{item.authority}}</view>
-        <view class="guide-sector-title">{{item.title}}</view>
-        <view class="guide-sector-summary">{{item.summary}}</view>
-        <view class="guide-sector-includes">{{item.includesText}}</view>
-        <view class="guide-sector-action">{{item.id === "international-schools" ? "查看详细目录" : "复制官方链接"}} ›</view>
-      </view>
-    </view>
-  </view>
-
-  <view class="guide-section" id="international-directory">
-    <view class="guide-section-title">国际学校完整目录</view>
-    <view class="guide-section-note">当前43条学校与校区记录均有独立中英文档案；未公开数据会明确留空，不使用估算值。</view>
-  </view>
   <view class="guide-search">
     <input class="guide-input" value="{{query}}" bindinput="inputQuery" placeholder="搜索学校中文名或英文名" />
   </view>
-  <view class="guide-tier-tabs">
-    <view class="guide-tier-tab {{tier === 'ALL' ? 'active' : ''}}" data-tier="ALL" bindtap="setTier">全部</view>
-    <view class="guide-tier-tab {{tier === 'FIRST' ? 'active' : ''}}" data-tier="FIRST" bindtap="setTier">第一梯队</view>
-    <view class="guide-tier-tab {{tier === 'UNASSIGNED' ? 'active' : ''}}" data-tier="UNASSIGNED" bindtap="setTier">待分梯队</view>
+
+  <view class="school-category-grid">
+    <view class="school-category {{activeCategory === item.id ? 'active' : ''}}" wx:for="{{categories}}" wx:key="id" data-id="{{item.id}}" bindtap="selectCategory">
+      <view class="school-category-title">{{item.title}}</view>
+      <view class="school-category-subtitle">{{item.subtitle}}</view>
+    </view>
   </view>
-  <view class="guide-list">
-    <view class="guide-row" wx:for="{{schools}}" wx:key="slug">
+
+  <view wx:if="{{activeCategory === 'international'}}">
+    <view class="guide-tier-tabs school-focus-tabs">
+      <view class="guide-tier-tab {{focus === 'ALL' ? 'active' : ''}}" data-focus="ALL" bindtap="setFocus">全部</view>
+      <view class="guide-tier-tab {{focus === 'FIRST' ? 'active' : ''}}" data-focus="FIRST" bindtap="setFocus">第一梯队</view>
+      <view class="guide-tier-tab {{focus === 'IB' ? 'active' : ''}}" data-focus="IB" bindtap="setFocus">IB</view>
+      <view class="guide-tier-tab {{focus === 'BRITISH' ? 'active' : ''}}" data-focus="BRITISH" bindtap="setFocus">英式</view>
+      <view class="guide-tier-tab {{focus === 'AMERICAN' ? 'active' : ''}}" data-focus="AMERICAN" bindtap="setFocus">美式</view>
+      <view class="guide-tier-tab {{focus === 'PRESCHOOL' ? 'active' : ''}}" data-focus="PRESCHOOL" bindtap="setFocus">学前</view>
+    </view>
+    <view class="school-directory-count">{{schools.length}}所学校</view>
+    <view class="guide-list school-brand-list">
+    <block wx:for="{{schools}}" wx:key="slug" wx:for-index="schoolIndex">
+    <view class="guide-row" wx:if="{{schoolIndex < 12 || showAllSchools || query}}">
       <view class="guide-row-main">
         <view data-slug="{{item.slug}}" bindtap="openSchool">
           <view class="guide-row-title">{{item.nameZh}}</view>
           <view class="guide-row-name-en">{{item.name}}</view>
           <view class="guide-tier-label first" wx:if="{{item.editorialTier === 1}}">第一梯队</view>
-          <view class="guide-row-note">{{item.verifiedFacts[0]}}</view>
+          <view class="guide-tier-label" wx:if="{{item.campusCountText}}">{{item.campusCountText}}</view>
+          <view class="guide-row-note" wx:if="{{item.comparison}}">{{item.comparison.curriculum}}</view>
         </view>
       </view>
       <button class="guide-favorite" data-slug="{{item.slug}}" bindtap="toggleFavorite">
@@ -54,7 +42,22 @@
       </button>
       <view class="guide-arrow" data-slug="{{item.slug}}" bindtap="openSchool">›</view>
     </view>
+    </block>
+    </view>
+    <button class="school-show-all" wx:if="{{schools.length > 12 && !showAllSchools && !query}}" bindtap="showAllSchools">查看全部{{schools.length}}所</button>
+    <view class="guide-empty" wx:if="{{!loading && schools.length === 0}}">没有匹配学校</view>
   </view>
-  <view class="guide-empty" wx:if="{{!loading && schools.length === 0}}">没有匹配学校</view>
+
+  <view class="school-subcategory-list" wx:else>
+    <view class="school-subcategory" wx:for="{{activeSections}}" wx:key="id">
+      <view class="school-subcategory-title">{{item.title}}</view>
+      <view class="school-subcategory-summary">{{item.summary}}</view>
+      <view class="school-subcategory-items">
+        <text wx:for="{{item.includes}}" wx:key="*this" wx:for-item="fact">{{fact}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="school-source-note">资料按政府与学校公开信息整理并定期更新。</view>
 </view>
 <guide-nav active="schools" />

@@ -1,5 +1,5 @@
 import CompareSchools from "./CompareSchools";
-import { schoolGuideSchools } from "@/lib/school-guide-data";
+import { schoolGuideSchoolGroups } from "@/lib/school-guide-directory";
 
 export default function SchoolGuideComparePage() {
   return (
@@ -13,7 +13,7 @@ export default function SchoolGuideComparePage() {
       </section>
       <section className="sg-section">
         <div className="sg-shell">
-          <CompareSchools schools={schoolGuideSchools} />
+          <CompareSchools schools={schoolGuideSchoolGroups} />
         </div>
       </section>
     </main>

@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { schoolGuidePathways, schoolGuideSchools } from "@/lib/school-guide-data";
+import { schoolGuidePathways } from "@/lib/school-guide-data";
+import { schoolGuideSchoolGroups } from "@/lib/school-guide-directory";
 
 export default function SchoolGuideHomePage() {
-  const verifiedSchools = schoolGuideSchools
+  const verifiedSchools = schoolGuideSchoolGroups
     .filter((school) => school.dataStatus === "VERIFIED")
     .filter((school, index, all) => all.findIndex((item) => item.name === school.name) === index);
   const popularSchools = verifiedSchools.filter((school) => school.editorialTier === 1).slice(0, 5);

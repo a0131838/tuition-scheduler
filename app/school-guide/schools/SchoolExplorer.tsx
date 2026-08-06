@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import type { SchoolGuideSchool } from "@/lib/school-guide-data";
+import type { SchoolGuideDirectoryCategoryView, SchoolGuideSchoolGroup } from "@/lib/school-guide-directory";
 
 const FAVORITES_KEY = "school-guide-favorites";
 
-export default function SchoolExplorer({ schools }: { schools: SchoolGuideSchool[] }) {
+export default function SchoolExplorer({ schools, categories }: { schools: SchoolGuideSchoolGroup[]; categories: SchoolGuideDirectoryCategoryView[] }) {
   const [query, setQuery] = useState("");
-  const [tier, setTier] = useState("all");
+  const [activeCategory, setActiveCategory] = useState("international");
+  const [focus, setFocus] = useState("ALL");
+  const [showAll, setShowAll] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
 
   useEffect(() => {
@@ -31,38 +33,38 @@ export default function SchoolExplorer({ schools }: { schools: SchoolGuideSchool
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     return schools.filter((school) => {
-      if (tier === "first" && school.editorialTier !== 1) return false;
-      if (tier === "unassigned" && school.editorialTier !== null) return false;
-      return !q || school.name.toLowerCase().includes(q) || school.nameZh.toLowerCase().includes(q);
+      if (focus !== "ALL" && !school.directoryTags.includes(focus as SchoolGuideSchoolGroup["directoryTags"][number])) return false;
+      return !q || [school.name, school.nameZh, ...school.campusProfiles.flatMap((campus) => [campus.name, campus.nameZh])]
+        .some((value) => value.toLowerCase().includes(q));
     }).sort((a, b) => (a.editorialTier === 1 ? 0 : 1) - (b.editorialTier === 1 ? 0 : 1));
-  }, [query, schools, tier]);
+  }, [focus, query, schools]);
+
+  const active = categories.find((category) => category.id === activeCategory) || categories[0];
+  const visibleRows = showAll || query.trim() ? rows : rows.slice(0, 12);
 
   return (
     <>
-      <div className="sg-filter-grid is-compact">
-        <label className="sg-field">
-          搜索学校中文名或英文名
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="例如 德威、Canadian、UWCSEA" />
-        </label>
-        <label className="sg-field">
-          学校梯队
-          <select value={tier} onChange={(event) => setTier(event.target.value)}>
-            <option value="all">全部学校</option>
-            <option value="first">第一梯队</option>
-            <option value="unassigned">待分梯队</option>
-          </select>
-        </label>
-      </div>
-      <div className="sg-school-list">
-        {rows.map((school) => (
+      <label className="sg-directory-search">
+        <input value={query} onChange={(event) => { setQuery(event.target.value); setActiveCategory("international"); setShowAll(false); }} placeholder="搜索学校中文名或英文名" />
+      </label>
+      <nav className="sg-directory-categories" aria-label="学校大类">
+        {categories.map((category) => <button className={activeCategory === category.id ? "active" : ""} type="button" key={category.id} onClick={() => { setActiveCategory(category.id); setShowAll(false); }}><strong>{category.title}</strong><small>{category.subtitle}</small></button>)}
+      </nav>
+      {activeCategory === "international" ? <>
+        <div className="sg-directory-focus" aria-label="国际学校筛选">
+          {[["ALL", "全部"], ["FIRST", "第一梯队"], ["IB", "IB"], ["BRITISH", "英式"], ["AMERICAN", "美式"], ["PRESCHOOL", "学前"]].map(([value, label]) => <button className={focus === value ? "active" : ""} type="button" key={value} onClick={() => { setFocus(value); setShowAll(false); }}>{label}</button>)}
+        </div>
+        <p className="sg-directory-count">{rows.length}所学校</p>
+        <div className="sg-school-list">
+        {visibleRows.map((school) => (
           <div className="sg-school-row" key={school.slug}>
             <div>
               <h3>{school.nameZh}</h3>
               <small className="sg-school-name-en">{school.name}</small>
               {school.editorialTier === 1 ? <span className="sg-tier-badge">第一梯队</span> : null}
-              <p>{school.verifiedFacts[0]}</p>
+              {school.campusProfiles.length > 1 ? <span className="sg-tier-badge is-neutral">{school.campusProfiles.length}个收录校区</span> : null}
+              {school.comparison?.curriculum ? <p>{school.comparison.curriculum}</p> : null}
             </div>
-            <span className="sg-badge">{school.category}</span>
             <button
               className="sg-favorite"
               type="button"
@@ -76,7 +78,12 @@ export default function SchoolExplorer({ schools }: { schools: SchoolGuideSchool
           </div>
         ))}
       </div>
+      {rows.length > 12 && !showAll && !query.trim() ? <button className="sg-directory-show-all" type="button" onClick={() => setShowAll(true)}>查看全部{rows.length}所</button> : null}
       {rows.length === 0 ? <div className="sg-notice">没有匹配学校。</div> : null}
+      </> : <div className="sg-directory-subgroups">
+        {active?.sections.map((section) => <section key={section.id}><h2>{section.title}</h2><p>{section.summary}</p><div>{section.includes.map((item) => <span key={item}>{item}</span>)}</div></section>)}
+      </div>}
+      <p className="sg-directory-source">资料按政府与学校公开信息整理并定期更新。</p>
     </>
   );
 }
