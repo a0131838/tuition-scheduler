@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-08-06-r338`
 - Date/Time (Asia/Singapore): `2026-08-06`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: simplify the public school-guide home, add a curated eight-school comparison entry, separate church schools and preschool routes, and expand the popular private higher-education set to ten detailed profiles with partners, programmes, ranking scope, 2026 fees/intakes and entry requirements.
 - Key files:
   - `lib/school-guide-official-institutions.ts`
@@ -32,7 +32,7 @@ This file is the single source of truth for what changed in production.
   - `tests/school-guide-complete-profiles.test.ts`
   - `docs/tasks/TASK-20260806-school-guide-consumer-structure-and-private-he.md`
 - Risk impact (if any): Medium-low and isolated to public school-guide content, directory grouping, preparation-pack visibility and consumer navigation. No database migration or change to authentication, scheduling, attendance, packages, finance, payroll, renewals, tickets or permissions.
-- Verification: focused school-guide tests, complete backend regression, TypeScript, Mini Program audit, JavaScript/JSON validation, production build and live API/page checks.
+- Verification: 23 focused school-guide tests, 174 backend regression tests, TypeScript, the 67-page Mini Program release audit, native JavaScript checks and the 243-page production build passed. Runtime feature commit `2fd3518146ad870b88c4c8bef333b8795805765e` aligned locally, on GitHub and on the server with PM2 PID `1742381` and `/admin/login` HTTP 200. Live catalog returned `2026-08-06-r338`, 10 popular private higher-education profiles, six preschool subgroups and four permitted preparation packs; Web guide pages and Amity/Kingston APIs returned HTTP 200. WeChat development version `1.0.35` uploaded successfully at 710,808 bytes; experience-version designation and physical-phone acceptance remain manual.
 - Rollback point: `de7d3351d2a95c4a37122aa4c29b0ea930310234` (`2026-08-06-r337`).
 
 ---

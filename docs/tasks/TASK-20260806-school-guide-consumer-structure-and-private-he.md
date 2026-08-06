@@ -35,3 +35,11 @@ Make the public guide feel like a focused consumer product, correctly classify c
 - Complete backend regression and Mini Program release audit.
 - Production build and live catalog/profile checks.
 - Expected release: `2026-08-06-r338`; expected Mini Program development version: `1.0.35`.
+
+## Rollout result
+
+- Runtime feature commit: `2fd3518146ad870b88c4c8bef333b8795805765e`.
+- Local, GitHub and production server were aligned; PM2 PID `1742381` was online and health returned HTTP 200.
+- Live API returned 10 popular private higher-education profiles, the new preschool groups and four permitted preparation packs.
+- WeChat development version `1.0.35` uploaded successfully at 710,808 bytes.
+- Remaining manual action: designate `1.0.35` as the experience version and complete physical-phone checks.

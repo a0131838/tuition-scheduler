@@ -62,13 +62,13 @@
 - Current release line prepared: `2026-08-06-r335` makes every school-guide category open into detailed internal profiles, adds official-data MOE school records, admissions paths and downloadable preparation packs, and corrects public/assessment QR share entry paths.
 - Current release line prepared: `2026-08-06-r336` expands verifiable international-school academic results beyond official homepages, gives every school an explicit data-status explanation, and adds tiered detailed profiles for popular private universities and secondary routes.
 - Current release line prepared: `2026-08-06-r337` separates private higher education from public postsecondary routes, adds Furen International School and a detailed popular-eight private higher-education set, and adds parent-facing subcategory filters on Web and Mini Program.
-- Current release line prepared: `2026-08-06-r338` simplifies the consumer home, promotes an eight-school comparison set, moves San Yu and St Francis Methodist into church schools, adds detailed Amity and Kingston profiles, separates preschool routes and limits practice downloads to international-school and AEIS/S-AEIS preparation.
+- Current release line: `2026-08-06-r338` is live at runtime feature commit `2fd3518146ad870b88c4c8bef333b8795805765e`; WeChat development version `1.0.35` was uploaded successfully. It simplifies the consumer home, promotes an eight-school comparison set, moves San Yu and St Francis Methodist into church schools, adds detailed Amity and Kingston profiles, separates preschool routes and limits practice downloads to international-school and AEIS/S-AEIS preparation.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
-## 2026-08-06-r338 Ready
+## 2026-08-06-r338 Live
 
 - Scope: make the guide easier for a parent to enter, browse and trust while keeping each public/private route correctly classified.
 - Business impact:
@@ -83,6 +83,7 @@
   - authenticated parent/staff and all operating-system workflows remain unchanged.
 - Verification before deploy: focused school-guide tests, complete backend regression, TypeScript, Mini Program release audit, JavaScript/JSON validation and production build.
 - Post-deploy verification: catalog version `2026-08-06-r338`; private-higher count 10; San Yu and St Francis in `faith-special`; Amity and Kingston detail sections; preschool groups; four remaining sample packs; Web and Mini Program home and comparison flow; upload WeChat development version `1.0.35`.
+- Rollout result: runtime feature commit `2fd3518146ad870b88c4c8bef333b8795805765e` is aligned locally, on GitHub and on the production server; PM2 PID `1742381` is online and `/admin/login` returns 200. Live API checks confirmed the expected catalog, subgroup counts and detail profiles. WeChat development version `1.0.35` uploaded at 710,808 bytes; set it as the experience version before physical-phone acceptance.
 - Task doc: `docs/tasks/TASK-20260806-school-guide-consumer-structure-and-private-he.md`.
 
 ## 2026-08-06-r337 Ready
