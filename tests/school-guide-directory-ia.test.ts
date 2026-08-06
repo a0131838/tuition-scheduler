@@ -52,6 +52,6 @@ test("school directory no longer asks parents to copy external links", () => {
   for (const source of [miniapp, miniappJs, web]) {
     assert.doesNotMatch(source, /复制官方链接|setClipboardData|target="_blank"|officialUrl/);
   }
-  assert.match(miniapp, /你想找哪类学校/);
+  assert.match(miniapp, /选择学校类型/);
   assert.match(miniappJs, /directoryCategories/);
 });

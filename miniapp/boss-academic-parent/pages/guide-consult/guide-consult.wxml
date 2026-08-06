@@ -2,7 +2,7 @@
   <view class="guide-hero">
     <view class="guide-kicker">人工评估</view>
     <view class="guide-title">告诉我们你的问题</view>
-    <view class="guide-subtitle">我们会联系你。</view>
+    <view class="guide-subtitle">提交后由顾问微信联系</view>
   </view>
   <form bindsubmit="submit">
     <view class="guide-field">

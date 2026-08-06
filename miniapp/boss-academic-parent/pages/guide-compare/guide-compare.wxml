@@ -2,7 +2,7 @@
   <view class="guide-hero">
     <view class="guide-kicker">学校对比</view>
     <view class="guide-title">把学校放在一起看</view>
-    <view class="guide-subtitle">最多选择4所。</view>
+    <view class="guide-subtitle">最多选择4所</view>
   </view>
   <input class="guide-input guide-search" value="{{query}}" bindinput="inputQuery" placeholder="搜索学校英文名" />
   <view class="guide-list">

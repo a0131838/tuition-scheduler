@@ -108,7 +108,8 @@ test("every popular private higher education profile maps awarding partners to d
   const webDetail = read("app/school-guide/institutions/[slug]/page.tsx");
   const miniDetail = read("miniapp/boss-academic-parent/pages/guide-institution-detail/guide-institution-detail.wxml");
   assert.match(webDetail, /合作大学、具体专业与QS排名/);
-  assert.match(miniDetail, /合作大学、具体专业与QS排名/);
+  assert.match(miniDetail, /合作大学与专业/);
+  assert.match(miniDetail, /partner\.qsRanking/);
   assert.match(miniDetail, /partner\.programmeGroups/);
 });
 

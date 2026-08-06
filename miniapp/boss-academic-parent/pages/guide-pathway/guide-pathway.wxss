@@ -1,1 +1,7 @@
 @import "../../styles/school-guide.wxss";
+
+.pathway-disclosure { padding-top: 26rpx; }
+.pathway-disclosure-head { min-height: 94rpx; display: flex; align-items: center; justify-content: space-between; gap: 24rpx; border-top: 1rpx solid #d9dcdf; border-bottom: 1rpx solid #d9dcdf; }
+.pathway-disclosure-head b { color: #18202a; font-size: 31rpx; line-height: 1.35; }
+.pathway-disclosure-head text { color: #a83c05; font-size: 36rpx; }
+.pathway-disclosure .guide-list { margin-top: 0; border-top: 0; }

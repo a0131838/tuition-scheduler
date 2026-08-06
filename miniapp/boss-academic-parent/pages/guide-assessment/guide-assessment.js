@@ -36,7 +36,7 @@ Page({
   },
 
   onLoad() {
-    api.request("/api/public/school-guide/catalog?v=r341")
+    api.request("/api/public/school-guide/catalog?v=r342")
       .then((data) => this.setData({ pathways: data.pathways || [], schools: data.schoolGroups || data.schools || [] }))
       .catch((err) => api.toast(err.message));
     const token = wx.getStorageSync("school_guide_academic_assessment_token") || "";

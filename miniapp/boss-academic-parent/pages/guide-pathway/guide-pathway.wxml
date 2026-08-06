@@ -1,6 +1,6 @@
 <view class="guide-page" wx:if="{{pathway}}">
   <view class="guide-hero">
-    <view class="guide-kicker">ADMISSION PATHWAY</view>
+    <view class="guide-kicker">入学与申请</view>
     <view class="guide-title" style="font-size: 50rpx;">{{pathway.title}}</view>
     <view class="guide-subtitle">{{pathway.audience}}</view>
   </view>
@@ -15,19 +15,19 @@
     <view class="guide-section-title">考试与评估</view>
     <view class="pathway-exam" wx:for="{{pathway.examSections}}" wx:key="title"><b>{{item.title}}</b><text>{{item.detail}}</text></view>
   </view>
-  <view class="guide-section">
-    <view class="guide-section-title">规则与要点</view>
-    <view class="guide-list">
+  <view class="guide-section pathway-disclosure">
+    <view class="pathway-disclosure-head" data-section="rules" bindtap="toggleInfo"><b>规则与要点</b><text>{{openSections.rules ? '−' : '+'}}</text></view>
+    <view class="guide-list" wx:if="{{openSections.rules}}">
       <view class="guide-fact" wx:for="{{pathway.facts}}" wx:key="*this">{{item}}</view>
     </view>
   </view>
-  <view class="guide-section" wx:if="{{pathway.documents.length}}">
-    <view class="guide-section-title">需要准备的材料</view>
-    <view class="guide-list"><view class="guide-fact" wx:for="{{pathway.documents}}" wx:key="*this">{{item}}</view></view>
+  <view class="guide-section pathway-disclosure" wx:if="{{pathway.documents.length}}">
+    <view class="pathway-disclosure-head" data-section="documents" bindtap="toggleInfo"><b>需要准备的材料</b><text>{{openSections.documents ? '−' : '+'}}</text></view>
+    <view class="guide-list" wx:if="{{openSections.documents}}"><view class="guide-fact" wx:for="{{pathway.documents}}" wx:key="*this">{{item}}</view></view>
   </view>
-  <view class="guide-section">
-    <view class="guide-section-title">注意事项</view>
-    <view class="guide-list">
+  <view class="guide-section pathway-disclosure">
+    <view class="pathway-disclosure-head" data-section="cautions" bindtap="toggleInfo"><b>注意事项</b><text>{{openSections.cautions ? '−' : '+'}}</text></view>
+    <view class="guide-list" wx:if="{{openSections.cautions}}">
       <view class="guide-fact" wx:for="{{pathway.cautions}}" wx:key="*this">{{item}}</view>
     </view>
   </view>
@@ -35,6 +35,6 @@
     <view class="guide-section-title">例题与下载资料</view>
     <view class="sample-pack" wx:for="{{samplePacks}}" wx:key="slug"><view><b>{{item.title}}</b><text>{{item.label}} · {{item.duration}}</text></view><button data-slug="{{item.slug}}" loading="{{loadingPack === item.slug}}" bindtap="openPack">打开PDF</button></view>
   </view>
-  <view class="guide-section-note">内容按主管机构和学校公开规则整理；页面标注的原创练习不是官方真题。</view>
+  <view class="guide-page-meta">内容按主管机构和学校公开规则整理。页面中的原创练习不是官方真题。</view>
 </view>
 <guide-nav active="assessment" />

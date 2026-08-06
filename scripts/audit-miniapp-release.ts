@@ -105,7 +105,8 @@ assert(staffLoginScript.includes("data.needsBind") && staffLoginScript.includes(
 assert(appScript.includes("current_portal") && appScript.includes("setCurrentPortal"), "app must persist the last-used portal");
 assert(guideAccountMarkup.includes("家长微信登录") && guideAccountMarkup.includes("工作人员入口"), "guide account must contain both service portals below public tools");
 assert(guideAccountScript.includes("parent_token") && guideAccountScript.includes("staff_token"), "guide account must recognise existing parent and staff sessions");
-assert((guideNavMarkup.match(/class="dock-item/g) || []).length === 4 && guideNavMarkup.includes("找学校") && guideNavMarkup.includes("测评") && guideNavMarkup.includes("我的"), "school guide must use the four-destination consumer navigation");
+assert((guideNavMarkup.match(/class="dock-item/g) || []).length === 4 && guideNavMarkup.includes("学校") && guideNavMarkup.includes("测评") && guideNavMarkup.includes("我的"), "school guide must use the four-destination consumer navigation");
+assert(!/[⌂⌕◎◇]/.test(guideNavMarkup), "school guide navigation must not use punctuation-like glyph icons");
 assert(!read("pages/students/students.wxml").includes("员工端"), "authenticated parent pages must not expose the employee portal");
 assert(!read("pages/students/students.js").includes("staff-login"), "authenticated parent pages must not navigate to employee login");
 assert(read("pages/students/students.wxml").includes("退出家长登录"), "authenticated parents must have a visible logout action");

@@ -3,6 +3,7 @@ const api = require("../../utils/api");
 Page({
   data: {
     school: null,
+    overviewOpen: false,
     detailSections: [],
     pathways: [],
     samplePacks: [],
@@ -11,7 +12,7 @@ Page({
 
   onLoad(options) {
     const slug = decodeURIComponent(options.slug || "");
-    api.request("/api/public/school-guide/catalog?v=r341")
+    api.request("/api/public/school-guide/catalog?v=r342")
       .then((data) => {
         const groups = data.schoolGroups || data.schools || [];
         const school = groups.find((item) => item.slug === slug || (item.memberSlugs || []).includes(slug));
@@ -32,9 +33,9 @@ Page({
           { label: "校区", value: comparison.campuses || "学校未公开" },
           { label: "首年固定费用", value: costProfile ? costProfile.rangeText : "学校未公开" }
         ];
-        const detailSections = (school.detailSections || []).map((section, index) => ({
+        const detailSections = (school.detailSections || []).map((section) => ({
           ...section,
-          open: index === 0
+          open: false
         }));
         const pathways = (data.pathways || []).filter((item) => item.slug === "international-school-direct");
         const packSlugs = comparison.ageAndGrades && /grade 6|year 7|secondary|中学|18岁/i.test(comparison.ageAndGrades)
@@ -84,6 +85,10 @@ Page({
       sectionIndex === index ? { ...section, open: !section.open } : section
     );
     this.setData({ detailSections });
+  },
+
+  toggleOverview() {
+    this.setData({ overviewOpen: !this.data.overviewOpen });
   },
 
   goAssessment() {

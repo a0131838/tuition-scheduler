@@ -14,15 +14,15 @@
 }
 .dock-item {
   min-height: 96rpx;
+  position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   color: #707982;
-  font-size: 19rpx;
-  font-weight: 750;
+  font-size: 25rpx;
+  font-weight: 800;
 }
-.dock-icon { color: #18202a; font-size: 31rpx; line-height: 1.15; }
-.dock-item.active { color: #a83c05; background: #fff7f0; }
-.dock-item.active .dock-icon { color: #ec5e0a; }
+.dock-indicator { position: absolute; top: 0; left: 50%; width: 42rpx; height: 5rpx; border-radius: 0 0 5rpx 5rpx; background: transparent; transform: translateX(-50%); }
+.dock-item.active { color: #a83c05; }
+.dock-item.active .dock-indicator { background: #ec5e0a; }
 .dock-item:active { transform: translateY(1rpx); background: #fff7f0; }

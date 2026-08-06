@@ -2,7 +2,7 @@
 
 .institution-hero { padding-bottom: 38rpx; }
 .institution-name { font-size: 52rpx; line-height: 1.2; }
-.institution-name-en { margin-top: 12rpx; color: #667085; font-size: 25rpx; line-height: 1.5; }
+.institution-name-en { margin-top: 12rpx; color: #667085; font-size: 26rpx; line-height: 1.5; }
 .institution-facts { margin: 0 32rpx; border-top: 1rpx solid #dedbd6; }
 .institution-fact { display: grid; grid-template-columns: 180rpx 1fr; gap: 24rpx; padding: 24rpx 0; border-bottom: 1rpx solid #dedbd6; }
 .institution-fact text { color: #6b7280; font-size: 24rpx; }
@@ -14,18 +14,16 @@
 .institution-section-head b { font-size: 30rpx; }
 .institution-section-head text { font-size: 34rpx; color: #a24412; }
 .institution-section-body { padding: 0 0 20rpx; }
-.institution-source { margin: 28rpx 32rpx 0; padding: 26rpx 0; border-top: 1rpx solid #dedbd6; color: #667085; }
-.institution-source b, .institution-source text, .institution-source small { display: block; }
-.institution-source b { color: #16191f; font-size: 27rpx; margin-bottom: 10rpx; }
-.institution-source text, .institution-source small { font-size: 22rpx; line-height: 1.6; }
 .partner-programmes { padding-top: 34rpx; }
 .partner-programmes-title { margin-top: 8rpx; }
-.partner-programmes-note { margin: 8rpx 0 24rpx; color: #667085; font-size: 23rpx; line-height: 1.55; }
-.partner-card { margin-top: 20rpx; padding: 26rpx; border: 1rpx solid #dedbd6; border-radius: 24rpx; background: #fff; box-shadow: 0 10rpx 28rpx rgba(30, 35, 40, .05); }
+.partner-card { margin-top: 18rpx; padding: 0 24rpx; border: 1rpx solid #dedbd6; border-radius: 20rpx; background: #fff; }
+.partner-head { min-height: 122rpx; display: flex; align-items: center; justify-content: space-between; gap: 20rpx; }
+.partner-head>text { color: #a24412; font-size: 34rpx; }
+.partner-body { padding: 0 0 26rpx; }
 .partner-relationship { color: #a24412; font-size: 22rpx; font-weight: 700; line-height: 1.5; }
-.partner-name { margin-top: 10rpx; color: #16191f; font-size: 32rpx; font-weight: 800; line-height: 1.35; }
-.partner-name-en { margin-top: 3rpx; color: #667085; font-size: 23rpx; line-height: 1.45; }
-.partner-rank { margin-top: 18rpx; padding: 14rpx 18rpx; border-radius: 14rpx; background: #f7eee7; color: #803710; font-size: 24rpx; font-weight: 700; line-height: 1.45; }
+.partner-name { color: #16191f; font-size: 30rpx; font-weight: 800; line-height: 1.35; }
+.partner-name-en { margin-top: 8rpx; color: #667085; font-size: 25rpx; line-height: 1.45; }
+.partner-rank { margin-top: 8rpx; color: #803710; font-size: 24rpx; font-weight: 700; line-height: 1.45; }
 .partner-status { margin-top: 16rpx; padding: 14rpx 18rpx; border-left: 5rpx solid #f45b00; background: #fff8f3; font-size: 23rpx; line-height: 1.55; }
 .programme-group { margin-top: 24rpx; padding-top: 22rpx; border-top: 1rpx solid #e7e3de; }
 .programme-level { color: #a24412; font-size: 24rpx; font-weight: 800; }

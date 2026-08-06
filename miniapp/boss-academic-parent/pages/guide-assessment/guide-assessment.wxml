@@ -6,7 +6,7 @@
   </view>
 
   <view class="guide-notice">
-    结果会结合当前学校、课程、能力、预算和家庭条件，分为冲刺、匹配、相对稳妥、过渡四档。无需评估码也可完成30–45分钟能力测评。
+    先填写孩子的基本情况。
     <button class="guide-action secondary" style="margin-top: 18rpx;" bindtap="goAcademicAssessment">先做免费能力测评</button>
   </view>
 

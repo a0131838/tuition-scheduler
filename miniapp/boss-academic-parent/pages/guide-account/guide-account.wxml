@@ -1,8 +1,7 @@
 <view class="guide-page account-page">
   <view class="guide-hero account-hero">
     <view class="guide-kicker">我的</view>
-    <view class="guide-title">选校记录与专属服务。</view>
-    <view class="guide-subtitle">游客工具无需登录；正式学员和员工从这里进入各自工作区。</view>
+    <view class="guide-title">选校记录与服务</view>
   </view>
 
   <view class="account-section">

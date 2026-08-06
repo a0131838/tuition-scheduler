@@ -1,40 +1,44 @@
 <view class="guide-page consumer-home">
   <view class="guide-hero consumer-hero">
     <view class="guide-kicker">新加坡学校指南</view>
-    <view class="guide-title">选学校、查考试、<br/>测孩子现在的水平。</view>
-    <view class="guide-subtitle">先获得清楚的信息，再决定是否需要咨询。</view>
+    <view class="guide-title">为孩子找到<br/>合适的学校</view>
+    <view class="consumer-search" hover-class="guide-press" bindtap="goSchools">
+      <view class="consumer-search-icon"></view>
+      <text>搜索学校、课程或入学考试</text>
+    </view>
   </view>
 
   <view class="consumer-actions">
-    <view class="consumer-action" hover-class="guide-press" bindtap="goSchools"><text>01</text><view><b>找学校</b><small>按教育阶段、课程和学校类型查找</small></view><i>›</i></view>
-    <view class="consumer-action" hover-class="guide-press" bindtap="goPathways"><text>02</text><view><b>查入学考试</b><small>查看AEIS、政府学校与国际学校申请路径</small></view><i>›</i></view>
-    <view class="consumer-action" hover-class="guide-press" bindtap="goAcademicAssessment"><text>03</text><view><b>测学习水平</b><small>无需评估码，直接完成30–45分钟在线测评</small></view><i>›</i></view>
+    <view class="consumer-action" hover-class="guide-press" bindtap="goSchools"><b>找学校</b><text>按类型查找</text></view>
+    <view class="consumer-action" hover-class="guide-press" bindtap="goAssessment"><b>智能选校</b><text>2分钟生成方案</text></view>
+    <view class="consumer-action" hover-class="guide-press" bindtap="goPathways"><b>入学考试</b><text>AEIS与学校考试</text></view>
+    <view class="consumer-action" hover-class="guide-press" bindtap="goAcademicAssessment"><b>英文测评</b><text>30–45分钟</text></view>
   </view>
 
   <view class="guide-section">
-    <view class="guide-section-title">常被比较的8所学校</view>
-    <view class="guide-section-note">第一梯队加英华国际、华中国际和圣约瑟国际；可选2–4所并排比较。</view>
-    <view class="consumer-compare-grid">
+    <view class="consumer-section-head"><view class="guide-section-title">热门学校</view><view class="consumer-section-link" bindtap="goCompare">学校对比</view></view>
+    <scroll-view class="consumer-school-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="consumer-compare-grid">
       <view class="consumer-compare-school" hover-class="guide-press" wx:for="{{popularSchools}}" wx:key="slug" data-slug="{{item.slug}}" bindtap="openSchool">
-        <view class="consumer-compare-name">{{item.nameZh}}</view><view class="consumer-compare-en">{{item.name}}</view>
+        <view class="consumer-school-mark">{{item.shortMark}}</view>
+        <view class="consumer-compare-name">{{item.nameZh}}</view>
       </view>
-    </view>
-    <button class="guide-action" bindtap="goCompare">选择学校开始比较</button>
+      </view>
+    </scroll-view>
   </view>
 
   <view class="guide-section" id="admission-pathways">
-    <view class="guide-section-title">入学考试与申请</view>
+    <view class="guide-section-title">家长常用</view>
     <view class="guide-list">
       <view class="guide-row" wx:for="{{pathways}}" wx:key="slug" data-slug="{{item.slug}}" bindtap="openPathway">
-        <view class="guide-row-main"><view class="guide-row-title">{{item.title}}</view><view class="guide-row-note">{{item.audience}}</view></view><view class="guide-arrow">›</view>
+        <view class="guide-row-main"><view class="guide-row-title">{{item.title}}</view></view><view class="guide-arrow">›</view>
       </view>
     </view>
   </view>
 
   <view class="consumer-final">
-    <view class="guide-section-title">需要结合孩子情况判断？</view>
-    <view class="guide-section-note">整理好学校和问题后，再交给顾问继续确认。</view>
-    <view class="guide-action-row"><button class="guide-action secondary" bindtap="goPlan">我的方案 {{planCount}}</button><button class="guide-action" bindtap="goConsult">预约顾问</button></view>
+    <view><view class="guide-section-title">需要专业分析</view><view class="guide-section-note">顾问结合孩子情况继续判断</view></view>
+    <button class="guide-action" bindtap="goConsult">联系顾问</button>
   </view>
 </view>
 <guide-nav active="home" />

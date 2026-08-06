@@ -11,18 +11,19 @@
   </view>
 
   <view class="guide-section partner-programmes" wx:if="{{institution.partnerProgrammes && institution.partnerProgrammes.length}}">
-    <view class="guide-kicker">私立高等教育</view>
-    <view class="guide-section-title partner-programmes-title">合作大学、具体专业与QS排名</view>
-    <view class="partner-programmes-note">统一采用QS世界大学排名2027；专业按实际颁证大学归类。</view>
-    <view class="partner-card" wx:for="{{institution.partnerProgrammes}}" wx:key="partner" wx:for-item="partner">
-      <view class="partner-relationship">{{partner.relationship}}</view>
-      <view class="partner-name">{{partner.partnerZh}}</view>
-      <view class="partner-name-en">{{partner.partner}}</view>
-      <view class="partner-rank">{{partner.qsRanking}}</view>
-      <view class="partner-status" wx:if="{{partner.statusNote}}">{{partner.statusNote}}</view>
-      <view class="programme-group" wx:for="{{partner.programmeGroups}}" wx:key="level" wx:for-item="programmeGroup">
-        <view class="programme-level">{{programmeGroup.level}}</view>
-        <view class="programme-name" wx:for="{{programmeGroup.programmes}}" wx:key="*this" wx:for-item="programme">{{programme}}</view>
+    <view class="guide-section-title partner-programmes-title">合作大学与专业</view>
+    <view class="partner-card" wx:for="{{institution.partnerProgrammes}}" wx:key="partner" wx:for-item="partner" wx:for-index="partnerIndex">
+      <view class="partner-head" data-index="{{partnerIndex}}" bindtap="togglePartner">
+        <view><view class="partner-name">{{partner.partnerZh}}</view><view class="partner-rank">{{partner.qsRanking}}</view></view><text>{{partner.open ? '−' : '+'}}</text>
+      </view>
+      <view class="partner-body" wx:if="{{partner.open}}">
+        <view class="partner-relationship">{{partner.relationship}}</view>
+        <view class="partner-name-en">{{partner.partner}}</view>
+        <view class="partner-status" wx:if="{{partner.statusNote}}">{{partner.statusNote}}</view>
+        <view class="programme-group" wx:for="{{partner.programmeGroups}}" wx:key="level" wx:for-item="programmeGroup">
+          <view class="programme-level">{{programmeGroup.level}}</view>
+          <view class="programme-name" wx:for="{{programmeGroup.programmes}}" wx:key="*this" wx:for-item="programme">{{programme}}</view>
+        </view>
       </view>
     </view>
   </view>
@@ -44,8 +45,7 @@
     <view class="sample-pack" wx:for="{{samplePacks}}" wx:key="slug"><view><b>{{item.title}}</b><text>{{item.label}} · {{item.duration}}</text></view><button data-slug="{{item.slug}}" loading="{{loadingPack === item.slug}}" bindtap="openPack">打开PDF</button></view>
   </view>
 
-  <view class="institution-source"><b>资料来源</b><text>{{institution.sourceAuthority}}</text><text>{{institution.sourceNote}}</text><small>更新于 {{institution.updatedAt}}</small></view>
-
-  <view class="school-final-action"><view class="guide-section-title">需要结合孩子情况判断？</view><view class="guide-action-row"><button class="guide-action secondary" bindtap="goAssessment">做学习评估</button><button class="guide-action" bindtap="goConsult">咨询申请方案</button></view></view>
+  <view class="school-final-action"><view class="guide-section-title">下一步</view><view class="guide-action-row"><button class="guide-action secondary" bindtap="goAssessment">做学习测评</button><button class="guide-action" bindtap="goConsult">咨询申请方案</button></view></view>
+  <view class="guide-page-meta">资料来源：{{institution.sourceAuthority}}<br/>{{institution.sourceNote}}<br/>更新于 {{institution.updatedAt}}</view>
 </view>
 <guide-nav active="schools" />

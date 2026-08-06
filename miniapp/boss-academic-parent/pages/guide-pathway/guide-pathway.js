@@ -4,12 +4,13 @@ Page({
   data: {
     pathway: null,
     samplePacks: [],
-    loadingPack: ""
+    loadingPack: "",
+    openSections: { rules: false, documents: false, cautions: false }
   },
 
   onLoad(options) {
     const slug = decodeURIComponent(options.slug || "");
-    api.request("/api/public/school-guide/catalog?v=r341")
+    api.request("/api/public/school-guide/catalog?v=r342")
       .then((data) => {
         const pathway = (data.pathways || []).find((item) => item.slug === slug);
         if (!pathway) throw new Error("没有找到申请路径");
@@ -28,6 +29,12 @@ Page({
     api.openParentDocument(pack.downloadUrl, pack.slug + ".pdf")
       .catch((err) => api.toast(err.message))
       .finally(() => this.setData({ loadingPack: "" }));
+  },
+
+  toggleInfo(event) {
+    const section = event.currentTarget.dataset.section || "";
+    if (!Object.prototype.hasOwnProperty.call(this.data.openSections, section)) return;
+    this.setData({ [`openSections.${section}`]: !this.data.openSections[section] });
   },
 
   onShareAppMessage() {

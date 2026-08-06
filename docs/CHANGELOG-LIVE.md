@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-06-r342
+
+- Release ID: `2026-08-06-r342`
+- Date/Time (Asia/Singapore): `2026-08-06`
+- Deployment status: `READY`
+- Scope: redesign the public Mini Program school guide around readable parent tasks, with a shorter home, larger supporting type, text-only navigation, horizontally browsable popular schools, collapsed long detail sections, and low-priority update/source metadata at the bottom of pages.
+- Key files:
+  - `miniapp/boss-academic-parent/pages/guide-home/`
+  - `miniapp/boss-academic-parent/components/guide-nav/`
+  - `miniapp/boss-academic-parent/styles/school-guide.wxss`
+  - `miniapp/boss-academic-parent/pages/guide-school-detail/`
+  - `miniapp/boss-academic-parent/pages/guide-institution-detail/`
+  - `miniapp/boss-academic-parent/pages/guide-pathway/`
+  - `tests/miniapp-consumer-entry.test.ts`
+  - `docs/tasks/TASK-20260806-school-guide-readable-ui.md`
+- Risk impact (if any): Low and isolated to the public school-guide Mini Program's copy, visual hierarchy, disclosure state and catalog cache version. Full school, fee, result, partner-programme and pathway content remains available. No change to parent/staff authentication, assessment scoring, scheduling, attendance, packages, finance, payroll, renewals, tickets or messages.
+- Verification: 37 focused consumer-entry and school-guide tests, the 67-page Mini Program release audit and the WeChat developer-tool preview compile passed before release. Complete backend regression, TypeScript, native Mini Program JavaScript checks, production build, guarded deployment, live API health and WeChat development-version upload remain in the release gate.
+- Rollback point: `9ec8ca9f5ad3f9f77da3b748c21a12a0c4948b76` (`2026-08-06-r341` final aligned release head).
+
+---
+
 ## 2026-08-06-r341
 
 - Release ID: `2026-08-06-r341`

@@ -1,16 +1,16 @@
 <view class="guide-page assessment-page">
   <block wx:if="{{phase === 'hub'}}">
     <view class="assessment-hero">
-      <view class="guide-kicker">入学准备度测评</view>
-      <view class="assessment-title">先知道孩子现在在哪里，<br/>再决定怎么准备。</view>
-      <view class="assessment-lead">无需登录或评估码，填写基本信息后即可开始。完成后可免费查看系统报告。</view>
+      <view class="guide-kicker">英文水平测评</view>
+      <view class="assessment-title">测出孩子目前的<br/>英文水平</view>
+      <view class="assessment-lead">30–45分钟 · 无需登录或评估码</view>
       <button class="assessment-primary" bindtap="openCodeSetup">立即免费测评</button>
     </view>
     <view class="assessment-choice-list">
       <view class="assessment-choice" wx:if="{{hasRequest}}" bindtap="openSavedRequest"><view><b>查看原有申请</b><text>{{request ? request.statusLabel : '继续查看之前提交的记录'}}</text></view><i>›</i></view>
       <view class="assessment-choice" wx:if="{{hasSession}}" bindtap="loadSession"><view><b>继续测评或查看报告</b><text>使用本机已保存的测评记录</text></view><i>›</i></view>
     </view>
-    <view class="assessment-boundary"><b>开始前请了解</b><text>学生独立完成 · 建议预留45分钟 · 不是学校、MOE或AEIS官方成绩 · 不预测录取</text></view>
+    <view class="guide-page-meta">请让学生独立完成。结果不是官方成绩或录取结果。</view>
   </block>
 
   <block wx:if="{{phase === 'requestStatus' && request}}">
@@ -27,7 +27,7 @@
       <view><text>目标方向</text><b>{{request.targetPath}}</b></view>
       <view><text>希望测试日期</text><b>{{request.preferredTestDate || '未指定'}}</b></view>
     </view>
-    <view class="assessment-boundary"><b>负责人</b><text>入学顾问会通过申请时填写的微信号联系您。评估码不会自动公开发放。</text></view>
+    <view class="assessment-boundary"><b>联系方式</b><text>入学顾问会通过申请时填写的微信号联系您</text></view>
     <button class="assessment-primary" wx:if="{{request.canStart}}" loading="{{loading}}" bindtap="startFromRequest">评估已就绪，开始测评</button>
     <button class="assessment-secondary" wx:if="{{request.canRefresh}}" loading="{{loading}}" bindtap="openSavedRequest">刷新进度</button>
     <button class="assessment-text-button" wx:if="{{request.requestNo}}" bindtap="copyRequestNo">复制申请编号</button>
@@ -35,7 +35,7 @@
 
   <block wx:if="{{phase === 'setup'}}">
     <view class="assessment-nav" bindtap="backToHub">‹ 返回测评首页</view>
-    <view class="assessment-form-head"><view class="guide-kicker">免费测评</view><view class="assessment-section-title">填写孩子的基本情况</view><view class="assessment-form-note">预计30–45分钟。请让学生独立完成，系统会自动保存进度。</view></view>
+    <view class="assessment-form-head"><view class="guide-kicker">免费测评</view><view class="assessment-section-title">填写基本情况</view><view class="assessment-form-note">请让学生独立完成 · 系统自动保存</view></view>
     <view class="guide-field"><view class="guide-label">学生昵称 *</view><input class="guide-input" maxlength="60" placeholder="用于保存进度，不必填写证件姓名" value="{{studentNickname}}" bindinput="setNickname" /></view>
     <view class="assessment-form-grid">
       <view class="guide-field"><view class="guide-label">年龄段</view><picker range="{{ageOptions}}" value="{{ageIndex}}" bindchange="setAge"><view class="guide-picker">{{ageOptions[ageIndex]}}</view></picker></view>

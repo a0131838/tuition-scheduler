@@ -1,18 +1,24 @@
 @import "../../styles/school-guide.wxss";
 
-.consumer-hero { min-height: 410rpx; display: flex; flex-direction: column; justify-content: flex-end; animation: consumerEnter 360ms ease-out both; }
-.consumer-actions { border-top: 4rpx solid #18202a; animation: consumerEnter 420ms 70ms ease-out both; }
-.consumer-action { min-height: 150rpx; display: grid; grid-template-columns: 54rpx 1fr 28rpx; align-items: center; gap: 18rpx; border-bottom: 1rpx solid #d7d9da; transition: background 120ms ease, transform 120ms ease; }
-.consumer-action>text { color: #a83c05; font-size: 22rpx; font-weight: 800; }
-.consumer-action b { display: block; color: #18202a; font-size: 34rpx; font-weight: 880; line-height: 1.25; }
-.consumer-action small { display: block; margin-top: 8rpx; color: #66717b; font-size: 22rpx; line-height: 1.5; }
-.consumer-action i { color: #a83c05; font-size: 36rpx; font-style: normal; }
-.guide-press { background: #fff7f0; transform: translateX(4rpx); }
+.consumer-hero { min-height: 430rpx; display: flex; flex-direction: column; justify-content: flex-end; animation: consumerEnter 360ms ease-out both; }
+.consumer-search { min-height: 92rpx; display: flex; align-items: center; gap: 20rpx; margin-top: 34rpx; padding: 0 26rpx; border: 1rpx solid #d7d9da; border-radius: 22rpx; background: #fff; color: #6b747d; font-size: 27rpx; }
+.consumer-search-icon { position: relative; width: 27rpx; height: 27rpx; border: 4rpx solid #18202a; border-radius: 50%; box-sizing: border-box; }
+.consumer-search-icon::after { content: ""; position: absolute; right: -11rpx; bottom: -8rpx; width: 13rpx; height: 4rpx; border-radius: 4rpx; background: #18202a; transform: rotate(45deg); }
+.consumer-actions { display: grid; grid-template-columns: repeat(2, 1fr); border-top: 3rpx solid #18202a; animation: consumerEnter 420ms 70ms ease-out both; }
+.consumer-action { min-height: 136rpx; display: flex; flex-direction: column; justify-content: center; padding: 12rpx 20rpx 12rpx 0; border-bottom: 1rpx solid #d7d9da; transition: background 120ms ease, transform 120ms ease; }
+.consumer-action:nth-child(2n) { padding-left: 26rpx; border-left: 1rpx solid #d7d9da; }
+.consumer-action b { display: block; color: #18202a; font-size: 32rpx; font-weight: 880; line-height: 1.25; }
+.consumer-action text { display: block; margin-top: 8rpx; color: #6a737c; font-size: 24rpx; line-height: 1.35; }
+.guide-press { background: #fff7f0; transform: translateY(2rpx); }
 .consumer-start { display: flex; align-items: center; justify-content: space-between; gap: 24rpx; margin-top: 38rpx; padding: 30rpx 0; border-top: 7rpx solid #ec5e0a; border-bottom: 1rpx solid #d7d9da; }
 .consumer-start-title { margin-top: 10rpx; color: #18202a; font-size: 34rpx; font-weight: 880; }
-.consumer-compare-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14rpx; margin: 24rpx 0; }
-.consumer-compare-school { min-height: 112rpx; padding: 20rpx; border: 1rpx solid #d7d9da; border-radius: 18rpx; background: #fff; }
-.consumer-compare-name { color: #18202a; font-size: 25rpx; font-weight: 850; line-height: 1.35; }
-.consumer-compare-en { margin-top: 6rpx; color: #66717b; font-size: 18rpx; line-height: 1.3; }
-.consumer-final { margin-top: 64rpx; padding: 44rpx 0 14rpx; border-top: 3rpx solid #18202a; }
+.consumer-section-head { display: flex; align-items: center; justify-content: space-between; gap: 24rpx; }
+.consumer-section-link { flex: none; color: #a83c05; font-size: 25rpx; font-weight: 800; }
+.consumer-school-scroll { width: calc(100% + 28rpx); margin-top: 26rpx; white-space: nowrap; }
+.consumer-compare-grid { display: inline-flex; gap: 18rpx; padding-right: 28rpx; }
+.consumer-compare-school { width: 214rpx; min-height: 166rpx; display: inline-flex; flex-direction: column; justify-content: space-between; padding: 24rpx; border: 1rpx solid #d7d9da; border-radius: 22rpx; background: #fff; box-sizing: border-box; white-space: normal; }
+.consumer-school-mark { width: 56rpx; height: 56rpx; display: flex; align-items: center; justify-content: center; border-radius: 18rpx; background: #fff0e5; color: #a83c05; font-size: 27rpx; font-weight: 900; }
+.consumer-compare-name { margin-top: 22rpx; color: #18202a; font-size: 27rpx; font-weight: 850; line-height: 1.35; }
+.consumer-final { display: grid; grid-template-columns: 1fr 210rpx; align-items: center; gap: 24rpx; margin-top: 62rpx; padding: 38rpx 0 16rpx; border-top: 3rpx solid #18202a; }
+.consumer-final .guide-action { width: 210rpx; }
 @keyframes consumerEnter { from { opacity: 0; transform: translateY(18rpx); } to { opacity: 1; transform: translateY(0); } }

@@ -39,7 +39,7 @@ Page({
 
   loadData() {
     this.setData({ loading: true });
-    return api.request("/api/public/school-guide/catalog?v=r341")
+    return api.request("/api/public/school-guide/catalog?v=r342")
       .then((data) => {
         const schoolGroups = data.schoolGroups || data.schools || [];
         const pathways = data.pathways || [];
@@ -47,7 +47,9 @@ Page({
         version: data.version || "",
         schools: data.schools || [],
         pathways: HOME_PATHWAY_SLUGS.map((slug) => pathways.find((item) => item.slug === slug)).filter(Boolean),
-        popularSchools: POPULAR_COMPARE_SLUGS.map((slug) => schoolGroups.find((item) => item.slug === slug || (item.memberSlugs || []).includes(slug))).filter(Boolean)
+        popularSchools: POPULAR_COMPARE_SLUGS.map((slug) => schoolGroups.find((item) => item.slug === slug || (item.memberSlugs || []).includes(slug)))
+          .filter(Boolean)
+          .map((item) => Object.assign({}, item, { shortMark: String(item.nameZh || item.name || "校").slice(0, 1) }))
       });
       })
       .catch((err) => api.toast(err.message))

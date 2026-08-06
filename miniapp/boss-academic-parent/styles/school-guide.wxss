@@ -7,9 +7,9 @@
 
 .guide-task-list { margin-top: 28rpx; border-top: 3rpx solid #18202a; }
 .guide-task { min-height: 126rpx; display: grid; grid-template-columns: 52rpx 1fr 28rpx; align-items: center; gap: 18rpx; border-bottom: 1rpx solid #d9dcdf; }
-.guide-task > text { color: #7a838c; font-size: 22rpx; }
+.guide-task > text { color: #7a838c; font-size: 24rpx; }
 .guide-task b { display: block; color: #18202a; font-size: 29rpx; line-height: 1.4; }
-.guide-task small { display: block; margin-top: 7rpx; color: #69737d; font-size: 22rpx; line-height: 1.5; }
+.guide-task small { display: block; margin-top: 7rpx; color: #69737d; font-size: 24rpx; line-height: 1.5; }
 .guide-task i { color: #a83c05; font-size: 34rpx; font-style: normal; }
 .guide-switch-row { min-height: 94rpx; display: flex; align-items: center; justify-content: space-between; margin-top: 18rpx; padding: 0 20rpx; border: 1rpx solid #cfd4d9; background: white; color: #3e4852; font-size: 24rpx; font-weight: 750; }
 .guide-match-card { padding: 30rpx 0; border-bottom: 1rpx solid #d9dcdf; }
@@ -41,7 +41,7 @@
 
 .guide-kicker {
   color: #a83c05;
-  font-size: 22rpx;
+  font-size: 24rpx;
   font-weight: 800;
   letter-spacing: 2rpx;
 }
@@ -103,8 +103,8 @@
 .guide-section-note {
   margin-top: 12rpx;
   color: #66707c;
-  font-size: 25rpx;
-  line-height: 1.65;
+  font-size: 27rpx;
+  line-height: 1.58;
 }
 
 .guide-list {
@@ -120,7 +120,7 @@
   padding-bottom: 12rpx;
   border-bottom: 3rpx solid #18202a;
   color: #69737d;
-  font-size: 22rpx;
+  font-size: 24rpx;
   font-weight: 800;
   letter-spacing: 2rpx;
 }
@@ -148,18 +148,18 @@
 .guide-sector-includes {
   margin-top: 9rpx;
   color: #66707c;
-  font-size: 23rpx;
+  font-size: 25rpx;
   line-height: 1.55;
 }
 
 .guide-sector-includes {
-  font-size: 21rpx;
+  font-size: 24rpx;
 }
 
 .guide-sector-action {
   margin-top: 18rpx;
   color: #a83c05;
-  font-size: 22rpx;
+  font-size: 24rpx;
   font-weight: 850;
 }
 
@@ -187,7 +187,7 @@
 .guide-row-name-en {
   margin-top: 5rpx;
   color: #737c85;
-  font-size: 20rpx;
+  font-size: 23rpx;
   line-height: 1.45;
 }
 
@@ -219,7 +219,7 @@
 
 .school-category-subtitle {
   margin-top: 8rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   line-height: 1.45;
   color: #747981;
 }
@@ -240,7 +240,7 @@
 .school-directory-count {
   padding: 18rpx 32rpx 8rpx;
   color: #747981;
-  font-size: 24rpx;
+  font-size: 25rpx;
 }
 
 .school-brand-list {
@@ -303,10 +303,19 @@
   color: #8b8f95;
 }
 
+.guide-page-meta {
+  margin-top: 44rpx;
+  padding: 24rpx 0 4rpx;
+  border-top: 1rpx solid #d9d4ce;
+  color: #8b8f95;
+  font-size: 22rpx;
+  line-height: 1.55;
+}
+
 .guide-row-note {
   margin-top: 8rpx;
   color: #69737d;
-  font-size: 23rpx;
+  font-size: 25rpx;
   line-height: 1.55;
 }
 
@@ -326,7 +335,7 @@
   border-radius: 999rpx;
   background: transparent;
   color: #18202a;
-  font-size: 21rpx;
+  font-size: 23rpx;
   font-weight: 800;
   line-height: 60rpx;
 }
@@ -334,7 +343,7 @@
 .guide-text-link {
   margin-top: 18rpx;
   color: #a83c05;
-  font-size: 23rpx;
+  font-size: 25rpx;
   font-weight: 800;
   text-decoration: underline;
 }
@@ -352,7 +361,7 @@
   border-radius: 999rpx;
   color: #5d6873;
   background: rgba(255, 255, 255, 0.55);
-  font-size: 22rpx;
+  font-size: 24rpx;
   font-weight: 800;
   text-align: center;
 }
@@ -435,7 +444,7 @@
 .guide-label {
   margin-bottom: 9rpx;
   color: #3e4852;
-  font-size: 24rpx;
+  font-size: 26rpx;
   font-weight: 750;
 }
 
@@ -463,7 +472,7 @@
   gap: 12rpx;
   margin-top: 24rpx;
   color: #66707c;
-  font-size: 22rpx;
+  font-size: 24rpx;
   line-height: 1.55;
 }
 
@@ -486,7 +495,7 @@
 .guide-result-note {
   margin-top: 10rpx;
   color: #66707c;
-  font-size: 24rpx;
+  font-size: 26rpx;
   line-height: 1.65;
 }
 
@@ -588,8 +597,15 @@
 .institution-row-summary {
   margin-top: 7rpx;
   color: #66707c;
-  font-size: 22rpx;
+  font-size: 24rpx;
   line-height: 1.5;
+}
+
+.institution-row-summary {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .institution-row-badges {

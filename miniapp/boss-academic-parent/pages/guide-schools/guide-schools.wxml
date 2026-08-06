@@ -1,7 +1,7 @@
 <view class="guide-page">
   <view class="guide-hero">
     <view class="guide-kicker">找学校</view>
-    <view class="guide-title">你想找哪类学校？</view>
+    <view class="guide-title">选择学校类型</view>
   </view>
 
   <view class="guide-search">
@@ -9,13 +9,12 @@
   </view>
 
   <view class="consumer-start" hover-class="guide-press" bindtap="goAssessment">
-    <view><view class="guide-kicker">还没有目标学校？</view><view class="consumer-start-title">2分钟智能选校</view><view class="guide-section-note">按年龄、预算和课程偏好生成候选清单。</view></view><view class="guide-arrow">›</view>
+    <view><view class="consumer-start-title">2分钟智能选校</view><view class="guide-section-note">按年龄、预算和课程筛选</view></view><view class="guide-arrow">›</view>
   </view>
 
   <view class="school-category-grid">
     <view class="school-category {{activeCategory === item.id ? 'active' : ''}}" wx:for="{{categories}}" wx:key="id" data-id="{{item.id}}" bindtap="selectCategory">
       <view class="school-category-title">{{item.title}}</view>
-      <view class="school-category-subtitle">{{item.subtitle}}</view>
     </view>
   </view>
 
@@ -38,7 +37,6 @@
           <view class="guide-row-name-en">{{item.name}}</view>
           <view class="guide-tier-label first" wx:if="{{item.editorialTier === 1}}">第一梯队</view>
           <view class="guide-tier-label" wx:if="{{item.campusCountText}}">{{item.campusCountText}}</view>
-          <view class="guide-row-note" wx:if="{{item.comparison}}">{{item.comparison.curriculum}}</view>
         </view>
       </view>
       <button class="guide-favorite" data-slug="{{item.slug}}" bindtap="toggleFavorite">
@@ -61,7 +59,7 @@
     <view class="school-directory-count">{{institutionTotal}}个学校与教育档案</view>
     <view class="institution-directory">
       <view class="institution-row" wx:for="{{institutions}}" wx:key="slug" data-slug="{{item.slug}}" bindtap="openInstitution">
-        <view class="institution-row-main"><view class="institution-row-name">{{item.nameZh}}</view><view class="institution-row-en" wx:if="{{item.name !== item.nameZh}}">{{item.name}}</view><view class="institution-row-summary">{{item.summary}}</view><view class="institution-row-badges"><text wx:for="{{item.badges}}" wx:key="*this" wx:for-item="badge">{{badge}}</text></view></view><view class="guide-arrow">›</view>
+        <view class="institution-row-main"><view class="institution-row-name">{{item.nameZh}}</view><view class="institution-row-en" wx:if="{{item.name !== item.nameZh}}">{{item.name}}</view><view class="institution-row-summary">{{item.summary}}</view><view class="institution-row-badges"><text wx:for="{{item.badges}}" wx:key="*this" wx:for-item="badge" wx:for-index="badgeIndex" wx:if="{{badgeIndex < 2}}">{{badge}}</text></view></view><view class="guide-arrow">›</view>
       </view>
     </view>
     <button class="school-show-all" loading="{{institutionLoading}}" wx:if="{{institutionHasMore}}" bindtap="loadMoreInstitutions">继续查看</button>
