@@ -10,7 +10,7 @@
       <view class="hub-number">01</view><view class="hub-main"><view class="hub-title">智能选校</view><view class="hub-meta">约2分钟 · 无需登录</view><view class="hub-note">根据年龄、预算、课程偏好和家庭条件生成候选学校。</view></view><view class="guide-arrow">›</view>
     </view>
     <view class="hub-option" hover-class="guide-press" bindtap="goReadiness">
-      <view class="hub-number">02</view><view class="hub-main"><view class="hub-title">入学准备度测评</view><view class="hub-meta">约30–45分钟 · 顾问确认后发码</view><view class="hub-note">了解英语、数学、科学或任务表现，报告由老师复核。</view><view class="hub-state" wx:if="{{hasRequest || hasSession}}">{{hasSession ? '继续测评或查看报告' : '查看评估码申请进度'}}</view></view><view class="guide-arrow">›</view>
+      <view class="hub-number">02</view><view class="hub-main"><view class="hub-title">入学准备度测评</view><view class="hub-meta">约30–45分钟 · 无需评估码</view><view class="hub-note">直接测评并查看系统报告；需要专业分析时再联系顾问。</view><view class="hub-state" wx:if="{{hasRequest || hasSession}}">{{hasSession ? '继续测评或查看报告' : '查看原有申请'}}</view></view><view class="guide-arrow">›</view>
     </view>
   </view>
 

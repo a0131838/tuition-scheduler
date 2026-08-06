@@ -6,8 +6,8 @@
   </view>
 
   <view class="guide-notice">
-    本页用于快速生成候选学校，不测试学术能力。已有顾问或教务发放的评估码，可进入30–45分钟入学准备度测评。
-    <button class="guide-action secondary" style="margin-top: 18rpx;" bindtap="goAcademicAssessment">进入入学准备度测评</button>
+    结果会结合当前学校、课程、能力、预算和家庭条件，分为冲刺、匹配、相对稳妥、过渡四档。无需评估码也可完成30–45分钟能力测评。
+    <button class="guide-action secondary" style="margin-top: 18rpx;" bindtap="goAcademicAssessment">先做免费能力测评</button>
   </view>
 
   <view class="guide-field">
@@ -18,6 +18,10 @@
   </view>
   <view class="guide-field"><view class="guide-label">每年预算上限</view><picker range="{{budgetOptions}}" value="{{budgetIndex}}" bindchange="setBudget"><view class="guide-picker">{{budgetOptions[budgetIndex]}}</view></picker></view>
   <view class="guide-field"><view class="guide-label">课程偏好</view><picker range="{{curriculumOptions}}" value="{{curriculumIndex}}" bindchange="setCurriculum"><view class="guide-picker">{{curriculumOptions[curriculumIndex]}}</view></picker></view>
+  <view class="guide-field"><view class="guide-label">孩子目前就读的学校类型</view><picker range="{{currentSchoolOptions}}" value="{{currentSchoolIndex}}" bindchange="setCurrentSchool"><view class="guide-picker">{{currentSchoolOptions[currentSchoolIndex]}}</view></picker></view>
+  <view class="guide-field"><view class="guide-label">孩子目前的课程体系</view><picker range="{{currentCurriculumOptions}}" value="{{currentCurriculumIndex}}" bindchange="setCurrentCurriculum"><view class="guide-picker">{{currentCurriculumOptions[currentCurriculumIndex]}}</view></picker></view>
+  <view class="guide-field" wx:if="{{assessmentScore === null}}"><view class="guide-label">孩子目前的学习情况</view><picker range="{{academicLevelOptions}}" value="{{academicLevelIndex}}" bindchange="setAcademicLevel"><view class="guide-picker">{{academicLevelOptions[academicLevelIndex]}}</view></picker></view>
+  <view class="guide-notice" wx:if="{{assessmentEvidence}}">{{assessmentEvidence}}，本次选校优先采用该结果。</view>
   <view class="guide-switch-row"><text>孩子需要英语支持</text><switch color="#ec5e0a" checked="{{englishSupportNeeded}}" bindchange="setEnglishSupport" /></view>
   <view class="guide-switch-row"><text>家庭必须考虑寄宿</text><switch color="#ec5e0a" checked="{{boardingNeeded}}" bindchange="setBoarding" /></view>
   <view class="guide-field">
@@ -44,9 +48,9 @@
       <view class="guide-result-title">入学年份1月1日：{{result.ageOnEntryYearStart}}岁</view>
       <view class="guide-result-note">年龄仅供初步筛选。</view>
     </view>
-    <view class="guide-result-block"><view class="guide-kicker">候选学校</view><view class="guide-result-title">建议先比较这6所</view></view>
+    <view class="guide-result-block"><view class="guide-kicker">分层候选学校</view><view class="guide-result-title">建议先比较这8所</view><view class="guide-result-note">“相对稳妥”不代表保证录取，最终仍以学校审核和入学评估为准。</view></view>
     <view class="guide-match-card" wx:for="{{result.schoolMatches}}" wx:key="slug">
-      <view class="guide-match-band">{{item.band}}</view>
+      <view class="guide-match-band">{{item.bandLabel}}</view>
       <view class="guide-result-title">{{item.name}}</view>
       <view class="guide-match-reason" wx:for="{{item.reasons}}" wx:for-item="reason" wx:key="*this">✓ {{reason}}</view>
       <view class="guide-match-caution" wx:for="{{item.cautions}}" wx:for-item="caution" wx:key="*this">! {{caution}}</view>
@@ -61,7 +65,7 @@
       <view class="guide-result-title">提醒</view>
       <view class="guide-result-note" wx:for="{{result.notices}}" wx:key="*this">{{item}}</view>
     </view>
-    <button class="guide-action" bindtap="goConsult">提交人工评估</button>
+    <button class="guide-action" bindtap="goConsult">联系顾问获取专业分析</button>
   </view>
 </view>
 <guide-nav active="assessment" />

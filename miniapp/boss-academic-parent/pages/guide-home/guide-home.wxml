@@ -8,7 +8,7 @@
   <view class="consumer-actions">
     <view class="consumer-action" hover-class="guide-press" bindtap="goSchools"><text>01</text><view><b>找学校</b><small>按教育阶段、课程和学校类型查找</small></view><i>›</i></view>
     <view class="consumer-action" hover-class="guide-press" bindtap="goPathways"><text>02</text><view><b>查入学考试</b><small>查看AEIS、政府学校与国际学校申请路径</small></view><i>›</i></view>
-    <view class="consumer-action" hover-class="guide-press" bindtap="goAcademicAssessment"><text>03</text><view><b>测学习水平</b><small>申请评估码，完成30–45分钟在线测评</small></view><i>›</i></view>
+    <view class="consumer-action" hover-class="guide-press" bindtap="goAcademicAssessment"><text>03</text><view><b>测学习水平</b><small>无需评估码，直接完成30–45分钟在线测评</small></view><i>›</i></view>
   </view>
 
   <view class="guide-section">

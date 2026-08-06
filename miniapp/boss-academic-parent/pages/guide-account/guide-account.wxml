@@ -8,7 +8,7 @@
   <view class="account-section">
     <view class="account-label">我的选校</view>
     <view class="account-row" hover-class="guide-press" bindtap="goPlan"><view><b>选校方案</b><text>已保存 {{planCount}} 所学校</text></view><i>›</i></view>
-    <view class="account-row" hover-class="guide-press" bindtap="goAssessment"><view><b>{{hasAssessmentRequest || hasAssessmentSession ? '评估进度与报告' : '申请学习评估'}}</b><text>{{hasAssessmentSession ? '继续测评或查看报告' : hasAssessmentRequest ? '查看评估码申请进度' : '申请评估码，了解孩子当前水平'}}</text></view><i>›</i></view>
+    <view class="account-row" hover-class="guide-press" bindtap="goAssessment"><view><b>{{hasAssessmentSession ? '评估进度与报告' : '免费学习测评'}}</b><text>{{hasAssessmentSession ? '继续测评或查看报告' : '无需评估码，直接了解孩子当前水平'}}</text></view><i>›</i></view>
     <view class="account-row" hover-class="guide-press" bindtap="goConsult"><view><b>我的咨询</b><text>提交需要顾问进一步确认的问题</text></view><i>›</i></view>
   </view>
 

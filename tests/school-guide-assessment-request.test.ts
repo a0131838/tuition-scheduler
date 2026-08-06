@@ -54,13 +54,18 @@ test("assessment request migration is additive and isolated", () => {
   assert.doesNotMatch(sql, /DROP TABLE|DROP COLUMN|TRUNCATE|DELETE FROM|UPDATE "(?:Student|Session|Attendance|CoursePackage|Ticket)"/i);
 });
 
-test("native miniapp exposes request, status, staff queue and one-click code actions", () => {
+test("native miniapp starts public assessment directly while preserving legacy staff code actions", () => {
   const parent = fs.readFileSync(path.join(process.cwd(), "miniapp/boss-academic-parent/pages/guide-academic-assessment/guide-academic-assessment.wxml"), "utf8");
+  const startRoute = fs.readFileSync(path.join(process.cwd(), "app/api/public/school-guide/academic-assessment/start/route.ts"), "utf8");
   const staff = fs.readFileSync(path.join(process.cwd(), "miniapp/boss-academic-parent/pages/staff-assessment-request-detail/staff-assessment-request-detail.wxml"), "utf8");
   const appJson = JSON.parse(fs.readFileSync(path.join(process.cwd(), "miniapp/boss-academic-parent/app.json"), "utf8"));
-  assert.match(parent, /申请评估码/);
-  assert.match(parent, /查看申请进度/);
+  assert.match(parent, /立即免费测评/);
+  assert.match(parent, /无需登录或评估码/);
+  assert.doesNotMatch(parent, /验证评估码并开始/);
   assert.match(parent, /评估已就绪，开始测评/);
+  assert.match(parent, /联系顾问获取专业分析/);
+  assert.match(startRoute, /DIRECT_SELF_SERVE/);
+  assert.match(startRoute, /公开自助测评内部凭证/);
   assert.match(staff, /确认资料并生成评估码/);
   assert.match(staff, /复制完整微信通知/);
   assert.ok(appJson.pages.includes("pages/staff-assessment-requests/staff-assessment-requests"));

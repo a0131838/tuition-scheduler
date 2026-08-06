@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { assessSchoolGuidePath } from "@/lib/school-guide-assessment";
-import { matchSchoolGuideSchools, type SchoolGuideMatchInput } from "@/lib/school-guide-match";
+import { matchSchoolGuideSchools, selectBalancedSchoolGuideMatches, type SchoolGuideMatchInput } from "@/lib/school-guide-match";
 import type { SchoolGuidePathway, SchoolGuideSchool } from "@/lib/school-guide-data";
 
 export default function AssessmentForm({ pathways, schools }: { pathways: SchoolGuidePathway[]; schools: SchoolGuideSchool[] }) {
@@ -15,6 +15,9 @@ export default function AssessmentForm({ pathways, schools }: { pathways: School
   const [curriculum, setCurriculum] = useState<SchoolGuideMatchInput["curriculum"]>("ANY");
   const [englishSupportNeeded, setEnglishSupportNeeded] = useState(false);
   const [boardingNeeded, setBoardingNeeded] = useState(false);
+  const [currentSchoolType, setCurrentSchoolType] = useState<NonNullable<SchoolGuideMatchInput["currentSchoolType"]>>("NOT_ENROLLED");
+  const [currentCurriculum, setCurrentCurriculum] = useState<NonNullable<SchoolGuideMatchInput["currentCurriculum"]>>("ANY");
+  const [academicLevel, setAcademicLevel] = useState<NonNullable<SchoolGuideMatchInput["academicLevel"]>>("ON_LEVEL");
   const [submitted, setSubmitted] = useState(false);
 
   const result = useMemo(
@@ -23,8 +26,8 @@ export default function AssessmentForm({ pathways, schools }: { pathways: School
   );
   const matched = pathways.filter((pathway) => result.pathwaySlugs.includes(pathway.slug));
   const schoolMatches = useMemo(
-    () => matchSchoolGuideSchools(schools, { budgetMax, curriculum, englishSupportNeeded, boardingNeeded }),
-    [schools, budgetMax, curriculum, englishSupportNeeded, boardingNeeded],
+    () => selectBalancedSchoolGuideMatches(matchSchoolGuideSchools(schools, { budgetMax, curriculum, englishSupportNeeded, boardingNeeded, currentSchoolType, currentCurriculum, academicLevel })),
+    [schools, budgetMax, curriculum, englishSupportNeeded, boardingNeeded, currentSchoolType, currentCurriculum, academicLevel],
   );
 
   function addToPlan(slug: string) {
@@ -67,6 +70,24 @@ export default function AssessmentForm({ pathways, schools }: { pathways: School
           </label>
           <label className="sg-check"><input type="checkbox" checked={englishSupportNeeded} onChange={(event) => setEnglishSupportNeeded(event.target.checked)} />孩子需要英语支持</label>
           <label className="sg-check"><input type="checkbox" checked={boardingNeeded} onChange={(event) => setBoardingNeeded(event.target.checked)} />家庭必须考虑寄宿</label>
+          <label className="sg-field">
+            当前学校类型
+            <select value={currentSchoolType} onChange={(event) => setCurrentSchoolType(event.target.value as typeof currentSchoolType)}>
+              <option value="INTERNATIONAL">国际学校</option><option value="MOE">新加坡政府学校</option><option value="PRIVATE">私立或教会学校</option><option value="OVERSEAS_LOCAL">中国或其他国家本地学校</option><option value="PRESCHOOL">幼儿园或学前</option><option value="NOT_ENROLLED">暂未入学</option>
+            </select>
+          </label>
+          <label className="sg-field">
+            当前课程体系
+            <select value={currentCurriculum} onChange={(event) => setCurrentCurriculum(event.target.value as typeof currentCurriculum)}>
+              <option value="ANY">不确定</option><option value="IB">IB</option><option value="BRITISH">英式</option><option value="AMERICAN">美式</option><option value="MOE">新加坡MOE</option><option value="CHINA">中国课程</option><option value="OTHER">其他</option>
+            </select>
+          </label>
+          <label className="sg-field">
+            当前学习情况
+            <select value={academicLevel} onChange={(event) => setAcademicLevel(event.target.value as typeof academicLevel)}>
+              <option value="NEEDS_SUPPORT">需要较多支持</option><option value="DEVELOPING">正在接近年级要求</option><option value="ON_LEVEL">基本达到年级要求</option><option value="STRONG">目前表现较强</option>
+            </select>
+          </label>
           <label className="sg-field">
             目标入学年份
             <input
@@ -119,12 +140,13 @@ export default function AssessmentForm({ pathways, schools }: { pathways: School
           ))}
           <div className="sg-result-item">
             <div className="sg-eyebrow">学校候选清单</div>
-            <h3>建议先比较这6所</h3>
+            <h3>建议先比较这8所</h3>
+            <p>按冲刺、匹配、相对稳妥和过渡分层；“相对稳妥”不代表保证录取。</p>
           </div>
           {schoolMatches.slice(0, 6).map((item) => (
             <div className="sg-match-card" key={item.school.slug}>
               <div className={`sg-match-band is-${item.band.toLowerCase()}`}>
-                {item.band === "PRIORITY" ? "优先了解" : item.band === "COMPARE" ? "可以比较" : "需要谨慎"}
+                {item.bandLabel}
               </div>
               <h3>{item.school.name}</h3>
               {item.reasons.map((reason) => <p className="sg-match-reason" key={reason}>✓ {reason}</p>)}
@@ -143,7 +165,7 @@ export default function AssessmentForm({ pathways, schools }: { pathways: School
                 className="sg-primary"
                 href={`/school-guide/consult?birthDate=${encodeURIComponent(birthDate)}&targetEntryYear=${targetEntryYear}&residency=${residency}&preferredSystem=${preferredSystem}`}
               >
-                提交人工评估
+                联系顾问获取专业分析
               </Link>
             </div>
           </div>

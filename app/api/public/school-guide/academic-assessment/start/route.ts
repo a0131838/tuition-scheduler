@@ -34,10 +34,14 @@ export async function POST(req: NextRequest) {
   const requestToken = cleanText(body?.requestToken, 128);
   const requestedAgeBand = cleanText(body?.ageBand, 20);
   const requestedTargetPath = cleanText(body?.targetPath, 30);
+  const directSelfServe = !rawCode && !requestToken;
+  const requestedStudentNickname = cleanText(body?.studentNickname, 60);
   if (cleanText(body?.consent, 10) !== "yes") {
     return NextResponse.json({ ok: false, message: "开始前需要家长或监护人确认资料使用授权。" }, { status: 400 });
   }
-  if (!rawCode && !requestToken) return NextResponse.json({ ok: false, message: "请输入评估码，或从申请进度中开始测评。" }, { status: 400 });
+  if (directSelfServe && !requestedStudentNickname) {
+    return NextResponse.json({ ok: false, message: "请填写学生昵称，方便保存进度并避免短期内重复同一套题。" }, { status: 400 });
+  }
   if (!ACADEMIC_ASSESSMENT_AGE_BANDS.includes(requestedAgeBand as never)) {
     return NextResponse.json({ ok: false, message: "请选择正确的年龄段。" }, { status: 400 });
   }
@@ -53,9 +57,25 @@ export async function POST(req: NextRequest) {
       const assessmentRequest = requestToken
         ? await tx.schoolGuideAssessmentRequest.findUnique({ where: { publicTokenHash: sha256(requestToken) }, select: { id: true, status: true } })
         : null;
-      const code = assessmentRequest
+      const legacyCode = assessmentRequest
         ? await tx.schoolGuideAssessmentCode.findUnique({ where: { assessmentRequestId: assessmentRequest.id } })
-        : await tx.schoolGuideAssessmentCode.findUnique({ where: { codeHash: sha256(rawCode) } });
+        : rawCode ? await tx.schoolGuideAssessmentCode.findUnique({ where: { codeHash: sha256(rawCode) } }) : null;
+      const code = directSelfServe
+        ? await tx.schoolGuideAssessmentCode.create({
+          data: {
+            codeHash: sha256(generateSessionToken()),
+            codeHint: "FREE",
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            maxUses: 1,
+            ageBand: requestedAgeBand,
+            targetPath: requestedTargetPath,
+            studentNickname: requestedStudentNickname,
+            note: "公开自助测评内部凭证",
+            createdByName: "公开自助测评",
+            createdByEmail: "public-assessment@system.local",
+          },
+        })
+        : legacyCode;
       if (!code || code.status !== "ACTIVE") throw new Error("INVALID_CODE");
       if (assessmentRequest && ["DECLINED", "CLOSED"].includes(assessmentRequest.status)) throw new Error("INVALID_CODE");
       if (code.expiresAt < new Date()) throw new Error("EXPIRED_CODE");
@@ -127,7 +147,7 @@ export async function POST(req: NextRequest) {
           action: "START",
           entityType: "SchoolGuideAssessmentSession",
           entityId: session.id,
-          meta: { ageBand: requestedAgeBand, targetPath: requestedTargetPath, formId, bankVersion: ACADEMIC_ASSESSMENT_VERSION, sourceStatus: ACADEMIC_ASSESSMENT_STATUS, assessmentRequestId: code.assessmentRequestId || null },
+          meta: { ageBand: requestedAgeBand, targetPath: requestedTargetPath, formId, bankVersion: ACADEMIC_ASSESSMENT_VERSION, sourceStatus: ACADEMIC_ASSESSMENT_STATUS, sourceMode: directSelfServe ? "DIRECT_SELF_SERVE" : "CONTROLLED_CODE", assessmentRequestId: code.assessmentRequestId || null },
         },
       });
       return { session, sessionToken };
@@ -136,7 +156,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     const code = error instanceof Error ? error.message : "";
     const messages: Record<string, string> = {
-      INVALID_CODE: "评估码无效，请向老师或顾问核对。",
+      INVALID_CODE: "测评凭证无效，请刷新页面后重试。",
       EXPIRED_CODE: "评估码已过期，请联系老师或顾问重新领取。",
       USED_CODE: "评估码已使用；如需继续，请使用原设备上的“继续测评”。",
       AGE_MISMATCH: "所选年龄段与评估码不一致，请联系发码员工核对。",

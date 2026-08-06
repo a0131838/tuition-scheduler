@@ -16,6 +16,17 @@ Page({
     curriculumOptions: ["保持开放", "IB", "英式", "美式", "法式", "澳洲体系"],
     curriculumValues: ["ANY", "IB", "BRITISH", "AMERICAN", "FRENCH", "AUSTRALIAN"],
     curriculumIndex: 0,
+    currentSchoolOptions: ["国际学校", "新加坡政府学校", "私立或教会学校", "中国或其他国家本地学校", "幼儿园或学前", "暂未入学"],
+    currentSchoolValues: ["INTERNATIONAL", "MOE", "PRIVATE", "OVERSEAS_LOCAL", "PRESCHOOL", "NOT_ENROLLED"],
+    currentSchoolIndex: 5,
+    currentCurriculumOptions: ["不确定", "IB", "英式", "美式", "新加坡MOE", "中国课程", "其他"],
+    currentCurriculumValues: ["ANY", "IB", "BRITISH", "AMERICAN", "MOE", "CHINA", "OTHER"],
+    currentCurriculumIndex: 0,
+    academicLevelOptions: ["需要较多支持", "正在接近年级要求", "基本达到年级要求", "目前表现较强"],
+    academicLevelValues: ["NEEDS_SUPPORT", "DEVELOPING", "ON_LEVEL", "STRONG"],
+    academicLevelIndex: 2,
+    assessmentScore: null,
+    assessmentEvidence: "",
     englishSupportNeeded: false,
     boardingNeeded: false,
     loading: false,
@@ -25,9 +36,19 @@ Page({
   },
 
   onLoad() {
-    api.request("/api/public/school-guide/catalog?v=r339")
+    api.request("/api/public/school-guide/catalog?v=r340")
       .then((data) => this.setData({ pathways: data.pathways || [], schools: data.schoolGroups || data.schools || [] }))
       .catch((err) => api.toast(err.message));
+    const token = wx.getStorageSync("school_guide_academic_assessment_token") || "";
+    if (token) {
+      api.request("/api/public/school-guide/academic-assessment/session", { method: "POST", data: { action: "load", sessionToken: token }, timeout: 15000 })
+        .then((data) => {
+          const session = data.session || {};
+          if (session.status === "COMPLETED" && typeof session.overallScore === "number") {
+            this.setData({ assessmentScore: session.overallScore, assessmentEvidence: `已使用系统测评结果：${session.overallScore}分` });
+          }
+        }).catch(() => {});
+    }
   },
 
   setBirthDate(event) {
@@ -48,50 +69,11 @@ Page({
 
   setBudget(event) { this.setData({ budgetIndex: Number(event.detail.value), result: null }); },
   setCurriculum(event) { this.setData({ curriculumIndex: Number(event.detail.value), result: null }); },
+  setCurrentSchool(event) { this.setData({ currentSchoolIndex: Number(event.detail.value), result: null }); },
+  setCurrentCurriculum(event) { this.setData({ currentCurriculumIndex: Number(event.detail.value), result: null }); },
+  setAcademicLevel(event) { this.setData({ academicLevelIndex: Number(event.detail.value), result: null }); },
   setEnglishSupport(event) { this.setData({ englishSupportNeeded: event.detail.value, result: null }); },
   setBoarding(event) { this.setData({ boardingNeeded: event.detail.value, result: null }); },
-
-  matchSchools() {
-    const curriculum = this.data.curriculumValues[this.data.curriculumIndex];
-    const budget = this.data.budgetValues[this.data.budgetIndex];
-    const terms = {
-      IB: ["IB", "PYP", "MYP", "DP"],
-      BRITISH: ["英国", "IGCSE", "A Level"],
-      AMERICAN: ["美式", "AP", "American"],
-      FRENCH: ["法国", "French"],
-      AUSTRALIAN: ["澳洲", "HSC", "Australian"]
-    };
-    const seen = {};
-    return this.data.schools.filter((school) => {
-      if (school.dataStatus !== "VERIFIED" || !school.comparison || !school.costProfile || seen[school.name]) return false;
-      seen[school.name] = true;
-      return true;
-    }).map((school) => {
-      let score = school.editorialTier === 1 ? 2 : 0;
-      const reasons = [];
-      const cautions = [];
-      const schoolCurriculum = school.comparison.curriculum || "";
-      if (curriculum === "ANY") reasons.push("课程偏好保持开放");
-      else if ((terms[curriculum] || []).some((term) => schoolCurriculum.indexOf(term) >= 0)) {
-        score += 3; reasons.push("课程方向符合：" + schoolCurriculum);
-      } else { score -= 2; cautions.push("课程方向与当前偏好不完全一致"); }
-      if (budget) {
-        if (school.costProfile.fixedFirstYearLow <= budget) { score += 2; reasons.push("首年固定费用低值在预算内"); }
-        else { score -= 4; cautions.push("首年固定费用低值已高于预算"); }
-      }
-      if (this.data.englishSupportNeeded) {
-        if (/EAL|ELL|English|英语|语言|Foundation|Passerelle/i.test(school.comparison.englishSupport || "")) {
-          score += 1; reasons.push("学校官网列有英语支持");
-        } else cautions.push("英语支持安排需要向学校确认");
-      }
-      if (this.data.boardingNeeded) {
-        if (!/无寄宿/.test(school.comparison.boarding || "")) { score += 2; reasons.push("学校有寄宿信息"); }
-        else { score -= 5; cautions.push("学校不提供寄宿"); }
-      }
-      const band = score >= 4 ? "优先了解" : score >= 0 ? "可以比较" : "需要谨慎";
-      return { ...school, score, band, reasons, cautions };
-    }).sort((a, b) => b.score - a.score).slice(0, 6);
-  },
 
   submit() {
     if (!this.data.birthDate || !this.data.targetEntryYear) {
@@ -107,13 +89,21 @@ Page({
         birthDate: this.data.birthDate,
         targetEntryYear: Number(this.data.targetEntryYear),
         residency,
-        preferredSystem
+        preferredSystem,
+        budgetMax: this.data.budgetValues[this.data.budgetIndex],
+        curriculum: this.data.curriculumValues[this.data.curriculumIndex],
+        englishSupportNeeded: this.data.englishSupportNeeded,
+        boardingNeeded: this.data.boardingNeeded,
+        currentSchoolType: this.data.currentSchoolValues[this.data.currentSchoolIndex],
+        currentCurriculum: this.data.currentCurriculumValues[this.data.currentCurriculumIndex],
+        academicLevel: this.data.academicLevelValues[this.data.academicLevelIndex],
+        assessmentScore: this.data.assessmentScore
       }
     })
       .then((data) => {
         const result = data.result || {};
         result.matchedPathways = this.data.pathways.filter((pathway) => (result.pathwaySlugs || []).includes(pathway.slug));
-        result.schoolMatches = this.matchSchools();
+        result.schoolMatches = data.schoolMatches || [];
         this.setData({ result });
       })
       .catch((err) => api.toast(err.message))
@@ -140,10 +130,15 @@ Page({
     const residency = this.data.residencyValues[this.data.residencyIndex];
     const preferredSystem = this.data.systemValues[this.data.systemIndex];
     const summary = [
+      "希望顾问专业分析智能选校结果",
       "出生日期:" + this.data.birthDate,
       "目标入学年:" + this.data.targetEntryYear,
       "身份:" + residency,
-      "体系偏好:" + preferredSystem
+      "体系偏好:" + preferredSystem,
+      "当前学校:" + this.data.currentSchoolOptions[this.data.currentSchoolIndex],
+      "当前课程:" + this.data.currentCurriculumOptions[this.data.currentCurriculumIndex],
+      this.data.assessmentScore === null ? "家长自评:" + this.data.academicLevelOptions[this.data.academicLevelIndex] : "系统测评:" + this.data.assessmentScore + "分",
+      "推荐学校:" + (((this.data.result || {}).schoolMatches || []).map((item) => item.nameZh || item.name).slice(0, 8).join("、") || "待生成")
     ].join("；");
     wx.navigateTo({ url: "/pages/guide-consult/guide-consult?summary=" + encodeURIComponent(summary) });
   },

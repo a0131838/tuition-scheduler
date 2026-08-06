@@ -56,7 +56,7 @@ Page({
     const requestToken = wx.getStorageSync(REQUEST_KEY) || "";
     const intent = options && options.intent;
     this.setData({ sessionToken, requestToken, hasSession: Boolean(sessionToken), hasRequest: Boolean(requestToken) });
-    if (intent === "request") return this.openRequestForm();
+    if (intent === "request") return this.openCodeSetup();
     if (intent === "code") return this.openCodeSetup();
     if (sessionToken) {
       this.setData({ loading: true });
@@ -175,13 +175,13 @@ Page({
   start() { return this.startAssessment(""); },
   startFromRequest() { return this.startAssessment(this.data.requestToken); },
   startAssessment(requestToken) {
-    if (!requestToken && !this.data.code.trim()) return api.toast("请输入评估码");
+    if (!requestToken && !this.data.studentNickname.trim()) return api.toast("请填写学生昵称");
     if (!requestToken && !this.data.consent) return api.toast("请由家长或监护人确认资料使用授权");
     this.setData({ loading: true });
     api.request("/api/public/school-guide/academic-assessment/start", {
       method: "POST",
       data: {
-        code: requestToken ? "" : this.data.code,
+        code: requestToken ? "" : undefined,
         requestToken,
         studentNickname: this.data.studentNickname,
         currentGrade: this.data.currentGrade,
@@ -219,7 +219,7 @@ Page({
 
   refresh() { this.setData({ loading: true }); this.loadSession().catch((err) => api.toast(err.message)).finally(() => this.setData({ loading: false })); },
   goConsult() {
-    const summary = this.data.session ? `${this.data.session.studentCode}；${this.data.session.ageBand}；${this.data.session.overallBand || "待评分"}` : "入学准备度测评";
+    const summary = this.data.session ? `希望顾问专业分析：${this.data.session.studentCode}；${this.data.session.ageBand}；${this.data.session.overallBand || "待评分"}` : "希望顾问专业分析入学准备度测评";
     wx.navigateTo({ url: "/pages/guide-consult/guide-consult?summary=" + encodeURIComponent(summary) });
   },
   onShareAppMessage() { return { title: "新加坡学校指南｜入学准备度测评", path: "/pages/guide-academic-assessment/guide-academic-assessment" }; }
