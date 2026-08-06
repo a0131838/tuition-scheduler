@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-06-r341
+
+- Release ID: `2026-08-06-r341`
+- Date/Time (Asia/Singapore): `2026-08-06`
+- Deployment status: `READY`
+- Scope: replace the four public AEIS and international-school preparation downloads with expanded English-only practice packs, increasing each from a few mixed-subject prompts to 19-23 structured vocabulary, grammar, cloze, reading, writing and reflection items with reference answers and parent observation pages.
+- Key files:
+  - `lib/school-guide-pathways.ts`
+  - `scripts/generate-school-guide-sample-packs.py`
+  - `public/school-guide/downloads/aeis-primary-sample.pdf`
+  - `public/school-guide/downloads/aeis-secondary-sample.pdf`
+  - `public/school-guide/downloads/international-primary-sample.pdf`
+  - `public/school-guide/downloads/international-secondary-sample.pdf`
+  - `tests/school-guide-complete-content.test.ts`
+- Risk impact (if any): Low and isolated to public downloadable preparation material and catalog cache versioning. Official pathway descriptions continue to state the real subjects and requirements; removing mathematics from the public practice packs does not imply that an official examination excludes mathematics. No change to assessment scoring, admissions facts, login, permissions, scheduling, packages, finance, payroll, tickets or messages.
+- Verification: focused content tests, PDF text extraction, all-page visual rendering, native Mini Program syntax, Mini Program audit, TypeScript, backend regression and production build are required before LIVE.
+- Rollback point: `fef606a2e6c9e0da8dd5bd0de6269fad80949599` (`2026-08-06-r340` final aligned release head).
+
+---
+
 ## 2026-08-06-r340
 
 - Release ID: `2026-08-06-r340`

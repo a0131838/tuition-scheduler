@@ -65,10 +65,19 @@
 - Current release line: `2026-08-06-r338` is live at runtime feature commit `2fd3518146ad870b88c4c8bef333b8795805765e`; WeChat development version `1.0.35` was uploaded successfully. It simplifies the consumer home, promotes an eight-school comparison set, moves San Yu and St Francis Methodist into church schools, adds detailed Amity and Kingston profiles, separates preschool routes and limits practice downloads to international-school and AEIS/S-AEIS preparation.
 - Current release line: `2026-08-06-r339` is live at runtime feature commit `43215a913999a282016a9d11e11979147adb55de`; WeChat development version `1.0.36` was uploaded successfully. It adds a structured awarding-partner, exact-programme and QS World University Rankings 2027 matrix to all ten priority private higher-education profiles without touching authenticated operations.
 - Current release line: `2026-08-06-r340` is live at runtime feature commit `f11b025d2736357b2550f56c8c8b8f69db412690`; WeChat development version `1.0.37` was uploaded successfully. It removes the public assessment-code gate and replaces reputation-biased school suggestions with evidence-aware, four-tier balanced recommendations.
+- Current release line prepared: `2026-08-06-r341` replaces all four public school-entry sample packs with longer English-only practice and fixes the PDF font embedding; planned WeChat development version is `1.0.38`.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-06-r341 Ready
+
+- Scope: four English-only public practice PDFs for AEIS Primary, AEIS Secondary, international Primary and international Secondary.
+- Content: 19-23 English items per pack across vocabulary, grammar, cloze, reading and writing, plus basic answers and a parent observation page.
+- Truth boundary: public examples omit mathematics by product choice, while official pathway pages continue to describe actual official subjects and requirements.
+- Required verification: PDF extraction and visual review, focused tests, full backend regression, TypeScript, Mini Program audit/build, guarded production alignment and WeChat development upload `1.0.38`.
+- Rollback point: `fef606a2e6c9e0da8dd5bd0de6269fad80949599`.
 
 ## 2026-08-06-r340 Live
 

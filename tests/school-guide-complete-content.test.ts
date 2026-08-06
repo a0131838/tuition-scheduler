@@ -40,6 +40,8 @@ test("all pathway downloads resolve to generated PDFs", () => {
     for (const slug of pathway.samplePackSlugs) assert.ok(packSlugs.has(slug), `${pathway.slug} references missing ${slug}`);
   }
   for (const pack of schoolGuideSamplePacks) {
+    assert.match(pack.title, /英文/);
+    assert.doesNotMatch(pack.title, /数学|Math/i);
     const file = path.join(root, "public", pack.downloadUrl.replace(/^\//, ""));
     assert.ok(fs.existsSync(file), `${pack.slug} PDF does not exist`);
     assert.ok(fs.statSync(file).size > 5_000, `${pack.slug} PDF is unexpectedly small`);

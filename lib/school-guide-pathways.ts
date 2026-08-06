@@ -17,10 +17,10 @@ export type SchoolGuideDetailedPathway = SchoolGuidePathway & {
 };
 
 export const schoolGuideSamplePacks: SchoolGuideSamplePack[] = [
-  ["aeis-primary-sample", "AEIS小学数学与英文准备练习", "申请P2-P5的国际学生", "35-45分钟", "博思原创练习"],
-  ["aeis-secondary-sample", "AEIS中学英文、写作与数学练习", "申请S1-S3的国际学生", "45分钟", "博思原创练习"],
-  ["international-primary-sample", "国际学校小学入学准备练习", "申请国际学校Primary阶段", "35分钟", "博思原创练习"],
-  ["international-secondary-sample", "国际学校中学入学准备练习", "申请国际学校Secondary阶段", "45分钟", "博思原创练习"],
+  ["aeis-primary-sample", "AEIS小学英文基础准备练习", "申请P2-P5的国际学生", "40-50分钟", "博思原创练习"],
+  ["aeis-secondary-sample", "AEIS中学英文与写作准备练习", "申请S1-S3的国际学生", "50-60分钟", "博思原创练习"],
+  ["international-primary-sample", "国际学校小学英文入学准备练习", "申请国际学校Primary阶段", "40-50分钟", "博思原创练习"],
+  ["international-secondary-sample", "国际学校中学学术英文准备练习", "申请国际学校Secondary阶段", "50-60分钟", "博思原创练习"],
 ].map(([slug, title, audience, duration, label]) => ({
   slug,
   title,
