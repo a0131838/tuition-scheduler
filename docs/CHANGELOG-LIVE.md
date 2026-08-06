@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-06-r335
+
+- Release ID: `2026-08-06-r335`
+- Date/Time (Asia/Singapore): `2026-08-06`
+- Deployment status: `READY`
+- Scope: turn all six school-guide categories into searchable, clickable profiles; complete all 34 international-school brand profiles; add 18 detailed admissions paths, 14 downloadable original preparation packs, and correct public/assessment Mini Program share entry paths.
+- Key files:
+  - `data/school-guide/moe-schools-2026.json`
+  - `lib/school-guide-official-institutions.ts`
+  - `lib/school-guide-international-enrichment.ts`
+  - `lib/school-guide-pathways.ts`
+  - `app/school-guide/institutions/`
+  - `miniapp/boss-academic-parent/pages/guide-institution-detail/`
+  - `public/school-guide/downloads/`
+  - `docs/tasks/TASK-20260806-complete-school-guide-content-and-entry.md`
+- Risk impact (if any): Medium-low and isolated to public school-guide data, pages, documents and share routes. No database migration or change to authentication APIs, scheduling, attendance, packages, finance, payroll, renewals, tickets or permissions.
+- Verification: 11 focused school-guide/Mini Program tests, 174 backend tests, TypeScript, 67-page Mini Program release audit, JavaScript/JSON checks, 243-page production build, and local HTTP smoke checks for catalog, institution detail, pathway and PDF download.
+- Rollback point: `215a862c81d4a4243b43fe693d66295af27b0236` (`2026-08-06-r334`).
+
+---
+
 ## 2026-08-06-r334
 
 - Release ID: `2026-08-06-r334`

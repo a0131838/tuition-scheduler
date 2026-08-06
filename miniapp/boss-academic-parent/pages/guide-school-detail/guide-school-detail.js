@@ -3,12 +3,15 @@ const api = require("../../utils/api");
 Page({
   data: {
     school: null,
-    detailSections: []
+    detailSections: [],
+    pathways: [],
+    samplePacks: [],
+    loadingPack: ""
   },
 
   onLoad(options) {
     const slug = decodeURIComponent(options.slug || "");
-    api.request("/api/public/school-guide/catalog?v=r334")
+    api.request("/api/public/school-guide/catalog?v=r335")
       .then((data) => {
         const groups = data.schoolGroups || data.schools || [];
         const school = groups.find((item) => item.slug === slug || (item.memberSlugs || []).includes(slug));
@@ -33,6 +36,11 @@ Page({
           ...section,
           open: index === 0
         }));
+        const pathways = (data.pathways || []).filter((item) => item.slug === "international-school-direct");
+        const packSlugs = comparison.ageAndGrades && /grade 6|year 7|secondary|中学|18岁/i.test(comparison.ageAndGrades)
+          ? ["international-secondary-sample", "international-primary-sample"]
+          : ["international-primary-sample", "international-secondary-sample"];
+        const samplePacks = (data.samplePacks || []).filter((item) => packSlugs.includes(item.slug));
         this.setData({
           school: {
             ...school,
@@ -43,11 +51,27 @@ Page({
             academicRecords: school.academicResults ? school.academicResults.records || [] : [],
             universityOutcomes: school.universityOutcomes || []
           },
-          detailSections
+          detailSections,
+          pathways,
+          samplePacks
         });
         wx.setNavigationBarTitle({ title: school.nameZh || school.name || "学校档案" });
       })
       .catch((err) => api.toast(err.message));
+  },
+
+  openPathway(event) {
+    wx.navigateTo({ url: "/pages/guide-pathway/guide-pathway?slug=" + encodeURIComponent(event.currentTarget.dataset.slug || "") });
+  },
+
+  openPack(event) {
+    const slug = event.currentTarget.dataset.slug || "";
+    const pack = this.data.samplePacks.find((item) => item.slug === slug);
+    if (!pack || this.data.loadingPack) return;
+    this.setData({ loadingPack: slug });
+    api.openParentDocument(pack.downloadUrl, pack.slug + ".pdf")
+      .catch((err) => api.toast(err.message))
+      .finally(() => this.setData({ loadingPack: "" }));
   },
 
   toggleSection(event) {
@@ -59,7 +83,7 @@ Page({
   },
 
   goAssessment() {
-    wx.navigateTo({ url: "/pages/guide-assessments/guide-assessments" });
+    wx.navigateTo({ url: "/pages/guide-academic-assessment/guide-academic-assessment" });
   },
 
   goConsult() {

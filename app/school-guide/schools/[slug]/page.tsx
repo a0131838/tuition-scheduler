@@ -1,11 +1,14 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getSchoolGuideSchoolGroup } from "@/lib/school-guide-directory";
+import { getSchoolGuideDetailedPathway, getSchoolGuideSamplePack } from "@/lib/school-guide-pathways";
 
 export default async function SchoolGuideSchoolDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const school = getSchoolGuideSchoolGroup(slug);
   if (!school) notFound();
+  const pathway = getSchoolGuideDetailedPathway("international-school-direct");
+  const packs = ["international-primary-sample", "international-secondary-sample"].map(getSchoolGuideSamplePack).filter(Boolean);
   return (
     <main>
       <section className="sg-page-head">
@@ -62,6 +65,8 @@ export default async function SchoolGuideSchoolDetailPage({ params }: { params: 
             ) : null}
 
             <div className="sg-school-update">更新于 {school.publicUpdatedAt} · 下次复核 {school.nextPublicReviewAt}</div>
+            {pathway ? <section className="sg-linked-block"><h2>申请路径</h2><Link href={`/school-guide/pathways/${pathway.slug}`}><strong>{pathway.title}</strong><span>{pathway.audience}</span><b>→</b></Link></section> : null}
+            <section className="sg-linked-block"><h2>入学准备例题</h2>{packs.map((pack) => pack ? <a href={pack.downloadUrl} download key={pack.slug}><strong>{pack.title}</strong><span>博思原创练习 · {pack.duration}</span><b>PDF</b></a> : null)}<p>不是学校真题，也不预测正式考试。</p></section>
             <div className="sg-actions">
               <Link className="sg-secondary" href="/school-guide/assessment">先做测评</Link>
               <Link className="sg-primary" href={`/school-guide/consult?summary=${encodeURIComponent(`希望了解${school.nameZh}的申请与准备方案`)}`}>咨询这所学校</Link>

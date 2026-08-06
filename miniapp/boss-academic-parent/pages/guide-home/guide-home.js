@@ -10,8 +10,11 @@ Page({
     planCount: 0
   },
 
-  onLoad() {
+  onLoad(options) {
     this.loadData();
+    if (options && options.entry === "assessment") {
+      wx.nextTick(() => wx.navigateTo({ url: "/pages/guide-academic-assessment/guide-academic-assessment" }));
+    }
   },
 
   onShow() {
@@ -25,7 +28,7 @@ Page({
 
   loadData() {
     this.setData({ loading: true });
-    return api.request("/api/public/school-guide/catalog?v=r334")
+    return api.request("/api/public/school-guide/catalog?v=r335")
       .then((data) => this.setData({
         version: data.version || "",
         schools: data.schools || [],

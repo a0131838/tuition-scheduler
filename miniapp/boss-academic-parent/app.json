@@ -3,6 +3,7 @@
     "pages/guide-home/guide-home",
     "pages/guide-schools/guide-schools",
     "pages/guide-school-detail/guide-school-detail",
+    "pages/guide-institution-detail/guide-institution-detail",
     "pages/guide-pathway/guide-pathway",
     "pages/guide-assessments/guide-assessments",
     "pages/guide-assessment/guide-assessment",

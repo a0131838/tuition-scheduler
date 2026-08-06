@@ -48,14 +48,15 @@
     <view class="guide-empty" wx:if="{{!loading && schools.length === 0}}">没有匹配学校</view>
   </view>
 
-  <view class="school-subcategory-list" wx:else>
-    <view class="school-subcategory" wx:for="{{activeSections}}" wx:key="id">
-      <view class="school-subcategory-title">{{item.title}}</view>
-      <view class="school-subcategory-summary">{{item.summary}}</view>
-      <view class="school-subcategory-items">
-        <text wx:for="{{item.includes}}" wx:key="*this" wx:for-item="fact">{{fact}}</text>
+  <view wx:else>
+    <view class="school-directory-count">{{institutionTotal}}个学校与教育档案</view>
+    <view class="institution-directory">
+      <view class="institution-row" wx:for="{{institutions}}" wx:key="slug" data-slug="{{item.slug}}" bindtap="openInstitution">
+        <view class="institution-row-main"><view class="institution-row-name">{{item.nameZh}}</view><view class="institution-row-en" wx:if="{{item.name !== item.nameZh}}">{{item.name}}</view><view class="institution-row-summary">{{item.summary}}</view><view class="institution-row-badges"><text wx:for="{{item.badges}}" wx:key="*this" wx:for-item="badge">{{badge}}</text></view></view><view class="guide-arrow">›</view>
       </view>
     </view>
+    <button class="school-show-all" loading="{{institutionLoading}}" wx:if="{{institutionHasMore}}" bindtap="loadMoreInstitutions">继续查看</button>
+    <view class="guide-empty" wx:if="{{!institutionLoading && institutionTotal === 0}}">没有匹配的学校或教育机构</view>
   </view>
 
   <view class="school-source-note">资料按政府与学校公开信息整理并定期更新。</view>

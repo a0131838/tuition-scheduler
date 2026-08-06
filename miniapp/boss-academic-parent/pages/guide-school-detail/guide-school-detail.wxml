@@ -101,6 +101,17 @@
     <view>更新于 {{school.publicUpdatedAt}} · 下次复核 {{school.nextPublicReviewAt}}</view>
   </view>
 
+  <view class="guide-section" wx:if="{{pathways.length}}">
+    <view class="guide-section-title">申请路径</view>
+    <view class="guide-row" wx:for="{{pathways}}" wx:key="slug" data-slug="{{item.slug}}" bindtap="openPathway"><view class="guide-row-main"><view class="guide-row-title">{{item.title}}</view><view class="guide-row-note">{{item.audience}}</view></view><view class="guide-arrow">›</view></view>
+  </view>
+
+  <view class="guide-section" wx:if="{{samplePacks.length}}">
+    <view class="guide-section-title">入学准备例题</view>
+    <view class="guide-section-note">博思原创练习，不是学校真题，也不预测正式考试。</view>
+    <view class="sample-pack" wx:for="{{samplePacks}}" wx:key="slug"><view><b>{{item.title}}</b><text>{{item.duration}}</text></view><button data-slug="{{item.slug}}" loading="{{loadingPack === item.slug}}" bindtap="openPack">打开PDF</button></view>
+  </view>
+
   <view class="school-final-action">
     <view class="guide-section-title">下一步</view>
     <view class="guide-action-row">

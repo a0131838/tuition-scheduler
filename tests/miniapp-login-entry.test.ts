@@ -13,13 +13,13 @@ test("login keeps parent and staff as separate portal flows", () => {
   const staffScript = read("pages/staff-login/staff-login.js");
 
   assert.match(parentMarkup, /家长微信登录/);
-  assert.match(parentMarkup, /进入员工端/);
+  assert.match(parentMarkup, /返回新加坡学校指南/);
   assert.doesNotMatch(parentMarkup, /我有邀请码|bindtap="goBind"/);
   assert.match(parentScript, /currentPortal === "staff"/);
   assert.match(parentScript, /currentPortal === "parent"/);
 
   assert.match(staffMarkup, /员工微信登录/);
-  assert.match(staffMarkup, /返回家长端/);
+  assert.match(staffMarkup, /返回学校指南/);
   assert.doesNotMatch(staffMarkup, /员工绑定码|bindtap="goBind"/);
   assert.match(staffScript, /if \(data\.needsBind\)/);
   assert.match(staffScript, /staff-bind\/staff-bind/);
@@ -41,11 +41,11 @@ test("portal choice persists without exposing employee entry inside the parent p
   assert.doesNotMatch(parentStudentsMarkup, /员工端|goStaffPortal/);
   assert.match(parentStudents, /\/api\/miniapp\/auth\/logout/);
   assert.match(parentStudents, /setCurrentStudent\(null\)/);
-  assert.match(parentStudents, /setCurrentPortal\("parent"\)/);
+  assert.match(parentStudents, /setCurrentPortal\(""\)/);
   assert.match(parentStudentsMarkup, /退出家长登录/);
   assert.match(staffHome, /setStaffSession\("", null\)/);
-  assert.match(staffHome, /setCurrentPortal\("parent"\)/);
-  assert.match(staffHomeMarkup, /切换到家长端/);
+  assert.match(staffHome, /setCurrentPortal\(""\)/);
+  assert.match(staffHomeMarkup, /返回学校指南/);
 });
 
 test("parent logout invalidates the session and clears the selected student", async () => {
@@ -103,7 +103,7 @@ test("parent logout invalidates the session and clears the selected student", as
     "request:POST:/api/miniapp/auth/logout",
     "session:",
     "student:null",
-    "portal:parent",
-    "relaunch:/pages/login/login"
+    "portal:",
+    "relaunch:/pages/guide-account/guide-account"
   ]);
 });

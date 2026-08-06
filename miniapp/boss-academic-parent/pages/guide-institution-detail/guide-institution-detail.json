@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "学校详情",
+  "usingComponents": {
+    "guide-nav": "../../components/guide-nav/guide-nav"
+  }
+}

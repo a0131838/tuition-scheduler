@@ -55,5 +55,12 @@ Page({
   goSchoolGuide() {
     getApp().setCurrentPortal("");
     wx.reLaunch({ url: "/pages/guide-home/guide-home" });
+  },
+
+  onShareAppMessage() {
+    return {
+      title: "新加坡学校指南｜找学校、查考试、做评估",
+      path: "/pages/guide-home/guide-home"
+    };
   }
 });

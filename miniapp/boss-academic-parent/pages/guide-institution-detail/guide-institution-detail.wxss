@@ -1,0 +1,20 @@
+@import "../../styles/school-guide.wxss";
+
+.institution-hero { padding-bottom: 38rpx; }
+.institution-name { font-size: 52rpx; line-height: 1.2; }
+.institution-name-en { margin-top: 12rpx; color: #667085; font-size: 25rpx; line-height: 1.5; }
+.institution-facts { margin: 0 32rpx; border-top: 1rpx solid #dedbd6; }
+.institution-fact { display: grid; grid-template-columns: 180rpx 1fr; gap: 24rpx; padding: 24rpx 0; border-bottom: 1rpx solid #dedbd6; }
+.institution-fact text { color: #6b7280; font-size: 24rpx; }
+.institution-fact b { color: #16191f; font-size: 27rpx; line-height: 1.45; }
+.institution-detail-sections { padding-top: 16rpx; }
+.institution-section { border-top: 1rpx solid #dedbd6; }
+.institution-section:last-child { border-bottom: 1rpx solid #dedbd6; }
+.institution-section-head { display: flex; justify-content: space-between; align-items: center; padding: 28rpx 0; }
+.institution-section-head b { font-size: 30rpx; }
+.institution-section-head text { font-size: 34rpx; color: #a24412; }
+.institution-section-body { padding: 0 0 20rpx; }
+.institution-source { margin: 28rpx 32rpx 0; padding: 26rpx 0; border-top: 1rpx solid #dedbd6; color: #667085; }
+.institution-source b, .institution-source text, .institution-source small { display: block; }
+.institution-source b { color: #16191f; font-size: 27rpx; margin-bottom: 10rpx; }
+.institution-source text, .institution-source small { font-size: 22rpx; line-height: 1.6; }

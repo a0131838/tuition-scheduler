@@ -3,24 +3,31 @@ const api = require("../../utils/api");
 Page({
   data: {
     pathway: null,
-    sources: []
+    samplePacks: [],
+    loadingPack: ""
   },
 
   onLoad(options) {
     const slug = decodeURIComponent(options.slug || "");
-    api.request("/api/public/school-guide/catalog?v=r334")
+    api.request("/api/public/school-guide/catalog?v=r335")
       .then((data) => {
         const pathway = (data.pathways || []).find((item) => item.slug === slug);
         if (!pathway) throw new Error("没有找到申请路径");
-        const sources = (data.sources || []).filter((source) => (pathway.sourceIds || []).includes(source.id));
-        this.setData({ pathway, sources });
+        const samplePacks = (data.samplePacks || []).filter((pack) => (pathway.samplePackSlugs || []).includes(pack.slug));
+        this.setData({ pathway, samplePacks });
         wx.setNavigationBarTitle({ title: pathway.title || "申请路径" });
       })
       .catch((err) => api.toast(err.message));
   },
 
-  copyLink(event) {
-    wx.setClipboardData({ data: event.currentTarget.dataset.url || "" });
+  openPack(event) {
+    const slug = event.currentTarget.dataset.slug || "";
+    const pack = this.data.samplePacks.find((item) => item.slug === slug);
+    if (!pack || this.data.loadingPack) return;
+    this.setData({ loadingPack: slug });
+    api.openParentDocument(pack.downloadUrl, pack.slug + ".pdf")
+      .catch((err) => api.toast(err.message))
+      .finally(() => this.setData({ loadingPack: "" }));
   },
 
   onShareAppMessage() {

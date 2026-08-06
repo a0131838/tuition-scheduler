@@ -8,10 +8,22 @@
     <view class="guide-section-note">{{pathway.summary}}</view>
   </view>
   <view class="guide-section">
-    <view class="guide-section-title">申请要点</view>
+    <view class="guide-section-title">申请步骤</view>
+    <view class="pathway-step" wx:for="{{pathway.steps}}" wx:key="*this" wx:for-index="stepIndex"><b>{{stepIndex + 1}}</b><text>{{item}}</text></view>
+  </view>
+  <view class="guide-section" wx:if="{{pathway.examSections.length}}">
+    <view class="guide-section-title">考试与评估</view>
+    <view class="pathway-exam" wx:for="{{pathway.examSections}}" wx:key="title"><b>{{item.title}}</b><text>{{item.detail}}</text></view>
+  </view>
+  <view class="guide-section">
+    <view class="guide-section-title">规则与要点</view>
     <view class="guide-list">
       <view class="guide-fact" wx:for="{{pathway.facts}}" wx:key="*this">{{item}}</view>
     </view>
+  </view>
+  <view class="guide-section" wx:if="{{pathway.documents.length}}">
+    <view class="guide-section-title">需要准备的材料</view>
+    <view class="guide-list"><view class="guide-fact" wx:for="{{pathway.documents}}" wx:key="*this">{{item}}</view></view>
   </view>
   <view class="guide-section">
     <view class="guide-section-title">注意事项</view>
@@ -19,15 +31,10 @@
       <view class="guide-fact" wx:for="{{pathway.cautions}}" wx:key="*this">{{item}}</view>
     </view>
   </view>
-  <view class="guide-section">
-    <view class="guide-section-title">官方来源</view>
-    <view class="guide-list">
-      <view class="guide-source" wx:for="{{sources}}" wx:key="id">
-        <view class="guide-source-title">{{item.title}}</view>
-        <view class="guide-source-meta">{{item.authority}}</view>
-        <button class="guide-action secondary" style="margin-top: 16rpx;" data-url="{{item.url}}" bindtap="copyLink">复制官方链接</button>
-      </view>
-    </view>
+  <view class="guide-section" wx:if="{{samplePacks.length}}">
+    <view class="guide-section-title">例题与下载资料</view>
+    <view class="sample-pack" wx:for="{{samplePacks}}" wx:key="slug"><view><b>{{item.title}}</b><text>{{item.label}} · {{item.duration}}</text></view><button data-slug="{{item.slug}}" loading="{{loadingPack === item.slug}}" bindtap="openPack">打开PDF</button></view>
   </view>
+  <view class="guide-section-note">内容按主管机构和学校公开规则整理；页面标注的原创练习不是官方真题。</view>
 </view>
 <guide-nav active="assessment" />

@@ -1,0 +1,34 @@
+<view class="guide-page institution-page" wx:if="{{institution}}">
+  <view class="guide-hero institution-hero">
+    <view class="guide-kicker">{{institution.subcategory}}</view>
+    <view class="guide-title institution-name">{{institution.nameZh}}</view>
+    <view class="institution-name-en" wx:if="{{institution.name !== institution.nameZh}}">{{institution.name}}</view>
+    <view class="guide-subtitle">{{institution.summary}}</view>
+  </view>
+
+  <view class="institution-facts">
+    <view class="institution-fact" wx:for="{{institution.keyFacts}}" wx:key="label"><text>{{item.label}}</text><b>{{item.value}}</b></view>
+  </view>
+
+  <view class="guide-section institution-detail-sections">
+    <view class="institution-section" wx:for="{{sections}}" wx:key="title" wx:for-item="section" wx:for-index="sectionIndex">
+      <view class="institution-section-head" data-index="{{sectionIndex}}" bindtap="toggleSection"><b>{{section.title}}</b><text>{{section.open ? '−' : '+'}}</text></view>
+      <view class="institution-section-body" wx:if="{{section.open}}"><view class="guide-fact" wx:for="{{section.items}}" wx:key="*this" wx:for-item="fact">{{fact}}</view></view>
+    </view>
+  </view>
+
+  <view class="guide-section" wx:if="{{pathways.length}}">
+    <view class="guide-section-title">申请路径</view>
+    <view class="guide-list"><view class="guide-row" wx:for="{{pathways}}" wx:key="slug" data-slug="{{item.slug}}" bindtap="openPathway"><view class="guide-row-main"><view class="guide-row-title">{{item.title}}</view><view class="guide-row-note">{{item.audience}}</view></view><view class="guide-arrow">›</view></view></view>
+  </view>
+
+  <view class="guide-section" wx:if="{{samplePacks.length}}">
+    <view class="guide-section-title">例题与申请资料</view>
+    <view class="sample-pack" wx:for="{{samplePacks}}" wx:key="slug"><view><b>{{item.title}}</b><text>{{item.label}} · {{item.duration}}</text></view><button data-slug="{{item.slug}}" loading="{{loadingPack === item.slug}}" bindtap="openPack">打开PDF</button></view>
+  </view>
+
+  <view class="institution-source"><b>资料来源</b><text>{{institution.sourceAuthority}}</text><text>{{institution.sourceNote}}</text><small>更新于 {{institution.updatedAt}}</small></view>
+
+  <view class="school-final-action"><view class="guide-section-title">需要结合孩子情况判断？</view><view class="guide-action-row"><button class="guide-action secondary" bindtap="goAssessment">做学习评估</button><button class="guide-action" bindtap="goConsult">咨询申请方案</button></view></view>
+</view>
+<guide-nav active="schools" />

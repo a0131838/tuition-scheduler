@@ -4,6 +4,7 @@ import {
   type SchoolGuideMetric,
   type SchoolGuideUniversityOutcome,
 } from "./school-guide-school-metadata";
+import { schoolGuideInternationalEnrichment } from "./school-guide-international-enrichment";
 
 export type OfficialSource = {
   id: string;
@@ -98,7 +99,7 @@ export type SchoolGuideCase = {
   summary: string;
 };
 
-export const SCHOOL_GUIDE_DATA_VERSION = "2026-08-06-r334";
+export const SCHOOL_GUIDE_DATA_VERSION = "2026-08-06-r335";
 
 export const officialSources: OfficialSource[] = [
   {
@@ -1017,10 +1018,21 @@ const schoolGuideSchoolBase = [
   ...ibPage3.map((name, index) => makeSchool(name, 3, ibPage1.length + ibPage2.length + index)),
 ] satisfies SchoolGuideSchoolBase[];
 
-export const schoolGuideSchools: SchoolGuideSchool[] = schoolGuideSchoolBase.map((school) => ({
-  ...school,
-  ...getSchoolGuidePublicMetadata(school.name, school.dataStatus === "VERIFIED", school.verifiedAt),
-}));
+export const schoolGuideSchools: SchoolGuideSchool[] = schoolGuideSchoolBase.map((school) => {
+  const enrichment = schoolGuideInternationalEnrichment[school.name];
+  const merged = enrichment ? {
+    ...school,
+    ...enrichment,
+    dataStatus: "VERIFIED" as const,
+    verifiedAt: "2026-08-06",
+    nextReviewAt: "2026-12-01",
+    lastChangeSummary: "补齐学校课程、招生与入学评估档案。",
+  } : school;
+  return {
+    ...merged,
+    ...getSchoolGuidePublicMetadata(merged.name, merged.dataStatus === "VERIFIED", merged.verifiedAt),
+  };
+});
 
 // Public cases remain empty until written consent, anonymisation and human review are all recorded.
 export const schoolGuideCases: SchoolGuideCase[] = [];

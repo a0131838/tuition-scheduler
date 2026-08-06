@@ -4,9 +4,19 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { SchoolGuideDirectoryCategoryView, SchoolGuideSchoolGroup } from "@/lib/school-guide-directory";
 
+type InstitutionSummary = {
+  slug: string;
+  categoryId: string;
+  subcategory: string;
+  name: string;
+  nameZh: string;
+  summary: string;
+  badges: string[];
+};
+
 const FAVORITES_KEY = "school-guide-favorites";
 
-export default function SchoolExplorer({ schools, categories }: { schools: SchoolGuideSchoolGroup[]; categories: SchoolGuideDirectoryCategoryView[] }) {
+export default function SchoolExplorer({ schools, categories, institutions }: { schools: SchoolGuideSchoolGroup[]; categories: SchoolGuideDirectoryCategoryView[]; institutions: InstitutionSummary[] }) {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("international");
   const [focus, setFocus] = useState("ALL");
@@ -41,11 +51,16 @@ export default function SchoolExplorer({ schools, categories }: { schools: Schoo
 
   const active = categories.find((category) => category.id === activeCategory) || categories[0];
   const visibleRows = showAll || query.trim() ? rows : rows.slice(0, 12);
+  const institutionRows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return institutions.filter((item) => item.categoryId === activeCategory && (!q || [item.name, item.nameZh, item.subcategory, item.summary, ...item.badges].join(" ").toLowerCase().includes(q)));
+  }, [activeCategory, institutions, query]);
+  const visibleInstitutions = showAll || query.trim() ? institutionRows : institutionRows.slice(0, 40);
 
   return (
     <>
       <label className="sg-directory-search">
-        <input value={query} onChange={(event) => { setQuery(event.target.value); setActiveCategory("international"); setShowAll(false); }} placeholder="搜索学校中文名或英文名" />
+        <input value={query} onChange={(event) => { setQuery(event.target.value); setShowAll(false); }} placeholder="搜索学校中文名或英文名" />
       </label>
       <nav className="sg-directory-categories" aria-label="学校大类">
         {categories.map((category) => <button className={activeCategory === category.id ? "active" : ""} type="button" key={category.id} onClick={() => { setActiveCategory(category.id); setShowAll(false); }}><strong>{category.title}</strong><small>{category.subtitle}</small></button>)}
@@ -80,9 +95,16 @@ export default function SchoolExplorer({ schools, categories }: { schools: Schoo
       </div>
       {rows.length > 12 && !showAll && !query.trim() ? <button className="sg-directory-show-all" type="button" onClick={() => setShowAll(true)}>查看全部{rows.length}所</button> : null}
       {rows.length === 0 ? <div className="sg-notice">没有匹配学校。</div> : null}
-      </> : <div className="sg-directory-subgroups">
-        {active?.sections.map((section) => <section key={section.id}><h2>{section.title}</h2><p>{section.summary}</p><div>{section.includes.map((item) => <span key={item}>{item}</span>)}</div></section>)}
-      </div>}
+      </> : <>
+        <p className="sg-directory-count">{institutionRows.length}所学校或院校档案</p>
+        <div className="sg-institution-list">
+          {visibleInstitutions.map((item) => <Link className="sg-institution-row" href={`/school-guide/institutions/${item.slug}`} key={item.slug}>
+            <div><small>{item.subcategory}</small><h3>{item.nameZh}</h3>{item.name !== item.nameZh ? <span>{item.name}</span> : null}<p>{item.summary}</p><div>{item.badges.map((badge) => <em key={badge}>{badge}</em>)}</div></div><b aria-hidden="true">→</b>
+          </Link>)}
+        </div>
+        {institutionRows.length > 40 && !showAll && !query.trim() ? <button className="sg-directory-show-all" type="button" onClick={() => setShowAll(true)}>查看全部{institutionRows.length}项</button> : null}
+        {institutionRows.length === 0 ? <div className="sg-notice">没有匹配档案。</div> : null}
+      </>}
       <p className="sg-directory-source">资料按政府与学校公开信息整理并定期更新。</p>
     </>
   );

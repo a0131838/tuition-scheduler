@@ -562,3 +562,96 @@
   color: #717b85;
   text-align: center;
 }
+
+.institution-directory {
+  margin-top: 8rpx;
+  border-top: 1rpx solid #d9dcdf;
+}
+
+.institution-row {
+  display: grid;
+  grid-template-columns: 1fr 36rpx;
+  gap: 18rpx;
+  align-items: center;
+  padding: 28rpx 0;
+  border-bottom: 1rpx solid #d9dcdf;
+}
+
+.institution-row-name {
+  color: #16191f;
+  font-size: 29rpx;
+  font-weight: 850;
+  line-height: 1.4;
+}
+
+.institution-row-en,
+.institution-row-summary {
+  margin-top: 7rpx;
+  color: #66707c;
+  font-size: 22rpx;
+  line-height: 1.5;
+}
+
+.institution-row-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-top: 12rpx;
+}
+
+.institution-row-badges text {
+  padding: 5rpx 10rpx;
+  background: #fff4eb;
+  color: #8d3507;
+  font-size: 19rpx;
+}
+
+.pathway-step {
+  display: grid;
+  grid-template-columns: 48rpx 1fr;
+  gap: 18rpx;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #d9dcdf;
+}
+
+.pathway-step b {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 50%;
+  background: #1d2228;
+  color: white;
+  font-size: 21rpx;
+}
+
+.pathway-step text,
+.pathway-exam text {
+  color: #46515d;
+  font-size: 26rpx;
+  line-height: 1.65;
+}
+
+.pathway-exam {
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #d9dcdf;
+}
+
+.pathway-exam b,
+.pathway-exam text {
+  display: block;
+}
+
+.pathway-exam b {
+  margin-bottom: 9rpx;
+  color: #16191f;
+  font-size: 28rpx;
+}
+
+.sample-pack { display: grid; grid-template-columns: 1fr 180rpx; gap: 20rpx; align-items: center; padding: 26rpx 0; border-bottom: 1rpx solid #dedbd6; }
+.sample-pack b, .sample-pack text { display: block; }
+.sample-pack b { font-size: 28rpx; line-height: 1.4; }
+.sample-pack text { margin-top: 8rpx; color: #6b7280; font-size: 23rpx; }
+.sample-pack button { margin: 0; padding: 0 18rpx; height: 68rpx; line-height: 68rpx; border-radius: 10rpx; background: #1d2228; color: #fff; font-size: 24rpx; }
+.sample-pack button::after { border: 0; }

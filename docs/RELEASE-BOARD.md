@@ -59,10 +59,27 @@
 - Current release line prepared: `2026-08-06-r332` makes `新加坡学校指南` the Mini Program's public first screen and nests parent/employee login under `我的`, while preserving every existing authenticated service workflow.
 - Current release line prepared: `2026-08-06-r333` gives all 43 current school/campus records bilingual profiles and review dates, adds official-data results and outcomes where verified, and removes public school-phone and external website dependency.
 - Current release line prepared: `2026-08-06-r334` reorganises Find Schools into six peer categories and 34 unique school brands while retaining all 43 source records and every legacy campus link.
+- Current release line prepared: `2026-08-06-r335` makes every school-guide category open into detailed internal profiles, adds official-data MOE school records, admissions paths and downloadable preparation packs, and corrects public/assessment QR share entry paths.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-06-r335 Ready
+
+- Scope: complete the guide as a self-contained parent product and stop newly shared Mini Program links from landing on login.
+- Business impact:
+  - all 34 international-school brands have structured curriculum, admissions and assessment detail;
+  - 326 MOE school profiles use the 2026 MOE open dataset, with subjects, programmes, location and international-student routes;
+  - preschool, private/specialist, postsecondary and 25 SPED profiles are clickable rather than summary-only cards;
+  - 18 application paths include steps, assessment format, documents and cautions;
+  - 14 bilingual-capable PDF preparation/checklist packs download inside Web and Mini Program and are explicitly labelled as original, not official past papers;
+  - the Mini Program default route is the public guide, login-page shares return to the guide, and `entry=assessment` opens the academic assessment directly;
+  - authenticated parent/staff and all operational workflows remain unchanged.
+- Verification before deploy: 11 focused tests, 174 backend tests, TypeScript, 67-page Mini Program audit, JavaScript/JSON checks, 243-page production build and local HTTP smoke tests.
+- Post-deploy verification: verify catalog version `2026-08-06-r335`, government total 326, one MOE institution profile, one international profile, one pathway and one PDF; then upload WeChat development version `1.0.32` and create new QR paths.
+- QR paths: public home `/pages/guide-home/guide-home`; direct assessment `/pages/guide-home/guide-home?entry=assessment`. Existing QR codes that encode login must be retired and regenerated.
+- Task doc: `docs/tasks/TASK-20260806-complete-school-guide-content-and-entry.md`.
 
 ## 2026-08-06-r334 Ready
 

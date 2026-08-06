@@ -11,13 +11,20 @@ Page({
     categories: [],
     activeSections: [],
     allSchoolGroups: [],
-    schools: []
+    schools: [],
+    institutions: [],
+    institutionTotal: 0,
+    institutionHasMore: false,
+    institutionLoading: false
   },
 
   onLoad() {
-    api.request("/api/public/school-guide/catalog?v=r334")
+    api.request("/api/public/school-guide/catalog?v=r335")
       .then((data) => {
-        const categories = data.directoryCategories || [];
+        const counts = data.institutionCounts || {};
+        const categories = (data.directoryCategories || []).map((item) => Object.assign({}, item, {
+          subtitle: item.id === "international" ? item.subtitle : (counts[item.id] || 0) + "个详细档案"
+        }));
         const schools = data.schoolGroups || data.schools || [];
         this.setData({
           categories,
@@ -59,13 +66,13 @@ Page({
 
   inputQuery(event) {
     const query = String(event.detail.value || "");
-    this.setData({
-      query,
-      showAllSchools: false,
-      activeCategory: "international",
-      activeSections: (this.data.categories.find((item) => item.id === "international") || {}).sections || [],
-      schools: this.buildVisibleSchools(this.data.allSchoolGroups, query, this.loadFavorites(), this.data.focus)
-    });
+    this.setData({ query, showAllSchools: false });
+    if (this.data.activeCategory === "international") {
+      this.setData({ schools: this.buildVisibleSchools(this.data.allSchoolGroups, query, this.loadFavorites(), this.data.focus) });
+      return;
+    }
+    clearTimeout(this.searchTimer);
+    this.searchTimer = setTimeout(() => this.loadInstitutions(true), 250);
   },
 
   selectCategory(event) {
@@ -73,9 +80,34 @@ Page({
     const category = this.data.categories.find((item) => item.id === activeCategory) || {};
     this.setData({
       activeCategory,
+      query: "",
       showAllSchools: false,
-      activeSections: category.sections || []
+      activeSections: category.sections || [],
+      institutions: [],
+      institutionTotal: 0,
+      institutionHasMore: false
     });
+    if (activeCategory !== "international") this.loadInstitutions(true);
+  },
+
+  loadInstitutions(reset) {
+    if (this.data.institutionLoading) return Promise.resolve();
+    const offset = reset ? 0 : this.data.institutions.length;
+    this.setData({ institutionLoading: true });
+    const path = "/api/public/school-guide/institutions?category=" + encodeURIComponent(this.data.activeCategory) +
+      "&q=" + encodeURIComponent(this.data.query.trim()) + "&limit=40&offset=" + offset + "&v=r335";
+    return api.request(path)
+      .then((data) => this.setData({
+        institutions: reset ? (data.items || []) : this.data.institutions.concat(data.items || []),
+        institutionTotal: data.total || 0,
+        institutionHasMore: Boolean(data.hasMore)
+      }))
+      .catch((err) => api.toast(err.message))
+      .finally(() => this.setData({ institutionLoading: false }));
+  },
+
+  loadMoreInstitutions() {
+    this.loadInstitutions(false);
   },
 
   setFocus(event) {
@@ -93,6 +125,10 @@ Page({
 
   openSchool(event) {
     wx.navigateTo({ url: "/pages/guide-school-detail/guide-school-detail?slug=" + encodeURIComponent(event.currentTarget.dataset.slug) });
+  },
+
+  openInstitution(event) {
+    wx.navigateTo({ url: "/pages/guide-institution-detail/guide-institution-detail?slug=" + encodeURIComponent(event.currentTarget.dataset.slug || "") });
   },
 
   toggleFavorite(event) {
