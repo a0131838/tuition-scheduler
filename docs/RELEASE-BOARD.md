@@ -61,10 +61,25 @@
 - Current release line prepared: `2026-08-06-r334` reorganises Find Schools into six peer categories and 34 unique school brands while retaining all 43 source records and every legacy campus link.
 - Current release line prepared: `2026-08-06-r335` makes every school-guide category open into detailed internal profiles, adds official-data MOE school records, admissions paths and downloadable preparation packs, and corrects public/assessment QR share entry paths.
 - Current release line prepared: `2026-08-06-r336` expands verifiable international-school academic results beyond official homepages, gives every school an explicit data-status explanation, and adds tiered detailed profiles for popular private universities and secondary routes.
+- Current release line prepared: `2026-08-06-r337` separates private higher education from public postsecondary routes, adds Furen International School and a detailed popular-eight private higher-education set, and adds parent-facing subcategory filters on Web and Mini Program.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-06-r337 Ready
+
+- Scope: make the school directory follow the way parents distinguish public and private routes instead of mixing every postsecondary institution in one list.
+- Business impact:
+  - `私立与特色学校` now contains private secondary schools, the popular-eight private higher-education profiles and religious/special routes in separate filters;
+  - Furen International School has a detailed internal profile covering its secondary, High School Diploma, Cambridge and UNSW Foundation routes, including the published test-and-interview admissions flow;
+  - the parent-facing popular-eight set is JCU Singapore, Curtin Singapore, SIM GE, Kaplan Singapore, PSB Academy, MDIS, SP Jain Singapore and LSBF Singapore; it is explicitly a consultation shortlist, not an official ranking;
+  - `公立高中与大学` contains only JC/MI, polytechnics, ITE, arts institutions and the six autonomous universities, with one filter per route;
+  - Web and Mini Program use the same category and subgroup mapping, and public search/count results follow the active subgroup;
+  - existing authenticated parent/staff and operating-system workflows remain unchanged.
+- Verification before deploy: focused school-guide tests, complete backend regression, TypeScript, Mini Program audit and production build.
+- Post-deploy verification: verify catalog version `2026-08-06-r337`; confirm all eight popular private higher-education profiles are under `private-specialist`; confirm no popular-eight profile appears in `postsecondary`; verify subgroup API counts and upload WeChat development version `1.0.34`.
+- Task doc: `docs/tasks/TASK-20260806-private-school-and-public-postsecondary-groups.md`.
 
 ## 2026-08-06-r336 Ready
 

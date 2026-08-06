@@ -28,7 +28,7 @@ Page({
 
   loadData() {
     this.setData({ loading: true });
-    return api.request("/api/public/school-guide/catalog?v=r336")
+    return api.request("/api/public/school-guide/catalog?v=r337")
       .then((data) => this.setData({
         version: data.version || "",
         schools: data.schools || [],

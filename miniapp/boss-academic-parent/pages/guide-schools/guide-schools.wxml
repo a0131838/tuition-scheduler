@@ -49,6 +49,11 @@
   </view>
 
   <view wx:else>
+    <scroll-view class="school-subcategory-scroll" scroll-x enhanced show-scrollbar="{{false}}" wx:if="{{institutionGroups.length}}">
+      <view class="guide-tier-tabs school-subcategory-tabs">
+        <view class="guide-tier-tab {{institutionGroup === item.id ? 'active' : ''}}" wx:for="{{institutionGroups}}" wx:key="id" data-group="{{item.id}}" bindtap="selectInstitutionGroup">{{item.title}}</view>
+      </view>
+    </scroll-view>
     <view class="school-directory-count">{{institutionTotal}}个学校与教育档案</view>
     <view class="institution-directory">
       <view class="institution-row" wx:for="{{institutions}}" wx:key="slug" data-slug="{{item.slug}}" bindtap="openInstitution">

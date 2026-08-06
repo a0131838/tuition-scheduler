@@ -7,6 +7,8 @@ Page({
     query: "",
     activeCategory: "international",
     focus: "ALL",
+    institutionGroup: "ALL",
+    institutionGroups: [],
     showAllSchools: false,
     categories: [],
     activeSections: [],
@@ -19,7 +21,7 @@ Page({
   },
 
   onLoad() {
-    api.request("/api/public/school-guide/catalog?v=r336")
+    api.request("/api/public/school-guide/catalog?v=r337")
       .then((data) => {
         const counts = data.institutionCounts || {};
         const categories = (data.directoryCategories || []).map((item) => Object.assign({}, item, {
@@ -83,6 +85,8 @@ Page({
       query: "",
       showAllSchools: false,
       activeSections: category.sections || [],
+      institutionGroup: "ALL",
+      institutionGroups: category.groups || [],
       institutions: [],
       institutionTotal: 0,
       institutionHasMore: false
@@ -95,7 +99,8 @@ Page({
     const offset = reset ? 0 : this.data.institutions.length;
     this.setData({ institutionLoading: true });
     const path = "/api/public/school-guide/institutions?category=" + encodeURIComponent(this.data.activeCategory) +
-      "&q=" + encodeURIComponent(this.data.query.trim()) + "&limit=40&offset=" + offset + "&v=r336";
+      "&group=" + encodeURIComponent(this.data.institutionGroup) +
+      "&q=" + encodeURIComponent(this.data.query.trim()) + "&limit=40&offset=" + offset + "&v=r337";
     return api.request(path)
       .then((data) => this.setData({
         institutions: reset ? (data.items || []) : this.data.institutions.concat(data.items || []),
@@ -108,6 +113,12 @@ Page({
 
   loadMoreInstitutions() {
     this.loadInstitutions(false);
+  },
+
+  selectInstitutionGroup(event) {
+    const institutionGroup = event.currentTarget.dataset.group || "ALL";
+    this.setData({ institutionGroup, institutions: [], institutionTotal: 0, institutionHasMore: false });
+    this.loadInstitutions(true);
   },
 
   setFocus(event) {

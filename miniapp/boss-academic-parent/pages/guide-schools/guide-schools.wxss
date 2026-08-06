@@ -1,1 +1,16 @@
 @import "../../styles/school-guide.wxss";
+
+.school-subcategory-scroll {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.school-subcategory-tabs {
+  display: inline-flex;
+  min-width: 100%;
+  box-sizing: border-box;
+}
+
+.school-subcategory-tabs .guide-tier-tab {
+  flex: none;
+}

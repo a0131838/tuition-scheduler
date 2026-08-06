@@ -10,7 +10,7 @@ Page({
   },
 
   onLoad() {
-    api.request("/api/public/school-guide/catalog?v=r336")
+    api.request("/api/public/school-guide/catalog?v=r337")
       .then((data) => {
         const allSchools = data.schoolGroups || data.schools || [];
         this.setData({

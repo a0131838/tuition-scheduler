@@ -1,7 +1,7 @@
 import SchoolExplorer from "./SchoolExplorer";
 import { schoolGuideSectors } from "@/lib/school-guide-data";
 import { getSchoolGuideDirectoryCategories, schoolGuideSchoolGroups } from "@/lib/school-guide-directory";
-import { getSchoolGuideOfficialInstitutions } from "@/lib/school-guide-official-institutions";
+import { getSchoolGuideInstitutionDirectoryGroup, getSchoolGuideOfficialInstitutions } from "@/lib/school-guide-official-institutions";
 
 export default function SchoolGuideSchoolsPage() {
   return (
@@ -17,7 +17,16 @@ export default function SchoolGuideSchoolsPage() {
           <SchoolExplorer
             schools={schoolGuideSchoolGroups}
             categories={getSchoolGuideDirectoryCategories(schoolGuideSectors)}
-            institutions={getSchoolGuideOfficialInstitutions().map(({ slug, categoryId, subcategory, name, nameZh, summary, badges }) => ({ slug, categoryId, subcategory, name, nameZh, summary, badges }))}
+            institutions={getSchoolGuideOfficialInstitutions().map((item) => ({
+              slug: item.slug,
+              categoryId: item.categoryId,
+              subcategory: item.subcategory,
+              name: item.name,
+              nameZh: item.nameZh,
+              summary: item.summary,
+              badges: item.badges,
+              directoryGroup: getSchoolGuideInstitutionDirectoryGroup(item),
+            }))}
           />
         </div>
       </section>

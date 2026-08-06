@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-06-r337
+
+- Release ID: `2026-08-06-r337`
+- Date/Time (Asia/Singapore): `2026-08-06`
+- Deployment status: `READY`
+- Scope: move all private higher-education profiles into `私立与特色学校`, add Furen International School and complete the parent-facing popular-eight private higher-education set, while splitting public secondary/tertiary discovery into clear JC/MI, polytechnic, ITE, arts and autonomous-university groups.
+- Key files:
+  - `lib/school-guide-directory.ts`
+  - `lib/school-guide-official-institutions.ts`
+  - `app/api/public/school-guide/institutions/route.ts`
+  - `app/school-guide/schools/`
+  - `miniapp/boss-academic-parent/pages/guide-schools/`
+  - `tests/school-guide-complete-profiles.test.ts`
+  - `docs/tasks/TASK-20260806-private-school-and-public-postsecondary-groups.md`
+- Risk impact (if any): Low and isolated to public school-guide categorisation, filters and content. No database migration or change to authentication, scheduling, attendance, packages, finance, payroll, renewals, tickets or permissions.
+- Verification: focused school-guide tests, TypeScript, complete backend regression, Mini Program release audit, production build and live API/page checks.
+- Rollback point: `ea42fe27cdb84be9bf12f62ded78c2d01ca0f899` (`2026-08-06-r336`).
+
+---
+
 ## 2026-08-06-r336
 
 - Release ID: `2026-08-06-r336`

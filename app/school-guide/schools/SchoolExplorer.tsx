@@ -12,6 +12,7 @@ type InstitutionSummary = {
   nameZh: string;
   summary: string;
   badges: string[];
+  directoryGroup: string;
 };
 
 const FAVORITES_KEY = "school-guide-favorites";
@@ -20,6 +21,7 @@ export default function SchoolExplorer({ schools, categories, institutions }: { 
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("international");
   const [focus, setFocus] = useState("ALL");
+  const [institutionGroup, setInstitutionGroup] = useState("ALL");
   const [showAll, setShowAll] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
 
@@ -53,8 +55,10 @@ export default function SchoolExplorer({ schools, categories, institutions }: { 
   const visibleRows = showAll || query.trim() ? rows : rows.slice(0, 12);
   const institutionRows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return institutions.filter((item) => item.categoryId === activeCategory && (!q || [item.name, item.nameZh, item.subcategory, item.summary, ...item.badges].join(" ").toLowerCase().includes(q)));
-  }, [activeCategory, institutions, query]);
+    return institutions.filter((item) => item.categoryId === activeCategory
+      && (institutionGroup === "ALL" || item.directoryGroup === institutionGroup)
+      && (!q || [item.name, item.nameZh, item.subcategory, item.summary, ...item.badges].join(" ").toLowerCase().includes(q)));
+  }, [activeCategory, institutionGroup, institutions, query]);
   const visibleInstitutions = showAll || query.trim() ? institutionRows : institutionRows.slice(0, 40);
 
   return (
@@ -63,7 +67,7 @@ export default function SchoolExplorer({ schools, categories, institutions }: { 
         <input value={query} onChange={(event) => { setQuery(event.target.value); setShowAll(false); }} placeholder="搜索学校中文名或英文名" />
       </label>
       <nav className="sg-directory-categories" aria-label="学校大类">
-        {categories.map((category) => <button className={activeCategory === category.id ? "active" : ""} type="button" key={category.id} onClick={() => { setActiveCategory(category.id); setShowAll(false); }}><strong>{category.title}</strong><small>{category.subtitle}</small></button>)}
+        {categories.map((category) => <button className={activeCategory === category.id ? "active" : ""} type="button" key={category.id} onClick={() => { setActiveCategory(category.id); setInstitutionGroup("ALL"); setShowAll(false); }}><strong>{category.title}</strong><small>{category.subtitle}</small></button>)}
       </nav>
       {activeCategory === "international" ? <>
         <div className="sg-directory-focus" aria-label="国际学校筛选">
@@ -96,6 +100,9 @@ export default function SchoolExplorer({ schools, categories, institutions }: { 
       {rows.length > 12 && !showAll && !query.trim() ? <button className="sg-directory-show-all" type="button" onClick={() => setShowAll(true)}>查看全部{rows.length}所</button> : null}
       {rows.length === 0 ? <div className="sg-notice">没有匹配学校。</div> : null}
       </> : <>
+        {active.groups?.length ? <div className="sg-directory-focus" aria-label={`${active.title}分类`}>
+          {active.groups.map((group) => <button className={institutionGroup === group.id ? "active" : ""} type="button" key={group.id} onClick={() => { setInstitutionGroup(group.id); setShowAll(false); }}>{group.title}</button>)}
+        </div> : null}
         <p className="sg-directory-count">{institutionRows.length}所学校或院校档案</p>
         <div className="sg-institution-list">
           {visibleInstitutions.map((item) => <Link className="sg-institution-row" href={`/school-guide/institutions/${item.slug}`} key={item.slug}>

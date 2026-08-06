@@ -9,7 +9,7 @@ Page({
 
   onLoad(options) {
     const slug = decodeURIComponent(options.slug || "");
-    api.request("/api/public/school-guide/catalog?v=r336")
+    api.request("/api/public/school-guide/catalog?v=r337")
       .then((data) => {
         const pathway = (data.pathways || []).find((item) => item.slug === slug);
         if (!pathway) throw new Error("没有找到申请路径");
