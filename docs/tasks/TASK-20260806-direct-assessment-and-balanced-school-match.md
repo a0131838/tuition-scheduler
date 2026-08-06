@@ -28,3 +28,11 @@ Let families receive value before entering the private domain: start the readine
 - Complete backend regression, TypeScript, native JavaScript/JSON checks, Mini Program release audit and production build.
 - Guarded production release as `2026-08-06-r340`.
 - Planned WeChat development version: `1.0.37`.
+
+## Rollout result
+
+- Runtime feature commit: `f11b025d2736357b2550f56c8c8b8f69db412690`.
+- Local, GitHub and production server aligned; PM2 PID `1777580` was online and `/admin/login` returned HTTP 200.
+- Live catalog returned `2026-08-06-r340`; a representative selector request returned eight schools and all four bands.
+- WeChat development version `1.0.37` uploaded successfully at 712,253 bytes.
+- Remaining manual action: designate `1.0.37` as the experience version and complete one physical-phone family journey.

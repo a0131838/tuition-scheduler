@@ -64,17 +64,17 @@
 - Current release line prepared: `2026-08-06-r337` separates private higher education from public postsecondary routes, adds Furen International School and a detailed popular-eight private higher-education set, and adds parent-facing subcategory filters on Web and Mini Program.
 - Current release line: `2026-08-06-r338` is live at runtime feature commit `2fd3518146ad870b88c4c8bef333b8795805765e`; WeChat development version `1.0.35` was uploaded successfully. It simplifies the consumer home, promotes an eight-school comparison set, moves San Yu and St Francis Methodist into church schools, adds detailed Amity and Kingston profiles, separates preschool routes and limits practice downloads to international-school and AEIS/S-AEIS preparation.
 - Current release line: `2026-08-06-r339` is live at runtime feature commit `43215a913999a282016a9d11e11979147adb55de`; WeChat development version `1.0.36` was uploaded successfully. It adds a structured awarding-partner, exact-programme and QS World University Rankings 2027 matrix to all ten priority private higher-education profiles without touching authenticated operations.
-- Current release line prepared: `2026-08-06-r340` removes the public assessment-code gate and replaces reputation-biased school suggestions with evidence-aware, four-tier balanced recommendations; planned WeChat development version is `1.0.37`.
+- Current release line: `2026-08-06-r340` is live at runtime feature commit `f11b025d2736357b2550f56c8c8b8f69db412690`; WeChat development version `1.0.37` was uploaded successfully. It removes the public assessment-code gate and replaces reputation-biased school suggestions with evidence-aware, four-tier balanced recommendations.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
-## 2026-08-06-r340 Ready
+## 2026-08-06-r340 Live
 
 - Scope: direct free family assessment plus optional consultant analysis, and evidence-aware `冲刺 / 匹配 / 相对稳妥 / 过渡` school recommendations.
 - Safety boundary: public school-guide assessment and recommendation only; legacy code/review history remains readable; no operational-system changes.
-- Required verification: focused tests, full backend regression, TypeScript, native Mini Program checks, Mini Program release audit, production build, guarded production alignment and WeChat development upload `1.0.37`.
+- Rollout result: 20 focused tests, 174 backend tests, TypeScript, native Mini Program checks, the 67-page audit and 243-page build passed. Runtime feature commit `f11b025d2736357b2550f56c8c8b8f69db412690` aligned locally, on GitHub and on the server; PM2 PID `1777580` was online and health returned HTTP 200. Live API returned version `2026-08-06-r340` and all four recommendation bands. WeChat development version `1.0.37` uploaded successfully at 712,253 bytes.
 - Rollback point: final aligned `2026-08-06-r339` head `50e6c307b3f62d12505eb7720bf1f4fa0ea93f8d`.
 
 ## 2026-08-06-r339 Live

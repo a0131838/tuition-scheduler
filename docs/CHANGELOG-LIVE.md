@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-08-06-r340`
 - Date/Time (Asia/Singapore): `2026-08-06`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: remove the public assessment-code gate, let families start the 30–45 minute readiness assessment directly, keep the free system report visible, and make professional consultant analysis an optional contact step. Rebuild intelligent school selection around current school, curriculum, academic evidence, budget and family constraints with balanced `冲刺 / 匹配 / 相对稳妥 / 过渡` results instead of rewarding first-tier reputation.
 - Key files:
   - `app/api/public/school-guide/academic-assessment/start/route.ts`
@@ -31,7 +31,7 @@ This file is the single source of truth for what changed in production.
   - `tests/school-guide-match.test.ts`
   - `tests/school-guide-assessment-request.test.ts`
 - Risk impact (if any): Medium-low and isolated to public school-guide assessment entry and recommendation output. Existing assessment sessions, historical request records, manual scoring and exceptional controlled-code paths remain compatible. No schema migration and no change to login, permissions, scheduling, lessons, packages, finance, payroll, renewals, tickets or messages.
-- Verification: focused assessment and matching tests, complete backend regression, TypeScript, native Mini Program syntax, Mini Program release audit, production build and guarded release checks are required before LIVE.
+- Verification: 20 focused assessment/matching tests, all 174 backend regression tests, TypeScript, native Mini Program JavaScript/JSON checks, the 67-page Mini Program release audit and the 243-page production build passed. Runtime feature commit `f11b025d2736357b2550f56c8c8b8f69db412690` aligned locally, on GitHub and on the production server with PM2 PID `1777580` and `/admin/login` HTTP 200. Live catalog returned `2026-08-06-r340`; the live selector returned eight recommendations across all four bands. WeChat development version `1.0.37` uploaded successfully at 712,253 bytes; experience-version designation and physical-phone acceptance remain manual.
 - Rollback point: `50e6c307b3f62d12505eb7720bf1f4fa0ea93f8d` (`2026-08-06-r339` final aligned documentation head; runtime feature commit `43215a913999a282016a9d11e11979147adb55de`).
 
 ---
