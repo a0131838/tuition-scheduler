@@ -43,3 +43,13 @@ Make the public guide feel like a focused consumer product, correctly classify c
 - Live API returned 10 popular private higher-education profiles, the new preschool groups and four permitted preparation packs.
 - WeChat development version `1.0.35` uploaded successfully at 710,808 bytes.
 - Remaining manual action: designate `1.0.35` as the experience version and complete physical-phone checks.
+
+## 2026-08-06 r339 follow-up: partner programmes and QS
+
+- Added a single structured source mapping for ten priority private higher-education profiles.
+- Separated each provider by awarding university, direct-campus status or self-awarded status.
+- Added exact published programme names under the matching partner and academic level; removed generic “related programmes” placeholders where the current degree name could not be verified.
+- Added QS World University Rankings 2027 context to each partner. A Singapore PEI does not inherit a partner's ranking, and a partner not in the overall table is shown as unlisted rather than being assigned another ranking.
+- Added the same dedicated matrix to Web and Mini Program detail pages.
+- Data release: `2026-08-06-r339`; planned Mini Program development version: `1.0.36`.
+- Safety boundary remains public guide content only, with no schema, operational workflow or authenticated-role changes.

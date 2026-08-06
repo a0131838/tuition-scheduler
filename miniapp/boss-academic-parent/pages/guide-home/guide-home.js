@@ -39,7 +39,7 @@ Page({
 
   loadData() {
     this.setData({ loading: true });
-    return api.request("/api/public/school-guide/catalog?v=r338")
+    return api.request("/api/public/school-guide/catalog?v=r339")
       .then((data) => {
         const schoolGroups = data.schoolGroups || data.schools || [];
         const pathways = data.pathways || [];

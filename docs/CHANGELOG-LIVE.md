@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-06-r339
+
+- Release ID: `2026-08-06-r339`
+- Date/Time (Asia/Singapore): `2026-08-06`
+- Deployment status: `READY`
+- Scope: replace vague private-higher-education summaries with a partner-by-partner programme matrix across the ten priority providers, showing the awarding relationship, exact published degree names and that partner university's QS World University Rankings 2027 context on Web and Mini Program.
+- Key files:
+  - `lib/school-guide-private-programmes.ts`
+  - `lib/school-guide-official-institutions.ts`
+  - `app/school-guide/institutions/[slug]/page.tsx`
+  - `miniapp/boss-academic-parent/pages/guide-institution-detail/`
+  - `tests/school-guide-complete-profiles.test.ts`
+  - `docs/tasks/TASK-20260806-school-guide-consumer-structure-and-private-he.md`
+- Risk impact (if any): Low and isolated to public school-guide content and presentation. No database migration or change to login, permissions, scheduling, attendance, packages, finance, payroll, renewals, tickets or communication workflows.
+- Verification: TypeScript, focused school-guide tests, backend regression, Mini Program release audit, native JavaScript/JSON validation and production build; live API/page checks and WeChat development upload follow the standard release.
+- Rollback point: `44826cdbb8751c3ec10b262ec94c66d5e32e5d57` (`2026-08-06-r338` documentation head; runtime feature commit `2fd3518146ad870b88c4c8bef333b8795805765e`).
+
+---
+
 ## 2026-08-06-r338
 
 - Release ID: `2026-08-06-r338`

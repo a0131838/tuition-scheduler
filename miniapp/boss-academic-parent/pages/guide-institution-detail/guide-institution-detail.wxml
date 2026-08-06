@@ -10,6 +10,23 @@
     <view class="institution-fact" wx:for="{{institution.keyFacts}}" wx:key="label"><text>{{item.label}}</text><b>{{item.value}}</b></view>
   </view>
 
+  <view class="guide-section partner-programmes" wx:if="{{institution.partnerProgrammes && institution.partnerProgrammes.length}}">
+    <view class="guide-kicker">私立高等教育</view>
+    <view class="guide-section-title partner-programmes-title">合作大学、具体专业与QS排名</view>
+    <view class="partner-programmes-note">统一采用QS世界大学排名2027；专业按实际颁证大学归类。</view>
+    <view class="partner-card" wx:for="{{institution.partnerProgrammes}}" wx:key="partner" wx:for-item="partner">
+      <view class="partner-relationship">{{partner.relationship}}</view>
+      <view class="partner-name">{{partner.partnerZh}}</view>
+      <view class="partner-name-en">{{partner.partner}}</view>
+      <view class="partner-rank">{{partner.qsRanking}}</view>
+      <view class="partner-status" wx:if="{{partner.statusNote}}">{{partner.statusNote}}</view>
+      <view class="programme-group" wx:for="{{partner.programmeGroups}}" wx:key="level" wx:for-item="programmeGroup">
+        <view class="programme-level">{{programmeGroup.level}}</view>
+        <view class="programme-name" wx:for="{{programmeGroup.programmes}}" wx:key="*this" wx:for-item="programme">{{programme}}</view>
+      </view>
+    </view>
+  </view>
+
   <view class="guide-section institution-detail-sections">
     <view class="institution-section" wx:for="{{sections}}" wx:key="title" wx:for-item="section" wx:for-index="sectionIndex">
       <view class="institution-section-head" data-index="{{sectionIndex}}" bindtap="toggleSection"><b>{{section.title}}</b><text>{{section.open ? '−' : '+'}}</text></view>

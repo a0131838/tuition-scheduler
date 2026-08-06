@@ -18,3 +18,16 @@
 .institution-source b, .institution-source text, .institution-source small { display: block; }
 .institution-source b { color: #16191f; font-size: 27rpx; margin-bottom: 10rpx; }
 .institution-source text, .institution-source small { font-size: 22rpx; line-height: 1.6; }
+.partner-programmes { padding-top: 34rpx; }
+.partner-programmes-title { margin-top: 8rpx; }
+.partner-programmes-note { margin: 8rpx 0 24rpx; color: #667085; font-size: 23rpx; line-height: 1.55; }
+.partner-card { margin-top: 20rpx; padding: 26rpx; border: 1rpx solid #dedbd6; border-radius: 24rpx; background: #fff; box-shadow: 0 10rpx 28rpx rgba(30, 35, 40, .05); }
+.partner-relationship { color: #a24412; font-size: 22rpx; font-weight: 700; line-height: 1.5; }
+.partner-name { margin-top: 10rpx; color: #16191f; font-size: 32rpx; font-weight: 800; line-height: 1.35; }
+.partner-name-en { margin-top: 3rpx; color: #667085; font-size: 23rpx; line-height: 1.45; }
+.partner-rank { margin-top: 18rpx; padding: 14rpx 18rpx; border-radius: 14rpx; background: #f7eee7; color: #803710; font-size: 24rpx; font-weight: 700; line-height: 1.45; }
+.partner-status { margin-top: 16rpx; padding: 14rpx 18rpx; border-left: 5rpx solid #f45b00; background: #fff8f3; font-size: 23rpx; line-height: 1.55; }
+.programme-group { margin-top: 24rpx; padding-top: 22rpx; border-top: 1rpx solid #e7e3de; }
+.programme-level { color: #a24412; font-size: 24rpx; font-weight: 800; }
+.programme-name { position: relative; margin-top: 14rpx; padding-left: 24rpx; color: #252a32; font-size: 25rpx; line-height: 1.62; }
+.programme-name::before { content: ''; position: absolute; left: 2rpx; top: 17rpx; width: 7rpx; height: 7rpx; border-radius: 50%; background: #f45b00; }

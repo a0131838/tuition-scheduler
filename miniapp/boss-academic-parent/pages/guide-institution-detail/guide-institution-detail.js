@@ -6,8 +6,8 @@ Page({
   onLoad(options) {
     const slug = decodeURIComponent(options.slug || "");
     Promise.all([
-      api.request("/api/public/school-guide/institutions?slug=" + encodeURIComponent(slug) + "&v=r338"),
-      api.request("/api/public/school-guide/catalog?v=r338")
+      api.request("/api/public/school-guide/institutions?slug=" + encodeURIComponent(slug) + "&v=r339"),
+      api.request("/api/public/school-guide/catalog?v=r339")
     ]).then(([detail, catalog]) => {
       const institution = detail.institution;
       const pathways = (catalog.pathways || []).filter((item) => (institution.pathwaySlugs || []).includes(item.slug));

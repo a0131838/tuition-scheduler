@@ -72,10 +72,44 @@ test("popular private higher education and secondary routes have detailed profil
   for (const slug of ["private-amity-singapore", "private-kingston-international-college"]) {
     const institution = schoolGuideOfficialInstitutions.find((item) => item.slug === slug);
     assert.ok(institution, `${slug} is missing`);
-    for (const title of ["合作院校与颁证", "专业与课程", "排名说明", "2026学费与开学时间", "申请与入学标准"]) {
+    for (const title of ["2026学费与开学时间", "申请与入学标准"]) {
       assert.ok(institution.sections.some((section) => section.title === title), `${slug} is missing ${title}`);
     }
+    assert.ok(institution.partnerProgrammes?.length, `${slug} is missing structured university programmes`);
   }
+});
+
+test("every popular private higher education profile maps awarding partners to detailed programmes and current QS context", () => {
+  const popularHigherEducation = schoolGuideOfficialInstitutions.filter((item) => item.badges.includes("热门私立高校"));
+  let partnerCount = 0;
+  let programmeCount = 0;
+  for (const institution of popularHigherEducation) {
+    assert.ok(institution.partnerProgrammes?.length, `${institution.name} is missing partner programme records`);
+    for (const partner of institution.partnerProgrammes ?? []) {
+      partnerCount += 1;
+      assert.ok(partner.partner.trim(), `${institution.name} has an unnamed awarding partner`);
+      assert.ok(partner.relationship.trim(), `${partner.partner} is missing its awarding relationship`);
+      assert.match(partner.qsRanking, /QS世界大学排名2027/);
+      assert.ok(partner.programmeGroups.length, `${partner.partner} is missing programme groups`);
+      for (const programmeGroup of partner.programmeGroups) {
+        assert.ok(programmeGroup.level.trim());
+        assert.ok(programmeGroup.programmes.length, `${partner.partner} ${programmeGroup.level} is empty`);
+        assert.ok(
+          programmeGroup.programmes.every((programme) => !/相关专业|相关课程|MBA\s*\/\s*MSc|以当前.*为准|按当前.*为准/.test(programme)),
+          `${partner.partner} contains a vague programme placeholder`,
+        );
+        programmeCount += programmeGroup.programmes.length;
+      }
+    }
+  }
+  assert.ok(partnerCount >= 35, `expected at least 35 awarding-partner records, got ${partnerCount}`);
+  assert.ok(programmeCount >= 120, `expected at least 120 detailed programme lines, got ${programmeCount}`);
+
+  const webDetail = read("app/school-guide/institutions/[slug]/page.tsx");
+  const miniDetail = read("miniapp/boss-academic-parent/pages/guide-institution-detail/guide-institution-detail.wxml");
+  assert.match(webDetail, /合作大学、具体专业与QS排名/);
+  assert.match(miniDetail, /合作大学、具体专业与QS排名/);
+  assert.match(miniDetail, /partner\.programmeGroups/);
 });
 
 test("private higher education and public postsecondary routes stay separated and easy to filter", () => {

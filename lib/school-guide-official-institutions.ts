@@ -1,4 +1,5 @@
 import moeData from "@/data/school-guide/moe-schools-2026.json";
+import { schoolGuidePrivatePartnerProgrammes, type SchoolGuidePartnerProgramme } from "@/lib/school-guide-private-programmes";
 
 export type SchoolGuideInstitution = {
   slug: string;
@@ -13,6 +14,7 @@ export type SchoolGuideInstitution = {
   sourceNote: string;
   keyFacts: Array<{ label: string; value: string }>;
   sections: Array<{ title: string; items: string[] }>;
+  partnerProgrammes?: SchoolGuidePartnerProgramme[];
   pathwaySlugs: string[];
   samplePackSlugs: string[];
 };
@@ -280,6 +282,7 @@ function privateEducationProfile(input: {
   sourceNote: string;
 }) {
   const higherEducation = input.badges.includes("热门私立高校") || /PEI|Private Education|高等教育|大学校区|合作大学/.test(input.subcategory);
+  const partnerProgrammes = schoolGuidePrivatePartnerProgrammes[input.slug];
   return profile({
     slug: input.slug,
     categoryId: input.categoryId,
@@ -295,17 +298,18 @@ function privateEducationProfile(input: {
       { label: "复核日期", value: "2026-08-06" },
     ],
     sections: [
-      ...(input.partners?.length ? [{ title: "合作院校与颁证", items: input.partners }] : []),
-      { title: "专业与课程", items: input.programmes },
-      ...(input.rankings?.length ? [{ title: "排名说明", items: input.rankings }] : []),
+      ...(!partnerProgrammes?.length && input.partners?.length ? [{ title: "合作院校与颁证", items: input.partners }] : []),
+      ...(!partnerProgrammes?.length ? [{ title: "专业与课程", items: input.programmes }] : []),
+      ...(!partnerProgrammes?.length && input.rankings?.length ? [{ title: "排名说明", items: input.rankings }] : []),
       ...(input.feesAndIntakes?.length ? [{ title: "2026学费与开学时间", items: input.feesAndIntakes }] : []),
       { title: "申请与入学标准", items: input.admissions },
       { title: "付款前必须核对", items: input.checks },
     ],
+    partnerProgrammes,
     pathwaySlugs: higherEducation ? ["pei-admission"] : ["private-school-admission"],
     samplePackSlugs: [],
-    sourceAuthority: input.sourceAuthority,
-    sourceNote: input.sourceNote,
+    sourceAuthority: partnerProgrammes?.length ? `${input.sourceAuthority} / QS` : input.sourceAuthority,
+    sourceNote: partnerProgrammes?.length ? `${input.sourceNote} 合作大学综合排名统一核对QS World University Rankings 2027。` : input.sourceNote,
   });
 }
 

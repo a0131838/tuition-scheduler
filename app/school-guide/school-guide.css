@@ -1282,6 +1282,23 @@
 .sg-institution-facts small, .sg-institution-facts strong { display: block; }
 .sg-institution-facts small { color: var(--sg-muted); }
 .sg-institution-facts strong { margin-top: 8px; }
+.sg-partner-programmes { margin: 46px 0 34px; }
+.sg-partner-programmes-head { max-width: 760px; margin-bottom: 20px; }
+.sg-partner-programmes-head span { color: var(--sg-accent); font-size: 12px; font-weight: 800; letter-spacing: .12em; }
+.sg-partner-programmes-head h2 { margin: 7px 0 5px; font-size: clamp(25px, 3vw, 36px); }
+.sg-partner-programmes-head p { margin: 0; color: var(--sg-muted); }
+.sg-partner-programme-list { display: grid; gap: 16px; }
+.sg-partner-programme-card { border: 1px solid var(--sg-line); border-radius: 20px; padding: 24px; background: #fff; box-shadow: 0 12px 30px rgba(30, 35, 40, .05); }
+.sg-partner-programme-title { display: grid; grid-template-columns: minmax(0, 1fr) minmax(210px, auto); gap: 22px; align-items: start; padding-bottom: 18px; border-bottom: 1px solid var(--sg-line); }
+.sg-partner-programme-title small { color: var(--sg-accent); font-weight: 700; }
+.sg-partner-programme-title h3 { margin: 6px 0 2px; font-size: 23px; }
+.sg-partner-programme-title p { margin: 0; color: var(--sg-muted); }
+.sg-partner-programme-title > strong { padding: 10px 13px; border-radius: 12px; background: #f5efe9; color: #7f3411; font-size: 14px; line-height: 1.45; }
+.sg-partner-status { margin: 16px 0 0; padding: 12px 14px; border-left: 3px solid var(--sg-accent); background: #fff8f3; }
+.sg-programme-groups { display: grid; gap: 18px; padding-top: 18px; }
+.sg-programme-groups h4 { margin: 0 0 8px; font-size: 15px; color: var(--sg-accent); }
+.sg-programme-groups ul { margin: 0; padding-left: 20px; }
+.sg-programme-groups li { margin: 8px 0; line-height: 1.65; }
 .sg-linked-block { margin-top: 34px; border-top: 2px solid var(--sg-ink); }
 .sg-linked-block h2 { margin: 22px 0 8px; }
 .sg-linked-block > a { display: grid; grid-template-columns: 1fr auto; gap: 6px 24px; padding: 17px 0; border-bottom: 1px solid var(--sg-line); color: inherit; text-decoration: none; }
@@ -1296,4 +1313,6 @@
 @media (max-width: 720px) {
   .sg-institution-facts { grid-template-columns: 1fr 1fr; }
   .sg-institution-facts > div:nth-child(2) { border-right: 0; }
+  .sg-partner-programme-card { padding: 19px; border-radius: 16px; }
+  .sg-partner-programme-title { grid-template-columns: 1fr; gap: 12px; }
 }
