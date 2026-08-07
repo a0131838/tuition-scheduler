@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-08-07-r347`
 - Date/Time (Asia/Singapore): `2026-08-07`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: expand the source register to 84 records / 75 K–12 and preschool brands, then present 66 correctly classified international-school brands after removing government, preschool-only, faith/private and specialist-government records from that consumer list. Brighton, recent openings, heritage curricula, affordable and specialist schools are included, with an explicit Student’s Pass status on every international profile.
 - Key files:
   - `lib/school-guide-international-additions.ts`
@@ -31,7 +31,7 @@ This file is the single source of truth for what changed in production.
   - `miniapp/boss-academic-parent/pages/guide-school-detail/`
   - `docs/tasks/TASK-20260807-complete-international-school-visa-directory.md`
 - Risk impact (if any): Medium-low and isolated to public school-guide data, filters and detail presentation. A school is never marked Student’s Pass-capable without current explicit evidence; uncertain cases require written confirmation. No login, assessment scoring, teaching, scheduling, packages, finance, payroll, tickets, messages or database schema changed.
-- Verification: TypeScript, 63 focused school-guide tests, 174 configured backend regression tests, the 67-page Mini Program release audit, native Mini Program JavaScript syntax checks and the 243-page production build passed.
+- Verification: TypeScript, 63 focused school-guide tests, 174 configured backend regression tests, the 67-page Mini Program release audit, native Mini Program JavaScript syntax checks and the 243-page production build passed. Runtime feature commit `07c739ce766165bdf585f3335fea0515c1a0e013` deployed with PM2 PID `2069710`; `/admin/login` returned HTTP 200 and the live catalog returned `2026-08-07-r347`, 84 source records and 66 correctly classified international-school brands. WeChat development version `1.0.43` uploaded successfully at 721,335 bytes.
 - Rollback point: `8f4a3fa771176014ea7ede018befeda08cbd2511` (`2026-08-07-r346` live runtime).
 
 ---

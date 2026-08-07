@@ -70,14 +70,14 @@
 - Current release line: `2026-08-07-r344` is live at runtime feature commit `66da4335bfd4c636c9beb6f3d2dcd66a4e72d5ee`; WeChat development version `1.0.41` was uploaded successfully. It adds separate official-data profiles for all five Polytechnics, six Autonomous Universities, BCA Academy and five ECDA Anchor Operators, with China-student application routes, ranking context and carefully qualified employment outcomes.
 - Current release line: `2026-08-07-r345` is live at runtime feature commit `3e5222d921c0180eb32d036b909b7f69cafe78a7`; WeChat development version `1.0.42` was uploaded successfully. It removes the obsolete five-Poly, six-university and combined LASALLE/NAFA cards; restores all 19 institutions in the 2026 JAE JC/MI list; and separates regulatory overviews from real schools.
 - Current release line: `2026-08-07-r346` is live at runtime commit `8f4a3fa771176014ea7ede018befeda08cbd2511`. It fixes international-school difficulty, age/grade and curriculum matching and allows repeat assessment while preserving reports; Mini Program upload was held for r347.
-- Current release line prepared: `2026-08-07-r347` expands the source register to 84 records / 75 K–12 and preschool brands, presents 66 correctly classified international-school brands, and adds explicit Student’s Pass, long-term-pass-only or written-verification status to every international-school profile.
+- Current release line: `2026-08-07-r347` is live at runtime feature commit `07c739ce766165bdf585f3335fea0515c1a0e013`. It expands the source register to 84 records / 75 K–12 and preschool brands, presents 66 correctly classified international-school brands, and adds explicit Student’s Pass, long-term-pass-only or written-verification status to every international-school profile. WeChat development version `1.0.43` was uploaded successfully.
 - Current release line prepared: `2026-08-07-r346` recalibrates international-school recommendations by real admission difficulty, age/grade and curriculum, explicitly covers IB, A Level, AP, IGCSE, CBSE and Australian routes, and allows repeat assessment without deleting prior reports.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
-## 2026-08-07-r347 Ready
+## 2026-08-07-r347 Live
 
 - Scope: complete international-school discovery and Student’s Pass decision support.
 - Business impact:
@@ -88,8 +88,9 @@
   - The Grange and Astor are marked long-term-pass-only from their official FAQ/handbook;
   - all other schools show written-verification status unless current official evidence supports a stronger conclusion.
 - Safety boundary: no school is promised to obtain a pass; ICA remains the decision maker. Public guide only; no authenticated operations or database changes.
-- Verification before deploy: TypeScript, 63 focused school-guide tests, 174 configured backend regression tests, native Mini Program syntax, the 67-page Mini Program audit and the 243-page production build passed.
+- Verification: TypeScript, 63 focused school-guide tests, 174 configured backend regression tests, native Mini Program syntax, the 67-page Mini Program audit and the 243-page production build passed.
 - Rollback point: `8f4a3fa771176014ea7ede018befeda08cbd2511`.
+- Deployment: runtime feature commit `07c739ce766165bdf585f3335fea0515c1a0e013`, PM2 PID `2069710`, health HTTP 200 and live catalog `2026-08-07-r347` with 84 source records / 66 international brands. WeChat development version `1.0.43` uploaded at 721,335 bytes.
 
 ## 2026-08-07-r346 Live
 
