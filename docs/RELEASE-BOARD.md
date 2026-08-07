@@ -68,13 +68,13 @@
 - Current release line: `2026-08-06-r341` is live at runtime feature commit `95152f2a8f6bc4b404c91b952198d770bea71df0`; WeChat development version `1.0.38` was uploaded successfully. It replaces all four public school-entry sample packs with longer English-only practice and fixes the PDF font embedding.
 - Current release line: `2026-08-07-r343` is live at runtime commit `57b9c52f6f8f0c0302b95c463ca57b9093182241`; WeChat development version `1.0.40` was uploaded successfully. It removes the artificial fixed-height blank area from the public Mini Program home and adds stable school identity marks with a licensed-logo-ready fallback, without changing authenticated operations.
 - Current release line: `2026-08-07-r344` is live at runtime feature commit `66da4335bfd4c636c9beb6f3d2dcd66a4e72d5ee`; WeChat development version `1.0.41` was uploaded successfully. It adds separate official-data profiles for all five Polytechnics, six Autonomous Universities, BCA Academy and five ECDA Anchor Operators, with China-student application routes, ranking context and carefully qualified employment outcomes.
-- Current release line prepared: `2026-08-07-r345` removes the obsolete five-Poly, six-university and combined LASALLE/NAFA cards; restores all 19 institutions in the 2026 JAE JC/MI list; and separates regulatory overviews from real schools.
+- Current release line: `2026-08-07-r345` is live at runtime feature commit `3e5222d921c0180eb32d036b909b7f69cafe78a7`; WeChat development version `1.0.42` was uploaded successfully. It removes the obsolete five-Poly, six-university and combined LASALLE/NAFA cards; restores all 19 institutions in the 2026 JAE JC/MI list; and separates regulatory overviews from real schools.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
-## 2026-08-07-r345 Prepared
+## 2026-08-07-r345 Live
 
 - Scope: public school-directory classification and completeness audit.
 - Business impact:
@@ -84,6 +84,7 @@
   - LASALLE and NAFA have separate profiles;
   - preschool and private-sector policy guides are visibly labelled as overviews and private regulatory guides use a dedicated filter.
 - Verification: 57 focused school-guide tests, 174 configured backend regression tests, 67-page Mini Program audit, JavaScript syntax, TypeScript and 243-page production build passed. Count audit returned 337 unique MOE records, 19 JC/MI, 5 Polytechnics, 6 Autonomous Universities, 2 arts institutions and zero removed aggregate cards.
+- Deployment: runtime feature commit `3e5222d921c0180eb32d036b909b7f69cafe78a7`, PM2 PID `2038337`, health HTTP 200, live catalog `2026-08-07-r345`, WeChat development version `1.0.42` uploaded at 716,495 bytes. The three removed aggregate slugs return HTTP 404. Experience-version designation and physical-phone acceptance remain manual.
 - Rollback point: `98c939c1b8b216d7d05ac7d46e5699a8c5f07355`.
 
 ## 2026-08-07-r344 Live
