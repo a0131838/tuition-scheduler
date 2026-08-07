@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-08-07-r349`
 - Date/Time (Asia/Singapore): `2026-08-07`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: remove public editorial-tier labels and make international-school main curriculum filters mutually exclusive using structured curriculum evidence.
 - Key files:
   - `lib/school-guide-directory.ts`
@@ -30,7 +30,7 @@ This file is the single source of truth for what changed in production.
   - `tests/school-guide-directory-ia.test.ts`
   - `docs/tasks/TASK-20260807-school-curriculum-classification.md`
 - Risk impact (if any): Low and isolated to public school-guide classification and labels. Full multi-curriculum detail remains intact. No login, assessment scoring, teaching, scheduling, packages, finance, payroll, tickets, messages, permissions or database schema changed.
-- Verification: 66 school-guide tests, 174 backend regressions, TypeScript, native Mini Program JavaScript syntax, the 67-page Mini Program audit, the 243-page production build and a 390×844 browser interaction check passed. The audit returned 23 IB, 22 British/Cambridge, 5 American/AP and 16 other-curriculum brands with no main-filter overlap.
+- Verification: 66 school-guide tests, 174 backend regressions, TypeScript, native Mini Program JavaScript syntax, the 67-page Mini Program audit, the 243-page production build and a 390×844 browser interaction check passed. The live catalog returned `2026-08-07-r349`, 66 brands split into 23 IB, 22 British/Cambridge, 5 American/AP and 16 other-curriculum brands with no main-filter overlap. Runtime feature commit `c2d8cf68bf7ebf2099fe1114037803419f0fc41b` deployed with PM2 PID `2141755`; directory and Tanglin detail returned HTTP 200. WeChat development version `1.0.45` uploaded successfully at 724,024 bytes.
 - Rollback point: `d973507788122821536fc135094d28dc4fee1a7a` (`2026-08-07-r348` aligned live head).
 
 ---
