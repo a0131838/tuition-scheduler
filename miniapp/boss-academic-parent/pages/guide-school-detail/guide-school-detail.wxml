@@ -54,10 +54,10 @@
   <block wx:if="{{activeDetailTab === 'APPLICATION'}}">
   <view class="guide-section">
     <view class="guide-section-title">申请与课程</view>
-    <view class="guide-notice" wx:if="{{school.studentPass}}">
+    <view class="guide-notice" wx:if="{{school.hasStudentPassRestriction}}">
+      <view><b>准证限制</b></view>
       <view><b>{{school.studentPass.label}}</b></view>
       <view>{{school.studentPass.note}}</view>
-      <view>最终签发由ICA决定；缴费前请取得学校书面确认。</view>
     </view>
     <view class="guide-notice" wx:if="{{school.admissionProfile}}">
       <view><b>{{school.admissionProfile.difficultyLabel}}</b> · {{school.admissionProfile.curriculumText}}</view>

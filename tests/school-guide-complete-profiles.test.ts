@@ -180,7 +180,7 @@ test("international-school browsing prioritises selected IB schools and keeps fi
   const explorer = read("app/school-guide/schools/SchoolExplorer.tsx");
   const miniList = read("miniapp/boss-academic-parent/pages/guide-schools/guide-schools.wxml");
   const miniSharedCss = read("miniapp/boss-academic-parent/styles/school-guide.wxss");
-  assert.match(explorer, /按主课程归类/);
+  assert.match(explorer, /第一梯队优先 · 综合排序/);
   assert.match(explorer, /更多筛选/);
   assert.match(miniList, /scroll-view class="school-focus-scroll"/);
   assert.match(miniList, /更多筛选/);

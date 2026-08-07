@@ -6,8 +6,8 @@ Page({
   onLoad(options) {
     const slug = decodeURIComponent(options.slug || "");
     Promise.all([
-      api.request("/api/public/school-guide/institutions?slug=" + encodeURIComponent(slug) + "&v=r350"),
-      api.request("/api/public/school-guide/catalog?v=r350")
+      api.request("/api/public/school-guide/institutions?slug=" + encodeURIComponent(slug) + "&v=r351"),
+      api.request("/api/public/school-guide/catalog?v=r351")
     ]).then(([detail, catalog]) => {
       const institution = Object.assign({}, detail.institution, {
         partnerProgrammes: (detail.institution.partnerProgrammes || []).map((partner) => Object.assign({}, partner, { open: false }))

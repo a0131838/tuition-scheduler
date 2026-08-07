@@ -13,7 +13,7 @@ Page({
 
   onLoad(options) {
     const slug = decodeURIComponent(options.slug || "");
-    api.request("/api/public/school-guide/catalog?v=r350")
+    api.request("/api/public/school-guide/catalog?v=r351")
       .then((data) => {
         const groups = data.schoolGroups || data.schools || [];
         const school = groups.find((item) => item.slug === slug || (item.memberSlugs || []).includes(slug));
@@ -32,7 +32,7 @@ Page({
         const snapshot = [
           { label: "年龄与年级", value: comparison.ageAndGrades || "学校未公开" },
           { label: "课程体系", value: comparison.curriculum || school.category || "学校未公开" },
-          { label: "学生准证", value: school.studentPass ? school.studentPass.label : "需向学校书面确认" },
+          { label: "申请判断", value: admissionProfile.difficultyLabel || "按目标年级评估" },
           { label: "首年固定费用", value: costProfile ? costProfile.rangeText : "学校未公开" }
         ];
         const detailSections = (school.detailSections || []).map((section) => ({
@@ -47,6 +47,7 @@ Page({
         this.setData({
           school: {
             ...school,
+            hasStudentPassRestriction: Boolean(school.studentPass && school.studentPass.status === "LONG_TERM_PASS_ONLY"),
             admissionProfile: {
               ...admissionProfile,
               curriculumText: (admissionProfile.curriculumFamilies || []).join("、"),

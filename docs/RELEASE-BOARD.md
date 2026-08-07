@@ -73,12 +73,26 @@
 - Current release line: `2026-08-07-r347` is live at runtime feature commit `07c739ce766165bdf585f3335fea0515c1a0e013`. It expands the source register to 84 records / 75 K–12 and preschool brands, presents 66 correctly classified international-school brands, and adds explicit Student’s Pass, long-term-pass-only or written-verification status to every international-school profile. WeChat development version `1.0.43` was uploaded successfully.
 - Current release line: `2026-08-07-r348` is live at runtime feature commit `6a413de5976af799ea994cba438886ec2feec5e4`. It fixes public Mini Program filter/PDF-action clipping, applies an IB-first editorial reading order, splits school details into three task tabs and adds bilingual private-university programme names. WeChat development version `1.0.44` was uploaded successfully.
 - Current release line: `2026-08-07-r349` is live at runtime feature commit `c2d8cf68bf7ebf2099fe1114037803419f0fc41b`. It removes all consumer-facing tier labels and assigns every international school to one evidence-based main curriculum filter while preserving every secondary curriculum in school detail. WeChat development version `1.0.45` was uploaded successfully.
+- Current release line prepared: `2026-08-07-r351` gives all 60 international schools one stable parent-facing priority order, keeps the five first-tier schools together at the top of “全部”, applies the same order inside each curriculum filter and hides generic Student’s Pass fallback copy unless a real long-term-pass restriction exists.
 - Current release line: `2026-08-07-r350` is live at runtime feature commit `aff83c10a2e68390d4806138e55b618d6d6e5e7f`. It restores the agreed five-school first-tier label, routes six PEI/private/specialist records out of the international-school list and opens every school detail on results/outcomes while retaining overview and application content. WeChat development version `1.0.46` was uploaded successfully.
 - Current release line prepared: `2026-08-07-r346` recalibrates international-school recommendations by real admission difficulty, age/grade and curriculum, explicitly covers IB, A Level, AP, IGCSE, CBSE and Australian routes, and allows repeat assessment without deleting prior reports.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-07-r351 Ready
+
+- Scope: international-school browsing priority and Student’s Pass copy cleanup.
+- Business impact:
+  - the five agreed first-tier schools appear together before every non-first-tier school in “全部”;
+  - every curriculum filter preserves the same explicit relative order instead of falling back to the English alphabet;
+  - generic written-confirmation copy disappears from list and snapshot surfaces;
+  - only a real `LONG_TERM_PASS_ONLY` restriction remains visible, while the detail snapshot uses admission judgement instead.
+- Safety boundary: ordering does not change recommendation scoring, assessment bands, admission difficulty or the underlying visa-research record. Authenticated operations and the database are unchanged.
+- Verification before deploy: 68 school-guide tests, 174 backend regressions, TypeScript, native Mini Program JavaScript syntax, 67-page Mini Program audit, 243-page production build and 390×844 directory/detail checks passed.
+- Post-deploy verification: catalog `2026-08-07-r351`, top-five order, no generic visa copy and directory/detail HTTP 200.
+- Rollback point: `07bb9a2684da5f37103bae7c7766cd3fda368e9d`.
 
 ## 2026-08-07-r350 Live
 

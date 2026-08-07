@@ -36,7 +36,7 @@ export default function SchoolDetailTabs({ school, pathway, pack }: {
 
       {tab === "application" ? <>
         <h2>申请与课程</h2>
-        {school.studentPass ? <section className="sg-cost-box"><span>Student’s Pass</span><strong>{school.studentPass.label}</strong><p>{school.studentPass.note}</p><small>最终签发由ICA决定；缴费前请取得学校书面确认。</small></section> : null}
+        {school.studentPass?.status === "LONG_TERM_PASS_ONLY" ? <section className="sg-cost-box"><span>准证限制</span><strong>{school.studentPass.label}</strong><p>{school.studentPass.note}</p></section> : null}
         {school.admissionProfile ? <section className="sg-cost-box"><span>选校判断</span><strong>{school.admissionProfile.difficultyLabel}</strong><p>课程：{school.admissionProfile.curriculumFamilies.join("、") || school.comparison?.curriculum}</p><p>主要节点：{school.admissionProfile.mainEntryPoints.join("、") || "按目标年级确认"}</p><small>{school.admissionProfile.entryAdvice}</small></section> : null}
         {school.detailSections?.map((section, index) => <details className="sg-school-detail-section" key={section.title} open={index === 0}><summary>{section.title}</summary><ul>{section.items.map((item) => <li key={item}>{item}</li>)}</ul></details>)}
         {school.costProfile ? <section className="sg-cost-box"><span>{school.costProfile.academicYear}首年固定费用</span><strong>S${school.costProfile.fixedFirstYearLow.toLocaleString("en-SG")}–S${school.costProfile.fixedFirstYearHigh.toLocaleString("en-SG")}</strong><p>已计：{school.costProfile.includes.join("、")}</p><p>未计：{school.costProfile.optionalItems.join("、")}</p><small>{school.costProfile.note}</small></section> : null}

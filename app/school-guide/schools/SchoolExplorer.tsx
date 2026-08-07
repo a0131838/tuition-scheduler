@@ -80,7 +80,7 @@ export default function SchoolExplorer({ schools, categories, institutions }: { 
         {showMoreFilters ? <div className="sg-directory-focus is-secondary" aria-label="国际学校更多筛选">
           {[["HERITAGE", "国家 / 侨民课程"], ["NEW", "近期开校"], ["VISA_LIMITED", "需长期准证"], ["SPECIAL_SUPPORT", "专项支持"], ["PRESCHOOL", "学前"]].map(([value, label]) => <button className={focus === value ? "active" : ""} type="button" key={value} onClick={() => { setFocus(value); setShowAll(false); }}>{label}</button>)}
         </div> : null}
-        <div className="sg-directory-count-row"><p className="sg-directory-count">{rows.length}所学校</p><span>按主课程归类，多课程在详情中完整展示</span></div>
+        <div className="sg-directory-count-row"><p className="sg-directory-count">{rows.length}所学校</p><span>第一梯队优先 · 综合排序</span></div>
         <div className="sg-school-list">
         {visibleRows.map((school) => (
           <div className="sg-school-row" key={school.slug}>
@@ -89,9 +89,9 @@ export default function SchoolExplorer({ schools, categories, institutions }: { 
               <small className="sg-school-name-en">{school.name}</small>
               {school.isFirstTier ? <span className="sg-tier-badge is-first-tier">第一梯队</span> : null}
               <span className="sg-tier-badge">{school.browseLabel}</span>
+              {school.studentPass?.status === "LONG_TERM_PASS_ONLY" ? <span className="sg-tier-badge is-neutral">仅限长期准证</span> : null}
               {school.campusProfiles.length > 1 ? <span className="sg-tier-badge is-neutral">{school.campusProfiles.length}个收录校区</span> : null}
               {school.comparison?.curriculum ? <p>{school.comparison.curriculum}</p> : null}
-              {school.studentPass ? <p>{school.studentPass.label}</p> : null}
             </div>
             <button
               className="sg-favorite"

@@ -96,6 +96,72 @@ const firstTierSchoolNames = new Set([
   "North London Collegiate School (Singapore)",
 ]);
 
+// Consumer directory order: agreed first-tier schools first, followed by
+// established/selective and commonly compared schools. This controls browsing
+// only; it does not change assessment recommendations or promise admission.
+const directoryPriorityOrder = [
+  "Tanglin Trust School",
+  "UWC South East Asia (UWCSEA)",
+  "Singapore American School",
+  "Dulwich College (Singapore)",
+  "North London Collegiate School (Singapore)",
+  "St. Joseph's Institution International Ltd",
+  "Hwa Chong International School",
+  "ACS (International), Singapore",
+  "Dover Court International School",
+  "German European School Singapore",
+  "Nexus International School (Singapore)",
+  "Canadian International School, Lakeside Campus",
+  "Stamford American International School",
+  "XCL World Academy Pte. Ltd.",
+  "Australian International School Pte Ltd",
+  "Brighton College (Singapore)",
+  "Chatsworth International School, Singapore",
+  "International French School (Singapore)",
+  "The Japanese School Singapore",
+  "Singapore Korean International School",
+  "Swiss School in Singapore",
+  "Holland International School",
+  "Waseda Shibuya Senior High School",
+  "Global Indian International School",
+  "NPS International School",
+  "One World International School",
+  "EtonHouse International School & Preschool",
+  "Overseas Family School",
+  "ISS International School Singapore",
+  "HWA International School",
+  "Westbourne College (Singapore)",
+  "Invictus International School",
+  "Middleton International School",
+  "The Perse School (Singapore)",
+  "The Grange Institution",
+  "Knightsbridge House International School",
+  "DPS International School",
+  "Yuvabharathi International School",
+  "Sir Manasseh Meyer International School",
+  "The Winstedt School",
+  "Integrated International School",
+  "Wise Oaks International School",
+  "GIG International School",
+  "Heath House International School",
+  "Dynamics International School",
+  "Kindle Kids International School",
+  "Lotus Bridge International School",
+  "International Community School (Singapore)",
+  "RD American School",
+  "Heritage Academy Singapore",
+  "TLS Academy",
+  "Olympiad International School",
+  "La Petite Ecole Singapore",
+  "Astor International School",
+  "Melbourne International School",
+  "The Straits Waldorf School",
+  "Lodestar Montessori School",
+  "All Hands Together",
+  "HFSE International School",
+  "Sekolah Indonesia Singapura",
+] as const;
+
 function unique<T>(values: T[]) {
   return Array.from(new Set(values));
 }
@@ -143,12 +209,28 @@ function buildBrowseOrder(school: SchoolGuideSchool, tags: SchoolGuideSchoolGrou
         : tags.includes("HERITAGE")
           ? "国家课程"
           : "其他课程";
+  const directoryPriorityIndex = directoryPriorityOrder.indexOf(school.name as never);
+  const difficultyRank = school.admissionProfile?.difficulty === "HIGH"
+    ? 0
+    : school.admissionProfile?.difficulty === "SELECTIVE"
+      ? 1
+      : school.admissionProfile?.difficulty === "MODERATE"
+        ? 2
+        : 3;
+  const resultsRank = school.academicResults?.publicationStatus === "PUBLISHED"
+    ? 0
+    : school.academicResults?.publicationStatus === "LIMITED"
+      ? 1
+      : 2;
+  const browseRank = directoryPriorityIndex >= 0
+    ? directoryPriorityIndex
+    : 1000 + difficultyRank * 100 + resultsRank * 10;
   const ibFeaturedIndex = featuredIbOrder.indexOf(school.name as never);
-  if (ibFeaturedIndex >= 0) return { primaryCurriculum, browseGroup: "IB_FEATURED" as const, browseRank: ibFeaturedIndex, browseLabel };
-  if (tags.includes("IB")) return { primaryCurriculum, browseGroup: "IB" as const, browseRank: 100, browseLabel };
+  if (ibFeaturedIndex >= 0) return { primaryCurriculum, browseGroup: "IB_FEATURED" as const, browseRank, browseLabel };
+  if (tags.includes("IB")) return { primaryCurriculum, browseGroup: "IB" as const, browseRank, browseLabel };
   const nonIbFeaturedIndex = featuredNonIbOrder.indexOf(school.name as never);
-  if (nonIbFeaturedIndex >= 0) return { primaryCurriculum, browseGroup: "NON_IB_FEATURED" as const, browseRank: 200 + nonIbFeaturedIndex, browseLabel };
-  return { primaryCurriculum, browseGroup: "OTHER" as const, browseRank: 300, browseLabel };
+  if (nonIbFeaturedIndex >= 0) return { primaryCurriculum, browseGroup: "NON_IB_FEATURED" as const, browseRank, browseLabel };
+  return { primaryCurriculum, browseGroup: "OTHER" as const, browseRank, browseLabel };
 }
 
 function mergeMembers(

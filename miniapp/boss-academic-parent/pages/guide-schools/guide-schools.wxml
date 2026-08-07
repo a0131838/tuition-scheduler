@@ -38,7 +38,7 @@
       <view class="guide-tier-tab {{focus === 'PRESCHOOL' ? 'active' : ''}}" data-focus="PRESCHOOL" bindtap="setFocus">学前</view>
     </view>
     </scroll-view>
-    <view class="school-directory-head"><view class="school-directory-count">{{schools.length}}所学校</view><view class="school-directory-order">按主课程归类，多课程在详情中完整展示</view></view>
+    <view class="school-directory-head"><view class="school-directory-count">{{schools.length}}所学校</view><view class="school-directory-order">第一梯队优先 · 综合排序</view></view>
     <view class="guide-list school-brand-list">
     <block wx:for="{{schools}}" wx:key="slug" wx:for-index="schoolIndex">
     <view class="guide-row" wx:if="{{schoolIndex < 12 || showAllSchools || query}}">
@@ -48,8 +48,8 @@
           <view class="guide-row-name-en">{{item.name}}</view>
           <view class="guide-tier-label first" wx:if="{{item.isFirstTier}}">第一梯队</view>
           <view class="guide-tier-label">{{item.browseLabel}}</view>
+          <view class="guide-tier-label" wx:if="{{item.studentPass && item.studentPass.status === 'LONG_TERM_PASS_ONLY'}}">仅限长期准证</view>
           <view class="guide-tier-label" wx:if="{{item.campusCountText}}">{{item.campusCountText}}</view>
-          <view class="guide-row-note" wx:if="{{item.studentPass}}">{{item.studentPass.label}}</view>
         </view>
       </view>
       <button class="guide-favorite" data-slug="{{item.slug}}" bindtap="toggleFavorite">

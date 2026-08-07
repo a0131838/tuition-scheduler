@@ -121,3 +121,35 @@ test("consumer directory marks only the five agreed first-tier schools", () => {
   assert.match(fs.readFileSync("app/school-guide/schools/SchoolExplorer.tsx", "utf8"), /第一梯队/);
   assert.match(fs.readFileSync("miniapp\/boss-academic-parent\/pages\/guide-schools\/guide-schools.wxml", "utf8"), /第一梯队/);
 });
+
+test("consumer directory uses one explicit priority order in every curriculum view", () => {
+  assert.deepEqual(schoolGuideSchoolGroups.slice(0, 5).map((item) => item.name), [
+    "Tanglin Trust School",
+    "UWC South East Asia (UWCSEA)",
+    "Singapore American School",
+    "Dulwich College (Singapore)",
+    "North London Collegiate School (Singapore)",
+  ]);
+  assert.equal(new Set(schoolGuideSchoolGroups.map((item) => item.browseRank)).size, schoolGuideSchoolGroups.length);
+  assert.deepEqual(
+    schoolGuideSchoolGroups.filter((item) => item.primaryCurriculum === "IB").slice(0, 4).map((item) => item.name),
+    ["Tanglin Trust School", "UWC South East Asia (UWCSEA)", "Dulwich College (Singapore)", "North London Collegiate School (Singapore)"],
+  );
+  assert.equal(schoolGuideSchoolGroups.find((item) => item.primaryCurriculum === "BRITISH")?.name, "Brighton College (Singapore)");
+  assert.equal(schoolGuideSchoolGroups.find((item) => item.primaryCurriculum === "AMERICAN")?.name, "Singapore American School");
+  assert.equal(schoolGuideSchoolGroups.find((item) => item.primaryCurriculum === "OTHER")?.name, "International French School (Singapore)");
+});
+
+test("consumer surfaces hide generic Student Pass fallback and keep only real restrictions", () => {
+  const sources = [
+    fs.readFileSync("app/school-guide/schools/SchoolExplorer.tsx", "utf8"),
+    fs.readFileSync("app/school-guide/schools/[slug]/page.tsx", "utf8"),
+    fs.readFileSync("app/school-guide/schools/[slug]/SchoolDetailTabs.tsx", "utf8"),
+    fs.readFileSync("miniapp/boss-academic-parent/pages/guide-schools/guide-schools.wxml", "utf8"),
+    fs.readFileSync("miniapp/boss-academic-parent/pages/guide-school-detail/guide-school-detail.js", "utf8"),
+    fs.readFileSync("miniapp/boss-academic-parent/pages/guide-school-detail/guide-school-detail.wxml", "utf8"),
+  ];
+  for (const source of sources) assert.doesNotMatch(source, /Student’s Pass资格需书面确认|需向学校书面确认/);
+  assert.match(sources.join("\n"), /LONG_TERM_PASS_ONLY/);
+  assert.match(sources.join("\n"), /申请判断/);
+});
