@@ -1,5 +1,7 @@
 import moeData from "@/data/school-guide/moe-schools-2026.json";
 import { schoolGuidePrivatePartnerProgrammes, type SchoolGuidePartnerProgramme } from "@/lib/school-guide-private-programmes";
+import { schoolGuideAutonomousUniversityProfiles, schoolGuideBcaAcademyProfiles, schoolGuidePolytechnicProfiles } from "@/lib/school-guide-public-postsecondary";
+import { schoolGuidePreschoolDecisionProfiles, schoolGuidePreschoolOperatorProfiles } from "@/lib/school-guide-preschool-profiles";
 
 export type SchoolGuideInstitution = {
   slug: string;
@@ -157,7 +159,7 @@ export const schoolGuideEducationProfiles: SchoolGuideInstitution[] = [
     sections: [
       { title: "课程与服务", items: ["MOE Kindergarten提供K1和K2课程。", "KCare为需要全日照护的家庭提供幼儿园时段以外的照护与活动。", "部分MOE Kindergarten与Early Years Centre建立衔接安排。"] },
       { title: "申请步骤", items: ["先确认孩子是否符合当年出生日期范围。", "查看当年参与注册的MOE Kindergarten及校区。", "在MOE公布的申请期内提交申请。", "收到结果后按通知完成确认和后续文件。"] },
-      { title: "家长准备", items: ["提前确认通勤、KCare需要、母语环境和全日照护安排。", "国际学生及非公民家庭应单独核对当年资格和优先次序。"] },
+      { title: "家长准备", items: ["提前确认通勤、KCare需要、母语环境和全日照护安排。", "普通注册优先面向新加坡公民及永久居民儿童；国际儿童只在符合MOE当年特定资格和剩余学额时考虑，中国家庭不能默认可以报名。"] },
     ], pathwaySlugs: ["moe-kindergarten-admission"], samplePackSlugs: [], sourceAuthority: "Singapore Ministry of Education", sourceNote: "MOE Kindergarten公开介绍与年度注册规则。",
   }),
   profile({
@@ -501,6 +503,11 @@ export const schoolGuideSpedInstitutions: SchoolGuideInstitution[] = spedDefinit
 export const schoolGuideOfficialInstitutions: SchoolGuideInstitution[] = [
   ...schoolGuideMoeInstitutions,
   ...schoolGuideEducationProfiles,
+  ...schoolGuidePreschoolOperatorProfiles,
+  ...schoolGuidePreschoolDecisionProfiles,
+  ...schoolGuidePolytechnicProfiles,
+  ...schoolGuideAutonomousUniversityProfiles,
+  ...schoolGuideBcaAcademyProfiles,
   ...schoolGuidePrivateEducationProfiles,
   ...schoolGuideSpedInstitutions,
 ];
@@ -511,10 +518,12 @@ export function getSchoolGuideOfficialInstitution(slug: string) {
 
 export function getSchoolGuideInstitutionDirectoryGroup(item: Pick<SchoolGuideInstitution, "categoryId" | "subcategory" | "badges">) {
   if (item.categoryId === "postsecondary") {
-    if (item.subcategory === "Polytechnics") return "polytechnics";
+    if (["Polytechnics", "Polytechnic Institution"].includes(item.subcategory)) return "polytechnics";
+    if (item.subcategory === "BCA Academy") return "bca-academy";
     if (item.subcategory === "Institute of Technical Education") return "ite";
     if (item.subcategory === "Arts Institutions") return "arts";
-    if (item.subcategory === "Autonomous Universities") return "autonomous-universities";
+    if (["Autonomous Universities", "University Research"].includes(item.subcategory)) return "research-universities";
+    if (item.subcategory === "University Applied Design") return "applied-universities";
     return "jc-mi";
   }
   if (item.categoryId === "private-specialist") {
@@ -528,6 +537,8 @@ export function getSchoolGuideInstitutionDirectoryGroup(item: Pick<SchoolGuideIn
     if (item.subcategory === "Child Care") return "child-care";
     if (item.subcategory === "Kindergarten") return "kindergarten";
     if (item.subcategory === "MOE Kindergarten") return "moe-kindergarten";
+    if (item.subcategory === "Anchor Operator") return "anchor-operators";
+    if (item.subcategory === "Preschool Decision Guide") return "preschool-decision";
     return "preschool-overview";
   }
   if (item.categoryId === "government") {
