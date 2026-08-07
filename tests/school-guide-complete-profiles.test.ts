@@ -95,7 +95,10 @@ test("every popular private higher education profile maps awarding partners to d
         assert.ok(programmeGroup.level.trim());
         assert.ok(programmeGroup.programmes.length, `${partner.partner} ${programmeGroup.level} is empty`);
         assert.ok(
-          programmeGroup.programmes.every((programme) => !/相关专业|相关课程|MBA\s*\/\s*MSc|以当前.*为准|按当前.*为准/.test(programme)),
+          programmeGroup.programmes.every((programme) => programme.nameZh.trim()
+            && programme.nameEn.trim()
+            && /[\u3400-\u9fff]/.test(programme.nameZh)
+            && !/相关专业|相关课程|MBA\s*\/\s*MSc|以当前.*为准|按当前.*为准/.test(programme.nameEn)),
           `${partner.partner} contains a vague programme placeholder`,
         );
         programmeCount += programmeGroup.programmes.length;
@@ -143,11 +146,29 @@ test("private higher education and public postsecondary routes stay separated an
 test("consumer school pages keep research inside the product", () => {
   const miniDetail = read("miniapp/boss-academic-parent/pages/guide-school-detail/guide-school-detail.wxml");
   const webDetail = read("app/school-guide/schools/[slug]/page.tsx");
+  const webDetailTabs = read("app/school-guide/schools/[slug]/SchoolDetailTabs.tsx");
   assert.doesNotMatch(miniDetail, /复制学校官网|复制官方链接|官方来源/);
   assert.doesNotMatch(webDetail, /学校官网|IB官方详情|官方来源/);
+  assert.match(webDetailTabs, /概览/);
+  assert.match(webDetailTabs, /成绩升学/);
+  assert.match(webDetailTabs, /申请费用/);
   assert.match(miniDetail, /历年学术成绩/);
   assert.match(miniDetail, /大学录取与去向/);
   assert.match(miniDetail, /下次复核/);
+});
+
+test("international-school browsing prioritises selected IB schools and keeps filters unclipped", () => {
+  const international = schoolGuideDirectoryCategories.find((item) => item.id === "international");
+  assert.ok(international);
+  const explorer = read("app/school-guide/schools/SchoolExplorer.tsx");
+  const miniList = read("miniapp/boss-academic-parent/pages/guide-schools/guide-schools.wxml");
+  const miniSharedCss = read("miniapp/boss-academic-parent/styles/school-guide.wxss");
+  assert.match(explorer, /IB重点优先/);
+  assert.match(explorer, /更多筛选/);
+  assert.match(miniList, /scroll-view class="school-focus-scroll"/);
+  assert.match(miniList, /更多筛选/);
+  assert.doesNotMatch(miniList, /第一梯队/);
+  assert.doesNotMatch(miniSharedCss, /grid-template-columns:\s*1fr 180rpx/);
 });
 
 test("public guide forms collect WeChat rather than phone numbers", () => {

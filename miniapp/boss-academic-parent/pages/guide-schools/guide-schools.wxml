@@ -19,19 +19,26 @@
   </view>
 
   <view wx:if="{{activeCategory === 'international'}}">
+    <scroll-view class="school-focus-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
     <view class="guide-tier-tabs school-focus-tabs">
       <view class="guide-tier-tab {{focus === 'ALL' ? 'active' : ''}}" data-focus="ALL" bindtap="setFocus">全部</view>
-      <view class="guide-tier-tab {{focus === 'FIRST' ? 'active' : ''}}" data-focus="FIRST" bindtap="setFocus">第一梯队</view>
       <view class="guide-tier-tab {{focus === 'IB' ? 'active' : ''}}" data-focus="IB" bindtap="setFocus">IB</view>
-      <view class="guide-tier-tab {{focus === 'BRITISH' ? 'active' : ''}}" data-focus="BRITISH" bindtap="setFocus">英式</view>
-      <view class="guide-tier-tab {{focus === 'AMERICAN' ? 'active' : ''}}" data-focus="AMERICAN" bindtap="setFocus">美式</view>
+      <view class="guide-tier-tab {{focus === 'BRITISH' ? 'active' : ''}}" data-focus="BRITISH" bindtap="setFocus">英式 / A Level</view>
+      <view class="guide-tier-tab {{focus === 'AMERICAN' ? 'active' : ''}}" data-focus="AMERICAN" bindtap="setFocus">美式 / AP</view>
+      <view class="guide-tier-tab {{focus === 'OTHER' ? 'active' : ''}}" data-focus="OTHER" bindtap="setFocus">其他课程</view>
+    </view>
+    </scroll-view>
+    <view class="school-more-toggle" bindtap="toggleMoreFilters"><text>更多筛选</text><text>{{showMoreFilters ? '收起' : '展开'}}</text></view>
+    <scroll-view class="school-focus-scroll school-focus-more" scroll-x="true" enhanced="true" show-scrollbar="false" wx:if="{{showMoreFilters}}">
+    <view class="guide-tier-tabs school-focus-tabs">
       <view class="guide-tier-tab {{focus === 'HERITAGE' ? 'active' : ''}}" data-focus="HERITAGE" bindtap="setFocus">国家/侨民课程</view>
       <view class="guide-tier-tab {{focus === 'NEW' ? 'active' : ''}}" data-focus="NEW" bindtap="setFocus">近期开校</view>
       <view class="guide-tier-tab {{focus === 'VISA_LIMITED' ? 'active' : ''}}" data-focus="VISA_LIMITED" bindtap="setFocus">需长期准证</view>
       <view class="guide-tier-tab {{focus === 'SPECIAL_SUPPORT' ? 'active' : ''}}" data-focus="SPECIAL_SUPPORT" bindtap="setFocus">专项支持</view>
       <view class="guide-tier-tab {{focus === 'PRESCHOOL' ? 'active' : ''}}" data-focus="PRESCHOOL" bindtap="setFocus">学前</view>
     </view>
-    <view class="school-directory-count">{{schools.length}}所学校</view>
+    </scroll-view>
+    <view class="school-directory-head"><view class="school-directory-count">{{schools.length}}所学校</view><view class="school-directory-order">IB重点优先，其余按课程归类</view></view>
     <view class="guide-list school-brand-list">
     <block wx:for="{{schools}}" wx:key="slug" wx:for-index="schoolIndex">
     <view class="guide-row" wx:if="{{schoolIndex < 12 || showAllSchools || query}}">
@@ -39,7 +46,7 @@
         <view data-slug="{{item.slug}}" bindtap="openSchool">
           <view class="guide-row-title">{{item.nameZh}}</view>
           <view class="guide-row-name-en">{{item.name}}</view>
-          <view class="guide-tier-label first" wx:if="{{item.editorialTier === 1}}">第一梯队</view>
+          <view class="guide-tier-label first">{{item.browseLabel}}</view>
           <view class="guide-tier-label" wx:if="{{item.campusCountText}}">{{item.campusCountText}}</view>
           <view class="guide-row-note" wx:if="{{item.studentPass}}">{{item.studentPass.label}}</view>
         </view>

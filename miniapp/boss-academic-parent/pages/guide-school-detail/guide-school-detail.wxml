@@ -12,6 +12,13 @@
     </view>
   </view>
 
+  <view class="school-detail-tabs">
+    <view class="school-detail-tab {{activeDetailTab === 'OVERVIEW' ? 'active' : ''}}" data-tab="OVERVIEW" bindtap="setDetailTab">概览</view>
+    <view class="school-detail-tab {{activeDetailTab === 'RESULTS' ? 'active' : ''}}" data-tab="RESULTS" bindtap="setDetailTab">成绩升学</view>
+    <view class="school-detail-tab {{activeDetailTab === 'APPLICATION' ? 'active' : ''}}" data-tab="APPLICATION" bindtap="setDetailTab">申请费用</view>
+  </view>
+
+  <block wx:if="{{activeDetailTab === 'OVERVIEW'}}">
   <view class="guide-section" wx:if="{{school.campusProfiles.length}}">
     <view class="guide-section-title">校区与学段</view>
     <view class="school-campus-list">
@@ -42,8 +49,11 @@
     <view class="school-unpublished" wx:else>暂无公开数据</view>
   </view>
 
+  </block>
+
+  <block wx:if="{{activeDetailTab === 'APPLICATION'}}">
   <view class="guide-section">
-    <view class="guide-section-title">招生、课程与费用</view>
+    <view class="guide-section-title">申请与课程</view>
     <view class="guide-notice" wx:if="{{school.studentPass}}">
       <view><b>{{school.studentPass.label}}</b></view>
       <view>{{school.studentPass.note}}</view>
@@ -68,10 +78,13 @@
     <view class="school-unpublished" wx:else>暂无详细资料</view>
   </view>
 
+  </block>
+
+  <block wx:if="{{activeDetailTab === 'RESULTS'}}">
   <view class="guide-section">
     <view class="guide-section-title">历年学术成绩</view>
     <view wx:if="{{school.academicResults}}">
-      <view class="guide-section-note">{{school.academicResults.programme}} · {{school.academicResults.note}}</view>
+      <view class="guide-section-note" wx:if="{{school.academicRecords.length}}">{{school.academicResults.programme}} · {{school.academicResults.note}}</view>
       <scroll-view wx:if="{{school.academicRecords.length}}" class="school-result-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
         <view class="school-result-row">
           <view class="school-result" wx:for="{{school.academicRecords}}" wx:key="year">
@@ -84,9 +97,10 @@
           </view>
         </view>
       </scroll-view>
+      <view class="school-unpublished" wx:if="{{!school.academicRecords.length}}">{{school.academicResults.note}}</view>
       <view class="school-update-note" wx:if="{{school.academicResults.sourceLabel}}">资料：{{school.academicResults.sourceLabel}} · 核对于 {{school.academicResults.checkedAt}}</view>
     </view>
-    <view class="school-unpublished" wx:else>尚未完成成绩核对</view>
+    <view class="school-unpublished" wx:else>学校未公开可核实的整届成绩</view>
   </view>
 
   <view class="guide-section">
@@ -99,7 +113,9 @@
     </view>
     <view class="school-unpublished" wx:else>{{school.universityOutcomeNote || "暂无按届公开数据"}}</view>
   </view>
+  </block>
 
+  <block wx:if="{{activeDetailTab === 'APPLICATION'}}">
   <view class="guide-cost-box" wx:if="{{school.costProfile}}">
     <view class="guide-cost-label">{{school.costProfile.academicYear}}首年固定费用</view>
     <view class="guide-cost-value">{{school.costProfile.rangeText}}</view>
@@ -116,8 +132,9 @@
   <view class="guide-section" wx:if="{{samplePacks.length}}">
     <view class="guide-section-title">入学准备例题</view>
     <view class="guide-section-note">博思原创练习，不是学校真题，也不预测正式考试。</view>
-    <view class="sample-pack" wx:for="{{samplePacks}}" wx:key="slug"><view><b>{{item.title}}</b><text>{{item.duration}}</text></view><button data-slug="{{item.slug}}" loading="{{loadingPack === item.slug}}" bindtap="openPack">打开PDF</button></view>
+    <view class="sample-pack" wx:for="{{samplePacks}}" wx:key="slug"><view><b>{{item.title}}</b><text>{{item.duration}}</text></view><button data-slug="{{item.slug}}" loading="{{loadingPack === item.slug}}" bindtap="openPack">查看练习</button></view>
   </view>
+  </block>
 
   <view class="school-final-action">
     <view class="guide-section-title">下一步</view>

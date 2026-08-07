@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-07-r348
+
+- Release ID: `2026-08-07-r348`
+- Date/Time (Asia/Singapore): `2026-08-07`
+- Deployment status: `READY`
+- Scope: remove Mini Program filter and PDF-action clipping, introduce an IB-first reading order, split school details into three task tabs, clarify result/publication status and render private higher-education programmes bilingually.
+- Key files:
+  - `lib/school-guide-directory.ts`
+  - `lib/school-guide-school-metadata.ts`
+  - `lib/school-guide-private-programmes.ts`
+  - `app/school-guide/schools/`
+  - `miniapp/boss-academic-parent/pages/guide-schools/`
+  - `miniapp/boss-academic-parent/pages/guide-school-detail/`
+  - `docs/tasks/TASK-20260807-school-directory-reading-order.md`
+- Risk impact (if any): Medium-low and isolated to public school-guide ordering, content and presentation. “IB重点” is an editorial reading order, not an official ranking. No login, assessment scoring, teaching, scheduling, packages, finance, payroll, tickets, messages, permissions or database schema changed.
+- Verification: TypeScript, 64 school-guide tests, 174 backend regression tests, 67-page Mini Program audit, native Mini Program JavaScript syntax, 243-page production build and 390×844 narrow-screen inspection passed.
+- Rollback point: `89e6a29bc4378f1bacc87d777eae9969119267a8` (`2026-08-07-r347` aligned live head).
+
+---
+
 ## 2026-08-07-r347
 
 - Release ID: `2026-08-07-r347`

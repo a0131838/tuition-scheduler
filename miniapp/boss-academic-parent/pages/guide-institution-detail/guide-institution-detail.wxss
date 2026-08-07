@@ -28,4 +28,7 @@
 .programme-group { margin-top: 24rpx; padding-top: 22rpx; border-top: 1rpx solid #e7e3de; }
 .programme-level { color: #a24412; font-size: 24rpx; font-weight: 800; }
 .programme-name { position: relative; margin-top: 14rpx; padding-left: 24rpx; color: #252a32; font-size: 25rpx; line-height: 1.62; }
+.programme-name b,.programme-name text { display: block; }
+.programme-name b { color: #252a32; font-size: 25rpx; }
+.programme-name text { margin-top: 4rpx; color: #707780; font-size: 22rpx; line-height: 1.5; }
 .programme-name::before { content: ''; position: absolute; left: 2rpx; top: 17rpx; width: 7rpx; height: 7rpx; border-radius: 50%; background: #f45b00; }

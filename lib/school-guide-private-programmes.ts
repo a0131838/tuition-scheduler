@@ -4,10 +4,127 @@ export type SchoolGuidePartnerProgramme = {
   relationship: string;
   qsRanking: string;
   statusNote?: string;
-  programmeGroups: Array<{ level: string; programmes: string[] }>;
+  programmeGroups: Array<{ level: string; programmes: Array<{ nameZh: string; nameEn: string }> }>;
 };
 
-const group = (level: string, programmes: string[]) => ({ level, programmes });
+const programmeTranslations: Array<[RegExp, string]> = [
+  [/Doctor of Business Administration/gi, "工商管理博士"],
+  [/Master of Business Administration/gi, "工商管理硕士"],
+  [/Master of Information Technology/gi, "信息技术硕士"],
+  [/Master of Psychological Science/gi, "心理科学硕士"],
+  [/Master of Professional Psychology/gi, "专业心理学硕士"],
+  [/Master of Guidance and Counselling/gi, "指导与咨询硕士"],
+  [/Master of Counselling/gi, "咨询学硕士"],
+  [/Master of Global Business/gi, "全球商务硕士"],
+  [/Master of International Business/gi, "国际商务硕士"],
+  [/Master of Supply Chain Management/gi, "供应链管理硕士"],
+  [/Master of Artificial Intelligence/gi, "人工智能硕士"],
+  [/Master of Cyber Security/gi, "网络安全硕士"],
+  [/Master of Computing/gi, "计算机硕士"],
+  [/Master of Science/gi, "理学硕士"],
+  [/Master of Arts/gi, "文学硕士"],
+  [/Master of Communication/gi, "传播学硕士"],
+  [/Graduate Certificate/gi, "研究生证书"],
+  [/Graduate Diploma/gi, "研究生文凭"],
+  [/Postgraduate Award/gi, "研究生课程"],
+  [/Bachelor of Business Administration/gi, "工商管理学士"],
+  [/Bachelor of Business and Environmental Science/gi, "商业与环境科学学士"],
+  [/Bachelor of Business/gi, "商学学士"],
+  [/Bachelor of Commerce/gi, "商业学士"],
+  [/Bachelor of Information Sciences/gi, "信息科学学士"],
+  [/Bachelor of Information Technology/gi, "信息技术学士"],
+  [/Bachelor of Cybersecurity/gi, "网络安全学士"],
+  [/Bachelor of Tourism, Hospitality and Events/gi, "旅游、酒店与会展学士"],
+  [/Bachelor of Psychological Science/gi, "心理科学学士"],
+  [/Bachelor of Biomedical Science/gi, "生物医学科学学士"],
+  [/Bachelor of Environmental and Occupational Health and Safety/gi, "环境与职业健康安全学士"],
+  [/Bachelor of Education in Early Childhood/gi, "幼儿教育学士"],
+  [/Bachelor of Nursing/gi, "护理学学士"],
+  [/Bachelor of Science/gi, "理学学士"],
+  [/Bachelor of Arts/gi, "文学学士"],
+  [/Bachelor of Laws/gi, "法学学士"],
+  [/Bachelor of Communications?/gi, "传播学学士"],
+  [/Bachelor of Computing/gi, "计算机学士"],
+  [/Bachelor of Professional Communication/gi, "专业传播学士"],
+  [/Bachelor of Criminology/gi, "犯罪学学士"],
+  [/Bachelor of Data Analytics/gi, "数据分析学士"],
+  [/BA \(Hons\)/gi, "文学荣誉学士"],
+  [/BSc \(Hons\)/gi, "理学荣誉学士"],
+  [/BEng \(Hons\)/gi, "工程荣誉学士"],
+  [/BSc/gi, "理学学士"],
+  [/MSc/gi, "理学硕士"],
+  [/Diploma of Higher Education/gi, "高等教育文凭"],
+  [/Diploma of/gi, "文凭："],
+  [/Pre-University Foundation Program/gi, "大学预科课程"],
+  [/English Language Preparatory Program/gi, "英语预备课程"],
+  [/International Foundation Programme/gi, "国际预科课程"],
+  [/LLM International Law/gi, "国际法法学硕士"],
+  [/Doctor of Professional Practice Business Transformation/gi, "专业实践博士（商业转型）"],
+  [/Accounting and Finance/gi, "会计与金融"],
+  [/Accounting/gi, "会计"],
+  [/Banking and Finance/gi, "银行与金融"],
+  [/Finance and Investment Banking/gi, "金融与投资银行"],
+  [/Finance and Investment/gi, "金融与投资"],
+  [/Finance/gi, "金融"],
+  [/Business Analytics/gi, "商业分析"],
+  [/Business Intelligence and Information Systems/gi, "商业智能与信息系统"],
+  [/Business Administration/gi, "工商管理"],
+  [/Business Management/gi, "商业管理"],
+  [/Management/gi, "管理学"],
+  [/International Business/gi, "国际商务"],
+  [/Marketing Communication/gi, "营销传播"],
+  [/Digital Marketing/gi, "数字营销"],
+  [/Marketing/gi, "市场营销"],
+  [/Human Resources Management/gi, "人力资源管理"],
+  [/Human Resource Management and Employment Relations/gi, "人力资源管理与雇佣关系"],
+  [/Hospitality and Tourism Management/gi, "酒店与旅游管理"],
+  [/Tourism and Hospitality/gi, "旅游与酒店管理"],
+  [/Logistics and Supply Chain Management/gi, "物流与供应链管理"],
+  [/Supply Chain Management/gi, "供应链管理"],
+  [/Computer Science/gi, "计算机科学"],
+  [/Computing Science/gi, "计算科学"],
+  [/Information Technology/gi, "信息技术"],
+  [/Cyber Security/gi, "网络安全"],
+  [/Data Science/gi, "数据科学"],
+  [/Artificial Intelligence/gi, "人工智能"],
+  [/Psychology/gi, "心理学"],
+  [/Nursing/gi, "护理学"],
+  [/Early Childhood/gi, "幼儿教育"],
+  [/Education/gi, "教育学"],
+  [/Project Management/gi, "项目管理"],
+  [/Engineering Management/gi, "工程管理"],
+  [/Mechanical Engineering/gi, "机械工程"],
+  [/Electrical and Electronic Engineering/gi, "电气与电子工程"],
+  [/Media and Communications/gi, "媒体与传播"],
+  [/Public Relations/gi, "公共关系"],
+  [/Journalism/gi, "新闻学"],
+  [/Top-Up/gi, "专升本"],
+  [/E-Learning/gi, "在线学习"],
+];
+
+function toChineseProgrammeName(nameEn: string) {
+  if (/^暂无/.test(nameEn)) return nameEn;
+  let translated = nameEn;
+  programmeTranslations.forEach(([pattern, replacement]) => { translated = translated.replace(pattern, replacement); });
+  return translated
+    .replace(/\(Hons\)/gi, "（荣誉）")
+    .replace(/\(Honours\)/gi, "（荣誉）")
+    .replace(/\(Post-Registration\)/gi, "（注册后课程）")
+    .replace(/\(Conversion Program for Registered Nurses\)/gi, "（注册护士转换课程）")
+    .replace(/Majoring in/gi, "主修")
+    .replace(/majors?/gi, "方向")
+    .replace(/General Stream/gi, "通用方向")
+    .replace(/Executive MBA/gi, "高级管理人员工商管理硕士")
+    .replace(/Global /gi, "全球")
+    .replace(/ and /gi, "与")
+    .replace(/、\s*/g, "、")
+    .trim();
+}
+
+const group = (level: string, programmes: string[]) => ({
+  level,
+  programmes: programmes.map((nameEn) => ({ nameEn, nameZh: toChineseProgrammeName(nameEn) })),
+});
 
 export const schoolGuidePrivatePartnerProgrammes: Record<string, SchoolGuidePartnerProgramme[]> = {
   "private-jcu-singapore": [

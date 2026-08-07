@@ -523,6 +523,11 @@
 .sg-school-snapshot small,.sg-school-snapshot strong { display: block; }
 .sg-school-snapshot small { color: var(--sg-muted); font-size: 11px; font-weight: 800; }
 .sg-school-snapshot strong { margin-top: 10px; color: var(--sg-ink); font-size: 15px; line-height: 1.5; }
+.sg-school-tabs { position: sticky; top: 0; z-index: 8; display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 22px; border-bottom: 1px solid var(--sg-line); background: var(--sg-paper); }
+.sg-school-tabs button { padding: 17px 8px 14px; border: 0; border-bottom: 3px solid transparent; color: var(--sg-muted); background: transparent; font-weight: 800; cursor: pointer; }
+.sg .sg-school-tabs button:hover { color: var(--sg-ink); background: transparent; }
+.sg .sg-school-tabs button.active { border-bottom-color: var(--sg-accent); color: var(--sg-ink); background: transparent; }
+.sg-school-tab-content { min-height: 520px; }
 .sg-school-metrics { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 2px solid var(--sg-ink); }
 .sg-school-metrics > div { min-height: 128px; padding: 22px 16px; border-right: 1px solid var(--sg-line); border-bottom: 1px solid var(--sg-line); }
 .sg-school-metrics > div:last-child { border-right: 0; }
@@ -1005,6 +1010,9 @@
   color: white;
   background: var(--sg-ink);
 }
+.sg-directory-focus.is-secondary { margin-top: 10px; }
+.sg-directory-more { display: flex; justify-content: space-between; width: 100%; margin-top: 12px; padding: 8px 0; border: 0; color: var(--sg-muted); background: transparent; cursor: pointer; }
+.sg-directory-count-row { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; color: var(--sg-muted); font-size: 12px; }
 
 .sg-directory-count,
 .sg-directory-source {
@@ -1298,7 +1306,9 @@
 .sg-programme-groups { display: grid; gap: 18px; padding-top: 18px; }
 .sg-programme-groups h4 { margin: 0 0 8px; font-size: 15px; color: var(--sg-accent); }
 .sg-programme-groups ul { margin: 0; padding-left: 20px; }
-.sg-programme-groups li { margin: 8px 0; line-height: 1.65; }
+.sg-programme-groups li { margin: 12px 0; line-height: 1.55; }
+.sg-programme-groups li strong,.sg-programme-groups li small { display: block; }
+.sg-programme-groups li small { margin-top: 3px; color: var(--sg-muted); font-size: 12px; }
 .sg-linked-block { margin-top: 34px; border-top: 2px solid var(--sg-ink); }
 .sg-linked-block h2 { margin: 22px 0 8px; }
 .sg-linked-block > a { display: grid; grid-template-columns: 1fr auto; gap: 6px 24px; padding: 17px 0; border-bottom: 1px solid var(--sg-line); color: inherit; text-decoration: none; }

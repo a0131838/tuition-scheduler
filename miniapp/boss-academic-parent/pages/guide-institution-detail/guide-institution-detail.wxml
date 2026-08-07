@@ -22,7 +22,7 @@
         <view class="partner-status" wx:if="{{partner.statusNote}}">{{partner.statusNote}}</view>
         <view class="programme-group" wx:for="{{partner.programmeGroups}}" wx:key="level" wx:for-item="programmeGroup">
           <view class="programme-level">{{programmeGroup.level}}</view>
-          <view class="programme-name" wx:for="{{programmeGroup.programmes}}" wx:key="*this" wx:for-item="programme">{{programme}}</view>
+          <view class="programme-name" wx:for="{{programmeGroup.programmes}}" wx:key="nameEn" wx:for-item="programme"><b>{{programme.nameZh}}</b><text>{{programme.nameEn}}</text></view>
         </view>
       </view>
     </view>
@@ -42,7 +42,7 @@
 
   <view class="guide-section" wx:if="{{samplePacks.length}}">
     <view class="guide-section-title">例题与申请资料</view>
-    <view class="sample-pack" wx:for="{{samplePacks}}" wx:key="slug"><view><b>{{item.title}}</b><text>{{item.label}} · {{item.duration}}</text></view><button data-slug="{{item.slug}}" loading="{{loadingPack === item.slug}}" bindtap="openPack">打开PDF</button></view>
+    <view class="sample-pack" wx:for="{{samplePacks}}" wx:key="slug"><view><b>{{item.title}}</b><text>{{item.label}} · {{item.duration}}</text></view><button data-slug="{{item.slug}}" loading="{{loadingPack === item.slug}}" bindtap="openPack">查看练习</button></view>
   </view>
 
   <view class="school-final-action"><view class="guide-section-title">下一步</view><view class="guide-action-row"><button class="guide-action secondary" bindtap="goAssessment">做学习测评</button><button class="guide-action" bindtap="goConsult">咨询申请方案</button></view></view>

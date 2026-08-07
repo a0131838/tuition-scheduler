@@ -11,6 +11,9 @@ export type SchoolGuideSchoolGroup = SchoolGuideSchool & {
   memberSlugs: string[];
   campusProfiles: SchoolGuideCampusProfile[];
   directoryTags: Array<"FIRST" | "IB" | "BRITISH" | "AMERICAN" | "PRESCHOOL" | "HERITAGE" | "SPECIAL_SUPPORT" | "VISA_LIMITED" | "NEW">;
+  browseGroup: "IB_FEATURED" | "IB" | "NON_IB_FEATURED" | "OTHER";
+  browseRank: number;
+  browseLabel: string;
 };
 
 export type SchoolGuideDirectoryCategory = {
@@ -68,6 +71,21 @@ const groupedBrands = [
   },
 ] as const;
 
+const featuredIbOrder = [
+  "UWC South East Asia (UWCSEA)",
+  "Tanglin Trust School",
+  "Dulwich College (Singapore)",
+  "North London Collegiate School (Singapore)",
+  "St. Joseph's Institution International Ltd",
+  "Hwa Chong International School",
+  "ACS (International), Singapore",
+] as const;
+
+const featuredNonIbOrder = [
+  "Singapore American School",
+  "Brighton College (Singapore)",
+] as const;
+
 function unique<T>(values: T[]) {
   return Array.from(new Set(values));
 }
@@ -90,6 +108,15 @@ function buildTags(school: SchoolGuideSchool, members: SchoolGuideSchool[]) {
   return tags;
 }
 
+function buildBrowseOrder(school: SchoolGuideSchool, tags: SchoolGuideSchoolGroup["directoryTags"]) {
+  const ibFeaturedIndex = featuredIbOrder.indexOf(school.name as never);
+  if (ibFeaturedIndex >= 0) return { browseGroup: "IB_FEATURED" as const, browseRank: ibFeaturedIndex, browseLabel: "IB重点" };
+  if (tags.includes("IB")) return { browseGroup: "IB" as const, browseRank: 100, browseLabel: "IB学校" };
+  const nonIbFeaturedIndex = featuredNonIbOrder.indexOf(school.name as never);
+  if (nonIbFeaturedIndex >= 0) return { browseGroup: "NON_IB_FEATURED" as const, browseRank: 200 + nonIbFeaturedIndex, browseLabel: "优质非IB" };
+  return { browseGroup: "OTHER" as const, browseRank: 300, browseLabel: "其他课程" };
+}
+
 function mergeMembers(
   members: SchoolGuideSchool[],
   override?: { canonicalName: string; name: string; nameZh: string },
@@ -110,11 +137,13 @@ function mergeMembers(
     sourceIds: unique(members.flatMap((item) => item.sourceIds)),
     editorialTier: members.some((item) => item.editorialTier === 1) ? 1 : null,
   };
+  const directoryTags = buildTags(merged, members);
   return {
     ...merged,
     memberSlugs: members.map((item) => item.slug),
     campusProfiles: campusProfiles.length > 1 ? campusProfiles : [],
-    directoryTags: buildTags(merged, members),
+    directoryTags,
+    ...buildBrowseOrder(merged, directoryTags),
   };
 }
 
@@ -140,10 +169,7 @@ const allSchoolGuideSchoolGroups: SchoolGuideSchoolGroup[] = (() => {
   const standalone = schoolGuideSchools
     .filter((school) => !consumed.has(school.slug))
     .map((school) => mergeMembers([school]));
-  return [...grouped, ...standalone].sort((a, b) => {
-    const tier = (a.editorialTier === 1 ? 0 : 1) - (b.editorialTier === 1 ? 0 : 1);
-    return tier || a.name.localeCompare(b.name);
-  });
+  return [...grouped, ...standalone].sort((a, b) => a.browseRank - b.browseRank || a.name.localeCompare(b.name));
 })();
 
 export const schoolGuideSchoolGroups = allSchoolGuideSchoolGroups.filter(

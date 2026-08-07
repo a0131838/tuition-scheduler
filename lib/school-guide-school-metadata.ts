@@ -16,6 +16,7 @@ export type SchoolGuideAcademicRecord = {
 export type SchoolGuideAcademicResults = {
   programme: string;
   note: string;
+  publicationStatus?: "PUBLISHED" | "NOT_PUBLISHED" | "NO_GRADUATING_COHORT" | "LIMITED";
   records: SchoolGuideAcademicRecord[];
   sourceLabel?: string;
   sourceUrl?: string;
@@ -282,7 +283,9 @@ const enriched: Record<string, Partial<Omit<SchoolGuidePublicMetadata, "nameZh" 
       sourceUrl: "https://www.ais.com.sg/secondary/academic-results-university-placements/",
       checkedAt: "2026-08-06",
     },
-    universityOutcomeNote: "学校公布毕业生进入15个以上国家的大学；具体院校名单应按年度毕业班页面核对。",
+    universityOutcomes: [
+      { year: "近三届去向", summary: "68.5%赴澳大利亚或新西兰、17%赴英国、4%赴美国或加拿大、3.5%赴欧洲、7%赴亚洲；学校另称2025届100%获得大学录取，99%获得首选院校之一的录取。" },
+    ],
     publicUpdatedAt: "2026-08-06",
   },
   "Canadian International School, Lakeside Campus": {
@@ -296,7 +299,9 @@ const enriched: Record<string, Partial<Omit<SchoolGuidePublicMetadata, "nameZh" 
       sourceUrl: "https://www.cis.edu.sg/about-us/academic-results",
       checkedAt: "2026-08-06",
     },
-    universityOutcomeNote: "学校公开页面展示全球大学录取方向，但当前未提供可稳定核实的整届去向比例。",
+    universityOutcomes: [
+      { year: "2024届公开案例", summary: "学校Secondary Profile列出Cambridge、Stanford、Imperial、UCL与NUS等课程去向案例；这是代表性案例，不是整届统计。" },
+    ],
     publicUpdatedAt: "2026-08-06",
   },
   "Chatsworth International School, Singapore": {
@@ -373,6 +378,7 @@ const enriched: Record<string, Partial<Omit<SchoolGuidePublicMetadata, "nameZh" 
   "Hwa Chong International School": {
     academicResults: {
       programme: "IB Diploma",
+      publicationStatus: "PUBLISHED",
       note: "学校使用11月IB考试；华中国际为选择性较强的中学及高中，平均分应与招生基础一起理解。",
       records: [
         { year: "2025", average: "38.3", highlight: "46.4%取得40分或以上；59.5%取得38分或以上。" },
@@ -394,6 +400,9 @@ const enriched: Record<string, Partial<Omit<SchoolGuidePublicMetadata, "nameZh" 
       sourceUrl: "https://www.iss.edu.sg/",
       checkedAt: "2026-08-06",
     },
+    universityOutcomes: [
+      { year: "2015–2025录取汇总", summary: "学校档案列出NUS、NTU、SMU、Imperial、LSE、UCL、Edinburgh、UBC、Toronto、UC Berkeley与UCLA等录取；为十年汇总，不代表单届结果。" },
+    ],
     publicUpdatedAt: "2026-08-06",
   },
   "Nexus International School (Singapore)": {
@@ -408,6 +417,10 @@ const enriched: Record<string, Partial<Omit<SchoolGuidePublicMetadata, "nameZh" 
       sourceUrl: "https://www.nexus.edu.sg/academic-results/",
       checkedAt: "2026-08-06",
     },
+    universityOutcomes: [
+      { year: "2025届", summary: "学校公布去向包括King’s College London、Bristol、Leeds、University of Amsterdam、University of Melbourne与Savannah College of Art and Design。" },
+      { year: "2026届录取（截至公布日）", summary: "学校公布已获Cambridge、UCL、LSE、King’s、Bocconi与Wesleyan等录取；录取不等于最终入读。" },
+    ],
     universityOutcomeNote: "学校公布多国大学录取与课程案例；当前未公布整届最终入读比例。",
     publicUpdatedAt: "2026-08-06",
   },
@@ -425,6 +438,9 @@ const enriched: Record<string, Partial<Omit<SchoolGuidePublicMetadata, "nameZh" 
       sourceUrl: "https://www.npsinternational.com.sg/academic-results/",
       checkedAt: "2026-08-06",
     },
+    universityOutcomes: [
+      { year: "学校历年录取汇总", summary: "学校公开列表包括Stanford、Caltech、Columbia、UC Berkeley、UCLA、Brown、Imperial、UCL等；未按单届披露，不能换算单届比例。" },
+    ],
     publicUpdatedAt: "2026-08-06",
   },
   "One World International School Pte Ltd": {
@@ -480,6 +496,9 @@ const enriched: Record<string, Partial<Omit<SchoolGuidePublicMetadata, "nameZh" 
       sourceUrl: "https://www.sji-international.com.sg/businesscon/blog/post/~board/news-releases/post/sji-international-class-of-2025-ib-results",
       checkedAt: "2026-08-06",
     },
+    universityOutcomes: [
+      { year: "学校历年去向汇总", summary: "学校2027高中简章列出Oxford、Cambridge、UCL、Imperial、LSE、Harvard、Yale、Stanford、NUS、NTU与SMU等；未按单届披露。" },
+    ],
     publicUpdatedAt: "2026-08-06",
   },
   "Stamford American International School": {
@@ -571,6 +590,7 @@ const enriched: Record<string, Partial<Omit<SchoolGuidePublicMetadata, "nameZh" 
     ],
     academicResults: {
       programme: "IB Diploma",
+      publicationStatus: "PUBLISHED",
       note: "学校同时提供A Level和IB Diploma，IB数据只代表选择IB路径的学生。",
       records: [
         { year: "2022", average: "41.4", passRate: "100%" },
@@ -579,7 +599,13 @@ const enriched: Record<string, Partial<Omit<SchoolGuidePublicMetadata, "nameZh" 
         { year: "2025", average: "39.6", passRate: "100%" },
         { year: "2026", average: "38.7", passRate: "100%", highlight: "5名学生取得45分，27.5%取得42分以上。" },
       ],
+      sourceLabel: "Tanglin Trust School Academic Results",
+      sourceUrl: "https://www.tts.edu.sg/about-tanglin/academic-results",
+      checkedAt: "2026-08-07",
     },
+    universityOutcomes: [
+      { year: "近届方向", summary: "学校表示多数毕业生前往英国，另有学生赴北美、欧洲与澳大拉西亚；学校未在当前公开网页披露整届逐校比例。" },
+    ],
     publicUpdatedAt: "2026-08-06",
   },
   "United World College of South East Asia": {
@@ -633,14 +659,16 @@ function fallbackAcademicResults(name: string): SchoolGuideAcademicResults {
   if (noGraduatingExamSchools.has(name)) {
     return {
       programme: "学前阶段",
-      note: "该记录不提供高中毕业课程，因此没有IB、A-Level、AP或高中毕业会考成绩。家长应重点查看课程语言、师生互动、照护时段和小学衔接。",
+      note: "不提供高中毕业课程，无高中成绩数据。",
+      publicationStatus: "NO_GRADUATING_COHORT",
       records: [],
       checkedAt: "2026-08-06",
     };
   }
   return {
     programme: "公开考试与升学结果",
-    note: "已检索学校公开资料、新闻发布及可核实的第三方资料，暂未找到能够确认年份、考试体系和统计口径的整届成绩。这里不会用集团其他校区成绩、个别学生成绩或宣传排名代替本校结果。",
+    note: "学校暂未公开可核实的整届成绩。",
+    publicationStatus: "NOT_PUBLISHED",
     records: [],
     checkedAt: "2026-08-06",
   };
@@ -652,14 +680,18 @@ export function getSchoolGuidePublicMetadata(
   verifiedAt?: string,
 ): SchoolGuidePublicMetadata {
   const detail = enriched[name] ?? {};
+  const academicResults = detail.academicResults || fallbackAcademicResults(name);
   return {
     ...detail,
     nameZh: chineseNames[name] || name,
     nameZhBasis: "通用中文译名",
-    academicResults: detail.academicResults || fallbackAcademicResults(name),
+    academicResults: {
+      ...academicResults,
+      publicationStatus: academicResults.publicationStatus || (academicResults.records.length ? "PUBLISHED" : "LIMITED"),
+    },
     universityOutcomeNote: detail.universityOutcomeNote || (detail.universityOutcomes?.length
       ? undefined
-      : "暂未找到按届、可核实的完整大学录取或最终入读数据；不以个别名校offer代替整届升学结果。"),
+      : "学校暂未公开可核实的整届升学去向。"),
     updateCadence: detail.updateCadence || (verified
       ? "招生与费用每季度复核；成绩与升学去向每年7–9月更新"
       : "每6个月核对基础档案；学校发布招生或成绩时提前更新"),

@@ -8,6 +8,9 @@
 .school-snapshot-item:nth-child(2n) { border-right: 0; }
 .school-snapshot-label { color: #818992; font-size: 23rpx; font-weight: 800; }
 .school-snapshot-value { margin-top: 10rpx; color: #18202a; font-size: 26rpx; font-weight: 850; line-height: 1.45; }
+.school-detail-tabs { position: sticky; top: 0; z-index: 8; display: grid; grid-template-columns: repeat(3, 1fr); padding: 16rpx 32rpx 0; background: #f5f3ef; border-bottom: 1rpx solid #d9dcdf; }
+.school-detail-tab { padding: 22rpx 8rpx 20rpx; color: #707780; font-size: 25rpx; font-weight: 800; text-align: center; border-bottom: 5rpx solid transparent; }
+.school-detail-tab.active { color: #18202a; border-bottom-color: #ec5e0a; }
 .school-metric-grid { display: grid; grid-template-columns: repeat(2, 1fr); margin-top: 28rpx; border-top: 2rpx solid #18202a; }
 .school-metric { min-height: 156rpx; padding: 24rpx 12rpx 22rpx 0; border-bottom: 1rpx solid #d9dcdf; }
 .school-metric:nth-child(2n) { padding-left: 22rpx; border-left: 1rpx solid #d9dcdf; }

@@ -14,3 +14,12 @@
 .school-subcategory-tabs .guide-tier-tab {
   flex: none;
 }
+
+.school-focus-scroll {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.school-focus-more {
+  margin-top: 8rpx;
+}

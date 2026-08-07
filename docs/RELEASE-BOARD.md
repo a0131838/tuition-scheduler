@@ -71,11 +71,24 @@
 - Current release line: `2026-08-07-r345` is live at runtime feature commit `3e5222d921c0180eb32d036b909b7f69cafe78a7`; WeChat development version `1.0.42` was uploaded successfully. It removes the obsolete five-Poly, six-university and combined LASALLE/NAFA cards; restores all 19 institutions in the 2026 JAE JC/MI list; and separates regulatory overviews from real schools.
 - Current release line: `2026-08-07-r346` is live at runtime commit `8f4a3fa771176014ea7ede018befeda08cbd2511`. It fixes international-school difficulty, age/grade and curriculum matching and allows repeat assessment while preserving reports; Mini Program upload was held for r347.
 - Current release line: `2026-08-07-r347` is live at runtime feature commit `07c739ce766165bdf585f3335fea0515c1a0e013`. It expands the source register to 84 records / 75 K–12 and preschool brands, presents 66 correctly classified international-school brands, and adds explicit Student’s Pass, long-term-pass-only or written-verification status to every international-school profile. WeChat development version `1.0.43` was uploaded successfully.
+- Current release line prepared: `2026-08-07-r348` fixes public Mini Program filter/PDF-action clipping, applies an IB-first editorial reading order, splits school details into three task tabs and adds bilingual private-university programme names.
 - Current release line prepared: `2026-08-07-r346` recalibrates international-school recommendations by real admission difficulty, age/grade and curriculum, explicitly covers IB, A Level, AP, IGCSE, CBSE and Australian routes, and allows repeat assessment without deleting prior reports.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-07-r348 Ready
+
+- Scope: public school-directory mobile readability, result-status clarity and bilingual private-higher-education programmes.
+- Business impact:
+  - filter tags scroll safely and lower-frequency filters stay behind “更多筛选”;
+  - parents see selected IB schools first, then other IB, featured non-IB and other curricula;
+  - each school detail uses “概览、成绩升学、申请费用” and one age-relevant English preparation pack;
+  - all 280 private higher-education programme lines show a Chinese reference name plus the original official English title.
+- Safety boundary: editorial order is not an official ranking; unpublished school results remain unpublished. Authenticated operations and the database are unchanged.
+- Verification before deploy: TypeScript, 64 school-guide tests, 174 backend regressions, 67-page Mini Program audit, native JavaScript syntax, 243-page build and 390×844 narrow-screen inspection passed.
+- Rollback point: `89e6a29bc4378f1bacc87d777eae9969119267a8`.
 
 ## 2026-08-07-r347 Live
 

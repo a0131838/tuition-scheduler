@@ -19,7 +19,7 @@ export default async function InstitutionPage({ params }: { params: Promise<{ sl
         <div className="sg-partner-programme-list">{institution.partnerProgrammes.map((partner) => <article className="sg-partner-programme-card" key={partner.partner}>
           <div className="sg-partner-programme-title"><div><small>{partner.relationship}</small><h3>{partner.partnerZh}</h3><p>{partner.partner}</p></div><strong>{partner.qsRanking}</strong></div>
           {partner.statusNote ? <p className="sg-partner-status">{partner.statusNote}</p> : null}
-          <div className="sg-programme-groups">{partner.programmeGroups.map((group) => <div key={group.level}><h4>{group.level}</h4><ul>{group.programmes.map((programme) => <li key={programme}>{programme}</li>)}</ul></div>)}</div>
+          <div className="sg-programme-groups">{partner.programmeGroups.map((group) => <div key={group.level}><h4>{group.level}</h4><ul>{group.programmes.map((programme) => <li key={programme.nameEn}><strong>{programme.nameZh}</strong><small>{programme.nameEn}</small></li>)}</ul></div>)}</div>
         </article>)}</div>
       </section> : null}
       <article className="sg-copy">{institution.sections.map((section, index) => <details className="sg-school-detail-section" key={section.title} open={index === 0}><summary>{section.title}</summary><ul>{section.items.map((item) => <li key={item}>{item}</li>)}</ul></details>)}</article>
