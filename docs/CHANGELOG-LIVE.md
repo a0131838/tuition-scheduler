@@ -19,11 +19,11 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-08-07-r351`
 - Date/Time (Asia/Singapore): `2026-08-07`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: apply one stable parent-facing priority order across all international-school filters and remove repetitive generic Student’s Pass confirmation copy.
 - Key files: `lib/school-guide-directory.ts`, `lib/school-guide-data.ts`, `app/school-guide/schools/`, `miniapp/boss-academic-parent/pages/guide-schools/`, `miniapp/boss-academic-parent/pages/guide-school-detail/`, `tests/school-guide-*.test.ts`, `docs/tasks/TASK-20260807-school-priority-visa-copy.md`.
 - Risk impact (if any): Low and isolated to public guide ordering and presentation. The order is editorial browsing priority, not an official ranking, recommendation score, admission promise or visa decision. No authenticated workflow or database change.
-- Verification: 68 school-guide tests, 174 backend regressions, TypeScript, native Mini Program JavaScript syntax, the 67-page Mini Program audit, the 243-page production build and 390×844 browser checks passed.
+- Verification: 68 school-guide tests, 174 backend regressions, TypeScript, native Mini Program JavaScript syntax, the 67-page Mini Program audit, the 243-page production build and 390×844 browser checks passed. Live catalog `2026-08-07-r351` returns 60 unique browse ranks, the agreed five-school top order and expected IB/British/American/other leaders. Production list/detail checks contain no generic Student’s Pass fallback, all three routes return HTTP 200 and runtime feature commit `471eb67038da61b1e0f843cf0192aa43bf5e6e6c` ran under PM2 PID `2182840`. WeChat development version `1.0.47` uploaded at 724,213 bytes.
 - Rollback point: `07bb9a2684da5f37103bae7c7766cd3fda368e9d` (`2026-08-07-r350` aligned live head).
 
 ---
