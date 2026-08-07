@@ -74,7 +74,7 @@
 - Current release line: `2026-08-07-r348` is live at runtime feature commit `6a413de5976af799ea994cba438886ec2feec5e4`. It fixes public Mini Program filter/PDF-action clipping, applies an IB-first editorial reading order, splits school details into three task tabs and adds bilingual private-university programme names. WeChat development version `1.0.44` was uploaded successfully.
 - Current release line: `2026-08-07-r349` is live at runtime feature commit `c2d8cf68bf7ebf2099fe1114037803419f0fc41b`. It removes all consumer-facing tier labels and assigns every international school to one evidence-based main curriculum filter while preserving every secondary curriculum in school detail. WeChat development version `1.0.45` was uploaded successfully.
 - Current release line: `2026-08-07-r351` is live at runtime feature commit `471eb67038da61b1e0f843cf0192aa43bf5e6e6c`. It gives all 60 international schools one stable parent-facing priority order, keeps the five first-tier schools together at the top of “全部”, applies the same order inside each curriculum filter and hides generic Student’s Pass fallback copy unless a real long-term-pass restriction exists. WeChat development version `1.0.47` was uploaded successfully.
-- Current release line prepared: `2026-08-07-r352` fixes the Mini Program rank-zero bug, shows all international-school filters in one horizontal rail and routes four private/alternative/support programmes into detailed private-specialist profiles.
+- Current release line: `2026-08-07-r352` is live at runtime feature commit `53f83e9fee7156751cb2ff3f6b39d16680e77e73`. It fixes the Mini Program rank-zero bug, shows all international-school filters in one horizontal rail and routes four private/alternative/support programmes into detailed private-specialist profiles. WeChat development version `1.0.48` was uploaded successfully.
 - Current release line: `2026-08-07-r350` is live at runtime feature commit `aff83c10a2e68390d4806138e55b618d6d6e5e7f`. It restores the agreed five-school first-tier label, routes six PEI/private/specialist records out of the international-school list and opens every school detail on results/outcomes while retaining overview and application content. WeChat development version `1.0.46` was uploaded successfully.
 - Current release line prepared: `2026-08-07-r346` recalibrates international-school recommendations by real admission difficulty, age/grade and curriculum, explicitly covers IB, A Level, AP, IGCSE, CBSE and Australian routes, and allows repeat assessment without deleting prior reports.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
@@ -82,7 +82,7 @@
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
-## 2026-08-07-r352 Ready
+## 2026-08-07-r352 Live
 
 - Scope: Mini Program school-order fix, one-line horizontal filters and evidence-based directory cleanup.
 - Business impact:
@@ -94,6 +94,7 @@
 - Verification before deploy: 69 school-guide tests, 174 backend regressions, TypeScript, Mini Program syntax, 67-page release audit, 243-page build and 390×844 browser check passed.
 - Post-deploy verification: catalog `2026-08-07-r352`, Tanglin first, 56 international brands, four migrated private/specialist profiles and directory/detail HTTP 200.
 - Rollback point: `c0cc97ef40c101874ab655cb763dc0e18bfe07a8`.
+- Deployment: runtime feature commit `53f83e9fee7156751cb2ff3f6b39d16680e77e73`, PM2 PID `2201294`, health HTTP 200. Live catalog has 56 international brands and the exact five-school top order. WeChat development version `1.0.48` uploaded at 723,740 bytes.
 
 ## 2026-08-07-r351 Live
 
