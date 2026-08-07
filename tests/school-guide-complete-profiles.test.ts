@@ -119,7 +119,7 @@ test("private higher education and public postsecondary routes stay separated an
   assert.ok(privateCategory?.sectorIds.includes("private-education-institutions"));
   assert.ok(!publicCategory?.sectorIds.includes("private-education-institutions"));
   assert.deepEqual(publicCategory?.groups?.map((item) => item.id), ["ALL", "jc-mi", "polytechnics", "bca-academy", "research-universities", "applied-universities", "ite", "arts"]);
-  assert.deepEqual(privateCategory?.groups?.map((item) => item.id), ["ALL", "private-secondary", "private-higher", "private-higher-other", "faith-special"]);
+  assert.deepEqual(privateCategory?.groups?.map((item) => item.id), ["ALL", "private-secondary", "private-higher", "private-higher-other", "faith-special", "private-overview"]);
 
   const popularPrivate = schoolGuideOfficialInstitutions.filter((item) => item.badges.includes("热门私立高校"));
   assert.equal(popularPrivate.length, 10);

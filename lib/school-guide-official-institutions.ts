@@ -1,6 +1,6 @@
 import moeData from "@/data/school-guide/moe-schools-2026.json";
 import { schoolGuidePrivatePartnerProgrammes, type SchoolGuidePartnerProgramme } from "@/lib/school-guide-private-programmes";
-import { schoolGuideAutonomousUniversityProfiles, schoolGuideBcaAcademyProfiles, schoolGuidePolytechnicProfiles } from "@/lib/school-guide-public-postsecondary";
+import { schoolGuideArtsInstitutionProfiles, schoolGuideAutonomousUniversityProfiles, schoolGuideBcaAcademyProfiles, schoolGuidePolytechnicProfiles } from "@/lib/school-guide-public-postsecondary";
 import { schoolGuidePreschoolDecisionProfiles, schoolGuidePreschoolOperatorProfiles } from "@/lib/school-guide-preschool-profiles";
 
 export type SchoolGuideInstitution = {
@@ -58,9 +58,24 @@ function compact(values: Array<string | undefined | null>) {
   return values.filter((value): value is string => Boolean(value && value.trim()));
 }
 
+const jaeMixedLevelSchools = new Set([
+  "ANGLO-CHINESE SCHOOL (INDEPENDENT)",
+  "DUNMAN HIGH SCHOOL",
+  "HWA CHONG INSTITUTION",
+  "NATIONAL JUNIOR COLLEGE",
+  "RAFFLES INSTITUTION",
+  "RIVER VALLEY HIGH SCHOOL",
+  "ST. JOSEPH'S INSTITUTION",
+  "TEMASEK JUNIOR COLLEGE",
+]);
+
+function isJcOrMiInstitution(record: MoeRecord) {
+  return record.level.includes("JUNIOR COLLEGE") || record.level === "CENTRALISED INSTITUTE" || jaeMixedLevelSchools.has(record.name);
+}
+
 function moePathways(record: MoeRecord) {
   if (record.level === "PRIMARY") return ["moe-p1-international", "aeis-primary"];
-  if (record.level.includes("JUNIOR COLLEGE") || record.level === "CENTRALISED INSTITUTE") return ["jae-jc-mi"];
+  if (isJcOrMiInstitution(record)) return ["jae-jc-mi"];
   return ["aeis-secondary", "s-aeis", "dsa-secondary"];
 }
 
@@ -75,7 +90,7 @@ export const schoolGuideMoeInstitutions: SchoolGuideInstitution[] = moeData.reco
     record.gifted ? "GEP" : "",
     record.integratedProgramme ? "IP" : "",
   ]);
-  const isPostsecondary = record.level.includes("JUNIOR COLLEGE") || record.level === "CENTRALISED INSTITUTE";
+  const isPostsecondary = isJcOrMiInstitution(record);
   const type = typeLabels[record.schoolType] || record.schoolType;
   const level = levelLabels[record.level] || record.level;
   const programmes = compact([
@@ -154,7 +169,7 @@ function profile(input: Omit<SchoolGuideInstitution, "updatedAt" | "sourceAuthor
 
 export const schoolGuideEducationProfiles: SchoolGuideInstitution[] = [
   profile({
-    slug: "guide-moe-kindergarten", categoryId: "preschool", subcategory: "MOE Kindergarten", name: "MOE Kindergarten", nameZh: "MOE幼儿园", summary: "K1、K2与KCare的政府学前教育路径。", badges: ["4-6岁", "K1/K2", "KCare"],
+    slug: "guide-moe-kindergarten", categoryId: "preschool", subcategory: "MOE Kindergarten", name: "MOE Kindergarten Guide", nameZh: "MOE幼儿园申请总览", summary: "K1、K2与KCare的政府学前教育路径。", badges: ["申请总览", "4-6岁", "K1/K2", "KCare"],
     keyFacts: [{ label: "年龄", value: "K1与K2" }, { label: "主管机构", value: "MOE" }, { label: "延长照护", value: "部分校区提供KCare" }, { label: "申请方式", value: "按MOE年度注册安排" }],
     sections: [
       { title: "课程与服务", items: ["MOE Kindergarten提供K1和K2课程。", "KCare为需要全日照护的家庭提供幼儿园时段以外的照护与活动。", "部分MOE Kindergarten与Early Years Centre建立衔接安排。"] },
@@ -163,7 +178,7 @@ export const schoolGuideEducationProfiles: SchoolGuideInstitution[] = [
     ], pathwaySlugs: ["moe-kindergarten-admission"], samplePackSlugs: [], sourceAuthority: "Singapore Ministry of Education", sourceNote: "MOE Kindergarten公开介绍与年度注册规则。",
   }),
   profile({
-    slug: "guide-licensed-preschools", categoryId: "preschool", subcategory: "ECDA Licensed Preschools", name: "ECDA Licensed Preschools", nameZh: "ECDA持牌幼儿园与托儿中心", summary: "覆盖2个月至未满7岁儿童的Infant Care、Child Care和Kindergarten。", badges: ["2个月-未满7岁", "ECDA持牌", "LifeSG查询"],
+    slug: "guide-licensed-preschools", categoryId: "preschool", subcategory: "ECDA Licensed Preschools", name: "ECDA Licensed Preschool Guide", nameZh: "ECDA持牌学前教育总览", summary: "覆盖2个月至未满7岁儿童的Infant Care、Child Care和Kindergarten。", badges: ["政策总览", "2个月-未满7岁", "ECDA持牌", "LifeSG查询"],
     keyFacts: [{ label: "年龄", value: "2个月至未满7岁" }, { label: "类型", value: "Infant Care / Child Care / Kindergarten" }, { label: "主管机构", value: "ECDA" }, { label: "空位", value: "通过LifeSG Preschool Search查询" }],
     sections: [
       { title: "中心类型", items: ["Infant Care主要面向婴儿照护。", "Child Care通常提供较长时段的照护与学前课程。", "Kindergarten通常提供半日或指定时段的学前课程。"] },
@@ -199,7 +214,7 @@ export const schoolGuideEducationProfiles: SchoolGuideInstitution[] = [
     ], pathwaySlugs: ["licensed-preschool-admission"], samplePackSlugs: [], sourceAuthority: "Early Childhood Development Agency / LifeSG", sourceNote: "ECDA持牌Kindergarten资料；年龄分班和费用以具体中心公布为准。",
   }),
   profile({
-    slug: "guide-preschool-operators", categoryId: "preschool", subcategory: "AOP / POP", name: "Anchor and Partner Operators", nameZh: "大型与合作幼儿园运营商", summary: "按ECDA AOP与POP计划理解大型运营商、费用上限和中心选择。", badges: ["AOP", "POP", "费用上限"],
+    slug: "guide-preschool-operators", categoryId: "preschool", subcategory: "AOP / POP", name: "AOP and POP Policy Guide", nameZh: "AOP与POP运营体系总览", summary: "按ECDA AOP与POP计划理解大型运营商、费用上限和中心选择。", badges: ["政策总览", "AOP", "POP", "费用上限"],
     keyFacts: [{ label: "AOP", value: "Anchor Operator" }, { label: "POP", value: "Partner Operator" }, { label: "当前POP期", value: "2026-2030" }, { label: "中心查询", value: "LifeSG" }],
     sections: [
       { title: "计划作用", items: ["AOP和POP通过运营要求、费用上限及质量提升安排扩大可负担学前教育选择。", "POP 2026-2030期覆盖33家运营商、380个托儿中心。"] },
@@ -207,7 +222,7 @@ export const schoolGuideEducationProfiles: SchoolGuideInstitution[] = [
     ], pathwaySlugs: ["licensed-preschool-admission"], samplePackSlugs: [], sourceAuthority: "Early Childhood Development Agency", sourceNote: "ECDA AOP及POP公开说明；POP 2026-2030期数据。",
   }),
   profile({
-    slug: "guide-private-schools", categoryId: "private-specialist", subcategory: "MOE Registered Private Schools", name: "MOE Registered Private Schools", nameZh: "MOE注册私立学校", summary: "先核对注册、课程、教师许可和学生准证适用条件。", badges: ["MOE注册", "课程核对", "学生准证"],
+    slug: "guide-private-schools", categoryId: "private-specialist", subcategory: "MOE Registered Private Schools", name: "MOE Registered Private School Guide", nameZh: "私立中小学申请与监管总览", summary: "先核对注册、课程、教师许可和学生准证适用条件。", badges: ["申请总览", "MOE注册", "课程核对", "学生准证"],
     keyFacts: [{ label: "监管", value: "MOE注册" }, { label: "注意", value: "注册不等于质量认可" }, { label: "申请", value: "由学校自行处理" }, { label: "课程", value: "逐校核对" }],
     sections: [
       { title: "申请前核对", items: ["确认学校仍在MOE注册名单内。", "确认拟读课程、授课地点、教师许可和证书性质。", "确认学校是否可以支持适用的学生准证申请。", "阅读退款、退学、停课和课程变更条款。"] },
@@ -215,7 +230,7 @@ export const schoolGuideEducationProfiles: SchoolGuideInstitution[] = [
     ], pathwaySlugs: ["private-school-admission"], samplePackSlugs: [], sourceAuthority: "Singapore Ministry of Education", sourceNote: "MOE Private Schools公开说明。",
   }),
   profile({
-    slug: "guide-madrasahs", categoryId: "private-specialist", subcategory: "Full-time Madrasahs", name: "Full-time Madrasahs", nameZh: "全日制回教学校", summary: "新加坡全日制Madrasah的小学、中学和大学预科宗教教育路线。", badges: ["MUIS", "小学至大学预科", "学校自行招生"],
+    slug: "guide-madrasahs", categoryId: "private-specialist", subcategory: "Full-time Madrasahs", name: "Full-time Madrasah Admission Guide", nameZh: "全日制回教学校申请总览", summary: "新加坡全日制Madrasah的小学、中学和大学预科宗教教育路线。", badges: ["申请总览", "MUIS", "小学至大学预科", "学校自行招生"],
     keyFacts: [{ label: "主管机构", value: "MUIS" }, { label: "学段", value: "小学、中学、大学预科" }, { label: "申请", value: "按各校招生安排" }, { label: "课程", value: "学术与宗教教育" }],
     sections: [
       { title: "学校路线", items: ["全日制Madrasah结合国家学术科目与伊斯兰宗教教育。", "各校开设学段、语言、入学测试和招生时间不同。"] },
@@ -223,21 +238,12 @@ export const schoolGuideEducationProfiles: SchoolGuideInstitution[] = [
     ], pathwaySlugs: ["madrasah-admission"], samplePackSlugs: [], sourceAuthority: "Majlis Ugama Islam Singapura", sourceNote: "MUIS全日制Madrasah公开资料。",
   }),
   profile({
-    slug: "guide-pei", categoryId: "private-specialist", subcategory: "Private Education Institutions", name: "Private Education Institutions", nameZh: "私立教育机构（PEI）", summary: "核对SSG注册、获准课程、EduTrust和学生合同。", badges: ["SSG注册", "课程许可", "EduTrust"],
+    slug: "guide-pei", categoryId: "private-specialist", subcategory: "Private Education Institutions", name: "Private Education Institution Regulatory Guide", nameZh: "私立教育机构（PEI）申请与监管总览", summary: "核对SSG注册、获准课程、EduTrust和学生合同。", badges: ["申请总览", "SSG注册", "课程许可", "EduTrust"],
     keyFacts: [{ label: "主管机构", value: "SkillsFuture Singapore" }, { label: "核对", value: "机构与课程" }, { label: "合同", value: "学生合同" }, { label: "国际学生", value: "核对EduTrust与准证条件" }],
     sections: [
       { title: "报名之前", items: ["在TPGateway核对机构当前注册状态和获准课程。", "核对EduTrust状态、颁证机构、课程时长、授课地点和升学衔接。", "阅读学生合同、冷静期、退款、缺勤和转学条款。"] },
       { title: "申请步骤", items: ["提交学历、英语能力和身份材料。", "完成课程评估或面试。", "收到录取、费用明细和学生合同。", "国际学生按适用程序办理Student's Pass。"] },
     ], pathwaySlugs: ["pei-admission"], samplePackSlugs: [], sourceAuthority: "SkillsFuture Singapore / TPGateway", sourceNote: "SSG PEI Listing与私立教育监管资料。",
-  }),
-  profile({
-    slug: "guide-polytechnics", categoryId: "postsecondary", subcategory: "Polytechnics", name: "Singapore Polytechnics", nameZh: "新加坡五所理工学院", summary: "通过JAE、Poly EAE及适用的国际资格渠道申请Diploma。", badges: ["5所", "Diploma", "JAE / EAE"],
-    keyFacts: [{ label: "院校", value: "SP、NP、NYP、TP、RP" }, { label: "课程", value: "Diploma" }, { label: "主要渠道", value: "JAE / Poly EAE" }, { label: "学制", value: "按课程公布" }],
-    sections: [
-      { title: "五所院校", items: ["Singapore Polytechnic", "Ngee Ann Polytechnic", "Nanyang Polytechnic", "Temasek Polytechnic", "Republic Polytechnic"] },
-      { title: "申请路径", items: ["符合资格的O-Level考生通过JAE申请。", "Poly EAE按兴趣、能力、作品集、面试或选拔申请。", "国际资格申请人按各理工学院公布的国际资格渠道提交材料。"] },
-      { title: "准备材料", items: ["成绩与资格证明。", "课程要求的作品集、面试或能力证明。", "身份及国际学生所需材料。"] },
-    ], pathwaySlugs: ["jae-poly-ite", "poly-eae"], samplePackSlugs: [], sourceAuthority: "Singapore Ministry of Education / five polytechnics", sourceNote: "MOE post-secondary与JAE公开资料。",
   }),
   profile({
     slug: "guide-ite", categoryId: "postsecondary", subcategory: "Institute of Technical Education", name: "Institute of Technical Education", nameZh: "新加坡工艺教育学院（ITE）", summary: "Nitec、Higher Nitec及职业技能教育路径。", badges: ["Nitec", "Higher Nitec", "JAE / EAE"],
@@ -246,22 +252,6 @@ export const schoolGuideEducationProfiles: SchoolGuideInstitution[] = [
       { title: "课程方向", items: ["课程以职业技能、行业实践和继续升学准备为重点。", "具体课程、校区、入学条件和实习安排按ITE年度课程资料。"] },
       { title: "申请路径", items: ["符合资格的O-Level考生可通过JAE申请适用课程。", "ITE EAE依据兴趣和能力进行提前申请。", "其他资格按ITE公布的对应渠道处理。"] },
     ], pathwaySlugs: ["jae-poly-ite", "ite-eae"], samplePackSlugs: [], sourceAuthority: "Singapore Ministry of Education / ITE", sourceNote: "MOE post-secondary及ITE公开资料。",
-  }),
-  profile({
-    slug: "guide-arts-institutions", categoryId: "postsecondary", subcategory: "Arts Institutions", name: "LASALLE and NAFA", nameZh: "LASALLE与南洋艺术学院", summary: "艺术、设计、表演与创意专业的作品集和面试申请。", badges: ["LASALLE", "NAFA", "作品集"],
-    keyFacts: [{ label: "院校", value: "LASALLE / NAFA" }, { label: "重点", value: "艺术与创意专业" }, { label: "申请", value: "课程申请与专业选拔" }, { label: "常见评估", value: "作品集 / 面试 / 试演" }],
-    sections: [
-      { title: "申请准备", items: ["先确认课程层级、资格和英语要求。", "按专业准备作品集、试演、写作或面试。", "作品应保留创作过程、个人贡献和反思，而不只是最终成品。"] },
-      { title: "申请步骤", items: ["选择课程并核对专业要求。", "提交学历与身份材料。", "上传作品集或参加试演、面试。", "收到结果后按录取条件完成注册。"] },
-    ], pathwaySlugs: ["arts-institution-admission"], samplePackSlugs: [], sourceAuthority: "MOE / LASALLE / NAFA", sourceNote: "MOE post-secondary及院校公开招生资料。",
-  }),
-  profile({
-    slug: "guide-autonomous-universities", categoryId: "postsecondary", subcategory: "Autonomous Universities", name: "Singapore Autonomous Universities", nameZh: "新加坡六所自治大学", summary: "NUS、NTU、SMU、SUTD、SIT与SUSS本科申请入口。", badges: ["6所", "本科", "国际资格"],
-    keyFacts: [{ label: "院校", value: "NUS、NTU、SMU、SUTD、SIT、SUSS" }, { label: "资格", value: "A-Level、IB、Poly及国际资格" }, { label: "申请", value: "各校独立处理" }, { label: "评估", value: "按课程要求" }],
-    sections: [
-      { title: "六所大学", items: ["National University of Singapore", "Nanyang Technological University", "Singapore Management University", "Singapore University of Technology and Design", "Singapore Institute of Technology", "Singapore University of Social Sciences"] },
-      { title: "申请准备", items: ["按申请资格选择正确通道。", "核对课程先修科目、英语要求和补充测试。", "准备个人陈述、活动、作品集或面试材料；只有课程要求时提交。"] },
-    ], pathwaySlugs: ["autonomous-university-admission"], samplePackSlugs: [], sourceAuthority: "Singapore Ministry of Education / autonomous universities", sourceNote: "MOE自治大学列表与各校招生公开资料。",
   }),
 ];
 
@@ -508,6 +498,7 @@ export const schoolGuideOfficialInstitutions: SchoolGuideInstitution[] = [
   ...schoolGuidePolytechnicProfiles,
   ...schoolGuideAutonomousUniversityProfiles,
   ...schoolGuideBcaAcademyProfiles,
+  ...schoolGuideArtsInstitutionProfiles,
   ...schoolGuidePrivateEducationProfiles,
   ...schoolGuideSpedInstitutions,
 ];
@@ -518,15 +509,16 @@ export function getSchoolGuideOfficialInstitution(slug: string) {
 
 export function getSchoolGuideInstitutionDirectoryGroup(item: Pick<SchoolGuideInstitution, "categoryId" | "subcategory" | "badges">) {
   if (item.categoryId === "postsecondary") {
-    if (["Polytechnics", "Polytechnic Institution"].includes(item.subcategory)) return "polytechnics";
+    if (item.subcategory === "Polytechnic Institution") return "polytechnics";
     if (item.subcategory === "BCA Academy") return "bca-academy";
     if (item.subcategory === "Institute of Technical Education") return "ite";
-    if (item.subcategory === "Arts Institutions") return "arts";
-    if (["Autonomous Universities", "University Research"].includes(item.subcategory)) return "research-universities";
+    if (item.subcategory === "Arts Institution") return "arts";
+    if (item.subcategory === "University Research") return "research-universities";
     if (item.subcategory === "University Applied Design") return "applied-universities";
     return "jc-mi";
   }
   if (item.categoryId === "private-specialist") {
+    if (["MOE Registered Private Schools", "Full-time Madrasahs", "Private Education Institutions"].includes(item.subcategory)) return "private-overview";
     if (item.badges.includes("热门私立高校")) return "private-higher";
     if (/PEI|Private Education|高等教育|大学校区|合作大学/.test(item.subcategory)) return "private-higher-other";
     if (/教会|Madrasah|回教/.test(item.subcategory) || item.badges.includes("教会学校")) return "faith-special";
@@ -542,6 +534,7 @@ export function getSchoolGuideInstitutionDirectoryGroup(item: Pick<SchoolGuideIn
     return "preschool-overview";
   }
   if (item.categoryId === "government") {
+    if (item.badges.includes("专科学校")) return "government-specialised";
     return item.subcategory === "小学" ? "government-primary" : "government-secondary";
   }
   return "ALL";

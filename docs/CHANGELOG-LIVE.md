@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-07-r345
+
+- Release ID: `2026-08-07-r345`
+- Date/Time (Asia/Singapore): `2026-08-07`
+- Deployment status: `PREPARED`
+- Scope: remove obsolete multi-school aggregate cards, restore the complete 19-institution 2026 JAE JC/MI directory including mixed secondary-JC schools, separate LASALLE and NAFA, and isolate regulatory overview cards from real schools.
+- Key files:
+  - `lib/school-guide-official-institutions.ts`
+  - `lib/school-guide-public-postsecondary.ts`
+  - `lib/school-guide-directory.ts`
+  - `tests/school-guide-institution-classification.test.ts`
+  - `tests/school-guide-public-postsecondary.test.ts`
+  - `docs/tasks/TASK-20260807-school-directory-classification-audit.md`
+- Risk impact (if any): Low and isolated to public school-guide classification, labels and cache version. No school source record is deleted: all 337 MOE records remain represented once. Login, assessment scoring, teaching, scheduling, packages, finance, payroll, tickets and messages are unchanged.
+- Verification: 57 focused school-guide tests, 174 configured backend regression tests, the 67-page Mini Program release audit, native JavaScript syntax checks, TypeScript and the 243-page production build passed. Exact count audit returned 337/337 MOE records, 19 JC/MI, 5 Polytechnics, 6 Autonomous Universities, 2 arts institutions and zero removed aggregate cards.
+- Rollback point: `98c939c1b8b216d7d05ac7d46e5699a8c5f07355` (`2026-08-07-r344` aligned live head).
+
+---
+
 ## 2026-08-07-r344
 
 - Release ID: `2026-08-07-r344`

@@ -15,6 +15,7 @@ test("five polytechnics have separate detailed profiles and truthful joint emplo
     assert.match(item.sections.flatMap((section) => section.items).join(" "), /Diploma，不是Bachelor|Diploma/);
     assert.doesNotMatch(item.sourceNote, /单校就业率[^推]/);
   }
+  assert.equal(schoolGuideOfficialInstitutions.some((item) => item.slug === "guide-polytechnics"), false);
 });
 test("all six autonomous universities have ranking, employment and China application sections", () => {
   const items = schoolGuideOfficialInstitutions.filter((item) => ["University Research", "University Applied Design"].includes(item.subcategory));
@@ -27,6 +28,7 @@ test("all six autonomous universities have ranking, employment and China applica
     assert.ok(item.sections.some((section) => section.title === "中国学生申请流程"));
     assert.ok(["research-universities", "applied-universities"].includes(getSchoolGuideInstitutionDirectoryGroup(item)));
   }
+  assert.equal(schoolGuideOfficialInstitutions.some((item) => item.slug === "guide-autonomous-universities"), false);
 });
 
 test("BCA Academy is separate from polytechnics and universities", () => {
@@ -48,4 +50,11 @@ test("preschool directory includes five AOP operators and an international-famil
   assert.ok(guide);
   assert.equal(getSchoolGuideInstitutionDirectoryGroup(guide), "preschool-decision");
   assert.ok(guide.sections.length >= 5);
+});
+
+test("LASALLE and NAFA are separate school profiles", () => {
+  const items = schoolGuideOfficialInstitutions.filter((item) => item.subcategory === "Arts Institution");
+  assert.deepEqual(items.map((item) => item.slug).sort(), ["lasalle-college-of-the-arts", "nanyang-academy-of-fine-arts"]);
+  assert.ok(items.every((item) => getSchoolGuideInstitutionDirectoryGroup(item) === "arts"));
+  assert.equal(schoolGuideOfficialInstitutions.some((item) => item.slug === "guide-arts-institutions"), false);
 });

@@ -95,6 +95,57 @@ export const schoolGuideAutonomousUniversityProfiles: SchoolGuideInstitution[] =
   university({ slug: "singapore-university-of-social-sciences", name: "Singapore University of Social Sciences", nameZh: "新跃社科大学（SUSS）", group: "University Applied Design", badges: ["应用社科", "SUSS"], summary: "应用型大学，重点覆盖商科、人类发展、社会服务、科技、法律与跨学科课程。", rank: "QS 2027未列综合名次", employment: "已落实就业89.3%，调查时在职82.9%，全职长期职位70.8%", salary: "全职长期职位月薪中位数S$4,023", strengths: ["本科覆盖商科、人类发展、社会工作、早期教育、信息与工程、法律及跨学科应用方向。", "全日制国际学生可申请的课程范围不是全校所有课程，应从学校国际学生清单反向选择。", "适合重视社会应用、服务行业、成人与终身学习环境，并能清楚说明职业动机的学生。"], china: ["完成至少12年正规教育，并满足SUSS当年认可的SAT、ACT、IELTS、TOEFL、PTE或Cambridge English等要求。", "先核对目标课程是否对国际全日制申请人开放，再提交学术、英语、活动与身份材料。", "通过学校的selection process，可能包括认知测试、写作、面试或其他课程评估。"], fees: "SUSS学费按课程和补贴身份计算；国际生须在录取年度费用表核对目标课程总额及Tuition Grant条件。", source: "SUSS Full-time International Students、Admission Criteria、Fees及SUSS 2025 GES" }),
 ];
 
+function artsInstitution(input: { slug: string; name: string; nameZh: string; short: string; programmes: string[]; admissions: string[]; source: string }): SchoolGuideInstitution {
+  return {
+    slug: input.slug,
+    categoryId: "postsecondary",
+    subcategory: "Arts Institution",
+    name: input.name,
+    nameZh: input.nameZh,
+    summary: `${input.short}是University of the Arts Singapore的组成学院，独立管理课程申请与专业选拔。`,
+    badges: ["艺术院校", input.short, "UAS组成学院", "作品集/试演"],
+    updatedAt,
+    sourceAuthority: `MOE / University of the Arts Singapore / ${input.name}`,
+    sourceNote: `${input.source}；MOE确认LASALLE与NAFA分别管理自身课程和招生，不再合并成一个学校档案。`,
+    keyFacts: [
+      { label: "院校", value: input.name },
+      { label: "体系", value: "University of the Arts Singapore组成学院" },
+      { label: "学历", value: "Diploma / Degree，按课程" },
+      { label: "申请", value: "直接向本学院申请" },
+      { label: "常见选拔", value: "作品集 / 试演 / 面试，按专业" },
+    ],
+    sections: [
+      { title: "专业与课程", items: input.programmes },
+      { title: "中国学生申请流程", items: input.admissions },
+      { title: "作品与面试准备", items: ["先按目标专业阅读当年作品集、试演或面试要求，不用同一套作品申请所有专业。", "作品应说明创作过程、个人贡献、媒介选择和反思，而不是只提交成品图。", "核对学历、英语、课程层级、学费、Student's Pass和最终颁证安排后再接受录取。"] },
+      { title: "体系说明", items: ["LASALLE与NAFA都是UAS组成学院，但课程、申请和录取由各学院分别管理。", "UAS体系关系不代表两校可以合并申请，也不代表课程、费用或选拔完全相同。"] },
+    ],
+    pathwaySlugs: ["arts-institution-admission"],
+    samplePackSlugs: [],
+  };
+}
+
+export const schoolGuideArtsInstitutionProfiles: SchoolGuideInstitution[] = [
+  artsInstitution({
+    slug: "lasalle-college-of-the-arts",
+    name: "LASALLE College of the Arts",
+    nameZh: "拉萨尔艺术学院（LASALLE）",
+    short: "LASALLE",
+    programmes: ["公开课程覆盖美术、设计传播、室内设计、产品设计、时尚、动画、电影、音乐、舞蹈、戏剧、艺术管理及相关研究生方向。", "具体Diploma、BA或MA课程、学制和颁证安排以当年课程页为准。"],
+    admissions: ["选择具体课程并核对国际资格和英语要求。", "按课程参加Early Admissions Exercise或Direct Admissions，并提交作品集、试演、写作或面试材料。", "收到结果后核对课程层级、UAS颁证安排、完整费用和国际学生手续。"],
+    source: "MOE PSEI Overview、UAS与LASALLE招生资料",
+  }),
+  artsInstitution({
+    slug: "nanyang-academy-of-fine-arts",
+    name: "Nanyang Academy of Fine Arts",
+    nameZh: "南洋艺术学院（NAFA）",
+    short: "NAFA",
+    programmes: ["公开课程覆盖纯美术、设计与媒体、时尚、3D设计、音乐、舞蹈、戏剧及艺术管理等方向。", "学校同时设有Foundation、Diploma与Degree等不同入口；必须先确认申请的是哪一层级。"],
+    admissions: ["按学历选择NAFA Foundation Programme、Early Admissions Exercise或Direct Admissions等适用通道。", "提交成绩、英语与身份材料，并完成目标专业要求的作品集、试演、测试或面试。", "录取后核对UAS颁证安排、课程总费用、开学批次和Student's Pass。"],
+    source: "MOE PSEI Overview、UAS与NAFA招生资料",
+  }),
+];
+
 export const schoolGuideBcaAcademyProfiles: SchoolGuideInstitution[] = [{
   slug: "bca-academy",
   categoryId: "postsecondary",
