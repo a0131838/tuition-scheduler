@@ -36,6 +36,8 @@ export function publicSessionView(session: SchoolGuideAssessmentSession, preferr
   const answeredCount = questionIds.filter((id) => Boolean(answers[id]?.value)).length;
   const currentIndex = selected ? questionIds.indexOf(selected) : -1;
   const safeReport = session.report && typeof session.report === "object" ? session.report : null;
+  const retestBase = session.completedAt || session.submittedAt || session.startedAt;
+  const retestRecommendedAt = new Date(retestBase.getTime() + 30 * 24 * 60 * 60 * 1000);
   return {
     studentCode: session.studentCode,
     studentNickname: session.studentNickname,
@@ -46,6 +48,8 @@ export function publicSessionView(session: SchoolGuideAssessmentSession, preferr
     route: session.route,
     status: session.status,
     startedAt: session.startedAt,
+    completedAt: session.completedAt,
+    retestRecommendedAt,
     answeredCount,
     totalQuestions: questionIds.length,
     progressPercent: questionIds.length ? Math.round((answeredCount / questionIds.length) * 100) : 0,

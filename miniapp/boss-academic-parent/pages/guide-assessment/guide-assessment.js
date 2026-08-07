@@ -3,6 +3,7 @@ const api = require("../../utils/api");
 Page({
   data: {
     birthDate: "",
+    currentGrade: "",
     targetEntryYear: String(new Date().getFullYear() + 1),
     residencyOptions: ["国际学生", "新加坡PR", "新加坡公民"],
     residencyValues: ["IS", "PR", "SC"],
@@ -13,14 +14,14 @@ Page({
     budgetOptions: ["暂不限制", "S$30,000", "S$40,000", "S$50,000", "S$60,000", "S$70,000"],
     budgetValues: [0, 30000, 40000, 50000, 60000, 70000],
     budgetIndex: 0,
-    curriculumOptions: ["保持开放", "IB", "英式", "美式", "法式", "澳洲体系"],
-    curriculumValues: ["ANY", "IB", "BRITISH", "AMERICAN", "FRENCH", "AUSTRALIAN"],
+    curriculumOptions: ["保持开放", "IB", "英式", "A Level", "IGCSE", "美式", "AP", "印度CBSE", "法式", "澳洲/HSC"],
+    curriculumValues: ["ANY", "IB", "BRITISH", "A_LEVEL", "IGCSE", "AMERICAN", "AP", "CBSE", "FRENCH", "AUSTRALIAN"],
     curriculumIndex: 0,
     currentSchoolOptions: ["国际学校", "新加坡政府学校", "私立或教会学校", "中国或其他国家本地学校", "幼儿园或学前", "暂未入学"],
     currentSchoolValues: ["INTERNATIONAL", "MOE", "PRIVATE", "OVERSEAS_LOCAL", "PRESCHOOL", "NOT_ENROLLED"],
     currentSchoolIndex: 5,
-    currentCurriculumOptions: ["不确定", "IB", "英式", "美式", "新加坡MOE", "中国课程", "其他"],
-    currentCurriculumValues: ["ANY", "IB", "BRITISH", "AMERICAN", "MOE", "CHINA", "OTHER"],
+    currentCurriculumOptions: ["不确定", "IB", "英式", "A Level", "IGCSE", "美式", "AP", "印度CBSE", "澳洲/HSC", "新加坡MOE", "中国课程", "其他"],
+    currentCurriculumValues: ["ANY", "IB", "BRITISH", "A_LEVEL", "IGCSE", "AMERICAN", "AP", "CBSE", "AUSTRALIAN", "MOE", "CHINA", "OTHER"],
     currentCurriculumIndex: 0,
     academicLevelOptions: ["需要较多支持", "正在接近年级要求", "基本达到年级要求", "目前表现较强"],
     academicLevelValues: ["NEEDS_SUPPORT", "DEVELOPING", "ON_LEVEL", "STRONG"],
@@ -36,7 +37,7 @@ Page({
   },
 
   onLoad() {
-    api.request("/api/public/school-guide/catalog?v=r345")
+    api.request("/api/public/school-guide/catalog?v=r346")
       .then((data) => this.setData({ pathways: data.pathways || [], schools: data.schoolGroups || data.schools || [] }))
       .catch((err) => api.toast(err.message));
     const token = wx.getStorageSync("school_guide_academic_assessment_token") || "";
@@ -54,6 +55,8 @@ Page({
   setBirthDate(event) {
     this.setData({ birthDate: event.detail.value, result: null });
   },
+
+  setCurrentGrade(event) { this.setData({ currentGrade: event.detail.value || "", result: null }); },
 
   setYear(event) {
     this.setData({ targetEntryYear: event.detail.value, result: null });
@@ -95,6 +98,7 @@ Page({
         englishSupportNeeded: this.data.englishSupportNeeded,
         boardingNeeded: this.data.boardingNeeded,
         currentSchoolType: this.data.currentSchoolValues[this.data.currentSchoolIndex],
+        currentGrade: this.data.currentGrade,
         currentCurriculum: this.data.currentCurriculumValues[this.data.currentCurriculumIndex],
         academicLevel: this.data.academicLevelValues[this.data.academicLevelIndex],
         assessmentScore: this.data.assessmentScore
@@ -136,6 +140,7 @@ Page({
       "身份:" + residency,
       "体系偏好:" + preferredSystem,
       "当前学校:" + this.data.currentSchoolOptions[this.data.currentSchoolIndex],
+      "当前年级:" + (this.data.currentGrade || "未填写"),
       "当前课程:" + this.data.currentCurriculumOptions[this.data.currentCurriculumIndex],
       this.data.assessmentScore === null ? "家长自评:" + this.data.academicLevelOptions[this.data.academicLevelIndex] : "系统测评:" + this.data.assessmentScore + "分",
       "推荐学校:" + (((this.data.result || {}).schoolMatches || []).map((item) => item.nameZh || item.name).slice(0, 8).join("、") || "待生成")

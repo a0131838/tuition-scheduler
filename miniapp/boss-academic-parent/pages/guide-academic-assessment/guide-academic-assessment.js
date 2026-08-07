@@ -2,6 +2,7 @@ const api = require("../../utils/api");
 
 const SESSION_KEY = "school_guide_academic_assessment_token";
 const REQUEST_KEY = "school_guide_academic_assessment_request_token";
+const HISTORY_KEY = "school_guide_academic_assessment_history";
 
 function dateAfter(days) {
   const value = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
@@ -9,6 +10,13 @@ function dateAfter(days) {
   const month = String(value.getMonth() + 1).padStart(2, "0");
   const day = String(value.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function formatDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 Page({
@@ -28,6 +36,7 @@ Page({
     sessionToken: "",
     session: null,
     hasSession: false,
+    history: [],
     answerInput: "",
     domainRows: [],
     questionStartedAt: 0,
@@ -54,8 +63,9 @@ Page({
     wx.setKeepScreenOn({ keepScreenOn: true });
     const sessionToken = wx.getStorageSync(SESSION_KEY) || "";
     const requestToken = wx.getStorageSync(REQUEST_KEY) || "";
+    const history = wx.getStorageSync(HISTORY_KEY);
     const intent = options && options.intent;
-    this.setData({ sessionToken, requestToken, hasSession: Boolean(sessionToken), hasRequest: Boolean(requestToken) });
+    this.setData({ sessionToken, requestToken, hasSession: Boolean(sessionToken), hasRequest: Boolean(requestToken), history: Array.isArray(history) ? history : [] });
     if (intent === "request") return this.openCodeSetup();
     if (intent === "code") return this.openCodeSetup();
     if (sessionToken) {
@@ -79,6 +89,13 @@ Page({
   openCodeSetup() { this.setData({ phase: "setup" }); },
   openSavedRequest() { this.setData({ phase: "requestStatus", loading: true }); this.loadRequest().finally(() => this.setData({ loading: false })); },
   backToHub() { this.setData({ phase: "hub" }); },
+  openHistory(event) {
+    const token = event.currentTarget.dataset.token || "";
+    if (!token) return;
+    wx.setStorageSync(SESSION_KEY, token);
+    this.setData({ sessionToken: token, hasSession: true, loading: true });
+    this.loadSession().catch((err) => api.toast(err.message)).finally(() => this.setData({ loading: false }));
+  },
 
   setCode(event) { this.setData({ code: event.detail.value }); },
   setNickname(event) { this.setData({ studentNickname: event.detail.value }); },
@@ -165,7 +182,26 @@ Page({
     if (session.status === "AWAITING_REVIEW") phase = "awaiting";
     if (session.status === "COMPLETED") phase = "report";
     const domainRows = Object.keys(session.domainScores || {}).map((name) => ({ name, score: session.domainScores[name] }));
-    this.setData({ session, phase, hasSession: true, answerInput: session.currentAnswer || "", domainRows, questionStartedAt: Date.now() });
+    const retestDateText = formatDate(session.retestRecommendedAt);
+    this.setData({ session: { ...session, retestDateText }, phase, hasSession: true, answerInput: session.currentAnswer || "", domainRows, questionStartedAt: Date.now() });
+    if (session.status === "COMPLETED" && this.data.sessionToken) this.rememberSession(session, retestDateText);
+  },
+
+  rememberSession(session, retestDateText) {
+    const row = { token: this.data.sessionToken, studentCode: session.studentCode, studentNickname: session.studentNickname || "学生", score: session.overallScore, completedAt: formatDate(session.completedAt), retestDateText };
+    const history = [row].concat((this.data.history || []).filter((item) => item.token !== row.token)).slice(0, 10);
+    wx.setStorageSync(HISTORY_KEY, history);
+    this.setData({ history });
+  },
+
+  startNewRound() {
+    wx.removeStorageSync(SESSION_KEY);
+    this.setData({ sessionToken: "", session: null, hasSession: false, phase: "setup", consent: false, answerInput: "", domainRows: [] });
+  },
+
+  startForAnotherChild() {
+    wx.removeStorageSync(SESSION_KEY);
+    this.setData({ sessionToken: "", session: null, hasSession: false, phase: "setup", consent: false, studentNickname: "", currentGrade: "", languageBackground: "", answerInput: "", domainRows: [] });
   },
 
   loadSession() {

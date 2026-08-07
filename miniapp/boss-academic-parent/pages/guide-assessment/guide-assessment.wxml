@@ -19,6 +19,7 @@
   <view class="guide-field"><view class="guide-label">每年预算上限</view><picker range="{{budgetOptions}}" value="{{budgetIndex}}" bindchange="setBudget"><view class="guide-picker">{{budgetOptions[budgetIndex]}}</view></picker></view>
   <view class="guide-field"><view class="guide-label">课程偏好</view><picker range="{{curriculumOptions}}" value="{{curriculumIndex}}" bindchange="setCurriculum"><view class="guide-picker">{{curriculumOptions[curriculumIndex]}}</view></picker></view>
   <view class="guide-field"><view class="guide-label">孩子目前就读的学校类型</view><picker range="{{currentSchoolOptions}}" value="{{currentSchoolIndex}}" bindchange="setCurrentSchool"><view class="guide-picker">{{currentSchoolOptions[currentSchoolIndex]}}</view></picker></view>
+  <view class="guide-field"><view class="guide-label">孩子当前年级</view><input class="guide-input" maxlength="40" placeholder="如 P5 / Grade 5 / Year 6" value="{{currentGrade}}" bindinput="setCurrentGrade" /></view>
   <view class="guide-field"><view class="guide-label">孩子目前的课程体系</view><picker range="{{currentCurriculumOptions}}" value="{{currentCurriculumIndex}}" bindchange="setCurrentCurriculum"><view class="guide-picker">{{currentCurriculumOptions[currentCurriculumIndex]}}</view></picker></view>
   <view class="guide-field" wx:if="{{assessmentScore === null}}"><view class="guide-label">孩子目前的学习情况</view><picker range="{{academicLevelOptions}}" value="{{academicLevelIndex}}" bindchange="setAcademicLevel"><view class="guide-picker">{{academicLevelOptions[academicLevelIndex]}}</view></picker></view>
   <view class="guide-notice" wx:if="{{assessmentEvidence}}">{{assessmentEvidence}}，本次选校优先采用该结果。</view>
@@ -51,7 +52,10 @@
     <view class="guide-result-block"><view class="guide-kicker">分层候选学校</view><view class="guide-result-title">建议先比较这8所</view><view class="guide-result-note">“相对稳妥”不代表保证录取，最终仍以学校审核和入学评估为准。</view></view>
     <view class="guide-match-card" wx:for="{{result.schoolMatches}}" wx:key="slug">
       <view class="guide-match-band">{{item.bandLabel}}</view>
-      <view class="guide-result-title">{{item.name}}</view>
+      <view class="guide-result-title">{{item.nameZh || item.name}}</view>
+      <view class="guide-result-note">{{item.name}}</view>
+      <view class="guide-result-note">{{item.difficultyLabel}} · {{item.placement.suggestedGrade}} · {{item.placement.entryPointLabel}}</view>
+      <view class="guide-source-tag">课程：{{item.comparison.curriculum}}</view>
       <view class="guide-match-reason" wx:for="{{item.reasons}}" wx:for-item="reason" wx:key="*this">✓ {{reason}}</view>
       <view class="guide-match-caution" wx:for="{{item.cautions}}" wx:for-item="caution" wx:key="*this">! {{caution}}</view>
       <view class="guide-action-row"><button class="guide-action secondary" data-slug="{{item.slug}}" bindtap="openSchool">查看学校</button><button class="guide-action" data-slug="{{item.slug}}" bindtap="addToPlan">加入方案</button></view>

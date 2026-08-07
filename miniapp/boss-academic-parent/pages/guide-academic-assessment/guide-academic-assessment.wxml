@@ -10,6 +10,10 @@
       <view class="assessment-choice" wx:if="{{hasRequest}}" bindtap="openSavedRequest"><view><b>查看原有申请</b><text>{{request ? request.statusLabel : '继续查看之前提交的记录'}}</text></view><i>›</i></view>
       <view class="assessment-choice" wx:if="{{hasSession}}" bindtap="loadSession"><view><b>继续测评或查看报告</b><text>使用本机已保存的测评记录</text></view><i>›</i></view>
     </view>
+    <view class="guide-section" wx:if="{{history.length}}">
+      <view class="guide-section-title">历史测评</view>
+      <view class="assessment-choice" wx:for="{{history}}" wx:key="token" data-token="{{item.token}}" bindtap="openHistory"><view><b>{{item.studentNickname}} · {{item.score}}分</b><text>{{item.completedAt}}完成 · 建议{{item.retestDateText}}后复测</text></view><i>›</i></view>
+    </view>
     <view class="guide-page-meta">请让学生独立完成。结果不是官方成绩或录取结果。</view>
   </block>
 
@@ -57,5 +61,5 @@
 
   <block wx:if="{{phase === 'awaiting'}}"><view class="assessment-result"><view class="guide-kicker">已提交</view><view class="assessment-section-title">等待老师复核</view><view class="assessment-form-note">选择题已经保存；写作、口语或观察任务评分完成后，本页会显示完整测评报告。</view><button class="assessment-primary" loading="{{loading}}" bindtap="refresh">刷新评分状态</button></view></block>
 
-  <block wx:if="{{phase === 'report'}}"><view class="assessment-result"><view class="guide-kicker">免费系统报告</view><view class="assessment-report-score">{{session.overallScore}}</view><view class="assessment-section-title">{{session.overallBand}} · 可信度{{session.confidence}}</view><view class="assessment-form-note">{{session.report.standard}}</view><view class="report-section"><b>能力域</b><view class="assessment-report-row" wx:for="{{domainRows}}" wx:key="name">{{item.name}}：{{item.score}}</view></view><view class="report-section"><b>本次相对优势</b><text wx:for="{{session.report.strengths}}" wx:key="*this">• {{item}}</text></view><view class="report-section"><b>优先补强</b><text wx:for="{{session.report.priorities}}" wx:key="*this">• {{item}}</text><view class="assessment-boundary">{{session.report.nextStep}}</view></view><view class="assessment-boundary"><b>需要更具体的下一步？</b><text>顾问可结合当前学校、目标学校和时间线，提供专业解读、精准选校及备考方案。是否联系完全由您决定。</text></view><button class="assessment-primary" bindtap="goConsult">联系顾问获取专业分析</button></view></block>
+  <block wx:if="{{phase === 'report'}}"><view class="assessment-result"><view class="guide-kicker">免费系统报告</view><view class="assessment-report-score">{{session.overallScore}}</view><view class="assessment-section-title">{{session.overallBand}} · 可信度{{session.confidence}}</view><view class="assessment-form-note">{{session.report.standard}}</view><view class="report-section"><b>能力域</b><view class="assessment-report-row" wx:for="{{domainRows}}" wx:key="name">{{item.name}}：{{item.score}}</view></view><view class="report-section"><b>本次相对优势</b><text wx:for="{{session.report.strengths}}" wx:key="*this">• {{item}}</text></view><view class="report-section"><b>优先补强</b><text wx:for="{{session.report.priorities}}" wx:key="*this">• {{item}}</text><view class="assessment-boundary">{{session.report.nextStep}}</view></view><view class="assessment-boundary"><b>可以再次测评</b><text>本次报告会保留。建议在{{session.retestDateText}}后复测，提前复测也不会被锁定，系统会优先更换平行卷。</text></view><button class="assessment-secondary" bindtap="startNewRound">开始新一轮测评</button><button class="assessment-text-button" bindtap="startForAnotherChild">为另一个孩子测评</button><view class="assessment-boundary"><b>需要更具体的下一步？</b><text>顾问可结合当前学校、目标学校和时间线，提供专业解读、精准选校及备考方案。是否联系完全由您决定。</text></view><button class="assessment-primary" bindtap="goConsult">联系顾问获取专业分析</button></view></block>
 </view>

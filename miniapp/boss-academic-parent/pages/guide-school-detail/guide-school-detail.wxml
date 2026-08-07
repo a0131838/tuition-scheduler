@@ -1,6 +1,6 @@
 <view class="guide-page" wx:if="{{school}}">
   <view class="guide-hero school-hero">
-    <view class="guide-kicker">{{school.category}}{{school.editorialTier === 1 ? " · 第一梯队" : ""}}</view>
+    <view class="guide-kicker">国际学校{{school.editorialTier === 1 ? " · 第一梯队" : ""}}</view>
     <view class="guide-title school-name-zh">{{school.nameZh}}</view>
     <view class="school-name-en">{{school.name}}</view>
   </view>
@@ -44,6 +44,12 @@
 
   <view class="guide-section">
     <view class="guide-section-title">招生、课程与费用</view>
+    <view class="guide-notice" wx:if="{{school.admissionProfile}}">
+      <view><b>{{school.admissionProfile.difficultyLabel}}</b> · {{school.admissionProfile.curriculumText}}</view>
+      <view wx:if="{{school.admissionProfile.entryPointsText}}">主要节点：{{school.admissionProfile.entryPointsText}}</view>
+      <view>{{school.admissionProfile.entryAdvice}}</view>
+      <view>“相对容易申请”不代表保证录取。</view>
+    </view>
     <view class="school-accordion" wx:if="{{detailSections.length}}">
       <view class="school-accordion-item" wx:for="{{detailSections}}" wx:key="title" wx:for-item="section" wx:for-index="sectionIndex">
         <view class="school-accordion-head" data-index="{{sectionIndex}}" bindtap="toggleSection">

@@ -7,6 +7,7 @@ import {
   ACADEMIC_ASSESSMENT_STATUS,
   ACADEMIC_ASSESSMENT_VERSION,
   chooseLeastUsedForm,
+  formIdsForAge,
   generateSessionToken,
   generateStudentCode,
   initialQuestionIds,
@@ -85,10 +86,7 @@ export async function POST(req: NextRequest) {
 
       const studentNickname = cleanText(body?.studentNickname || code.studentNickname, 60);
 
-      const formIds = ["A", "B", "C"].map((variant) => {
-        const codeByAge: Record<string, string> = { "3–5岁": "A35", "6–8岁": "A68", "9–11岁": "A911", "12–14岁": "A1214", "15–17岁": "A1517" };
-        return `CORE-${codeByAge[requestedAgeBand]}-${variant}`;
-      });
+      const formIds = formIdsForAge(requestedAgeBand);
       const [recent, previousSessions] = await Promise.all([
         tx.schoolGuideAssessmentSession.groupBy({
           by: ["formId"],
@@ -101,13 +99,19 @@ export async function POST(req: NextRequest) {
             ageBand: requestedAgeBand,
             createdAt: { gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) },
           },
-          select: { formId: true },
+          select: { id: true, formId: true, status: true, createdAt: true },
+          orderBy: { createdAt: "desc" },
         }) : Promise.resolve([]),
       ]);
       const counts = Object.fromEntries(recent.map((row) => [row.formId, row._count._all]));
-      const excludedForms = [...new Set(previousSessions.map((row) => row.formId))];
-      if (excludedForms.length >= 3) throw new Error("RETEST_REQUIRES_APPROVAL");
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      let excludedForms = [...new Set(previousSessions.filter((row) => row.createdAt >= thirtyDaysAgo).map((row) => row.formId))];
+      if (excludedForms.length >= formIds.length) {
+        const newestFirst = [...previousSessions].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        excludedForms = [...new Set(newestFirst.slice(0, Math.max(0, formIds.length - 1)).map((row) => row.formId))];
+      }
       const formId = chooseLeastUsedForm(requestedAgeBand, counts, excludedForms);
+      const previousSession = previousSessions[0] || null;
       const sessionToken = generateSessionToken();
       const questionIds = initialQuestionIds(formId);
       const session = await tx.schoolGuideAssessmentSession.create({
@@ -147,7 +151,7 @@ export async function POST(req: NextRequest) {
           action: "START",
           entityType: "SchoolGuideAssessmentSession",
           entityId: session.id,
-          meta: { ageBand: requestedAgeBand, targetPath: requestedTargetPath, formId, bankVersion: ACADEMIC_ASSESSMENT_VERSION, sourceStatus: ACADEMIC_ASSESSMENT_STATUS, sourceMode: directSelfServe ? "DIRECT_SELF_SERVE" : "CONTROLLED_CODE", assessmentRequestId: code.assessmentRequestId || null },
+          meta: { ageBand: requestedAgeBand, targetPath: requestedTargetPath, formId, bankVersion: ACADEMIC_ASSESSMENT_VERSION, sourceStatus: ACADEMIC_ASSESSMENT_STATUS, sourceMode: directSelfServe ? "DIRECT_SELF_SERVE" : "CONTROLLED_CODE", assessmentRequestId: code.assessmentRequestId || null, isRetest: Boolean(previousSession), previousSessionId: previousSession?.id || null, recommendedIntervalDays: 30 },
         },
       });
       return { session, sessionToken };
@@ -161,7 +165,6 @@ export async function POST(req: NextRequest) {
       USED_CODE: "评估码已使用；如需继续，请使用原设备上的“继续测评”。",
       AGE_MISMATCH: "所选年龄段与评估码不一致，请联系发码员工核对。",
       PATH_MISMATCH: "所选目标路径与评估码不一致，请联系发码员工核对。",
-      RETEST_REQUIRES_APPROVAL: "90天内三套平行卷均已使用，请联系老师人工批准后再测。",
     };
     if (messages[code]) return NextResponse.json({ ok: false, message: messages[code] }, { status: 409 });
     throw error;

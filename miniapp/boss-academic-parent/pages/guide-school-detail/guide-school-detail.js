@@ -12,7 +12,7 @@ Page({
 
   onLoad(options) {
     const slug = decodeURIComponent(options.slug || "");
-    api.request("/api/public/school-guide/catalog?v=r345")
+    api.request("/api/public/school-guide/catalog?v=r346")
       .then((data) => {
         const groups = data.schoolGroups || data.schools || [];
         const school = groups.find((item) => item.slug === slug || (item.memberSlugs || []).includes(slug));
@@ -27,9 +27,12 @@ Page({
             }
           : null;
         const comparison = school.comparison || {};
+        const admissionProfile = school.admissionProfile || {};
         const snapshot = [
           { label: "年龄与年级", value: comparison.ageAndGrades || "学校未公开" },
           { label: "课程体系", value: comparison.curriculum || school.category || "学校未公开" },
+          { label: "申请难度", value: admissionProfile.difficultyLabel || "需个案确认" },
+          { label: "主要入学节点", value: (admissionProfile.mainEntryPoints || []).join("、") || "按年级确认" },
           { label: "校区", value: comparison.campuses || "学校未公开" },
           { label: "首年固定费用", value: costProfile ? costProfile.rangeText : "学校未公开" }
         ];
@@ -45,6 +48,11 @@ Page({
         this.setData({
           school: {
             ...school,
+            admissionProfile: {
+              ...admissionProfile,
+              curriculumText: (admissionProfile.curriculumFamilies || []).join("、"),
+              entryPointsText: (admissionProfile.mainEntryPoints || []).join("、")
+            },
             costProfile,
             snapshot,
             communityMetrics: school.communityMetrics || [],

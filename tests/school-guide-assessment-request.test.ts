@@ -72,6 +72,18 @@ test("native miniapp starts public assessment directly while preserving legacy s
   assert.ok(appJson.pages.includes("pages/staff-assessment-request-detail/staff-assessment-request-detail"));
 });
 
+test("completed assessment can start another round without a permanent retest lock", () => {
+  const startRoute = fs.readFileSync(path.join(process.cwd(), "app/api/public/school-guide/academic-assessment/start/route.ts"), "utf8");
+  const miniapp = fs.readFileSync(path.join(process.cwd(), "miniapp/boss-academic-parent/pages/guide-academic-assessment/guide-academic-assessment.js"), "utf8");
+  const view = fs.readFileSync(path.join(process.cwd(), "miniapp/boss-academic-parent/pages/guide-academic-assessment/guide-academic-assessment.wxml"), "utf8");
+  assert.doesNotMatch(startRoute, /RETEST_REQUIRES_APPROVAL/);
+  assert.match(startRoute, /recommendedIntervalDays: 30/);
+  assert.match(miniapp, /startNewRound/);
+  assert.match(miniapp, /school_guide_academic_assessment_history/);
+  assert.match(view, /开始新一轮测评/);
+  assert.match(view, /为另一个孩子测评/);
+});
+
 test("public duplicate contact response is redacted and staff queue excludes teachers", () => {
   const publicRoute = fs.readFileSync(path.join(process.cwd(), "app/api/public/school-guide/academic-assessment/request/route.ts"), "utf8");
   const staffRoute = fs.readFileSync(path.join(process.cwd(), "app/api/miniapp/staff/academic-assessment-requests/route.ts"), "utf8");

@@ -68,7 +68,7 @@ export const schoolGuideInternationalEnrichment: Record<string, Enrichment> = {
     officialWebsiteUrl: "https://globalindianschool.org/sg/",
     verifiedFacts: ["GIIS Singapore覆盖Kindergarten至Grade 12，提供GMP、IB PYP、Cambridge、IGCSE、IBDP和CBSE等路线。"],
     detailSections: [
-      { title: "课程与年龄", items: ["Global Montessori Plus面向约3–6岁。", "IB PYP覆盖早期阶段至Grade 5；Cambridge Lower Secondary覆盖Grades 6–8；IGCSE覆盖Grades 9–10。", "Grades 11–12可按学校课程选择IBDP或CBSE。"] },
+      { title: "课程与年龄", items: ["Global Montessori Plus面向约3–6岁。", "IB PYP覆盖早期阶段至Grade 5；Cambridge Lower Secondary覆盖Grades 6–8；IGCSE覆盖Grades 9–10。", "CBSE覆盖Grade 1–12；Grades 11–12也可选择两年制IBDP。", "这是一所同时提供国际课程和印度CBSE路线的学校，不应简单标记为纯IB学校。"] },
       { title: "申请流程", items: ["提交注册表并缴交一次性注册费。", "上传出生证明、照片、疫苗记录、父母与孩子护照/身份证件、转校或离校证明及适用医疗资料。", "学校生成电子合同后，家长完成学期费用。"] },
       { title: "入学评估", items: ["学校说明申请人需参加评估，以判断学术准备和入学级别。", "全年接受申请，但录取取决于学额。"] },
     ],
@@ -96,23 +96,23 @@ export const schoolGuideInternationalEnrichment: Record<string, Enrichment> = {
   },
   "Nexus International School (Singapore)": {
     officialWebsiteUrl: "https://www.nexus.edu.sg/",
-    verifiedFacts: ["Nexus覆盖Nursery至Year 13，提供IB PYP、MYP和DP。"],
+    verifiedFacts: ["Nexus覆盖Nursery至Year 13，Nursery–Year 6为IB PYP，Years 7–9为IB MYP，Years 10–11为IGCSE，Years 12–13为IBDP。"],
     detailSections: [
-      { title: "学段与课程", items: ["Early Years和Primary进入IB PYP；Secondary进入IB MYP；高中完成IB Diploma。"] },
+      { title: "学段与课程", items: ["Nursery至Year 6为IB PYP。", "Years 7–9为IB MYP；Years 10–11转入IGCSE，并非中学阶段全部采用MYP。", "Years 12–13进入两年制IB Diploma。"] },
       { title: "申请", items: ["提交在线申请、身份资料、既往学校报告和适用的支持报告。", "招生团队按年龄、课程适配、英语和学习需要审核，并在适用时安排评估或面谈。"] },
       { title: "入学准备", items: ["申请中学阶段应准备英文阅读与写作、数学及既往学科表现。", "学校未公开统一真题时，本指南只提供原创能力练习，不将其称为校方样题。"] },
     ],
-    comparison: { ageAndGrades: "Nursery–Year 13", curriculum: "IB PYP / MYP / DP", campuses: "Aljunied", admissions: "申请材料及适用评估", englishSupport: "按入学审核", boarding: "无寄宿" },
+    comparison: { ageAndGrades: "Nursery–Year 13", curriculum: "IB PYP、IB MYP、IGCSE、IBDP", campuses: "Aljunied", admissions: "申请材料及适用评估", englishSupport: "按入学审核", boarding: "无寄宿" },
   },
   "NPS International School": {
     officialWebsiteUrl: "https://www.npsinternational.com.sg/",
-    verifiedFacts: ["NPS International School覆盖幼儿至Grade 12，提供国际与印度课程路线。"],
+    verifiedFacts: ["NPS International School覆盖幼儿至Grade 12，高中明确提供IBDP及CBSE Science/Commerce路线，中学阶段另有Cambridge/IGCSE衔接。"],
     detailSections: [
-      { title: "课程", items: ["幼儿阶段采用学校学前课程。", "小学和中学阶段提供IB/Cambridge及CBSE相关路线，具体年级衔接按学校当前课程表。", "高中阶段可进入IB Diploma或学校公布的其他毕业课程。"] },
+      { title: "课程", items: ["幼儿阶段采用学校学前课程。", "小学和中学阶段提供Cambridge、IGCSE及CBSE相关路线，具体年级衔接按学校当前课程表。", "Grades 11–12可选择IB Diploma，或CBSE Science与Commerce方向；两条高中路线的选科和成绩门槛不同。", "学校不是只提供IB，推荐时必须结合孩子当前是否来自CBSE、Cambridge或其他课程。"] },
       { title: "申请", items: ["提交申请、身份资料、既往成绩和支持资料。", "学校按申请年级安排英文、数学、适用学科评估及面谈。"] },
       { title: "准备重点", items: ["小学阶段重点准备英文理解、表达和数学。", "中学阶段增加英文写作、年级数学及既往课程衔接。"] },
     ],
-    comparison: { ageAndGrades: "幼儿–Grade 12", curriculum: "IB、Cambridge、CBSE及学校课程", campuses: "Singapore", admissions: "年级对应测试与面谈", englishSupport: "按评估", boarding: "无寄宿" },
+    comparison: { ageAndGrades: "幼儿–Grade 12", curriculum: "Cambridge/IGCSE、IBDP、CBSE Science/Commerce", campuses: "Singapore", admissions: "年级对应测试与面谈", englishSupport: "按评估", boarding: "无寄宿" },
   },
   "Odyssey, The Global Preschool Pte ltd": {
     officialWebsiteUrl: "https://www.theodyssey.sg/",
@@ -186,12 +186,12 @@ export const schoolGuideInternationalEnrichment: Record<string, Enrichment> = {
   },
   "XCL World Academy Pte. Ltd.": {
     officialWebsiteUrl: "https://www.xwa.edu.sg/",
-    verifiedFacts: ["XCL World Academy覆盖Nursery至Grade 12，提供IB PYP、MYP和DP。"],
+    verifiedFacts: ["XCL World Academy覆盖18个月至Grade 12；除IB PYP、MYP和DP外，Grades 11–12还提供WASC High School Diploma及AP课程。"],
     detailSections: [
-      { title: "学段与课程", items: ["Early Years和Primary进入IB PYP。", "Middle School进入IB MYP；Grades 11–12完成IB Diploma。"] },
-      { title: "申请", items: ["提交在线申请、身份、既往学校报告、推荐及适用的学习支持资料。", "学校按年级、英语、学术与支持需要审核，并在适用时安排评估或面谈。"] },
+      { title: "学段与课程", items: ["Pre-K至Grade 5为IB PYP，Grades 6–10为IB MYP。", "Grades 11–12可选择IB Diploma、WASC High School Diploma，或在高中毕业路径中搭配AP课程。", "学校不是所有学生都必须修读完整IBDP，系统推荐会分别显示IB、AP和High School Diploma。"] },
+      { title: "申请", items: ["提交在线申请、身份、既往学校报告、推荐及适用的学习支持资料。", "Grade 2–12申请人通常参加CAT4；Grade 1–12英语非母语或此前非英文授课的申请人可能需要英语水平评估。", "学校采用滚动招生，但仍取决于年级学位。"] },
       { title: "入学准备", items: ["小学阶段准备语言沟通、阅读、写作和数学基础。", "中学阶段增加学术英文、数学和既往学科衔接；学校未公开的题型不作推测。"] },
     ],
-    comparison: { ageAndGrades: "Nursery–Grade 12", curriculum: "IB PYP / MYP / DP", campuses: "Yishun", admissions: "材料审核及适用评估", englishSupport: "按入学审核", boarding: "无寄宿" },
+    comparison: { ageAndGrades: "18个月–Grade 12", curriculum: "IB PYP/MYP/DP、AP、WASC High School Diploma", campuses: "Yishun", admissions: "滚动招生；Grade 2起CAT4及适用英语评估", englishSupport: "EAL与Foundational English", boarding: "无寄宿" },
   },
 };

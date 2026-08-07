@@ -20,14 +20,17 @@ export async function POST(req: NextRequest) {
   }
   const matches = selectBalancedSchoolGuideMatches(matchSchoolGuideSchools(schoolGuideSchools, {
     budgetMax: Number(body.budgetMax) > 0 ? Number(body.budgetMax) : null,
-    curriculum: ["ANY", "IB", "BRITISH", "AMERICAN", "FRENCH", "AUSTRALIAN"].includes(body.curriculum) ? body.curriculum : "ANY",
+    curriculum: ["ANY", "IB", "BRITISH", "AMERICAN", "A_LEVEL", "AP", "IGCSE", "CBSE", "FRENCH", "AUSTRALIAN"].includes(body.curriculum) ? body.curriculum : "ANY",
     englishSupportNeeded: body.englishSupportNeeded === true,
     boardingNeeded: body.boardingNeeded === true,
     currentSchoolType: ["INTERNATIONAL", "MOE", "PRIVATE", "OVERSEAS_LOCAL", "PRESCHOOL", "NOT_ENROLLED"].includes(body.currentSchoolType) ? body.currentSchoolType : "NOT_ENROLLED",
-    currentCurriculum: ["ANY", "IB", "BRITISH", "AMERICAN", "MOE", "CHINA", "OTHER"].includes(body.currentCurriculum) ? body.currentCurriculum : "ANY",
+    currentCurriculum: ["ANY", "IB", "BRITISH", "AMERICAN", "A_LEVEL", "AP", "IGCSE", "CBSE", "AUSTRALIAN", "MOE", "CHINA", "OTHER"].includes(body.currentCurriculum) ? body.currentCurriculum : "ANY",
     academicLevel: ["NEEDS_SUPPORT", "DEVELOPING", "ON_LEVEL", "STRONG"].includes(body.academicLevel) ? body.academicLevel : "ON_LEVEL",
     assessmentScore: typeof body.assessmentScore === "number" ? body.assessmentScore : null,
-  })).map((item) => ({ ...item.school, band: item.band, bandLabel: item.bandLabel, score: item.score, reasons: item.reasons, cautions: item.cautions }));
+    birthDate: String(body.birthDate ?? ""),
+    targetEntryYear,
+    currentGrade: String(body.currentGrade ?? "").trim().slice(0, 40),
+  })).map((item) => ({ ...item.school, band: item.band, bandLabel: item.bandLabel, score: item.score, reasons: item.reasons, cautions: item.cautions, placement: item.placement, difficultyLabel: item.difficultyLabel }));
   return NextResponse.json({
     ok: true,
     result: assessSchoolGuidePath({

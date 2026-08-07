@@ -5,6 +5,7 @@ import {
   type SchoolGuideUniversityOutcome,
 } from "./school-guide-school-metadata";
 import { schoolGuideInternationalEnrichment } from "./school-guide-international-enrichment";
+import { getSchoolGuideAdmissionProfile, type SchoolGuideAdmissionProfile } from "./school-guide-admission-profiles";
 
 export type OfficialSource = {
   id: string;
@@ -35,6 +36,7 @@ export type SchoolGuideSchool = {
     englishSupport: string;
     boarding: string;
   };
+  admissionProfile?: SchoolGuideAdmissionProfile;
   costProfile?: {
     academicYear: string;
     fixedFirstYearLow: number;
@@ -101,7 +103,7 @@ export type SchoolGuideCase = {
   summary: string;
 };
 
-export const SCHOOL_GUIDE_DATA_VERSION = "2026-08-07-r345";
+export const SCHOOL_GUIDE_DATA_VERSION = "2026-08-07-r346";
 
 export const officialSources: OfficialSource[] = [
   {
@@ -897,14 +899,14 @@ const knownOfficialDetails: Record<
   },
   "ISS International School Singapore": {
     officialWebsiteUrl: "https://www.iss.edu.sg/",
-    verifiedFacts: ["ISS覆盖K1至Grade 12，采用全年滚动申请，并根据学生档案、教育经历和学校支持能力安排年级。"],
+    verifiedFacts: ["ISS覆盖K1至Grade 12，采用全年滚动及非竞争性招生；高中除IBDP外还提供ISS High School Diploma。"],
     detailSections: [
-      { title: "申请与课程", items: ["接受全年申请，当前学年在有学额时继续开放。", "学校审核学生档案、教育史和背景，并在适用时安排语言或年级Placement Test。", "课程覆盖小学与中学IB路径，具体PYP/MYP/DP阶段以年级页面为准。"] },
+      { title: "申请与课程", items: ["接受全年申请，当前学年在有学额时继续开放；学校公开资料将招生说明为non-competitive。", "学校审核学生档案、教育史和背景，并在适用时安排语言或年级Placement Test。", "K1–Grade 5为IB PYP，Grades 6–10为IB MYP；Grades 11–12可选择IBDP或ISS High School Diploma。", "ISS不应因具有IB认证就被系统误判为只提供完整IBDP路线。"] },
       { title: "2026/27新生费用", items: ["适用时Placement Test Fee S$510，不可退、不抵扣。", "接受录取时缴一次性Enrolment Fee S$3,667，不可退。", "全部金额以新币计价，并在未另行说明时含9% GST。"] },
       { title: "2026/27年度课程总费用", items: ["K1–K2及Grades 1–5：S$27,748。", "Grade 6：S$46,332；Grades 7–8：S$50,586；Grade 9：S$52,000；Grade 10：S$53,418；Grade 11：S$54,836；Grade 12：S$57,356。", "总费用包含Tuition、Development Fee和Fee Protection Scheme费用。"] },
       { title: "支持与其他成本", items: ["EAL每学期：Grades 1–5 S$4,150；Grades 6–10 S$6,225。", "Learning Support每学期S$1,145–4,578，另有S$510 Review Fee。", "校车每年S$2,215起；IB考试S$600–2,500；活动、旅行和ECA另计。"] },
     ],
-    comparison: { ageAndGrades: "K1–Grade 12", curriculum: "IB小学、中学与文凭路径", campuses: "Preston Road", admissions: "滚动招生；档案审核及适用Placement Test", englishSupport: "EAL，另收费", boarding: "无寄宿" },
+    comparison: { ageAndGrades: "K1–Grade 12", curriculum: "IB PYP/MYP/DP、ISS High School Diploma", campuses: "Preston Road", admissions: "非竞争性滚动招生；档案审核及适用Placement Test", englishSupport: "EAL，另收费", boarding: "无寄宿" },
     costProfile: { academicYear: "2026/27", fixedFirstYearLow: 31415, fixedFirstYearHigh: 61533, includes: ["Enrolment Fee", "年度课程总费用", "适用时Placement Test Fee"], optionalItems: ["EAL", "Learning Support", "校车", "IB考试", "ECA"], note: "低值未强制加入Placement Test；高值包含Placement Test，实际以学校判断为准。" },
     applicableYear: "2026/27",
     lastChangeSummary: "接入2026/27全年级总课程费、滚动招生及支持费用。",
@@ -984,7 +986,7 @@ const schoolGuideSchoolBase = [
       { title: "其他可能成本", items: ["Foundational Level EAL（Kindergarten–Grade 3）年费S$7,230。", "双程校车每学期S$1,320–3,500；午餐约S$6–9/天；校服三套常服加一套体育服约S$160–215。", "高中AP考试每科S$220；高中需自备笔记本电脑，官网估算S$1,500–2,800。", "EAA、IASAS、Interim Semester及其他海外活动可能另收费，具体以项目通知为准。"] },
       { title: "校区", items: ["地址：40 Woodlands Street 41, Singapore 738547。"] },
     ],
-    comparison: { ageAndGrades: "Preschool–Grade 12", curriculum: "美式课程与高中课程体系", campuses: "Woodlands", admissions: "低年级按生日；高年级按学校记录与完成年级", englishSupport: "K–Grade 3 Foundational EAL，另收费", boarding: "无寄宿" },
+    comparison: { ageAndGrades: "Preschool–Grade 12", curriculum: "美式课程、High School Diploma、AP", campuses: "Woodlands", admissions: "低年级按生日；高年级按学校记录与完成年级", englishSupport: "K–Grade 3 Foundational EAL，另收费", boarding: "无寄宿" },
     costProfile: { academicYear: "2026/27", fixedFirstYearLow: 52700, fixedFirstYearHigh: 65210, includes: ["申请费", "一次性Registration Fee", "Facility Fee", "Tuition"], optionalItems: ["EAL", "校车", "餐食", "校服", "AP考试与活动"], note: "按Lane 1与Lanes 2–4及不同年级的新生固定费用总额。" },
     dataStatus: "VERIFIED",
     applicableYear: "2026/27",
@@ -1032,6 +1034,7 @@ export const schoolGuideSchools: SchoolGuideSchool[] = schoolGuideSchoolBase.map
   } : school;
   return {
     ...merged,
+    admissionProfile: getSchoolGuideAdmissionProfile(merged.name, merged.editorialTier),
     ...getSchoolGuidePublicMetadata(merged.name, merged.dataStatus === "VERIFIED", merged.verifiedAt),
   };
 });

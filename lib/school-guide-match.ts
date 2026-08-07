@@ -1,18 +1,22 @@
 import type { SchoolGuideSchool } from "./school-guide-data";
+import { getSchoolGuideAdmissionProfile, resolveSchoolGuidePlacement } from "./school-guide-admission-profiles";
 
 export type SchoolGuideCurrentSchoolType = "INTERNATIONAL" | "MOE" | "PRIVATE" | "OVERSEAS_LOCAL" | "PRESCHOOL" | "NOT_ENROLLED";
-export type SchoolGuideCurrentCurriculum = "ANY" | "IB" | "BRITISH" | "AMERICAN" | "MOE" | "CHINA" | "OTHER";
+export type SchoolGuideCurrentCurriculum = "ANY" | "IB" | "BRITISH" | "AMERICAN" | "A_LEVEL" | "AP" | "IGCSE" | "CBSE" | "AUSTRALIAN" | "MOE" | "CHINA" | "OTHER";
 export type SchoolGuideAcademicLevel = "NEEDS_SUPPORT" | "DEVELOPING" | "ON_LEVEL" | "STRONG";
 
 export type SchoolGuideMatchInput = {
   budgetMax: number | null;
-  curriculum: "ANY" | "IB" | "BRITISH" | "AMERICAN" | "FRENCH" | "AUSTRALIAN";
+  curriculum: "ANY" | "IB" | "BRITISH" | "AMERICAN" | "A_LEVEL" | "AP" | "IGCSE" | "CBSE" | "FRENCH" | "AUSTRALIAN";
   englishSupportNeeded: boolean;
   boardingNeeded: boolean;
   currentSchoolType?: SchoolGuideCurrentSchoolType;
   currentCurriculum?: SchoolGuideCurrentCurriculum;
   academicLevel?: SchoolGuideAcademicLevel;
   assessmentScore?: number | null;
+  birthDate?: string;
+  targetEntryYear?: number;
+  currentGrade?: string;
 };
 
 export type SchoolGuideMatch = {
@@ -22,12 +26,18 @@ export type SchoolGuideMatch = {
   score: number;
   reasons: string[];
   cautions: string[];
+  placement: ReturnType<typeof resolveSchoolGuidePlacement>;
+  difficultyLabel: string;
 };
 
 const curriculumTerms: Record<Exclude<SchoolGuideMatchInput["curriculum"], "ANY">, string[]> = {
   IB: ["IB", "PYP", "MYP", "DP"],
   BRITISH: ["英国", "IGCSE", "A Level"],
   AMERICAN: ["美式", "AP", "American"],
+  A_LEVEL: ["A Level", "A-Level"],
+  AP: ["AP", "Advanced Placement"],
+  IGCSE: ["IGCSE", "GCSE"],
+  CBSE: ["CBSE"],
   FRENCH: ["法国", "French"],
   AUSTRALIAN: ["澳洲", "HSC", "Australian"],
 };
@@ -36,6 +46,11 @@ const currentCurriculumTerms: Record<Exclude<SchoolGuideCurrentCurriculum, "ANY"
   IB: ["IB", "PYP", "MYP", "DP"],
   BRITISH: ["英国", "IGCSE", "A Level"],
   AMERICAN: ["美式", "AP", "American"],
+  A_LEVEL: ["A Level", "A-Level"],
+  AP: ["AP", "Advanced Placement"],
+  IGCSE: ["IGCSE", "GCSE"],
+  CBSE: ["CBSE"],
+  AUSTRALIAN: ["澳洲", "Australian", "HSC"],
   MOE: ["新加坡", "MOE"],
   CHINA: ["中国", "中文"],
 };
@@ -65,7 +80,7 @@ function resolveAbility(input: SchoolGuideMatchInput) {
 export function matchSchoolGuideSchools(schools: SchoolGuideSchool[], input: SchoolGuideMatchInput): SchoolGuideMatch[] {
   const ability = resolveAbility(input);
   return schools
-    .filter((school) => school.dataStatus === "VERIFIED" && school.comparison && school.costProfile)
+    .filter((school) => school.dataStatus === "VERIFIED" && school.comparison && (school.admissionProfile ?? getSchoolGuideAdmissionProfile(school.name, school.editorialTier)).recommendationEnabled)
     .filter((school, index, all) => all.findIndex((item) => item.name === school.name) === index)
     .map((school) => {
       let score = 0;
@@ -73,6 +88,13 @@ export function matchSchoolGuideSchools(schools: SchoolGuideSchool[], input: Sch
       const cautions: string[] = [];
       const schoolCurriculum = school.comparison?.curriculum ?? "";
       const cost = school.costProfile;
+      const admissionProfile = school.admissionProfile ?? getSchoolGuideAdmissionProfile(school.name, school.editorialTier);
+      const placement = resolveSchoolGuidePlacement(admissionProfile, input.birthDate, input.targetEntryYear);
+
+      reasons.push(`课程路径：${schoolCurriculum}`);
+      reasons.push(`年龄年级：${placement.suggestedGrade} · ${placement.entryPointLabel}`);
+      if (placement.eligibility === "CHECK") cautions.push("该年级或课程节点需要学校进一步确认，不按普通滚动入学处理");
+      if (input.currentGrade) reasons.push(`已结合当前年级：${input.currentGrade}`);
 
       if (input.curriculum === "ANY") reasons.push("家庭对目标课程保持开放");
       else if (curriculumTerms[input.curriculum].some((term) => schoolCurriculum.includes(term))) {
@@ -102,8 +124,11 @@ export function matchSchoolGuideSchools(schools: SchoolGuideSchool[], input: Sch
         reasons.push("学前阶段以年龄、语言与适应性为主要参考");
       }
 
-      if (input.budgetMax && cost) {
-        if (cost.fixedFirstYearLow <= input.budgetMax) {
+      if (input.budgetMax) {
+        if (!cost) {
+          score -= 1;
+          cautions.push("当前缺少可直接比较的完整费用数据，预算适配需进一步核实");
+        } else if (cost.fixedFirstYearLow <= input.budgetMax) {
           score += 2;
           reasons.push(`首年固定费用低值在 S$${input.budgetMax.toLocaleString("en-SG")} 预算内`);
         } else {
@@ -134,9 +159,22 @@ export function matchSchoolGuideSchools(schools: SchoolGuideSchool[], input: Sch
       }
 
       let band: SchoolGuideMatch["band"];
-      if (school.editorialTier === 1) {
-        band = ability.value >= 4 && score >= 3 ? "MATCH" : "REACH";
-        if (band === "REACH") cautions.push("第一梯队仅作为冲刺目标，不因知名度自动提高匹配度");
+      if (admissionProfile.difficulty === "HIGH") {
+        band = "REACH";
+        cautions.push("申请需求、审核和学位竞争较高，只作为冲刺目标");
+      } else if (admissionProfile.difficulty === "SELECTIVE") {
+        band = ability.value >= 4 && score >= 6 ? "MATCH" : "REACH";
+        if (band === "REACH") cautions.push("学校采用择优录取，不能因课程或预算符合就列为稳妥选择");
+      } else if (admissionProfile.difficulty === "MODERATE" && ability.value >= 3 && score >= 0) {
+        band = "MATCH";
+      } else if (admissionProfile.difficulty === "MODERATE") {
+        band = "REACH";
+        cautions.push("需要先确认学术、英语或学习支持条件");
+      } else if (admissionProfile.difficulty === "ACCESSIBLE" && admissionProfile.defaultBand === "MATCH" && ability.value >= 2 && score >= 0) {
+        band = "MATCH";
+      } else if (admissionProfile.difficulty === "ACCESSIBLE" && score >= 0) {
+        band = "SAFER";
+        reasons.push("相对容易申请，但仍需确认年级学位和正式审核");
       } else if (score >= 4 && ability.value >= 2) {
         band = "MATCH";
       } else if (score >= 1 && ability.value >= 2) {
@@ -147,8 +185,9 @@ export function matchSchoolGuideSchools(schools: SchoolGuideSchool[], input: Sch
       }
 
       const bandLabel: SchoolGuideMatch["bandLabel"] = { REACH: "冲刺", MATCH: "匹配", SAFER: "相对稳妥", TRANSITION: "过渡" }[band] as SchoolGuideMatch["bandLabel"];
-      return { school, band, bandLabel, score, reasons, cautions };
+      return { school, band, bandLabel, score, reasons, cautions, placement, difficultyLabel: admissionProfile.difficultyLabel };
     })
+    .filter((item) => item.placement.eligibility !== "OUT_OF_RANGE")
     .sort((a, b) => b.score - a.score || a.school.name.localeCompare(b.school.name));
 }
 

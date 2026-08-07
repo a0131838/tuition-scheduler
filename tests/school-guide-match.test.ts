@@ -59,3 +59,59 @@ test("balanced shortlist contains distinct practical tiers and assessment eviden
   assert.ok(shortlist.every((item) => item.reasons.some((reason) => reason.includes("系统测评 68 分"))));
   assert.ok(shortlist.every((item) => item.bandLabel !== undefined));
 });
+
+test("selective local international schools never become safer choices", () => {
+  const matches = matchSchoolGuideSchools(schoolGuideSchools, {
+    budgetMax: 70000,
+    curriculum: "IB",
+    englishSupportNeeded: false,
+    boardingNeeded: false,
+    currentSchoolType: "INTERNATIONAL",
+    currentCurriculum: "IB",
+    academicLevel: "ON_LEVEL",
+    assessmentScore: 72,
+    birthDate: "2013-04-10",
+    targetEntryYear: 2027,
+    currentGrade: "Grade 7",
+  });
+  for (const name of ["Hwa Chong International School", "ACS (International), Singapore", "St. Joseph's Institution International Ltd"]) {
+    const match = matches.find((item) => item.school.name === name);
+    assert.ok(match, `${name} missing`);
+    assert.equal(match.band, "REACH");
+    assert.match(match.difficultyLabel, /择优录取/);
+  }
+});
+
+test("accessible schools and non-IB pathways participate in matching", () => {
+  const matches = matchSchoolGuideSchools(schoolGuideSchools, {
+    budgetMax: null,
+    curriculum: "ANY",
+    englishSupportNeeded: true,
+    boardingNeeded: false,
+    birthDate: "2015-06-20",
+    targetEntryYear: 2027,
+  });
+  for (const name of ["Global Indian International School Pte Ltd", "NPS International School", "ISS International School Singapore", "XCL World Academy Pte. Ltd."]) {
+    const match = matches.find((item) => item.school.name === name);
+    assert.ok(match, `${name} missing`);
+    assert.equal(match.school.admissionProfile?.difficulty, "ACCESSIBLE");
+  }
+  assert.match(matches.find((item) => item.school.name === "Global Indian International School Pte Ltd")?.school.comparison?.curriculum || "", /CBSE/);
+  assert.match(matches.find((item) => item.school.name === "XCL World Academy Pte. Ltd.")?.school.comparison?.curriculum || "", /AP/);
+  assert.match(matches.find((item) => item.school.name === "ISS International School Singapore")?.school.comparison?.curriculum || "", /High School Diploma/);
+});
+
+test("age placement removes schools outside their published range", () => {
+  const matches = matchSchoolGuideSchools(schoolGuideSchools, {
+    budgetMax: null,
+    curriculum: "ANY",
+    englishSupportNeeded: false,
+    boardingNeeded: false,
+    birthDate: "2023-05-01",
+    targetEntryYear: 2027,
+  });
+  assert.equal(matches.some((item) => item.school.name === "Hwa Chong International School"), false);
+  const owis = matches.find((item) => item.school.name === "One World International School Pte Ltd");
+  assert.ok(owis);
+  assert.match(owis.placement.suggestedGrade, /Pre-Kindergarten|Kindergarten/);
+});

@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-07-r346
+
+- Release ID: `2026-08-07-r346`
+- Date/Time (Asia/Singapore): `2026-08-07`
+- Deployment status: `READY`
+- Scope: recalibrate international-school matching by actual admission difficulty, age/grade placement and curriculum route; allow repeated 30–45 minute assessments while preserving every completed report.
+- Key files:
+  - `lib/school-guide-admission-profiles.ts`
+  - `lib/school-guide-match.ts`
+  - `lib/school-guide-international-enrichment.ts`
+  - `app/api/public/school-guide/academic-assessment/start/route.ts`
+  - `app/school-guide/assessment/AssessmentForm.tsx`
+  - `miniapp/boss-academic-parent/pages/guide-assessment/`
+  - `miniapp/boss-academic-parent/pages/guide-academic-assessment/`
+  - `docs/tasks/TASK-20260807-school-assessment-retest-matching.md`
+- Risk impact (if any): Medium-low and isolated to the public school-guide assessment, recommendation and international-school description. No schema migration. Existing completed reports remain readable. Login, teaching, scheduling, packages, finance, payroll, tickets, reminders and authenticated operations are unchanged.
+- Verification: TypeScript, 61 focused school-guide tests, 174 configured backend regression tests, the 67-page Mini Program release audit, native Mini Program JavaScript syntax checks and the 243-page production build passed.
+- Rollback point: `773b5a3265b44e4ee983eff76e6e79ee3c565fc6` (`2026-08-07-r345` aligned documentation head).
+
+---
+
 ## 2026-08-07-r345
 
 - Release ID: `2026-08-07-r345`

@@ -69,10 +69,25 @@
 - Current release line: `2026-08-07-r343` is live at runtime commit `57b9c52f6f8f0c0302b95c463ca57b9093182241`; WeChat development version `1.0.40` was uploaded successfully. It removes the artificial fixed-height blank area from the public Mini Program home and adds stable school identity marks with a licensed-logo-ready fallback, without changing authenticated operations.
 - Current release line: `2026-08-07-r344` is live at runtime feature commit `66da4335bfd4c636c9beb6f3d2dcd66a4e72d5ee`; WeChat development version `1.0.41` was uploaded successfully. It adds separate official-data profiles for all five Polytechnics, six Autonomous Universities, BCA Academy and five ECDA Anchor Operators, with China-student application routes, ranking context and carefully qualified employment outcomes.
 - Current release line: `2026-08-07-r345` is live at runtime feature commit `3e5222d921c0180eb32d036b909b7f69cafe78a7`; WeChat development version `1.0.42` was uploaded successfully. It removes the obsolete five-Poly, six-university and combined LASALLE/NAFA cards; restores all 19 institutions in the 2026 JAE JC/MI list; and separates regulatory overviews from real schools.
+- Current release line prepared: `2026-08-07-r346` recalibrates international-school recommendations by real admission difficulty, age/grade and curriculum, explicitly covers IB, A Level, AP, IGCSE, CBSE and Australian routes, and allows repeat assessment without deleting prior reports.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-07-r346 Ready
+
+- Scope: public assessment retakes and age-, grade-, difficulty- and curriculum-aware international-school matching.
+- Business impact:
+  - highly selective local international routes such as Hwa Chong International, ACS International and SJI International cannot be presented as safer choices;
+  - GIIS and NPS are treated as academically credible, relatively accessible choices with substantial Indian-family communities, while ISS is treated as a relatively accessible rolling-admission option; none is described as guaranteed admission;
+  - CIS, Stamford, AIS and XCL can form practical match choices; OWIS, ISS and OFS can form safer choices when age and family constraints fit;
+  - school cards state the actual curriculum family instead of assuming every international school is IB, including A Level, AP, IGCSE, CBSE, Australian and school-diploma routes;
+  - age at target entry and current grade drive a suggested year/grade and remove schools outside the supported age range;
+  - families may start another 30–45 minute assessment at any time, see previous completed reports and use a recommended 30-day comparison interval without a hard lock.
+- Safety boundary: no database migration; prior sessions and reports are retained; authenticated parent/staff operations and all teaching, scheduling and finance workflows are unchanged.
+- Verification before deploy: TypeScript, 61 school-guide tests, 174 configured backend regression tests, native Mini Program syntax, the 67-page Mini Program audit and the 243-page production build passed.
+- Rollback point: `773b5a3265b44e4ee983eff76e6e79ee3c565fc6`.
 
 ## 2026-08-07-r345 Live
 

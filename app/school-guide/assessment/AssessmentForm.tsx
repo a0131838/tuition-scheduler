@@ -16,6 +16,7 @@ export default function AssessmentForm({ pathways, schools }: { pathways: School
   const [englishSupportNeeded, setEnglishSupportNeeded] = useState(false);
   const [boardingNeeded, setBoardingNeeded] = useState(false);
   const [currentSchoolType, setCurrentSchoolType] = useState<NonNullable<SchoolGuideMatchInput["currentSchoolType"]>>("NOT_ENROLLED");
+  const [currentGrade, setCurrentGrade] = useState("");
   const [currentCurriculum, setCurrentCurriculum] = useState<NonNullable<SchoolGuideMatchInput["currentCurriculum"]>>("ANY");
   const [academicLevel, setAcademicLevel] = useState<NonNullable<SchoolGuideMatchInput["academicLevel"]>>("ON_LEVEL");
   const [submitted, setSubmitted] = useState(false);
@@ -26,8 +27,8 @@ export default function AssessmentForm({ pathways, schools }: { pathways: School
   );
   const matched = pathways.filter((pathway) => result.pathwaySlugs.includes(pathway.slug));
   const schoolMatches = useMemo(
-    () => selectBalancedSchoolGuideMatches(matchSchoolGuideSchools(schools, { budgetMax, curriculum, englishSupportNeeded, boardingNeeded, currentSchoolType, currentCurriculum, academicLevel })),
-    [schools, budgetMax, curriculum, englishSupportNeeded, boardingNeeded, currentSchoolType, currentCurriculum, academicLevel],
+    () => selectBalancedSchoolGuideMatches(matchSchoolGuideSchools(schools, { budgetMax, curriculum, englishSupportNeeded, boardingNeeded, currentSchoolType, currentCurriculum, academicLevel, birthDate, targetEntryYear, currentGrade })),
+    [schools, budgetMax, curriculum, englishSupportNeeded, boardingNeeded, currentSchoolType, currentCurriculum, academicLevel, birthDate, targetEntryYear, currentGrade],
   );
 
   function addToPlan(slug: string) {
@@ -63,7 +64,11 @@ export default function AssessmentForm({ pathways, schools }: { pathways: School
               <option value="ANY">保持开放</option>
               <option value="IB">IB</option>
               <option value="BRITISH">英式</option>
+              <option value="A_LEVEL">A Level</option>
+              <option value="IGCSE">IGCSE</option>
               <option value="AMERICAN">美式</option>
+              <option value="AP">AP</option>
+              <option value="CBSE">印度CBSE</option>
               <option value="FRENCH">法式</option>
               <option value="AUSTRALIAN">澳洲体系</option>
             </select>
@@ -79,8 +84,12 @@ export default function AssessmentForm({ pathways, schools }: { pathways: School
           <label className="sg-field">
             当前课程体系
             <select value={currentCurriculum} onChange={(event) => setCurrentCurriculum(event.target.value as typeof currentCurriculum)}>
-              <option value="ANY">不确定</option><option value="IB">IB</option><option value="BRITISH">英式</option><option value="AMERICAN">美式</option><option value="MOE">新加坡MOE</option><option value="CHINA">中国课程</option><option value="OTHER">其他</option>
+              <option value="ANY">不确定</option><option value="IB">IB</option><option value="BRITISH">英式</option><option value="A_LEVEL">A Level</option><option value="IGCSE">IGCSE</option><option value="AMERICAN">美式</option><option value="AP">AP</option><option value="CBSE">印度CBSE</option><option value="AUSTRALIAN">澳洲/HSC</option><option value="MOE">新加坡MOE</option><option value="CHINA">中国课程</option><option value="OTHER">其他</option>
             </select>
+          </label>
+          <label className="sg-field">
+            当前年级
+            <input value={currentGrade} placeholder="如 P5 / Grade 5 / Year 6" onChange={(event) => setCurrentGrade(event.target.value)} />
           </label>
           <label className="sg-field">
             当前学习情况
@@ -148,7 +157,10 @@ export default function AssessmentForm({ pathways, schools }: { pathways: School
               <div className={`sg-match-band is-${item.band.toLowerCase()}`}>
                 {item.bandLabel}
               </div>
-              <h3>{item.school.name}</h3>
+              <h3>{item.school.nameZh}</h3>
+              <p>{item.school.name}</p>
+              <p>{item.difficultyLabel} · {item.placement.suggestedGrade} · {item.placement.entryPointLabel}</p>
+              <p>课程：{item.school.comparison?.curriculum}</p>
               {item.reasons.map((reason) => <p className="sg-match-reason" key={reason}>✓ {reason}</p>)}
               {item.cautions.map((caution) => <p className="sg-match-caution" key={caution}>! {caution}</p>)}
               <div className="sg-actions">
