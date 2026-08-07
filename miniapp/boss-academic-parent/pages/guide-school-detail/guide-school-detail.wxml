@@ -44,6 +44,11 @@
 
   <view class="guide-section">
     <view class="guide-section-title">招生、课程与费用</view>
+    <view class="guide-notice" wx:if="{{school.studentPass}}">
+      <view><b>{{school.studentPass.label}}</b></view>
+      <view>{{school.studentPass.note}}</view>
+      <view>最终签发由ICA决定；缴费前请取得学校书面确认。</view>
+    </view>
     <view class="guide-notice" wx:if="{{school.admissionProfile}}">
       <view><b>{{school.admissionProfile.difficultyLabel}}</b> · {{school.admissionProfile.curriculumText}}</view>
       <view wx:if="{{school.admissionProfile.entryPointsText}}">主要节点：{{school.admissionProfile.entryPointsText}}</view>

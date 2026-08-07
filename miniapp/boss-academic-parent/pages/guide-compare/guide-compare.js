@@ -14,7 +14,7 @@ Page({
   },
 
   onLoad(options) {
-    api.request("/api/public/school-guide/catalog?v=r346")
+    api.request("/api/public/school-guide/catalog?v=r347")
       .then((data) => {
         const rawSchools = data.schoolGroups || data.schools || [];
         const allSchools = options && options.preset === "popular"

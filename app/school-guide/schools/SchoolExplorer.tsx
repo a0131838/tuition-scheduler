@@ -71,7 +71,7 @@ export default function SchoolExplorer({ schools, categories, institutions }: { 
       </nav>
       {activeCategory === "international" ? <>
         <div className="sg-directory-focus" aria-label="国际学校筛选">
-          {[["ALL", "全部"], ["FIRST", "第一梯队"], ["IB", "IB"], ["BRITISH", "英式"], ["AMERICAN", "美式"], ["PRESCHOOL", "学前"]].map(([value, label]) => <button className={focus === value ? "active" : ""} type="button" key={value} onClick={() => { setFocus(value); setShowAll(false); }}>{label}</button>)}
+          {[["ALL", "全部"], ["FIRST", "第一梯队"], ["IB", "IB"], ["BRITISH", "英式"], ["AMERICAN", "美式"], ["HERITAGE", "国家/侨民课程"], ["NEW", "近期开校"], ["VISA_LIMITED", "需长期准证"], ["SPECIAL_SUPPORT", "专项支持"], ["PRESCHOOL", "学前"]].map(([value, label]) => <button className={focus === value ? "active" : ""} type="button" key={value} onClick={() => { setFocus(value); setShowAll(false); }}>{label}</button>)}
         </div>
         <p className="sg-directory-count">{rows.length}所学校</p>
         <div className="sg-school-list">
@@ -83,6 +83,7 @@ export default function SchoolExplorer({ schools, categories, institutions }: { 
               {school.editorialTier === 1 ? <span className="sg-tier-badge">第一梯队</span> : null}
               {school.campusProfiles.length > 1 ? <span className="sg-tier-badge is-neutral">{school.campusProfiles.length}个收录校区</span> : null}
               {school.comparison?.curriculum ? <p>{school.comparison.curriculum}</p> : null}
+              {school.studentPass ? <p>{school.studentPass.label}</p> : null}
             </div>
             <button
               className="sg-favorite"

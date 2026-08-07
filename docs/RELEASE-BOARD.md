@@ -69,13 +69,29 @@
 - Current release line: `2026-08-07-r343` is live at runtime commit `57b9c52f6f8f0c0302b95c463ca57b9093182241`; WeChat development version `1.0.40` was uploaded successfully. It removes the artificial fixed-height blank area from the public Mini Program home and adds stable school identity marks with a licensed-logo-ready fallback, without changing authenticated operations.
 - Current release line: `2026-08-07-r344` is live at runtime feature commit `66da4335bfd4c636c9beb6f3d2dcd66a4e72d5ee`; WeChat development version `1.0.41` was uploaded successfully. It adds separate official-data profiles for all five Polytechnics, six Autonomous Universities, BCA Academy and five ECDA Anchor Operators, with China-student application routes, ranking context and carefully qualified employment outcomes.
 - Current release line: `2026-08-07-r345` is live at runtime feature commit `3e5222d921c0180eb32d036b909b7f69cafe78a7`; WeChat development version `1.0.42` was uploaded successfully. It removes the obsolete five-Poly, six-university and combined LASALLE/NAFA cards; restores all 19 institutions in the 2026 JAE JC/MI list; and separates regulatory overviews from real schools.
+- Current release line: `2026-08-07-r346` is live at runtime commit `8f4a3fa771176014ea7ede018befeda08cbd2511`. It fixes international-school difficulty, age/grade and curriculum matching and allows repeat assessment while preserving reports; Mini Program upload was held for r347.
+- Current release line prepared: `2026-08-07-r347` expands the source register to 84 records / 75 K–12 and preschool brands, presents 66 correctly classified international-school brands, and adds explicit Student’s Pass, long-term-pass-only or written-verification status to every international-school profile.
 - Current release line prepared: `2026-08-07-r346` recalibrates international-school recommendations by real admission difficulty, age/grade and curriculum, explicitly covers IB, A Level, AP, IGCSE, CBSE and Australian routes, and allows repeat assessment without deleting prior reports.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
-## 2026-08-07-r346 Ready
+## 2026-08-07-r347 Ready
+
+- Scope: complete international-school discovery and Student’s Pass decision support.
+- Business impact:
+  - the source register expands from 43 to 84 campus/source records and 75 K–12/preschool brands; the parent-facing international-school list contains 66 brands after government, preschool-only, faith/private and government-specialist records are routed to their correct categories;
+  - Brighton, Middleton, Invictus, Knightsbridge House, The Perse, The Grange, SMMIS, ICS, affordable Cambridge/Indian routes, Japanese/Korean/Indonesian/Swiss/Dutch/French schools and specialist-support schools are now searchable;
+  - parents can filter recently opened schools, heritage/national curricula, specialist support and schools that require an existing long-term pass;
+  - Brighton and Middleton are marked as Student’s Pass-capable from explicit current EduTrust evidence;
+  - The Grange and Astor are marked long-term-pass-only from their official FAQ/handbook;
+  - all other schools show written-verification status unless current official evidence supports a stronger conclusion.
+- Safety boundary: no school is promised to obtain a pass; ICA remains the decision maker. Public guide only; no authenticated operations or database changes.
+- Verification before deploy: TypeScript, 63 focused school-guide tests, 174 configured backend regression tests, native Mini Program syntax, the 67-page Mini Program audit and the 243-page production build passed.
+- Rollback point: `8f4a3fa771176014ea7ede018befeda08cbd2511`.
+
+## 2026-08-07-r346 Live
 
 - Scope: public assessment retakes and age-, grade-, difficulty- and curriculum-aware international-school matching.
 - Business impact:
@@ -88,6 +104,7 @@
 - Safety boundary: no database migration; prior sessions and reports are retained; authenticated parent/staff operations and all teaching, scheduling and finance workflows are unchanged.
 - Verification before deploy: TypeScript, 61 school-guide tests, 174 configured backend regression tests, native Mini Program syntax, the 67-page Mini Program audit and the 243-page production build passed.
 - Rollback point: `773b5a3265b44e4ee983eff76e6e79ee3c565fc6`.
+- Deployment: runtime commit `8f4a3fa771176014ea7ede018befeda08cbd2511`, PM2 PID `2059514`, health HTTP 200 and live catalog `2026-08-07-r346`. Mini Program upload was intentionally held for the complete-directory follow-up.
 
 ## 2026-08-07-r345 Live
 

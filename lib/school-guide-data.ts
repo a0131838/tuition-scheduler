@@ -6,6 +6,7 @@ import {
 } from "./school-guide-school-metadata";
 import { schoolGuideInternationalEnrichment } from "./school-guide-international-enrichment";
 import { getSchoolGuideAdmissionProfile, type SchoolGuideAdmissionProfile } from "./school-guide-admission-profiles";
+import { schoolGuideInternationalAdditions } from "./school-guide-international-additions";
 
 export type OfficialSource = {
   id: string;
@@ -37,6 +38,14 @@ export type SchoolGuideSchool = {
     boarding: string;
   };
   admissionProfile?: SchoolGuideAdmissionProfile;
+  studentPass?: {
+    status: "SUPPORTED" | "LONG_TERM_PASS_ONLY" | "VERIFY_WITH_SCHOOL";
+    label: string;
+    note: string;
+    checkedAt: string;
+  };
+  openedYear?: number;
+  specialist?: boolean;
   costProfile?: {
     academicYear: string;
     fixedFirstYearLow: number;
@@ -103,7 +112,7 @@ export type SchoolGuideCase = {
   summary: string;
 };
 
-export const SCHOOL_GUIDE_DATA_VERSION = "2026-08-07-r346";
+export const SCHOOL_GUIDE_DATA_VERSION = "2026-08-07-r347";
 
 export const officialSources: OfficialSource[] = [
   {
@@ -185,6 +194,14 @@ export const officialSources: OfficialSource[] = [
     url: "https://www.muis.gov.sg/education/full-time-madrasahs",
     checkedAt: "2026-07-28",
     appliesTo: "新加坡六所全日制回教学校",
+  },
+  {
+    id: "ica-fss-student-pass",
+    title: "Foreign System Schools and Privately-Funded Schools — Student's Pass",
+    authority: "Singapore Immigration & Checkpoints Authority",
+    url: "https://www.ica.gov.sg/reside/STP/apply/fss",
+    checkedAt: "2026-08-07",
+    appliesTo: "国际学校Student’s Pass、DP/LTVP豁免及EduTrust前提",
   },
   {
     id: "moe-international-admission",
@@ -1020,6 +1037,7 @@ const schoolGuideSchoolBase = [
   ...ibPage1.map((name, index) => makeSchool(name, 1, index)),
   ...ibPage2.map((name, index) => makeSchool(name, 2, ibPage1.length + index)),
   ...ibPage3.map((name, index) => makeSchool(name, 3, ibPage1.length + ibPage2.length + index)),
+  ...schoolGuideInternationalAdditions,
 ] satisfies SchoolGuideSchoolBase[];
 
 export const schoolGuideSchools: SchoolGuideSchool[] = schoolGuideSchoolBase.map((school) => {
@@ -1034,6 +1052,12 @@ export const schoolGuideSchools: SchoolGuideSchool[] = schoolGuideSchoolBase.map
   } : school;
   return {
     ...merged,
+    studentPass: merged.studentPass ?? {
+      status: "VERIFY_WITH_SCHOOL" as const,
+      label: "Student’s Pass资格需书面确认",
+      note: "当前学校公开资料未在本轮提供足以确认新办Student’s Pass的明确证据；缴费前应由招生部书面确认学校当前资格、适用年级和办理方式。",
+      checkedAt: "2026-08-07",
+    },
     admissionProfile: getSchoolGuideAdmissionProfile(merged.name, merged.editorialTier),
     ...getSchoolGuidePublicMetadata(merged.name, merged.dataStatus === "VERIFIED", merged.verifiedAt),
   };

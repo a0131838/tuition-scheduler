@@ -10,7 +10,7 @@ export type SchoolGuideCampusProfile = {
 export type SchoolGuideSchoolGroup = SchoolGuideSchool & {
   memberSlugs: string[];
   campusProfiles: SchoolGuideCampusProfile[];
-  directoryTags: Array<"FIRST" | "IB" | "BRITISH" | "AMERICAN" | "PRESCHOOL">;
+  directoryTags: Array<"FIRST" | "IB" | "BRITISH" | "AMERICAN" | "PRESCHOOL" | "HERITAGE" | "SPECIAL_SUPPORT" | "VISA_LIMITED" | "NEW">;
 };
 
 export type SchoolGuideDirectoryCategory = {
@@ -83,6 +83,10 @@ function buildTags(school: SchoolGuideSchool, members: SchoolGuideSchool[]) {
   if (/英国|英式|igcse|a level|british|england/.test(text)) tags.push("BRITISH");
   if (/美国|美式|american|\bap\b/.test(text)) tags.push("AMERICAN");
   if (/幼儿|preschool|pre-school|nursery|toddler|early learning|early childhood/.test(text)) tags.push("PRESCHOOL");
+  if (/japanese|korean|indonesia|swiss|french|german|dutch|cbse|icse|isc|印度|日本|韩国|印尼|瑞士|法国|德国|荷兰/.test(text)) tags.push("HERITAGE");
+  if (school.specialist) tags.push("SPECIAL_SUPPORT");
+  if (school.studentPass?.status === "LONG_TERM_PASS_ONLY") tags.push("VISA_LIMITED");
+  if (school.openedYear && school.openedYear >= 2020) tags.push("NEW");
   return tags;
 }
 
@@ -114,7 +118,19 @@ function mergeMembers(
   };
 }
 
-export const schoolGuideSchoolGroups: SchoolGuideSchoolGroup[] = (() => {
+const nonInternationalDirectoryNames = new Set([
+  "Anglo-Chinese School (Independent)",
+  "Barker Road Methodist Church Little Lights Preschool – Barker",
+  "Madrasah Aljunied Al-Islamiah",
+  "Odyssey, The Global Preschool Pte ltd",
+  "School of the Arts, Singapore",
+  "Singapore Sports School",
+  "St Francis Methodist School",
+  "St. Joseph's Institution",
+  "The Little Skool-House International Pte Ltd",
+]);
+
+const allSchoolGuideSchoolGroups: SchoolGuideSchoolGroup[] = (() => {
   const consumed = new Set<string>();
   const grouped = groupedBrands.map((definition) => {
     const members = schoolGuideSchools.filter((school) => definition.names.includes(school.name as never));
@@ -129,6 +145,13 @@ export const schoolGuideSchoolGroups: SchoolGuideSchoolGroup[] = (() => {
     return tier || a.name.localeCompare(b.name);
   });
 })();
+
+export const schoolGuideSchoolGroups = allSchoolGuideSchoolGroups.filter(
+  (group) => !group.memberSlugs.some((slug) => {
+    const member = schoolGuideSchools.find((school) => school.slug === slug);
+    return member ? nonInternationalDirectoryNames.has(member.name) : false;
+  }),
+);
 
 export const schoolGuideDirectoryCategories: SchoolGuideDirectoryCategory[] = [
   { id: "international", title: "国际学校", subtitle: `${schoolGuideSchoolGroups.length}所学校品牌`, sectorIds: ["international-schools"] },
@@ -150,5 +173,5 @@ export function getSchoolGuideDirectoryCategories(sectors: SchoolGuideSector[]):
 }
 
 export function getSchoolGuideSchoolGroup(slug: string) {
-  return schoolGuideSchoolGroups.find((group) => group.slug === slug || group.memberSlugs.includes(slug));
+  return allSchoolGuideSchoolGroups.find((group) => group.slug === slug || group.memberSlugs.includes(slug));
 }

@@ -15,11 +15,32 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-07-r347
+
+- Release ID: `2026-08-07-r347`
+- Date/Time (Asia/Singapore): `2026-08-07`
+- Deployment status: `READY`
+- Scope: expand the source register to 84 records / 75 K–12 and preschool brands, then present 66 correctly classified international-school brands after removing government, preschool-only, faith/private and specialist-government records from that consumer list. Brighton, recent openings, heritage curricula, affordable and specialist schools are included, with an explicit Student’s Pass status on every international profile.
+- Key files:
+  - `lib/school-guide-international-additions.ts`
+  - `lib/school-guide-data.ts`
+  - `lib/school-guide-directory.ts`
+  - `lib/school-guide-school-metadata.ts`
+  - `app/school-guide/schools/`
+  - `miniapp/boss-academic-parent/pages/guide-schools/`
+  - `miniapp/boss-academic-parent/pages/guide-school-detail/`
+  - `docs/tasks/TASK-20260807-complete-international-school-visa-directory.md`
+- Risk impact (if any): Medium-low and isolated to public school-guide data, filters and detail presentation. A school is never marked Student’s Pass-capable without current explicit evidence; uncertain cases require written confirmation. No login, assessment scoring, teaching, scheduling, packages, finance, payroll, tickets, messages or database schema changed.
+- Verification: TypeScript, 63 focused school-guide tests, 174 configured backend regression tests, the 67-page Mini Program release audit, native Mini Program JavaScript syntax checks and the 243-page production build passed.
+- Rollback point: `8f4a3fa771176014ea7ede018befeda08cbd2511` (`2026-08-07-r346` live runtime).
+
+---
+
 ## 2026-08-07-r346
 
 - Release ID: `2026-08-07-r346`
 - Date/Time (Asia/Singapore): `2026-08-07`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: recalibrate international-school matching by actual admission difficulty, age/grade placement and curriculum route; allow repeated 30–45 minute assessments while preserving every completed report.
 - Key files:
   - `lib/school-guide-admission-profiles.ts`
@@ -31,7 +52,7 @@ This file is the single source of truth for what changed in production.
   - `miniapp/boss-academic-parent/pages/guide-academic-assessment/`
   - `docs/tasks/TASK-20260807-school-assessment-retest-matching.md`
 - Risk impact (if any): Medium-low and isolated to the public school-guide assessment, recommendation and international-school description. No schema migration. Existing completed reports remain readable. Login, teaching, scheduling, packages, finance, payroll, tickets, reminders and authenticated operations are unchanged.
-- Verification: TypeScript, 61 focused school-guide tests, 174 configured backend regression tests, the 67-page Mini Program release audit, native Mini Program JavaScript syntax checks and the 243-page production build passed.
+- Verification: TypeScript, 61 focused school-guide tests, 174 configured backend regression tests, the 67-page Mini Program release audit, native Mini Program JavaScript syntax checks and the 243-page production build passed. Runtime commit `8f4a3fa771176014ea7ede018befeda08cbd2511` deployed with PM2 PID `2059514`; `/admin/login` returned HTTP 200 and the live catalog returned `2026-08-07-r346`. Mini Program upload was intentionally held for the complete-directory follow-up.
 - Rollback point: `773b5a3265b44e4ee983eff76e6e79ee3c565fc6` (`2026-08-07-r345` aligned documentation head).
 
 ---

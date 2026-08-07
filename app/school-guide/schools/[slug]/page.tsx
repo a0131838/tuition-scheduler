@@ -26,6 +26,7 @@ export default async function SchoolGuideSchoolDetailPage({ params }: { params: 
             <div><small>课程体系</small><strong>{school.comparison?.curriculum || school.category}</strong></div>
             <div><small>申请难度</small><strong>{school.admissionProfile?.difficultyLabel || "需个案确认"}</strong></div>
             <div><small>主要入学节点</small><strong>{school.admissionProfile?.mainEntryPoints.join("、") || "按年级确认"}</strong></div>
+            <div><small>学生准证</small><strong>{school.studentPass?.label || "需向学校书面确认"}</strong></div>
             <div><small>校区</small><strong>{school.comparison?.campuses || "学校未公开"}</strong></div>
             <div><small>首年固定费用</small><strong>{school.costProfile ? `S$${school.costProfile.fixedFirstYearLow.toLocaleString("en-SG")}–S$${school.costProfile.fixedFirstYearHigh.toLocaleString("en-SG")}` : "学校未公开"}</strong></div>
           </div>
@@ -40,6 +41,7 @@ export default async function SchoolGuideSchoolDetailPage({ params }: { params: 
             ) : <div className="sg-school-unpublished">暂无公开数据</div>}
 
             <h2>招生、课程与费用</h2>
+            {school.studentPass ? <section className="sg-cost-box"><span>Student’s Pass</span><strong>{school.studentPass.label}</strong><p>{school.studentPass.note}</p><small>最终签发由ICA决定；缴费前请取得学校书面确认。</small></section> : null}
             {school.admissionProfile ? <section className="sg-cost-box"><span>选校判断</span><strong>{school.admissionProfile.difficultyLabel}</strong><p>课程：{school.admissionProfile.curriculumFamilies.join("、") || school.comparison?.curriculum}</p><p>主要节点：{school.admissionProfile.mainEntryPoints.join("、") || "按目标年级确认"}</p><small>{school.admissionProfile.entryAdvice}“相对容易申请”不代表保证录取。</small></section> : null}
             {school.detailSections?.length ? school.detailSections.map((section, index) => (
               <details className="sg-school-detail-section" key={section.title} open={index === 0}>

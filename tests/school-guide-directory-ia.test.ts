@@ -9,16 +9,40 @@ import {
 import { schoolGuideSchools, schoolGuideSectors } from "../lib/school-guide-data";
 
 test("consumer directory keeps raw evidence but shows unique school brands", () => {
-  assert.equal(schoolGuideSchools.length, 43);
-  assert.equal(schoolGuideSchoolGroups.length, 34);
-  assert.equal(new Set(schoolGuideSchoolGroups.map((item) => item.slug)).size, 34);
+  assert.equal(schoolGuideSchools.length, 84);
+  assert.equal(schoolGuideSchoolGroups.length, 66);
+  assert.equal(new Set(schoolGuideSchoolGroups.map((item) => item.slug)).size, 66);
   assert.equal(schoolGuideSchoolGroups.filter((item) => item.nameZh === "全球印度国际学校").length, 1);
   assert.equal(schoolGuideSchoolGroups.filter((item) => item.nameZh === "壹世界国际学校").length, 1);
 });
 
+test("international directory excludes government, preschool and faith-school records", () => {
+  const names = new Set(schoolGuideSchoolGroups.map((item) => item.name));
+  assert.equal(names.has("Anglo-Chinese School (Independent)"), false);
+  assert.equal(names.has("School of the Arts, Singapore"), false);
+  assert.equal(names.has("Singapore Sports School"), false);
+  assert.equal(names.has("St Francis Methodist School"), false);
+  assert.equal(names.has("Odyssey The Global Preschool"), false);
+  assert.ok(getSchoolGuideSchoolGroup("anglo-chinese-school-independent-2"));
+});
+
+test("international directory includes recent and visa-limited schools", () => {
+  const brighton = schoolGuideSchoolGroups.find((item) => item.name === "Brighton College (Singapore)");
+  const grange = schoolGuideSchoolGroups.find((item) => item.name === "The Grange Institution");
+  const astor = schoolGuideSchoolGroups.find((item) => item.name === "Astor International School");
+  const perse = schoolGuideSchoolGroups.find((item) => item.name === "The Perse School (Singapore)");
+  assert.equal(brighton?.studentPass?.status, "SUPPORTED");
+  assert.equal(grange?.studentPass?.status, "LONG_TERM_PASS_ONLY");
+  assert.equal(astor?.studentPass?.status, "LONG_TERM_PASS_ONLY");
+  assert.equal(perse?.studentPass?.status, "VERIFY_WITH_SCHOOL");
+  assert.ok(brighton?.directoryTags.includes("NEW"));
+  assert.ok(grange?.directoryTags.includes("VISA_LIMITED"));
+  assert.ok(schoolGuideSchoolGroups.every((item) => item.studentPass?.label && item.studentPass.note));
+});
+
 test("campus brands resolve every legacy slug into one parent profile", () => {
   const eton = schoolGuideSchoolGroups.find((item) => item.nameZh === "伊顿国际学校与幼儿园");
-  const odyssey = schoolGuideSchoolGroups.find((item) => item.nameZh === "奥德赛全球幼儿园");
+  const odyssey = getSchoolGuideSchoolGroup("odyssey-the-global-preschool-pte-ltd-26");
   const uwc = schoolGuideSchoolGroups.find((item) => item.nameZh === "东南亚世界联合书院");
   assert.equal(eton?.memberSlugs.length, 4);
   assert.equal(eton?.campusProfiles.length, 4);

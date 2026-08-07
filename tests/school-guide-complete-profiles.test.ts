@@ -10,8 +10,8 @@ const root = path.resolve(__dirname, "..");
 const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
 
 test("every catalogued school or campus has a bilingual maintained profile", () => {
-  assert.equal(schoolGuideSchools.length, 43);
-  assert.equal(new Set(schoolGuideSchools.map((school) => school.slug)).size, 43);
+  assert.equal(schoolGuideSchools.length, 84);
+  assert.equal(new Set(schoolGuideSchools.map((school) => school.slug)).size, 84);
   for (const school of schoolGuideSchools) {
     assert.ok(school.nameZh.trim(), `${school.name} is missing a Chinese name`);
     assert.ok(school.name.trim(), `${school.slug} is missing an English name`);
