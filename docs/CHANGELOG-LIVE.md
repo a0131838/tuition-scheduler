@@ -15,6 +15,19 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-07-r352
+
+- Release ID: `2026-08-07-r352`
+- Date/Time (Asia/Singapore): `2026-08-07`
+- Deployment status: `READY`
+- Scope: fix the Mini Program rank-zero bug, replace fragmented international-school filters with one horizontal rail and move four private/alternative/support routes out of the mainstream international-school directory.
+- Key files: `lib/school-guide-directory.ts`, `lib/school-guide-official-institutions.ts`, `app/school-guide/schools/`, `miniapp/boss-academic-parent/pages/guide-schools/`, `tests/school-guide-*.test.ts`, `docs/tasks/TASK-20260807-miniapp-school-sort-filter-audit.md`.
+- Risk impact (if any): Low and isolated to public guide ordering, filter presentation and directory classification. No assessment scoring, authenticated workflow, business data or database change.
+- Verification: 69 school-guide tests, 174 backend regressions, TypeScript, native Mini Program JavaScript syntax, the 67-page Mini Program audit, the 243-page production build and a 390×844 browser check passed. The browser rendered one 10-button horizontal rail, Tanglin first and no console errors.
+- Rollback point: `c0cc97ef40c101874ab655cb763dc0e18bfe07a8` (`2026-08-07-r351` aligned live head).
+
+---
+
 ## 2026-08-07-r351
 
 - Release ID: `2026-08-07-r351`

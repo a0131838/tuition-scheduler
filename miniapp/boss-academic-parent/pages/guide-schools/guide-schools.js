@@ -7,7 +7,6 @@ Page({
     query: "",
     activeCategory: "international",
     focus: "ALL",
-    showMoreFilters: false,
     institutionGroup: "ALL",
     institutionGroups: [],
     showAllSchools: false,
@@ -22,7 +21,7 @@ Page({
   },
 
   onLoad() {
-    api.request("/api/public/school-guide/catalog?v=r351")
+    api.request("/api/public/school-guide/catalog?v=r352")
       .then((data) => {
         const counts = data.institutionCounts || {};
         const categories = (data.directoryCategories || []).map((item) => Object.assign({}, item, {
@@ -64,7 +63,11 @@ Page({
         if (["IB", "BRITISH", "AMERICAN", "OTHER"].includes(focus)) return school.primaryCurriculum === focus;
         return tags.includes(focus);
       })
-      .sort((a, b) => Number(a.browseRank || 999) - Number(b.browseRank || 999) || String(a.name || "").localeCompare(String(b.name || "")))
+      .sort((a, b) => {
+        const rankA = Number.isFinite(Number(a.browseRank)) ? Number(a.browseRank) : 999;
+        const rankB = Number.isFinite(Number(b.browseRank)) ? Number(b.browseRank) : 999;
+        return rankA - rankB || String(a.name || "").localeCompare(String(b.name || ""));
+      })
       .map((school) => ({
         ...school,
         campusCountText: (school.campusProfiles || []).length > 1 ? `${school.campusProfiles.length}个收录校区` : "",
@@ -106,7 +109,7 @@ Page({
     this.setData({ institutionLoading: true });
     const path = "/api/public/school-guide/institutions?category=" + encodeURIComponent(this.data.activeCategory) +
       "&group=" + encodeURIComponent(this.data.institutionGroup) +
-      "&q=" + encodeURIComponent(this.data.query.trim()) + "&limit=40&offset=" + offset + "&v=r351";
+      "&q=" + encodeURIComponent(this.data.query.trim()) + "&limit=40&offset=" + offset + "&v=r352";
     return api.request(path)
       .then((data) => this.setData({
         institutions: reset ? (data.items || []) : this.data.institutions.concat(data.items || []),
@@ -134,10 +137,6 @@ Page({
       showAllSchools: false,
       schools: this.buildVisibleSchools(this.data.allSchoolGroups, this.data.query, this.loadFavorites(), focus)
     });
-  },
-
-  toggleMoreFilters() {
-    this.setData({ showMoreFilters: !this.data.showMoreFilters });
   },
 
   showAllSchools() {

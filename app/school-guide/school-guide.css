@@ -1015,8 +1015,14 @@
   color: white;
   background: var(--sg-ink);
 }
-.sg-directory-focus.is-secondary { margin-top: 10px; }
-.sg-directory-more { display: flex; justify-content: space-between; width: 100%; margin-top: 12px; padding: 8px 0; border: 0; color: var(--sg-muted); background: transparent; cursor: pointer; }
+.sg-directory-focus.is-scrollable {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding: 2px 2px 8px;
+  scrollbar-width: none;
+}
+.sg-directory-focus.is-scrollable::-webkit-scrollbar { display: none; }
+.sg-directory-focus.is-scrollable button { flex: none; white-space: nowrap; }
 .sg-directory-count-row { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; color: var(--sg-muted); font-size: 12px; }
 
 .sg-directory-count,

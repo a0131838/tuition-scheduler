@@ -10,8 +10,8 @@ import { schoolGuideSchools, schoolGuideSectors } from "../lib/school-guide-data
 
 test("consumer directory keeps raw evidence but shows unique school brands", () => {
   assert.equal(schoolGuideSchools.length, 84);
-  assert.equal(schoolGuideSchoolGroups.length, 60);
-  assert.equal(new Set(schoolGuideSchoolGroups.map((item) => item.slug)).size, 60);
+  assert.equal(schoolGuideSchoolGroups.length, 56);
+  assert.equal(new Set(schoolGuideSchoolGroups.map((item) => item.slug)).size, 56);
   assert.equal(schoolGuideSchoolGroups.filter((item) => item.nameZh === "全球印度国际学校").length, 1);
   assert.equal(schoolGuideSchoolGroups.filter((item) => item.nameZh === "壹世界国际学校").length, 1);
 });
@@ -30,6 +30,10 @@ test("international directory excludes government, preschool, faith-school and P
     "5 Steps Academy",
     "SISH International High School",
     "The GUILD International College",
+    "TLS Academy",
+    "The Straits Waldorf School",
+    "Lodestar Montessori School",
+    "All Hands Together",
   ]) assert.equal(names.has(privateRoute), false, `${privateRoute} should be in private/specialist`);
   assert.equal(names.has("Olympiad International School"), true);
   assert.equal(names.has("HWA International School"), true);
@@ -138,6 +142,18 @@ test("consumer directory uses one explicit priority order in every curriculum vi
   assert.equal(schoolGuideSchoolGroups.find((item) => item.primaryCurriculum === "BRITISH")?.name, "Brighton College (Singapore)");
   assert.equal(schoolGuideSchoolGroups.find((item) => item.primaryCurriculum === "AMERICAN")?.name, "Singapore American School");
   assert.equal(schoolGuideSchoolGroups.find((item) => item.primaryCurriculum === "OTHER")?.name, "International French School (Singapore)");
+});
+
+test("miniapp preserves rank zero and shows every filter in one horizontal rail", () => {
+  const miniappJs = fs.readFileSync("miniapp/boss-academic-parent/pages/guide-schools/guide-schools.js", "utf8");
+  const miniappWxml = fs.readFileSync("miniapp/boss-academic-parent/pages/guide-schools/guide-schools.wxml", "utf8");
+  const web = fs.readFileSync("app/school-guide/schools/SchoolExplorer.tsx", "utf8");
+  assert.doesNotMatch(miniappJs, /browseRank\s*\|\|\s*999/);
+  assert.match(miniappJs, /Number\.isFinite\(Number\(a\.browseRank\)\)/);
+  assert.doesNotMatch([miniappJs, miniappWxml, web].join("\n"), /showMoreFilters|toggleMoreFilters|更多筛选/);
+  for (const label of ["全部", "IB", "英式 / Cambridge", "美式 / AP", "其他课程", "国家\/侨民课程", "近期开校", "需长期准证", "专项支持", "学前"]) {
+    assert.match(miniappWxml, new RegExp(label));
+  }
 });
 
 test("consumer surfaces hide generic Student Pass fallback and keep only real restrictions", () => {

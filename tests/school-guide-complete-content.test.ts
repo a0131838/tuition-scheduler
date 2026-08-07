@@ -11,7 +11,7 @@ const miniapp = path.join(root, "miniapp/boss-academic-parent");
 const read = (relative: string) => fs.readFileSync(path.join(miniapp, relative), "utf8");
 
 test("every international directory brand has a substantive detail profile", () => {
-  assert.equal(schoolGuideSchoolGroups.length, 60);
+  assert.equal(schoolGuideSchoolGroups.length, 56);
   for (const school of schoolGuideSchoolGroups) {
     assert.ok((school.detailSections?.length || 0) >= 3, `${school.name} has fewer than 3 detail sections`);
     assert.ok(school.comparison?.curriculum, `${school.name} has no curriculum summary`);

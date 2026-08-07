@@ -181,9 +181,11 @@ test("international-school browsing prioritises selected IB schools and keeps fi
   const miniList = read("miniapp/boss-academic-parent/pages/guide-schools/guide-schools.wxml");
   const miniSharedCss = read("miniapp/boss-academic-parent/styles/school-guide.wxss");
   assert.match(explorer, /第一梯队优先 · 综合排序/);
-  assert.match(explorer, /更多筛选/);
+  assert.match(explorer, /is-scrollable/);
+  assert.doesNotMatch(explorer, /更多筛选/);
   assert.match(miniList, /scroll-view class="school-focus-scroll"/);
-  assert.match(miniList, /更多筛选/);
+  assert.doesNotMatch(miniList, /更多筛选/);
+  assert.match(miniList, /国家\/侨民课程/);
   assert.match(miniList, /第一梯队/);
   assert.doesNotMatch(miniSharedCss, /grid-template-columns:\s*1fr 180rpx/);
 });

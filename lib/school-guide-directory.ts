@@ -280,6 +280,10 @@ const nonInternationalDirectoryNames = new Set([
   "5 Steps Academy",
   "SISH International High School",
   "The GUILD International College",
+  "TLS Academy",
+  "The Straits Waldorf School",
+  "Lodestar Montessori School",
+  "All Hands Together",
 ]);
 
 const allSchoolGuideSchoolGroups: SchoolGuideSchoolGroup[] = (() => {

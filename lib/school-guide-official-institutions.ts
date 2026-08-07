@@ -433,6 +433,30 @@ export const schoolGuidePrivateEducationProfiles: SchoolGuideInstitution[] = [
     checks: ["索取具体课程名称、完成证书、考试安排和下一阶段衔接说明。", "核对标准PEI学生合同、退费、Fee Protection及全部费用。", "如计划转入国际学校或大学预科，先取得目标学校对该课程的书面认可。"], sourceAuthority: "5 Steps Academy / standard PEI student contract", sourceNote: "学校公开课程与PEI学生合同资料；当前课程注册状态以TPGateway复核。",
   }),
   privateEducationProfile({
+    slug: "private-tls-academy", categoryId: "private-specialist", subcategory: "教会与特色私立学校", name: "TLS Academy", nameZh: "TLS学院", summary: "EduTrust认证的私立小学至高中，采用ACE基督教个别化课程并颁发校方American High School Diploma。", badges: ["教会学校", "Grade 1–12", "ACE课程", "私立学校"], positioning: "教会与特色私立学校",
+    programmes: ["Grade 1至12全日制路径，采用Accelerated Christian Education（ACE）课程。", "完成Grade 12后由TLS Academy颁发American High School Diploma；申请大学前须向目标院校核对认可和科目要求。"],
+    admissions: ["申请人需具备基础英文读写和理解能力，并参加ACE Diagnostic Test确定实际学习水平。", "学校公开说明其EduTrust资格可协助符合条件的国际学生申请Student's Pass，最终仍由ICA审批。"],
+    checks: ["这是私立教会学校，不与东陵、UWC等主流国际学校放在同一列表。", "确认American High School Diploma的颁证主体、目标大学认可、标准化考试和先修科目。", "核对完整学费、学生合同、Fee Protection、退费和Student's Pass。"], sourceAuthority: "TLS Academy / SkillsFuture Singapore", sourceNote: "学校2026课程、招生和EduTrust公开资料；机构与课程状态以TPGateway为准。",
+  }),
+  privateEducationProfile({
+    slug: "private-straits-waldorf", categoryId: "private-specialist", subcategory: "特色教育学校", name: "The Straits Waldorf School", nameZh: "海峡华德福学校", summary: "采用Waldorf/Steiner教育理念的小型特色学校，属于替代教育路线，不按主流IB、英式或美式国际学校路径归类。", badges: ["特色教育", "Waldorf", "小学路线"], positioning: "特色教育学校",
+    programmes: ["课程以Waldorf/Steiner的阶段发展、艺术、手作、节奏和综合主题学习为核心。", "并非IB、IGCSE或AP考试路线；转入主流中学前需提前核对年级和课程衔接。"],
+    admissions: ["先参加家长说明、学校参观及适用的孩子观察或面谈。", "学校依据年龄、发展阶段、既往学习和可提供的支持决定是否适合。"],
+    checks: ["确认当前开放年级、全日制课程注册状态和可接收的准证类型。", "书面核对下一阶段可衔接学校、成绩记录和离校文件。", "不要把Waldorf特色路线等同于主流国际考试课程。"], sourceAuthority: "The Straits Waldorf School / SkillsFuture Singapore", sourceNote: "学校公开课程与招生资料；注册课程和准证条件按TPGateway及学校书面答复复核。",
+  }),
+  privateEducationProfile({
+    slug: "private-lodestar-montessori", categoryId: "private-specialist", subcategory: "特色教育学校", name: "Lodestar Montessori School", nameZh: "北极星蒙特梭利学校", summary: "涵盖3–6岁学前、6–12岁小学及12–18岁Erdkinder的蒙特梭利特色教育体系。", badges: ["特色教育", "Montessori", "3–18岁"], positioning: "蒙特梭利特色学校",
+    programmes: ["Preschool由ECDA注册；Elementary与Erdkinder按各自学校和课程资料运行。", "Elementary为全日制蒙特梭利小学路线，Erdkinder面向青少年；并非IB、IGCSE或AP统一考试课程。"],
+    admissions: ["Elementary通常只在6–8岁初始阶段接收新生，并优先考虑有蒙特梭利背景的孩子。", "学校公开说明Elementary申请人需持Dependant's Pass或新加坡PR；其他学段和身份须逐项确认。"],
+    checks: ["分别核对Preschool、Elementary和Erdkinder的运营主体、注册状态和适龄入口。", "确认升入主流中学或国际学校时的年级映射、成绩记录和评估要求。", "准证资格和课程费用须按孩子所申请学段书面确认。"], sourceAuthority: "Lodestar Montessori / ECDA / SkillsFuture Singapore", sourceNote: "学校2026课程、年龄、注册与招生公开资料；最终以对应学段书面录取为准。",
+  }),
+  privateEducationProfile({
+    slug: "private-all-hands-together", categoryId: "private-specialist", subcategory: "专项支持私立学校", name: "All Hands Together", nameZh: "All Hands Together融合学校", summary: "面向需要个别化学习、发展与支持方案的孩子，属于专项支持路线，不按普通国际学校择校逻辑比较。", badges: ["专项支持", "个别化学习", "先评估"], positioning: "专项支持私立学校",
+    programmes: ["以孩子的学习、沟通、社交和生活技能需要制定个别目标。", "课程和支持组合取决于评估，不应直接套用普通国际学校的年级、考试和班级比较。"],
+    admissions: ["先提交既往学校、心理、治疗或发展资料，并完成学校观察、访谈或试读。", "由学校确认是否具备合适的班级、人员和支持能力。"],
+    checks: ["确认学校能否满足孩子的具体学习、行为、沟通和治疗需要。", "明确课程完成记录、下一阶段升学或职业过渡，以及外部治疗费用。", "国际学生须书面确认准证可行性，不能从学校名称推定Student's Pass。"], sourceAuthority: "All Hands Together / SkillsFuture Singapore", sourceNote: "学校公开课程与支持资料；当前注册、课程和准证状态须在申请时复核。",
+  }),
+  privateEducationProfile({
     slug: "private-guild-international-college", categoryId: "private-specialist", subcategory: "专项支持私立学校", name: "The GUILD International College", nameZh: "GUILD国际学院", summary: "面向有学习差异的青少年与年轻成人，采用个别学习计划、生活技能和职业过渡支持。", badges: ["常见选择", "专项支持", "非考试路线"], positioning: "专项支持私立学校",
     programmes: ["采用非考试型学习模式，以Individual Learning Plan目标、生活技能、艺术及职业过渡为核心。", "学校公开说明会结合诊断、心理或治疗报告和试读观察评估支持程度。"],
     admissions: ["先提交学校、诊断、心理及治疗资料，再完成试读观察和家长访谈。", "班级安排依据发展能力与支持需要，不按普通国际学校年龄年级直接套用。"],

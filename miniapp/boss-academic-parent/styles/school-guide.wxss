@@ -226,8 +226,8 @@
 
 .school-focus-tabs {
   display: inline-flex;
-  min-width: 100%;
-  padding: 0 32rpx;
+  min-width: max-content;
+  padding: 0 44rpx 4rpx 32rpx;
   box-sizing: border-box;
 }
 
@@ -238,7 +238,6 @@
   padding: 18rpx 20rpx;
 }
 
-.school-more-toggle { display: flex; justify-content: space-between; padding: 12rpx 32rpx 2rpx; color: #65707a; font-size: 23rpx; }
 .school-directory-head { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; padding-right: 32rpx; }
 .school-directory-order { color: #8a8f95; font-size: 21rpx; text-align: right; }
 

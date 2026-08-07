@@ -26,11 +26,6 @@
       <view class="guide-tier-tab {{focus === 'BRITISH' ? 'active' : ''}}" data-focus="BRITISH" bindtap="setFocus">英式 / Cambridge</view>
       <view class="guide-tier-tab {{focus === 'AMERICAN' ? 'active' : ''}}" data-focus="AMERICAN" bindtap="setFocus">美式 / AP</view>
       <view class="guide-tier-tab {{focus === 'OTHER' ? 'active' : ''}}" data-focus="OTHER" bindtap="setFocus">其他课程</view>
-    </view>
-    </scroll-view>
-    <view class="school-more-toggle" bindtap="toggleMoreFilters"><text>更多筛选</text><text>{{showMoreFilters ? '收起' : '展开'}}</text></view>
-    <scroll-view class="school-focus-scroll school-focus-more" scroll-x="true" enhanced="true" show-scrollbar="false" wx:if="{{showMoreFilters}}">
-    <view class="guide-tier-tabs school-focus-tabs">
       <view class="guide-tier-tab {{focus === 'HERITAGE' ? 'active' : ''}}" data-focus="HERITAGE" bindtap="setFocus">国家/侨民课程</view>
       <view class="guide-tier-tab {{focus === 'NEW' ? 'active' : ''}}" data-focus="NEW" bindtap="setFocus">近期开校</view>
       <view class="guide-tier-tab {{focus === 'VISA_LIMITED' ? 'active' : ''}}" data-focus="VISA_LIMITED" bindtap="setFocus">需长期准证</view>
