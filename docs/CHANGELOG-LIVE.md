@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-08-07-r343`
 - Date/Time (Asia/Singapore): `2026-08-07`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: remove the artificial blank space above the public Mini Program home content and give popular schools clearer, stable visual identities without using unlicensed school crests.
 - Key files:
   - `miniapp/boss-academic-parent/pages/guide-home/guide-home.wxml`
@@ -28,7 +28,7 @@ This file is the single source of truth for what changed in production.
   - `tests/miniapp-consumer-entry.test.ts`
   - `docs/tasks/TASK-20260807-school-guide-home-visual-anchor.md`
 - Risk impact (if any): Low and isolated to the public school-guide Mini Program home presentation and catalog cache version. No school facts, recommendation logic, assessment scoring, login, scheduling, packages, finance, payroll, tickets or messages changed. Official crests are not copied without permission; the interface supports a future licensed local image with a stable typographic fallback.
-- Verification: 21 focused school-guide tests, all 426 backend regression tests, the 67-page Mini Program release audit, native JavaScript check, TypeScript, WeChat developer-tool preview compile and the production build passed before release. Guarded deployment, live API health and WeChat development-version upload remain in the release gate.
+- Verification: 21 focused school-guide tests, all 426 backend regression tests, the 67-page Mini Program release audit, native JavaScript check, TypeScript, WeChat developer-tool preview compile and the 243-page production build passed. Runtime commit `57b9c52f6f8f0c0302b95c463ca57b9093182241` aligned locally, on GitHub and on production with PM2 PID `2007353` and `/admin/login` HTTP 200. Live catalog returned `2026-08-07-r343`; WeChat development version `1.0.40` uploaded successfully at 716,495 bytes. Experience-version designation and physical-phone first-viewport acceptance remain manual.
 - Rollback point: `6c38b4cf8d4bc4b9e23440804fc7b9869da4a8c5` (`2026-08-06-r342` final aligned release head).
 
 ---
