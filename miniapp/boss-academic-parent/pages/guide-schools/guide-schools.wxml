@@ -46,7 +46,8 @@
         <view data-slug="{{item.slug}}" bindtap="openSchool">
           <view class="guide-row-title">{{item.nameZh}}</view>
           <view class="guide-row-name-en">{{item.name}}</view>
-          <view class="guide-tier-label first">{{item.browseLabel}}</view>
+          <view class="guide-tier-label first" wx:if="{{item.isFirstTier}}">第一梯队</view>
+          <view class="guide-tier-label">{{item.browseLabel}}</view>
           <view class="guide-tier-label" wx:if="{{item.campusCountText}}">{{item.campusCountText}}</view>
           <view class="guide-row-note" wx:if="{{item.studentPass}}">{{item.studentPass.label}}</view>
         </view>

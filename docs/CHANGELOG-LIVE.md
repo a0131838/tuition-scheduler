@@ -15,6 +15,19 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-07-r350
+
+- Release ID: `2026-08-07-r350`
+- Date/Time (Asia/Singapore): `2026-08-07`
+- Deployment status: `PREPARED`
+- Scope: restore the agreed five-school first-tier label, move PEI/private/specialist routes out of the international-school directory and make results/outcomes the default school-detail view.
+- Key files: `lib/school-guide-directory.ts`, `lib/school-guide-official-institutions.ts`, `app/school-guide/schools/`, `miniapp/boss-academic-parent/pages/guide-schools/`, `miniapp/boss-academic-parent/pages/guide-school-detail/`, `tests/school-guide-*.test.ts`, `docs/tasks/TASK-20260807-first-tier-private-results-home.md`.
+- Risk impact (if any): Low and isolated to public guide classification and presentation. No authenticated workflow, recommendation score, login, teaching, scheduling, package, finance, payroll, ticket, notification, permission or database change.
+- Verification: 66 school-guide tests, 174 backend regressions, TypeScript, native Mini Program JavaScript syntax, the 67-page Mini Program audit, the 243-page production build and a 390×844 browser check passed. The directory contains 60 international-school brands, exactly five first-tier labels and six migrated private/specialist profiles.
+- Rollback point: `0a03d199b18268ac5079437ad58931a447f7b2d1` (aligned r349 documentation head).
+
+---
+
 ## 2026-08-07-r349
 
 - Release ID: `2026-08-07-r349`

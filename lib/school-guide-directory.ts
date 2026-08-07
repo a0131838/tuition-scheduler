@@ -15,6 +15,7 @@ export type SchoolGuideSchoolGroup = SchoolGuideSchool & {
   browseGroup: "IB_FEATURED" | "IB" | "NON_IB_FEATURED" | "OTHER";
   browseRank: number;
   browseLabel: string;
+  isFirstTier: boolean;
 };
 
 export type SchoolGuideDirectoryCategory = {
@@ -86,6 +87,14 @@ const featuredNonIbOrder = [
   "Singapore American School",
   "Brighton College (Singapore)",
 ] as const;
+
+const firstTierSchoolNames = new Set([
+  "Singapore American School",
+  "Dulwich College (Singapore)",
+  "UWC South East Asia (UWCSEA)",
+  "Tanglin Trust School",
+  "North London Collegiate School (Singapore)",
+]);
 
 function unique<T>(values: T[]) {
   return Array.from(new Set(values));
@@ -168,6 +177,7 @@ function mergeMembers(
     memberSlugs: members.map((item) => item.slug),
     campusProfiles: campusProfiles.length > 1 ? campusProfiles : [],
     directoryTags,
+    isFirstTier: firstTierSchoolNames.has(override?.name || merged.name),
     ...buildBrowseOrder(merged, directoryTags),
   };
 }
@@ -182,6 +192,12 @@ const nonInternationalDirectoryNames = new Set([
   "St Francis Methodist School",
   "St. Joseph's Institution",
   "The Little Skool-House International Pte Ltd",
+  "Dimensions International College (School Division)",
+  "Insworld Institute",
+  "Stalford Academy",
+  "5 Steps Academy",
+  "SISH International High School",
+  "The GUILD International College",
 ]);
 
 const allSchoolGuideSchoolGroups: SchoolGuideSchoolGroup[] = (() => {

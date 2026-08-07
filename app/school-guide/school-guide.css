@@ -574,6 +574,11 @@
   background: var(--sg-orange);
 }
 
+.sg-tier-badge.is-first-tier {
+  margin-right: 6px;
+  background: var(--sg-ink);
+}
+
 .sg-tier-muted {
   color: #66707c;
   background: #e9e7e2;

@@ -421,6 +421,30 @@ export const schoolGuidePrivateEducationProfiles: SchoolGuideInstitution[] = [
     checks: ["确认International A-Level科目组合能满足目标大学先修要求。", "核对考试费、实验课、补考、升学指导和Student's Pass。", "不要把小班等同于自动取得高分。"], sourceAuthority: "Insworld Institute / TPGateway", sourceNote: "Insworld公开课程资料；考试局和监管状态须按当年课程复核。",
   }),
   privateEducationProfile({
+    slug: "private-stalford-academy", categoryId: "private-specialist", subcategory: "私立中小学与考试预备", name: "Stalford Academy", nameZh: "思德福学院", summary: "提供Year 1–12国际课程，并同时开设AEIS、O-Level和A-Level考试预备路线。", badges: ["重点高中路线", "Cambridge", "AEIS/O/A-Level"], positioning: "私立学校与考试路线",
+    programmes: ["国际课程覆盖Year 1–6、Year 7–10 Cambridge IGCSE及Year 11–12 Senior High。", "另设AEIS、新加坡剑桥O-Level和A-Level预备课程；申请时必须区分完整学年课程与短期考试预备。"],
+    admissions: ["按目标年级审核既往成绩，并通过英语、数学及适用口试确定课程或年级。", "学校公开资料显示可按学期插班；具体剩余学制、考试报名资格和Student's Pass须写入录取及学生合同。"],
+    checks: ["先确认课程全名、最终证书及外部考试局。", "核对2026总学费、申请费、注册费、外部考试费和补考费用。", "AEIS预备不等于取得政府学校学位，录取仍由MOE考试表现和学额决定。"], sourceAuthority: "Stalford Academy / SkillsFuture Singapore", sourceNote: "学校2026课程、费用与SSG注册公开资料；最终以当期课程文件及Student Contract为准。",
+  }),
+  privateEducationProfile({
+    slug: "private-five-steps-academy", categoryId: "private-specialist", subcategory: "私立中小学", name: "5 Steps Academy", nameZh: "五步学院", summary: "小班及弹性进度的私立中小学路线，课程、年级和毕业资格须逐项确认。", badges: ["常见选择", "小班", "弹性进度"], positioning: "私立学校",
+    programmes: ["面向小学至中学阶段提供个别化的英式或美式课程安排。", "课程以学校注册的具体programme为准，不能只凭“英式/美式”名称推定最终毕业资格。"],
+    admissions: ["提交年龄、既往成绩及学习需要资料，由学校确认合适课程和进度。", "国际学生须核对课程是否符合当前Student's Pass申请条件。"],
+    checks: ["索取具体课程名称、完成证书、考试安排和下一阶段衔接说明。", "核对标准PEI学生合同、退费、Fee Protection及全部费用。", "如计划转入国际学校或大学预科，先取得目标学校对该课程的书面认可。"], sourceAuthority: "5 Steps Academy / standard PEI student contract", sourceNote: "学校公开课程与PEI学生合同资料；当前课程注册状态以TPGateway复核。",
+  }),
+  privateEducationProfile({
+    slug: "private-guild-international-college", categoryId: "private-specialist", subcategory: "专项支持私立学校", name: "The GUILD International College", nameZh: "GUILD国际学院", summary: "面向有学习差异的青少年与年轻成人，采用个别学习计划、生活技能和职业过渡支持。", badges: ["常见选择", "专项支持", "非考试路线"], positioning: "专项支持私立学校",
+    programmes: ["采用非考试型学习模式，以Individual Learning Plan目标、生活技能、艺术及职业过渡为核心。", "学校公开说明会结合诊断、心理或治疗报告和试读观察评估支持程度。"],
+    admissions: ["先提交学校、诊断、心理及治疗资料，再完成试读观察和家长访谈。", "班级安排依据发展能力与支持需要，不按普通国际学校年龄年级直接套用。"],
+    checks: ["确认学校是否能满足孩子的具体学习、行为、沟通和治疗需要。", "学校公开说明其并非EduTrust学校；国际学生身份与Student's Pass可行性须在付款前书面确认。", "确认课程完成证书、后续升学或就业衔接，而不是把非考试课程误认为IGCSE或IB路线。"], sourceAuthority: "The GUILD International College / SkillsFuture Singapore", sourceNote: "学校2026课程、评估、费用保护和学生支持公开资料。",
+  }),
+  privateEducationProfile({
+    slug: "private-sish-institute", categoryId: "private-specialist", subcategory: "Private Education Institution / 职业课程", name: "SISH Institute", nameZh: "SISH学院", summary: "当前重点为酒店、旅游、航空及相关高等教育课程，不再作为普通国际高中目录展示。", badges: ["PEI", "酒店旅游", "航空课程"], positioning: "私立教育机构",
+    programmes: ["当前公开课程覆盖Certificate、Diploma、Advanced Diploma、Graduate Diploma、本科及MBA等酒店、旅游和航空相关路径。", "旧名称或旧高中课程不能代替当前课程清单；申请须按TPGateway和学校当期programme核对。"],
+    admissions: ["按具体certificate、diploma或学位课程审核年龄、学历、英语和适用工作经验。", "国际学生按获准全日制课程申请Student's Pass。"],
+    checks: ["确认当前课程全名、颁证或合作机构、课程注册期和职业认证。", "核对学费、实习安排、Fee Protection、EduTrust和学生合同。", "不要把SISH学院当作提供普通K–12学籍的国际学校。"], sourceAuthority: "SISH Institute / SkillsFuture Singapore", sourceNote: "SISH当前官网说明其为SSG注册PEI，公开课程重点为酒店、旅游和航空；课程状态以TPGateway为准。",
+  }),
+  privateEducationProfile({
     slug: "private-st-francis-methodist", categoryId: "private-specialist", subcategory: "教会学校", name: "St Francis Methodist School", nameZh: "圣法兰西斯卫理学校", summary: "卫理公会背景的中学至高中学校，提供Singapore-Cambridge、Cambridge国际课程及高中衔接。", badges: ["教会学校", "O-Level/IGCSE", "高中"], positioning: "教会学校",
     programmes: ["提供Lower Secondary、Singapore-Cambridge O-Level、Cambridge IGCSE及学校当前开放的Senior High路线。", "适合希望在私立学校完成本地或国际考试路径的中学生。"],
     admissions: ["提交近期成绩并参加年级对应评估或面试。", "2026费用、学制和科目组合按学校当年Fee Schedule及课程页。"],

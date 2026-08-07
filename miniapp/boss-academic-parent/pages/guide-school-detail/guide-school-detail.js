@@ -3,7 +3,7 @@ const api = require("../../utils/api");
 Page({
   data: {
     school: null,
-    activeDetailTab: "OVERVIEW",
+    activeDetailTab: "RESULTS",
     overviewOpen: false,
     detailSections: [],
     pathways: [],
@@ -13,7 +13,7 @@ Page({
 
   onLoad(options) {
     const slug = decodeURIComponent(options.slug || "");
-    api.request("/api/public/school-guide/catalog?v=r349")
+    api.request("/api/public/school-guide/catalog?v=r350")
       .then((data) => {
         const groups = data.schoolGroups || data.schools || [];
         const school = groups.find((item) => item.slug === slug || (item.memberSlugs || []).includes(slug));

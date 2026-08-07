@@ -12,10 +12,10 @@ export default function SchoolDetailTabs({ school, pathway, pack }: {
   pathway?: SchoolGuideDetailedPathway;
   pack?: SchoolGuideSamplePack;
 }) {
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setTab] = useState<Tab>("results");
   return <>
     <nav className="sg-school-tabs" aria-label="学校资料分类">
-      {[["overview", "概览"], ["results", "成绩升学"], ["application", "申请费用"]].map(([value, label]) => <button key={value} className={tab === value ? "active" : ""} type="button" onClick={() => setTab(value as Tab)}>{label}</button>)}
+      {[["results", "成绩升学"], ["overview", "概览"], ["application", "申请费用"]].map(([value, label]) => <button key={value} className={tab === value ? "active" : ""} type="button" onClick={() => setTab(value as Tab)}>{label}</button>)}
     </nav>
     <article className="sg-copy sg-school-tab-content">
       {tab === "overview" ? <>

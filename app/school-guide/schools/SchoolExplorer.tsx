@@ -87,6 +87,7 @@ export default function SchoolExplorer({ schools, categories, institutions }: { 
             <div>
               <h3>{school.nameZh}</h3>
               <small className="sg-school-name-en">{school.name}</small>
+              {school.isFirstTier ? <span className="sg-tier-badge is-first-tier">第一梯队</span> : null}
               <span className="sg-tier-badge">{school.browseLabel}</span>
               {school.campusProfiles.length > 1 ? <span className="sg-tier-badge is-neutral">{school.campusProfiles.length}个收录校区</span> : null}
               {school.comparison?.curriculum ? <p>{school.comparison.curriculum}</p> : null}

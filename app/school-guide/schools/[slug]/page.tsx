@@ -11,7 +11,7 @@ export default async function SchoolGuideSchoolDetailPage({ params }: { params: 
   const secondary = /grade 6|year 7|secondary|中学|18岁/i.test(school.comparison?.ageAndGrades || "");
   const pack = getSchoolGuideSamplePack(secondary ? "international-secondary-sample" : "international-primary-sample");
   return <main>
-    <section className="sg-page-head"><div className="sg-shell"><div className="sg-eyebrow">国际学校 · {school.browseLabel}</div><h1>{school.nameZh}</h1><p>{school.name}</p></div></section>
+    <section className="sg-page-head"><div className="sg-shell"><div className="sg-eyebrow">国际学校 · {school.isFirstTier ? "第一梯队 · " : ""}{school.browseLabel}</div><h1>{school.nameZh}</h1><p>{school.name}</p></div></section>
     <section className="sg-section"><div className="sg-shell sg-school-profile">
       <div className="sg-school-snapshot">
         <div><small>年龄与年级</small><strong>{school.comparison?.ageAndGrades || "学校未公开"}</strong></div>

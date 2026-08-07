@@ -1,6 +1,6 @@
 <view class="guide-page" wx:if="{{school}}">
   <view class="guide-hero school-hero">
-    <view class="guide-kicker">国际学校</view>
+    <view class="guide-kicker">国际学校{{school.isFirstTier ? " · 第一梯队" : ""}}</view>
     <view class="guide-title school-name-zh">{{school.nameZh}}</view>
     <view class="school-name-en">{{school.name}}</view>
   </view>
@@ -13,8 +13,8 @@
   </view>
 
   <view class="school-detail-tabs">
-    <view class="school-detail-tab {{activeDetailTab === 'OVERVIEW' ? 'active' : ''}}" data-tab="OVERVIEW" bindtap="setDetailTab">概览</view>
     <view class="school-detail-tab {{activeDetailTab === 'RESULTS' ? 'active' : ''}}" data-tab="RESULTS" bindtap="setDetailTab">成绩升学</view>
+    <view class="school-detail-tab {{activeDetailTab === 'OVERVIEW' ? 'active' : ''}}" data-tab="OVERVIEW" bindtap="setDetailTab">概览</view>
     <view class="school-detail-tab {{activeDetailTab === 'APPLICATION' ? 'active' : ''}}" data-tab="APPLICATION" bindtap="setDetailTab">申请费用</view>
   </view>
 

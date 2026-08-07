@@ -69,6 +69,18 @@ test("popular private higher education and secondary routes have detailed profil
   assert.ok(furen);
   assert.equal(furen.nameZh, "辅仁国际学校");
   assert.ok(furen.sections.some((section) => section.items.join(" ").includes("入学测试")));
+  for (const slug of [
+    "private-dimensions",
+    "private-insworld",
+    "private-stalford-academy",
+    "private-five-steps-academy",
+    "private-guild-international-college",
+    "private-sish-institute",
+  ]) {
+    const institution = schoolGuideOfficialInstitutions.find((item) => item.slug === slug);
+    assert.ok(institution, `${slug} is missing from private/specialist`);
+    assert.equal(institution.categoryId, "private-specialist");
+  }
   for (const slug of ["private-amity-singapore", "private-kingston-international-college"]) {
     const institution = schoolGuideOfficialInstitutions.find((item) => item.slug === slug);
     assert.ok(institution, `${slug} is missing`);
@@ -152,9 +164,14 @@ test("consumer school pages keep research inside the product", () => {
   assert.match(webDetailTabs, /概览/);
   assert.match(webDetailTabs, /成绩升学/);
   assert.match(webDetailTabs, /申请费用/);
+  assert.match(webDetailTabs, /useState<Tab>\("results"\)/);
+  assert.ok(webDetailTabs.indexOf('["results", "成绩升学"]') < webDetailTabs.indexOf('["overview", "概览"]'));
   assert.match(miniDetail, /历年学术成绩/);
   assert.match(miniDetail, /大学录取与去向/);
   assert.match(miniDetail, /下次复核/);
+  const miniDetailJs = read("miniapp/boss-academic-parent/pages/guide-school-detail/guide-school-detail.js");
+  assert.match(miniDetailJs, /activeDetailTab: "RESULTS"/);
+  assert.ok(miniDetail.indexOf("data-tab=\"RESULTS\"") < miniDetail.indexOf("data-tab=\"OVERVIEW\""));
 });
 
 test("international-school browsing prioritises selected IB schools and keeps filters unclipped", () => {
@@ -167,7 +184,7 @@ test("international-school browsing prioritises selected IB schools and keeps fi
   assert.match(explorer, /更多筛选/);
   assert.match(miniList, /scroll-view class="school-focus-scroll"/);
   assert.match(miniList, /更多筛选/);
-  assert.doesNotMatch(miniList, /第一梯队/);
+  assert.match(miniList, /第一梯队/);
   assert.doesNotMatch(miniSharedCss, /grid-template-columns:\s*1fr 180rpx/);
 });
 

@@ -10,19 +10,29 @@ import { schoolGuideSchools, schoolGuideSectors } from "../lib/school-guide-data
 
 test("consumer directory keeps raw evidence but shows unique school brands", () => {
   assert.equal(schoolGuideSchools.length, 84);
-  assert.equal(schoolGuideSchoolGroups.length, 66);
-  assert.equal(new Set(schoolGuideSchoolGroups.map((item) => item.slug)).size, 66);
+  assert.equal(schoolGuideSchoolGroups.length, 60);
+  assert.equal(new Set(schoolGuideSchoolGroups.map((item) => item.slug)).size, 60);
   assert.equal(schoolGuideSchoolGroups.filter((item) => item.nameZh === "全球印度国际学校").length, 1);
   assert.equal(schoolGuideSchoolGroups.filter((item) => item.nameZh === "壹世界国际学校").length, 1);
 });
 
-test("international directory excludes government, preschool and faith-school records", () => {
+test("international directory excludes government, preschool, faith-school and PEI exam-route records", () => {
   const names = new Set(schoolGuideSchoolGroups.map((item) => item.name));
   assert.equal(names.has("Anglo-Chinese School (Independent)"), false);
   assert.equal(names.has("School of the Arts, Singapore"), false);
   assert.equal(names.has("Singapore Sports School"), false);
   assert.equal(names.has("St Francis Methodist School"), false);
   assert.equal(names.has("Odyssey The Global Preschool"), false);
+  for (const privateRoute of [
+    "Dimensions International College (School Division)",
+    "Insworld Institute",
+    "Stalford Academy",
+    "5 Steps Academy",
+    "SISH International High School",
+    "The GUILD International College",
+  ]) assert.equal(names.has(privateRoute), false, `${privateRoute} should be in private/specialist`);
+  assert.equal(names.has("Olympiad International School"), true);
+  assert.equal(names.has("HWA International School"), true);
   assert.ok(getSchoolGuideSchoolGroup("anglo-chinese-school-independent-2"));
 });
 
@@ -99,19 +109,15 @@ test("school directory no longer asks parents to copy external links", () => {
   assert.match(miniappJs, /directoryCategories/);
 });
 
-test("consumer school guide does not expose editorial tier labels", () => {
-  const files = [
-    "app/school-guide/page.tsx",
-    "app/school-guide/compare/CompareSchools.tsx",
-    "app/school-guide/plan/SchoolPlan.tsx",
-    "app/school-guide/schools/SchoolExplorer.tsx",
-    "app/school-guide/schools/[slug]/page.tsx",
-    "miniapp/boss-academic-parent/pages/guide-schools/guide-schools.wxml",
-    "miniapp/boss-academic-parent/pages/guide-school-detail/guide-school-detail.wxml",
-    "miniapp/boss-academic-parent/pages/guide-plan/guide-plan.wxml",
-  ];
-  for (const file of files) {
-    const source = fs.readFileSync(file, "utf8");
-    assert.doesNotMatch(source, /第一梯队|待分梯队|IB重点|优质非IB/, `${file} exposes an editorial tier`);
-  }
+test("consumer directory marks only the five agreed first-tier schools", () => {
+  const firstTier = schoolGuideSchoolGroups.filter((item) => item.isFirstTier).map((item) => item.name).sort();
+  assert.deepEqual(firstTier, [
+    "Dulwich College (Singapore)",
+    "North London Collegiate School (Singapore)",
+    "Singapore American School",
+    "Tanglin Trust School",
+    "UWC South East Asia (UWCSEA)",
+  ].sort());
+  assert.match(fs.readFileSync("app/school-guide/schools/SchoolExplorer.tsx", "utf8"), /第一梯队/);
+  assert.match(fs.readFileSync("miniapp\/boss-academic-parent\/pages\/guide-schools\/guide-schools.wxml", "utf8"), /第一梯队/);
 });
