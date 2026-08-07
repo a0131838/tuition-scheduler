@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-08-07-r344`
 - Date/Time (Asia/Singapore): `2026-08-07`
-- Deployment status: `PREPARED`
+- Deployment status: `LIVE`
 - Scope: replace the aggregate public Poly/university cards with separate detailed profiles for all five Polytechnics, all six Autonomous Universities and BCA Academy, and expand preschool guidance with five AOP operator profiles and a China-family selection route.
 - Key files:
   - `lib/school-guide-public-postsecondary.ts`
@@ -29,7 +29,7 @@ This file is the single source of truth for what changed in production.
   - `tests/school-guide-public-postsecondary.test.ts`
   - `docs/tasks/TASK-20260807-public-poly-university-bca-preschool.md`
 - Risk impact (if any): Low and isolated to public school-guide content, classification and cache version. Polytechnic employment uses the official five-school joint GES and is explicitly not presented as school-specific. BCA employment is labelled with its weaker published methodology. No login, assessment scoring, teaching, scheduling, packages, finance, payroll, tickets or messages changed.
-- Verification: 51 focused school-guide tests, 174 configured backend regression tests, the 67-page Mini Program release audit, native JavaScript syntax checks, TypeScript and the 243-page production build passed.
+- Verification: 51 focused school-guide tests, 174 configured backend regression tests, the 67-page Mini Program release audit, native JavaScript syntax checks, TypeScript and the 243-page production build passed. Runtime feature commit `66da4335bfd4c636c9beb6f3d2dcd66a4e72d5ee` deployed with PM2 PID `2022960` and `/admin/login` HTTP 200; live catalog returned `2026-08-07-r344`. WeChat development version `1.0.41` uploaded successfully at 716,495 bytes. Experience-version designation and physical-phone content acceptance remain manual.
 - Rollback point: `57b9c52f6f8f0c0302b95c463ca57b9093182241` (`2026-08-07-r343` live runtime).
 
 ---
