@@ -1,7 +1,11 @@
 @import "../../styles/school-guide.wxss";
 
-.consumer-hero { min-height: 430rpx; display: flex; flex-direction: column; justify-content: flex-end; animation: consumerEnter 360ms ease-out both; }
-.consumer-search { min-height: 92rpx; display: flex; align-items: center; gap: 20rpx; margin-top: 34rpx; padding: 0 26rpx; border: 1rpx solid #d7d9da; border-radius: 22rpx; background: #fff; color: #6b747d; font-size: 27rpx; }
+.consumer-hero { min-height: 0; display: flex; flex-direction: column; justify-content: flex-start; padding-top: 38rpx; padding-bottom: 42rpx; background: linear-gradient(145deg, #fffaf6 0%, #f6f4ef 76%); animation: consumerEnter 360ms ease-out both; }
+.consumer-brandline { display: flex; align-items: center; gap: 16rpx; }
+.consumer-brandmark { width: 58rpx; height: 58rpx; display: flex; align-items: center; justify-content: center; border-radius: 16rpx; background: #ec5e0a; color: #fff; font-size: 22rpx; font-weight: 900; letter-spacing: 1rpx; }
+.consumer-brandline .guide-kicker { font-size: 25rpx; letter-spacing: 1rpx; }
+.consumer-hero .guide-title { margin-top: 24rpx; font-size: 56rpx; line-height: 1.08; }
+.consumer-search { min-height: 88rpx; display: flex; align-items: center; gap: 20rpx; margin-top: 28rpx; padding: 0 26rpx; border: 1rpx solid #d7d9da; border-radius: 20rpx; background: #fff; color: #6b747d; font-size: 27rpx; box-shadow: 0 12rpx 30rpx rgba(24, 32, 42, 0.06); }
 .consumer-search-icon { position: relative; width: 27rpx; height: 27rpx; border: 4rpx solid #18202a; border-radius: 50%; box-sizing: border-box; }
 .consumer-search-icon::after { content: ""; position: absolute; right: -11rpx; bottom: -8rpx; width: 13rpx; height: 4rpx; border-radius: 4rpx; background: #18202a; transform: rotate(45deg); }
 .consumer-actions { display: grid; grid-template-columns: repeat(2, 1fr); border-top: 3rpx solid #18202a; animation: consumerEnter 420ms 70ms ease-out both; }
@@ -16,8 +20,16 @@
 .consumer-section-link { flex: none; color: #a83c05; font-size: 25rpx; font-weight: 800; }
 .consumer-school-scroll { width: calc(100% + 28rpx); margin-top: 26rpx; white-space: nowrap; }
 .consumer-compare-grid { display: inline-flex; gap: 18rpx; padding-right: 28rpx; }
-.consumer-compare-school { width: 214rpx; min-height: 166rpx; display: inline-flex; flex-direction: column; justify-content: space-between; padding: 24rpx; border: 1rpx solid #d7d9da; border-radius: 22rpx; background: #fff; box-sizing: border-box; white-space: normal; }
-.consumer-school-mark { width: 56rpx; height: 56rpx; display: flex; align-items: center; justify-content: center; border-radius: 18rpx; background: #fff0e5; color: #a83c05; font-size: 27rpx; font-weight: 900; }
+.consumer-compare-school { width: 214rpx; min-height: 184rpx; display: inline-flex; flex-direction: column; justify-content: space-between; padding: 24rpx; border: 1rpx solid #d7d9da; border-radius: 22rpx; background: #fff; box-sizing: border-box; white-space: normal; }
+.consumer-school-mark,.consumer-school-logo { width: 72rpx; height: 72rpx; box-sizing: border-box; }
+.consumer-school-logo { display: block; object-fit: contain; }
+.consumer-school-mark { display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 2rpx solid rgba(255,255,255,.72); background: #233b63; color: #fff; font-size: 20rpx; font-weight: 900; letter-spacing: -.5rpx; box-shadow: 0 0 0 5rpx rgba(35,59,99,.10); }
+.school-tone-red { background: #a9232e; box-shadow: 0 0 0 5rpx rgba(169,35,46,.11); }
+.school-tone-blue { background: #17669b; box-shadow: 0 0 0 5rpx rgba(23,102,155,.11); }
+.school-tone-green { background: #116a54; box-shadow: 0 0 0 5rpx rgba(17,106,84,.11); }
+.school-tone-gold { background: #8b6821; box-shadow: 0 0 0 5rpx rgba(139,104,33,.12); }
+.school-tone-crimson { background: #971f32; box-shadow: 0 0 0 5rpx rgba(151,31,50,.11); }
+.school-tone-burgundy { background: #6f263d; box-shadow: 0 0 0 5rpx rgba(111,38,61,.11); }
 .consumer-compare-name { margin-top: 22rpx; color: #18202a; font-size: 27rpx; font-weight: 850; line-height: 1.35; }
 .consumer-final { display: grid; grid-template-columns: 1fr 210rpx; align-items: center; gap: 24rpx; margin-top: 62rpx; padding: 38rpx 0 16rpx; border-top: 3rpx solid #18202a; }
 .consumer-final .guide-action { width: 210rpx; }

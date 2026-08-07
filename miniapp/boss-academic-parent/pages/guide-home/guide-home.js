@@ -10,6 +10,16 @@ const POPULAR_COMPARE_SLUGS = [
   "st-joseph-s-institution-international-ltd-34"
 ];
 const HOME_PATHWAY_SLUGS = ["aeis-primary", "aeis-secondary", "s-aeis", "international-school-direct"];
+const SCHOOL_IDENTITIES = {
+  "singapore-american-school": { shortMark: "SAS", tone: "navy" },
+  "dulwich-college-singapore-8": { shortMark: "DCSG", tone: "red" },
+  "united-world-college-of-south-east-asia-38": { shortMark: "UWC", tone: "blue" },
+  "tanglin-trust-school-36": { shortMark: "TTS", tone: "green" },
+  "north-london-collegiate-school-singapore-21": { shortMark: "NLCS", tone: "gold" },
+  "acs-international-singapore-1": { shortMark: "ACS", tone: "navy" },
+  "hwa-chong-international-school-16": { shortMark: "HCIS", tone: "crimson" },
+  "st-joseph-s-institution-international-ltd-34": { shortMark: "SJI", tone: "burgundy" }
+};
 
 Page({
   data: {
@@ -39,7 +49,7 @@ Page({
 
   loadData() {
     this.setData({ loading: true });
-    return api.request("/api/public/school-guide/catalog?v=r342")
+    return api.request("/api/public/school-guide/catalog?v=r343")
       .then((data) => {
         const schoolGroups = data.schoolGroups || data.schools || [];
         const pathways = data.pathways || [];
@@ -49,7 +59,10 @@ Page({
         pathways: HOME_PATHWAY_SLUGS.map((slug) => pathways.find((item) => item.slug === slug)).filter(Boolean),
         popularSchools: POPULAR_COMPARE_SLUGS.map((slug) => schoolGroups.find((item) => item.slug === slug || (item.memberSlugs || []).includes(slug)))
           .filter(Boolean)
-          .map((item) => Object.assign({}, item, { shortMark: String(item.nameZh || item.name || "校").slice(0, 1) }))
+          .map((item) => {
+            const identity = SCHOOL_IDENTITIES[item.slug] || { shortMark: String(item.nameZh || item.name || "校").slice(0, 2), tone: "navy" };
+            return Object.assign({}, item, identity, { logoSrc: "" });
+          })
       });
       })
       .catch((err) => api.toast(err.message))

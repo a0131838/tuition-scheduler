@@ -1,6 +1,9 @@
 <view class="guide-page consumer-home">
   <view class="guide-hero consumer-hero">
-    <view class="guide-kicker">新加坡学校指南</view>
+    <view class="consumer-brandline">
+      <view class="consumer-brandmark">SG</view>
+      <view class="guide-kicker">新加坡学校指南</view>
+    </view>
     <view class="guide-title">为孩子找到<br/>合适的学校</view>
     <view class="consumer-search" hover-class="guide-press" bindtap="goSchools">
       <view class="consumer-search-icon"></view>
@@ -20,7 +23,8 @@
     <scroll-view class="consumer-school-scroll" scroll-x enhanced show-scrollbar="{{false}}">
       <view class="consumer-compare-grid">
       <view class="consumer-compare-school" hover-class="guide-press" wx:for="{{popularSchools}}" wx:key="slug" data-slug="{{item.slug}}" bindtap="openSchool">
-        <view class="consumer-school-mark">{{item.shortMark}}</view>
+        <image wx:if="{{item.logoSrc}}" class="consumer-school-logo" src="{{item.logoSrc}}" mode="aspectFit" />
+        <view wx:else class="consumer-school-mark school-tone-{{item.tone}}">{{item.shortMark}}</view>
         <view class="consumer-compare-name">{{item.nameZh}}</view>
       </view>
       </view>

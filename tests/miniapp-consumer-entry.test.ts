@@ -9,6 +9,8 @@ const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
 test("school guide is the consumer-first mini-program entry", () => {
   const app = JSON.parse(read("app.json"));
   const home = read("pages/guide-home/guide-home.wxml");
+  const homeStyle = read("pages/guide-home/guide-home.wxss");
+  const homeScript = read("pages/guide-home/guide-home.js");
   assert.equal(app.pages[0], "pages/guide-home/guide-home");
   assert.match(home, /为孩子找到/);
   assert.match(home, /找学校/);
@@ -17,6 +19,11 @@ test("school guide is the consumer-first mini-program entry", () => {
   assert.match(home, /英文测评/);
   assert.doesNotMatch(home, /家长登录|员工登录|选择身份/);
   assert.doesNotMatch(home, /01|02|03|先获得清楚的信息/);
+  assert.doesNotMatch(homeStyle, /min-height:\s*430rpx/);
+  assert.match(homeStyle, /justify-content:\s*flex-start/);
+  assert.match(home, /consumer-school-logo/);
+  assert.match(homeScript, /SCHOOL_IDENTITIES/);
+  assert.match(homeScript, /shortMark:\s*"SAS"/);
 });
 
 test("public guide navigation separates discovery, assessment and account", () => {

@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-07-r343
+
+- Release ID: `2026-08-07-r343`
+- Date/Time (Asia/Singapore): `2026-08-07`
+- Deployment status: `READY`
+- Scope: remove the artificial blank space above the public Mini Program home content and give popular schools clearer, stable visual identities without using unlicensed school crests.
+- Key files:
+  - `miniapp/boss-academic-parent/pages/guide-home/guide-home.wxml`
+  - `miniapp/boss-academic-parent/pages/guide-home/guide-home.wxss`
+  - `miniapp/boss-academic-parent/pages/guide-home/guide-home.js`
+  - `tests/miniapp-consumer-entry.test.ts`
+  - `docs/tasks/TASK-20260807-school-guide-home-visual-anchor.md`
+- Risk impact (if any): Low and isolated to the public school-guide Mini Program home presentation and catalog cache version. No school facts, recommendation logic, assessment scoring, login, scheduling, packages, finance, payroll, tickets or messages changed. Official crests are not copied without permission; the interface supports a future licensed local image with a stable typographic fallback.
+- Verification: 21 focused school-guide tests, all 426 backend regression tests, the 67-page Mini Program release audit, native JavaScript check, TypeScript, WeChat developer-tool preview compile and the production build passed before release. Guarded deployment, live API health and WeChat development-version upload remain in the release gate.
+- Rollback point: `6c38b4cf8d4bc4b9e23440804fc7b9869da4a8c5` (`2026-08-06-r342` final aligned release head).
+
+---
+
 ## 2026-08-06-r342
 
 - Release ID: `2026-08-06-r342`

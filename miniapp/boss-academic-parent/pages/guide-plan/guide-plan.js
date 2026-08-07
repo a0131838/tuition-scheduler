@@ -8,7 +8,7 @@ Page({
   load() {
     const favorites = wx.getStorageSync(favoritesKey);
     const meta = wx.getStorageSync(metaKey) || {};
-    api.request("/api/public/school-guide/catalog?v=r342").then((data) => {
+    api.request("/api/public/school-guide/catalog?v=r343").then((data) => {
       const groups = data.schoolGroups || data.schools || [];
       const selected = (Array.isArray(favorites) ? favorites : []).map((slug) => groups.find((school) => school.slug === slug || (school.memberSlugs || []).includes(slug))).filter(Boolean).filter((school, index, all) => all.findIndex((item) => item.slug === school.slug) === index).map((school) => ({
         ...school,
