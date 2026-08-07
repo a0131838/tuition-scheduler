@@ -19,11 +19,11 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-08-07-r350`
 - Date/Time (Asia/Singapore): `2026-08-07`
-- Deployment status: `PREPARED`
+- Deployment status: `LIVE`
 - Scope: restore the agreed five-school first-tier label, move PEI/private/specialist routes out of the international-school directory and make results/outcomes the default school-detail view.
 - Key files: `lib/school-guide-directory.ts`, `lib/school-guide-official-institutions.ts`, `app/school-guide/schools/`, `miniapp/boss-academic-parent/pages/guide-schools/`, `miniapp/boss-academic-parent/pages/guide-school-detail/`, `tests/school-guide-*.test.ts`, `docs/tasks/TASK-20260807-first-tier-private-results-home.md`.
 - Risk impact (if any): Low and isolated to public guide classification and presentation. No authenticated workflow, recommendation score, login, teaching, scheduling, package, finance, payroll, ticket, notification, permission or database change.
-- Verification: 66 school-guide tests, 174 backend regressions, TypeScript, native Mini Program JavaScript syntax, the 67-page Mini Program audit, the 243-page production build and a 390×844 browser check passed. The directory contains 60 international-school brands, exactly five first-tier labels and six migrated private/specialist profiles.
+- Verification: 66 school-guide tests, 174 backend regressions, TypeScript, native Mini Program JavaScript syntax, the 67-page Mini Program audit, the 243-page production build and a 390×844 browser check passed. Live catalog `2026-08-07-r350` contains 60 international-school brands split 23/17/5/15, exactly five first-tier labels and none of the six migrated records; all six private/specialist profiles are live. Runtime commit `aff83c10a2e68390d4806138e55b618d6d6e5e7f` runs under PM2 PID `2165580`, health is HTTP 200, and WeChat development version `1.0.46` uploaded at 724,146 bytes.
 - Rollback point: `0a03d199b18268ac5079437ad58931a447f7b2d1` (aligned r349 documentation head).
 
 ---
