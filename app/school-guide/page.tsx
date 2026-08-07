@@ -54,7 +54,7 @@ export default function SchoolGuideHomePage() {
             <div className="sg-eyebrow">学校对比</div>
             <div>
               <h2>常被比较的8所学校</h2>
-              <p>第一梯队加英华国际、华中国际和圣约瑟国际。</p>
+              <p>家长常比较的IB、美式与英式国际学校。</p>
             </div>
           </div>
           <div className="sg-popular-grid sg-popular-compact">

@@ -1,6 +1,6 @@
 <view class="guide-page" wx:if="{{school}}">
   <view class="guide-hero school-hero">
-    <view class="guide-kicker">国际学校{{school.editorialTier === 1 ? " · 第一梯队" : ""}}</view>
+    <view class="guide-kicker">国际学校</view>
     <view class="guide-title school-name-zh">{{school.nameZh}}</view>
     <view class="school-name-en">{{school.name}}</view>
   </view>

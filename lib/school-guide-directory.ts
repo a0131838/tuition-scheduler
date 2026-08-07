@@ -10,7 +10,8 @@ export type SchoolGuideCampusProfile = {
 export type SchoolGuideSchoolGroup = SchoolGuideSchool & {
   memberSlugs: string[];
   campusProfiles: SchoolGuideCampusProfile[];
-  directoryTags: Array<"FIRST" | "IB" | "BRITISH" | "AMERICAN" | "PRESCHOOL" | "HERITAGE" | "SPECIAL_SUPPORT" | "VISA_LIMITED" | "NEW">;
+  directoryTags: Array<"IB" | "BRITISH" | "AMERICAN" | "PRESCHOOL" | "HERITAGE" | "SPECIAL_SUPPORT" | "VISA_LIMITED" | "NEW">;
+  primaryCurriculum: "IB" | "BRITISH" | "AMERICAN" | "OTHER";
   browseGroup: "IB_FEATURED" | "IB" | "NON_IB_FEATURED" | "OTHER";
   browseRank: number;
   browseLabel: string;
@@ -91,15 +92,23 @@ function unique<T>(values: T[]) {
 }
 
 function buildTags(school: SchoolGuideSchool, members: SchoolGuideSchool[]) {
+  const curriculumText = members
+    .flatMap((item) => [
+      item.comparison?.curriculum || "",
+      ...(item.admissionProfile?.curriculumFamilies || []),
+      item.academicResults?.programme || "",
+      ...(item.detailSections || []).filter((section) => /课程/.test(section.title)).flatMap((section) => section.items),
+    ])
+    .join(" ")
+    .toLowerCase();
   const text = members
-    .flatMap((item) => [item.name, item.nameZh, item.comparison?.curriculum || "", ...item.verifiedFacts])
+    .flatMap((item) => [item.name, item.nameZh, item.comparison?.ageAndGrades || "", item.comparison?.curriculum || ""])
     .join(" ")
     .toLowerCase();
   const tags: SchoolGuideSchoolGroup["directoryTags"] = [];
-  if (school.editorialTier === 1) tags.push("FIRST");
-  if (/\bib\b|ibdp|international baccalaureate/.test(text)) tags.push("IB");
-  if (/英国|英式|igcse|a level|british|england/.test(text)) tags.push("BRITISH");
-  if (/美国|美式|american|\bap\b/.test(text)) tags.push("AMERICAN");
+  if (/\bib\b|ibdp|international baccalaureate/.test(curriculumText)) tags.push("IB");
+  if (/英国|英式|igcse|a level|british|england|cambridge/.test(curriculumText)) tags.push("BRITISH");
+  if (/美国|美式|american|\bap\b/.test(curriculumText)) tags.push("AMERICAN");
   if (/幼儿|preschool|pre-school|nursery|toddler|early learning|early childhood/.test(text)) tags.push("PRESCHOOL");
   if (/japanese|korean|indonesia|swiss|french|german|dutch|cbse|icse|isc|印度|日本|韩国|印尼|瑞士|法国|德国|荷兰/.test(text)) tags.push("HERITAGE");
   if (school.specialist) tags.push("SPECIAL_SUPPORT");
@@ -109,12 +118,28 @@ function buildTags(school: SchoolGuideSchool, members: SchoolGuideSchool[]) {
 }
 
 function buildBrowseOrder(school: SchoolGuideSchool, tags: SchoolGuideSchoolGroup["directoryTags"]) {
+  const primaryCurriculum = tags.includes("IB")
+    ? "IB" as const
+    : tags.includes("BRITISH")
+      ? "BRITISH" as const
+      : tags.includes("AMERICAN")
+        ? "AMERICAN" as const
+        : "OTHER" as const;
+  const browseLabel = primaryCurriculum === "IB"
+    ? (tags.includes("BRITISH") || tags.includes("AMERICAN") ? "IB · 多课程" : "IB课程")
+    : primaryCurriculum === "BRITISH"
+      ? "英式 / Cambridge"
+      : primaryCurriculum === "AMERICAN"
+        ? "美式 / AP"
+        : tags.includes("HERITAGE")
+          ? "国家课程"
+          : "其他课程";
   const ibFeaturedIndex = featuredIbOrder.indexOf(school.name as never);
-  if (ibFeaturedIndex >= 0) return { browseGroup: "IB_FEATURED" as const, browseRank: ibFeaturedIndex, browseLabel: "IB重点" };
-  if (tags.includes("IB")) return { browseGroup: "IB" as const, browseRank: 100, browseLabel: "IB学校" };
+  if (ibFeaturedIndex >= 0) return { primaryCurriculum, browseGroup: "IB_FEATURED" as const, browseRank: ibFeaturedIndex, browseLabel };
+  if (tags.includes("IB")) return { primaryCurriculum, browseGroup: "IB" as const, browseRank: 100, browseLabel };
   const nonIbFeaturedIndex = featuredNonIbOrder.indexOf(school.name as never);
-  if (nonIbFeaturedIndex >= 0) return { browseGroup: "NON_IB_FEATURED" as const, browseRank: 200 + nonIbFeaturedIndex, browseLabel: "优质非IB" };
-  return { browseGroup: "OTHER" as const, browseRank: 300, browseLabel: "其他课程" };
+  if (nonIbFeaturedIndex >= 0) return { primaryCurriculum, browseGroup: "NON_IB_FEATURED" as const, browseRank: 200 + nonIbFeaturedIndex, browseLabel };
+  return { primaryCurriculum, browseGroup: "OTHER" as const, browseRank: 300, browseLabel };
 }
 
 function mergeMembers(

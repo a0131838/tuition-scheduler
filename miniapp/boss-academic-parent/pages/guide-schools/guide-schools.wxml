@@ -23,7 +23,7 @@
     <view class="guide-tier-tabs school-focus-tabs">
       <view class="guide-tier-tab {{focus === 'ALL' ? 'active' : ''}}" data-focus="ALL" bindtap="setFocus">全部</view>
       <view class="guide-tier-tab {{focus === 'IB' ? 'active' : ''}}" data-focus="IB" bindtap="setFocus">IB</view>
-      <view class="guide-tier-tab {{focus === 'BRITISH' ? 'active' : ''}}" data-focus="BRITISH" bindtap="setFocus">英式 / A Level</view>
+      <view class="guide-tier-tab {{focus === 'BRITISH' ? 'active' : ''}}" data-focus="BRITISH" bindtap="setFocus">英式 / Cambridge</view>
       <view class="guide-tier-tab {{focus === 'AMERICAN' ? 'active' : ''}}" data-focus="AMERICAN" bindtap="setFocus">美式 / AP</view>
       <view class="guide-tier-tab {{focus === 'OTHER' ? 'active' : ''}}" data-focus="OTHER" bindtap="setFocus">其他课程</view>
     </view>
@@ -38,7 +38,7 @@
       <view class="guide-tier-tab {{focus === 'PRESCHOOL' ? 'active' : ''}}" data-focus="PRESCHOOL" bindtap="setFocus">学前</view>
     </view>
     </scroll-view>
-    <view class="school-directory-head"><view class="school-directory-count">{{schools.length}}所学校</view><view class="school-directory-order">IB重点优先，其余按课程归类</view></view>
+    <view class="school-directory-head"><view class="school-directory-count">{{schools.length}}所学校</view><view class="school-directory-order">按主课程归类，多课程在详情中完整展示</view></view>
     <view class="guide-list school-brand-list">
     <block wx:for="{{schools}}" wx:key="slug" wx:for-index="schoolIndex">
     <view class="guide-row" wx:if="{{schoolIndex < 12 || showAllSchools || query}}">

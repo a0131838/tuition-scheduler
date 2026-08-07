@@ -23,7 +23,7 @@ export default function CompareSchools({ schools }: { schools: SchoolGuideSchool
         const aPopular = popularCompareSlugs.indexOf(a.slug);
         const bPopular = popularCompareSlugs.indexOf(b.slug);
         if (aPopular !== -1 || bPopular !== -1) return (aPopular === -1 ? 99 : aPopular) - (bPopular === -1 ? 99 : bPopular);
-        return (a.editorialTier === 1 ? 0 : 1) - (b.editorialTier === 1 ? 0 : 1);
+        return a.name.localeCompare(b.name);
       })
       .slice(0, 18);
   }, [query, uniqueSchools]);
@@ -53,7 +53,7 @@ export default function CompareSchools({ schools }: { schools: SchoolGuideSchool
                 <h3>{school.name}</h3>
                 <p>{school.verifiedFacts[0]}</p>
               </div>
-              <span className="sg-badge">{active ? "已加入比较" : school.editorialTier === 1 ? "第一梯队" : "待分梯队"}</span>
+              <span className="sg-badge">{active ? "已加入比较" : "可加入比较"}</span>
               <button type="button" onClick={() => toggle(school.slug)} disabled={!active && selected.length >= 4}>
                 {active ? "移除" : "加入"}
               </button>

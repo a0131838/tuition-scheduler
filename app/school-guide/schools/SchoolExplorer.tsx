@@ -46,8 +46,9 @@ export default function SchoolExplorer({ schools, categories, institutions }: { 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     return schools.filter((school) => {
-      if (focus === "OTHER" && (school.directoryTags.includes("IB") || school.directoryTags.includes("BRITISH") || school.directoryTags.includes("AMERICAN"))) return false;
-      if (focus !== "ALL" && focus !== "OTHER" && !school.directoryTags.includes(focus as SchoolGuideSchoolGroup["directoryTags"][number])) return false;
+      if (["IB", "BRITISH", "AMERICAN", "OTHER"].includes(focus) && school.primaryCurriculum !== focus) return false;
+      if (!["ALL", "IB", "BRITISH", "AMERICAN", "OTHER"].includes(focus)
+        && !school.directoryTags.includes(focus as SchoolGuideSchoolGroup["directoryTags"][number])) return false;
       return !q || [school.name, school.nameZh, ...school.campusProfiles.flatMap((campus) => [campus.name, campus.nameZh])]
         .some((value) => value.toLowerCase().includes(q));
     }).sort((a, b) => a.browseRank - b.browseRank || a.name.localeCompare(b.name));
@@ -73,13 +74,13 @@ export default function SchoolExplorer({ schools, categories, institutions }: { 
       </nav>
       {activeCategory === "international" ? <>
         <div className="sg-directory-focus" aria-label="国际学校主要筛选">
-          {[["ALL", "全部"], ["IB", "IB"], ["BRITISH", "英式 / A Level"], ["AMERICAN", "美式 / AP"], ["OTHER", "其他课程"]].map(([value, label]) => <button className={focus === value ? "active" : ""} type="button" key={value} onClick={() => { setFocus(value); setShowAll(false); }}>{label}</button>)}
+          {[["ALL", "全部"], ["IB", "IB"], ["BRITISH", "英式 / Cambridge"], ["AMERICAN", "美式 / AP"], ["OTHER", "其他课程"]].map(([value, label]) => <button className={focus === value ? "active" : ""} type="button" key={value} onClick={() => { setFocus(value); setShowAll(false); }}>{label}</button>)}
         </div>
         <button className="sg-directory-more" type="button" onClick={() => setShowMoreFilters((value) => !value)}>更多筛选 <span>{showMoreFilters ? "收起" : "展开"}</span></button>
         {showMoreFilters ? <div className="sg-directory-focus is-secondary" aria-label="国际学校更多筛选">
           {[["HERITAGE", "国家 / 侨民课程"], ["NEW", "近期开校"], ["VISA_LIMITED", "需长期准证"], ["SPECIAL_SUPPORT", "专项支持"], ["PRESCHOOL", "学前"]].map(([value, label]) => <button className={focus === value ? "active" : ""} type="button" key={value} onClick={() => { setFocus(value); setShowAll(false); }}>{label}</button>)}
         </div> : null}
-        <div className="sg-directory-count-row"><p className="sg-directory-count">{rows.length}所学校</p><span>IB重点优先，其余按课程归类</span></div>
+        <div className="sg-directory-count-row"><p className="sg-directory-count">{rows.length}所学校</p><span>按主课程归类，多课程在详情中完整展示</span></div>
         <div className="sg-school-list">
         {visibleRows.map((school) => (
           <div className="sg-school-row" key={school.slug}>

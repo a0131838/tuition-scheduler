@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-07-r349
+
+- Release ID: `2026-08-07-r349`
+- Date/Time (Asia/Singapore): `2026-08-07`
+- Deployment status: `READY`
+- Scope: remove public editorial-tier labels and make international-school main curriculum filters mutually exclusive using structured curriculum evidence.
+- Key files:
+  - `lib/school-guide-directory.ts`
+  - `lib/school-guide-data.ts`
+  - `app/school-guide/`
+  - `miniapp/boss-academic-parent/pages/guide-schools/`
+  - `miniapp/boss-academic-parent/pages/guide-school-detail/`
+  - `tests/school-guide-directory-ia.test.ts`
+  - `docs/tasks/TASK-20260807-school-curriculum-classification.md`
+- Risk impact (if any): Low and isolated to public school-guide classification and labels. Full multi-curriculum detail remains intact. No login, assessment scoring, teaching, scheduling, packages, finance, payroll, tickets, messages, permissions or database schema changed.
+- Verification: 66 school-guide tests, 174 backend regressions, TypeScript, native Mini Program JavaScript syntax, the 67-page Mini Program audit, the 243-page production build and a 390×844 browser interaction check passed. The audit returned 23 IB, 22 British/Cambridge, 5 American/AP and 16 other-curriculum brands with no main-filter overlap.
+- Rollback point: `d973507788122821536fc135094d28dc4fee1a7a` (`2026-08-07-r348` aligned live head).
+
+---
+
 ## 2026-08-07-r348
 
 - Release ID: `2026-08-07-r348`

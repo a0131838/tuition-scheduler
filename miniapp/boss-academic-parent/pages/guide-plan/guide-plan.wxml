@@ -2,7 +2,7 @@
   <view class="guide-hero"><view class="guide-kicker">我的方案</view><view class="guide-title">已选学校</view></view>
   <view class="guide-plan-list" wx:if="{{schools.length}}">
     <view class="guide-plan-card" wx:for="{{schools}}" wx:key="slug">
-      <view class="guide-tier-label {{item.editorialTier === 1 ? 'first' : ''}}">{{item.editorialTier === 1 ? "第一梯队 · 编辑分类" : "已加入方案"}}</view>
+      <view class="guide-tier-label">已加入方案</view>
       <view class="guide-section-title">{{item.name}}</view><view class="guide-section-note">{{item.curriculumText}}</view>
       <view class="guide-cost-value">{{item.costText}}</view>
       <picker range="{{statusOptions}}" data-slug="{{item.slug}}" bindchange="setStatus"><view class="guide-picker">当前：{{item.status}}</view></picker>

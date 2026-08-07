@@ -72,11 +72,25 @@
 - Current release line: `2026-08-07-r346` is live at runtime commit `8f4a3fa771176014ea7ede018befeda08cbd2511`. It fixes international-school difficulty, age/grade and curriculum matching and allows repeat assessment while preserving reports; Mini Program upload was held for r347.
 - Current release line: `2026-08-07-r347` is live at runtime feature commit `07c739ce766165bdf585f3335fea0515c1a0e013`. It expands the source register to 84 records / 75 K–12 and preschool brands, presents 66 correctly classified international-school brands, and adds explicit Student’s Pass, long-term-pass-only or written-verification status to every international-school profile. WeChat development version `1.0.43` was uploaded successfully.
 - Current release line: `2026-08-07-r348` is live at runtime feature commit `6a413de5976af799ea994cba438886ec2feec5e4`. It fixes public Mini Program filter/PDF-action clipping, applies an IB-first editorial reading order, splits school details into three task tabs and adds bilingual private-university programme names. WeChat development version `1.0.44` was uploaded successfully.
+- Current release line prepared: `2026-08-07-r349` removes all consumer-facing tier labels and assigns every international school to one evidence-based main curriculum filter while preserving every secondary curriculum in school detail.
 - Current release line prepared: `2026-08-07-r346` recalibrates international-school recommendations by real admission difficulty, age/grade and curriculum, explicitly covers IB, A Level, AP, IGCSE, CBSE and Australian routes, and allows repeat assessment without deleting prior reports.
 - Normal production releases must run `bash ops/server/scripts/release_to_server.sh`; success requires one identical local/GitHub/server commit, a live PM2 PID and `/admin/login` HTTP 200.
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+
+## 2026-08-07-r349 Ready
+
+- Scope: public international-school curriculum classification and tier-label cleanup.
+- Business impact:
+  - every school appears in one main curriculum filter only;
+  - IB takes precedence for IB plus A Level/AP schools, while the full course mix remains visible in detail;
+  - curriculum detection reads structured curriculum evidence rather than ordinary descriptive text;
+  - “第一梯队、待分梯队、IB重点、优质非IB” are removed from Web and Mini Program consumer pages.
+- Safety boundary: school facts, recommendation scoring, assessment, authenticated operations and the database are unchanged.
+- Verification before deploy: 66 school-guide tests, 174 backend regressions, TypeScript, native Mini Program JavaScript syntax, the 67-page Mini Program audit, the 243-page production build and 390×844 browser interaction passed. The final main-filter split is 23 IB, 22 British/Cambridge, 5 American/AP and 16 other-curriculum brands.
+- Post-deploy verification: catalog `2026-08-07-r349`, 66 brands, mutually exclusive main curricula, directory/detail HTTP 200.
+- Rollback point: `d973507788122821536fc135094d28dc4fee1a7a`.
 
 ## 2026-08-07-r348 Live
 

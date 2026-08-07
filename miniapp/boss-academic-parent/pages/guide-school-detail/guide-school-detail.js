@@ -13,7 +13,7 @@ Page({
 
   onLoad(options) {
     const slug = decodeURIComponent(options.slug || "");
-    api.request("/api/public/school-guide/catalog?v=r348")
+    api.request("/api/public/school-guide/catalog?v=r349")
       .then((data) => {
         const groups = data.schoolGroups || data.schools || [];
         const school = groups.find((item) => item.slug === slug || (item.memberSlugs || []).includes(slug));

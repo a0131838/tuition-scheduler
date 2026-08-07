@@ -22,7 +22,7 @@ Page({
   },
 
   onLoad() {
-    api.request("/api/public/school-guide/catalog?v=r348")
+    api.request("/api/public/school-guide/catalog?v=r349")
       .then((data) => {
         const counts = data.institutionCounts || {};
         const categories = (data.directoryCategories || []).map((item) => Object.assign({}, item, {
@@ -61,7 +61,7 @@ Page({
       .filter((school) => {
         const tags = school.directoryTags || [];
         if (focus === "ALL") return true;
-        if (focus === "OTHER") return !tags.includes("IB") && !tags.includes("BRITISH") && !tags.includes("AMERICAN");
+        if (["IB", "BRITISH", "AMERICAN", "OTHER"].includes(focus)) return school.primaryCurriculum === focus;
         return tags.includes(focus);
       })
       .sort((a, b) => Number(a.browseRank || 999) - Number(b.browseRank || 999) || String(a.name || "").localeCompare(String(b.name || "")))
@@ -106,7 +106,7 @@ Page({
     this.setData({ institutionLoading: true });
     const path = "/api/public/school-guide/institutions?category=" + encodeURIComponent(this.data.activeCategory) +
       "&group=" + encodeURIComponent(this.data.institutionGroup) +
-      "&q=" + encodeURIComponent(this.data.query.trim()) + "&limit=40&offset=" + offset + "&v=r348";
+      "&q=" + encodeURIComponent(this.data.query.trim()) + "&limit=40&offset=" + offset + "&v=r349";
     return api.request(path)
       .then((data) => this.setData({
         institutions: reset ? (data.items || []) : this.data.institutions.concat(data.items || []),

@@ -40,6 +40,25 @@ test("international directory includes recent and visa-limited schools", () => {
   assert.ok(schoolGuideSchoolGroups.every((item) => item.studentPass?.label && item.studentPass.note));
 });
 
+test("main curriculum filters are mutually exclusive and IB takes precedence for multi-curriculum schools", () => {
+  const tanglin = schoolGuideSchoolGroups.find((item) => item.name === "Tanglin Trust School");
+  const sas = schoolGuideSchoolGroups.find((item) => item.name === "Singapore American School");
+  const brighton = schoolGuideSchoolGroups.find((item) => item.name === "Brighton College (Singapore)");
+  assert.equal(tanglin?.primaryCurriculum, "IB");
+  assert.ok(tanglin?.directoryTags.includes("BRITISH"));
+  assert.equal(sas?.primaryCurriculum, "AMERICAN");
+  assert.equal(brighton?.primaryCurriculum, "BRITISH");
+  assert.ok(schoolGuideSchoolGroups.every((item) =>
+    ["IB", "BRITISH", "AMERICAN", "OTHER"].includes(item.primaryCurriculum),
+  ));
+  assert.ok(schoolGuideSchoolGroups
+    .filter((item) => item.primaryCurriculum === "BRITISH")
+    .every((item) => !item.directoryTags.includes("IB")));
+  assert.ok(schoolGuideSchoolGroups
+    .filter((item) => item.primaryCurriculum === "AMERICAN")
+    .every((item) => !item.directoryTags.includes("IB") && !item.directoryTags.includes("BRITISH")));
+});
+
 test("campus brands resolve every legacy slug into one parent profile", () => {
   const eton = schoolGuideSchoolGroups.find((item) => item.nameZh === "伊顿国际学校与幼儿园");
   const odyssey = getSchoolGuideSchoolGroup("odyssey-the-global-preschool-pte-ltd-26");
@@ -78,4 +97,21 @@ test("school directory no longer asks parents to copy external links", () => {
   }
   assert.match(miniapp, /选择学校类型/);
   assert.match(miniappJs, /directoryCategories/);
+});
+
+test("consumer school guide does not expose editorial tier labels", () => {
+  const files = [
+    "app/school-guide/page.tsx",
+    "app/school-guide/compare/CompareSchools.tsx",
+    "app/school-guide/plan/SchoolPlan.tsx",
+    "app/school-guide/schools/SchoolExplorer.tsx",
+    "app/school-guide/schools/[slug]/page.tsx",
+    "miniapp/boss-academic-parent/pages/guide-schools/guide-schools.wxml",
+    "miniapp/boss-academic-parent/pages/guide-school-detail/guide-school-detail.wxml",
+    "miniapp/boss-academic-parent/pages/guide-plan/guide-plan.wxml",
+  ];
+  for (const file of files) {
+    const source = fs.readFileSync(file, "utf8");
+    assert.doesNotMatch(source, /第一梯队|待分梯队|IB重点|优质非IB/, `${file} exposes an editorial tier`);
+  }
 });

@@ -36,7 +36,7 @@ export default function SchoolPlan({ schools }: { schools: SchoolGuideSchool[] }
       return <article className="sg-plan-card" key={school.slug}>
         <div className="sg-plan-number">{String(index + 1).padStart(2, "0")}</div>
         <div>
-          <span className="sg-badge">{school.editorialTier === 1 ? "第一梯队 · 编辑分类" : "已加入方案"}</span>
+          <span className="sg-badge">已加入方案</span>
           <h2>{school.name}</h2>
           <p>{school.comparison?.curriculum || school.category}</p>
           {school.costProfile ? <strong>S${school.costProfile.fixedFirstYearLow.toLocaleString("en-SG")}–S${school.costProfile.fixedFirstYearHigh.toLocaleString("en-SG")} · {school.costProfile.academicYear}</strong> : null}
