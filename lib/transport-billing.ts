@@ -39,6 +39,7 @@ export type TransportBillingRow = {
   key: string;
   sessionId: string;
   attendanceId: string;
+  packageId: string | null;
   studentId: string;
   studentName: string;
   teacherName: string;
@@ -129,6 +130,7 @@ export async function listTransportBillingRows(input: { month: string; studentId
       select: {
         id: true,
         status: true,
+        packageId: true,
         studentId: true,
         student: { select: { name: true } },
         session: {
@@ -162,6 +164,7 @@ export async function listTransportBillingRows(input: { month: string; studentId
       key,
       sessionId: session.id,
       attendanceId: attendance.id,
+      packageId: attendance.packageId,
       studentId: attendance.studentId,
       studentName: attendance.student.name,
       teacherName: session.teacher?.name ?? session.class.teacher.name,
@@ -245,12 +248,102 @@ export async function saveTransportBillingEntry(input: {
   });
 }
 
-async function findInvoicePackageForStudent(studentId: string) {
-  return prisma.coursePackage.findFirst({
-    where: { studentId },
-    include: { student: true, course: true },
-    orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
-  });
+type TransportInvoicePackage = {
+  id: string;
+  studentId: string;
+  student: { id: string; name: string };
+  course: { id: string; name: string };
+};
+
+type TransportInvoiceContextDb = {
+  student: {
+    findUnique(input: unknown): Promise<{ id: string; name: string } | null>;
+  };
+  coursePackage: {
+    findFirst(input: unknown): Promise<TransportInvoicePackage | null>;
+  };
+  coursePackageSharedStudent: {
+    findFirst(input: unknown): Promise<{ package: TransportInvoicePackage } | null>;
+  };
+};
+
+export type TransportInvoiceContext = {
+  packageId: string;
+  packageOwnerId: string;
+  packageOwnerName: string;
+  studentId: string;
+  studentName: string;
+  courseName: string;
+  relationship: "OWNER" | "SHARED";
+};
+
+function invoicePackageInclude() {
+  return {
+    student: { select: { id: true, name: true } },
+    course: { select: { id: true, name: true } },
+  };
+}
+
+export async function resolveTransportInvoiceContext(
+  db: TransportInvoiceContextDb,
+  input: { studentId: string; attendancePackageIds: Array<string | null | undefined> },
+): Promise<TransportInvoiceContext> {
+  const studentId = clean(input.studentId);
+  const student = await db.student.findUnique({ where: { id: studentId }, select: { id: true, name: true } });
+  if (!student) throw new Error("Selected student was not found.");
+
+  const attendancePackageIds = Array.from(
+    new Set(input.attendancePackageIds.map((value) => clean(value)).filter(Boolean)),
+  );
+  if (attendancePackageIds.length > 1) {
+    throw new Error("Selected transport sessions use multiple packages. Please create one invoice per package.");
+  }
+
+  let pkg: TransportInvoicePackage | null = null;
+  if (attendancePackageIds.length === 1) {
+    pkg = await db.coursePackage.findFirst({
+      where: {
+        id: attendancePackageIds[0],
+        OR: [{ studentId }, { sharedStudents: { some: { studentId } } }],
+      },
+      include: invoicePackageInclude(),
+    });
+    if (!pkg) {
+      throw new Error("The package used by these sessions is not owned or shared by the selected student.");
+    }
+  } else {
+    pkg = await db.coursePackage.findFirst({
+      where: { studentId },
+      include: invoicePackageInclude(),
+      orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
+    });
+    if (!pkg) {
+      const sharedLink = await db.coursePackageSharedStudent.findFirst({
+        where: { studentId },
+        include: { package: { include: invoicePackageInclude() } },
+        orderBy: [{ package: { status: "asc" } }, { package: { updatedAt: "desc" } }],
+      });
+      pkg = sharedLink?.package ?? null;
+    }
+  }
+
+  if (!pkg) throw new Error("No owned or shared student package found for invoice context.");
+  return {
+    packageId: pkg.id,
+    packageOwnerId: pkg.studentId,
+    packageOwnerName: pkg.student.name,
+    studentId: student.id,
+    studentName: student.name,
+    courseName: pkg.course.name,
+    relationship: pkg.studentId === student.id ? "OWNER" : "SHARED",
+  };
+}
+
+export async function getTransportInvoiceContext(input: {
+  studentId: string;
+  attendancePackageIds: Array<string | null | undefined>;
+}) {
+  return resolveTransportInvoiceContext(prisma as unknown as TransportInvoiceContextDb, input);
 }
 
 export async function createTransportInvoice(input: {
@@ -267,8 +360,10 @@ export async function createTransportInvoice(input: {
   const rows = workbench.rows.filter((row) => row.billable && !row.invoiceId && row.amount > 0);
   if (rows.length === 0) throw new Error("No uninvoiced billable transport sessions for this student and month.");
 
-  const pkg = await findInvoicePackageForStudent(studentId);
-  if (!pkg) throw new Error("No student package found for invoice context.");
+  const context = await getTransportInvoiceContext({
+    studentId,
+    attendancePackageIds: rows.map((row) => row.packageId),
+  });
 
   const issueDate = normalizeDateOnly(input.issueDate ?? "", new Date()) ?? formatDateOnly(new Date());
   const dueDate = normalizeDateOnly(input.dueDate ?? "", new Date()) ?? issueDate;
@@ -278,17 +373,17 @@ export async function createTransportInvoice(input: {
   const dateList = rows.map((row) => row.dateText).join(", ");
   const sameAmount = rows.every((row) => row.amount === rows[0].amount);
   const unitText = sameAmount ? ` at SGD ${rows[0].amount.toFixed(2)} per session` : "";
-  const description = `Transport reimbursement for home lessons in ${month}${unitText}: ${dateList} (${rows.length} session${rows.length === 1 ? "" : "s"})`;
+  const description = `Transport reimbursement for ${context.studentName} home lessons in ${month}${unitText}: ${dateList} (${rows.length} session${rows.length === 1 ? "" : "s"})`;
 
   const invoice = await createParentInvoice({
-    packageId: pkg.id,
+    packageId: context.packageId,
     studentId,
     invoiceNo,
     issueDate,
     dueDate,
     courseStartDate: rows[0]?.dateText ?? null,
     courseEndDate: rows[rows.length - 1]?.dateText ?? null,
-    billTo: pkg.student.name,
+    billTo: context.studentName,
     quantity: rows.length,
     description,
     amount: total,
@@ -320,7 +415,17 @@ export async function createTransportInvoice(input: {
     action: "CREATE_TRANSPORT_INVOICE",
     entityType: "ParentInvoice",
     entityId: invoice.id,
-    meta: { studentId, invoiceNo: invoice.invoiceNo, month, sessions: rows.length, total },
+    meta: {
+      studentId,
+      invoiceNo: invoice.invoiceNo,
+      month,
+      sessions: rows.length,
+      total,
+      packageId: context.packageId,
+      packageOwnerId: context.packageOwnerId,
+      packageOwnerName: context.packageOwnerName,
+      packageRelationship: context.relationship,
+    },
   });
 
   return invoice;

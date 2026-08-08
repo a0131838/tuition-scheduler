@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-08-r353
+
+- Release ID: `2026-08-08-r353`
+- Date/Time (Asia/Singapore): `2026-08-08`
+- Deployment status: `READY`
+- Scope: allow transport invoices to use the exact package recorded on attendance when the billed student is a verified shared-package member, while keeping the invoice student separate from the package owner.
+- Key files:
+  - `lib/transport-billing.ts`
+  - `app/admin/finance/transport-billing/page.tsx`
+  - `tests/transport-billing.test.ts`
+  - `package.json`
+  - `docs/tasks/TASK-20260808-shared-package-transport-billing.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low and isolated to parent transport-invoice package resolution and its pre-create summary. Existing invoices, transport selections, package balances, attendance, deductions, receipts and scheduling are not rewritten.
+- Verification: five transport-billing regressions, 179 backend tests, TypeScript and the production build passed. Production data was checked read-only: Jason's six selected July rows all use John’s single active shared package and remain uninvoiced at SGD 120; John's issued `RGT-202608-0007` remains unchanged.
+- Rollback point: `8eb1539810c8735686196b7baf6bf16aa5233b15` (`2026-08-07-r352` production documentation head).
+
+---
+
 ## 2026-08-07-r352
 
 - Release ID: `2026-08-07-r352`

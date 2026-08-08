@@ -4,6 +4,7 @@ import { formatDateOnly } from "@/lib/date-only";
 import { getLang, t } from "@/lib/i18n";
 import {
   createTransportInvoice,
+  getTransportInvoiceContext,
   listTransportBillingRows,
   listTransportBillingStudentOptions,
   saveTransportBillingEntry,
@@ -105,6 +106,18 @@ export default async function TransportBillingPage({
   const uninvoicedBillableRows = billableRows.filter((row) => !row.invoiceId);
   const invoicedRows = rows.filter((row) => row.invoiceId);
   const totalUninvoiced = uninvoicedBillableRows.reduce((sum, row) => sum + row.amount, 0);
+  let invoiceContext: Awaited<ReturnType<typeof getTransportInvoiceContext>> | null = null;
+  let invoiceContextError = "";
+  if (selectedStudentId && uninvoicedBillableRows.length > 0) {
+    try {
+      invoiceContext = await getTransportInvoiceContext({
+        studentId: selectedStudentId,
+        attendancePackageIds: uninvoicedBillableRows.map((row) => row.packageId),
+      });
+    } catch (error) {
+      invoiceContextError = error instanceof Error ? error.message : "Unable to resolve invoice package context.";
+    }
+  }
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
@@ -183,11 +196,40 @@ export default async function TransportBillingPage({
               {t(lang, "Due date", "到期日")}
               <input name="dueDate" type="date" defaultValue={today} />
             </label>
-            <button type="submit" disabled={!selectedStudentId || uninvoicedBillableRows.length === 0}>
+            <button type="submit" disabled={!selectedStudentId || uninvoicedBillableRows.length === 0 || !invoiceContext}>
               {t(lang, "Create Transport Invoice", "创建交通费发票")}
             </button>
           </form>
         </div>
+        {invoiceContext ? (
+          <div style={{ borderTop: "1px solid #dbeafe", paddingTop: 10, display: "flex", gap: 18, flexWrap: "wrap", color: "#334155" }}>
+            <span>
+              <b>{t(lang, "Invoice student", "发票学生")}:</b> {invoiceContext.studentName}
+            </span>
+            <span>
+              <b>{t(lang, "Package context", "关联课包")}:</b>{" "}
+              {invoiceContext.relationship === "SHARED"
+                ? t(
+                    lang,
+                    `Shared package owned by ${invoiceContext.packageOwnerName}`,
+                    `使用 ${invoiceContext.packageOwnerName} 名下共享课包`,
+                  )
+                : t(lang, "Student-owned package", "学生本人课包")}
+            </span>
+            <span>
+              <b>{t(lang, "Invoice scope", "开票范围")}:</b>{" "}
+              {t(
+                lang,
+                `${uninvoicedBillableRows.length} sessions · ${money(totalUninvoiced)}`,
+                `${uninvoicedBillableRows.length} 节 · ${money(totalUninvoiced)}`,
+              )}
+            </span>
+          </div>
+        ) : invoiceContextError ? (
+          <div style={{ borderTop: "1px solid #fecdd3", paddingTop: 10, color: "#be123c", fontWeight: 800 }}>
+            {invoiceContextError}
+          </div>
+        ) : null}
       </section>
 
       <section style={{ border: "1px solid #e2e8f0", borderRadius: 8, background: "#fff", overflow: "hidden" }}>

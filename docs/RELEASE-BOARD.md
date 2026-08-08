@@ -82,6 +82,30 @@
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
+## 2026-08-08-r353 Ready
+
+- Scope: transport billing resolves the package actually recorded on each attendance row and accepts it only when the billed student owns or formally shares that package.
+- Business impact:
+  - Shared-package students such as Jason can receive their own transport invoice without creating a fake package or changing the package owner.
+  - Finance sees the invoice student, shared-package owner, session count and amount before creation.
+  - Multiple package contexts and unrelated packages are blocked instead of being silently combined.
+  - Existing invoices, package balances, attendance deductions, receipts and schedules remain unchanged.
+- Files:
+  - `lib/transport-billing.ts`
+  - `app/admin/finance/transport-billing/page.tsx`
+  - `tests/transport-billing.test.ts`
+  - `package.json`
+  - `docs/tasks/TASK-20260808-shared-package-transport-billing.md`
+- Verification before deploy:
+  - `npx tsx --test tests/transport-billing.test.ts` (5 passed)
+  - `npm run test:backend` (179 passed)
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Post-deploy verification:
+  - `/admin/login` and the authenticated transport-billing page return successfully.
+  - Jason's July view shows six uninvoiced sessions, SGD 120 and the shared-package context owned by John.
+  - No invoice is created during verification; finance retains the final create action.
+
 ## 2026-08-07-r352 Live
 
 - Scope: Mini Program school-order fix, one-line horizontal filters and evidence-based directory cleanup.
