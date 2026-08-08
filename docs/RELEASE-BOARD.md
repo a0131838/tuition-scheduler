@@ -82,6 +82,33 @@
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
+## 2026-08-08-r354 Ready
+
+- Scope: editable business-account draft descriptions and account-type-aware internal service evidence.
+- Business impact:
+  - Finance can keep the same draft invoice number while correcting the exact service description shown on the invoice and later receipt.
+  - Custom invoices produce a `Service Delivery Record` with service date, period, location, reference, personnel, benefit and one-time service fee.
+  - CRLF input is normalized so PDF exports do not show square glyphs, and duplicate English/Chinese recipient names collapse to one name.
+  - Finance must preview and confirm both PDFs before issuing; issued, paid and void documents remain locked.
+  - Monthly corporate reports and all non-business finance workflows retain their existing behavior.
+- Files:
+  - `lib/business-accounts.ts`
+  - `lib/business-account-pdf.ts`
+  - `app/admin/finance/business-accounts/page.tsx`
+  - `app/api/exports/business-accounts/[id]/service-report/route.ts`
+  - `tests/billing-optimistic-lock.test.ts`
+  - `docs/tasks/TASK-20260808-business-service-description.md`
+- Verification before deploy:
+  - `npx tsx --test tests/billing-optimistic-lock.test.ts` (9 passed)
+  - `npx tsc --noEmit`
+  - `npm run test:backend` (180 passed)
+  - `npm run build` (243 pages)
+  - JCI invoice and service-delivery PDFs rendered and visually checked.
+- Post-deploy verification:
+  - `/admin/login` returns HTTP 200 and PM2 runs the deployed commit.
+  - `RGT-202608-0008` remains a draft with invoice number and SGD 200 amount unchanged.
+  - The authenticated business-account page exposes draft editing and separate invoice/service-record previews.
+
 ## 2026-08-08-r353 Ready
 
 - Scope: transport billing resolves the package actually recorded on each attendance row and accepts it only when the billed student owns or formally shares that package.

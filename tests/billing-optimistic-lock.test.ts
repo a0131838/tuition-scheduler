@@ -9,9 +9,14 @@ import {
   addBusinessPaymentRecord,
   createBusinessMonthlyDocument,
   deleteVoidedBusinessMonthlyDocument,
+  issueBusinessMonthlyDocument,
+  normalizeBusinessDocumentText,
   recordBusinessMonthlyPayment,
+  resolveBusinessInvoiceDescription,
+  updateDraftBusinessMonthlyDocument,
   voidBusinessMonthlyDocument,
 } from "../lib/business-accounts";
+import { businessServiceRecipientName, isCustomBusinessServiceRecord } from "../lib/business-account-pdf";
 import { getParentReceiptApprovalMap } from "../lib/parent-receipt-approval";
 import { managerRejectPartnerSettlement } from "../lib/partner-settlement-approval";
 import { prisma } from "../lib/prisma";
@@ -21,6 +26,20 @@ type AppSettingRow = {
   value: string;
   updatedAt: Date;
 };
+
+test("business document display normalizes line endings and keeps old invoice descriptions compatible", () => {
+  assert.equal(normalizeBusinessDocumentText("Line one\r\nLine two\rLine three  \n"), "Line one\nLine two\nLine three");
+  assert.equal(
+    resolveBusinessInvoiceDescription({ invoiceDescription: "", monthKey: "2026-08" }),
+    "Corporate service fee for 2026-08",
+  );
+  assert.equal(
+    businessServiceRecipientName({ legalNameEn: "James Cook Institute Pte. Ltd.", legalNameZh: "James Cook Institute Pte. Ltd." }),
+    "James Cook Institute Pte. Ltd.",
+  );
+  assert.equal(isCustomBusinessServiceRecord({ agreementType: "CUSTOM_INVOICE" }), true);
+  assert.equal(isCustomBusinessServiceRecord({ agreementType: "FIXED_PLUS_VARIABLE_TUTOR" }), false);
+});
 
 function makeAppSettingStub(options?: {
   initialValue?: unknown;
@@ -231,13 +250,55 @@ test("business account receipt requires an uploaded payment record", async () =>
       issueDate: "2026-06-01",
       dueDate: "2026-06-15",
       variableTutorFee: 400,
-      serviceSummary: "Corporate support",
+      invoiceDescription: "Corporate support for June 2026",
+      serviceReference: "Service confirmation",
+      serviceDate: "2026-06-01",
+      servicePeriod: "09:00-17:00",
+      serviceLocation: "Classroom 3",
+      serviceSummary: "Corporate support\r\nFacilities support",
       platformsUsed: "SGT Manage",
       personnelInvolved: "Finance",
       benefitSummary: "Operational support",
       tutorCostSummary: "Tutor support",
       actor: { email: "finance@test.com", role: "ADMIN" },
     });
+
+    const updated = await updateDraftBusinessMonthlyDocument({
+      documentId: doc.id,
+      invoiceDescription: "One-Time Facilities Services\r\nClassroom 3",
+      serviceReference: "One-Time Facilities Services Arrangement",
+      serviceDate: "2026-06-11",
+      servicePeriod: "08:30-18:30",
+      serviceLocation: "Classroom 3",
+      serviceSummary: "Provision of Classroom 3 facilities\r\nfor the agreed service period.",
+      platformsUsed: "Not applicable",
+      personnelInvolved: "Sharilyn, Jessika",
+      benefitSummary: "Use of Classroom 3 for the agreed service period.",
+      tutorCostSummary: "One-time facilities service fee.",
+      actor: { email: "finance@test.com", role: "ADMIN" },
+    });
+    assert.equal(updated.id, doc.id);
+    assert.equal(updated.invoiceNo, "RGT-202606-0007");
+    assert.equal(updated.invoiceDescription, "One-Time Facilities Services\nClassroom 3");
+    assert.equal(updated.serviceSummary, "Provision of Classroom 3 facilities\nfor the agreed service period.");
+
+    await issueBusinessMonthlyDocument({
+      documentId: doc.id,
+      actor: { email: "finance@test.com", role: "ADMIN" },
+    });
+    await assert.rejects(
+      updateDraftBusinessMonthlyDocument({
+        documentId: doc.id,
+        invoiceDescription: "Changed after issue",
+        serviceSummary: "Changed",
+        platformsUsed: "Not applicable",
+        personnelInvolved: "Finance",
+        benefitSummary: "Changed",
+        tutorCostSummary: "Changed",
+        actor: { email: "finance@test.com", role: "ADMIN" },
+      }),
+      /Only draft documents can be edited/,
+    );
 
     await assert.rejects(
       recordBusinessMonthlyPayment({

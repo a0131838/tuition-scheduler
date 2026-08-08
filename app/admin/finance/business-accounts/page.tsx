@@ -12,6 +12,7 @@ import {
   issueBusinessMonthlyDocument,
   listBusinessAccounts,
   recordBusinessMonthlyPayment,
+  updateDraftBusinessMonthlyDocument,
   updateBusinessAccount,
   voidBusinessMonthlyDocument,
   type BusinessAccount,
@@ -200,6 +201,11 @@ async function createMonthlyDocumentAction(formData: FormData) {
       issueDate,
       dueDate: String(formData.get("dueDate") ?? "").trim(),
       variableTutorFee: Number(formData.get("variableTutorFee") ?? 0),
+      invoiceDescription: String(formData.get("invoiceDescription") ?? "").trim(),
+      serviceReference: String(formData.get("serviceReference") ?? "").trim(),
+      serviceDate: String(formData.get("serviceDate") ?? "").trim(),
+      servicePeriod: String(formData.get("servicePeriod") ?? "").trim(),
+      serviceLocation: String(formData.get("serviceLocation") ?? "").trim(),
       serviceSummary: String(formData.get("serviceSummary") ?? "").trim(),
       platformsUsed: String(formData.get("platformsUsed") ?? "").trim(),
       personnelInvolved: String(formData.get("personnelInvolved") ?? "").trim(),
@@ -216,12 +222,43 @@ async function createMonthlyDocumentAction(formData: FormData) {
   redirectWith(accountId, nextParams);
 }
 
+async function updateDraftDocumentAction(formData: FormData) {
+  "use server";
+  const actor = await requireAdmin();
+  const accountId = String(formData.get("accountId") ?? "").trim();
+  let nextParams: Record<string, string> = {};
+  try {
+    await updateDraftBusinessMonthlyDocument({
+      documentId: String(formData.get("documentId") ?? "").trim(),
+      invoiceDescription: String(formData.get("invoiceDescription") ?? "").trim(),
+      serviceReference: String(formData.get("serviceReference") ?? "").trim(),
+      serviceDate: String(formData.get("serviceDate") ?? "").trim(),
+      servicePeriod: String(formData.get("servicePeriod") ?? "").trim(),
+      serviceLocation: String(formData.get("serviceLocation") ?? "").trim(),
+      serviceSummary: String(formData.get("serviceSummary") ?? "").trim(),
+      platformsUsed: String(formData.get("platformsUsed") ?? "").trim(),
+      personnelInvolved: String(formData.get("personnelInvolved") ?? "").trim(),
+      benefitSummary: String(formData.get("benefitSummary") ?? "").trim(),
+      tutorCostSummary: String(formData.get("tutorCostSummary") ?? "").trim(),
+      actor,
+    });
+    revalidatePath("/admin/finance/business-accounts");
+    nextParams = { msg: "draft-updated" };
+  } catch (error: any) {
+    nextParams = { err: error?.message ?? "Update draft failed" };
+  }
+  redirectWith(accountId, nextParams);
+}
+
 async function issueDocumentAction(formData: FormData) {
   "use server";
   const actor = await requireAdmin();
   const accountId = String(formData.get("accountId") ?? "").trim();
   let nextParams: Record<string, string> = {};
   try {
+    if (String(formData.get("confirmPreview") ?? "") !== "on") {
+      throw new Error("Preview and confirm the invoice and service record before issuing");
+    }
     await issueBusinessMonthlyDocument({ documentId: String(formData.get("documentId") ?? ""), actor });
     revalidatePath("/admin/finance/business-accounts");
     nextParams = { msg: "document-issued" };
@@ -589,15 +626,26 @@ export default async function BusinessAccountsPage({
             <label>{t(lang, "Billing month", "结算月份")}<input name="monthKey" type="month" defaultValue={month} required style={fieldStyle()} /></label>
             <label>{t(lang, "Issue date", "发票日期")}<input name="issueDate" type="date" defaultValue={issueDate} required style={fieldStyle()} /></label>
             <label>{t(lang, "Due date", "到期日")}<input name="dueDate" type="date" defaultValue={dueDate} required style={fieldStyle()} /></label>
-            <label>{t(lang, "Variable tutor fee", "浮动老师费用")}<input name="variableTutorFee" type="number" min="0" step="0.01" defaultValue="0" style={fieldStyle()} /></label>
+            <label>{selected.agreementType === "CUSTOM_INVOICE" ? t(lang, "One-time service fee", "一次性服务费") : t(lang, "Variable tutor fee", "浮动老师费用")}<input name="variableTutorFee" type="number" min="0" step="0.01" defaultValue="0" style={fieldStyle()} /></label>
           </div>
-          <label>{t(lang, "Services performed", "已提供服务")}<textarea name="serviceSummary" rows={3} defaultValue="Singapore marketing support, student pipeline development, curriculum support, academic advisory support, tutor coordination, and management coordination support." style={fieldStyle()} /></label>
+          <label>{t(lang, "Invoice description", "发票服务描述")}<textarea name="invoiceDescription" rows={3} required defaultValue={selected.agreementType === "CUSTOM_INVOICE" ? "" : `Corporate service fee for ${month}`} placeholder={t(lang, "This text appears on the invoice and receipt.", "这段内容会显示在发票和收据上。") } style={fieldStyle()} /></label>
+          <div style={{ border: "1px solid #dbeafe", background: "#f8fbff", borderRadius: 8, padding: 12, display: "grid", gap: 10 }}>
+            <div style={{ fontWeight: 900 }}>{selected.agreementType === "CUSTOM_INVOICE" ? t(lang, "Internal service delivery record", "内部服务交付记录") : t(lang, "Internal monthly service report", "内部月度服务报告")}</div>
+            <div style={{ color: "#64748b", fontSize: 12 }}>{t(lang, "This supporting record is kept internally and is not automatically sent with the invoice.", "该佐证记录仅供内部留档，不会随发票自动发送。")}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
+              <label>{t(lang, "Service reference", "服务依据")}<input name="serviceReference" defaultValue={selected.agreementTitle ?? ""} placeholder="Service confirmation / supporting correspondence" style={fieldStyle()} /></label>
+              <label>{t(lang, "Service date", "服务日期")}<input name="serviceDate" type="date" style={fieldStyle()} /></label>
+              <label>{t(lang, "Service period", "服务时段")}<input name="servicePeriod" placeholder="08:30-18:30" style={fieldStyle()} /></label>
+              <label>{t(lang, "Service location", "服务地点")}<input name="serviceLocation" placeholder="Classroom 3" style={fieldStyle()} /></label>
+            </div>
+          <label>{t(lang, "Services performed", "已提供服务")}<textarea name="serviceSummary" rows={3} defaultValue={selected.agreementType === "CUSTOM_INVOICE" ? "" : "Singapore marketing support, student pipeline development, curriculum support, academic advisory support, tutor coordination, and management coordination support."} style={fieldStyle()} /></label>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 10 }}>
-            <label>{t(lang, "Platforms / tools", "平台 / 工具")}<textarea name="platformsUsed" rows={2} defaultValue="SGT Manage, email, online collaboration tools, video calls." style={fieldStyle()} /></label>
+            <label>{t(lang, "Platforms / tools", "平台 / 工具")}<textarea name="platformsUsed" rows={2} defaultValue={selected.agreementType === "CUSTOM_INVOICE" ? "Not applicable" : "SGT Manage, email, online collaboration tools, video calls."} style={fieldStyle()} /></label>
             <label>{t(lang, "Personnel involved", "参与人员")}<textarea name="personnelInvolved" rows={2} placeholder="Cena, finance, academic team..." style={fieldStyle()} /></label>
           </div>
-          <label>{t(lang, "Benefit to recipient", "受益说明")}<textarea name="benefitSummary" rows={2} defaultValue="Operational, market, academic, and tutor coordination support for the reporting period." style={fieldStyle()} /></label>
-          <label>{t(lang, "Tutor cost summary", "老师成本汇总")}<textarea name="tutorCostSummary" rows={2} placeholder="Tutor fees and directly attributable tutor support costs..." style={fieldStyle()} /></label>
+          <label>{t(lang, "Benefit to recipient", "受益说明")}<textarea name="benefitSummary" rows={2} defaultValue={selected.agreementType === "CUSTOM_INVOICE" ? "" : "Operational, market, academic, and tutor coordination support for the reporting period."} style={fieldStyle()} /></label>
+          <label>{selected.agreementType === "CUSTOM_INVOICE" ? t(lang, "Cost description", "费用说明") : t(lang, "Tutor cost summary", "老师成本汇总")}<textarea name="tutorCostSummary" rows={2} defaultValue={selected.agreementType === "CUSTOM_INVOICE" ? "Not applicable" : ""} placeholder="Tutor fees and directly attributable tutor support costs..." style={fieldStyle()} /></label>
+          </div>
           <label>{t(lang, "Internal note", "内部备注")}<input name="note" style={fieldStyle()} /></label>
           <button style={{ ...buttonStyle("primary"), justifySelf: "start" }}>{t(lang, "Create draft documents", "创建草稿单据")}</button>
         </form>
@@ -731,13 +779,41 @@ export default async function BusinessAccountsPage({
                   <td style={{ padding: 8, borderTop: "1px solid #e2e8f0" }}>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                       <a href={`/api/exports/business-accounts/${doc.id}/invoice`}>Invoice PDF</a>
-                      <a href={`/api/exports/business-accounts/${doc.id}/service-report`}>Service Report PDF</a>
+                      <a href={`/api/exports/business-accounts/${doc.id}/service-report`}>
+                        {selected.agreementType === "CUSTOM_INVOICE" ? "Service Delivery Record PDF" : "Service Report PDF"}
+                      </a>
                       {doc.status === "PAID" ? <a href={`/api/exports/business-accounts/${doc.id}/receipt`}>Receipt PDF</a> : null}
                       {doc.status === "DRAFT" ? (
                         <>
-                          <form action={issueDocumentAction}>
+                          <details style={{ width: "100%", marginTop: 8 }}>
+                            <summary style={{ cursor: "pointer", color: "#1d4ed8", fontWeight: 900 }}>{t(lang, "Edit draft invoice and service record", "编辑草稿发票与服务记录")}</summary>
+                            <form action={updateDraftDocumentAction} style={{ display: "grid", gap: 10, marginTop: 10, maxWidth: 900 }}>
+                              <input type="hidden" name="accountId" value={selected.id} />
+                              <input type="hidden" name="documentId" value={doc.id} />
+                              <label>{t(lang, "Invoice description", "发票服务描述")}<textarea name="invoiceDescription" rows={3} required defaultValue={doc.invoiceDescription} style={fieldStyle()} /></label>
+                              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 8 }}>
+                                <label>{t(lang, "Service reference", "服务依据")}<input name="serviceReference" defaultValue={doc.serviceReference ?? ""} style={fieldStyle()} /></label>
+                                <label>{t(lang, "Service date", "服务日期")}<input name="serviceDate" type="date" defaultValue={doc.serviceDate ?? ""} style={fieldStyle()} /></label>
+                                <label>{t(lang, "Service period", "服务时段")}<input name="servicePeriod" defaultValue={doc.servicePeriod ?? ""} placeholder="08:30-18:30" style={fieldStyle()} /></label>
+                                <label>{t(lang, "Service location", "服务地点")}<input name="serviceLocation" defaultValue={doc.serviceLocation ?? ""} placeholder="Classroom 3" style={fieldStyle()} /></label>
+                              </div>
+                              <label>{t(lang, "Services performed", "已提供服务")}<textarea name="serviceSummary" rows={3} defaultValue={doc.serviceSummary} style={fieldStyle()} /></label>
+                              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 8 }}>
+                                <label>{t(lang, "Platforms / tools", "平台 / 工具")}<textarea name="platformsUsed" rows={2} defaultValue={doc.platformsUsed} style={fieldStyle()} /></label>
+                                <label>{t(lang, "Personnel involved", "参与人员")}<textarea name="personnelInvolved" rows={2} defaultValue={doc.personnelInvolved} style={fieldStyle()} /></label>
+                              </div>
+                              <label>{t(lang, "Benefit to recipient", "受益说明")}<textarea name="benefitSummary" rows={2} defaultValue={doc.benefitSummary} style={fieldStyle()} /></label>
+                              <label>{t(lang, "Cost description", "费用说明")}<textarea name="tutorCostSummary" rows={2} defaultValue={doc.tutorCostSummary} style={fieldStyle()} /></label>
+                              <button style={{ ...buttonStyle("primary"), justifySelf: "start" }}>{t(lang, "Save draft details", "保存草稿内容")}</button>
+                            </form>
+                          </details>
+                          <form action={issueDocumentAction} style={{ display: "grid", gap: 6, width: "100%", marginTop: 8 }}>
                             <input type="hidden" name="accountId" value={selected.id} />
                             <input type="hidden" name="documentId" value={doc.id} />
+                            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "#334155" }}>
+                              <input name="confirmPreview" type="checkbox" required style={{ marginTop: 2 }} />
+                              {t(lang, "I previewed and confirmed both PDFs above.", "我已预览并确认上方两份PDF内容。")}
+                            </label>
                             <button style={buttonStyle("success")}>Issue</button>
                           </form>
                           <form action={deleteDraftDocumentAction}>

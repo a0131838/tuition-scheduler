@@ -2,6 +2,7 @@ import PDFDocument from "pdfkit";
 import { PassThrough } from "stream";
 import path from "path";
 import { setPdfBoldFont, setPdfFont } from "@/lib/pdf-font";
+import { normalizeBusinessDocumentText, resolveBusinessInvoiceDescription } from "@/lib/business-accounts";
 import type { BusinessAccount, BusinessMonthlyDocument } from "@/lib/business-accounts";
 
 type PDFDoc = InstanceType<typeof PDFDocument>;
@@ -51,6 +52,17 @@ function paymentMethodLabel(value: string | null | undefined) {
     default:
       return "Bank Transfer";
   }
+}
+
+export function businessServiceRecipientName(account: Pick<BusinessAccount, "legalNameEn" | "legalNameZh">) {
+  const english = normalizeBusinessDocumentText(account.legalNameEn);
+  const chinese = normalizeBusinessDocumentText(account.legalNameZh);
+  if (!chinese || chinese.toLocaleLowerCase() === english.toLocaleLowerCase()) return english;
+  return `${english} / ${chinese}`;
+}
+
+export function isCustomBusinessServiceRecord(account: Pick<BusinessAccount, "agreementType">) {
+  return account.agreementType === "CUSTOM_INVOICE";
 }
 
 function drawHeader(doc: PDFDoc, title: string, subtitle: string) {
@@ -158,7 +170,7 @@ export function buildBusinessInvoicePdf(account: BusinessAccount, item: Business
 
   const rowY = tableY + 24;
   templateText(doc, "1", colX[0] + 16, rowY, 10);
-  templateText(doc, `Corporate service fee for ${item.monthKey}`, colX[1], rowY, 10, false, "#111827", 196, "left", true);
+  templateText(doc, resolveBusinessInvoiceDescription(item), colX[1], rowY, 10, false, "#111827", 196, "left", true);
   templateText(doc, money(item.totalAmount), colX[2], rowY, 10);
   templateText(doc, money(0), colX[3], rowY, 10);
   templateText(doc, money(item.totalAmount), colX[4], rowY, 10);
@@ -194,26 +206,51 @@ export function buildBusinessInvoicePdf(account: BusinessAccount, item: Business
 export function buildBusinessServiceReportPdf(account: BusinessAccount, item: BusinessMonthlyDocument) {
   const doc = new PDFDocument({ size: "A4", margin: 0 });
   setPdfFont(doc);
-  drawHeader(doc, "MONTHLY SERVICE REPORT", "月度服务报告");
+  const custom = isCustomBusinessServiceRecord(account);
+  drawHeader(doc, custom ? "SERVICE DELIVERY RECORD" : "MONTHLY SERVICE REPORT", custom ? "服务交付记录" : "月度服务报告");
 
   sectionTitle(doc, "Report Summary / 报告概要", 116);
-  row(doc, "Reporting Period / 报告期间", item.monthKey, 52, 154);
-  row(doc, "Agreement Reference / 协议依据", account.agreementTitle ?? "Intercompany Services Agreement", 310, 154);
-  row(doc, "Service Provider / 服务提供方", "GT Educational Institute Pte Ltd", 52, 198);
-  row(doc, "Service Recipient / 服务接受方", `${account.legalNameEn} / ${account.legalNameZh}`, 310, 198);
+  row(doc, custom ? "Service Date / 服务日期" : "Reporting Period / 报告期间", custom ? item.serviceDate ?? item.monthKey : item.monthKey, 52, 154);
+  row(
+    doc,
+    custom ? "Service Reference / 服务依据" : "Agreement Reference / 协议依据",
+    item.serviceReference ?? account.agreementTitle ?? (custom ? "Service confirmation / supporting correspondence" : "Intercompany Services Agreement"),
+    310,
+    154,
+  );
+  row(doc, "Service Provider / 服务提供方", "GT Educational Institute Pte. Ltd.", 52, 198);
+  row(doc, "Service Recipient / 服务接受方", businessServiceRecipientName(account), 310, 198);
 
   sectionTitle(doc, "Services Performed / 已提供服务", 268);
-  text(doc, item.serviceSummary, 52, 306, 490, { size: 10 });
-  row(doc, "Platforms, systems, or tools used / 使用的平台、系统或工具", item.platformsUsed, 52, 380, 490);
-  row(doc, "Personnel involved / 参与人员", item.personnelInvolved, 52, 432, 490);
+  text(doc, normalizeBusinessDocumentText(item.serviceSummary), 52, 306, 490, { size: 10 });
+  if (custom) {
+    row(doc, "Service Period / 服务时段", item.servicePeriod ?? "-", 52, 380);
+    row(doc, "Service Location / 服务地点", item.serviceLocation ?? "-", 310, 380);
+    row(doc, "Platforms, systems, or tools used / 使用的平台、系统或工具", normalizeBusinessDocumentText(item.platformsUsed) || "Not applicable", 52, 432);
+    row(doc, "Personnel involved / 参与人员", normalizeBusinessDocumentText(item.personnelInvolved), 310, 432);
+  } else {
+    row(doc, "Platforms, systems, or tools used / 使用的平台、系统或工具", normalizeBusinessDocumentText(item.platformsUsed), 52, 380, 490);
+    row(doc, "Personnel involved / 参与人员", normalizeBusinessDocumentText(item.personnelInvolved), 52, 432, 490);
+  }
 
   sectionTitle(doc, "Benefit to Party A / 甲方受益说明", 494);
-  text(doc, item.benefitSummary, 52, 532, 490, { size: 10 });
+  text(doc, normalizeBusinessDocumentText(item.benefitSummary), 52, 532, 490, { size: 10 });
 
   sectionTitle(doc, "Cost and Pricing Summary / 成本与定价汇总", 604);
-  row(doc, "Tutor fees and directly attributable support costs / 导师费用及支持成本", item.tutorCostSummary, 52, 642, 490);
-  row(doc, "Fixed monthly corporate services fee / 固定月度企业服务费", money(item.fixedMonthlyFee), 52, 708);
-  row(doc, "Variable monthly tutor fee / 浮动月度导师费用", money(item.variableTutorFee), 310, 708);
+  row(
+    doc,
+    custom ? "Cost description / 费用说明" : "Tutor fees and directly attributable support costs / 导师费用及支持成本",
+    normalizeBusinessDocumentText(item.tutorCostSummary),
+    52,
+    642,
+    490,
+  );
+  if (custom) {
+    row(doc, "One-time service fee / 一次性服务费", money(item.totalAmount), 52, 708);
+  } else {
+    row(doc, "Fixed monthly corporate services fee / 固定月度企业服务费", money(item.fixedMonthlyFee), 52, 708);
+    row(doc, "Variable monthly tutor fee / 浮动月度导师费用", money(item.variableTutorFee), 310, 708);
+  }
   row(doc, "Total service fee / 服务费合计", money(item.totalAmount), 52, 752);
   text(doc, "Prepared by / 编制人: ____________________", 52, 800, 220, { size: 10 });
   text(doc, "Reviewed by / 复核人: ____________________", 310, 800, 230, { size: 10 });
@@ -259,7 +296,7 @@ export function buildBusinessReceiptPdf(account: BusinessAccount, item: Business
 
   const rowY = tableY + 24;
   templateText(doc, "1", colX[0] + 16, rowY, 10);
-  templateText(doc, `Corporate service fee for ${item.monthKey}`, colX[1], rowY, 10, false, "#111827", 196, "left", true);
+  templateText(doc, resolveBusinessInvoiceDescription(item), colX[1], rowY, 10, false, "#111827", 196, "left", true);
   templateText(doc, money(item.totalAmount), colX[2], rowY, 10);
   templateText(doc, money(0), colX[3], rowY, 10);
   templateText(doc, money(item.totalAmount), colX[4], rowY, 10);

@@ -12,7 +12,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const row = await getBusinessMonthlyDocument(id);
   if (!row) return new Response("Document not found", { status: 404 });
   const stream = buildBusinessServiceReportPdf(row.account, row.document);
-  const filename = safeName(`${row.document.invoiceNo}-${row.account.legalNameEn}-service-report.pdf`);
+  const documentLabel = row.account.agreementType === "CUSTOM_INVOICE" ? "service-delivery-record" : "service-report";
+  const filename = safeName(`${row.document.invoiceNo}-${row.account.legalNameEn}-${documentLabel}.pdf`);
   return new Response(stream as any, {
     headers: {
       "content-type": "application/pdf",

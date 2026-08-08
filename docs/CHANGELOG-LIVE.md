@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-08-r354
+
+- Release ID: `2026-08-08-r354`
+- Date/Time (Asia/Singapore): `2026-08-08`
+- Deployment status: `READY`
+- Scope: let finance edit the invoice description and internal service evidence while a business-account document is still a draft, and render custom invoices as one-time service delivery records instead of generic monthly reports.
+- Key files:
+  - `lib/business-accounts.ts`
+  - `lib/business-account-pdf.ts`
+  - `app/admin/finance/business-accounts/page.tsx`
+  - `app/api/exports/business-accounts/[id]/service-report/route.ts`
+  - `tests/billing-optimistic-lock.test.ts`
+  - `docs/tasks/TASK-20260808-business-service-description.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low and isolated to business-account draft editing and business invoice/service-record presentation. Issued, paid and void documents remain locked; legacy documents retain their original default description; parent invoices, partner settlement, transport billing, receipts, package balances, attendance and scheduling are unchanged.
+- Verification: business-document regressions, 180 backend tests, TypeScript and the 243-page production build passed. JCI invoice and service-delivery PDFs were rendered to PNG and visually checked for wrapping, duplicate names, incorrect labels, square glyphs and overlap.
+- Rollback point: `872ea3452d4f29bed780858fb7e80543da2e089e` (`2026-08-08-r353` production head).
+
+---
+
 ## 2026-08-08-r353
 
 - Release ID: `2026-08-08-r353`

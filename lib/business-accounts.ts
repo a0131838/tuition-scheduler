@@ -65,6 +65,11 @@ export type BusinessMonthlyDocument = {
   fixedMonthlyFee: number;
   variableTutorFee: number;
   totalAmount: number;
+  invoiceDescription: string;
+  serviceReference: string | null;
+  serviceDate: string | null;
+  servicePeriod: string | null;
+  serviceLocation: string | null;
   serviceSummary: string;
   platformsUsed: string;
   personnelInvolved: string;
@@ -175,6 +180,21 @@ function textOrNull(input: unknown) {
   return String(input ?? "").trim() || null;
 }
 
+export function normalizeBusinessDocumentText(input: unknown) {
+  return String(input ?? "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .trim();
+}
+
+export function defaultBusinessInvoiceDescription(monthKey: string) {
+  return `Corporate service fee for ${String(monthKey ?? "").trim()}`;
+}
+
+export function resolveBusinessInvoiceDescription(item: Pick<BusinessMonthlyDocument, "invoiceDescription" | "monthKey">) {
+  return normalizeBusinessDocumentText(item.invoiceDescription) || defaultBusinessInvoiceDescription(item.monthKey);
+}
+
 function roundMoney(input: unknown) {
   return Math.round((Number(input ?? 0) || 0) * 100) / 100;
 }
@@ -239,11 +259,17 @@ function sanitizeStore(input: unknown): BusinessAccountsStore {
         fixedMonthlyFee: roundMoney(x.fixedMonthlyFee),
         variableTutorFee: roundMoney(x.variableTutorFee),
         totalAmount: roundMoney(x.totalAmount),
-        serviceSummary: String(x.serviceSummary ?? "").trim(),
-        platformsUsed: String(x.platformsUsed ?? "").trim(),
-        personnelInvolved: String(x.personnelInvolved ?? "").trim(),
-        benefitSummary: String(x.benefitSummary ?? "").trim(),
-        tutorCostSummary: String(x.tutorCostSummary ?? "").trim(),
+        invoiceDescription:
+          normalizeBusinessDocumentText(x.invoiceDescription) || defaultBusinessInvoiceDescription(String(x.monthKey ?? "")),
+        serviceReference: textOrNull(normalizeBusinessDocumentText(x.serviceReference)),
+        serviceDate: normalizeDateOnly(x.serviceDate) ?? null,
+        servicePeriod: textOrNull(normalizeBusinessDocumentText(x.servicePeriod)),
+        serviceLocation: textOrNull(normalizeBusinessDocumentText(x.serviceLocation)),
+        serviceSummary: normalizeBusinessDocumentText(x.serviceSummary),
+        platformsUsed: normalizeBusinessDocumentText(x.platformsUsed),
+        personnelInvolved: normalizeBusinessDocumentText(x.personnelInvolved),
+        benefitSummary: normalizeBusinessDocumentText(x.benefitSummary),
+        tutorCostSummary: normalizeBusinessDocumentText(x.tutorCostSummary),
         note: textOrNull(x.note),
         status: normalizeDocumentStatus(x.status),
         receiptNo: textOrNull(x.receiptNo),
@@ -571,6 +597,11 @@ export async function createBusinessMonthlyDocument(input: {
   issueDate: string;
   dueDate: string;
   variableTutorFee: number;
+  invoiceDescription?: string | null;
+  serviceReference?: string | null;
+  serviceDate?: string | null;
+  servicePeriod?: string | null;
+  serviceLocation?: string | null;
   serviceSummary: string;
   platformsUsed: string;
   personnelInvolved: string;
@@ -608,11 +639,25 @@ export async function createBusinessMonthlyDocument(input: {
         fixedMonthlyFee,
         variableTutorFee,
         totalAmount: fixedMonthlyFee + variableTutorFee,
-        serviceSummary: input.serviceSummary.trim() || "Recurring corporate support services and tutor-related support services.",
-        platformsUsed: input.platformsUsed.trim() || "SGT Manage, email, online collaboration tools, video calls.",
-        personnelInvolved: input.personnelInvolved.trim() || "-",
-        benefitSummary: input.benefitSummary.trim() || "Operational, market, academic, and tutor coordination support for the reporting period.",
-        tutorCostSummary: input.tutorCostSummary.trim() || "Tutor fees and directly attributable tutor support costs for the billing period.",
+        invoiceDescription:
+          normalizeBusinessDocumentText(input.invoiceDescription) || defaultBusinessInvoiceDescription(monthKey),
+        serviceReference: textOrNull(normalizeBusinessDocumentText(input.serviceReference)),
+        serviceDate: normalizeDateOnly(input.serviceDate) ?? null,
+        servicePeriod: textOrNull(normalizeBusinessDocumentText(input.servicePeriod)),
+        serviceLocation: textOrNull(normalizeBusinessDocumentText(input.serviceLocation)),
+        serviceSummary:
+          normalizeBusinessDocumentText(input.serviceSummary) ||
+          "Recurring corporate support services and tutor-related support services.",
+        platformsUsed:
+          normalizeBusinessDocumentText(input.platformsUsed) ||
+          "SGT Manage, email, online collaboration tools, video calls.",
+        personnelInvolved: normalizeBusinessDocumentText(input.personnelInvolved) || "-",
+        benefitSummary:
+          normalizeBusinessDocumentText(input.benefitSummary) ||
+          "Operational, market, academic, and tutor coordination support for the reporting period.",
+        tutorCostSummary:
+          normalizeBusinessDocumentText(input.tutorCostSummary) ||
+          "Tutor fees and directly attributable tutor support costs for the billing period.",
         note: input.note?.trim() || null,
         status: "DRAFT",
         receiptNo: null,
@@ -646,6 +691,69 @@ export async function createBusinessMonthlyDocument(input: {
     meta: { accountId: input.accountId, monthKey: input.monthKey, invoiceNo: createdDoc.invoiceNo },
   });
   return createdDoc;
+}
+
+export async function updateDraftBusinessMonthlyDocument(input: {
+  documentId: string;
+  invoiceDescription: string;
+  serviceReference?: string | null;
+  serviceDate?: string | null;
+  servicePeriod?: string | null;
+  serviceLocation?: string | null;
+  serviceSummary: string;
+  platformsUsed: string;
+  personnelInvolved: string;
+  benefitSummary: string;
+  tutorCostSummary: string;
+  actor: { email?: string | null; name?: string | null; role?: string | null };
+}) {
+  let item: BusinessMonthlyDocument | null = null;
+  let previousDescription = "";
+  await mutateJsonAppSetting({
+    key: BUSINESS_ACCOUNTS_KEY,
+    fallback: EMPTY_STORE,
+    sanitize: sanitizeStore,
+    mutate: (store) => {
+      ensureDefaults(store);
+      const idx = store.monthlyDocuments.findIndex((document) => document.id === input.documentId);
+      if (idx < 0) throw new Error("Document not found");
+      const current = store.monthlyDocuments[idx];
+      if (current.status !== "DRAFT") throw new Error("Only draft documents can be edited");
+      const invoiceDescription = normalizeBusinessDocumentText(input.invoiceDescription);
+      if (!invoiceDescription) throw new Error("Invoice description is required");
+      previousDescription = current.invoiceDescription;
+      item = {
+        ...current,
+        invoiceDescription,
+        serviceReference: textOrNull(normalizeBusinessDocumentText(input.serviceReference)),
+        serviceDate: normalizeDateOnly(input.serviceDate) ?? null,
+        servicePeriod: textOrNull(normalizeBusinessDocumentText(input.servicePeriod)),
+        serviceLocation: textOrNull(normalizeBusinessDocumentText(input.serviceLocation)),
+        serviceSummary: normalizeBusinessDocumentText(input.serviceSummary) || "-",
+        platformsUsed: normalizeBusinessDocumentText(input.platformsUsed) || "Not applicable",
+        personnelInvolved: normalizeBusinessDocumentText(input.personnelInvolved) || "-",
+        benefitSummary: normalizeBusinessDocumentText(input.benefitSummary) || "-",
+        tutorCostSummary: normalizeBusinessDocumentText(input.tutorCostSummary) || "Not applicable",
+        updatedAt: nowIso(),
+      };
+      store.monthlyDocuments[idx] = item;
+    },
+  });
+  const updatedItem = item as BusinessMonthlyDocument | null;
+  if (!updatedItem) throw new Error("Draft document was not updated");
+  await logAudit({
+    actor: input.actor,
+    module: "BUSINESS_ACCOUNTS",
+    action: "UPDATE_DRAFT_MONTHLY_DOCUMENT",
+    entityType: "BusinessMonthlyDocument",
+    entityId: input.documentId,
+    meta: {
+      invoiceNo: updatedItem.invoiceNo,
+      previousDescription,
+      invoiceDescription: updatedItem.invoiceDescription,
+    },
+  });
+  return updatedItem;
 }
 
 function buildReceiptNo(invoiceNo: string) {
