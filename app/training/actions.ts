@@ -1,6 +1,6 @@
 "use server";
 
-import { getCurrentUser, isManagerUser } from "@/lib/auth";
+import { canReviewTrainingTarget, getCurrentUser } from "@/lib/auth";
 import { canAccessTrainingModule, findTrainingModule, gradeTrainingQuiz } from "@/lib/training-center";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
@@ -72,7 +72,6 @@ export async function submitTrainingPractical(formData: FormData) {
 
 export async function reviewTrainingPractical(formData: FormData) {
   const reviewer = await requireStaff();
-  if (!(await isManagerUser(reviewer))) throw new Error("Manager access required");
   const progressId = String(formData.get("progressId") ?? "");
   const decision = String(formData.get("decision") ?? "");
   const note = String(formData.get("note") ?? "").trim();
@@ -82,9 +81,20 @@ export async function reviewTrainingPractical(formData: FormData) {
   if (decision === "NEEDS_REWORK" && note.length < 10) throw new Error("Give specific rework instructions");
   const progress = await prisma.staffTrainingProgress.findUnique({
     where: { id: progressId },
-    select: { userId: true, moduleCode: true, moduleVersion: true, readAt: true, quizPassedAt: true, practicalStatus: true },
+    select: {
+      userId: true,
+      moduleCode: true,
+      moduleVersion: true,
+      readAt: true,
+      quizPassedAt: true,
+      practicalStatus: true,
+      user: { select: { role: true } },
+    },
   });
   if (!progress) throw new Error("Training progress not found");
+  if (!(await canReviewTrainingTarget(reviewer, progress.user.role))) {
+    throw new Error("Teacher leads can review teacher training only");
+  }
   const item = findTrainingModule(progress.moduleCode);
   if (!item || item.version !== progress.moduleVersion) throw new Error("Only the current training version can be reviewed");
   if (!progress.readAt || !progress.quizPassedAt || progress.practicalStatus !== "SUBMITTED") throw new Error("Training is not ready for sign-off");

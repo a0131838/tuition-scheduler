@@ -1,4 +1,4 @@
-import { getCurrentUser, isManagerUser } from "@/lib/auth";
+import { getCurrentUser, isManagerUser, isTeacherLeadUser } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import {
@@ -24,11 +24,13 @@ const stateTone: Record<TrainingModuleProgressState, { background: string; color
 export default async function TrainingManagePage() {
   const currentUser = await getCurrentUser();
   if (!currentUser) redirect("/admin/login");
-  if (!(await isManagerUser(currentUser))) redirect("/training");
+  const manager = await isManagerUser(currentUser);
+  const teacherLead = await isTeacherLeadUser(currentUser);
+  if (!manager && !teacherLead) redirect("/training");
   const lang = await getLang();
 
   const users = await prisma.user.findMany({
-    where: { role: { not: "STUDENT" } },
+    where: manager ? { role: { not: "STUDENT" } } : { role: "TEACHER" },
     orderBy: [{ role: "asc" }, { name: "asc" }, { email: "asc" }],
     select: {
       id: true,
@@ -91,15 +93,19 @@ export default async function TrainingManagePage() {
     <main style={{ maxWidth: 1180, margin: "0 auto", padding: 24, background: "#f6f8fb", minHeight: "100vh", color: "#172033" }}>
       <section style={{ ...card, background: "linear-gradient(135deg,#ecfdf5,#eff6ff)" }}>
         <div style={{ color: "#0f766e", fontWeight: 800, fontSize: 12 }}>TRAINING MANAGEMENT / 培训管理</div>
-        <h1 style={{ marginBottom: 8 }}>{t(lang, "Staff Training Overview & Sign-off", "员工培训总览与验收")}</h1>
+        <h1 style={{ marginBottom: 8 }}>{t(lang, manager ? "Staff Training Overview & Sign-off" : "Teacher Training Overview & Sign-off", manager ? "员工培训总览与验收" : "老师培训总览与验收")}</h1>
         <p style={{ color: "#475569" }}>
           {t(
             lang,
-            "All staff are shown, including employees who have not started. Training roles assign learning only and do not grant system permissions.",
-            "这里显示全部员工，包括尚未开始培训的人。培训岗位只分配学习内容，不授予系统操作权限。"
+            manager
+              ? "All staff are shown, including employees who have not started. Training roles assign learning only and do not grant system permissions."
+              : "Teacher leads can review teacher training only. Finance and other staff training are not available.",
+            manager
+              ? "这里显示全部员工，包括尚未开始培训的人。培训岗位只分配学习内容，不授予系统操作权限。"
+              : "老师主管只能查看和验收老师培训，财务及其他岗位培训不会显示。"
           )}
         </p>
-        <p><a href="/training">{t(lang, "Back to My Training", "返回我的培训")}</a> · <a href="/training/coverage">{t(lang, "View Full-System Operations Coverage", "查看全系统操作覆盖图")}</a></p>
+        <p><a href="/training">{t(lang, "Back to My Training", "返回我的培训")}</a>{manager ? <> · <a href="/training/coverage">{t(lang, "View Full-System Operations Coverage", "查看全系统操作覆盖图")}</a></> : null}</p>
       </section>
 
       <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12, margin: "16px 0" }}>

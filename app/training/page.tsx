@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getCurrentUser, isManagerUser } from "@/lib/auth";
+import { getCurrentUser, isManagerUser, isTeacherLeadUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { trainingModulesForUser, trainingRolesForUser } from "@/lib/training-center";
 import { redirect } from "next/navigation";
@@ -20,6 +20,7 @@ export default async function TrainingPage() {
   const progresses = await prisma.staffTrainingProgress.findMany({ where: { userId: user.id } });
   const byKey = new Map(progresses.map((item) => [`${item.moduleCode}:${item.moduleVersion}`, item]));
   const manager = await isManagerUser(user);
+  const teacherLead = await isTeacherLeadUser(user);
   const lang = await getLang();
   const moduleText = (en: string, zh: string) => t(lang, en, zh);
 
@@ -33,7 +34,8 @@ export default async function TrainingPage() {
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <Link href={user.role === "TEACHER" ? "/teacher" : "/admin"}>{moduleText("Back to Workspace", "返回工作台")}</Link>
           <Link href="/training/library">{moduleText("PDF Download Centre", "PDF 下载中心")}</Link>
-          {manager ? <Link href="/training/manage">{moduleText("Manager Sign-off", "主管验收台")}</Link> : null}
+          {user.role === "TEACHER" || manager ? <Link href="/training/materials">{moduleText("Teacher Materials", "老师培训材料")}</Link> : null}
+          {manager || teacherLead ? <Link href="/training/manage">{moduleText("Training Sign-off", "培训验收台")}</Link> : null}
         </div>
       </div>
       <section style={{ ...card, marginBottom: 16, borderColor: "#99f6e4", background: "#f0fdfa" }}>

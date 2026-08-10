@@ -82,6 +82,29 @@
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
+## 2026-08-10-r355 Ready
+
+- Scope: narrow Teacher Lead access for Jessika's existing teacher account, teacher-quality oversight, teacher-only training sign-off and controlled teacher training materials.
+- Business impact:
+  - Jessika keeps one teacher login and gains teacher schedule/quality oversight without receiving a broad Admin account.
+  - Teacher Lead training review is restricted server-side to `TEACHER` targets; finance and other staff are not listed or reviewable.
+  - Teacher Leads can upload, revise and submit training-material drafts; only the owner can publish, return or archive them.
+  - Teachers see only active, owner-published materials and can acknowledge existing management feedback in their normal portal.
+- Safety boundary: no Admin role, no Manager ACL, no company-finance workspace, no invoice/receipt/partner/payroll administration, no bank/payment data, no schedule mutation, no schema migration and no historical rewrite.
+- Files:
+  - `app/teacher/lead/quality/page.tsx`
+  - `app/teacher/layout.tsx`
+  - `app/training/manage/page.tsx`
+  - `app/training/materials/page.tsx`
+  - `app/api/training/materials/[id]/file/route.ts`
+  - `app/training/actions.ts`
+  - `lib/auth.ts`
+  - `lib/teacher-training-materials.ts`
+  - `tests/teacher-lead-scope.test.ts`
+  - `docs/tasks/TASK-20260810-jessika-teacher-lead-training.md`
+- Verification before deploy: 27 focused permission/training tests, 180 backend regressions, TypeScript and the 245-page production build passed.
+- Post-deploy verification: local/GitHub/server commit alignment, PM2 live PID, `/admin/login` HTTP 200, active Jessika `TeacherLeadAcl`, unchanged `TEACHER` role and absent `ManagerAcl`.
+
 ## 2026-08-08-r354 Ready
 
 - Scope: editable business-account draft descriptions and account-type-aware internal service evidence.

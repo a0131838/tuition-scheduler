@@ -16,7 +16,14 @@ export default async function TeacherLayout({ children }: { children: React.Reac
         { href: "/teacher/notices", label: t(lang, "Notices", "通知") },
         { href: "/teacher/manager-feedback", label: t(lang, "Manager Feedback", "管理反馈") },
         { href: "/teacher/alerts", label: t(lang, "Sign-in Alerts", "签到告警") },
-        ...(isLead ? [{ href: "/teacher/lead", label: t(lang, "Lead Desk", "主管工作台") }] : []),
+        ...(isLead
+          ? [
+              { href: "/teacher/lead", label: t(lang, "Lead Desk", "主管工作台") },
+              { href: "/teacher/lead/quality", label: t(lang, "Teacher Quality", "老师质量管理") },
+              { href: "/training/manage", label: t(lang, "Training Sign-off", "培训验收台") },
+              { href: "/training/materials", label: t(lang, "Training Materials", "培训材料") },
+            ]
+          : []),
       ],
     },
     {

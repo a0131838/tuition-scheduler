@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-10-r355
+
+- Release ID: `2026-08-10-r355`
+- Date/Time (Asia/Singapore): `2026-08-10`
+- Deployment status: `READY`
+- Scope: give the existing Jessika teacher account a narrow Teacher Lead workspace for teacher oversight, teacher-only training sign-off and owner-controlled teacher training materials without granting Admin, Manager ACL or company-finance access.
+- Key files:
+  - `app/teacher/lead/quality/page.tsx`
+  - `app/teacher/layout.tsx`
+  - `app/training/manage/page.tsx`
+  - `app/training/materials/page.tsx`
+  - `app/api/training/materials/[id]/file/route.ts`
+  - `app/training/actions.ts`
+  - `lib/auth.ts`
+  - `lib/teacher-training-materials.ts`
+  - `tests/teacher-lead-scope.test.ts`
+  - `docs/tasks/TASK-20260810-jessika-teacher-lead-training.md`
+- Risk impact (if any): Permission-sensitive but narrow. Teacher Leads can review teacher schedules, quality feedback and teacher training only. Company finance, partner settlement, payroll administration, bank/payment data, invoice administration, schedule writes, existing lessons and historical training records are unchanged. Training publication remains owner-only.
+- Verification: 27 focused permission/training tests, 180 backend regressions, TypeScript and the 245-page production build passed. Post-deploy checks must confirm Jessika remains `TEACHER`, has `TeacherLeadAcl`, has no `ManagerAcl`, and the production commit/PM2/health states align.
+- Rollback point: `5462b10b56a6a204163dcd2512f26a690cf1bd3f` (`2026-08-08-r354` feature head).
+
+---
+
 ## 2026-08-08-r354
 
 - Release ID: `2026-08-08-r354`

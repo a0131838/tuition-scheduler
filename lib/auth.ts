@@ -92,6 +92,33 @@ export async function isTeacherLeadUser(user: Pick<AuthUser, "role" | "email" | 
   return set.has(user.email.toLowerCase());
 }
 
+export async function isTeacherTrainingReviewer(
+  user: Pick<AuthUser, "role" | "email" | "teacherId"> | null | undefined,
+) {
+  if (!user) return false;
+  return (await isManagerUser(user)) || (await isTeacherLeadUser(user));
+}
+
+export function trainingTargetRoleAllowed(input: {
+  manager: boolean;
+  teacherLead: boolean;
+  targetRole: SystemUserRole;
+}) {
+  return input.manager || (input.teacherLead && input.targetRole === "TEACHER");
+}
+
+export async function canReviewTrainingTarget(
+  reviewer: Pick<AuthUser, "role" | "email" | "teacherId"> | null | undefined,
+  targetRole: SystemUserRole,
+) {
+  if (!reviewer) return false;
+  return trainingTargetRoleAllowed({
+    manager: await isManagerUser(reviewer),
+    teacherLead: await isTeacherLeadUser(reviewer),
+    targetRole,
+  });
+}
+
 function hashPassword(password: string, salt: string) {
   const hash = crypto.pbkdf2Sync(password, salt, 100_000, 32, "sha256");
   return hash.toString("hex");
