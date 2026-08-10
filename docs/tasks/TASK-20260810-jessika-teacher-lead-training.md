@@ -36,8 +36,8 @@
 ## 6) Verification
 
 - Build: 27 focused training/permission tests, 180 backend regressions, TypeScript and the 245-page production build passed.
-- Runtime: verify local/GitHub/server commit alignment, PM2 process and `/admin/login` HTTP 200 after deployment.
-- Key manual checks: Jessika remains `TEACHER`, has an active `TeacherLeadAcl`, has no `ManagerAcl`, and can open Teacher Lead/quality/training pages without company finance access.
+- Runtime: runtime feature commit `41d0a49ffeeb5bff23a37bbe7c669ebc739e59ef` deployed with PM2 PID `3555398`; `/admin/login` returned HTTP 200.
+- Key manual checks: Jessika remains `TEACHER`, has an active `TeacherLeadAcl`, has no `ManagerAcl` or workspace grant, and all four Teacher Lead/quality/training pages returned HTTP 200 under her authenticated account.
 
 ## 7) Risks / Follow-up
 
@@ -47,5 +47,5 @@
 ## 8) Release Record
 
 - Release ID: `2026-08-10-r355`
-- Deploy time: pending
+- Deploy time: `2026-08-10` (Asia/Singapore)
 - Rollback command/point: previous production head `5462b10b56a6a204163dcd2512f26a690cf1bd3f`.

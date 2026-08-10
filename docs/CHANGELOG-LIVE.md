@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-08-10-r355`
 - Date/Time (Asia/Singapore): `2026-08-10`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: give the existing Jessika teacher account a narrow Teacher Lead workspace for teacher oversight, teacher-only training sign-off and owner-controlled teacher training materials without granting Admin, Manager ACL or company-finance access.
 - Key files:
   - `app/teacher/lead/quality/page.tsx`
@@ -33,7 +33,7 @@ This file is the single source of truth for what changed in production.
   - `tests/teacher-lead-scope.test.ts`
   - `docs/tasks/TASK-20260810-jessika-teacher-lead-training.md`
 - Risk impact (if any): Permission-sensitive but narrow. Teacher Leads can review teacher schedules, quality feedback and teacher training only. Company finance, partner settlement, payroll administration, bank/payment data, invoice administration, schedule writes, existing lessons and historical training records are unchanged. Training publication remains owner-only.
-- Verification: 27 focused permission/training tests, 180 backend regressions, TypeScript and the 245-page production build passed. Post-deploy checks must confirm Jessika remains `TEACHER`, has `TeacherLeadAcl`, has no `ManagerAcl`, and the production commit/PM2/health states align.
+- Verification: 27 focused permission/training tests, 180 backend regressions, TypeScript and the 245-page production build passed. Runtime feature commit `41d0a49ffeeb5bff23a37bbe7c669ebc739e59ef` deployed with PM2 PID `3555398` and `/admin/login` HTTP 200. Jessika remains `TEACHER`, has an active `TeacherLeadAcl`, has no `ManagerAcl` or workspace grant, and all four scoped teacher-lead/training pages returned HTTP 200 under her authenticated account.
 - Rollback point: `5462b10b56a6a204163dcd2512f26a690cf1bd3f` (`2026-08-08-r354` feature head).
 
 ---

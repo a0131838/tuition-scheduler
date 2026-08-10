@@ -81,8 +81,9 @@
 - Care product order is now build-complete-first for the pre-university V1, followed by operator SOP and student-by-student configuration. University remains a lightweight consent-aware reporting service; complex postgraduate and career pipelines stay deferred.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
+- Current release line: `2026-08-10-r355` is live at runtime feature commit `41d0a49ffeeb5bff23a37bbe7c669ebc739e59ef`. Jessika remains a teacher-linked account with active Teacher Lead ACL and no Manager ACL or company-finance workspace; teacher quality, teacher-only training sign-off and owner-controlled training materials are live.
 
-## 2026-08-10-r355 Ready
+## 2026-08-10-r355 Live
 
 - Scope: narrow Teacher Lead access for Jessika's existing teacher account, teacher-quality oversight, teacher-only training sign-off and controlled teacher training materials.
 - Business impact:
@@ -103,7 +104,7 @@
   - `tests/teacher-lead-scope.test.ts`
   - `docs/tasks/TASK-20260810-jessika-teacher-lead-training.md`
 - Verification before deploy: 27 focused permission/training tests, 180 backend regressions, TypeScript and the 245-page production build passed.
-- Post-deploy verification: local/GitHub/server commit alignment, PM2 live PID, `/admin/login` HTTP 200, active Jessika `TeacherLeadAcl`, unchanged `TEACHER` role and absent `ManagerAcl`.
+- Post-deploy verification: runtime feature commit `41d0a49ffeeb5bff23a37bbe7c669ebc739e59ef`, PM2 PID `3555398` and `/admin/login` HTTP 200. Jessika's authenticated Teacher Lead, quality, training sign-off and materials pages returned HTTP 200; her role is still `TEACHER`, `TeacherLeadAcl` is active, and both `ManagerAcl` and workspace grants are absent.
 
 ## 2026-08-08-r354 Ready
 
