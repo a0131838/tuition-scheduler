@@ -6885,3 +6885,12 @@
 - Validation: 7 focused safety/final-card tests, AI 245/245, 13/13 unified UAT, miniapp syntax, full TypeScript, 210-page build, Docker HTTP/write UAT and 19 audit records pass.
 - Runtime server release may proceed after secrets and production-readonly package audit; native miniapp upload/physical-device verification remains separate. No real-ticket apply was performed.
 - Task doc: `docs/tasks/TASK-20260811-ai-ticket-one-confirmation-gateway.md`
+
+# 2026-08-11-r262 Release candidate
+
+- Scope: complete-plan miniapp confirmation, stale-ticket automatic reread bridge and atomic multi-session rescheduling.
+- UX: vertical work queue; one plan view shows business summary and natural-month calendar before one final confirmation.
+- Permission: Eva uses the existing ADMIN scheduling authority through the command allowlist; Emily remains CS and cannot preview/apply formal scheduling commands.
+- Safety: homogeneous 2-64-session rescheduling is revalidated and committed in one Serializable transaction; one failure rolls the whole batch back. Stale ticket versions return `AI_TICKET_STALE` and cannot execute.
+- Validation: focused tests 8/8, production build, 42-page miniapp audit, and isolated PostgreSQL 15 UAT with 20 audit records pass.
+- Task doc: `docs/tasks/TASK-20260811-ai-work-complete-confirmation-and-batch-reschedule.md`

@@ -37,12 +37,16 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const intakeId = String(body?.intakeId || "").trim();
   const action = String(body?.action || "").trim();
-  if (!intakeId || !["prepare", "resolve_target_session"].includes(action)) return bad("请求无效。", 400);
+  if (!intakeId || !["prepare", "resolve_target_session", "refresh"].includes(action)) return bad("请求无效。", 400);
   try {
     const { secret } = config();
     const token = issueAiMiniappDelegation(auth.user, secret);
-    const path = action === "resolve_target_session" ? "/api/miniapp-ai/resolve-target-session" : "/api/miniapp-ai/autopilot";
-    const payload = action === "resolve_target_session"
+    const path = action === "resolve_target_session"
+      ? "/api/miniapp-ai/resolve-target-session"
+      : action === "refresh" ? "/api/miniapp-ai/refresh-ticket" : "/api/miniapp-ai/autopilot";
+    const payload = action === "refresh"
+      ? { ticketId: String(body?.ticketId || "").trim() }
+      : action === "resolve_target_session"
       ? { intakeId, sessionId: String(body?.sessionId || "").trim() }
       : {
           intakeId,
@@ -52,6 +56,7 @@ export async function POST(req: Request) {
           reason: String(body?.reason || "").trim(),
         };
     if (action === "resolve_target_session" && !payload.sessionId) return bad("请选择目标课次。", 400);
+    if (action === "refresh" && !("ticketId" in payload && payload.ticketId)) return bad("正式工单编号缺失。", 400);
     const result = await callAi(path, token, { method: "POST", body: JSON.stringify(payload) });
     return ok(result);
   } catch (error) { return bad(error instanceof Error ? error.message : "AI 处理失败。", 409); }

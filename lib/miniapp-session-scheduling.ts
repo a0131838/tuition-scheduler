@@ -346,6 +346,89 @@ export async function previewMiniappSessionScheduling(input: SchedulingInput) {
   return validateScheduling(prisma, input);
 }
 
+function validateBatchRescheduleRows(rows: Awaited<ReturnType<typeof validateScheduling>>[]) {
+  for (let leftIndex = 0; leftIndex < rows.length; leftIndex += 1) {
+    const left = rows[leftIndex];
+    for (let rightIndex = leftIndex + 1; rightIndex < rows.length; rightIndex += 1) {
+      const right = rows[rightIndex];
+      if (left.startAt >= right.endAt || right.startAt >= left.endAt) continue;
+      if (left.teacherId === right.teacherId) throw new MiniappSchedulingError("整批改课后的老师时间互相冲突。", 409, "BATCH_TEACHER_CONFLICT");
+      if (left.students.some((student) => right.students.some((other) => other.id === student.id))) {
+        throw new MiniappSchedulingError("整批改课后的学生时间互相冲突。", 409, "BATCH_STUDENT_CONFLICT");
+      }
+      const leftRoom = left.session.class.roomId;
+      if (leftRoom && leftRoom === right.session.class.roomId) throw new MiniappSchedulingError("整批改课后的教室时间互相冲突。", 409, "BATCH_ROOM_CONFLICT");
+    }
+  }
+}
+
+export async function previewMiniappSessionReschedulingBatch(inputs: SchedulingInput[]) {
+  if (inputs.length < 2 || inputs.length > 64 || inputs.some((input) => input.action !== "reschedule")) {
+    throw new MiniappSchedulingError("整批改课必须包含 2 到 64 节课程。", 409, "INVALID_BATCH");
+  }
+  if (new Set(inputs.map((input) => input.sessionId)).size !== inputs.length) {
+    throw new MiniappSchedulingError("整批改课包含重复课次。", 409, "DUPLICATE_BATCH_SESSION");
+  }
+  const rows: Awaited<ReturnType<typeof validateScheduling>>[] = [];
+  for (const input of inputs) rows.push(await validateScheduling(prisma, input));
+  validateBatchRescheduleRows(rows);
+  return { rows, preview: { action: "reschedule", actionLabel: "整批修改课程", commandCount: rows.length, rows: rows.map((row) => row.preview) } };
+}
+
+export async function applyMiniappSessionReschedulingBatch(
+  inputs: SchedulingInput[], actor: SchedulingActor, completeCoordinationTicketIds: string[] = []
+) {
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const rows: Awaited<ReturnType<typeof validateScheduling>>[] = [];
+      for (const input of inputs) rows.push(await validateScheduling(tx, input));
+      validateBatchRescheduleRows(rows);
+      const requestedTicketIds = Array.from(new Set(completeCoordinationTicketIds));
+      const eligibleTicketIds = new Set(rows.flatMap((row) => row.coordinationTickets.map((ticket) => ticket.id)));
+      if (requestedTicketIds.some((ticketId) => !eligibleTicketIds.has(ticketId))) {
+        throw new MiniappSchedulingError("排课协调工单已变化，请重新检查冲突。", 409, "COORDINATION_PREVIEW_STALE");
+      }
+      const writtenSessionIds: string[] = [];
+      for (const row of rows) {
+        const updated = await tx.session.update({ where: { id: row.session.id }, data: { startAt: row.startAt, endAt: row.endAt } });
+        writtenSessionIds.push(updated.id);
+      }
+      await tx.auditLog.createMany({ data: rows.map((row, index) => ({
+        actorEmail: actor.email.trim().toLowerCase(), actorName: actor.name?.trim() || null, actorRole: actor.role,
+        module: "SCHEDULING", action: "MINIAPP_SESSION_RESCHEDULE_BATCH", entityType: "Session", entityId: writtenSessionIds[index],
+        meta: { ticketIds: requestedTicketIds, batchSize: rows.length, index: index + 1, sourceSessionId: row.session.id, startAt: row.startAt.toISOString(), endAt: row.endAt.toISOString() },
+      })) });
+      const completedCoordinationTickets: Array<{ id: string; ticketNo: string; studentId: string | null; studentName: string; parentVisible: boolean; updatedAt: Date }> = [];
+      const now = new Date();
+      const actorName = actor.name?.trim() || actor.email;
+      const completionResult = `已完成整批改课：共 ${rows.length} 节；${rows[0].preview.afterText} 至 ${rows[rows.length - 1].preview.afterText}。`;
+      const tickets = new Map(rows.flatMap((row) => row.coordinationTickets).map((ticket) => [ticket.id, ticket]));
+      for (const ticketId of requestedTicketIds) {
+        const ticket = tickets.get(ticketId);
+        if (!ticket) continue;
+        const log = `[${formatBusinessDateTime(now)}] ${actorName} · 移动端整批改课\n${completionResult}`;
+        await tx.ticket.update({ where: { id: ticket.id }, data: {
+          status: "Completed", systemUpdated: "Y", finalSchedule: completionResult, parentCompletionResult: completionResult,
+          nextAction: "整批改课已完成，无需继续跟进。", nextActionDue: null,
+          risksNotes: ticket.risksNotes ? `${ticket.risksNotes}\n\n${log}` : log,
+          lastUpdateAt: now, completedAt: now, completedByUserId: actor.userId,
+        } });
+        await tx.parentAvailabilityRequest.updateMany({ where: { ticketId: ticket.id }, data: { isActive: false } });
+        await tx.auditLog.create({ data: {
+          actorEmail: actor.email.trim().toLowerCase(), actorName: actor.name?.trim() || null, actorRole: actor.role,
+          module: "TICKETS", action: "MINIAPP_COORDINATION_COMPLETE_AFTER_BATCH_RESCHEDULE", entityType: "Ticket", entityId: ticket.id,
+          meta: { sessionIds: writtenSessionIds, batchSize: rows.length },
+        } });
+        completedCoordinationTickets.push({ id: ticket.id, ticketNo: ticket.ticketNo, studentId: ticket.studentId, studentName: ticket.studentName, parentVisible: ticket.parentVisible, updatedAt: now });
+      }
+      return { rows, writtenSessionIds, completedCoordinationTickets, preview: { action: "reschedule", actionLabel: "整批修改课程", commandCount: rows.length, rows: rows.map((row) => row.preview) } };
+    }, { maxWait: 5000, timeout: 60000, isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  } catch (error) {
+    if (isSessionDuplicateError(error)) throw new MiniappSchedulingError("同一课程在该时间已经存在。", 409, "DUPLICATE");
+    throw error;
+  }
+}
+
 export async function applyMiniappSessionScheduling(
   input: SchedulingInput,
   actor: SchedulingActor,

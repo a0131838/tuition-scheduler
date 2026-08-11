@@ -88,7 +88,10 @@ function request(path, options) {
           return;
         }
         logOperation(path, method, opts, { ok: false, statusCode: res.statusCode, data, error: data.message || "请求失败" });
-        reject(new Error(data.message || "请求失败"));
+        const error = new Error(data.message || "请求失败");
+        error.code = data.code || "";
+        error.details = data;
+        reject(error);
       },
       fail(err) {
         logOperation(path, method, opts, { ok: false, statusCode: 0, error: err.errMsg || "网络连接失败" });

@@ -10,7 +10,7 @@ import {
 } from "@/lib/ai-ticket-execution";
 import { applyAiTicketCaseCommand, isAiTicketCaseCommand, previewAiTicketCaseCommand } from "@/lib/ai-ticket-case-execution";
 import { applyTicketNewSession, previewTicketNewSession, TicketNewSessionError } from "@/lib/miniapp-ticket-new-session";
-import { applyMiniappSessionScheduling, previewMiniappSessionScheduling, MiniappSchedulingError } from "@/lib/miniapp-session-scheduling";
+import { applyMiniappSessionScheduling, applyMiniappSessionReschedulingBatch, previewMiniappSessionScheduling, previewMiniappSessionReschedulingBatch, MiniappSchedulingError } from "@/lib/miniapp-session-scheduling";
 import { applyMiniappSessionCancellation, previewMiniappSessionCancellation, MiniappCancellationError } from "@/lib/miniapp-session-cancellation";
 import { applyMiniappTeacherReplacement, previewMiniappTeacherReplacement, MiniappTeacherReplacementError } from "@/lib/miniapp-session-teacher-replacement";
 import { prisma } from "@/lib/prisma";
@@ -53,6 +53,14 @@ function newSessionBatchInput(ticketId: string, commands: AiTicketCommand[]) {
   };
 }
 
+function commandTypes(value: AiTicketExecutionRequest) {
+  return new Set(value.commands.map((command) => command.commandType));
+}
+
+function rescheduleBatchInput(commands: AiTicketCommand[]) {
+  return commands.map((command) => ({ action: "reschedule" as const, sessionId: command.sessionId!, startAt: new Date(command.startAt!), durationMin: command.durationMin! }));
+}
+
 async function previewCommand(ticketId: string, command: AiTicketCommand) {
   if (isAiTicketCaseCommand(command)) return previewAiTicketCaseCommand(ticketId, command);
   if (command.commandType === "CREATE_SESSION") return (await previewTicketNewSession(newSessionInput(ticketId, command))).preview;
@@ -72,24 +80,33 @@ async function applyCommand(ticketId: string, command: AiTicketCommand, executio
 async function assertAiTicketReady(value: AiTicketExecutionRequest) {
   const ticket = await prisma.ticket.findUnique({ where: { id: value.ticketId }, select: { id: true, studentId: true, status: true, isArchived: true, updatedAt: true } });
   if (!ticket || ticket.isArchived) throw new Error("工单不存在或已归档。");
-  if (ticket.updatedAt.toISOString() !== value.formalUpdatedAt) throw new Error("工单已有新变化，请让 AI 重新读取后再确认。");
+  if (ticket.updatedAt.toISOString() !== value.formalUpdatedAt) {
+    throw new AiTicketStaleError("工单已有新变化，AI将重新读取最新资料。", ticket.updatedAt.toISOString());
+  }
   if (["Completed", "Cancelled"].includes(ticket.status)) throw new Error("工单已经结束，不能重复执行。");
   if (value.commands.some((command) => command.studentId && ticket.studentId && command.studentId !== ticket.studentId)) throw new Error("执行包中的学生与工单不一致。");
-  const commandTypes = new Set(value.commands.map((command) => command.commandType));
+  const batchCommandTypes = commandTypes(value);
   // Monthly new scheduling is explicitly supported as one serializable transaction.
   // Other mixed/multi-operation packages remain blocked until the corresponding domain
   // functions can participate in the same transaction boundary.
-  if (value.commands.length > 1 && (commandTypes.size !== 1 || !commandTypes.has("CREATE_SESSION"))) {
+  if (value.commands.length > 1 && (batchCommandTypes.size !== 1 || (!batchCommandTypes.has("CREATE_SESSION") && !batchCommandTypes.has("RESCHEDULE_SESSION")))) {
     throw new Error("该整批操作尚未达到全部成功或全部回滚的安全标准，暂不允许写入。");
   }
   return ticket;
 }
 
+class AiTicketStaleError extends Error {
+  constructor(message: string, public currentUpdatedAt: string) { super(message); }
+}
+
 function knownError(error: unknown) {
-  if (error instanceof TicketNewSessionError || error instanceof MiniappSchedulingError || error instanceof MiniappCancellationError || error instanceof MiniappTeacherReplacementError) {
-    return { message: error.message, status: error.status, code: error.code };
+  if (error instanceof AiTicketStaleError) {
+    return { message: error.message, status: 409, code: "AI_TICKET_STALE", currentUpdatedAt: error.currentUpdatedAt };
   }
-  return { message: error instanceof Error ? error.message : "执行失败，请重新预检。", status: 409, code: "AI_TICKET_EXECUTION_BLOCKED" };
+  if (error instanceof TicketNewSessionError || error instanceof MiniappSchedulingError || error instanceof MiniappCancellationError || error instanceof MiniappTeacherReplacementError) {
+    return { message: error.message, status: error.status, code: error.code, currentUpdatedAt: undefined };
+  }
+  return { message: error instanceof Error ? error.message : "执行失败，请重新预检。", status: 409, code: "AI_TICKET_EXECUTION_BLOCKED", currentUpdatedAt: undefined };
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ ticketId: string }> }) {
@@ -106,14 +123,18 @@ export async function POST(req: Request, ctx: { params: Promise<{ ticketId: stri
     await assertAiTicketReady(value);
     if (mode === "preview") {
       const previews = value.commands.length > 1
-        ? [(await previewTicketNewSession(newSessionBatchInput(ticketId, value.commands))).preview]
+        ? commandTypes(value).has("CREATE_SESSION")
+          ? [(await previewTicketNewSession(newSessionBatchInput(ticketId, value.commands))).preview]
+          : [(await previewMiniappSessionReschedulingBatch(rescheduleBatchInput(value.commands))).preview]
         : [await previewCommand(ticketId, value.commands[0])];
       return ok({ preview: { workflowKey: value.workflowKey, commandCount: value.commands.length, items: previews }, previewToken: createAiTicketExecutionToken(value, access.auth.user.id, secret()) });
     }
     if (mode !== "apply") return bad("执行模式无效。", 400);
     if (!verifyAiTicketExecutionToken(String(body?.previewToken ?? ""), value, access.auth.user.id, secret())) return bad("预检已失效或内容已变化，请重新确认。", 409, { code: "PREVIEW_REQUIRED" });
     const result = value.commands.length > 1
-      ? await applyTicketNewSession(newSessionBatchInput(ticketId, value.commands), actor(access.auth))
+      ? commandTypes(value).has("CREATE_SESSION")
+        ? await applyTicketNewSession(newSessionBatchInput(ticketId, value.commands), actor(access.auth))
+        : await applyMiniappSessionReschedulingBatch(rescheduleBatchInput(value.commands), actor(access.auth), [ticketId])
       : await applyCommand(ticketId, value.commands[0], actor(access.auth));
     const completedTicket = await prisma.ticket.findUnique({
       where: { id: ticketId },
@@ -136,6 +157,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ ticketId: stri
     return ok({ message: "已按 AI 方案完成正式操作，工单处理结果已保存。", result });
   } catch (error) {
     const known = knownError(error);
-    return bad(known.message, known.status, { code: known.code });
+    return bad(known.message, known.status, { code: known.code, currentUpdatedAt: known.currentUpdatedAt });
   }
 }

@@ -182,6 +182,8 @@ export function canExecuteAiTicketPackage(
 ) {
   const roles = new Set([user.role, ...(user.workspaceAccesses || []).map((row) => row.workspace)]);
   return value.commands.every((command) => {
+    // Formal academic operations remain restricted to ADMIN. Eva's existing formal
+    // account is ADMIN; CS accounts such as Emily cannot execute these commands.
     if (["CREATE_SESSION", "RESCHEDULE_SESSION", "CANCEL_SESSION", "REPLACE_TEACHER"].includes(command.commandType)) return user.role === "ADMIN";
     if (command.commandType === "PACKAGE_ACTIVATION_REVIEW") return roles.has("ADMIN") || roles.has("FINANCE");
     if (command.commandType === "OPERATION_CORRECTION_REVIEW") return roles.has("ADMIN");

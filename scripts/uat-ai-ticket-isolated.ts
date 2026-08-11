@@ -9,7 +9,7 @@ import { prisma } from "../lib/prisma";
 import { applyAiTicketCaseCommand, previewAiTicketCaseCommand } from "../lib/ai-ticket-case-execution";
 import { parseAiTicketExecutionRequest, type AiTicketCommand } from "../lib/ai-ticket-execution";
 import { applyTicketNewSession, previewTicketNewSession } from "../lib/miniapp-ticket-new-session";
-import { applyMiniappSessionScheduling, previewMiniappSessionScheduling } from "../lib/miniapp-session-scheduling";
+import { applyMiniappSessionReschedulingBatch, previewMiniappSessionReschedulingBatch } from "../lib/miniapp-session-scheduling";
 import { applyMiniappSessionCancellation, previewMiniappSessionCancellation } from "../lib/miniapp-session-cancellation";
 import { applyMiniappTeacherReplacement, previewMiniappTeacherReplacement } from "../lib/miniapp-session-teacher-replacement";
 import { POST as executeAiTicketRoute } from "../app/api/miniapp/staff/ai-tickets/[ticketId]/execute/route";
@@ -124,9 +124,13 @@ async function main() {
   assert.match(scheduleTicketAfter.parentCompletionResult || "", /共 4 节/);
 
   const rescheduleTicket = await createTicket("改课程时间");
-  const rescheduleInput = { action: "reschedule" as const, sessionId: scheduleResult.sessionIds[0], startAt: scheduleDates[5], durationMin: 60 };
-  await previewMiniappSessionScheduling(rescheduleInput);
-  await applyMiniappSessionScheduling(rescheduleInput, actor, [rescheduleTicket.id]);
+  const rescheduleInputs = [
+    { action: "reschedule" as const, sessionId: scheduleResult.sessionIds[0], startAt: scheduleDates[5], durationMin: 60 },
+    { action: "reschedule" as const, sessionId: scheduleResult.sessionIds[1], startAt: new Date(scheduleDates[5].getTime() + 2 * 60 * 60 * 1000), durationMin: 60 },
+  ];
+  await previewMiniappSessionReschedulingBatch(rescheduleInputs);
+  const rescheduleResult = await applyMiniappSessionReschedulingBatch(rescheduleInputs, actor, [rescheduleTicket.id]);
+  assert.equal(rescheduleResult.writtenSessionIds.length, 2);
   assert.equal((await prisma.ticket.findUniqueOrThrow({ where: { id: rescheduleTicket.id } })).status, "Completed");
 
   const noChargeTicket = await createTicket("临时取消&请假课程");
@@ -285,9 +289,13 @@ async function main() {
       parentPublicSummary: "客服处理中。",
     }],
   }, staleTicket.id);
-  await prisma.ticket.update({ where: { id: staleTicket.id }, data: { summary: "formal facts changed after AI preparation" } });
+  await prisma.ticket.update({
+    where: { id: staleTicket.id },
+    data: { summary: "formal facts changed after AI preparation", updatedAt: new Date(staleTicket.updatedAt.getTime() + 1000) },
+  });
   const stale = await callExecuteRoute(staleTicket.id, adminSession.token, { mode: "preview", package: stalePackage });
   assert.equal(stale.status, 409);
+  assert.equal(stale.body.code, "AI_TICKET_STALE");
 
   const auditCount = await prisma.auditLog.count({ where: { actorEmail: actor.email } });
   assert.ok(auditCount >= 13);
@@ -300,7 +308,7 @@ async function main() {
     runId,
     assertions: {
       monthlyBatchSessions: scheduleResult.sessionIds.length,
-      rescheduleCompleted: true,
+      batchRescheduleSessions: rescheduleResult.writtenSessionIds.length,
       cancelWithoutChargePreservedBalance: true,
       cancelWithChargeDeductedMinutes: 60,
       replacementCompleted: true,

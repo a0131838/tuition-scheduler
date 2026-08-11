@@ -1,7 +1,60 @@
 const api = require("../../utils/api");
 
 function actionFor(item) {
-  return { kind: "prepare", label: "预检并确认执行" };
+  return { kind: "prepare", label: "查看完整处理方案" };
+}
+
+const ACTION_LABELS = {
+  CREATE_SESSION: "新增课程", RESCHEDULE_SESSION: "调整课程时间", CANCEL_SESSION: "取消课程",
+  REPLACE_TEACHER: "更换老师", CREATE_ASSESSMENT_TASK: "建立评估任务",
+  PACKAGE_ACTIVATION_REVIEW: "建立课包资料与财务核对", ACADEMIC_CASE_HANDOFF: "建立学术处理",
+  SERVICE_CASE_HANDOFF: "建立客服处理", OPERATION_CORRECTION_REVIEW: "建立纠正审批",
+};
+
+function singaporeParts(value) {
+  const date = new Date(new Date(value).getTime() + 8 * 60 * 60 * 1000);
+  return { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1, day: date.getUTCDate(), hour: date.getUTCHours(), minute: date.getUTCMinutes() };
+}
+
+function pad(value) { return String(value).padStart(2, "0"); }
+
+function reviewCalendars(operations) {
+  const grouped = {};
+  (operations || []).filter((row) => row.startAt).forEach((row) => {
+    const part = singaporeParts(row.startAt);
+    const key = `${part.year}-${pad(part.month)}`;
+    if (!grouped[key]) grouped[key] = { year: part.year, month: part.month, events: {} };
+    if (!grouped[key].events[part.day]) grouped[key].events[part.day] = [];
+    grouped[key].events[part.day].push({
+      key: `${row.sequence || 0}-${row.startAt}`, time: `${pad(part.hour)}:${pad(part.minute)}`,
+      teacher: row.teacherName || "原老师", action: ACTION_LABELS[row.commandType] || "处理课程",
+    });
+  });
+  return Object.keys(grouped).sort().map((key) => {
+    const month = grouped[key];
+    const firstWeekday = new Date(Date.UTC(month.year, month.month - 1, 1)).getUTCDay();
+    const leading = (firstWeekday + 6) % 7;
+    const count = new Date(Date.UTC(month.year, month.month, 0)).getUTCDate();
+    const cells = [];
+    for (let index = 0; index < leading; index += 1) cells.push({ key: `before-${index}`, blank: true, events: [] });
+    for (let day = 1; day <= count; day += 1) cells.push({ key: `${key}-${day}`, day, blank: false, events: month.events[day] || [] });
+    while (cells.length % 7) cells.push({ key: `after-${cells.length}`, blank: true, events: [] });
+    return { key, title: `${month.year}年${month.month}月`, cells };
+  });
+}
+
+function previewLines(preview, operations) {
+  const items = preview?.preview?.items || [];
+  const lines = [];
+  items.forEach((item) => {
+    [item.courseLabel, item.scheduleText, item.timeText, item.teacherName && `老师：${item.teacherName}`,
+      item.fromTeacherName && item.toTeacherName && `老师：${item.fromTeacherName} → ${item.toTeacherName}`,
+      item.locationText && `地点：${item.locationText}`, item.chargeLabel, item.note, item.reason].filter(Boolean).forEach((value) => {
+      if (!lines.includes(value)) lines.push(value);
+    });
+  });
+  if (!lines.length) (operations || []).forEach((item) => lines.push(ACTION_LABELS[item.commandType] || "处理正式记录"));
+  return lines;
 }
 
 function sessionLabel(item) {
@@ -19,6 +72,8 @@ function present(item) {
     title: item.studentName || "未关联学生",
     summary: item.confirmationCard?.recognizedMatter || item.operation?.nextAction || "AI 正在读取工单",
     next: item.operation?.nextAction || "等待系统准备",
+    workflowLabel: item.confirmationCard?.workflowLabel || item.confirmationCard?.recognizedType || item.workflowKey || "工单",
+    dueLabel: item.operation?.dueAt ? String(item.operation.dueAt).replace("T", " ").slice(0, 16) : "",
     blockerText: (item.executionPreview?.blockers || item.operation?.blockers || []).map((row) => row.label || row.message || row.code).join("；"),
     needsTarget: ["CANCEL_LESSON", "RESCHEDULE", "CHANGE_TEACHER"].includes(item.workflowKey) && !item.targetSession,
   };
@@ -26,7 +81,8 @@ function present(item) {
 
 Page({
   data: {
-    items: [], selected: null, loading: false, working: false, message: "",
+    weekdays: ['一', '二', '三', '四', '五', '六', '日'],
+    items: [], selected: null, loading: false, working: false, message: "", pendingReview: null,
     targetOptions: [], targetIndex: -1, teacherOptions: [], teacherIndex: -1,
     decision: { targetSessionId: "", targetSessionLabel: "点击选择具体课次", chargeValue: "", note: "", newTeacherId: "", newTeacherName: "点击选择老师", reason: "" },
   },
@@ -38,7 +94,7 @@ Page({
       .then((data) => {
         const items = (data.items || []).map(present);
         const selected = items.find((item) => item.intakeId === selectedId) || items[0] || null;
-        this.setData({ items, selected });
+        this.setData({ items, selected, pendingReview: null });
         this.setupDecision(selected);
       })
       .catch((error) => this.setData({ message: error.message || "读取失败" }))
@@ -46,7 +102,7 @@ Page({
   },
   select(event) {
     const selected = this.data.items.find((item) => item.intakeId === event.currentTarget.dataset.id) || null;
-    this.setData({ selected });
+    this.setData({ selected, pendingReview: null, message: "" });
     this.setupDecision(selected);
   },
   setupDecision(item) {
@@ -122,24 +178,45 @@ Page({
       if (!executionPackage || !item.formalTicketId) throw new Error("完整执行包尚未准备好。");
       const path = `/api/miniapp/staff/ai-tickets/${encodeURIComponent(item.formalTicketId)}/execute`;
       return api.requestStaff(path, { method: "POST", data: { mode: "preview", package: executionPackage }, timeout: 60000 })
-        .then((preview) => new Promise((resolve, reject) => wx.showModal({
-          title: "最后确认", content: `系统已复核 ${preview.preview.commandCount} 项正式操作。确认后将更新正式记录和家长进度。`,
-          confirmText: "确认执行", success: (result) => result.confirm ? resolve({ path, executionPackage, previewToken: preview.previewToken }) : reject(new Error("已取消")),
-        })));
-    }).then((prepared) => prepared ? api.requestStaff(prepared.path, { method: "POST", data: { mode: "apply", package: prepared.executionPackage, previewToken: prepared.previewToken }, timeout: 60000 }) : null)
+        .then((preview) => {
+          const operations = prepared.operations || [];
+          this.setData({
+            pendingReview: {
+              path, executionPackage, previewToken: preview.previewToken,
+              commandCount: preview.preview.commandCount, calendars: reviewCalendars(operations),
+              lines: previewLines(preview, operations),
+            },
+            message: "完整方案已通过正式系统复核，请核对后确认一次。",
+          });
+          return null;
+        });
+    }).catch((error) => this.setData({ message: error.message || "方案准备失败" }))
+      .finally(() => this.setData({ working: false }));
+  },
+  cancelReview() { this.setData({ pendingReview: null, message: "" }); },
+  confirmExecution() {
+    const review = this.data.pendingReview;
+    const item = this.data.selected;
+    if (!review || !item || this.data.working) return;
+    this.setData({ working: true, message: "正在执行，完成前请勿重复点击。" });
+    api.requestStaff(review.path, { method: "POST", data: { mode: "apply", package: review.executionPackage, previewToken: review.previewToken }, timeout: 60000 })
       .then((result) => {
-        if (!result) return null;
         const intakeUrl = result.result && result.result.intake && result.result.intake.url;
         if (intakeUrl) {
-          wx.setClipboardData({
-            data: intakeUrl,
-            success: () => wx.showModal({ title: "已建立家长资料链接", content: "链接已复制，发给家长填写后再进入合同和财务核对。", showCancel: false }),
-          });
+          wx.setClipboardData({ data: intakeUrl, success: () => wx.showModal({ title: "已建立家长资料链接", content: "链接已复制，发给家长填写后再进入合同和财务核对。", showCancel: false }) });
         } else wx.showToast({ title: "处理完成", icon: "success" });
-        this.setData({ message: result.message || "已完成" });
+        this.setData({ pendingReview: null, message: result.message || "已完成" });
         return this.load();
       })
-      .catch((error) => { if (error.message !== "已取消") this.setData({ message: error.message }); })
+      .catch((error) => {
+        if (error.code === "AI_TICKET_STALE" && item.formalTicketId) {
+          this.setData({ pendingReview: null, message: "工单有新变化，AI正在重新读取，请核对更新后的方案。" });
+          return api.requestStaff("/api/miniapp/staff/ai-work", { method: "POST", data: { action: "refresh", intakeId: item.intakeId, ticketId: item.formalTicketId }, timeout: 60000 })
+            .then(() => this.load(item.intakeId));
+        }
+        this.setData({ message: error.message || "执行失败" });
+        return null;
+      })
       .finally(() => this.setData({ working: false }));
   },
 });

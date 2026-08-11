@@ -2,9 +2,12 @@
   <view class="hero"><view class="eyebrow">今天只做需要人的决定</view><view class="title">AI 今日工作</view><view class="subtitle">客服录入后，AI 读取工单、课表、老师和课包；教务最后确认一次。</view></view>
   <view class="notice" wx:if="{{message}}">{{message}}</view>
   <view class="empty" wx:if="{{!loading && !items.length}}">当前没有待处理工单</view>
-  <scroll-view class="queue" scroll-x wx:if="{{items.length}}">
-    <view class="queue-row"><view wx:for="{{items}}" wx:key="intakeId" class="queue-item {{selected.intakeId === item.intakeId ? 'active' : ''}}" data-id="{{item.intakeId}}" bindtap="select"><view class="queue-name">{{item.title}}</view><view class="queue-next">{{item.next}}</view></view></view>
-  </scroll-view>
+  <view class="queue" wx:if="{{items.length}}">
+    <view wx:for="{{items}}" wx:key="intakeId" class="queue-item {{selected.intakeId === item.intakeId ? 'active' : ''}}" data-id="{{item.intakeId}}" bindtap="select">
+      <view class="queue-top"><view class="queue-name">{{item.title}}</view><view class="queue-type">{{item.workflowLabel}}</view></view>
+      <view class="queue-next">{{item.next}}</view><view class="queue-due" wx:if="{{item.dueLabel}}">最晚处理：{{item.dueLabel}}</view>
+    </view>
+  </view>
   <view class="case" wx:if="{{selected}}">
     <view class="case-kicker">{{selected.formalTicketId}}</view><view class="case-title">{{selected.title}}</view>
     <view class="summary">{{selected.summary}}</view>
@@ -31,7 +34,23 @@
       </picker>
       <textarea class="input" value="{{decision.reason}}" bindinput="editReason" placeholder="换老师原因" maxlength="500" auto-height />
     </view>
-    <button class="primary" loading="{{working}}" disabled="{{working}}" bindtap="run">{{selected.actionLabel}}</button>
-    <view class="safe">确认前只预检；正式系统会再次检查权限、冲突、课时和重复执行。</view>
+    <view class="review" wx:if="{{pendingReview}}">
+      <view class="review-title">确认前请核对完整方案</view>
+      <view class="review-count">共 {{pendingReview.commandCount}} 项正式操作</view>
+      <view class="review-line" wx:for="{{pendingReview.lines}}" wx:key="*this">{{item}}</view>
+      <view class="calendar" wx:for="{{pendingReview.calendars}}" wx:key="key" wx:for-item="month">
+        <view class="calendar-title">{{month.title}}</view>
+        <view class="week-head"><view wx:for="{{weekdays}}" wx:key="*this">周{{item}}</view></view>
+        <view class="month-grid">
+          <view class="day {{cell.blank ? 'blank' : ''}}" wx:for="{{month.cells}}" wx:key="key" wx:for-item="cell">
+            <view class="day-number" wx:if="{{!cell.blank}}">{{cell.day}}</view>
+            <view class="event" wx:for="{{cell.events}}" wx:key="key" wx:for-item="event"><view>{{event.time}} · {{event.teacher}}</view><view>{{event.action}}</view></view>
+          </view>
+        </view>
+      </view>
+      <view class="review-actions"><button class="secondary" disabled="{{working}}" bindtap="cancelReview">返回修改</button><button class="primary" loading="{{working}}" disabled="{{working}}" bindtap="confirmExecution">确认并执行</button></view>
+    </view>
+    <button wx:else class="primary" loading="{{working}}" disabled="{{working}}" bindtap="run">{{selected.actionLabel}}</button>
+    <view class="safe">系统会先展示完整结果；最终执行时再次检查权限、冲突、课时和重复操作。</view>
   </view>
 </view>
