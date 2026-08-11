@@ -54,6 +54,7 @@
 - `SGT_AI_BASE_URL`
 - `SGT_AI_MINIAPP_SHARED_SECRET` (same value in both services, at least 32 characters)
 - `AI_TICKET_EXECUTION_SECRET` (formal system only, at least 32 characters)
+- The standard server deploy script carries all three values from the protected `.deploy.env` into the regenerated runtime `.env`; a later normal release cannot silently erase the integration.
 
 ## UAT before release
 
