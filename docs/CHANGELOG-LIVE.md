@@ -10970,3 +10970,9 @@ This file is the single source of truth for what changed in production.
 - Focused tests 8/8, production build, 68-page miniapp audit and isolated PostgreSQL 15 UAT with 20 audit records pass. Existing ticket entry and manual scheduling remain available.
 - Runtime code `ca14f02c` is live with all 123 migrations current, 246 generated pages, PM2 PID `4128285` and health 200. AI code `fa078c3` is live with production writes/messages 0.
 - WeChat development version `1.0.49` uploaded successfully for AppID `wxe7017f8545e8ad49` at 741,589 bytes; it still requires experience-version designation and staff physical-device acceptance in WeChat Public Platform.
+
+# 2026-08-11-r263 (release candidate)
+
+- Fixed AI Today target-session and due-time labels to always render in Singapore business time instead of slicing raw ISO timestamps.
+- Paired with AI r044: Liu Yanshu's formal `09:40Z` lesson renders as `17:40`, not `01:40`.
+- No lesson, package, attendance, payroll or finance data is changed.

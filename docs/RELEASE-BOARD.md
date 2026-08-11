@@ -6896,3 +6896,10 @@
 - Task doc: `docs/tasks/TASK-20260811-ai-work-complete-confirmation-and-batch-reschedule.md`
 - Production: runtime code `ca14f02c`, 123 migrations current, 246-page build, PM2 PID `4128285`, login health 200; AI runtime `fa078c3`, health 200.
 - Mini Program: development version `1.0.49` uploaded successfully for AppID `wxe7017f8545e8ad49` at 741,589 bytes. Experience-version designation and staff physical-device confirmation remain WeChat platform gates.
+
+# 2026-08-11-r263 Release candidate
+
+- Scope: Singapore-time consistency for AI Today target lessons and due labels.
+- Safety: display-only change in the formal miniapp; no scheduling, deduction, payroll, finance or database mutation logic changes.
+- Validation: targeted regression, TypeScript, production build and miniapp audit; paired AI r044 must show Liu Yanshu `17:40-19:10`.
+- Task doc: `docs/tasks/TASK-20260811-ai-work-singapore-time-display-r263.md`

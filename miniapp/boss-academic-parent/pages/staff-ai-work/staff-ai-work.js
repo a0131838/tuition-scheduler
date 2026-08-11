@@ -18,6 +18,12 @@ function singaporeParts(value) {
 
 function pad(value) { return String(value).padStart(2, "0"); }
 
+function singaporeDateTimeLabel(value) {
+  if (!value) return "";
+  const part = singaporeParts(value);
+  return `${part.year}-${pad(part.month)}-${pad(part.day)} ${pad(part.hour)}:${pad(part.minute)}`;
+}
+
 function reviewCalendars(operations) {
   const grouped = {};
   (operations || []).filter((row) => row.startAt).forEach((row) => {
@@ -59,7 +65,7 @@ function previewLines(preview, operations) {
 
 function sessionLabel(item) {
   if (!item) return "";
-  const time = item.startAt ? String(item.startAt).replace("T", " ").slice(0, 16) : "时间待确认";
+  const time = item.startAt ? singaporeDateTimeLabel(item.startAt) : "时间待确认";
   return `${time} · ${item.courseName || "课程"} · ${item.teacherName || "老师待确认"}`;
 }
 
@@ -73,7 +79,7 @@ function present(item) {
     summary: item.confirmationCard?.recognizedMatter || item.operation?.nextAction || "AI 正在读取工单",
     next: item.operation?.nextAction || "等待系统准备",
     workflowLabel: item.confirmationCard?.workflowLabel || item.confirmationCard?.recognizedType || item.workflowKey || "工单",
-    dueLabel: item.operation?.dueAt ? String(item.operation.dueAt).replace("T", " ").slice(0, 16) : "",
+    dueLabel: singaporeDateTimeLabel(item.operation?.dueAt),
     blockerText: (item.executionPreview?.blockers || item.operation?.blockers || []).map((row) => row.label || row.message || row.code).join("；"),
     needsTarget: ["CANCEL_LESSON", "RESCHEDULE", "CHANGE_TEACHER"].includes(item.workflowKey) && !item.targetSession,
   };

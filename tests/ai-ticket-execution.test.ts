@@ -136,4 +136,8 @@ test("staff AI work shows a vertical queue, complete calendar review, and refres
   assert.match(pageSource, /action:\s*"refresh"/);
   assert.match(bridgeSource, /miniapp-ai\/refresh-ticket/);
   assert.match(executeSource, /AI_TICKET_STALE/);
+  assert.match(pageSource, /function singaporeDateTimeLabel/);
+  assert.match(pageSource, /sessionLabel[\s\S]*singaporeDateTimeLabel\(item\.startAt\)/);
+  assert.match(pageSource, /dueLabel:\s*singaporeDateTimeLabel/);
+  assert.doesNotMatch(pageSource, /String\(item\.(?:startAt|operation\?\.dueAt)\)\.replace\("T"/);
 });
