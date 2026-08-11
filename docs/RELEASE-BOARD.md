@@ -6886,11 +6886,13 @@
 - Runtime server release may proceed after secrets and production-readonly package audit; native miniapp upload/physical-device verification remains separate. No real-ticket apply was performed.
 - Task doc: `docs/tasks/TASK-20260811-ai-ticket-one-confirmation-gateway.md`
 
-# 2026-08-11-r262 Release candidate
+# 2026-08-11-r262 Live
 
 - Scope: complete-plan miniapp confirmation, stale-ticket automatic reread bridge and atomic multi-session rescheduling.
 - UX: vertical work queue; one plan view shows business summary and natural-month calendar before one final confirmation.
 - Permission: Eva uses the existing ADMIN scheduling authority through the command allowlist; Emily remains CS and cannot preview/apply formal scheduling commands.
 - Safety: homogeneous 2-64-session rescheduling is revalidated and committed in one Serializable transaction; one failure rolls the whole batch back. Stale ticket versions return `AI_TICKET_STALE` and cannot execute.
-- Validation: focused tests 8/8, production build, 42-page miniapp audit, and isolated PostgreSQL 15 UAT with 20 audit records pass.
+- Validation: focused tests 8/8, production build, 68-page miniapp audit, and isolated PostgreSQL 15 UAT with 20 audit records pass.
 - Task doc: `docs/tasks/TASK-20260811-ai-work-complete-confirmation-and-batch-reschedule.md`
+- Production: runtime code `ca14f02c`, 123 migrations current, 246-page build, PM2 PID `4128285`, login health 200; AI runtime `fa078c3`, health 200.
+- Mini Program: development version `1.0.49` uploaded successfully for AppID `wxe7017f8545e8ad49` at 741,589 bytes. Experience-version designation and staff physical-device confirmation remain WeChat platform gates.

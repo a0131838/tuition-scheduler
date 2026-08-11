@@ -10960,11 +10960,13 @@ This file is the single source of truth for what changed in production.
 - Standard deployment now requires and preserves the AI base URL, shared delegation secret and execution-token secret when rebuilding the protected runtime environment.
 - 7 focused tests, AI 245/245, 13/13 unified UAT, miniapp syntax, full TypeScript and the 210-page production build pass. No real customer ticket received an apply call; the native WeChat package still requires a separate Developer Tools/physical-device gate.
 
-# 2026-08-11-r262 (release candidate)
+# 2026-08-11-r262 (live)
 
 - Replaced the horizontal miniapp ticket cards with a readable vertical queue and a complete confirmation view.
 - Scheduling plans show each proposed lesson in a natural-month calendar before the single final confirmation.
 - Added stale-ticket reread: when the formal ticket changed after AI preparation, the old package is rejected and the latest ticket is re-projected through the signed bridge.
 - Added atomic batch rescheduling for 2-64 sessions. Every lesson is revalidated; all updates commit together or all roll back.
 - Eva can use the existing guarded ADMIN scheduling commands; Emily remains unable to preview or apply scheduling commands.
-- Focused tests 8/8, production build, 42-page miniapp audit and isolated PostgreSQL 15 UAT with 20 audit records pass. Existing ticket entry and manual scheduling remain available.
+- Focused tests 8/8, production build, 68-page miniapp audit and isolated PostgreSQL 15 UAT with 20 audit records pass. Existing ticket entry and manual scheduling remain available.
+- Runtime code `ca14f02c` is live with all 123 migrations current, 246 generated pages, PM2 PID `4128285` and health 200. AI code `fa078c3` is live with production writes/messages 0.
+- WeChat development version `1.0.49` uploaded successfully for AppID `wxe7017f8545e8ad49` at 741,589 bytes; it still requires experience-version designation and staff physical-device acceptance in WeChat Public Platform.

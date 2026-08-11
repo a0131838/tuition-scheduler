@@ -23,6 +23,8 @@
 
 - `npx tsx --test tests/ai-ticket-execution.test.ts`：8/8。
 - `npm run build`：通过。
-- `npm run miniapp:audit-release`：通过，42 页、正式 API、无 mock login/source map。
+- `npm run miniapp:audit-release`：最新正式分支通过，68 页、正式 API、无 mock login/source map。
 - Docker PostgreSQL 15 隔离 UAT：整月新排课 4 节、整批改课 2 节、扣/不扣课取消、换老师、五类低频流程、家长可见结果、越权、过期、重复执行和 20 条审计全部通过。
 - 在最新正式分支复验时，隔离库同毫秒更新可能让“过期方案”测试没有产生版本差异；UAT 改为显式推进工单更新时间 1 秒，确保稳定验证旧方案必定返回 `AI_TICKET_STALE`。
+- 正式服务器功能提交`ca14f02c`已上线：123个迁移一致、246页生产构建、PM2 PID`4128285`、健康200；AI功能提交`fa078c3`健康200。
+- 微信开发版`1.0.49`已上传至AppID`wxe7017f8545e8ad49`，包体741,589字节；仍需在微信公众平台设为体验版并由Emily/Eva真机确认。
