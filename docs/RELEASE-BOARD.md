@@ -1441,6 +1441,7 @@
 
 ## Open Risks
 
+- AI one-confirmation candidate `2026-08-11-r261`: local Docker-isolated PostgreSQL/HTTP UAT passes all ten workflow families, including schedule/attendance/package/ticket/audit writes, parent-visible results, unauthorized-role rejection, stale-package rejection and duplicate-apply rejection. Production facts are audited read-only and real apply remains 0. Native WeChat upload and physical-device confirmation remain separate from the guarded server release.
 - Full Care IB/AP tier enforcement depends on the package's primary and shared course assignments being accurate. Operations must add IB/AP as a shared course before contract generation whenever any contracted hours may be delivered as IB/AP tuition.
 - Staff proxy entry relies on the operator faithfully transcribing the parent's actual message. The required source channel, reply date, message summary, named operator, and permanent AuditLog make the record reviewable, but management should still spot-check the first live entries against the WeChat conversation.
 - Four existing TEACHER accounts have no confirmed teacher-profile link. They are now safely gated, but a manager must identify the exact profile or decide whether each legacy account should remain inactive; the system intentionally does not guess by matching names.
@@ -6875,3 +6876,11 @@
 - Safety: leave/reschedule creates or updates a coordination Ticket only; expense submission never grants approval/payment rights; teaching history excludes payroll amounts.
 - Data evidence: 46 linked teacher accounts are eligible, with 179 future-30-day sessions, 107 current-month completed sessions, 664 future availability slots, and existing teacher expense records available. Active teacher miniapp bindings remain 0 until rollout.
 - Validation: 28 focused tests, TypeScript, miniapp syntax, 26-page audit, exact document sync, diff checks, read-only reconciliation, and local/production 191-page builds pass. Production `fc0ee9f` has 101 migrations, PM2 online, health 200, and one cron; all four teacher endpoints return ADMIN 403 and anonymous 401, while ADMIN schedule remains 200. First bound-teacher phone regression remains.
+# 2026-08-11-r261 Release candidate
+
+- Scope: controlled one-confirmation AI ticket execution bridge and staff miniapp work queue for all 10 historical workflows.
+- Safety: formal staff auth, workflow-bound allowlisted commands, ticket-version and exact-payload preview token, domain revalidation, Serializable monthly scheduling transaction, idempotent case actions, audit and parent result reuse.
+- UX: no separate recognition/preparation click; one contextual action leads to one final confirmation or one clear blocker.
+- Validation: 7 focused safety/final-card tests, AI 245/245, 13/13 unified UAT, miniapp syntax, full TypeScript, 210-page build, Docker HTTP/write UAT and 19 audit records pass.
+- Runtime server release may proceed after secrets and production-readonly package audit; native miniapp upload/physical-device verification remains separate. No real-ticket apply was performed.
+- Task doc: `docs/tasks/TASK-20260811-ai-ticket-one-confirmation-gateway.md`

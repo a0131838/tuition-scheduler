@@ -23,6 +23,15 @@ export type TicketNewSessionInput = {
   startAt: Date;
   durationMin: number;
   weeks?: number;
+  occurrences?: Array<{
+    subjectId: string;
+    levelId: string | null;
+    teacherId: string;
+    campusId: string;
+    roomId: string | null;
+    startAt: Date;
+    durationMin: number;
+  }>;
 };
 
 type Actor = { userId: string; email: string; name: string | null; role: string };
@@ -76,11 +85,34 @@ export function buildTicketNewSessionStartTimes(startAt: Date, requestedWeeks = 
 }
 
 function schedulingRows(input: TicketNewSessionInput) {
+  if (input.occurrences) {
+    if (input.occurrences.length < 1 || input.occurrences.length > 64) {
+      throw new TicketNewSessionError("整批排课必须包含 1 到 64 节课。", 409, "INVALID_OCCURRENCES");
+    }
+    const ordered = [...input.occurrences].sort((left, right) => left.startAt.getTime() - right.startAt.getTime());
+    for (let index = 1; index < ordered.length; index += 1) {
+      const previous = ordered[index - 1];
+      const previousEnd = previous.startAt.getTime() + previous.durationMin * 60_000;
+      if (ordered[index].startAt.getTime() < previousEnd) {
+        throw new TicketNewSessionError("整批方案中学生的新课彼此冲突。", 409, "BATCH_STUDENT_CONFLICT");
+      }
+    }
+    return ordered.map((occurrence) => ({
+      ...occurrence,
+      ticketId: input.ticketId,
+      studentId: input.studentId,
+      weeks: 1,
+    }));
+  }
   return buildTicketNewSessionStartTimes(input.startAt, input.weeks ?? 1).map((startAt) => ({
     ...input,
     weeks: 1,
     startAt,
   }));
+}
+
+export function validateTicketNewSessionBatchShape(input: TicketNewSessionInput) {
+  return schedulingRows(input).map((row) => ({ startAt: row.startAt, durationMin: row.durationMin }));
 }
 
 async function validate(db: DbClient, input: TicketNewSessionInput) {
@@ -382,7 +414,9 @@ export async function previewTicketNewSession(input: TicketNewSessionInput) {
       weeks: checkedRows.length,
       scheduleText: checkedRows.length === 1
         ? first.preview.scheduleText
-        : `连续 ${checkedRows.length} 周：${first.preview.scheduleText} 至 ${last.preview.scheduleText}`,
+        : input.occurrences
+          ? `整批 ${checkedRows.length} 节：${first.preview.scheduleText} 至 ${last.preview.scheduleText}`
+          : `连续 ${checkedRows.length} 周：${first.preview.scheduleText} 至 ${last.preview.scheduleText}`,
       rows: checkedRows.map((row, index) => ({ index: index + 1, scheduleText: row.preview.scheduleText })),
     },
   };
@@ -394,53 +428,36 @@ export async function applyTicketNewSession(input: TicketNewSessionInput, actor:
       const checkedRows = [];
       for (const row of schedulingRows(input)) checkedRows.push(await validate(tx, row));
       const checked = checkedRows[0];
-      let group = await tx.oneOnOneGroup.findFirst({
-        where: {
-          teacherId: checked.teacher.id,
-          courseId: checked.subject.courseId,
-          subjectId: checked.subject.id,
-          levelId: checked.level?.id ?? null,
-          campusId: checked.campus.id,
-          roomId: checked.room?.id ?? null,
-        },
-      });
-      if (!group) {
-        group = await tx.oneOnOneGroup.create({
-          data: {
-            teacherId: checked.teacher.id,
-            courseId: checked.subject.courseId,
-            subjectId: checked.subject.id,
-            levelId: checked.level?.id ?? null,
-            campusId: checked.campus.id,
-            roomId: checked.room?.id ?? null,
-          },
-        });
-      }
-      let cls = await tx.class.findFirst({
-        where: { oneOnOneGroupId: group.id, capacity: 1, oneOnOneStudentId: checked.student.id },
-      });
-      if (!cls) {
-        cls = await tx.class.create({
-          data: {
-            teacherId: checked.teacher.id,
-            courseId: checked.subject.courseId,
-            subjectId: checked.subject.id,
-            levelId: checked.level?.id ?? null,
-            campusId: checked.campus.id,
-            roomId: checked.room?.id ?? null,
-            capacity: 1,
-            oneOnOneGroupId: group.id,
-            oneOnOneStudentId: checked.student.id,
-          },
-        });
-      }
-      await tx.enrollment.upsert({
-        where: { classId_studentId: { classId: cls.id, studentId: checked.student.id } },
-        update: {},
-        create: { classId: cls.id, studentId: checked.student.id },
-      });
       const sessions = [];
       for (const row of checkedRows) {
+        let group = await tx.oneOnOneGroup.findFirst({
+          where: {
+            teacherId: row.teacher.id, courseId: row.subject.courseId, subjectId: row.subject.id,
+            levelId: row.level?.id ?? null, campusId: row.campus.id, roomId: row.room?.id ?? null,
+          },
+        });
+        if (!group) {
+          group = await tx.oneOnOneGroup.create({
+            data: {
+              teacherId: row.teacher.id, courseId: row.subject.courseId, subjectId: row.subject.id,
+              levelId: row.level?.id ?? null, campusId: row.campus.id, roomId: row.room?.id ?? null,
+            },
+          });
+        }
+        let cls = await tx.class.findFirst({ where: { oneOnOneGroupId: group.id, capacity: 1, oneOnOneStudentId: checked.student.id } });
+        if (!cls) {
+          cls = await tx.class.create({
+            data: {
+              teacherId: row.teacher.id, courseId: row.subject.courseId, subjectId: row.subject.id,
+              levelId: row.level?.id ?? null, campusId: row.campus.id, roomId: row.room?.id ?? null,
+              capacity: 1, oneOnOneGroupId: group.id, oneOnOneStudentId: checked.student.id,
+            },
+          });
+        }
+        await tx.enrollment.upsert({
+          where: { classId_studentId: { classId: cls.id, studentId: checked.student.id } },
+          update: {}, create: { classId: cls.id, studentId: checked.student.id },
+        });
         sessions.push(await tx.session.create({
           data: {
             classId: cls.id,
@@ -453,8 +470,12 @@ export async function applyTicketNewSession(input: TicketNewSessionInput, actor:
       const now = new Date();
       const scheduleText = checkedRows.length === 1
         ? checked.preview.scheduleText
-        : `连续 ${checkedRows.length} 周：${checkedRows[0].preview.scheduleText} 至 ${checkedRows[checkedRows.length - 1].preview.scheduleText}`;
-      const completionResult = `已完成排课：${scheduleText}；课程：${checked.preview.courseLabel}；老师：${checked.preview.teacherName}；地点：${checked.preview.locationText}。`;
+        : input.occurrences
+          ? `整批 ${checkedRows.length} 节：${checkedRows[0].preview.scheduleText} 至 ${checkedRows[checkedRows.length - 1].preview.scheduleText}`
+          : `连续 ${checkedRows.length} 周：${checkedRows[0].preview.scheduleText} 至 ${checkedRows[checkedRows.length - 1].preview.scheduleText}`;
+      const teacherNames = [...new Set(checkedRows.map((row) => row.preview.teacherName))].join("、");
+      const locations = [...new Set(checkedRows.map((row) => row.preview.locationText))].join("、");
+      const completionResult = `已完成排课：${scheduleText}；共 ${sessions.length} 节；课程：${checked.preview.courseLabel}；老师：${teacherNames}；地点：${locations}。`;
       const actorName = actor.name?.trim() || actor.email;
       let completedTicket = checked.ticket;
       let ticketAllResolved = true;

@@ -116,6 +116,11 @@
   </view>
 
   <view class="work-list" wx:else>
+    <view class="work-row" bindtap="goAiWork">
+      <view class="work-icon icon-orange">AI</view>
+      <view class="work-copy"><view class="work-title">AI 今日工作</view><view class="work-detail">读取工单后只确认一次</view></view>
+      <view class="work-arrow">›</view>
+    </view>
     <view class="work-row" bindtap="goActionCenter">
       <view class="work-icon icon-orange">总</view>
       <view class="work-copy"><view class="work-title">统一待办</view><view class="work-detail">工单、沟通、审批和新咨询集中处理</view></view>

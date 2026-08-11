@@ -313,6 +313,10 @@ Page({
     if (next && next.id) wx.navigateTo({ url: `/pages/staff-session-detail/staff-session-detail?id=${next.id}` });
   },
 
+  goAiWork() {
+    wx.navigateTo({ url: "/pages/staff-ai-work/staff-ai-work" });
+  },
+
   goRequests() { wx.navigateTo({ url: "/pages/staff-requests/staff-requests" }); },
   goNewRequest() { wx.navigateTo({ url: "/pages/staff-request-new/staff-request-new" }); },
   goSchedule() { wx.navigateTo({ url: "/pages/staff-schedule/staff-schedule" }); },

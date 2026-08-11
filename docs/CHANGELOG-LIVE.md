@@ -10948,3 +10948,13 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - verified a signed first-purchase contract on the same package now qualifies for `Create renewal contract / 创建续费合同`
   - verified renewal draft creation now reuses parent info from the current package when needed
+# 2026-08-11-r261 (release candidate)
+
+- Added the controlled AI ticket execution protocol, formal preview/apply gateway, staff-miniapp AI work page, signed formal-to-AI identity delegation, and atomic monthly new-scheduling batches.
+- All ten workflows in the 518-ticket historical distribution now have typed formal actions. Assessment, academic and service cases update formal progress; package purchase creates the existing parent-intake entry; correction opens an audited management exception without generic data writes.
+- Removed the separate recognition/preparation click. The miniapp prepares and previews behind one contextual action, then asks for one final confirmation. Exact target lesson, cancellation charge/no-charge and qualified replacement-teacher choice stay on that same card.
+- Formal ticket `updatedAt`, actor, workflow and every command field are bound to the confirmation. Stale packages, workflow/command mismatch, wrong-student packages, duplicate commands and unauthorized roles are rejected.
+- Package intake reuses a linked student instead of creating a duplicate record; payment, package activation, attendance override, payroll and external messaging remain outside the AI command allowlist.
+- Docker Desktop 29.7.2 provides an isolated local `postgres:15` UAT database. All 109 migrations applied, and real Prisma/HTTP writes passed for a four-session batch, reschedule, both cancellation charging branches, teacher replacement and the five low-frequency workflows, including idempotency, parent-visible results, unauthorized role, stale package, duplicate apply and 19 audit records.
+- New scheduling packages now carry the formal subject/level IDs. Multiple-subject ambiguity blocks the package instead of substituting the package course ID.
+- 7 focused tests, AI 245/245, 13/13 unified UAT, miniapp syntax, full TypeScript and the 210-page production build pass. No real customer ticket received an apply call; the native WeChat package still requires a separate Developer Tools/physical-device gate.

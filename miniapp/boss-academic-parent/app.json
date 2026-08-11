@@ -32,6 +32,7 @@
     "pages/staff-approvals/staff-approvals",
     "pages/staff-leads/staff-leads",
     "pages/staff-teacher-reports/staff-teacher-reports",
+    "pages/staff-ai-work/staff-ai-work",
     "pages/staff-schedule/staff-schedule",
     "pages/staff-session-detail/staff-session-detail",
     "pages/staff-coordination/staff-coordination",

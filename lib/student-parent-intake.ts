@@ -304,18 +304,29 @@ export async function submitStudentParentIntake(input: {
   ].filter(Boolean);
 
   const next = await prisma.$transaction(async (tx) => {
-    const student = await tx.student.create({
-      data: {
-        name: payload.studentName,
-        school: payload.school,
-        grade: payload.grade,
-        birthDate: parseBirthDate(payload.birthDate),
-        note: noteParts.length ? noteParts.join("\n") : null,
-        sourceChannelId: sourceId,
-        studentTypeId,
-      },
-      select: { id: true, name: true },
-    });
+    const student = current.studentId
+      ? await tx.student.update({
+          where: { id: current.studentId },
+          data: {
+            school: payload.school,
+            grade: payload.grade,
+            birthDate: parseBirthDate(payload.birthDate),
+            ...(noteParts.length ? { note: noteParts.join("\n") } : {}),
+          },
+          select: { id: true, name: true },
+        })
+      : await tx.student.create({
+          data: {
+            name: payload.studentName,
+            school: payload.school,
+            grade: payload.grade,
+            birthDate: parseBirthDate(payload.birthDate),
+            note: noteParts.length ? noteParts.join("\n") : null,
+            sourceChannelId: sourceId,
+            studentTypeId,
+          },
+          select: { id: true, name: true },
+        });
     return tx.studentParentIntake.update({
       where: { id: current.id },
       data: {

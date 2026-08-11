@@ -1,0 +1,37 @@
+<view class="page">
+  <view class="hero"><view class="eyebrow">今天只做需要人的决定</view><view class="title">AI 今日工作</view><view class="subtitle">客服录入后，AI 读取工单、课表、老师和课包；教务最后确认一次。</view></view>
+  <view class="notice" wx:if="{{message}}">{{message}}</view>
+  <view class="empty" wx:if="{{!loading && !items.length}}">当前没有待处理工单</view>
+  <scroll-view class="queue" scroll-x wx:if="{{items.length}}">
+    <view class="queue-row"><view wx:for="{{items}}" wx:key="intakeId" class="queue-item {{selected.intakeId === item.intakeId ? 'active' : ''}}" data-id="{{item.intakeId}}" bindtap="select"><view class="queue-name">{{item.title}}</view><view class="queue-next">{{item.next}}</view></view></view>
+  </scroll-view>
+  <view class="case" wx:if="{{selected}}">
+    <view class="case-kicker">{{selected.formalTicketId}}</view><view class="case-title">{{selected.title}}</view>
+    <view class="summary">{{selected.summary}}</view>
+    <view class="next-label">现在只做这一步</view><view class="next">{{selected.next}}</view>
+    <view class="blocker" wx:if="{{selected.blockerText}}">{{selected.blockerText}}</view>
+    <view class="decision" wx:if="{{selected.needsTarget}}">
+      <view class="decision-label">选择要处理的课次</view>
+      <picker mode="selector" range="{{targetOptions}}" range-key="label" value="{{targetIndex}}" bindchange="chooseTarget">
+        <view class="picker">{{decision.targetSessionLabel}}</view>
+      </picker>
+    </view>
+    <view class="decision" wx:if="{{selected.workflowKey === 'CANCEL_LESSON'}}">
+      <view class="decision-label">本次取消是否扣课时</view>
+      <radio-group class="radios" bindchange="chooseCharge">
+        <label><radio value="false" checked="{{decision.chargeValue === 'false'}}"/>不扣课时</label>
+        <label><radio value="true" checked="{{decision.chargeValue === 'true'}}"/>扣课时</label>
+      </radio-group>
+      <textarea class="input" value="{{decision.note}}" bindinput="editNote" placeholder="取消原因（将写入正式记录）" maxlength="500" auto-height />
+    </view>
+    <view class="decision" wx:if="{{selected.workflowKey === 'CHANGE_TEACHER'}}">
+      <view class="decision-label">选择资质和时间均通过的替换老师</view>
+      <picker mode="selector" range="{{teacherOptions}}" range-key="name" value="{{teacherIndex}}" bindchange="chooseTeacher">
+        <view class="picker">{{decision.newTeacherName}}</view>
+      </picker>
+      <textarea class="input" value="{{decision.reason}}" bindinput="editReason" placeholder="换老师原因" maxlength="500" auto-height />
+    </view>
+    <button class="primary" loading="{{working}}" disabled="{{working}}" bindtap="run">{{selected.actionLabel}}</button>
+    <view class="safe">确认前只预检；正式系统会再次检查权限、冲突、课时和重复执行。</view>
+  </view>
+</view>
