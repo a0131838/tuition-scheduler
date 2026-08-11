@@ -10971,8 +10971,10 @@ This file is the single source of truth for what changed in production.
 - Runtime code `ca14f02c` is live with all 123 migrations current, 246 generated pages, PM2 PID `4128285` and health 200. AI code `fa078c3` is live with production writes/messages 0.
 - WeChat development version `1.0.49` uploaded successfully for AppID `wxe7017f8545e8ad49` at 741,589 bytes; it still requires experience-version designation and staff physical-device acceptance in WeChat Public Platform.
 
-# 2026-08-11-r263 (release candidate)
+# 2026-08-11-r263 (released)
 
 - Fixed AI Today target-session and due-time labels to always render in Singapore business time instead of slicing raw ISO timestamps.
 - Paired with AI r044: Liu Yanshu's formal `09:40Z` lesson renders as `17:40`, not `01:40`.
 - No lesson, package, attendance, payroll or finance data is changed.
+- Functional commit `bb7c8f4e` is live with all 123 migrations current, 246 generated pages, PM2 PID `4154640` and health 200. The paired AI functional commit is `b04088f`.
+- WeChat development version 1.0.50 upload is not complete: DevTools reached the approved AppID but the WeChat upload service returned platform error 41002 (`appid missing`).
