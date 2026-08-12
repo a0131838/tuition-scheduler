@@ -1443,11 +1443,11 @@
 
 ## Open Risks
 
-- `2026-08-12-r358`: the staff miniapp now lets academic staff order up to three eligible teachers independently for every new-student subject. The signed bridge remains advisory until the existing formal preview/confirm gate; the new native package still needs WeChat upload and physical-phone confirmation.
+- `2026-08-12-r358`: the staff miniapp now lets academic staff order up to three eligible teachers independently for every new-student subject. The signed bridge remains advisory until the existing formal preview/confirm gate; native development version `1.0.52` is uploaded and still requires physical-phone acceptance before production submission.
 
 - AI one-confirmation candidate `2026-08-11-r261`: local Docker-isolated PostgreSQL/HTTP UAT passes all ten workflow families, including schedule/attendance/package/ticket/audit writes, parent-visible results, unauthorized-role rejection, stale-package rejection and duplicate-apply rejection. Production facts are audited read-only and real apply remains 0. Native WeChat upload and physical-device confirmation remain separate from the guarded server release.
 
-## 2026-08-12-r358 Ready
+## 2026-08-12-r358 Released
 
 - Scope: expose the independent per-subject primary/backup teacher order in the existing staff AI work detail.
 - Business impact:
@@ -1463,8 +1463,9 @@
   - focused bridge and UI contract tests
   - TypeScript and production build
 - Post-deploy verification:
-  - protected API remains 401 anonymously and staff AI work remains reachable with signed identity
-  - native WeChat development-version upload and package-size record
+  - implementation commit `569f3890` is on GitHub and the production server; login health is HTTP 200
+  - protected staff AI API remains 401 anonymously
+  - clean native WeChat development version `1.0.52` uploaded successfully, `754,946` bytes
 - AI runtime-config persistence: `deploy_app.sh` must receive all three protected AI integration settings from `ops/server/.deploy.env`; release is blocked if either secret is shorter than 32 characters, preventing a later normal deploy from erasing the bridge.
 - Full Care IB/AP tier enforcement depends on the package's primary and shared course assignments being accurate. Operations must add IB/AP as a shared course before contract generation whenever any contracted hours may be delivered as IB/AP tuition.
 - Staff proxy entry relies on the operator faithfully transcribing the parent's actual message. The required source channel, reply date, message summary, named operator, and permanent AuditLog make the record reviewable, but management should still spot-check the first live entries against the WeChat conversation.

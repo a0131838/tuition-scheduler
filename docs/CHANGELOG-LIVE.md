@@ -10990,13 +10990,15 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - verified a signed first-purchase contract on the same package now qualifies for `Create renewal contract / 创建续费合同`
   - verified renewal draft creation now reuses parent info from the current package when needed
-# 2026-08-12-r358 (release candidate)
+# 2026-08-12-r358 (released)
 
 - Added per-subject teacher priority controls to the staff miniapp for provisional multi-subject new-student scheduling.
 - Each subject independently carries a primary teacher, first backup and second backup into the signed AI preparation request.
 - Reuses the existing AI Today Work detail and one-confirmation flow; no new navigation entry or extra page was added.
 - Teacher candidates remain read-only AI advice and formal execution still passes the existing permission, qualification, availability, conflict, package and idempotency checks.
 - Includes the already deployed r357 full course-change comparison calendar and correct return-to-queue behavior in the same native WeChat package.
+- Formal implementation commit `569f3890` was deployed to `sgtmanage.com` and returned HTTP 200; the protected staff AI API returned 401 anonymously as expected.
+- Clean native WeChat development version `1.0.52` uploaded successfully for AppID `wxe7017f8545e8ad49`; package size `754,946` bytes.
 
 # 2026-08-11-r261 (release candidate)
 
