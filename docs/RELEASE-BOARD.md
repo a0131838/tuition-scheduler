@@ -1,5 +1,7 @@
 # RELEASE BOARD
 
+- `2026-08-12-r360`: AI ticket rule alignment is live on Tuition Scheduler commit `a4cc65f3594d651eb501aeb255957d96283f18cd` (PM2 PID `356031`) and SGT AI OS commit `5534ec5a14b2`. Formal login/authorization boundaries and AI health passed online checks. WeChat development version `1.0.53` remains blocked by platform error `41002 appid missing` after a fresh QR login; it is not uploaded and must not be reported as available until the platform accepts it.
+
 ## Current Production Snapshot
 
 - Current service: `sgtmanage.com`
