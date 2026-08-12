@@ -54,17 +54,25 @@ function singaporeDateTimeLabel(value) {
   return `${part.year}-${pad(part.month)}-${pad(part.day)} ${pad(part.hour)}:${pad(part.minute)}`;
 }
 
-function reviewCalendars(operations) {
+function reviewCalendars(operations, existingSessions = []) {
   const grouped = {};
-  (operations || []).filter((row) => row.startAt).forEach((row) => {
+  const sessionById = new Map((existingSessions || []).map((row) => [row.id, row]));
+  const movedIds = new Set((operations || []).filter((row) => row.commandType === "RESCHEDULE_SESSION" || row.commandType === "CANCEL_SESSION").map((row) => row.targetId));
+  const add = (row, state) => {
     const part = singaporeParts(row.startAt);
     const key = `${part.year}-${pad(part.month)}`;
     if (!grouped[key]) grouped[key] = { year: part.year, month: part.month, events: {} };
     if (!grouped[key].events[part.day]) grouped[key].events[part.day] = [];
     grouped[key].events[part.day].push({
-      key: `${row.sequence || 0}-${row.startAt}`, time: `${pad(part.hour)}:${pad(part.minute)}`,
-      teacher: row.teacherName || "原老师", action: ACTION_LABELS[row.commandType] || "处理课程",
+      key: `${state}-${row.id || row.sequence || 0}-${row.startAt}`, time: `${pad(part.hour)}:${pad(part.minute)}`,
+      teacher: row.teacherName || "老师待确认", course: row.courseName || row.subjectName || "课程", state,
+      action: state === "removed" ? "原课程将移走" : state === "proposed" ? (ACTION_LABELS[row.commandType] || "调整后课程") : "学生其他课程",
     });
+  };
+  (existingSessions || []).filter((row) => row.startAt).forEach((row) => add(row, movedIds.has(row.id) ? "removed" : "existing"));
+  (operations || []).filter((row) => row.startAt && row.commandType !== "CANCEL_SESSION").forEach((row) => {
+    const source = sessionById.get(row.targetId);
+    add({ ...row, courseName: row.courseName || source?.courseName, teacherName: row.teacherName || source?.teacherName }, "proposed");
   });
   return Object.keys(grouped).sort().map((key) => {
     const month = grouped[key];
@@ -149,6 +157,10 @@ Page({
     this.setData({ selected, pendingReview: null, message: "" });
     this.setupDecision(selected);
     wx.pageScrollTo({ scrollTop: 0, duration: 180 });
+  },
+  handleBack() {
+    if (!this.data.selected) return wx.navigateBack({ delta: 1 });
+    this.backToQueue();
   },
   backToQueue() {
     this.setData({ selected: null, pendingReview: null, message: "" });
@@ -235,7 +247,7 @@ Page({
           this.setData({
             pendingReview: {
               path, executionPackage, previewToken: preview.previewToken,
-              commandCount: preview.preview.commandCount, calendars: reviewCalendars(operations),
+              commandCount: preview.preview.commandCount, calendars: reviewCalendars(operations, preview.preview.calendarSessions || []),
               lines: previewLines(preview, operations),
             },
             message: "完整方案已通过正式系统复核，请核对后确认一次。",

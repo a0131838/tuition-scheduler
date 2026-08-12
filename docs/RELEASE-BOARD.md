@@ -11,6 +11,7 @@
 
 ## Current Known State
 
+- Current release line prepared: `2026-08-12-r357` makes AI course-change confirmation show the student's complete related-month calendar: unchanged lessons are grey, the original lesson is red with a strike-through, and the proposed lesson is orange. AI detail back-navigation now returns to the preserved AI queue before leaving for Workbench. The formal system adds only protected read-only preview facts; scheduling, attendance, package, fee and notification writes are unchanged.
 - Current release line prepared: `2026-08-12-r356` makes AI Today open one task as a full working view, returns to the preserved queue position, translates workflow badges to Chinese and aligns the page with the existing orange Mini Program brand. No business write logic changes; a new WeChat development build and physical-phone visual check remain required.
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.

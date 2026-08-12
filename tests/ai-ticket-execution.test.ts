@@ -131,9 +131,14 @@ test("staff AI work shows a direct queue-to-detail flow, complete calendar revie
   assert.doesNotMatch(pageView, /scroll-x/);
   assert.match(pageView, /确认前请核对完整方案/);
   assert.match(pageView, /month-grid/);
+  assert.match(pageView, /学生其他课程/);
+  assert.match(pageView, /原课程（将移走）/);
+  assert.match(pageView, /调整后的课程/);
   assert.match(pageStyle, /flex-direction:column/);
   assert.match(pageView, /wx:if="\{\{!selected && items\.length\}\}"/);
   assert.match(pageView, /bindtap="backToQueue"/);
+  assert.match(pageView, /bindtap="handleBack"/);
+  assert.match(pageSource, /if \(!this\.data\.selected\) return wx\.navigateBack/);
   assert.match(pageSource, /wx\.pageScrollTo\(\{ scrollTop: 0/);
   assert.match(pageSource, /NEW_SCHEDULE:\s*"新学生排课"/);
   assert.match(pageStyle, /background:#ec5e0a!important/);
@@ -141,6 +146,11 @@ test("staff AI work shows a direct queue-to-detail flow, complete calendar revie
   assert.match(pageSource, /action:\s*"refresh"/);
   assert.match(bridgeSource, /miniapp-ai\/refresh-ticket/);
   assert.match(executeSource, /AI_TICKET_STALE/);
+  assert.match(executeSource, /studentChangeCalendar/);
+  assert.match(executeSource, /sessionBelongsToStudentWhere/);
+  assert.match(executeSource, /calendarSessions/);
+  assert.match(pageSource, /preview\.preview\.calendarSessions/);
+  assert.match(pageStyle, /\.event\.removed/);
   assert.match(pageSource, /function singaporeDateTimeLabel/);
   assert.match(pageSource, /sessionLabel[\s\S]*singaporeDateTimeLabel\(item\.startAt\)/);
   assert.match(pageSource, /dueLabel:\s*singaporeDateTimeLabel/);

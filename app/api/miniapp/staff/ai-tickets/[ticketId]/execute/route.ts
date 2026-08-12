@@ -15,6 +15,7 @@ import { applyMiniappSessionCancellation, previewMiniappSessionCancellation, Min
 import { applyMiniappTeacherReplacement, previewMiniappTeacherReplacement, MiniappTeacherReplacementError } from "@/lib/miniapp-session-teacher-replacement";
 import { prisma } from "@/lib/prisma";
 import { MINIAPP_TEMPLATE_KEYS, queueMiniappNotificationsForStudent } from "@/lib/miniapp-notifications";
+import { sessionBelongsToStudentWhere } from "@/lib/session-students";
 
 function secret() {
   return String(process.env.AI_TICKET_EXECUTION_SECRET || process.env.CRON_SECRET || "").trim();
@@ -95,6 +96,42 @@ async function assertAiTicketReady(value: AiTicketExecutionRequest) {
   return ticket;
 }
 
+async function studentChangeCalendar(studentId: string | null, value: AiTicketExecutionRequest) {
+  if (!studentId) return [];
+  const sessionIds = value.commands.map((command) => command.sessionId).filter((id): id is string => Boolean(id));
+  const sourceRows = sessionIds.length ? await prisma.session.findMany({
+    where: { id: { in: sessionIds } }, select: { id: true, startAt: true, endAt: true },
+  }) : [];
+  const dates = [
+    ...sourceRows.flatMap((row) => [row.startAt, row.endAt]),
+    ...value.commands.flatMap((command) => command.startAt ? [new Date(command.startAt)] : []),
+  ].filter((date) => !Number.isNaN(date.getTime()));
+  if (!dates.length) return [];
+  const first = new Date(Math.min(...dates.map((date) => date.getTime())));
+  const last = new Date(Math.max(...dates.map((date) => date.getTime())));
+  const singaporeMonth = (date: Date) => Object.fromEntries(new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Singapore", year: "numeric", month: "numeric",
+  }).formatToParts(date).map((part) => [part.type, Number(part.value)]));
+  const firstMonth = singaporeMonth(first);
+  const lastMonth = singaporeMonth(last);
+  const singaporeMonthStart = (year: number, monthIndex: number) => new Date(Date.UTC(year, monthIndex, 1) - 8 * 60 * 60 * 1000);
+  const from = singaporeMonthStart(firstMonth.year, firstMonth.month - 1);
+  const to = singaporeMonthStart(lastMonth.year, lastMonth.month);
+  const rows = await prisma.session.findMany({
+    where: { AND: [sessionBelongsToStudentWhere(studentId), { startAt: { gte: from, lt: to } }] },
+    select: {
+      id: true, startAt: true, endAt: true,
+      teacher: { select: { name: true } },
+      class: { select: { course: { select: { name: true } }, teacher: { select: { name: true } } } },
+    },
+    orderBy: { startAt: "asc" },
+  });
+  return rows.map((row) => ({
+    id: row.id, startAt: row.startAt.toISOString(), endAt: row.endAt.toISOString(),
+    courseName: row.class.course.name, teacherName: row.teacher?.name ?? row.class.teacher.name,
+  }));
+}
+
 class AiTicketStaleError extends Error {
   constructor(message: string, public currentUpdatedAt: string) { super(message); }
 }
@@ -120,14 +157,15 @@ export async function POST(req: Request, ctx: { params: Promise<{ ticketId: stri
   catch (error) { return bad(error instanceof Error ? error.message : "执行包无效。", 400); }
   if (!canExecutePackage(access.auth, value)) return bad("当前账号没有这类工单的最终执行权限。", 403);
   try {
-    await assertAiTicketReady(value);
+    const ticket = await assertAiTicketReady(value);
     if (mode === "preview") {
       const previews = value.commands.length > 1
         ? commandTypes(value).has("CREATE_SESSION")
           ? [(await previewTicketNewSession(newSessionBatchInput(ticketId, value.commands))).preview]
           : [(await previewMiniappSessionReschedulingBatch(rescheduleBatchInput(value.commands))).preview]
         : [await previewCommand(ticketId, value.commands[0])];
-      return ok({ preview: { workflowKey: value.workflowKey, commandCount: value.commands.length, items: previews }, previewToken: createAiTicketExecutionToken(value, access.auth.user.id, secret()) });
+      const calendarSessions = await studentChangeCalendar(ticket.studentId, value);
+      return ok({ preview: { workflowKey: value.workflowKey, commandCount: value.commands.length, items: previews, calendarSessions }, previewToken: createAiTicketExecutionToken(value, access.auth.user.id, secret()) });
     }
     if (mode !== "apply") return bad("执行模式无效。", 400);
     if (!verifyAiTicketExecutionToken(String(body?.previewToken ?? ""), value, access.auth.user.id, secret())) return bad("预检已失效或内容已变化，请重新确认。", 409, { code: "PREVIEW_REQUIRED" });

@@ -1,3 +1,4 @@
+<view class="custom-nav"><view class="custom-back" bindtap="handleBack">‹</view><view>AI 今日工作</view><view class="nav-space"></view></view>
 <view class="page">
   <view class="queue-header" wx:if="{{!selected}}">
     <view><view class="eyebrow">待教务确认</view><view class="title">AI 今日工作</view></view>
@@ -52,6 +53,7 @@
     <view class="review" wx:if="{{pendingReview}}">
       <view class="review-title">确认前请核对完整方案</view>
       <view class="review-count">共 {{pendingReview.commandCount}} 项正式操作</view>
+      <view class="calendar-legend"><text class="existing">学生其他课程</text><text class="removed">原课程（将移走）</text><text class="proposed">调整后的课程</text></view>
       <view class="review-line" wx:for="{{pendingReview.lines}}" wx:key="*this">{{item}}</view>
       <view class="calendar" wx:for="{{pendingReview.calendars}}" wx:key="key" wx:for-item="month">
         <view class="calendar-title">{{month.title}}</view>
@@ -59,7 +61,7 @@
         <view class="month-grid">
           <view class="day {{cell.blank ? 'blank' : ''}}" wx:for="{{month.cells}}" wx:key="key" wx:for-item="cell">
             <view class="day-number" wx:if="{{!cell.blank}}">{{cell.day}}</view>
-            <view class="event" wx:for="{{cell.events}}" wx:key="key" wx:for-item="event"><view>{{event.time}} · {{event.teacher}}</view><view>{{event.action}}</view></view>
+            <view class="event {{event.state}}" wx:for="{{cell.events}}" wx:key="key" wx:for-item="event"><view>{{event.time}} · {{event.course}}</view><view>{{event.teacher}} · {{event.action}}</view></view>
           </view>
         </view>
       </view>

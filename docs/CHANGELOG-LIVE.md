@@ -2,6 +2,14 @@
 
 This file is the single source of truth for what changed in production.
 
+## 2026-08-12-r357 (Prepared)
+
+- AI course-change confirmation now shows the student's complete related-month calendar.
+- Grey lessons stay unchanged, the original lesson is red with strike-through, and the proposed lesson is orange.
+- Mini Program AI detail back-navigation returns to the preserved AI queue before leaving for Workbench.
+- Formal changes are limited to protected read-only preview facts; no scheduling, attendance, package, fee or notification write behavior changed.
+- Local evidence: AI integration tests 8/8 and Next.js production build passed; physical Mini Program visual verification remains required after upload.
+
 ## Entry Template
 
 - Release ID:
