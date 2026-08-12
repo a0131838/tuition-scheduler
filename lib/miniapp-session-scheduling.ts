@@ -471,19 +471,48 @@ export async function applyMiniappSessionReschedulingBatch(
         const ticket = tickets.get(ticketId);
         if (!ticket) continue;
         const log = `[${formatBusinessDateTime(now)}] ${actorName} · 移动端整批改课\n${completionResult}`;
-        await tx.ticket.update({ where: { id: ticket.id }, data: {
-          status: "Completed", systemUpdated: "Y", finalSchedule: completionResult, parentCompletionResult: completionResult,
-          nextAction: "整批改课已完成，无需继续跟进。", nextActionDue: null,
-          risksNotes: ticket.risksNotes ? `${ticket.risksNotes}\n\n${log}` : log,
-          lastUpdateAt: now, completedAt: now, completedByUserId: actor.userId,
-        } });
-        await tx.parentAvailabilityRequest.updateMany({ where: { ticketId: ticket.id }, data: { isActive: false } });
+        let actionState: Awaited<ReturnType<typeof applyLinkedTicketSchedulingAction>> | null = null;
+        for (let index = 0; index < rows.length; index += 1) {
+          actionState = await applyLinkedTicketSchedulingAction(tx, {
+            ticketId: ticket.id,
+            actionType: "RESCHEDULE_SESSION",
+            sourceSessionId: rows[index].session.id,
+            resultSessionId: writtenSessionIds[index],
+            appliedByUserId: actor.userId,
+          });
+        }
+        for (const row of Array.from(new Map(rows.map((item, index) => [item.teacherId, { row: item, sessionId: writtenSessionIds[index] }])).values())) {
+          await createTicketTeacherConfirmation(tx, {
+            ticketId: ticket.id,
+            teacherId: row.row.teacherId,
+            managerUserId: actor.userId,
+            sessionId: row.sessionId,
+            title: "整批改课确认",
+            detail: `${completionResult}\n请确认可以按调整后的安排授课。`,
+          });
+        }
+        if (actionState?.allResolved) {
+          await markTicketWaitingForTeacher(tx, {
+            ticketId: ticket.id,
+            resultText: completionResult,
+            actorUserId: actor.userId,
+            risksNotes: ticket.risksNotes,
+            logLabel: `${actorName} · 移动端整批改课`,
+          });
+        } else {
+          await tx.ticket.update({ where: { id: ticket.id }, data: {
+            status: "Confirmed", systemUpdated: "Y", finalSchedule: completionResult, parentCompletionResult: completionResult,
+            nextAction: `本次整批改课已完成，仍有 ${actionState?.unresolved ?? 0} 个动作待执行。`,
+            nextActionDue: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+            risksNotes: ticket.risksNotes ? `${ticket.risksNotes}\n\n${log}` : log,
+            lastUpdateAt: now, completedAt: null, completedByUserId: null,
+          } });
+        }
         await tx.auditLog.create({ data: {
           actorEmail: actor.email.trim().toLowerCase(), actorName: actor.name?.trim() || null, actorRole: actor.role,
-          module: "TICKETS", action: "MINIAPP_COORDINATION_COMPLETE_AFTER_BATCH_RESCHEDULE", entityType: "Ticket", entityId: ticket.id,
+          module: "TICKETS", action: actionState?.allResolved ? "MINIAPP_COORDINATION_WAITING_TEACHER_AFTER_BATCH_RESCHEDULE" : "MINIAPP_BATCH_RESCHEDULE_ACTION_APPLIED", entityType: "Ticket", entityId: ticket.id,
           meta: { sessionIds: writtenSessionIds, batchSize: rows.length },
         } });
-        completedCoordinationTickets.push({ id: ticket.id, ticketNo: ticket.ticketNo, studentId: ticket.studentId, studentName: ticket.studentName, parentVisible: ticket.parentVisible, updatedAt: now });
       }
       return { rows, writtenSessionIds, completedCoordinationTickets, preview: { action: "reschedule", actionLabel: "整批修改课程", commandCount: rows.length, rows: rows.map((row) => row.preview) } };
     }, { maxWait: 5000, timeout: 60000, isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
