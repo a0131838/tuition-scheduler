@@ -135,6 +135,12 @@ function present(item) {
     summary: item.displayMessage || item.confirmationCard?.recognizedMatter || item.operation?.nextAction || "AI 正在读取工单",
     next: item.operation?.nextAction || "等待系统准备",
     workflowLabel: workflowLabel(item),
+    caseGroupLabel: item.caseGroup?.memberCount > 1
+      ? item.caseGroup.hasConflict
+        ? `收到${item.caseGroup.memberCount}次相关提交，其中要求不一致，请先确认最终要求。`
+        : `已将${item.caseGroup.memberCount}次相关提交合并为一次处理，原始记录均保留。`
+      : "",
+    caseGroupConflict: Boolean(item.caseGroup?.hasConflict),
     dueLabel: singaporeDateTimeLabel(item.operation?.dueAt),
     impactLines: [item.lessonImpact, item.feeImpact].filter(Boolean),
     factLines: [

@@ -2,6 +2,14 @@
 
 This file is the single source of truth for what changed in production.
 
+## 2026-08-12-r364 (Ready)
+
+- Repeated requests from the same student can now be consolidated into one AI handling case while every original ticket remains auditable.
+- Formal execution validates every grouped ticket version and blocks stale, conflicting or competing requests before any write. Short-lived student/session/case locks prevent double-click and concurrent-ticket races.
+- Scheduling and service workflows update included duplicate/supplement tickets together, while only the head ticket queues one parent completion notification.
+- The parent request list shows one consolidated active status, and the Staff Mini Program explains the number of merged submissions or an unresolved conflict in plain Chinese.
+- Verification: 47 focused formal tests, TypeScript, the 247-page production build and isolated Docker PostgreSQL UAT with 24 audit records passed. No production business record was changed during validation.
+
 ## 2026-08-12-r363 (Ready)
 
 - Teacher acknowledgement no longer delays a parent after a formally validated routine schedule change. Routine reschedules, cancellations and notices complete immediately and enter the existing parent-notification queue; teachers acknowledge them after class.

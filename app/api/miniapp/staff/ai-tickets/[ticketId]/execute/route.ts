@@ -94,13 +94,39 @@ async function applyCommand(ticketId: string, command: AiTicketCommand, executio
 }
 
 async function assertAiTicketReady(value: AiTicketExecutionRequest) {
-  const ticket = await prisma.ticket.findUnique({ where: { id: value.ticketId }, select: { id: true, studentId: true, status: true, isArchived: true, updatedAt: true } });
+  const ticket = await prisma.ticket.findUnique({ where: { id: value.ticketId }, select: { id: true, studentId: true, type: true, course: true, status: true, isArchived: true, createdAt: true, updatedAt: true } });
   if (!ticket || ticket.isArchived) throw new Error("工单不存在或已归档。");
   if (ticket.updatedAt.toISOString() !== value.formalUpdatedAt) {
     throw new AiTicketStaleError("工单已有新变化，AI将重新读取最新资料。", ticket.updatedAt.toISOString());
   }
   if (["Completed", "Cancelled"].includes(ticket.status)) throw new Error("工单已经结束，不能重复执行。");
   if (value.commands.some((command) => command.studentId && ticket.studentId && command.studentId !== ticket.studentId)) throw new Error("执行包中的学生与工单不一致。");
+  const groupedIds = new Set(value.caseGroup?.members.map((item) => item.ticketId) ?? [ticket.id]);
+  if (value.caseGroup) {
+    const grouped = await prisma.ticket.findMany({
+      where: { id: { in: value.caseGroup.members.map((item) => item.ticketId) }, studentId: ticket.studentId, isArchived: false },
+      select: { id: true, status: true, updatedAt: true },
+    });
+    if (grouped.length !== value.caseGroup.members.length) throw new Error("关联工单组已有变化，请重新读取后处理。");
+    for (const member of value.caseGroup.members) {
+      const current = grouped.find((item) => item.id === member.ticketId);
+      if (!current || current.updatedAt.toISOString() !== member.formalUpdatedAt || ["Completed", "Cancelled"].includes(current.status)) throw new Error("关联工单组已有变化，请重新读取后处理。");
+    }
+  }
+  const targetSessionIds = value.commands.map((command) => command.sessionId).filter((id): id is string => Boolean(id));
+  const competing = ticket.studentId ? await prisma.ticket.findFirst({
+    where: {
+      id: { notIn: [...groupedIds] }, studentId: ticket.studentId, isArchived: false,
+      createdAt: { gt: ticket.createdAt },
+      status: { notIn: ["Completed", "Cancelled"] },
+      OR: targetSessionIds.length
+        ? [{ schedulingActions: { some: { sourceSessionId: { in: targetSessionIds }, status: { notIn: ["APPLIED", "CANCELLED"] } } } }]
+        : [{ type: ticket.type, course: ticket.course }],
+    },
+    select: { id: true, ticketNo: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+  }) : null;
+  if (competing) throw new Error(`同一学生还有关联工单 ${competing.ticketNo} 正在处理相同课程或课次，请先合并并确认最终要求。`);
   const normalized = normalizedCommands(value.commands);
   const batchCommandTypes = new Set(normalized.map((command) => command.commandType));
   // Monthly new scheduling is explicitly supported as one serializable transaction.
@@ -110,6 +136,34 @@ async function assertAiTicketReady(value: AiTicketExecutionRequest) {
     throw new Error("该整批操作尚未达到全部成功或全部回滚的安全标准，暂不允许写入。");
   }
   return ticket;
+}
+
+async function acquireExecutionLocks(value: AiTicketExecutionRequest) {
+  const keys = [...new Set(value.commands.map((command) => command.sessionId ? `session:${command.sessionId}` : command.studentId ? `student:${command.studentId}:${value.workflowKey}` : `ticket:${value.ticketId}`))]
+    .sort().map((key) => `ai-ticket-active:${key}`);
+  const now = Date.now();
+  try {
+    await prisma.$transaction(async (tx) => {
+      for (const key of keys) {
+        const existing = await tx.appSetting.findUnique({ where: { key } });
+        if (existing) {
+          const lockedAt = Number(JSON.parse(existing.value || "{}").lockedAt || 0);
+          if (now - lockedAt < 15 * 60_000) throw new Error("同一学生或课次正在由另一位员工处理，请稍后刷新。");
+          await tx.appSetting.delete({ where: { key } });
+        }
+        await tx.appSetting.create({ data: { key, value: JSON.stringify({ ticketId: value.ticketId, lockedAt: now }) } });
+      }
+    });
+    return keys;
+  } catch (error) {
+    await prisma.appSetting.deleteMany({ where: { key: { in: keys }, value: { contains: value.ticketId } } }).catch(() => undefined);
+    throw error;
+  }
+}
+
+async function releaseExecutionLocks(keys: string[], ticketId: string) {
+  if (!keys.length) return;
+  await prisma.appSetting.deleteMany({ where: { key: { in: keys }, value: { contains: ticketId } } }).catch(() => undefined);
 }
 
 async function studentChangeCalendar(studentId: string | null, value: AiTicketExecutionRequest) {
@@ -186,11 +240,50 @@ export async function POST(req: Request, ctx: { params: Promise<{ ticketId: stri
     }
     if (mode !== "apply") return bad("执行模式无效。", 400);
     if (!verifyAiTicketExecutionToken(String(body?.previewToken ?? ""), value, access.auth.user.id, secret())) return bad("预检已失效或内容已变化，请重新确认。", 409, { code: "PREVIEW_REQUIRED" });
-    const result = commands.length > 1
-      ? commands[0].commandType === "CREATE_SESSION"
-        ? await applyTicketNewSession(newSessionBatchInput(ticketId, commands), actor(access.auth))
-        : await applyMiniappSessionReschedulingBatch(rescheduleBatchInput(commands), actor(access.auth), [ticketId])
-      : await applyCommand(ticketId, commands[0], actor(access.auth));
+    const executionTicketIds = value.caseGroup?.members.map((item) => item.ticketId) ?? [ticketId];
+    const locks = await acquireExecutionLocks(value);
+    let result;
+    try {
+      result = commands.length > 1
+        ? commands[0].commandType === "CREATE_SESSION"
+          ? await applyTicketNewSession(newSessionBatchInput(ticketId, commands), actor(access.auth), executionTicketIds)
+          : await applyMiniappSessionReschedulingBatch(rescheduleBatchInput(commands), actor(access.auth), executionTicketIds)
+        : isAiTicketCaseCommand(commands[0]) || commands[0].commandType === "CREATE_SESSION"
+          ? commands[0].commandType === "CREATE_SESSION"
+            ? await applyTicketNewSession(newSessionInput(ticketId, commands[0]), actor(access.auth), executionTicketIds)
+            : await applyCommand(ticketId, commands[0], actor(access.auth))
+          : commands[0].commandType === "RESCHEDULE_SESSION"
+            ? await applyMiniappSessionScheduling({ action: "reschedule", sessionId: commands[0].sessionId!, startAt: new Date(commands[0].startAt!), durationMin: commands[0].durationMin!, campusId: commands[0].campusId, roomId: commands[0].roomId, reason: commands[0].reason }, actor(access.auth), executionTicketIds)
+            : commands[0].commandType === "CANCEL_SESSION"
+              ? await applyMiniappSessionCancellation({ sessionId: commands[0].sessionId!, studentId: commands[0].studentId!, charge: commands[0].charge!, note: commands[0].note! }, actor(access.auth), executionTicketIds)
+              : commands[0].commandType === "REPLACE_TEACHER"
+                ? await applyMiniappTeacherReplacement({ sessionId: commands[0].sessionId!, newTeacherId: commands[0].newTeacherId!, reason: commands[0].reason! }, actor(access.auth), executionTicketIds)
+                : await applyMiniappSessionLocationChange({ sessionId: commands[0].sessionId!, campusId: commands[0].campusId!, roomId: commands[0].roomId ?? null, reason: commands[0].reason! }, actor(access.auth), executionTicketIds);
+    } finally {
+      await releaseExecutionLocks(locks, value.ticketId);
+    }
+    if (isAiTicketCaseCommand(commands[0]) && executionTicketIds.length > 1) {
+      const head = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+        select: { status: true, nextAction: true, finalSchedule: true, parentCompletionResult: true, completedAt: true, completedByUserId: true },
+      });
+      if (head) await prisma.$transaction(async (tx) => {
+        const linkedIds = executionTicketIds.filter((id) => id !== ticketId);
+        await tx.ticket.updateMany({
+          where: { id: { in: linkedIds }, studentId: ticket.studentId, status: { notIn: ["Completed", "Cancelled"] } },
+          data: {
+            status: head.status, nextAction: `已与主工单统一处理：${head.nextAction || "处理完成"}`,
+            finalSchedule: head.finalSchedule, parentCompletionResult: head.parentCompletionResult,
+            completedAt: head.completedAt, completedByUserId: head.completedByUserId,
+          },
+        });
+        await tx.auditLog.createMany({ data: linkedIds.map((id) => ({
+          actorEmail: access.auth.user.email, actorName: access.auth.user.name, actorRole: access.auth.user.role,
+          module: "TICKETS", action: "AI_GROUPED_TICKET_COMPLETED", entityType: "Ticket", entityId: id,
+          meta: { headTicketId: ticketId, groupId: value.caseGroup?.groupId },
+        })) });
+      });
+    }
     const completedTicket = await prisma.ticket.findUnique({
       where: { id: ticketId },
       select: { id: true, ticketNo: true, type: true, status: true, studentId: true, studentName: true, parentVisible: true, updatedAt: true },

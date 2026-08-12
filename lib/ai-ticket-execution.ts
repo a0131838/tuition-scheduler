@@ -48,6 +48,11 @@ export type AiTicketExecutionRequest = {
   workflowKey: string;
   idempotencyKey: string;
   commands: AiTicketCommand[];
+  caseGroup?: {
+    groupId: string;
+    headTicketId: string;
+    members: Array<{ ticketId: string; formalUpdatedAt: string; relationship: "PRIMARY" | "DUPLICATE" | "SUPPLEMENT" }>;
+  } | null;
 };
 
 const WORKFLOW_COMMANDS: Record<string, AiTicketCommandType[]> = {
@@ -140,6 +145,27 @@ export function parseAiTicketExecutionRequest(value: unknown, routeTicketId: str
   const allowed = WORKFLOW_COMMANDS[workflowKey];
   if (!allowed || commands.some((command) => !allowed.includes(command.commandType))) throw new Error("Command does not match workflow");
   if (new Set(commands.map((item) => item.idempotencyKey)).size !== commands.length) throw new Error("Command idempotency keys must be unique");
+  let caseGroup: AiTicketExecutionRequest["caseGroup"] = null;
+  if (row.caseGroup !== undefined && row.caseGroup !== null) {
+    if (!row.caseGroup || typeof row.caseGroup !== "object") throw new Error("caseGroup is invalid");
+    const group = row.caseGroup as Record<string, unknown>;
+    if (!Array.isArray(group.members) || group.members.length < 1 || group.members.length > 20) throw new Error("caseGroup.members is invalid");
+    caseGroup = {
+      groupId: required(group.groupId, "caseGroup.groupId", 180),
+      headTicketId: required(group.headTicketId, "caseGroup.headTicketId", 180),
+      members: group.members.map((member, index) => {
+        if (!member || typeof member !== "object") throw new Error(`caseGroup.members[${index}] is invalid`);
+        const item = member as Record<string, unknown>;
+        const relationship = required(item.relationship, `caseGroup.members[${index}].relationship`, 30) as "PRIMARY" | "DUPLICATE" | "SUPPLEMENT";
+        if (!(["PRIMARY", "DUPLICATE", "SUPPLEMENT"] as string[]).includes(relationship)) throw new Error(`caseGroup.members[${index}].relationship is invalid`);
+        const formalUpdatedAt = required(item.formalUpdatedAt, `caseGroup.members[${index}].formalUpdatedAt`, 80);
+        if (Number.isNaN(Date.parse(formalUpdatedAt))) throw new Error(`caseGroup.members[${index}].formalUpdatedAt is invalid`);
+        return { ticketId: required(item.ticketId, `caseGroup.members[${index}].ticketId`, 180), formalUpdatedAt: new Date(formalUpdatedAt).toISOString(), relationship };
+      }),
+    };
+    if (caseGroup.headTicketId !== ticketId || !caseGroup.members.some((item) => item.ticketId === ticketId && item.relationship === "PRIMARY")) throw new Error("caseGroup head does not match route ticket");
+    if (new Set(caseGroup.members.map((item) => item.ticketId)).size !== caseGroup.members.length) throw new Error("caseGroup members must be unique");
+  }
   return {
     version: "SGT_AI_TICKET_EXECUTION_V1",
     ticketId,
@@ -152,6 +178,7 @@ export function parseAiTicketExecutionRequest(value: unknown, routeTicketId: str
     workflowKey,
     idempotencyKey: required(row.idempotencyKey, "idempotencyKey", 128),
     commands,
+    caseGroup,
   };
 }
 

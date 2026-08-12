@@ -8,6 +8,32 @@ function cleanString(v: unknown, maxLen = 2000) {
   return normalizeTicketString(v, maxLen) ?? "";
 }
 
+function requestCaseKey(ticket: { type: string; summary: string | null; createdAt: Date; schedulingActions?: { sourceSessionId: string | null; courseLabel: string | null }[] }) {
+  const targets = (ticket.schedulingActions || []).map((row) => row.sourceSessionId).filter(Boolean).sort().join(",");
+  const course = (ticket.schedulingActions || []).map((row) => row.courseLabel).find(Boolean) || "";
+  const fourteenDayBucket = Math.floor(ticket.createdAt.getTime() / (14 * 86_400_000));
+  return targets ? `session:${targets}` : `request:${ticket.type}:${course}:${fourteenDayBucket}`;
+}
+
+function consolidateParentRequests<T extends { id: string; status: string; type: string; summary: string | null; createdAt: Date; schedulingActions?: { sourceSessionId: string | null; courseLabel: string | null }[] }>(tickets: T[]) {
+  const closed = new Set(["Completed", "Cancelled"]);
+  const groups = new Map<string, T[]>();
+  for (const ticket of tickets) {
+    if (closed.has(ticket.status)) continue;
+    const key = requestCaseKey(ticket);
+    groups.set(key, [...(groups.get(key) || []), ticket]);
+  }
+  const hidden = new Set<string>();
+  const metadata = new Map<string, { submissionCount: number; mergedTicketIds: string[]; consolidated: boolean }>();
+  for (const members of groups.values()) {
+    if (members.length < 2) continue;
+    members.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    members.slice(1).forEach((item) => hidden.add(item.id));
+    metadata.set(members[0].id, { submissionCount: members.length, mergedTicketIds: members.map((item) => item.id), consolidated: true });
+  }
+  return tickets.filter((ticket) => !hidden.has(ticket.id)).map((ticket) => ({ ticket, group: metadata.get(ticket.id) || null }));
+}
+
 export async function GET(req: Request, { params }: { params: Promise<{ studentId: string }> }) {
   const { studentId } = await params;
   const auth = await requireMiniappStudentAccess(req, studentId, "canCreateRequests");
@@ -25,9 +51,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
     },
     orderBy: { createdAt: "desc" },
     take: 100,
+    include: { schedulingActions: { select: { sourceSessionId: true, courseLabel: true } } },
   });
 
-  return ok({ requests: tickets.map((ticket) => miniappRequestDto(ticket)) });
+  return ok({ requests: consolidateParentRequests(tickets).map(({ ticket, group }) => ({
+    ...miniappRequestDto(ticket),
+    caseGroup: group,
+    statusDetail: group ? `已将${group.submissionCount}次相关提交合并处理，原始记录均已保留。` : null,
+  })) });
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ studentId: string }> }) {

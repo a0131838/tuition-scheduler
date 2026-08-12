@@ -424,7 +424,7 @@ export async function previewTicketNewSession(input: TicketNewSessionInput) {
   };
 }
 
-export async function applyTicketNewSession(input: TicketNewSessionInput, actor: Actor) {
+export async function applyTicketNewSession(input: TicketNewSessionInput, actor: Actor, completeTicketIds?: string[]) {
   try {
     return await prisma.$transaction(async (tx) => {
       const checkedRows = [];
@@ -481,6 +481,7 @@ export async function applyTicketNewSession(input: TicketNewSessionInput, actor:
       const actorName = actor.name?.trim() || actor.email;
       let completedTicket = checked.ticket;
       let ticketAllResolved = true;
+      let primaryRequiresTeacherConsent = false;
       if (checked.ticket) {
         const log = `[${formatBusinessDateTime(now)}] ${actorName} · 移动端新排课\n${completionResult}`;
         const previousNotes = String(checked.ticket.risksNotes ?? "").trim();
@@ -503,12 +504,38 @@ export async function applyTicketNewSession(input: TicketNewSessionInput, actor:
           requiresTeacherConsent ||= consent;
           await createTicketTeacherConfirmation(tx, { ticketId: checked.ticket.id, teacherId: row.teacher.id, managerUserId: actor.userId, title: consent ? "新课程安排待同意" : "新课程安排通知", detail: consent ? `${completionResult}\n首次授课或临近开课，请确认同意按整批安排授课。` : `${completionResult}\n安排已生效，请确认已知悉。`, mode: consent ? "CONSENT" : "NOTICE" });
         }
+        primaryRequiresTeacherConsent = requiresTeacherConsent;
         if (actionState.allResolved) {
           await finishTicketAfterFormalExecution(tx, { ticketId: checked.ticket.id, resultText: completionResult, actorUserId: actor.userId, risksNotes: previousNotes, logLabel: `${actorName} · 移动端新排课`, requiresTeacherConsent });
         } else {
           await tx.ticket.update({ where: { id: checked.ticket.id }, data: { status: "Confirmed", systemUpdated: "Y", finalSchedule: completionResult, parentCompletionResult: completionResult, nextAction: `本次排课已完成，仍有 ${actionState.unresolved} 个动作待执行。`, nextActionDue: checked.ticket.nextActionDue, risksNotes: previousNotes ? `${previousNotes}\n\n${log}` : log, lastUpdateAt: now, completedAt: null, completedByUserId: null } });
         }
         completedTicket = await tx.ticket.findUnique({ where: { id: checked.ticket.id }, include: { student: { select: { id: true, name: true } } } });
+      }
+      const groupedTicketIds = Array.from(new Set(completeTicketIds ?? (checked.ticket ? [checked.ticket.id] : [])));
+      if (checked.ticket && (!groupedTicketIds.includes(checked.ticket.id) || groupedTicketIds.length > 20)) throw new TicketNewSessionError("关联工单组已变化，请重新预检。", 409, "TICKET_PREVIEW_STALE");
+      for (const groupedTicketId of groupedTicketIds.filter((id) => id !== checked.ticket?.id)) {
+        const groupedTicket = await tx.ticket.findFirst({
+          where: { id: groupedTicketId, studentId: checked.student.id, isArchived: false, status: { notIn: ["Completed", "Cancelled"] } },
+          select: { id: true, risksNotes: true, nextActionDue: true },
+        });
+        if (!groupedTicket) throw new TicketNewSessionError("关联工单组已变化，请重新预检。", 409, "TICKET_PREVIEW_STALE");
+        const groupedAction = await applyLinkedTicketSchedulingAction(tx, {
+          ticketId: groupedTicket.id, actionType: "CREATE_SESSION", resultSessionId: sessions[0]?.id ?? null, appliedByUserId: actor.userId,
+        });
+        const earliestByTeacher = new Map<string, (typeof checkedRows)[number]>();
+        for (const row of checkedRows) {
+          const current = earliestByTeacher.get(row.teacher.id);
+          if (!current || row.startAt < current.startAt) earliestByTeacher.set(row.teacher.id, row);
+        }
+        let requiresTeacherConsent = primaryRequiresTeacherConsent;
+        for (const row of earliestByTeacher.values()) {
+          const consent = teacherConsentRequired({ startAt: row.startAt, isHome: campusDeliveryMode(row.campus) === "HOME", isFirstTeacher: await isFirstTeacherForStudents(tx, { teacherId: row.teacher.id, studentIds: [checked.student.id], before: row.startAt }) });
+          requiresTeacherConsent ||= consent;
+          await createTicketTeacherConfirmation(tx, { ticketId: groupedTicket.id, teacherId: row.teacher.id, managerUserId: actor.userId, title: consent ? "合并工单课程安排待同意" : "合并工单课程安排通知", detail: `${completionResult}\n本工单已与同一学生的相关提交合并处理。${consent ? "请确认同意按安排授课。" : "安排已生效，请确认已知悉。"}`, mode: consent ? "CONSENT" : "NOTICE" });
+        }
+        if (groupedAction.allResolved) await finishTicketAfterFormalExecution(tx, { ticketId: groupedTicket.id, resultText: completionResult, actorUserId: actor.userId, risksNotes: String(groupedTicket.risksNotes ?? ""), logLabel: `${actorName} · AI合并工单新排课`, requiresTeacherConsent });
+        else await tx.ticket.update({ where: { id: groupedTicket.id }, data: { status: "Confirmed", systemUpdated: "Y", finalSchedule: completionResult, parentCompletionResult: completionResult, nextAction: `本次合并排课已完成，仍有 ${groupedAction.unresolved} 个独立动作待执行。`, nextActionDue: groupedTicket.nextActionDue, completedAt: null, completedByUserId: null, lastUpdateAt: now } });
       }
       await tx.auditLog.createMany({
         data: [

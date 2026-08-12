@@ -26,6 +26,7 @@
     <view class="case-nav" bindtap="backToQueue"><text class="back-arrow">‹</text><text>返回待办</text></view>
     <view class="case-kicker">正式工单</view><view class="case-title">{{selected.title}}</view>
     <view class="case-type">{{selected.workflowLabel}}</view>
+    <view class="notice {{selected.caseGroupConflict ? 'danger' : ''}}" wx:if="{{selected.caseGroupLabel}}">{{selected.caseGroupLabel}}</view>
     <view class="section-label">家长希望怎么处理</view>
     <view class="summary">{{selected.summary}}</view>
     <view class="facts" wx:if="{{selected.factLines.length || selected.impactLines.length}}">
