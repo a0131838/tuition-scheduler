@@ -11,6 +11,7 @@
 
 ## Current Known State
 
+- Current release line prepared: `2026-08-12-r356` makes AI Today open one task as a full working view, returns to the preserved queue position, translates workflow badges to Chinese and aligns the page with the existing orange Mini Program brand. No business write logic changes; a new WeChat development build and physical-phone visual check remain required.
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.

@@ -11,6 +11,24 @@ const ACTION_LABELS = {
   SERVICE_CASE_HANDOFF: "建立客服处理", OPERATION_CORRECTION_REVIEW: "建立纠正审批",
 };
 
+const WORKFLOW_LABELS = {
+  NEW_SCHEDULE: "新学生排课",
+  RESCHEDULE: "修改上课时间",
+  CANCEL_LESSON: "取消课程",
+  SUPPLEMENTARY: "补课或加课",
+  CHANGE_TEACHER: "更换老师",
+  ASSESSMENT: "学术评估",
+  PACKAGE_ACTIVATION: "课包启用",
+  ACADEMIC_HANDOFF: "学术处理",
+  SERVICE_HANDOFF: "客服处理",
+  OPERATION_CORRECTION: "资料纠正",
+};
+
+function workflowLabel(item) {
+  const raw = item.confirmationCard?.workflowLabel || item.confirmationCard?.recognizedType || item.workflowKey || "工单";
+  return WORKFLOW_LABELS[item.workflowKey] || WORKFLOW_LABELS[raw] || raw;
+}
+
 function singaporeParts(value) {
   const date = new Date(new Date(value).getTime() + 8 * 60 * 60 * 1000);
   return { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1, day: date.getUTCDate(), hour: date.getUTCHours(), minute: date.getUTCMinutes() };
@@ -78,7 +96,7 @@ function present(item) {
     title: item.studentName || "未关联学生",
     summary: item.confirmationCard?.recognizedMatter || item.operation?.nextAction || "AI 正在读取工单",
     next: item.operation?.nextAction || "等待系统准备",
-    workflowLabel: item.confirmationCard?.workflowLabel || item.confirmationCard?.recognizedType || item.workflowKey || "工单",
+    workflowLabel: workflowLabel(item),
     dueLabel: singaporeDateTimeLabel(item.operation?.dueAt),
     blockerText: (item.executionPreview?.blockers || item.operation?.blockers || []).map((row) => row.label || row.message || row.code).join("；"),
     needsTarget: ["CANCEL_LESSON", "RESCHEDULE", "CHANGE_TEACHER"].includes(item.workflowKey) && !item.targetSession,
@@ -99,7 +117,7 @@ Page({
     return api.requestStaff("/api/miniapp/staff/ai-work", { timeout: 30000 })
       .then((data) => {
         const items = (data.items || []).map(present);
-        const selected = items.find((item) => item.intakeId === selectedId) || items[0] || null;
+        const selected = selectedId ? (items.find((item) => item.intakeId === selectedId) || null) : null;
         this.setData({ items, selected, pendingReview: null });
         this.setupDecision(selected);
       })
@@ -110,6 +128,14 @@ Page({
     const selected = this.data.items.find((item) => item.intakeId === event.currentTarget.dataset.id) || null;
     this.setData({ selected, pendingReview: null, message: "" });
     this.setupDecision(selected);
+    wx.pageScrollTo({ scrollTop: 0, duration: 180 });
+  },
+  backToQueue() {
+    this.setData({ selected: null, pendingReview: null, message: "" });
+    wx.nextTick(() => wx.pageScrollTo({ scrollTop: this.queueScrollTop || 0, duration: 0 }));
+  },
+  onPageScroll(event) {
+    if (!this.data.selected) this.queueScrollTop = event.scrollTop || 0;
   },
   setupDecision(item) {
     if (!item) return;

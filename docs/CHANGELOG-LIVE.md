@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-08-12-r356
+
+- Release ID: `2026-08-12-r356`
+- Date/Time (Asia/Singapore): `2026-08-12`
+- Deployment status: `READY`
+- Scope: simplify the Staff Mini Program AI Today workspace into a direct queue-to-detail flow, preserve the queue position on return, translate workflow badges to operational Chinese and restore the existing orange Mini Program brand palette.
+- Key files:
+  - `miniapp/boss-academic-parent/pages/staff-ai-work/staff-ai-work.js`
+  - `miniapp/boss-academic-parent/pages/staff-ai-work/staff-ai-work.wxml`
+  - `miniapp/boss-academic-parent/pages/staff-ai-work/staff-ai-work.wxss`
+  - `tests/ai-ticket-execution.test.ts`
+  - `docs/tasks/TASK-20260812-ai-work-mobile-queue-detail.md`
+- Risk impact (if any): Low and presentation-only. AI recognition, formal scheduling preview/apply, permissions, conflict validation, package balance, attendance deduction, payroll, finance and notification behavior are unchanged. No production record is written by this release.
+- Verification: native Mini Program JavaScript syntax, eight focused AI ticket regressions, release audit, TypeScript and production build passed. The release still requires a new WeChat development-version upload and employee physical-phone visual confirmation before experience-version use.
+- Rollback point: `7e7ba14f29d585072a1eb0110402e0f64422e8ed` (`2026-08-11-r263` documentation head).
+
+---
+
 ## 2026-08-10-r355
 
 - Release ID: `2026-08-10-r355`

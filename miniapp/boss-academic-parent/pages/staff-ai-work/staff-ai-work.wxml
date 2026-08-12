@@ -1,14 +1,20 @@
 <view class="page">
-  <view class="hero"><view class="eyebrow">今天只做需要人的决定</view><view class="title">AI 今日工作</view><view class="subtitle">客服录入后，AI 读取工单、课表、老师和课包；教务最后确认一次。</view></view>
+  <view class="queue-header" wx:if="{{!selected}}">
+    <view><view class="eyebrow">待教务确认</view><view class="title">AI 今日工作</view></view>
+    <view class="queue-count">{{items.length}} 项</view>
+    <view class="subtitle">选择一项查看，确认前不会修改正式数据。</view>
+  </view>
   <view class="notice" wx:if="{{message}}">{{message}}</view>
-  <view class="empty" wx:if="{{!loading && !items.length}}">当前没有待处理工单</view>
-  <view class="queue" wx:if="{{items.length}}">
-    <view wx:for="{{items}}" wx:key="intakeId" class="queue-item {{selected.intakeId === item.intakeId ? 'active' : ''}}" data-id="{{item.intakeId}}" bindtap="select">
+  <view class="empty" wx:if="{{!selected && !loading && !items.length}}">当前没有待处理工单</view>
+  <view class="queue" wx:if="{{!selected && items.length}}">
+    <view wx:for="{{items}}" wx:key="intakeId" class="queue-item" data-id="{{item.intakeId}}" bindtap="select">
       <view class="queue-top"><view class="queue-name">{{item.title}}</view><view class="queue-type">{{item.workflowLabel}}</view></view>
-      <view class="queue-next">{{item.next}}</view><view class="queue-due" wx:if="{{item.dueLabel}}">最晚处理：{{item.dueLabel}}</view>
+      <view class="queue-bottom"><view class="queue-next">{{item.next}}</view><view class="queue-arrow">›</view></view>
+      <view class="queue-due" wx:if="{{item.dueLabel}}">最晚处理：{{item.dueLabel}}</view>
     </view>
   </view>
   <view class="case" wx:if="{{selected}}">
+    <view class="case-nav" bindtap="backToQueue"><text class="back-arrow">‹</text><text>返回待办</text></view>
     <view class="case-kicker">{{selected.formalTicketId}}</view><view class="case-title">{{selected.title}}</view>
     <view class="summary">{{selected.summary}}</view>
     <view class="next-label">现在只做这一步</view><view class="next">{{selected.next}}</view>

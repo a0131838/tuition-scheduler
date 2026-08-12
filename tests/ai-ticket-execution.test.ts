@@ -122,7 +122,7 @@ test("staff miniapp keeps unavoidable cancellation and replacement decisions on 
   assert.match(bridgeSource, /typeof body\?\.charge === "boolean"/);
 });
 
-test("staff AI work shows a vertical queue, complete calendar review, and refreshes stale formal facts", () => {
+test("staff AI work shows a direct queue-to-detail flow, complete calendar review, and refreshes stale formal facts", () => {
   const pageSource = readFileSync(new URL("../miniapp/boss-academic-parent/pages/staff-ai-work/staff-ai-work.js", import.meta.url), "utf8");
   const pageView = readFileSync(new URL("../miniapp/boss-academic-parent/pages/staff-ai-work/staff-ai-work.wxml", import.meta.url), "utf8");
   const pageStyle = readFileSync(new URL("../miniapp/boss-academic-parent/pages/staff-ai-work/staff-ai-work.wxss", import.meta.url), "utf8");
@@ -132,6 +132,11 @@ test("staff AI work shows a vertical queue, complete calendar review, and refres
   assert.match(pageView, /确认前请核对完整方案/);
   assert.match(pageView, /month-grid/);
   assert.match(pageStyle, /flex-direction:column/);
+  assert.match(pageView, /wx:if="\{\{!selected && items\.length\}\}"/);
+  assert.match(pageView, /bindtap="backToQueue"/);
+  assert.match(pageSource, /wx\.pageScrollTo\(\{ scrollTop: 0/);
+  assert.match(pageSource, /NEW_SCHEDULE:\s*"新学生排课"/);
+  assert.match(pageStyle, /background:#ec5e0a!important/);
   assert.match(pageSource, /AI_TICKET_STALE/);
   assert.match(pageSource, /action:\s*"refresh"/);
   assert.match(bridgeSource, /miniapp-ai\/refresh-ticket/);
