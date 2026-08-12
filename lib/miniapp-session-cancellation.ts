@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { PackageStatus, PackageType, Prisma } from "@prisma/client";
 import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/lib/package-sharing";
+import { packageModeFromNote, packageModeSupportsClass, type PackageMode } from "@/lib/package-mode";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { applyLinkedTicketSchedulingAction } from "@/lib/ticket-scheduling-action-write";
 import { createTicketTeacherConfirmation, markTicketWaitingForTeacher } from "@/lib/ai-ticket-communication";
@@ -9,6 +10,18 @@ import { schedulingCoordinationCourseLabelsMatch } from "@/lib/scheduling-coordi
 import { getSessionStudents } from "@/lib/session-students";
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
+
+type CancellationPackageMode = PackageMode | "MONTHLY";
+
+export function resolveCancellationDeduction(
+  mode: CancellationPackageMode,
+  durationMin: number
+) {
+  if (mode === "MONTHLY") return { units: 0, deductedMinutes: 0, deductedCount: 0 };
+  if (mode === "GROUP_COUNT") return { units: 1, deductedMinutes: 0, deductedCount: 1 };
+  const minutes = Math.max(1, Math.round(durationMin));
+  return { units: minutes, deductedMinutes: minutes, deductedCount: 0 };
+}
 
 export type MiniappCancellationInput = {
   sessionId: string;
@@ -94,23 +107,33 @@ async function validateCancellation(db: DbClient, input: MiniappCancellationInpu
 
   const durationMin = Math.max(1, Math.round((session.endAt.getTime() - session.startAt.getTime()) / 60_000));
   let packageId: string | null = null;
+  let packageMode: CancellationPackageMode | null = null;
+  let deduction = { units: 0, deductedMinutes: 0, deductedCount: 0 };
   if (input.charge) {
-    const pkg = await db.coursePackage.findFirst({
+    const isGroupClass = session.class.capacity !== 1;
+    const candidates = await db.coursePackage.findMany({
       where: {
         AND: [
           coursePackageAccessibleByStudent(input.studentId),
           coursePackageMatchesCourse(session.class.courseId),
-          { type: PackageType.HOURS },
           { status: PackageStatus.ACTIVE },
-          { remainingMinutes: { gte: durationMin } },
           { validFrom: { lte: session.startAt } },
           { OR: [{ validTo: null }, { validTo: { gte: session.startAt } }] },
         ],
       },
-      orderBy: { createdAt: "asc" },
-      select: { id: true },
+      orderBy: [{ updatedAt: "desc" }, { createdAt: "asc" }],
+      select: { id: true, type: true, note: true, remainingMinutes: true },
     });
+    const eligible = candidates.map((pkg) => {
+      const mode: CancellationPackageMode = pkg.type === PackageType.MONTHLY ? "MONTHLY" : packageModeFromNote(pkg.note);
+      const resolved = resolveCancellationDeduction(mode, durationMin);
+      const modeMatches = mode === "MONTHLY" || packageModeSupportsClass(mode, isGroupClass);
+      return { ...pkg, mode, deduction: resolved, modeMatches };
+    }).filter((pkg) => pkg.modeMatches && (pkg.mode === "MONTHLY" || (pkg.remainingMinutes ?? 0) >= pkg.deduction.units));
+    const pkg = eligible.find((row) => row.mode === "MONTHLY") ?? eligible[0] ?? null;
     packageId = pkg?.id ?? null;
+    packageMode = pkg?.mode ?? null;
+    deduction = pkg?.deduction ?? deduction;
     if (!packageId) {
       throw new MiniappCancellationError("没有可扣除本节课时的有效课包。", 409, "NO_CHARGEABLE_PACKAGE");
     }
@@ -153,6 +176,8 @@ async function validateCancellation(db: DbClient, input: MiniappCancellationInpu
     attendance,
     durationMin,
     packageId,
+    packageMode,
+    deduction,
     tickets,
     preview: {
       courseLabel: expectedCourseLabel,
@@ -160,7 +185,10 @@ async function validateCancellation(db: DbClient, input: MiniappCancellationInpu
       studentName: student.name || "学生",
       teacherName: session.teacher?.name ?? session.class.teacher.name,
       locationText: locationText(session),
-      chargeLabel: input.charge ? `扣除 ${durationMin} 分钟课时` : "不扣课时",
+      chargeLabel: !input.charge ? "不扣课时"
+        : packageMode === "MONTHLY" ? "月度课包内计费（不扣余额）"
+          : packageMode === "GROUP_COUNT" ? "扣除 1 次班课"
+            : `扣除 ${durationMin} 分钟课时`,
       note: input.note,
       tickets: tickets.map((ticket) => ({ id: ticket.id, ticketNo: ticket.ticketNo, status: ticket.status })),
     },
@@ -185,10 +213,10 @@ export async function applyMiniappSessionCancellation(
         throw new MiniappCancellationError("请假工单已变化，请重新预检。", 409, "TICKET_PREVIEW_STALE");
       }
 
-      if (input.charge && checked.packageId) {
+      if (input.charge && checked.packageId && checked.deduction.units > 0) {
         const deducted = await tx.coursePackage.updateMany({
-          where: { id: checked.packageId, remainingMinutes: { gte: checked.durationMin } },
-          data: { remainingMinutes: { decrement: checked.durationMin } },
+          where: { id: checked.packageId, remainingMinutes: { gte: checked.deduction.units } },
+          data: { remainingMinutes: { decrement: checked.deduction.units } },
         });
         if (deducted.count !== 1) {
           throw new MiniappCancellationError("课包余额已变化，请重新预检。", 409, "PACKAGE_BALANCE_CHANGED");
@@ -197,7 +225,7 @@ export async function applyMiniappSessionCancellation(
           data: {
             packageId: checked.packageId,
             kind: "DEDUCT",
-            deltaMinutes: -checked.durationMin,
+            deltaMinutes: -checked.deduction.units,
             sessionId: checked.session.id,
             note: `Miniapp cancellation charge. studentId=${input.studentId}`,
           },
@@ -210,8 +238,8 @@ export async function applyMiniappSessionCancellation(
           sessionId: checked.session.id,
           studentId: input.studentId,
           status: "EXCUSED",
-          deductedCount: 0,
-          deductedMinutes: input.charge ? checked.durationMin : 0,
+          deductedCount: input.charge ? checked.deduction.deductedCount : 0,
+          deductedMinutes: input.charge ? checked.deduction.deductedMinutes : 0,
           packageId: input.charge ? checked.packageId : null,
           note: input.note || "Canceled from staff miniapp",
           excusedCharge: input.charge,
@@ -220,7 +248,8 @@ export async function applyMiniappSessionCancellation(
         },
         update: {
           status: "EXCUSED",
-          deductedMinutes: input.charge ? checked.durationMin : 0,
+          deductedCount: input.charge ? checked.deduction.deductedCount : 0,
+          deductedMinutes: input.charge ? checked.deduction.deductedMinutes : 0,
           packageId: input.charge ? checked.packageId : null,
           note: input.note || "Canceled from staff miniapp",
           excusedCharge: input.charge,
@@ -287,7 +316,9 @@ export async function applyMiniappSessionCancellation(
           meta: {
             studentId: input.studentId,
             charge: input.charge,
-            deductedMinutes: input.charge ? checked.durationMin : 0,
+            packageMode: checked.packageMode,
+            deductedMinutes: input.charge ? checked.deduction.deductedMinutes : 0,
+            deductedCount: input.charge ? checked.deduction.deductedCount : 0,
             packageId: input.charge ? checked.packageId : null,
           },
         },

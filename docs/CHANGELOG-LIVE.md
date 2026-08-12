@@ -2,6 +2,14 @@
 
 This file is the single source of truth for what changed in production.
 
+## 2026-08-12-r361 (Ready)
+
+- AI cancellation now reuses the formal package-unit rules instead of assuming every charged cancellation is an HOURS-minute deduction.
+- Shared packages continue to use the existing student/package access rules; individual lessons use HOURS_MINUTES, group lessons prefer GROUP_MINUTES then legacy GROUP_COUNT, and MONTHLY packages record a charged cancellation without reducing a balance.
+- Attendance, package ledger, payroll eligibility, teacher confirmation and parent-result gates remain in the same Serializable transaction and existing formal workflow.
+- Local evidence: 34 focused AI/formal scheduling tests, TypeScript, 247-page production build, and isolated Docker PostgreSQL UAT covering hours, no-charge, MONTHLY and GROUP_COUNT cancellations with 24 audit rows.
+- No production record was changed during validation; deployment is pending the guarded release command.
+
 ## 2026-08-12-r360 (Web Live / Mini Program Development Version Uploaded)
 
 - Web runtime live: formal commit `a4cc65f3594d651eb501aeb255957d96283f18cd`, AI commit `5534ec5a14b2`, formal PM2 PID `356031`.

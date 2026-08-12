@@ -14,6 +14,7 @@ import { applyMiniappSessionCancellation, previewMiniappSessionCancellation } fr
 import { applyMiniappTeacherReplacement, previewMiniappTeacherReplacement } from "../lib/miniapp-session-teacher-replacement";
 import { POST as executeAiTicketRoute } from "../app/api/miniapp/staff/ai-tickets/[ticketId]/execute/route";
 import { acknowledgeManagerTeacherFeedback } from "../lib/manager-teacher-feedback";
+import { composePackageNote } from "../lib/package-mode";
 
 function assertIsolatedDatabase() {
   if (process.env.AI_TICKET_UAT_CONFIRM !== "LOCAL_ISOLATED_DB") {
@@ -166,6 +167,43 @@ async function main() {
   await applyMiniappTeacherReplacement(replacementInput, actor, [replacementTicket.id]);
   await acknowledgeTicket(replacementTicket.id);
   assert.equal((await prisma.session.findUniqueOrThrow({ where: { id: scheduleResult.sessionIds[3] } })).teacherId, replacement.id);
+
+  const monthlyPackage = await prisma.coursePackage.create({
+    data: {
+      studentId: student.id, courseId: course.id, type: PackageType.MONTHLY, status: PackageStatus.ACTIVE,
+      financeGateStatus: PackageFinanceGateStatus.SCHEDULABLE, validFrom: atLocalDay(-1, 0), validTo: atLocalDay(180, 23, 59),
+    },
+  });
+  const monthlyTicket = await createTicket("临时取消&请假课程");
+  const monthlyInput = { sessionId: scheduleResult.sessionIds[0], studentId: student.id, charge: true, note: "UAT 月度课包内取消" };
+  const monthlyPreview = await previewMiniappSessionCancellation(monthlyInput);
+  assert.equal(monthlyPreview.packageMode, "MONTHLY");
+  await applyMiniappSessionCancellation(monthlyInput, actor, [monthlyTicket.id]);
+  await acknowledgeTicket(monthlyTicket.id);
+  assert.equal((await prisma.coursePackage.findUniqueOrThrow({ where: { id: monthlyPackage.id } })).remainingMinutes, null);
+
+  await prisma.coursePackage.update({ where: { id: monthlyPackage.id }, data: { status: PackageStatus.PAUSED } });
+  const groupSession = await prisma.session.findUniqueOrThrow({ where: { id: scheduleResult.sessionIds[3] }, select: { classId: true } });
+  await prisma.class.update({ where: { id: groupSession.classId }, data: { capacity: 2 } });
+  const groupCountPackage = await prisma.coursePackage.create({
+    data: {
+      studentId: student.id, courseId: course.id, type: PackageType.HOURS, status: PackageStatus.ACTIVE,
+      financeGateStatus: PackageFinanceGateStatus.SCHEDULABLE, totalMinutes: 5, remainingMinutes: 5,
+      note: composePackageNote("GROUP_COUNT", "isolated UAT"), validFrom: atLocalDay(-1, 0), validTo: atLocalDay(180, 23, 59),
+    },
+  });
+  const groupCountTicket = await createTicket("临时取消&请假课程");
+  const groupCountInput = { sessionId: scheduleResult.sessionIds[3], studentId: student.id, charge: true, note: "UAT 班课按次扣减" };
+  const groupCountPreview = await previewMiniappSessionCancellation(groupCountInput);
+  assert.equal(groupCountPreview.packageMode, "GROUP_COUNT");
+  await applyMiniappSessionCancellation(groupCountInput, actor, [groupCountTicket.id]);
+  await acknowledgeTicket(groupCountTicket.id);
+  assert.equal((await prisma.coursePackage.findUniqueOrThrow({ where: { id: groupCountPackage.id } })).remainingMinutes, 4);
+  const groupAttendance = await prisma.attendance.findUniqueOrThrow({
+    where: { sessionId_studentId: { sessionId: scheduleResult.sessionIds[3], studentId: student.id } },
+  });
+  assert.equal(groupAttendance.deductedCount, 1);
+  assert.equal(groupAttendance.deductedMinutes, 0);
 
   const caseSpecs: Array<{ workflowKey: string; type: string; status?: string; command: AiTicketCommand; expected: string }> = [
     {
@@ -323,6 +361,8 @@ async function main() {
       batchRescheduleSessions: rescheduleResult.writtenSessionIds.length,
       cancelWithoutChargePreservedBalance: true,
       cancelWithChargeDeductedMinutes: 60,
+      monthlyCancellationPreservedBalance: true,
+      groupCountCancellationDeductedCount: 1,
       replacementCompleted: true,
       caseWorkflows: caseSpecs.length,
       duplicateClicksIdempotent: true,
