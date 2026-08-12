@@ -9,7 +9,7 @@ import {
 } from "@/lib/package-mode";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { applyLinkedTicketSchedulingAction } from "@/lib/ticket-scheduling-action-write";
-import { createTicketTeacherConfirmation, markTicketWaitingForTeacher } from "@/lib/ai-ticket-communication";
+import { createTicketTeacherConfirmation, finishTicketAfterFormalExecution } from "@/lib/ai-ticket-communication";
 import { prisma } from "@/lib/prisma";
 import { schedulingCoordinationCourseLabelsMatch } from "@/lib/scheduling-coordination";
 import { getSessionStudents } from "@/lib/session-students";
@@ -288,10 +288,11 @@ export async function applyMiniappSessionCancellation(
         const teacherId = checked.session.teacher?.id ?? checked.session.class.teacher.id;
         await createTicketTeacherConfirmation(tx, {
           ticketId: ticket.id, teacherId, managerUserId: actor.userId, sessionId: checked.session.id,
-          title: "课程取消确认", detail: `${resultText}\n请确认已知晓本节课程取消。`,
+          title: "课程取消通知", detail: `${resultText}\n本次取消已生效，请确认已知悉。`, mode: "NOTICE",
         });
         if (actionState.allResolved) {
-          await markTicketWaitingForTeacher(tx, { ticketId: ticket.id, resultText, actorUserId: actor.userId, risksNotes: previousNotes, logLabel: `${actorName} · 移动请假/取消` });
+          await finishTicketAfterFormalExecution(tx, { ticketId: ticket.id, resultText, actorUserId: actor.userId, risksNotes: previousNotes, logLabel: `${actorName} · 移动请假/取消`, requiresTeacherConsent: false });
+          completedTickets.push({ id: ticket.id, ticketNo: ticket.ticketNo, studentId: ticket.studentId, studentName: ticket.studentName, parentVisible: ticket.parentVisible, updatedAt: now });
         } else {
           await tx.ticket.update({ where: { id: ticket.id }, data: { status: "Confirmed", systemUpdated: "Y", finalSchedule: resultText, parentCompletionResult: resultText, nextAction: `取消已处理，仍有 ${actionState.unresolved} 个排课动作待执行。`, nextActionDue: new Date(now.getTime() + 24 * 60 * 60 * 1000), risksNotes: previousNotes ? `${previousNotes}\n\n${log}` : log, lastUpdateAt: now, completedAt: null, completedByUserId: null } });
         }
@@ -301,7 +302,7 @@ export async function applyMiniappSessionCancellation(
             actorName: actor.name?.trim() || null,
             actorRole: actor.role,
             module: "TICKETS",
-            action: actionState.allResolved ? "MINIAPP_LEAVE_TICKET_WAITING_TEACHER" : "MINIAPP_LEAVE_ACTION_APPLIED",
+            action: actionState.allResolved ? "MINIAPP_LEAVE_TICKET_COMPLETED_TEACHER_NOTIFIED" : "MINIAPP_LEAVE_ACTION_APPLIED",
             entityType: "Ticket",
             entityId: ticket.id,
             meta: { sessionId: checked.session.id, studentId: input.studentId, charge: input.charge },

@@ -5,6 +5,7 @@ export const MANAGER_TEACHER_FEEDBACK_CATEGORIES = [
   { value: "PRAISE", en: "Praise", zh: "表扬" },
   { value: "IMPROVEMENT", en: "Improvement", zh: "改进建议" },
   { value: "ACTION_REQUIRED", en: "Action Required", zh: "需要跟进" },
+  { value: "ARRANGEMENT_NOTICE", en: "Arrangement Notice", zh: "课程安排通知" },
   { value: "OBSERVATION", en: "Observation", zh: "课堂观察" },
 ] as const;
 
@@ -92,6 +93,7 @@ function shapeFeedback(row: Awaited<ReturnType<typeof prisma.managerTeacherFeedb
     managerName: row.managerUser?.name ?? row.managerUser?.email ?? "",
     managerEmail: row.managerUser?.email ?? "",
     category: row.category as string,
+    confirmationMode: row.category === "ARRANGEMENT_NOTICE" ? "NOTICE" : "CONSENT",
     body: row.body as string,
     requiresAck: Boolean(row.requiresAck),
     acknowledgedAt: row.acknowledgedAt ? formatBusinessDateTime(new Date(row.acknowledgedAt)) : "",
@@ -191,6 +193,7 @@ export async function acknowledgeManagerTeacherFeedback(input: {
     const pending = await tx.managerTeacherFeedback.count({
       where: {
         ticketId: current.ticketId,
+        category: "ACTION_REQUIRED",
         requiresAck: true,
         acknowledgedAt: null,
         archivedAt: null,
@@ -226,5 +229,36 @@ export async function acknowledgeManagerTeacherFeedback(input: {
         parentVisible: ticket.parentVisible, updatedAt: now.toISOString(),
       },
     };
+  }, { isolationLevel: "Serializable" });
+}
+
+export async function recordTeacherConfirmationByStaff(input: {
+  feedbackId: string;
+  staffUserId: string;
+  staffEmail: string;
+  staffName: string | null;
+  staffRole: string;
+  channel: "PHONE" | "WECHAT";
+  note: string;
+}) {
+  const feedbackId = cleanText(input.feedbackId, 80);
+  const note = cleanText(input.note, 500);
+  if (!feedbackId || note.length < 3) throw new Error("请填写老师确认内容。");
+  return prisma.$transaction(async (tx) => {
+    const current = await tx.managerTeacherFeedback.findFirst({
+      where: { id: feedbackId, category: "ACTION_REQUIRED", acknowledgedAt: null, archivedAt: null },
+      select: { id: true, ticketId: true, teacherId: true },
+    });
+    if (!current) throw new Error("该老师确认事项已处理或不存在。");
+    const now = new Date();
+    await tx.managerTeacherFeedback.update({ where: { id: current.id }, data: { acknowledgedAt: now, acknowledgedByUserId: input.staffUserId } });
+    await tx.auditLog.create({ data: { actorEmail: input.staffEmail, actorName: input.staffName, actorRole: input.staffRole, module: "TICKETS", action: "STAFF_RECORDED_TEACHER_CONSENT", entityType: "ManagerTeacherFeedback", entityId: current.id, meta: { ticketId: current.ticketId, teacherId: current.teacherId, channel: input.channel, note } } });
+    if (!current.ticketId) return { ticketCompleted: false };
+    const pending = await tx.managerTeacherFeedback.count({ where: { ticketId: current.ticketId, category: "ACTION_REQUIRED", requiresAck: true, acknowledgedAt: null, archivedAt: null } });
+    if (pending > 0) return { ticketCompleted: false };
+    const ticket = await tx.ticket.findUnique({ where: { id: current.ticketId }, select: { id: true, ticketNo: true, type: true, studentId: true, studentName: true, parentVisible: true, status: true, finalSchedule: true } });
+    if (!ticket || ticket.status !== "Waiting Teacher") return { ticketCompleted: false };
+    await tx.ticket.update({ where: { id: ticket.id }, data: { status: "Completed", nextAction: `已由${input.staffName || input.staffEmail}记录老师通过${input.channel === "PHONE" ? "电话" : "微信"}同意；家长可查看最终安排。`, nextActionDue: null, parentCompletionResult: ticket.finalSchedule, completedAt: now, completedByUserId: input.staffUserId, lastUpdateAt: now } });
+    return { ticketCompleted: true, ticket: { id: ticket.id, ticketNo: ticket.ticketNo, type: ticket.type, studentId: ticket.studentId, studentName: ticket.studentName, parentVisible: ticket.parentVisible, updatedAt: now.toISOString() } };
   }, { isolationLevel: "Serializable" });
 }

@@ -2,12 +2,13 @@ import crypto from "crypto";
 import { Prisma } from "@prisma/client";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { applyLinkedTicketSchedulingAction } from "@/lib/ticket-scheduling-action-write";
-import { createTicketTeacherConfirmation, markTicketWaitingForTeacher } from "@/lib/ai-ticket-communication";
+import { createTicketTeacherConfirmation, finishTicketAfterFormalExecution, isFirstTeacherForStudents, teacherConsentRequired } from "@/lib/ai-ticket-communication";
 import { prisma } from "@/lib/prisma";
 import { schedulingCoordinationCourseLabelsMatch } from "@/lib/scheduling-coordination";
 import { pickTeacherSessionConflict } from "@/lib/session-conflict";
 import { getSessionStudents } from "@/lib/session-students";
 import { checkTeacherSchedulingAvailability } from "@/lib/teacher-scheduling-availability";
+import { campusDeliveryMode } from "@/lib/teacher-delivery-mode";
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
 
@@ -237,6 +238,7 @@ export async function applyMiniappTeacherReplacement(
       const now = new Date();
       const actorName = actor.name?.trim() || actor.email;
       const resultText = `已更换本节课老师：${checked.preview.timeText}；${checked.preview.fromTeacherName} → ${checked.preview.toTeacherName}。`;
+      const requiresTeacherConsent = teacherConsentRequired({ startAt: checked.session.startAt, isHome: campusDeliveryMode(checked.session.class.campus) === "HOME", isFirstTeacher: await isFirstTeacherForStudents(tx, { teacherId: checked.teacher.id, studentIds: getSessionStudents(checked.session).map((student) => student.id), before: checked.session.startAt }) });
       const completedTickets: Array<{
         id: string;
         ticketNo: string;
@@ -256,10 +258,11 @@ export async function applyMiniappTeacherReplacement(
           requestedTeacherId: checked.teacher.id,
           appliedByUserId: actor.userId,
         });
-        await createTicketTeacherConfirmation(tx, { ticketId: ticket.id, teacherId: checked.currentTeacherId, managerUserId: actor.userId, sessionId: checked.session.id, title: "课程更换老师通知", detail: `${resultText}\n请原老师确认已知晓。` });
-        await createTicketTeacherConfirmation(tx, { ticketId: ticket.id, teacherId: checked.teacher.id, managerUserId: actor.userId, sessionId: checked.session.id, title: "新课程安排确认", detail: `${resultText}\n请新老师确认可以按此安排授课。` });
+        await createTicketTeacherConfirmation(tx, { ticketId: ticket.id, teacherId: checked.currentTeacherId, managerUserId: actor.userId, sessionId: checked.session.id, title: "课程更换老师通知", detail: `${resultText}\n变更已生效，请原老师确认已知悉。`, mode: "NOTICE" });
+        await createTicketTeacherConfirmation(tx, { ticketId: ticket.id, teacherId: checked.teacher.id, managerUserId: actor.userId, sessionId: checked.session.id, title: requiresTeacherConsent ? "新课程安排待同意" : "新课程安排通知", detail: requiresTeacherConsent ? `${resultText}\n首次授课或临近开课，请确认同意按此安排授课。` : `${resultText}\n安排已生效，请确认已知悉。`, mode: requiresTeacherConsent ? "CONSENT" : "NOTICE" });
         if (actionState.allResolved) {
-          await markTicketWaitingForTeacher(tx, { ticketId: ticket.id, resultText, actorUserId: actor.userId, risksNotes: previousNotes, logLabel: `${actorName} · 移动换老师` });
+          await finishTicketAfterFormalExecution(tx, { ticketId: ticket.id, resultText, actorUserId: actor.userId, risksNotes: previousNotes, logLabel: `${actorName} · 移动换老师`, requiresTeacherConsent });
+          if (!requiresTeacherConsent) completedTickets.push({ id: ticket.id, ticketNo: ticket.ticketNo, studentId: ticket.studentId, studentName: ticket.studentName, parentVisible: ticket.parentVisible, updatedAt: now });
         } else {
           await tx.ticket.update({ where: { id: ticket.id }, data: { status: "Confirmed", systemUpdated: "Y", finalSchedule: resultText, parentCompletionResult: resultText, nextAction: `老师已更换，仍有 ${actionState.unresolved} 个排课动作待执行。`, nextActionDue: new Date(now.getTime() + 24 * 60 * 60 * 1000), risksNotes: previousNotes ? `${previousNotes}\n\n${log}` : log, lastUpdateAt: now, completedAt: null, completedByUserId: null } });
         }

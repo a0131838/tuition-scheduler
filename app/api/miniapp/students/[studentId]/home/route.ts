@@ -44,6 +44,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
         teacher: true,
         class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
         attendances: { where: { studentId }, take: 1 },
+        managerFeedbacks: { where: { category: "ACTION_REQUIRED", requiresAck: true, acknowledgedAt: null, archivedAt: null }, select: { id: true }, take: 1 },
       },
       orderBy: { startAt: "asc" },
     }) : Promise.resolve(null),
@@ -83,6 +84,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
   const totalRemainingMinutes = packages.reduce((sum, pkg) => sum + (pkg.remainingMinutes ?? 0), 0);
   const latestFeedback = latestFeedbackSession?.feedbacks[0] ?? null;
 
+  const nextSessionPendingTeacherConsent = Boolean(nextSession?.managerFeedbacks.length);
   return ok({
     student: {
       id: student.id,
@@ -96,7 +98,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       nextAction: auth.link.canViewReports ? student.nextAction : null,
       nextActionDue: auth.link.canViewReports && student.nextActionDue ? formatBusinessDateOnly(student.nextActionDue) : null,
     },
-    nextSession: nextSession ? sessionDto(nextSession, nextSession.attendances[0]) : null,
+    nextSession: nextSession ? { ...sessionDto(nextSession, nextSession.attendances[0]), pendingTeacherConsent: nextSessionPendingTeacherConsent, statusLabel: nextSessionPendingTeacherConsent ? "暂定·待老师同意" : "已确认" } : null,
     latestFeedback: latestFeedback
       ? {
           id: latestFeedback.id,

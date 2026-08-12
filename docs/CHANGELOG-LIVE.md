@@ -2,6 +2,14 @@
 
 This file is the single source of truth for what changed in production.
 
+## 2026-08-12-r363 (Ready)
+
+- Teacher acknowledgement no longer delays a parent after a formally validated routine schedule change. Routine reschedules, cancellations and notices complete immediately and enter the existing parent-notification queue; teachers acknowledge them after class.
+- Explicit teacher consent is still required for a first teacher/student pairing, a home lesson, or an arrangement starting in under 24 hours. Academic/management staff can record a phone or WeChat consent with mandatory evidence, while every affected consent teacher must still be resolved.
+- Teachers now see distinct “acknowledge notice” and “agree to arrangement” actions and can report a problem. A reported problem creates an Academic exception without silently deleting or reverting the formal lesson.
+- Parent-facing safety remains unchanged: formal permissions, availability, conflicts, delivery mode, travel buffer, package and idempotency checks run before writes; notification failure remains an exception rather than a false success.
+- Verification: TypeScript, 20 focused tests, JavaScript syntax, 247-page production build and isolated Docker PostgreSQL UAT with 24 audit records passed. No production business record was used or changed during validation.
+
 ## 2026-08-12-r362 (Ready)
 
 - Charged cancellation now calls the same formal package selector used elsewhere in Tuition Scheduler, so competing group packages always prefer `GROUP_MINUTES` before legacy `GROUP_COUNT` instead of depending on record update order.

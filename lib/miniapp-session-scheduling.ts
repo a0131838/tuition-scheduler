@@ -3,14 +3,14 @@ import { Prisma } from "@prisma/client";
 import { campusRequiresRoom } from "@/lib/campus";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { applyLinkedTicketSchedulingAction } from "@/lib/ticket-scheduling-action-write";
-import { createTicketTeacherConfirmation, markTicketWaitingForTeacher } from "@/lib/ai-ticket-communication";
+import { createTicketTeacherConfirmation, finishTicketAfterFormalExecution, urgentTeacherConsentRequired } from "@/lib/ai-ticket-communication";
 import { prisma } from "@/lib/prisma";
 import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 import { schedulingCoordinationCourseLabelsMatch } from "@/lib/scheduling-coordination";
 import { pickStudentSessionConflict, pickTeacherSessionConflict } from "@/lib/session-conflict";
 import { isSessionDuplicateError } from "@/lib/session-unique";
 import { checkTeacherSchedulingAvailability } from "@/lib/teacher-scheduling-availability";
-import { checkTeacherDeliveryMode, checkTeacherTravelBuffer } from "@/lib/teacher-delivery-mode";
+import { campusDeliveryMode, checkTeacherDeliveryMode, checkTeacherTravelBuffer } from "@/lib/teacher-delivery-mode";
 import { SCHEDULING_COORDINATION_TICKET_TYPE } from "@/lib/tickets";
 
 export type MiniappSchedulingAction = "create" | "reschedule";
@@ -466,6 +466,7 @@ export async function applyMiniappSessionReschedulingBatch(
       const now = new Date();
       const actorName = actor.name?.trim() || actor.email;
       const completionResult = `已完成整批改课：共 ${rows.length} 节；${rows[0].preview.afterText} 至 ${rows[rows.length - 1].preview.afterText}。`;
+      const requiresTeacherConsent = rows.some((row) => urgentTeacherConsentRequired(row.startAt) || campusDeliveryMode(row.campus) === "HOME");
       const tickets = new Map(rows.flatMap((row) => row.coordinationTickets).map((ticket) => [ticket.id, ticket]));
       for (const ticketId of requestedTicketIds) {
         const ticket = tickets.get(ticketId);
@@ -487,17 +488,19 @@ export async function applyMiniappSessionReschedulingBatch(
             teacherId: row.row.teacherId,
             managerUserId: actor.userId,
             sessionId: row.sessionId,
-            title: "整批改课确认",
-            detail: `${completionResult}\n请确认可以按调整后的安排授课。`,
+            title: requiresTeacherConsent ? "整批改课待同意" : "整批改课通知",
+            detail: requiresTeacherConsent ? `${completionResult}\n包含临近开课课程，请确认同意调整。` : `${completionResult}\n调整已生效，请确认已知悉。`,
+            mode: requiresTeacherConsent ? "CONSENT" : "NOTICE",
           });
         }
         if (actionState?.allResolved) {
-          await markTicketWaitingForTeacher(tx, {
+          await finishTicketAfterFormalExecution(tx, {
             ticketId: ticket.id,
             resultText: completionResult,
             actorUserId: actor.userId,
             risksNotes: ticket.risksNotes,
             logLabel: `${actorName} · 移动端整批改课`,
+            requiresTeacherConsent,
           });
         } else {
           await tx.ticket.update({ where: { id: ticket.id }, data: {
@@ -599,9 +602,10 @@ export async function applyMiniappSessionScheduling(
               resultSessionId: writtenSessionId,
               appliedByUserId: actor.userId,
             });
-            await createTicketTeacherConfirmation(tx, { ticketId: ticket.id, teacherId: checked.teacherId, managerUserId: actor.userId, sessionId: writtenSessionId, title: "课程安排确认", detail: `${completionResult}\n请确认可以按调整后的安排授课。` });
+            const requiresTeacherConsent = urgentTeacherConsentRequired(checked.startAt) || campusDeliveryMode(checked.campus) === "HOME";
+            await createTicketTeacherConfirmation(tx, { ticketId: ticket.id, teacherId: checked.teacherId, managerUserId: actor.userId, sessionId: writtenSessionId, title: requiresTeacherConsent ? "课程安排待同意" : "课程安排通知", detail: requiresTeacherConsent ? `${completionResult}\n临近开课，请确认同意调整。` : `${completionResult}\n安排已生效，请确认已知悉。`, mode: requiresTeacherConsent ? "CONSENT" : "NOTICE" });
             if (actionState.allResolved) {
-              await markTicketWaitingForTeacher(tx, { ticketId: ticket.id, resultText: completionResult, actorUserId: actor.userId, risksNotes: previousNotes, logLabel: `${actorName} · 移动排课` });
+              await finishTicketAfterFormalExecution(tx, { ticketId: ticket.id, resultText: completionResult, actorUserId: actor.userId, risksNotes: previousNotes, logLabel: `${actorName} · 移动排课`, requiresTeacherConsent });
             } else {
               await tx.ticket.update({ where: { id: ticket.id }, data: { status: "Confirmed", systemUpdated: "Y", finalSchedule: completionResult, parentCompletionResult: completionResult, nextAction: `本次排课已完成，仍有 ${actionState.unresolved} 个动作待执行。`, nextActionDue: new Date(now.getTime() + 24 * 60 * 60 * 1000), risksNotes: previousNotes ? `${previousNotes}\n\n${coordinationLog}` : coordinationLog, lastUpdateAt: now, completedAt: null, completedByUserId: null } });
             }
@@ -617,7 +621,7 @@ export async function applyMiniappSessionScheduling(
                 meta: { sessionId: writtenSessionId, sourceSessionId: input.sessionId },
               },
             });
-            if (actionState.allResolved) completedCoordinationTickets.push({
+            if (actionState.allResolved && !requiresTeacherConsent) completedCoordinationTickets.push({
               id: ticket.id,
               ticketNo: ticket.ticketNo,
               studentId: ticket.studentId,
@@ -753,7 +757,8 @@ export async function applyMiniappSessionSeries(
         const actorName = actor.name?.trim() || actor.email;
         const firstText = checkedRows[0].preview.afterText;
         const lastText = checkedRows[checkedRows.length - 1].preview.afterText;
-        const completionResult = `已连续排课 ${input.weeks} 周：首节 ${firstText}；末节 ${lastText}；老师：${first.preview.teacherName}；地点：${first.preview.locationText}。`;
+      const completionResult = `已连续排课 ${input.weeks} 周：首节 ${firstText}；末节 ${lastText}；老师：${first.preview.teacherName}；地点：${first.preview.locationText}。`;
+      const requiresTeacherConsent = checkedRows.some((row) => urgentTeacherConsentRequired(row.startAt) || campusDeliveryMode(row.campus) === "HOME");
         for (const ticket of first.coordinationTickets.filter((row) => requestedTicketIds.includes(row.id))) {
           const log = `[${formatBusinessDateTime(now)}] ${actorName} · 移动连续排课\n${completionResult}`;
           const previousNotes = String(ticket.risksNotes ?? "").trim();
@@ -764,9 +769,9 @@ export async function applyMiniappSessionSeries(
             resultSessionId: sessionIds[0] ?? null,
             appliedByUserId: actor.userId,
           });
-          await createTicketTeacherConfirmation(tx, { ticketId: ticket.id, teacherId: first.teacherId, managerUserId: actor.userId, title: "连续课程安排确认", detail: `${completionResult}\n请确认可以按整批安排授课。` });
+          await createTicketTeacherConfirmation(tx, { ticketId: ticket.id, teacherId: first.teacherId, managerUserId: actor.userId, title: requiresTeacherConsent ? "连续课程安排待同意" : "连续课程安排通知", detail: requiresTeacherConsent ? `${completionResult}\n包含临近开课课程，请确认同意整批安排。` : `${completionResult}\n整批安排已生效，请确认已知悉。`, mode: requiresTeacherConsent ? "CONSENT" : "NOTICE" });
           if (actionState.allResolved) {
-            await markTicketWaitingForTeacher(tx, { ticketId: ticket.id, resultText: completionResult, actorUserId: actor.userId, risksNotes: previousNotes, logLabel: `${actorName} · 移动连续排课` });
+            await finishTicketAfterFormalExecution(tx, { ticketId: ticket.id, resultText: completionResult, actorUserId: actor.userId, risksNotes: previousNotes, logLabel: `${actorName} · 移动连续排课`, requiresTeacherConsent });
           } else {
             await tx.ticket.update({ where: { id: ticket.id }, data: { status: "Confirmed", systemUpdated: "Y", finalSchedule: completionResult, parentCompletionResult: completionResult, nextAction: `连续排课已完成，仍有 ${actionState.unresolved} 个动作待执行。`, nextActionDue: new Date(now.getTime() + 24 * 60 * 60 * 1000), risksNotes: previousNotes ? `${previousNotes}\n\n${log}` : log, lastUpdateAt: now, completedAt: null, completedByUserId: null } });
           }
@@ -777,7 +782,7 @@ export async function applyMiniappSessionSeries(
               entityType: "Ticket", entityId: ticket.id, meta: { sessionIds, sourceSessionId: input.sessionId },
             },
           });
-          if (actionState.allResolved) completedCoordinationTickets.push({
+          if (actionState.allResolved && !requiresTeacherConsent) completedCoordinationTickets.push({
             id: ticket.id, ticketNo: ticket.ticketNo, studentId: ticket.studentId,
             studentName: ticket.studentName, parentVisible: ticket.parentVisible, updatedAt: now,
           });

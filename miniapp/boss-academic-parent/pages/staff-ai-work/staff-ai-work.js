@@ -150,7 +150,7 @@ function present(item) {
 Page({
   data: {
     weekdays: ['一', '二', '三', '四', '五', '六', '日'],
-    items: [], selected: null, loading: false, working: false, message: "", pendingReview: null,
+    items: [], selected: null, loading: false, working: false, message: "", pendingReview: null, pendingTeacherConsents: [],
     targetOptions: [], targetIndex: -1, teacherOptions: [], teacherIndex: -1, subjectPlans: [], subjectPlanLoading: false,
     decision: { targetSessionId: "", targetSessionLabel: "点击选择具体课次", chargeValue: "", note: "", newTeacherId: "", newTeacherName: "点击选择老师", reason: "" },
   },
@@ -162,11 +162,28 @@ Page({
       .then((data) => {
         const items = (data.items || []).map(present);
         const selected = selectedId ? (items.find((item) => item.intakeId === selectedId) || null) : null;
-        this.setData({ items, selected, pendingReview: null });
+        this.setData({ items, selected, pendingReview: null, pendingTeacherConsents: data.pendingTeacherConsents || [] });
         this.setupDecision(selected);
       })
       .catch((error) => this.setData({ message: friendlyMessage(error.message, "读取失败") }))
       .finally(() => this.setData({ loading: false }));
+  },
+  recordTeacherConsent(event) {
+    const id = String(event.currentTarget.dataset.id || "");
+    if (!id || this.data.working) return;
+    wx.showActionSheet({ itemList: ["微信已确认", "电话已确认"], success: (choice) => {
+      const channel = choice.tapIndex === 1 ? "PHONE" : "WECHAT";
+      wx.showModal({ title: "记录老师确认", editable: true, placeholderText: "填写老师回复内容或确认时间", confirmText: "保存确认", success: (modal) => {
+        if (!modal.confirm) return;
+        const note = String(modal.content || "").trim();
+        if (note.length < 3) return wx.showToast({ title: "请填写确认内容", icon: "none" });
+        this.setData({ working: true, message: "" });
+        api.requestStaff("/api/miniapp/staff/ai-work", { method: "POST", data: { action: "record_teacher_consent", feedbackId: id, channel, note }, timeout: 30000 })
+          .then((data) => { wx.showToast({ title: "确认已记录", icon: "success" }); this.setData({ message: data.message || "确认已记录" }); return this.load(this.data.selected?.intakeId); })
+          .catch((error) => this.setData({ message: friendlyMessage(error.message, "代录确认失败") }))
+          .finally(() => this.setData({ working: false }));
+      } });
+    } });
   },
   select(event) {
     const selected = this.data.items.find((item) => item.intakeId === event.currentTarget.dataset.id) || null;

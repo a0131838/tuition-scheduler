@@ -4,8 +4,8 @@ import { campusRequiresRoom } from "@/lib/campus";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { prisma } from "@/lib/prisma";
 import { pickTeacherSessionConflict } from "@/lib/session-conflict";
-import { checkTeacherDeliveryMode, checkTeacherTravelBuffer } from "@/lib/teacher-delivery-mode";
-import { createTicketTeacherConfirmation, markTicketWaitingForTeacher } from "@/lib/ai-ticket-communication";
+import { campusDeliveryMode, checkTeacherDeliveryMode, checkTeacherTravelBuffer } from "@/lib/teacher-delivery-mode";
+import { createTicketTeacherConfirmation, finishTicketAfterFormalExecution, urgentTeacherConsentRequired } from "@/lib/ai-ticket-communication";
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
 
@@ -190,6 +190,7 @@ export async function applyMiniappSessionLocationChange(input: MiniappLocationCh
     });
     const resultText = `已调整课程地点：${checked.preview.timeText}；${checked.preview.fromLocationText} → ${checked.preview.toLocationText}。`;
     const teacherId = checked.session.teacherId ?? checked.session.class.teacherId;
+    const requiresTeacherConsent = campusDeliveryMode(checked.campus) === "HOME" || urgentTeacherConsentRequired(checked.session.startAt);
     for (const ticketId of Array.from(new Set(ticketIds))) {
       const ticket = await tx.ticket.findFirst({
         where: { id: ticketId, isArchived: false, status: { notIn: ["Completed", "Cancelled"] } },
@@ -198,11 +199,13 @@ export async function applyMiniappSessionLocationChange(input: MiniappLocationCh
       if (!ticket) throw new MiniappLocationChangeError("地点变更工单已变化，请重新预检。", 409, "TICKET_PREVIEW_STALE");
       await createTicketTeacherConfirmation(tx, {
         ticketId, teacherId, managerUserId: actor.userId, sessionId: checked.session.id,
-        title: "课程地点变更确认", detail: `${resultText}\n请老师确认已知晓。`,
+        title: requiresTeacherConsent ? "课程地点变更待同意" : "课程地点变更通知",
+        detail: requiresTeacherConsent ? `${resultText}\n这是临近开课或上门安排，请确认可以执行。` : `${resultText}\n变更已生效，请确认已知悉。`,
+        mode: requiresTeacherConsent ? "CONSENT" : "NOTICE",
       });
-      await markTicketWaitingForTeacher(tx, {
+      await finishTicketAfterFormalExecution(tx, {
         ticketId, resultText, actorUserId: actor.userId, risksNotes: String(ticket.risksNotes ?? ""),
-        logLabel: `${actor.name?.trim() || actor.email} · 移动端改地点`,
+        logLabel: `${actor.name?.trim() || actor.email} · 移动端改地点`, requiresTeacherConsent,
       });
     }
     return { preview: checked.preview, classId: locationClass.id };

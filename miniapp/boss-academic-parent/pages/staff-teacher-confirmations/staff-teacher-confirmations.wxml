@@ -5,6 +5,7 @@
   <view class="card" wx:for="{{items}}" wx:key="id">
     <view class="label">{{item.sessionSummary || '课程安排'}}</view>
     <view class="body">{{item.body}}</view>
-    <button class="btn" data-id="{{item.id}}" bindtap="confirm" loading="{{workingId === item.id}}" disabled="{{workingId}}">确认可按此安排授课</button>
+    <button class="btn" data-id="{{item.id}}" bindtap="confirm" loading="{{workingId === item.id}}" disabled="{{workingId}}">{{item.confirmationMode === 'NOTICE' ? '确认已知悉' : '同意按此安排授课'}}</button>
+    <button class="issue-btn" data-id="{{item.id}}" bindtap="reportIssue" disabled="{{workingId}}">安排有问题，通知教务</button>
   </view>
 </view>

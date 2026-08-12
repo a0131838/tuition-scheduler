@@ -19,6 +19,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       teacher: true,
       class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
       attendances: { where: { studentId }, take: 1 },
+      managerFeedbacks: { where: { category: "ACTION_REQUIRED", requiresAck: true, acknowledgedAt: null, archivedAt: null }, select: { id: true }, take: 1 },
     },
     orderBy: { startAt: "asc" },
     take: 500,
@@ -30,8 +31,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
     to: to.toISOString(),
     sessions: sessions.map((session) => {
       const attendance = session.attendances[0];
+      const pendingTeacherConsent = session.startAt > now && session.managerFeedbacks.length > 0;
       const status = attendance?.status === "EXCUSED"
         ? { label: "已请假", tone: "muted" }
+        : pendingTeacherConsent
+          ? { label: "暂定·待老师同意", tone: "pending" }
         : session.endAt <= now
           ? { label: "已完成", tone: "done" }
           : session.startAt <= now
@@ -43,6 +47,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
         timeRange: `${formatBusinessTimeOnly(session.startAt)}–${formatBusinessTimeOnly(session.endAt)}`,
         statusLabel: status.label,
         statusTone: status.tone,
+        pendingTeacherConsent,
       };
     }),
   });

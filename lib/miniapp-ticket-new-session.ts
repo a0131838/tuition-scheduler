@@ -3,11 +3,12 @@ import { Prisma } from "@prisma/client";
 import { campusRequiresRoom } from "@/lib/campus";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { applyLinkedTicketSchedulingAction } from "@/lib/ticket-scheduling-action-write";
-import { createTicketTeacherConfirmation, markTicketWaitingForTeacher } from "@/lib/ai-ticket-communication";
+import { createTicketTeacherConfirmation, finishTicketAfterFormalExecution, isFirstTeacherForStudents, teacherConsentRequired } from "@/lib/ai-ticket-communication";
 import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 import { pickStudentSessionConflict, pickTeacherSessionConflict } from "@/lib/session-conflict";
 import { isSessionDuplicateError } from "@/lib/session-unique";
 import { checkTeacherSchedulingAvailability } from "@/lib/teacher-scheduling-availability";
+import { campusDeliveryMode } from "@/lib/teacher-delivery-mode";
 import { prisma } from "@/lib/prisma";
 import { NEW_SESSION_TICKET_TYPES } from "@/lib/miniapp-scheduling-coordination-board";
 
@@ -491,11 +492,19 @@ export async function applyTicketNewSession(input: TicketNewSessionInput, actor:
         });
         ticketAllResolved = actionState.allResolved;
         await tx.ticket.update({ where: { id: checked.ticket.id }, data: { studentId: checked.student.id } });
-        for (const row of Array.from(new Map(checkedRows.map((item) => [item.teacher.id, item])).values())) {
-          await createTicketTeacherConfirmation(tx, { ticketId: checked.ticket.id, teacherId: row.teacher.id, managerUserId: actor.userId, title: "新课程安排确认", detail: `${completionResult}\n请确认可以按整批安排授课。` });
+        let requiresTeacherConsent = false;
+        const earliestByTeacher = new Map<string, (typeof checkedRows)[number]>();
+        for (const row of checkedRows) {
+          const current = earliestByTeacher.get(row.teacher.id);
+          if (!current || row.startAt < current.startAt) earliestByTeacher.set(row.teacher.id, row);
+        }
+        for (const row of earliestByTeacher.values()) {
+          const consent = teacherConsentRequired({ startAt: row.startAt, isHome: campusDeliveryMode(row.campus) === "HOME", isFirstTeacher: await isFirstTeacherForStudents(tx, { teacherId: row.teacher.id, studentIds: [checked.student.id], before: row.startAt }) });
+          requiresTeacherConsent ||= consent;
+          await createTicketTeacherConfirmation(tx, { ticketId: checked.ticket.id, teacherId: row.teacher.id, managerUserId: actor.userId, title: consent ? "新课程安排待同意" : "新课程安排通知", detail: consent ? `${completionResult}\n首次授课或临近开课，请确认同意按整批安排授课。` : `${completionResult}\n安排已生效，请确认已知悉。`, mode: consent ? "CONSENT" : "NOTICE" });
         }
         if (actionState.allResolved) {
-          await markTicketWaitingForTeacher(tx, { ticketId: checked.ticket.id, resultText: completionResult, actorUserId: actor.userId, risksNotes: previousNotes, logLabel: `${actorName} · 移动端新排课` });
+          await finishTicketAfterFormalExecution(tx, { ticketId: checked.ticket.id, resultText: completionResult, actorUserId: actor.userId, risksNotes: previousNotes, logLabel: `${actorName} · 移动端新排课`, requiresTeacherConsent });
         } else {
           await tx.ticket.update({ where: { id: checked.ticket.id }, data: { status: "Confirmed", systemUpdated: "Y", finalSchedule: completionResult, parentCompletionResult: completionResult, nextAction: `本次排课已完成，仍有 ${actionState.unresolved} 个动作待执行。`, nextActionDue: checked.ticket.nextActionDue, risksNotes: previousNotes ? `${previousNotes}\n\n${log}` : log, lastUpdateAt: now, completedAt: null, completedByUserId: null } });
         }

@@ -46,6 +46,7 @@
       <view class="session-time">{{nextSession.startText}}</view>
       <view class="session-course">{{nextSession.courseLabel}}</view>
       <view class="session-meta">{{nextSession.teacherName || "老师待确认"}} · {{nextSession.mode === "ONLINE" ? "线上" : (nextSession.campusName || "地点待确认")}}</view>
+      <view class="session-meta" wx:if="{{nextSession.pendingTeacherConsent}}">暂定安排，老师同意后我们会立即通知您</view>
     </view>
     <view class="quiet-empty" wx:else>目前没有已确认的近期课程</view>
 

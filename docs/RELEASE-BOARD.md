@@ -1,5 +1,7 @@
 # RELEASE BOARD
 
+- `2026-08-12-r363`: ready for guarded release. Parent-first teacher communication separates non-blocking acknowledgement from actual consent. Only first-teacher, home and under-24-hour arrangements wait for consent; staff can record phone/WeChat consent with an audit note, and teachers can raise an issue without silently reverting formal lessons. TypeScript, 20 focused tests, 247-page build and isolated Docker UAT passed.
+
 - `2026-08-12-r362`: ready for guarded release. The cancellation path now uses the formal package selector, preserving the existing `GROUP_MINUTES` before `GROUP_COUNT` priority even when both packages are active. TypeScript, focused tests and local Docker PostgreSQL UAT passed; no production data was used or changed.
 
 - `2026-08-12-r361`: live at commit `9b5a757cf7c4d6a5e31f990627f9965e09562a83` (PM2 PID `391229`, login health `200`). Corrects the charged-cancellation package-mode gap: HOURS_MINUTES, GROUP_MINUTES, legacy GROUP_COUNT, MONTHLY and shared-package access now use formal attendance/package rules.

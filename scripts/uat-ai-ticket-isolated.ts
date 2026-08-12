@@ -139,7 +139,7 @@ async function main() {
   await previewMiniappSessionReschedulingBatch(rescheduleInputs);
   const rescheduleResult = await applyMiniappSessionReschedulingBatch(rescheduleInputs, actor, [rescheduleTicket.id]);
   assert.equal(rescheduleResult.writtenSessionIds.length, 2);
-  assert.equal((await prisma.ticket.findUniqueOrThrow({ where: { id: rescheduleTicket.id } })).status, "Waiting Teacher");
+  assert.equal((await prisma.ticket.findUniqueOrThrow({ where: { id: rescheduleTicket.id } })).status, "Completed");
   await acknowledgeTicket(rescheduleTicket.id);
   assert.equal((await prisma.ticket.findUniqueOrThrow({ where: { id: rescheduleTicket.id } })).status, "Completed");
 
@@ -148,6 +148,7 @@ async function main() {
   await previewMiniappSessionCancellation(noChargeInput);
   const balanceBeforeNoCharge = (await prisma.coursePackage.findFirstOrThrow({ where: { studentId: student.id, courseId: course.id } })).remainingMinutes;
   await applyMiniappSessionCancellation(noChargeInput, actor, [noChargeTicket.id]);
+  assert.equal((await prisma.ticket.findUniqueOrThrow({ where: { id: noChargeTicket.id } })).status, "Completed");
   await acknowledgeTicket(noChargeTicket.id);
   const balanceAfterNoCharge = (await prisma.coursePackage.findFirstOrThrow({ where: { studentId: student.id, courseId: course.id } })).remainingMinutes;
   assert.equal(balanceAfterNoCharge, balanceBeforeNoCharge);
@@ -157,6 +158,7 @@ async function main() {
   await previewMiniappSessionCancellation(chargeInput);
   const balanceBeforeCharge = (await prisma.coursePackage.findFirstOrThrow({ where: { studentId: student.id, courseId: course.id } })).remainingMinutes!;
   await applyMiniappSessionCancellation(chargeInput, actor, [chargeTicket.id]);
+  assert.equal((await prisma.ticket.findUniqueOrThrow({ where: { id: chargeTicket.id } })).status, "Completed");
   await acknowledgeTicket(chargeTicket.id);
   const balanceAfterCharge = (await prisma.coursePackage.findFirstOrThrow({ where: { studentId: student.id, courseId: course.id } })).remainingMinutes!;
   assert.equal(balanceAfterCharge, balanceBeforeCharge - 60);

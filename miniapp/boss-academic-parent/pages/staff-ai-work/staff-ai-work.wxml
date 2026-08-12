@@ -14,6 +14,14 @@
       <view class="queue-due" wx:if="{{item.dueLabel}}">最晚处理：{{item.dueLabel}}</view>
     </view>
   </view>
+  <view class="teacher-consents" wx:if="{{!selected && pendingTeacherConsents.length}}">
+    <view class="section-label">紧急安排 · 等老师同意</view>
+    <view class="consent-card" wx:for="{{pendingTeacherConsents}}" wx:key="id">
+      <view class="consent-title">{{item.studentName}} · {{item.teacherName}}</view><view class="consent-time">{{item.createdAt}}</view>
+      <view class="consent-detail">{{item.detail}}</view>
+      <button class="secondary" data-id="{{item.id}}" bindtap="recordTeacherConsent" disabled="{{working}}">记录电话/微信确认</button>
+    </view>
+  </view>
   <view class="case" wx:if="{{selected}}">
     <view class="case-nav" bindtap="backToQueue"><text class="back-arrow">‹</text><text>返回待办</text></view>
     <view class="case-kicker">正式工单</view><view class="case-title">{{selected.title}}</view>

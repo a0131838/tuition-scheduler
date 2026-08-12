@@ -7,6 +7,7 @@ import {
   verifyAiTicketExecutionToken,
 } from "../lib/ai-ticket-execution";
 import { validateTicketNewSessionBatchShape } from "../lib/miniapp-ticket-new-session";
+import { teacherConsentRequired, urgentTeacherConsentRequired } from "../lib/ai-ticket-communication";
 import { readFileSync } from "node:fs";
 
 const secret = "test-ai-ticket-execution-secret-32-characters";
@@ -185,7 +186,7 @@ test("new-student multi-subject miniapp keeps an independent three-teacher order
   assert.match(bridgeSource, /miniapp-ai\/subject-teacher-plan/);
 });
 
-test("teacher confirmation closes the ticket and queues the parent update from either teacher entry", () => {
+test("teacher notice does not block parents while consent exceptions still close after acknowledgement", () => {
   const dashboard = readFileSync(new URL("../app/api/miniapp/staff/teacher/dashboard/route.ts", import.meta.url), "utf8");
   const dedicatedRoute = readFileSync(new URL("../app/api/miniapp/staff/teacher/arrangement-confirmations/[feedbackId]/route.ts", import.meta.url), "utf8");
   const reportsRoute = readFileSync(new URL("../app/api/miniapp/staff/teacher/reports/route.ts", import.meta.url), "utf8");
@@ -195,4 +196,28 @@ test("teacher confirmation closes the ticket and queues the parent update from e
   assert.match(dedicatedRoute, /queueMiniappNotificationsForStudent/);
   assert.match(reportsRoute, /ACK_MANAGER_FEEDBACK[\s\S]*queueMiniappNotificationsForStudent/);
   assert.match(home, /课程安排确认/);
+});
+
+test("teacher consent is limited to first-teacher, home and under-24-hour exceptions", () => {
+  const now = new Date("2026-08-12T00:00:00.000Z");
+  assert.equal(urgentTeacherConsentRequired(new Date("2026-08-12T23:59:00.000Z"), now), true);
+  assert.equal(urgentTeacherConsentRequired(new Date("2026-08-13T00:00:00.000Z"), now), false);
+  assert.equal(teacherConsentRequired({ startAt: new Date("2026-08-20T00:00:00.000Z"), isHome: false, isFirstTeacher: false }, now), false);
+  assert.equal(teacherConsentRequired({ startAt: new Date("2026-08-20T00:00:00.000Z"), isHome: true, isFirstTeacher: false }, now), true);
+  assert.equal(teacherConsentRequired({ startAt: new Date("2026-08-20T00:00:00.000Z"), isHome: false, isFirstTeacher: true }, now), true);
+});
+
+test("teacher miniapp separates notice, consent, issue reporting and staff-recorded consent", () => {
+  const communication = readFileSync(new URL("../lib/ai-ticket-communication.ts", import.meta.url), "utf8");
+  const feedback = readFileSync(new URL("../lib/manager-teacher-feedback.ts", import.meta.url), "utf8");
+  const confirmationView = readFileSync(new URL("../miniapp/boss-academic-parent/pages/staff-teacher-confirmations/staff-teacher-confirmations.wxml", import.meta.url), "utf8");
+  const confirmationRoute = readFileSync(new URL("../app/api/miniapp/staff/teacher/arrangement-confirmations/[feedbackId]/route.ts", import.meta.url), "utf8");
+  const aiWorkRoute = readFileSync(new URL("../app/api/miniapp/staff/ai-work/route.ts", import.meta.url), "utf8");
+  assert.match(communication, /ARRANGEMENT_NOTICE/);
+  assert.match(feedback, /STAFF_RECORDED_TEACHER_CONSENT/);
+  assert.match(confirmationView, /确认已知悉/);
+  assert.match(confirmationView, /同意按此安排授课/);
+  assert.match(confirmationView, /安排有问题，通知教务/);
+  assert.match(confirmationRoute, /TEACHER_REPORTED_ARRANGEMENT_ISSUE/);
+  assert.match(aiWorkRoute, /record_teacher_consent/);
 });
