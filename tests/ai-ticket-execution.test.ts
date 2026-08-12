@@ -156,3 +156,16 @@ test("staff AI work shows a direct queue-to-detail flow, complete calendar revie
   assert.match(pageSource, /dueLabel:\s*singaporeDateTimeLabel/);
   assert.doesNotMatch(pageSource, /String\(item\.(?:startAt|operation\?\.dueAt)\)\.replace\("T"/);
 });
+
+test("new-student multi-subject miniapp keeps an independent three-teacher order per subject", () => {
+  const pageSource = readFileSync(new URL("../miniapp/boss-academic-parent/pages/staff-ai-work/staff-ai-work.js", import.meta.url), "utf8");
+  const pageView = readFileSync(new URL("../miniapp/boss-academic-parent/pages/staff-ai-work/staff-ai-work.wxml", import.meta.url), "utf8");
+  const bridgeSource = readFileSync(new URL("../app/api/miniapp/staff/ai-work/route.ts", import.meta.url), "utf8");
+  assert.match(pageView, /按科目确认老师顺序/);
+  assert.match(pageView, /主选老师/);
+  assert.match(pageView, /第一备选/);
+  assert.match(pageView, /第二备选/);
+  assert.match(pageSource, /subjectTeacherPreferences/);
+  assert.match(pageSource, /同一科目不能重复选择老师/);
+  assert.match(bridgeSource, /miniapp-ai\/subject-teacher-plan/);
+});

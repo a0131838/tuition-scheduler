@@ -107,6 +107,22 @@ function sessionLabel(item) {
   return `${time} · ${item.courseName || "课程"} · ${item.teacherName || "老师待确认"}`;
 }
 
+function subjectTeacherPlans(plans) {
+  return (plans || []).filter((plan) => plan.ready && (plan.availableTeachers || []).length).map((plan) => {
+    const teachers = plan.availableTeachers || [];
+    const backupTeachers = [{ teacherId: "", teacherName: "不设置" }, ...teachers];
+    const selected = plan.preferredTeacherIds || [];
+    const indexFor = (id) => Math.max(0, teachers.findIndex((teacher) => teacher.teacherId === id));
+    const backupIndexFor = (id) => id ? Math.max(1, backupTeachers.findIndex((teacher) => teacher.teacherId === id)) : 0;
+    return {
+      subject: plan.subject, teachers, backupTeachers,
+      primaryIndex: indexFor(selected[0]), backup1Index: backupIndexFor(selected[1]), backup2Index: backupIndexFor(selected[2]),
+      primaryId: selected[0] || teachers[0]?.teacherId || "",
+      backup1Id: selected[1] || "", backup2Id: selected[2] || "",
+    };
+  });
+}
+
 function present(item) {
   const action = actionFor(item);
   const blockers = item.executionPreview?.blockers || item.operation?.blockers || [];
@@ -135,7 +151,7 @@ Page({
   data: {
     weekdays: ['一', '二', '三', '四', '五', '六', '日'],
     items: [], selected: null, loading: false, working: false, message: "", pendingReview: null,
-    targetOptions: [], targetIndex: -1, teacherOptions: [], teacherIndex: -1,
+    targetOptions: [], targetIndex: -1, teacherOptions: [], teacherIndex: -1, subjectPlans: [], subjectPlanLoading: false,
     decision: { targetSessionId: "", targetSessionLabel: "点击选择具体课次", chargeValue: "", note: "", newTeacherId: "", newTeacherName: "点击选择老师", reason: "" },
   },
   onShow() { this.load(); },
@@ -175,7 +191,7 @@ Page({
     const targetSessionId = item.targetSession?.id || "";
     const targetIndex = targetOptions.findIndex((row) => row.id === targetSessionId);
     this.setData({
-      targetOptions, targetIndex, teacherOptions: [], teacherIndex: -1,
+      targetOptions, targetIndex, teacherOptions: [], teacherIndex: -1, subjectPlans: [],
       decision: {
         targetSessionId, targetSessionLabel: targetIndex >= 0 ? targetOptions[targetIndex].label : "点击选择具体课次",
         chargeValue: "", note: item.cancellationReason?.label || "",
@@ -183,6 +199,31 @@ Page({
       },
     });
     if (item.workflowKey === "CHANGE_TEACHER" && targetSessionId) this.loadTeachers(targetSessionId);
+    if (item.workflowKey === "NEW_SCHEDULE" && item.formalTicketId) this.loadSubjectTeachers(item);
+  },
+  loadSubjectTeachers(item, preferences = {}) {
+    this.setData({ subjectPlanLoading: true });
+    return api.requestStaff("/api/miniapp/staff/ai-work", {
+      method: "POST", data: { action: "subject_teacher_plan", intakeId: item.intakeId, ticketId: item.formalTicketId, subjectTeacherPreferences: preferences }, timeout: 60000,
+    }).then((result) => this.setData({ subjectPlans: subjectTeacherPlans(result.subjectPlans) }))
+      .catch((error) => this.setData({ message: friendlyMessage(error.message, "老师候选读取失败") }))
+      .finally(() => this.setData({ subjectPlanLoading: false }));
+  },
+  chooseSubjectTeacher(event) {
+    const subjectIndex = Number(event.currentTarget.dataset.subjectIndex);
+    const role = String(event.currentTarget.dataset.role || "");
+    const teacherIndex = Number(event.detail.value);
+    const plan = this.data.subjectPlans[subjectIndex];
+    const teacher = role === "primary" ? plan?.teachers?.[teacherIndex] : plan?.backupTeachers?.[teacherIndex];
+    if (!plan || !teacher || !["primary", "backup1", "backup2"].includes(role)) return;
+    const idKey = `${role}Id`;
+    const indexKey = `${role}Index`;
+    const duplicate = Boolean(teacher.teacherId) && ["primaryId", "backup1Id", "backup2Id"].some((key) => key !== idKey && plan[key] === teacher.teacherId);
+    if (duplicate) return wx.showToast({ title: "同一科目不能重复选择老师", icon: "none" });
+    this.setData({ [`subjectPlans[${subjectIndex}].${idKey}`]: teacher.teacherId, [`subjectPlans[${subjectIndex}].${indexKey}`]: teacherIndex });
+  },
+  subjectTeacherPreferences() {
+    return Object.fromEntries((this.data.subjectPlans || []).map((plan) => [plan.subject, [plan.primaryId, plan.backup1Id, plan.backup2Id].filter(Boolean)]));
   },
   chooseTarget(event) {
     const targetIndex = Number(event.detail.value);
@@ -231,6 +272,7 @@ Page({
         action: "prepare", intakeId: item.intakeId,
         ...(item.workflowKey === "CANCEL_LESSON" ? { charge: decision.chargeValue === "true", note: decision.note.trim() } : {}),
         ...(item.workflowKey === "CHANGE_TEACHER" ? { newTeacherId: decision.newTeacherId, reason: decision.reason.trim() } : {}),
+        ...(item.workflowKey === "NEW_SCHEDULE" ? { subjectTeacherPreferences: this.subjectTeacherPreferences() } : {}),
       }, timeout: 60000,
     }).then((result) => result.package));
     prepare.then((prepared) => {

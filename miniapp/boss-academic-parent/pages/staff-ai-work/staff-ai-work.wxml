@@ -50,6 +50,17 @@
       </picker>
       <textarea class="input" value="{{decision.reason}}" bindinput="editReason" placeholder="换老师原因" maxlength="500" auto-height />
     </view>
+    <view class="decision subject-teachers" wx:if="{{selected.workflowKey === 'NEW_SCHEDULE' && subjectPlans.length}}">
+      <view class="decision-label">按科目确认老师顺序</view>
+      <view class="subject-teacher" wx:for="{{subjectPlans}}" wx:key="subject" wx:for-item="subjectPlan" wx:for-index="subjectIndex">
+        <view class="subject-name">{{subjectPlan.subject}}</view>
+        <view class="teacher-row"><text>主选老师</text><picker mode="selector" range="{{subjectPlan.teachers}}" range-key="teacherName" value="{{subjectPlan.primaryIndex}}" data-subject-index="{{subjectIndex}}" data-role="primary" bindchange="chooseSubjectTeacher"><view class="picker compact">{{subjectPlan.teachers[subjectPlan.primaryIndex].teacherName}}</view></picker></view>
+        <view class="teacher-row"><text>第一备选</text><picker mode="selector" range="{{subjectPlan.backupTeachers}}" range-key="teacherName" value="{{subjectPlan.backup1Index}}" data-subject-index="{{subjectIndex}}" data-role="backup1" bindchange="chooseSubjectTeacher"><view class="picker compact">{{subjectPlan.backupTeachers[subjectPlan.backup1Index].teacherName}}</view></picker></view>
+        <view class="teacher-row"><text>第二备选</text><picker mode="selector" range="{{subjectPlan.backupTeachers}}" range-key="teacherName" value="{{subjectPlan.backup2Index}}" data-subject-index="{{subjectIndex}}" data-role="backup2" bindchange="chooseSubjectTeacher"><view class="picker compact">{{subjectPlan.backupTeachers[subjectPlan.backup2Index].teacherName}}</view></picker></view>
+      </view>
+      <view class="decision-help">AI已按资质、可用时间和覆盖率预填；每个科目独立计算。</view>
+    </view>
+    <view class="notice" wx:if="{{selected.workflowKey === 'NEW_SCHEDULE' && subjectPlanLoading}}">正在读取各科合资格老师…</view>
     <view class="review" wx:if="{{pendingReview}}">
       <view class="review-title">确认前请核对完整方案</view>
       <view class="review-count">共 {{pendingReview.commandCount}} 项正式操作</view>
