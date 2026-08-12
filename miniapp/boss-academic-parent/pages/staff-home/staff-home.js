@@ -24,6 +24,7 @@ Page({
     isTeacher: false,
     isManager: false,
     isAcademic: false,
+    isObserver: false,
     workspaceSubtitle: "课程、请求与服务事务",
     workSectionTitle: "工作入口",
     workSectionHint: "按优先级处理今天的工作",
@@ -91,6 +92,20 @@ Page({
 
   refreshPresentation() {
     const data = this.data;
+    if (data.isObserver) {
+      this.setData({
+        workspaceSubtitle: "全系统观察视图，不可新增、修改、审批、发送或删除",
+        workSectionTitle: "只读工作入口",
+        workSectionHint: "可以查看课程、工单、运营与 AI 处理结果",
+        priorityLabel: "观察者账号",
+        priorityTitle: "当前为只读访问",
+        priorityMeta: "所有业务写入操作已由服务器禁用",
+        priorityAction: "查看课程工作台",
+        priorityTone: "tone-watch",
+        priorityTarget: "schedule"
+      });
+      return;
+    }
     if (data.isTeacher) {
       const next = data.nextTeacherSession;
       const hasUrgent = data.teacherUrgentCount > 0;
@@ -150,7 +165,8 @@ Page({
           staffName: staff.name || "",
           staffNameText: staff.name || "员工工作台",
           role: staff.role || "",
-          roleText: roleLabels[staff.role] || "员工工作台",
+          roleText: staff.isObserver ? "观察者账号" : (roleLabels[staff.role] || "员工工作台"),
+          isObserver: Boolean(staff.isObserver),
           isTeacher: staff.role === "TEACHER",
           isManager: staff.role === "ADMIN",
           isAcademic: staff.role === "CS"

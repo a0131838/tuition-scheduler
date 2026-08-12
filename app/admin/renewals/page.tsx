@@ -6,7 +6,7 @@ import RenewalWorkbenchClient from "./RenewalWorkbenchClient";
 export default async function RenewalWorkbenchPage() {
   const user = await requireRenewalCenterUser();
   const lang = await getLang();
-  await syncRenewalTasks(user);
+  if (!user.isObserver) await syncRenewalTasks(user);
   const [rows, cohortCounts] = await Promise.all([
     listRenewalTasks({ status: "OPEN", cohort: "BOSS_OTHER", limit: 300 }),
     getRenewalCohortCounts("OPEN"),

@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import crypto from "crypto";
 import { canAccessResourceWorkspaceRole, StaffWorkspace, SystemUserRole } from "@/lib/staff-roles";
+import { observerSessionToken } from "@/lib/observer-mode";
 
 const SESSION_COOKIE = "ts_admin_session";
 const SESSION_DAYS = 30;
@@ -19,6 +20,7 @@ type AuthUser = {
   teacherId: string | null;
   workspaces: StaffWorkspace[];
   trainingRoles: SystemUserRole[];
+  isObserver: boolean;
 };
 
 function managerEmailSet() {
@@ -139,7 +141,10 @@ export async function verifyPassword(password: string, salt: string, hash: strin
 }
 
 export async function createSession(userId: string) {
-  const token = crypto.randomBytes(32).toString("hex");
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { isObserver: true } });
+  if (!user) throw new Error("User not found");
+  const baseToken = crypto.randomBytes(32).toString("hex");
+  const token = user.isObserver ? await observerSessionToken(baseToken) : baseToken;
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
 
   await prisma.authSession.create({
@@ -204,6 +209,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     teacherId: u.teacherId ?? null,
     workspaces: u.workspaceAccesses.map((item) => item.workspace as StaffWorkspace),
     trainingRoles: u.trainingRoleAssignments.map((item) => item.role as SystemUserRole),
+    isObserver: u.isObserver,
   };
 }
 

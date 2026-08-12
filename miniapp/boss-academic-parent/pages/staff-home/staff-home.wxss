@@ -5,6 +5,7 @@
 .today-text { color: #7a7f87; font-size: 23rpx; }
 .workspace-title { margin-top: 22rpx; color: #17191d; font-size: 46rpx; font-weight: 800; line-height: 1.15; letter-spacing: -1rpx; }
 .workspace-subtitle { margin-top: 10rpx; color: #626871; font-size: 25rpx; line-height: 1.5; }
+.observer-notice { margin: 0 0 24rpx; padding: 20rpx 22rpx; border: 1rpx solid #e8b54b; border-radius: 12rpx; background: #fff8df; color: #7c4500; font-size: 23rpx; font-weight: 700; line-height: 1.5; }
 
 .priority-panel { position: relative; overflow: hidden; padding: 30rpx 30rpx 28rpx; border-radius: 18rpx; background: #20242a; color: #fff; box-shadow: 0 14rpx 36rpx rgba(29, 33, 39, 0.14); }
 .priority-panel::after { content: ""; position: absolute; right: -44rpx; bottom: -84rpx; width: 210rpx; height: 210rpx; border: 34rpx solid rgba(255, 255, 255, 0.06); border-radius: 50%; }

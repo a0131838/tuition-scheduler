@@ -6940,3 +6940,11 @@
 - Task doc: `docs/tasks/TASK-20260811-ai-work-singapore-time-display-r263.md`
 - Production: functional commit `bb7c8f4e`, 123 migrations current, 246-page build, PM2 PID `4154640`, login health 200; AI functional commit `b04088f`, health 200.
 - Mini Program: 1.0.50 upload was attempted after opening the project with AppID `wxe7017f8545e8ad49`, but WeChat returned platform error 41002. The development-version upload is pending and must not be reported as complete.
+# 2026-08-12-r360 Ready
+
+- Scope: activate a cross-channel observer account for Wang Jie across the SGT web system, staff miniapp and signed AI workspace.
+- Visibility: keep ADMIN-level read visibility, including finance, without exposing any business write capability.
+- Safety: signed observer web sessions, middleware mutation denial, request-context Prisma write guard, miniapp mutation denial, AI VIEWER delegation, session invalidation and owner-only access control.
+- Validation: Prisma generation, TypeScript, focused observer/delegation/route tests, miniapp JavaScript syntax, 246-page production build and release preflight.
+- Activation after deploy: mark the existing `wangjie.admin@123.com` account as observer, revoke old sessions and issue one new miniapp binding invite.
+- Task doc: `docs/tasks/TASK-20260812-wangjie-cross-channel-observer.md`

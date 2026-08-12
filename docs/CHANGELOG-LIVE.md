@@ -11046,3 +11046,11 @@ This file is the single source of truth for what changed in production.
 - 老师日期可用时间不足统一翻译为中文操作建议，不再向员工暴露 `availability`、`No date slots`、`MISSING_COMMAND_INPUT` 或 `NO_FEASIBLE_SCHEDULE`。
 - 只修改员工小程序的解释与展示，不修改正式排课、课包、课时、考勤、工资或财务业务逻辑。
 - TypeScript、68页小程序发布审计与差异检查通过；待微信开发者工具上传后进行真机验收。
+# 2026-08-12-r360
+
+- Added an explicit observer mode for existing staff accounts while preserving broad ADMIN visibility.
+- Observer web sessions are cryptographically marked in the primary session token; all non-read HTTP methods and request-context database writes are rejected.
+- Observer miniapp sessions can read staff workspaces but cannot create, edit, approve, send, upload or delete. AI delegation is always reduced to VIEWER.
+- Added owner-only observer account controls, forced web/miniapp sign-out after access changes, audit logging and clear read-only notices on web and miniapp.
+- Viewing renewals, health, action center, alerts or shared documents as an observer no longer triggers their page-level synchronization writes.
+- No scheduling, attendance, package, billing, receipt, payroll or ticket business rules were changed.

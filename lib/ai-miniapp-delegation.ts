@@ -8,9 +8,9 @@ const ROLE_MAP: Record<string, string> = {
   TEACHER: "VIEWER",
 };
 
-export function issueAiMiniappDelegation(input: { id: string; name: string | null; role: string }, secret: string, now = Date.now()) {
+export function issueAiMiniappDelegation(input: { id: string; name: string | null; role: string; isObserver?: boolean }, secret: string, now = Date.now()) {
   if (secret.length < 32) throw new Error("AI miniapp integration is not configured");
-  const role = ROLE_MAP[input.role];
+  const role = input.isObserver ? "VIEWER" : ROLE_MAP[input.role];
   if (!role) throw new Error("Current staff role cannot access AI work");
   const payload = Buffer.from(JSON.stringify({
     aud: "sgt-ai-os", sub: input.id, displayName: input.name || input.id, role,

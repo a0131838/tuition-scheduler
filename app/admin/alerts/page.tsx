@@ -109,17 +109,16 @@ export default async function AdminAlertsPage({
 }: {
   searchParams?: Promise<{ msg?: string; err?: string; focus?: string }>;
 }) {
-  await requireAdmin();
+  const user = await requireAdmin();
   const lang = await getLang();
   const sp = await searchParams;
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
   const focus = (sp?.focus ?? "all") as AlertFocus;
 
-  const [{ thresholdMin }, threshold] = await Promise.all([
-    syncSignInAlerts(),
-    getSignInAlertThresholdMin(),
-  ]);
+  const thresholdMin = user.isObserver
+    ? await getSignInAlertThresholdMin()
+    : (await syncSignInAlerts()).thresholdMin;
 
   const alerts = await getAdminOpenSignInAlerts(300);
 

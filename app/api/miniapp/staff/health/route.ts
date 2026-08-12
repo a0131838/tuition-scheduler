@@ -14,7 +14,7 @@ export async function GET(req: Request) {
   if (!auth.ok) return auth.response;
   if (!(await canUseMiniappApprovalDesk(auth.user))) return bad("Management permission required", 403);
   const now = new Date();
-  await syncRenewalTasks(auth.user);
+  if (!auth.user.isObserver) await syncRenewalTasks(auth.user);
   const recent = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const [unowned, overdue, waitingInfo, corrections, feedbackReview, feedbackSend, renewalOpen, renewalXdf, renewalUrgent, renewalOverdue, failedReminders, dueLeads, approvalData, sessions] = await Promise.all([
     prisma.ticket.count({ where: { isArchived: false, status: { in: OPEN_TICKETS }, OR: [{ owner: null }, { owner: "" }] } }),

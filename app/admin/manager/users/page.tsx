@@ -18,6 +18,7 @@ import SystemUserUpdateFormClient from "./_components/SystemUserUpdateFormClient
 import SystemUserActionsClient from "./_components/SystemUserActionsClient";
 import UserWorkspaceAccessFormClient from "./_components/UserWorkspaceAccessFormClient";
 import UserTrainingRoleFormClient from "./_components/UserTrainingRoleFormClient";
+import UserObserverModeClient from "./_components/UserObserverModeClient";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { StaffWorkspace, SystemUserRole } from "@/lib/staff-roles";
 
@@ -350,6 +351,7 @@ export default async function ManagerUsersPage({
                       {t(lang, "Created", "创建")}: {formatBusinessDateTime(u.createdAt)}
                       {isManager ? ` | ${t(lang, "Manager", "管理者")}` : ""}
                       {isTeacherLead ? ` | ${t(lang, "Teacher Lead", "老师主管")}` : ""}
+                      {u.isObserver ? ` | ${t(lang, "Observer (read-only)", "观察者（只读）")}` : ""}
                     </div>
                   </td>
                   <td>
@@ -427,6 +429,18 @@ export default async function ManagerUsersPage({
                     <td>
                       {rowEditable ? (
                         <>
+                          {canEditWorkspaces ? (
+                            <UserObserverModeClient
+                              userId={u.id}
+                              enabled={u.isObserver}
+                              labels={{
+                                observer: t(lang, "Observer mode", "观察者模式"),
+                                save: t(lang, "Apply access change", "应用权限变更"),
+                                confirm: t(lang, "Change observer mode and sign this user out everywhere?", "确认更改观察者权限，并让该账号在网页和小程序全部退出？"),
+                                errorPrefix: t(lang, "Error", "错误"),
+                              }}
+                            />
+                          ) : null}
                           <SystemUserActionsClient
                             userId={u.id}
                             canManagePassword={canViewAllPasswordControls}

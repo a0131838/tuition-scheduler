@@ -1205,6 +1205,7 @@ model User {
   teacherId    String?      @unique
   passwordHash String
   passwordSalt String
+  isObserver   Boolean      @default(false)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 

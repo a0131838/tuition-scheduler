@@ -2,12 +2,16 @@ import { prisma } from "@/lib/prisma";
 import { bearerToken, bad } from "@/app/api/miniapp/_lib";
 import { getStaffMiniappSession } from "@/lib/miniapp-staff";
 import { schedulingActionInclude } from "@/lib/ticket-scheduling-actions";
+import { isMutationMethod } from "@/lib/observer-mode";
 
 export async function requireMiniappStaff(req: Request) {
   const token = bearerToken(req);
   if (!token) return { ok: false as const, response: bad("Unauthorized", 401) };
   const session = await getStaffMiniappSession(token);
   if (!session) return { ok: false as const, response: bad("Unauthorized", 401) };
+  if (session.user.isObserver && isMutationMethod(req.method) && !new URL(req.url).pathname.endsWith("/auth/logout")) {
+    return { ok: false as const, response: bad("观察者账号为只读，不能执行此操作 / Observer account is read-only", 403) };
+  }
   return { ok: true as const, session, user: session.user };
 }
 

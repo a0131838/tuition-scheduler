@@ -50,6 +50,7 @@ export function staffMiniappUserDto(user: {
   name: string;
   role: string;
   teacherId: string | null;
+  isObserver: boolean;
   workspaceAccesses?: Array<{ workspace: string }>;
 }) {
   return {
@@ -58,6 +59,7 @@ export function staffMiniappUserDto(user: {
     name: user.name,
     role: user.role,
     teacherId: user.teacherId,
+    isObserver: user.isObserver,
     workspaces: (user.workspaceAccesses ?? []).map((x) => x.workspace),
   };
 }

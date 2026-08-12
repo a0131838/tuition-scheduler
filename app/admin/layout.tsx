@@ -676,6 +676,24 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </div>
           </div>
 
+          {user.isObserver ? (
+            <div
+              role="status"
+              style={{
+                margin: "0 0 14px",
+                padding: "12px 14px",
+                border: "1px solid #f59e0b",
+                borderRadius: 8,
+                background: "#fffbeb",
+                color: "#92400e",
+                fontWeight: 800,
+                lineHeight: 1.45,
+              }}
+            >
+              {t(lang, "Observer account: view-only access. Creating, editing, approving, sending and deleting are disabled.", "观察者账号：仅可查看。新增、修改、审批、发送和删除均已禁用。")}
+            </div>
+          ) : null}
+
           {ledgerAlert && ledgerAlert.totalIssueCount > 0 ? (
             <div
               style={{

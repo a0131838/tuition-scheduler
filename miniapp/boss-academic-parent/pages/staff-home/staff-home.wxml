@@ -8,6 +8,10 @@
     <view class="workspace-subtitle">{{workspaceSubtitle}}</view>
   </view>
 
+  <view class="observer-notice" wx:if="{{isObserver}}">
+    只读观察模式：可查看网页、小程序及 AI 数据，不能执行任何业务修改。
+  </view>
+
   <view class="priority-panel {{priorityTone}}" bindtap="goPriority">
     <view class="priority-kicker">{{priorityLabel}}</view>
     <view class="priority-title">{{priorityTitle}}</view>

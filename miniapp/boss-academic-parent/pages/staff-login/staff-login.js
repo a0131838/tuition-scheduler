@@ -32,7 +32,7 @@ Page({
         if (data.needsAccountChoice) {
           const accounts = (data.accounts || []).map((account) => ({
             ...account,
-            roleText: roleLabels[account.role] || "员工账号"
+            roleText: account.isObserver ? "观察者账号" : (roleLabels[account.role] || "员工账号")
           }));
           this.setData({ accounts, choosing: true });
           return;

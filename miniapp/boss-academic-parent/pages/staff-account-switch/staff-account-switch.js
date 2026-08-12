@@ -31,7 +31,7 @@ Page({
         const currentUserId = me.staff ? me.staff.id : "";
         const accounts = (result.accounts || []).map((account) => ({
           ...account,
-          roleText: roleLabels[account.role] || "员工账号",
+          roleText: account.isObserver ? "观察者账号" : (roleLabels[account.role] || "员工账号"),
           isCurrent: account.id === currentUserId
         }));
         this.setData({ accounts, currentUserId, requiresRelogin: Boolean(result.requiresRelogin) });

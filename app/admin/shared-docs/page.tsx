@@ -194,8 +194,8 @@ export default async function SharedDocsPage({
     err?: string;
   }>;
 }) {
-  await requireSharedDocsOperator();
-  await ensureDefaultDocumentCategories();
+  const user = await requireSharedDocsOperator();
+  if (!user.isObserver) await ensureDefaultDocumentCategories();
   const lang = await getLang();
 
   const sp = await searchParams;

@@ -182,7 +182,7 @@ export async function GET(req: Request) {
   const canAcademic = canUseMiniappAcademicDesk(user);
   const canLeads = canUseMiniappLeadDesk(user);
   const canApprovals = await canUseMiniappApprovalDesk(user);
-  if (canAcademic) await syncRenewalTasks(user);
+  if (canAcademic && !user.isObserver) await syncRenewalTasks(user);
   const [openTickets, overdueTickets, communications, monthlyScheduling, renewalTasks, renewalXdf, overdueRenewals, dueLeads, approvalData] = await Promise.all([
     canAcademic ? prisma.ticket.count({ where: { isArchived: false, status: { in: OPEN_TICKET_STATUSES } } }) : 0,
     canAcademic
