@@ -89,16 +89,24 @@ function sessionLabel(item) {
 
 function present(item) {
   const action = actionFor(item);
+  const blockers = item.executionPreview?.blockers || item.operation?.blockers || [];
+  const facts = item.relatedFacts || {};
   return {
     ...item,
     actionKind: action.kind,
     actionLabel: action.label,
     title: item.studentName || "未关联学生",
-    summary: item.confirmationCard?.recognizedMatter || item.operation?.nextAction || "AI 正在读取工单",
+    summary: item.displayMessage || item.confirmationCard?.recognizedMatter || item.operation?.nextAction || "AI 正在读取工单",
     next: item.operation?.nextAction || "等待系统准备",
     workflowLabel: workflowLabel(item),
     dueLabel: singaporeDateTimeLabel(item.operation?.dueAt),
-    blockerText: (item.executionPreview?.blockers || item.operation?.blockers || []).map((row) => row.label || row.message || row.code).join("；"),
+    impactLines: [item.lessonImpact, item.feeImpact].filter(Boolean),
+    factLines: [
+      facts.coursePackage?.courseName && `课包：${facts.coursePackage.courseName}`,
+      Number.isFinite(facts.coursePackage?.remainingMinutes) && `剩余：${facts.coursePackage.remainingMinutes}分钟`,
+      facts.targetSession && `原课次：${sessionLabel(facts.targetSession)}`,
+    ].filter(Boolean),
+    blockerItems: blockers.map((row) => ({ title: row.title || row.label || "还有条件需要处理", detail: row.detail || row.message || "请查看缺失信息", action: row.action || "完成后重新预检" })),
     needsTarget: ["CANCEL_LESSON", "RESCHEDULE", "CHANGE_TEACHER"].includes(item.workflowKey) && !item.targetSession,
   };
 }
