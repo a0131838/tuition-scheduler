@@ -19,14 +19,14 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-08-12-r357`
 - Date/Time (Asia/Singapore): `2026-08-12`
-- Deployment status: `READY`
+- Deployment status: `LOCAL_PASS` (WeChat upload blocked by platform error `41002 appid missing`)
 - Scope: make Staff Mini Program AI work details consume and display the same recognized message, formal package/session facts, lesson/fee impact and readable blockers as SGT AI OS; hide raw UUIDs and internal blocker codes.
 - Key files:
   - `miniapp/boss-academic-parent/pages/staff-ai-work/staff-ai-work.js`
   - `miniapp/boss-academic-parent/pages/staff-ai-work/staff-ai-work.wxml`
   - `miniapp/boss-academic-parent/pages/staff-ai-work/staff-ai-work.wxss`
 - Risk impact (if any): Low. Display contract only; formal scheduling preview/apply, package balance, attendance, payroll, finance, permissions and notifications are unchanged.
-- Verification: Mini Program JavaScript syntax, 68-page release audit and TypeScript passed. AI server contract is covered by 255/255 tests, 13/13 UAT and 8/8 Singapore-model evaluation. Requires AI r045 release plus a new WeChat development-version upload before physical-phone acceptance.
+- Verification: Mini Program JavaScript syntax, 68-page release audit and TypeScript passed. AI server contract is covered by 255/255 tests, 13/13 UAT and 8/8 Singapore-model evaluation. Requires AI r045 release plus a new WeChat development-version upload before physical-phone acceptance. CLI login and project open succeeded, but WeChat rejected version `1.0.52` with `41002 appid missing`; no new development version was created.
 - Rollback point: `d3550f03` (`2026-08-12-r356`).
 
 ---
