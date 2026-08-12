@@ -30,3 +30,5 @@ Keep Wang Jie's existing staff identity but make it a strict observer account th
 - JavaScript syntax checks for the three changed staff-miniapp pages
 - `npm run build` (246 pages)
 - Production activation query confirms one Wang Jie observer user and zero stale sessions before new binding.
+
+Final integration also includes the concurrently released r360 teacher-confirmation rules; the combined r361 head passed TypeScript, 24 focused tests, the 69-page Mini Program audit and the 247-page production build.

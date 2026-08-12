@@ -2,7 +2,10 @@
 
 This file is the single source of truth for what changed in production.
 
-## 2026-08-12-r360 (Ready)
+## 2026-08-12-r360 (Web Live / Mini Program Upload Blocked)
+
+- Web runtime live: formal commit `a4cc65f3594d651eb501aeb255957d96283f18cd`, AI commit `5534ec5a14b2`, formal PM2 PID `356031`.
+- Native Mini Program `1.0.53` upload is pending because WeChat returned `41002 appid missing`; no unverified package was substituted.
 
 - Align AI ticket execution with current formal scheduling actions, shared-package deductions, teacher dated/weekly availability, online/campus/home modes and 30-minute home-travel buffers.
 - New scheduling, rescheduling, cancellation and teacher replacement keep current per-action tracking, then wait for every affected teacher to acknowledge before the ticket completes and the parent status notification is queued.
