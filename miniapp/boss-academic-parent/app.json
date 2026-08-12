@@ -54,6 +54,7 @@
     "pages/staff-teacher-todos/staff-teacher-todos",
     "pages/staff-teacher-payroll/staff-teacher-payroll",
     "pages/staff-teacher-feedbacks/staff-teacher-feedbacks",
+    "pages/staff-teacher-confirmations/staff-teacher-confirmations",
     "pages/bind/bind",
     "pages/students/students",
     "pages/home/home",

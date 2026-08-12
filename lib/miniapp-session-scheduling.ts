@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { campusRequiresRoom } from "@/lib/campus";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { applyLinkedTicketSchedulingAction } from "@/lib/ticket-scheduling-action-write";
+import { createTicketTeacherConfirmation, markTicketWaitingForTeacher } from "@/lib/ai-ticket-communication";
 import { prisma } from "@/lib/prisma";
 import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 import { schedulingCoordinationCourseLabelsMatch } from "@/lib/scheduling-coordination";
@@ -500,32 +501,19 @@ export async function applyMiniappSessionScheduling(
               resultSessionId: writtenSessionId,
               appliedByUserId: actor.userId,
             });
-            await tx.ticket.update({
-              where: { id: ticket.id },
-              data: {
-                status: actionState.allResolved ? "Completed" : "Confirmed",
-                systemUpdated: "Y",
-                finalSchedule: completionResult,
-                parentCompletionResult: completionResult,
-                nextAction: actionState.allResolved ? "排课已完成，无需继续跟进。" : `本次排课已完成，仍有 ${actionState.unresolved} 个动作待执行。`,
-                nextActionDue: actionState.allResolved ? null : new Date(now.getTime() + 24 * 60 * 60 * 1000),
-                risksNotes: previousNotes ? `${previousNotes}\n\n${coordinationLog}` : coordinationLog,
-                lastUpdateAt: now,
-                completedAt: actionState.allResolved ? now : null,
-                completedByUserId: actionState.allResolved ? actor.userId : null,
-              },
-            });
-            if (actionState.allResolved) await tx.parentAvailabilityRequest.updateMany({
-              where: { ticketId: ticket.id },
-              data: { isActive: false },
-            });
+            await createTicketTeacherConfirmation(tx, { ticketId: ticket.id, teacherId: checked.teacherId, managerUserId: actor.userId, sessionId: writtenSessionId, title: "课程安排确认", detail: `${completionResult}\n请确认可以按调整后的安排授课。` });
+            if (actionState.allResolved) {
+              await markTicketWaitingForTeacher(tx, { ticketId: ticket.id, resultText: completionResult, actorUserId: actor.userId, risksNotes: previousNotes, logLabel: `${actorName} · 移动排课` });
+            } else {
+              await tx.ticket.update({ where: { id: ticket.id }, data: { status: "Confirmed", systemUpdated: "Y", finalSchedule: completionResult, parentCompletionResult: completionResult, nextAction: `本次排课已完成，仍有 ${actionState.unresolved} 个动作待执行。`, nextActionDue: new Date(now.getTime() + 24 * 60 * 60 * 1000), risksNotes: previousNotes ? `${previousNotes}\n\n${coordinationLog}` : coordinationLog, lastUpdateAt: now, completedAt: null, completedByUserId: null } });
+            }
             await tx.auditLog.create({
               data: {
                 actorEmail: actor.email.trim().toLowerCase(),
                 actorName: actor.name?.trim() || null,
                 actorRole: actor.role,
                 module: "TICKETS",
-                action: actionState.allResolved ? "MINIAPP_COORDINATION_COMPLETE_AFTER_SCHEDULING" : "MINIAPP_SCHEDULING_ACTION_APPLIED",
+                action: actionState.allResolved ? "MINIAPP_COORDINATION_WAITING_TEACHER_AFTER_SCHEDULING" : "MINIAPP_SCHEDULING_ACTION_APPLIED",
                 entityType: "Ticket",
                 entityId: ticket.id,
                 meta: { sessionId: writtenSessionId, sourceSessionId: input.sessionId },
@@ -678,20 +666,16 @@ export async function applyMiniappSessionSeries(
             resultSessionId: sessionIds[0] ?? null,
             appliedByUserId: actor.userId,
           });
-          await tx.ticket.update({
-            where: { id: ticket.id },
-            data: {
-              status: actionState.allResolved ? "Completed" : "Confirmed", systemUpdated: "Y", finalSchedule: completionResult,
-              parentCompletionResult: completionResult, nextAction: actionState.allResolved ? "连续排课已完成，无需继续跟进。" : `连续排课已完成，仍有 ${actionState.unresolved} 个动作待执行。`,
-              nextActionDue: actionState.allResolved ? null : new Date(now.getTime() + 24 * 60 * 60 * 1000), risksNotes: previousNotes ? `${previousNotes}\n\n${log}` : log,
-              lastUpdateAt: now, completedAt: actionState.allResolved ? now : null, completedByUserId: actionState.allResolved ? actor.userId : null,
-            },
-          });
-          if (actionState.allResolved) await tx.parentAvailabilityRequest.updateMany({ where: { ticketId: ticket.id }, data: { isActive: false } });
+          await createTicketTeacherConfirmation(tx, { ticketId: ticket.id, teacherId: first.teacherId, managerUserId: actor.userId, title: "连续课程安排确认", detail: `${completionResult}\n请确认可以按整批安排授课。` });
+          if (actionState.allResolved) {
+            await markTicketWaitingForTeacher(tx, { ticketId: ticket.id, resultText: completionResult, actorUserId: actor.userId, risksNotes: previousNotes, logLabel: `${actorName} · 移动连续排课` });
+          } else {
+            await tx.ticket.update({ where: { id: ticket.id }, data: { status: "Confirmed", systemUpdated: "Y", finalSchedule: completionResult, parentCompletionResult: completionResult, nextAction: `连续排课已完成，仍有 ${actionState.unresolved} 个动作待执行。`, nextActionDue: new Date(now.getTime() + 24 * 60 * 60 * 1000), risksNotes: previousNotes ? `${previousNotes}\n\n${log}` : log, lastUpdateAt: now, completedAt: null, completedByUserId: null } });
+          }
           await tx.auditLog.create({
             data: {
               actorEmail: actor.email.trim().toLowerCase(), actorName: actor.name?.trim() || null, actorRole: actor.role,
-              module: "TICKETS", action: actionState.allResolved ? "MINIAPP_COORDINATION_COMPLETE_AFTER_SERIES_SCHEDULING" : "MINIAPP_SERIES_SCHEDULING_ACTION_APPLIED",
+              module: "TICKETS", action: actionState.allResolved ? "MINIAPP_COORDINATION_WAITING_TEACHER_AFTER_SERIES_SCHEDULING" : "MINIAPP_SERIES_SCHEDULING_ACTION_APPLIED",
               entityType: "Ticket", entityId: ticket.id, meta: { sessionIds, sourceSessionId: input.sessionId },
             },
           });

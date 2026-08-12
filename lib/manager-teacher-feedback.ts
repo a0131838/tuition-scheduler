@@ -173,16 +173,58 @@ export async function acknowledgeManagerTeacherFeedback(input: {
 }) {
   const feedbackId = cleanText(input.feedbackId, 80);
   if (!feedbackId || !input.teacherId || !input.userId) throw new Error("Missing feedback");
-  await prisma.managerTeacherFeedback.updateMany({
-    where: {
-      id: feedbackId,
-      teacherId: input.teacherId,
-      archivedAt: null,
-      acknowledgedAt: null,
-    },
-    data: {
-      acknowledgedAt: new Date(),
-      acknowledgedByUserId: input.userId,
-    },
-  });
+  return prisma.$transaction(async (tx) => {
+    const current = await tx.managerTeacherFeedback.findFirst({
+      where: { id: feedbackId, teacherId: input.teacherId, archivedAt: null },
+      select: { id: true, ticketId: true, acknowledgedAt: true },
+    });
+    if (!current) throw new Error("Feedback not found");
+    const now = new Date();
+    if (!current.acknowledgedAt) {
+      await tx.managerTeacherFeedback.update({
+        where: { id: current.id },
+        data: { acknowledgedAt: now, acknowledgedByUserId: input.userId },
+      });
+    }
+
+    if (!current.ticketId) return { ticketCompleted: false };
+    const pending = await tx.managerTeacherFeedback.count({
+      where: {
+        ticketId: current.ticketId,
+        requiresAck: true,
+        acknowledgedAt: null,
+        archivedAt: null,
+        id: { not: current.id },
+      },
+    });
+    if (pending > 0) return { ticketCompleted: false };
+    const ticket = await tx.ticket.findUnique({
+      where: { id: current.ticketId },
+      select: {
+        id: true, ticketNo: true, type: true, studentId: true, studentName: true,
+        parentVisible: true, status: true, finalSchedule: true,
+      },
+    });
+    if (!ticket || ticket.status !== "Waiting Teacher") return { ticketCompleted: false };
+    await tx.ticket.update({
+      where: { id: ticket.id },
+      data: {
+        status: "Completed",
+        nextAction: "老师已确认，正式修改和沟通闭环已完成。",
+        nextActionDue: null,
+        parentCompletionResult: ticket.finalSchedule,
+        completedAt: now,
+        completedByUserId: input.userId,
+        lastUpdateAt: now,
+      },
+    });
+    return {
+      ticketCompleted: true,
+      ticket: {
+        id: ticket.id, ticketNo: ticket.ticketNo, type: ticket.type,
+        studentId: ticket.studentId, studentName: ticket.studentName,
+        parentVisible: ticket.parentVisible, updatedAt: now.toISOString(),
+      },
+    };
+  }, { isolationLevel: "Serializable" });
 }

@@ -13,6 +13,7 @@ import { applyMiniappSessionReschedulingBatch, previewMiniappSessionRescheduling
 import { applyMiniappSessionCancellation, previewMiniappSessionCancellation } from "../lib/miniapp-session-cancellation";
 import { applyMiniappTeacherReplacement, previewMiniappTeacherReplacement } from "../lib/miniapp-session-teacher-replacement";
 import { POST as executeAiTicketRoute } from "../app/api/miniapp/staff/ai-tickets/[ticketId]/execute/route";
+import { acknowledgeManagerTeacherFeedback } from "../lib/manager-teacher-feedback";
 
 function assertIsolatedDatabase() {
   if (process.env.AI_TICKET_UAT_CONFIRM !== "LOCAL_ISOLATED_DB") {
@@ -55,10 +56,10 @@ async function main() {
   const subject = await prisma.subject.create({ data: { name: "Mathematics", courseId: course.id } });
   const level = await prisma.level.create({ data: { name: "G8", subjectId: subject.id } });
   const primary = await prisma.teacher.create({
-    data: { name: `AI UAT Primary ${runId}`, subjects: { connect: { id: subject.id } }, offlineSingapore: true },
+    data: { name: `AI UAT Primary ${runId}`, subjects: { connect: { id: subject.id } }, offlineSingapore: true, teachingOnline: true },
   });
   const replacement = await prisma.teacher.create({
-    data: { name: `AI UAT Replacement ${runId}`, subjects: { connect: { id: subject.id } }, offlineSingapore: true },
+    data: { name: `AI UAT Replacement ${runId}`, subjects: { connect: { id: subject.id } }, offlineSingapore: true, teachingOnline: true },
   });
   const campus = await prisma.campus.create({
     data: { name: `AI UAT Online ${runId}`, isOnline: true, requiresRoom: false },
@@ -98,6 +99,10 @@ async function main() {
       parentVisible: true,
     },
   });
+  const acknowledgeTicket = async (ticketId: string) => {
+    const rows = await prisma.managerTeacherFeedback.findMany({ where: { ticketId, requiresAck: true, acknowledgedAt: null } });
+    for (const row of rows) await acknowledgeManagerTeacherFeedback({ feedbackId: row.id, teacherId: row.teacherId, userId: actorUser.id });
+  };
 
   const scheduleTicket = await createTicket("新排课");
   const occurrences = scheduleDates.slice(0, 4).map((startAt) => ({
@@ -119,6 +124,8 @@ async function main() {
   assert.equal(schedulePreview.preview.weeks, 4);
   const scheduleResult = await applyTicketNewSession(batchInput, actor);
   assert.equal(scheduleResult.sessionIds.length, 4);
+  assert.equal((await prisma.ticket.findUniqueOrThrow({ where: { id: scheduleTicket.id } })).status, "Waiting Teacher");
+  await acknowledgeTicket(scheduleTicket.id);
   const scheduleTicketAfter = await prisma.ticket.findUniqueOrThrow({ where: { id: scheduleTicket.id } });
   assert.equal(scheduleTicketAfter.status, "Completed");
   assert.match(scheduleTicketAfter.parentCompletionResult || "", /共 4 节/);
@@ -131,6 +138,8 @@ async function main() {
   await previewMiniappSessionReschedulingBatch(rescheduleInputs);
   const rescheduleResult = await applyMiniappSessionReschedulingBatch(rescheduleInputs, actor, [rescheduleTicket.id]);
   assert.equal(rescheduleResult.writtenSessionIds.length, 2);
+  assert.equal((await prisma.ticket.findUniqueOrThrow({ where: { id: rescheduleTicket.id } })).status, "Waiting Teacher");
+  await acknowledgeTicket(rescheduleTicket.id);
   assert.equal((await prisma.ticket.findUniqueOrThrow({ where: { id: rescheduleTicket.id } })).status, "Completed");
 
   const noChargeTicket = await createTicket("临时取消&请假课程");
@@ -138,6 +147,7 @@ async function main() {
   await previewMiniappSessionCancellation(noChargeInput);
   const balanceBeforeNoCharge = (await prisma.coursePackage.findFirstOrThrow({ where: { studentId: student.id, courseId: course.id } })).remainingMinutes;
   await applyMiniappSessionCancellation(noChargeInput, actor, [noChargeTicket.id]);
+  await acknowledgeTicket(noChargeTicket.id);
   const balanceAfterNoCharge = (await prisma.coursePackage.findFirstOrThrow({ where: { studentId: student.id, courseId: course.id } })).remainingMinutes;
   assert.equal(balanceAfterNoCharge, balanceBeforeNoCharge);
 
@@ -146,6 +156,7 @@ async function main() {
   await previewMiniappSessionCancellation(chargeInput);
   const balanceBeforeCharge = (await prisma.coursePackage.findFirstOrThrow({ where: { studentId: student.id, courseId: course.id } })).remainingMinutes!;
   await applyMiniappSessionCancellation(chargeInput, actor, [chargeTicket.id]);
+  await acknowledgeTicket(chargeTicket.id);
   const balanceAfterCharge = (await prisma.coursePackage.findFirstOrThrow({ where: { studentId: student.id, courseId: course.id } })).remainingMinutes!;
   assert.equal(balanceAfterCharge, balanceBeforeCharge - 60);
 
@@ -153,6 +164,7 @@ async function main() {
   const replacementInput = { sessionId: scheduleResult.sessionIds[3], newTeacherId: replacement.id, reason: "UAT 老师调整" };
   await previewMiniappTeacherReplacement(replacementInput);
   await applyMiniappTeacherReplacement(replacementInput, actor, [replacementTicket.id]);
+  await acknowledgeTicket(replacementTicket.id);
   assert.equal((await prisma.session.findUniqueOrThrow({ where: { id: scheduleResult.sessionIds[3] } })).teacherId, replacement.id);
 
   const caseSpecs: Array<{ workflowKey: string; type: string; status?: string; command: AiTicketCommand; expected: string }> = [

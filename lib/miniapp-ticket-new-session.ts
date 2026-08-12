@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { campusRequiresRoom } from "@/lib/campus";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { applyLinkedTicketSchedulingAction } from "@/lib/ticket-scheduling-action-write";
+import { createTicketTeacherConfirmation, markTicketWaitingForTeacher } from "@/lib/ai-ticket-communication";
 import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 import { pickStudentSessionConflict, pickTeacherSessionConflict } from "@/lib/session-conflict";
 import { isSessionDuplicateError } from "@/lib/session-unique";
@@ -489,24 +490,16 @@ export async function applyTicketNewSession(input: TicketNewSessionInput, actor:
           appliedByUserId: actor.userId,
         });
         ticketAllResolved = actionState.allResolved;
-        completedTicket = await tx.ticket.update({
-          where: { id: checked.ticket.id },
-          data: {
-            studentId: checked.student.id,
-            status: actionState.allResolved ? "Completed" : "Confirmed",
-            systemUpdated: "Y",
-            finalSchedule: completionResult,
-            parentCompletionResult: completionResult,
-            nextAction: actionState.allResolved ? "排课已完成，无需继续跟进。" : `本次排课已完成，仍有 ${actionState.unresolved} 个动作待执行。`,
-            nextActionDue: actionState.allResolved ? null : checked.ticket.nextActionDue,
-            risksNotes: previousNotes ? `${previousNotes}\n\n${log}` : log,
-            lastUpdateAt: now,
-            completedAt: actionState.allResolved ? now : null,
-            completedByUserId: actionState.allResolved ? actor.userId : null,
-          },
-          include: { student: { select: { id: true, name: true } } },
-        });
-        if (actionState.allResolved) await tx.parentAvailabilityRequest.updateMany({ where: { ticketId: checked.ticket.id }, data: { isActive: false } });
+        await tx.ticket.update({ where: { id: checked.ticket.id }, data: { studentId: checked.student.id } });
+        for (const row of Array.from(new Map(checkedRows.map((item) => [item.teacher.id, item])).values())) {
+          await createTicketTeacherConfirmation(tx, { ticketId: checked.ticket.id, teacherId: row.teacher.id, managerUserId: actor.userId, title: "新课程安排确认", detail: `${completionResult}\n请确认可以按整批安排授课。` });
+        }
+        if (actionState.allResolved) {
+          await markTicketWaitingForTeacher(tx, { ticketId: checked.ticket.id, resultText: completionResult, actorUserId: actor.userId, risksNotes: previousNotes, logLabel: `${actorName} · 移动端新排课` });
+        } else {
+          await tx.ticket.update({ where: { id: checked.ticket.id }, data: { status: "Confirmed", systemUpdated: "Y", finalSchedule: completionResult, parentCompletionResult: completionResult, nextAction: `本次排课已完成，仍有 ${actionState.unresolved} 个动作待执行。`, nextActionDue: checked.ticket.nextActionDue, risksNotes: previousNotes ? `${previousNotes}\n\n${log}` : log, lastUpdateAt: now, completedAt: null, completedByUserId: null } });
+        }
+        completedTicket = await tx.ticket.findUnique({ where: { id: checked.ticket.id }, include: { student: { select: { id: true, name: true } } } });
       }
       await tx.auditLog.createMany({
         data: [
@@ -521,7 +514,7 @@ export async function applyTicketNewSession(input: TicketNewSessionInput, actor:
           })),
           ...(checked.ticket ? [{
             actorEmail: actor.email.trim().toLowerCase(), actorName: actor.name?.trim() || null, actorRole: actor.role,
-            module: "TICKETS", action: ticketAllResolved ? "MINIAPP_COORDINATION_COMPLETE_AFTER_NEW_SESSION" : "MINIAPP_NEW_SESSION_ACTION_APPLIED", entityType: "Ticket", entityId: checked.ticket.id,
+            module: "TICKETS", action: ticketAllResolved ? "MINIAPP_COORDINATION_WAITING_TEACHER_AFTER_NEW_SESSION" : "MINIAPP_NEW_SESSION_ACTION_APPLIED", entityType: "Ticket", entityId: checked.ticket.id,
             meta: { sessionIds: sessions.map((session) => session.id), weeks: sessions.length },
           }] : []),
         ],

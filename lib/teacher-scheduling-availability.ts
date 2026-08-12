@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WEEKDAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
 
 function toMinFromDate(d: Date) {
   return d.getHours() * 60 + d.getMinutes();
@@ -30,7 +30,7 @@ export async function inspectTeacherSchedulingAvailability(
   endAt: Date
 ) {
   if (startAt.toDateString() !== endAt.toDateString()) {
-    return { error: "Session spans multiple days", source: null as "date" | null };
+    return { error: "课程不能跨越两个自然日", source: null as "date" | "weekly" | null };
   }
 
   const startMin = toMinFromDate(startAt);
@@ -38,31 +38,44 @@ export async function inspectTeacherSchedulingAvailability(
   const dayStart = new Date(startAt.getFullYear(), startAt.getMonth(), startAt.getDate(), 0, 0, 0, 0);
   const dayEnd = new Date(startAt.getFullYear(), startAt.getMonth(), startAt.getDate(), 23, 59, 59, 999);
 
-  const slots = await db.teacherAvailabilityDate.findMany({
-    where: { teacherId, date: { gte: dayStart, lte: dayEnd } },
-    select: { startMin: true, endMin: true },
-    orderBy: { startMin: "asc" },
-  });
+  const weekday = startAt.getDay();
+  const [dateSlots, weeklySlots] = await Promise.all([
+    db.teacherAvailabilityDate.findMany({
+      where: { teacherId, date: { gte: dayStart, lte: dayEnd } },
+      select: { startMin: true, endMin: true },
+      orderBy: { startMin: "asc" },
+    }),
+    db.teacherAvailability.findMany({
+      where: { teacherId, weekday },
+      select: { startMin: true, endMin: true },
+      orderBy: { startMin: "asc" },
+    }),
+  ]);
+
+  // A dated entry is an explicit exception for that day and therefore takes
+  // precedence.  When no dated entry exists, fall back to the teacher's normal
+  // weekly availability instead of treating the teacher as unavailable.
+  const source = dateSlots.length ? "date" as const : "weekly" as const;
+  const slots = dateSlots.length ? dateSlots : weeklySlots;
 
   if (slots.length === 0) {
-    const weekday = startAt.getDay();
     return {
-      error: `No date availability on ${WEEKDAYS[weekday] ?? weekday} (no date slots)`,
-      source: null as "date" | null,
+      error: `${WEEKDAYS[weekday] ?? `星期${weekday}`}没有录入可用时间，请先联系老师确认并补充老师时间`,
+      source: null as "date" | "weekly" | null,
     };
   }
 
   const ok = slots.some((s) => s.startMin <= startMin && s.endMin >= endMin);
   if (!ok) {
     const ranges = slots.map((s) => fmtSlotRange(s.startMin, s.endMin)).join(", ");
-    const weekday = startAt.getDay();
+    const sourceLabel = source === "date" ? "当天特殊可用时间" : "每周常规可用时间";
     return {
-      error: `Outside date availability ${WEEKDAYS[weekday] ?? weekday} ${fmtHHMM(startAt)}-${fmtHHMM(endAt)}. Available: ${ranges}`,
-      source: "date" as const,
+      error: `${WEEKDAYS[weekday] ?? `星期${weekday}`} ${fmtHHMM(startAt)}-${fmtHHMM(endAt)}不在老师的${sourceLabel}内；可用：${ranges}`,
+      source,
     };
   }
 
-  return { error: null as string | null, source: "date" as const };
+  return { error: null as string | null, source };
 }
 
 export async function checkTeacherSchedulingAvailability(

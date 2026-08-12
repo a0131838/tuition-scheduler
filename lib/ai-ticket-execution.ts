@@ -5,6 +5,7 @@ export const AI_TICKET_COMMAND_TYPES = [
   "RESCHEDULE_SESSION",
   "CANCEL_SESSION",
   "REPLACE_TEACHER",
+  "CHANGE_SESSION_LOCATION",
   "CREATE_ASSESSMENT_TASK",
   "PACKAGE_ACTIVATION_REVIEW",
   "ACADEMIC_CASE_HANDOFF",
@@ -52,7 +53,7 @@ export type AiTicketExecutionRequest = {
 const WORKFLOW_COMMANDS: Record<string, AiTicketCommandType[]> = {
   NEW_SCHEDULE: ["CREATE_SESSION"],
   SUPPLEMENTARY: ["CREATE_SESSION"],
-  RESCHEDULE: ["RESCHEDULE_SESSION"],
+  RESCHEDULE: ["RESCHEDULE_SESSION", "CHANGE_SESSION_LOCATION"],
   CANCEL_LESSON: ["CANCEL_SESSION"],
   CHANGE_TEACHER: ["REPLACE_TEACHER"],
   ASSESSMENT_TRIAL: ["CREATE_ASSESSMENT_TASK"],
@@ -115,6 +116,7 @@ function parseCommand(value: unknown, index: number): AiTicketCommand {
     RESCHEDULE_SESSION: ["sessionId", "startAt", "durationMin"],
     CANCEL_SESSION: ["sessionId", "studentId", "note"],
     REPLACE_TEACHER: ["sessionId", "newTeacherId", "reason"],
+    CHANGE_SESSION_LOCATION: ["sessionId", "campusId", "reason"],
     CREATE_ASSESSMENT_TASK: ["nextAction", "parentPublicSummary"],
     PACKAGE_ACTIVATION_REVIEW: ["label", "parentPublicSummary"],
     ACADEMIC_CASE_HANDOFF: ["studentId", "nextAction", "parentPublicSummary"],
@@ -184,7 +186,7 @@ export function canExecuteAiTicketPackage(
   return value.commands.every((command) => {
     // Formal academic operations remain restricted to ADMIN. Eva's existing formal
     // account is ADMIN; CS accounts such as Emily cannot execute these commands.
-    if (["CREATE_SESSION", "RESCHEDULE_SESSION", "CANCEL_SESSION", "REPLACE_TEACHER"].includes(command.commandType)) return user.role === "ADMIN";
+    if (["CREATE_SESSION", "RESCHEDULE_SESSION", "CANCEL_SESSION", "REPLACE_TEACHER", "CHANGE_SESSION_LOCATION"].includes(command.commandType)) return user.role === "ADMIN";
     if (command.commandType === "PACKAGE_ACTIVATION_REVIEW") return roles.has("ADMIN") || roles.has("FINANCE");
     if (command.commandType === "OPERATION_CORRECTION_REVIEW") return roles.has("ADMIN");
     if (command.commandType === "ACADEMIC_CASE_HANDOFF") return roles.has("ADMIN") || roles.has("CS");

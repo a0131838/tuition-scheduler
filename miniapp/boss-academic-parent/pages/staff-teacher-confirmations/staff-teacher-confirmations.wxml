@@ -1,0 +1,10 @@
+<view class="page">
+  <view class="top"><view class="eyebrow">老师只需确认安排</view><view class="title">课程安排确认</view><view class="subtitle">教务已完成改课、排课或取消处理，请核对时间、学生和地点。</view></view>
+  <view class="notice" wx:if="{{message}}">{{message}}</view>
+  <view class="empty" wx:if="{{!loading && !items.length}}">当前没有待确认安排</view>
+  <view class="card" wx:for="{{items}}" wx:key="id">
+    <view class="label">{{item.sessionSummary || '课程安排'}}</view>
+    <view class="body">{{item.body}}</view>
+    <button class="btn" data-id="{{item.id}}" bindtap="confirm" loading="{{workingId === item.id}}" disabled="{{workingId}}">确认可按此安排授课</button>
+  </view>
+</view>

@@ -1454,6 +1454,8 @@
 
 ## Open Risks
 
+- `2026-08-12-r360`: current formal `TicketSchedulingAction` tracking is preserved and teacher acknowledgement is added as the final completion gate. Additive schema columns are already present; runtime and a new WeChat development upload still require guarded deployment and physical Eva/teacher acceptance.
+
 - `2026-08-12-r358`: the staff miniapp now lets academic staff order up to three eligible teachers independently for every new-student subject. The signed bridge remains advisory until the existing formal preview/confirm gate; native development version `1.0.52` is uploaded and still requires physical-phone acceptance before production submission.
 
 - AI one-confirmation candidate `2026-08-11-r261`: local Docker-isolated PostgreSQL/HTTP UAT passes all ten workflow families, including schedule/attendance/package/ticket/audit writes, parent-visible results, unauthorized-role rejection, stale-package rejection and duplicate-apply rejection. Production facts are audited read-only and real apply remains 0. Native WeChat upload and physical-device confirmation remain separate from the guarded server release.

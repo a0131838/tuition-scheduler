@@ -2,6 +2,14 @@
 
 This file is the single source of truth for what changed in production.
 
+## 2026-08-12-r360 (Ready)
+
+- Align AI ticket execution with current formal scheduling actions, shared-package deductions, teacher dated/weekly availability, online/campus/home modes and 30-minute home-travel buffers.
+- New scheduling, rescheduling, cancellation and teacher replacement keep current per-action tracking, then wait for every affected teacher to acknowledge before the ticket completes and the parent status notification is queued.
+- The teacher Mini Program receives a conditional “课程安排确认” task; the existing AI work calendar and per-subject teacher-order experience remain unchanged.
+- Two additive migrations were registered before runtime during isolated-UAT setup; production audit confirmed no lesson, attendance, package, payroll or message data was changed.
+- Local evidence: focused rules 16/16, TypeScript, production build, 43-page Mini Program audit, AI 263/263, simulated UAT 13/13 and Docker PostgreSQL write UAT with 20 audit rows.
+
 ## 2026-08-12-r359 (Ready)
 
 - Ticket details now separate request entry, communication channel and student source instead of presenting one overloaded source field.

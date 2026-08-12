@@ -28,6 +28,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const teachingLanguageOther = String(body?.teachingLanguageOther ?? "").trim();
   const offlineShanghai = !!body?.offlineShanghai;
   const offlineSingapore = !!body?.offlineSingapore;
+  const teachingOnline = !!body?.teachingOnline;
+  const teachingHome = !!body?.teachingHome;
   const subjectIds = Array.isArray(body?.subjectIds) ? body.subjectIds.map((v: any) => String(v)).filter(Boolean) : [];
   const paymentProfile = cleanTeacherPaymentProfile(body ?? {});
 
@@ -61,6 +63,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         teachingLanguageOther: teachingLanguage ? null : teachingLanguageOther || null,
         offlineShanghai,
         offlineSingapore,
+        teachingOnline,
+        teachingHome,
         paymentMethod: paymentProfile.paymentMethod,
         payNowType: paymentProfile.payNowType,
         payNowValue: paymentProfile.payNowValue,

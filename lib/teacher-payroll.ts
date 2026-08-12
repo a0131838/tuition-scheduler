@@ -1342,7 +1342,7 @@ function isFullyCancelledSessionForPayroll(session: {
       session.class?.oneOnOneStudentId ??
       session.class?.enrollments?.[0]?.studentId ??
       null;
-    return !!sid && cancelledSet.has(sid);
+    return !!sid && cancelledSet.has(sid) && !hasChargedExcusedAttendance(session);
   }
 
   const expected = (session.class?.enrollments ?? [])
@@ -1369,7 +1369,7 @@ function isSessionCompleted(
   return state.completed;
 }
 
-function getSessionCompletionState(
+export function getSessionCompletionState(
   session: {
     studentId?: string | null;
     teacherId: string | null;
@@ -1386,6 +1386,12 @@ function getSessionCompletionState(
   const feedbackTeacherId = effectiveTeacherId || teacherId;
   const hasFeedback = session.feedbacks.some((f) => f.teacherId === feedbackTeacherId && String(f.content ?? "").trim().length > 0);
   const attendanceReady = hasAttendanceRows && allMarked;
+  // A charged cancellation is itself the auditable payable event. Requiring a
+  // normal lesson feedback for a lesson that did not take place would leave
+  // payroll permanently pending and force staff to create false feedback.
+  if (attendanceReady && hasChargedExcusedAttendance(session)) {
+    return { completed: true, pendingReason: null };
+  }
   const completed = attendanceReady && hasFeedback;
   if (completed) return { completed: true, pendingReason: null };
   if (!attendanceReady && !hasFeedback) {

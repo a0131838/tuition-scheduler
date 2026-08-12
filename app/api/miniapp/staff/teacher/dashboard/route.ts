@@ -4,6 +4,7 @@ import { formatBusinessDateOnly, formatBusinessDateTime, parseBusinessDateStart 
 import { miniappTeacherMonthRange, miniappTeacherSessionTimeText } from "@/lib/miniapp-teacher-workbench";
 import { prisma } from "@/lib/prisma";
 import { getVisibleSessionStudentNames, isSessionFullyCancelled } from "@/lib/session-students";
+import { getTeacherManagerFeedbackState } from "@/lib/manager-teacher-feedback";
 
 export async function GET(req: Request) {
   const access = await requireMiniappTeacher(req);
@@ -15,7 +16,7 @@ export async function GET(req: Request) {
   const month = miniappTeacherMonthRange(null, now);
   const teacherWhere = { OR: [{ teacherId: access.teacherId }, { teacherId: null, class: { teacherId: access.teacherId } }] };
 
-  const [availabilityCount, upcomingRaw, monthRaw, expenseRows] = await Promise.all([
+  const [availabilityCount, upcomingRaw, monthRaw, expenseRows, managerFeedback] = await Promise.all([
     prisma.teacherAvailabilityDate.count({ where: { teacherId: access.teacherId, date: { gte: todayStart, lt: availabilityEnd } } }),
     prisma.session.findMany({
       where: { ...teacherWhere, startAt: { gt: now, lt: futureEnd } },
@@ -54,6 +55,7 @@ export async function GET(req: Request) {
       where: { submitterUserId: access.user.id, archivedAt: null, status: { not: "WITHDRAWN" } },
       select: { status: true },
     }),
+    getTeacherManagerFeedbackState(access.teacherId),
   ]);
 
   const upcoming = upcomingRaw.filter((row) => !isSessionFullyCancelled(row));
@@ -69,6 +71,7 @@ export async function GET(req: Request) {
     completedMinutes,
     expenseNeedsAction,
     expenseInProgress,
+    pendingArrangementConfirmations: managerFeedback.pendingAckCount,
     upcoming: upcoming.slice(0, 30).map((row) => {
       const courseLabel = [row.class.course?.name, row.class.subject?.name, row.class.level?.name].filter(Boolean).join(" / ") || "-";
       const campus = row.class.campus;

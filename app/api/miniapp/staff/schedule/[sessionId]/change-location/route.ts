@@ -70,6 +70,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sessionId: str
       return bad("地点变更预检已失效，请重新检查。", 409, { code: "PREVIEW_REQUIRED" });
     }
     const applied = await applyMiniappSessionLocationChange(input, {
+      userId: access.auth.user.id,
       email: access.auth.user.email,
       name: access.auth.user.name,
       role: access.auth.user.role,

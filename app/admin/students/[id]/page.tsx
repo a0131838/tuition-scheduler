@@ -2329,7 +2329,7 @@ export default async function StudentDetailPage({
           });
           continue;
         }
-        let availabilitySource: "date" | null = null;
+        let availabilitySource: "date" | "weekly" | null = null;
         if (!bypassAvailabilityCheck) {
           const availabilityCheck = await inspectTeacherAvailability(tch.id, startAt, endAt);
           availabilitySource = availabilityCheck.source;

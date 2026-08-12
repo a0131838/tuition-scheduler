@@ -3,6 +3,7 @@ import { PackageStatus, PackageType, Prisma } from "@prisma/client";
 import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/lib/package-sharing";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { applyLinkedTicketSchedulingAction } from "@/lib/ticket-scheduling-action-write";
+import { createTicketTeacherConfirmation, markTicketWaitingForTeacher } from "@/lib/ai-ticket-communication";
 import { prisma } from "@/lib/prisma";
 import { schedulingCoordinationCourseLabelsMatch } from "@/lib/scheduling-coordination";
 import { getSessionStudents } from "@/lib/session-students";
@@ -243,41 +244,27 @@ export async function applyMiniappSessionCancellation(
           appliedByUserId: actor.userId,
           chargePolicy: input.charge ? "CHARGE" : "NO_CHARGE",
         });
-        await tx.ticket.update({
-          where: { id: ticket.id },
-          data: {
-            status: actionState.allResolved ? "Completed" : "Confirmed",
-            systemUpdated: "Y",
-            finalSchedule: resultText,
-            parentCompletionResult: resultText,
-            nextAction: actionState.allResolved ? "请假/取消已处理，无需继续跟进。" : `取消已处理，仍有 ${actionState.unresolved} 个排课动作待执行。`,
-            nextActionDue: actionState.allResolved ? null : new Date(now.getTime() + 24 * 60 * 60 * 1000),
-            risksNotes: previousNotes ? `${previousNotes}\n\n${log}` : log,
-            lastUpdateAt: now,
-            completedAt: actionState.allResolved ? now : null,
-            completedByUserId: actionState.allResolved ? actor.userId : null,
-          },
+        const teacherId = checked.session.teacher?.id ?? checked.session.class.teacher.id;
+        await createTicketTeacherConfirmation(tx, {
+          ticketId: ticket.id, teacherId, managerUserId: actor.userId, sessionId: checked.session.id,
+          title: "课程取消确认", detail: `${resultText}\n请确认已知晓本节课程取消。`,
         });
-        if (actionState.allResolved) await tx.parentAvailabilityRequest.updateMany({ where: { ticketId: ticket.id }, data: { isActive: false } });
+        if (actionState.allResolved) {
+          await markTicketWaitingForTeacher(tx, { ticketId: ticket.id, resultText, actorUserId: actor.userId, risksNotes: previousNotes, logLabel: `${actorName} · 移动请假/取消` });
+        } else {
+          await tx.ticket.update({ where: { id: ticket.id }, data: { status: "Confirmed", systemUpdated: "Y", finalSchedule: resultText, parentCompletionResult: resultText, nextAction: `取消已处理，仍有 ${actionState.unresolved} 个排课动作待执行。`, nextActionDue: new Date(now.getTime() + 24 * 60 * 60 * 1000), risksNotes: previousNotes ? `${previousNotes}\n\n${log}` : log, lastUpdateAt: now, completedAt: null, completedByUserId: null } });
+        }
         await tx.auditLog.create({
           data: {
             actorEmail: actor.email.trim().toLowerCase(),
             actorName: actor.name?.trim() || null,
             actorRole: actor.role,
             module: "TICKETS",
-            action: actionState.allResolved ? "MINIAPP_LEAVE_TICKET_COMPLETE" : "MINIAPP_LEAVE_ACTION_APPLIED",
+            action: actionState.allResolved ? "MINIAPP_LEAVE_TICKET_WAITING_TEACHER" : "MINIAPP_LEAVE_ACTION_APPLIED",
             entityType: "Ticket",
             entityId: ticket.id,
             meta: { sessionId: checked.session.id, studentId: input.studentId, charge: input.charge },
           },
-        });
-        if (actionState.allResolved) completedTickets.push({
-          id: ticket.id,
-          ticketNo: ticket.ticketNo,
-          studentId: ticket.studentId,
-          studentName: ticket.studentName,
-          parentVisible: ticket.parentVisible,
-          updatedAt: now,
         });
       }
 
