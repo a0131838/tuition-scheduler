@@ -17,6 +17,7 @@ import {
   TICKET_TYPE_OPTIONS,
   TICKET_VERSION_OPTIONS,
   ticketTypeAliases,
+  ticketSourceFromStudentSourceName,
   validateTicketTypeRequirements,
 } from "@/lib/tickets";
 import {
@@ -104,11 +105,11 @@ export async function POST(
   const studentName = normalizeTicketString(body.studentName, 120);
   if (!studentName) return bad("Student name is required / 学生姓名必填");
 
-  const source = validateByOptions(normalizeTicketString(body.source, 60), TICKET_SOURCE_OPTIONS);
+  const requestedSource = validateByOptions(normalizeTicketString(body.source, 60), TICKET_SOURCE_OPTIONS);
   const type = validateByOptions(normalizeTicketString(body.type, 60), TICKET_TYPE_OPTIONS);
   const priority = validateByOptions(normalizeTicketString(body.priority, 60), TICKET_PRIORITY_OPTIONS);
-  if (!source || !type || !priority) {
-    return bad("Invalid source/type/priority");
+  if (!type || !priority) {
+    return bad("Invalid type/priority");
   }
 
   const status = validateByOptions(normalizeTicketString(body.status, 60), TICKET_CS_STATUS_OPTIONS);
@@ -161,7 +162,7 @@ export async function POST(
   const linkedStudent = studentId
     ? await prisma.student.findUnique({
         where: { id: studentId },
-        select: { id: true, name: true },
+        select: { id: true, name: true, sourceChannel: { select: { name: true } } },
       })
     : null;
   if (studentId && !linkedStudent) {
@@ -173,6 +174,20 @@ export async function POST(
 
   if (guidedScheduling && !linkedStudent) {
     return bad("Please confirm the student before creating a guided scheduling ticket / 请先确认学生", 409);
+  }
+  const linkedStudentSource = linkedStudent
+    ? ticketSourceFromStudentSourceName(linkedStudent.sourceChannel?.name)
+    : null;
+  if (linkedStudent && !linkedStudentSource) {
+    return bad(
+      "Student source is not set. Update the student profile before creating this ticket. / 学生来源尚未设置，请先在学生档案补充来源后再创建工单。",
+      409,
+      { code: "STUDENT_SOURCE_MISSING", studentId: linkedStudent.id }
+    );
+  }
+  const source = linkedStudentSource ?? requestedSource;
+  if (!source) {
+    return bad("Student source is required / 学生来源必填");
   }
   const missingRequiredSource = schedulingActions.find((action) => schedulingActionDefinition(action.actionType)?.needsSource && !action.sourceSessionId);
   if (missingRequiredSource) return bad("Please select the exact original lesson / 请选择具体原课程", 409);

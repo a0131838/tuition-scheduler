@@ -11,6 +11,7 @@
 
 ## Current Known State
 
+- Current release line prepared: `2026-08-12-r359` separates ticket request entry, communication channel and student source; removes the false New Oriental default; blocks new linked-student tickets until a missing student source is corrected; and adds a three-record missing-source review queue without rewriting history.
 - Current release line prepared: `2026-08-12-r357` makes AI course-change confirmation show the student's complete related-month calendar: unchanged lessons are grey, the original lesson is red with a strike-through, and the proposed lesson is orange. AI detail back-navigation now returns to the preserved AI queue before leaving for Workbench. The formal system adds only protected read-only preview facts; scheduling, attendance, package, fee and notification writes are unchanged.
 - Current release line prepared: `2026-08-12-r356` makes AI Today open one task as a full working view, returns to the preserved queue position, translates workflow badges to Chinese and aligns the page with the existing orange Mini Program brand. No business write logic changes; a new WeChat development build and physical-phone visual check remain required.
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
@@ -84,6 +85,16 @@
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 - Current release line: `2026-08-10-r355` is live at runtime feature commit `41d0a49ffeeb5bff23a37bbe7c669ebc739e59ef`. Jessika remains a teacher-linked account with active Teacher Lead ACL and no Manager ACL or company-finance workspace; teacher quality, teacher-only training sign-off and owner-controlled training materials are live.
+
+## 2026-08-12-r359 Ready
+
+- Scope: make ticket source data explicit and non-destructive by separating request entry, communication channel and the linked student's profile source.
+- User-visible behavior: ticket details and advanced editing show the three facts independently; student source is read-only in the ticket; missing student sources link to the student profile; the student desk exposes a missing-source queue.
+- Write behavior: linked-student Web intake derives source from the student profile and returns `STUDENT_SOURCE_MISSING` when it is absent. Saving other advanced ticket fields no longer writes `Ticket.source`.
+- Data migration: none. The three existing students without a source remain unchanged for staff review.
+- Unchanged: Mini Program request capture, formal lesson scheduling, attendance, package deduction, parent notifications, payroll, invoices, receipts, partner settlement and finance permissions.
+- Verification: focused source-integrity and scheduling regressions, TypeScript, production build, release gate and post-deploy health/alignment checks.
+- Rollback point: `97aa21e0` (`2026-08-12-r358` documentation head).
 
 ## 2026-08-10-r355 Live
 

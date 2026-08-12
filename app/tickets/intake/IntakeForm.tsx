@@ -104,7 +104,7 @@ export function LegacyIntakeForm({
   const [studentLookupState, setStudentLookupState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [studentLookupResult, setStudentLookupResult] = useState<{
     matchType: string;
-    candidates: Array<{ studentId: string; name: string; grade: string | null; teachers: string[]; courses: string[] }>;
+    candidates: Array<{ studentId: string; name: string; grade: string | null; teachers: string[]; courses: string[]; sourceChannelName: string | null; ticketSource: string | null }>;
   }>({ matchType: "empty", candidates: [] });
   const [selectedStudentCandidate, setSelectedStudentCandidate] = useState<{
     studentId: string;
@@ -112,6 +112,8 @@ export function LegacyIntakeForm({
     grade: string | null;
     teachers: string[];
     courses: string[];
+    sourceChannelName: string | null;
+    ticketSource: string | null;
   } | null>(null);
   const [teacherLookupState, setTeacherLookupState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [teacherLookupResult, setTeacherLookupResult] = useState<{
@@ -579,6 +581,7 @@ export function LegacyIntakeForm({
                 <div>{selectedStudentCandidate.name}{selectedStudentCandidate.grade ? ` | ${selectedStudentCandidate.grade}` : ""}</div>
                 <div>最近老师 / Recent teacher: {selectedStudentCandidate.teachers.length > 0 ? selectedStudentCandidate.teachers.join("、") : "暂无 / None"}</div>
                 <div>最近课程 / Recent course: {selectedStudentCandidate.courses.length > 0 ? selectedStudentCandidate.courses.join("、") : "暂无 / None"}</div>
+                <div style={{ color: selectedStudentCandidate.sourceChannelName ? "#166534" : "#b91c1c", fontWeight: 700 }}>学生来源 / Student source: {selectedStudentCandidate.sourceChannelName || "未设置 / Not set"}</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
                   {selectedStudentCandidate.grade ? (
                     <button
@@ -612,10 +615,20 @@ export function LegacyIntakeForm({
             ) : null}
           </label>
           <label style={labelStyle}>
-            来源* / Source*
-            <select name="source" required style={fieldStyle}>
-              <OptionList options={TICKET_SOURCE_OPTIONS} placeholder="请选择 / Select" />
-            </select>
+            学生来源* / Student Source*
+            {selectedStudentCandidate ? (
+              <>
+                <div style={{ ...fieldStyle, minHeight: 40, background: "#f8fafc", color: selectedStudentCandidate.ticketSource ? "#166534" : "#b91c1c" }}>
+                  {selectedStudentCandidate.sourceChannelName || "未设置 / Not set"}
+                </div>
+                <input type="hidden" name="source" value={selectedStudentCandidate.ticketSource ?? ""} />
+              </>
+            ) : (
+              <select name="source" required style={fieldStyle} defaultValue="">
+                <OptionList options={TICKET_SOURCE_OPTIONS} placeholder="请选择 / Select" />
+              </select>
+            )}
+            {selectedStudentCandidate && !selectedStudentCandidate.ticketSource ? <span style={{ color: "#b91c1c", fontSize: 12, fontWeight: 600 }}>该学生档案尚未设置来源，请先补充后再提交。</span> : null}
           </label>
           <label style={labelStyle}>
             工单类型* / Type*

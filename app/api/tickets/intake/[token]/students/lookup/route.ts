@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { ticketSourceFromStudentSourceName } from "@/lib/tickets";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -55,13 +56,6 @@ function collectCourseNames(input: {
   for (const row of input.sessions) push(row.class?.course?.name);
   for (const row of input.enrollments) push(row.class?.course?.name);
   return ordered.slice(0, 3);
-}
-
-function ticketSource(sourceName: string | null | undefined) {
-  const raw = String(sourceName ?? "").trim();
-  if (raw.includes("新东方")) return "新东方外包";
-  if (raw.includes("上海新卓思")) return "上海新卓思外包";
-  return "自营学生";
 }
 
 export async function GET(
@@ -168,7 +162,8 @@ export async function GET(
       sessions: row.sessions,
       enrollments: row.enrollments,
     }),
-    ticketSource: ticketSource(row.sourceChannel?.name),
+    sourceChannelName: row.sourceChannel?.name ?? null,
+    ticketSource: ticketSourceFromStudentSourceName(row.sourceChannel?.name),
   }));
 
   const hasExact = exact.length > 0;

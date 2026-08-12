@@ -31,6 +31,14 @@ export const TICKET_SOURCE_OPTIONS: OptionItem[] = [
   { value: "自营学生", zh: "自营学生", en: "In-house Student" },
 ];
 
+export function ticketSourceFromStudentSourceName(sourceName: string | null | undefined) {
+  const raw = String(sourceName ?? "").trim();
+  if (!raw) return null;
+  if (raw.includes("新东方")) return "新东方外包";
+  if (raw.includes("上海新卓思")) return "上海新卓思外包";
+  return "自营学生";
+}
+
 export const TICKET_TYPE_OPTIONS: OptionItem[] = [
   { value: "改课程时间", zh: "改课程时间", en: "Reschedule Lesson Time" },
   { value: "改上课老师", zh: "改上课老师", en: "Change Teacher" },

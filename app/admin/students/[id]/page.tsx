@@ -590,6 +590,7 @@ function buildCalendarDays(monthDate: Date) {
 
 function resolveTicketSourceFromStudent(student: { sourceChannel?: { name?: string | null } | null }) {
   const raw = String(student.sourceChannel?.name ?? "").trim();
+  if (!raw) return null;
   if (raw.includes("新东方")) return "新东方外包";
   if (raw.includes("上海新卓思")) return "上海新卓思外包";
   return "自营学生";
@@ -1318,6 +1319,15 @@ async function createSchedulingCoordinationTicket(studentId: string, formData: F
     const params = new URLSearchParams({ err: "Student not found" });
     redirect(buildStudentCoordinationHref(studentId, params));
   }
+  if (!student.sourceChannel) {
+    const params = new URLSearchParams({ err: "请先设置学生来源，再创建排课协调工单 / Set student source before creating a scheduling ticket" });
+    redirect(buildStudentCoordinationHref(studentId, params));
+  }
+  const studentTicketSource = resolveTicketSourceFromStudent(student);
+  if (!studentTicketSource) {
+    const params = new URLSearchParams({ err: "学生来源无法识别，请先检查学生档案 / Student source could not be resolved" });
+    redirect(buildStudentCoordinationHref(studentId, params));
+  }
 
   const targetEnrollment =
     (enrollmentId ? student.enrollments.find((item) => item.id === enrollmentId) ?? null : null) ||
@@ -1367,7 +1377,7 @@ async function createSchedulingCoordinationTicket(studentId: string, formData: F
         ticketNo,
         studentId: student.id,
         studentName: student.name,
-        source: resolveTicketSourceFromStudent(student),
+        source: studentTicketSource,
         type: SCHEDULING_COORDINATION_TICKET_TYPE,
         priority: "普通",
         grade: student.grade ?? null,

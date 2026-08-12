@@ -23,6 +23,7 @@ import { listActivePartners } from "@/lib/partners";
 
 const PARTNER_TYPE_NAME = "合作方学生";
 const STUDENT_VIEW_COOKIE = "adminStudentsPreferredView";
+const MISSING_SOURCE_FILTER = "__missing__";
 type StudentView = "today" | "today_partner" | "all";
 
 const GRADE_OPTIONS = [
@@ -233,7 +234,8 @@ export default async function StudentsPage({
   const partnerTypeId = types.find((x) => x.name === PARTNER_TYPE_NAME)?.id ?? "";
 
   const where: Record<string, unknown> = {};
-  if (resolvedSourceChannelId) where.sourceChannelId = resolvedSourceChannelId;
+  if (resolvedSourceChannelId === MISSING_SOURCE_FILTER) where.sourceChannelId = null;
+  else if (resolvedSourceChannelId) where.sourceChannelId = resolvedSourceChannelId;
   if (resolvedStudentTypeId) where.studentTypeId = resolvedStudentTypeId;
   if (view !== "all") {
     where.createdAt = { gte: todayStart, lt: todayEnd };
@@ -255,7 +257,7 @@ export default async function StudentsPage({
     ];
   }
 
-  const [filteredCount, allStudentsCount, todayCount, todayPartnerCount] = await Promise.all([
+  const [filteredCount, allStudentsCount, todayCount, todayPartnerCount, missingSourceCount] = await Promise.all([
     prisma.student.count({ where }),
     prisma.student.count(),
     prisma.student.count({ where: { createdAt: { gte: todayStart, lt: todayEnd } } }),
@@ -266,6 +268,7 @@ export default async function StudentsPage({
         ...(partnerTypeId ? { studentTypeId: partnerTypeId } : {}),
       },
     }),
+    prisma.student.count({ where: { sourceChannelId: null } }),
   ]);
   const totalPages = Math.max(1, Math.ceil(filteredCount / pageSize));
   const page = Math.min(requestedPage, totalPages);
@@ -749,6 +752,22 @@ export default async function StudentsPage({
           <div style={{ fontWeight: 700, marginTop: 4 }}>{t(lang, "All Students", "全部学生")}</div>
           <div style={{ marginTop: 6, fontSize: 22, fontWeight: 700 }}>{allStudentsCount}</div>
         </a>
+        <a
+          href={`/admin/students?view=all&sourceChannelId=${encodeURIComponent(MISSING_SOURCE_FILTER)}&clearDesk=1`}
+          style={{
+            display: "block",
+            padding: 12,
+            borderRadius: 10,
+            border: resolvedSourceChannelId === MISSING_SOURCE_FILTER ? "1px solid #dc2626" : "1px solid #fecaca",
+            background: resolvedSourceChannelId === MISSING_SOURCE_FILTER ? "#fef2f2" : "#fff",
+            color: "#111827",
+            textDecoration: "none",
+          }}
+        >
+          <div style={{ fontSize: 12, color: "#991b1b" }}>{t(lang, "Data check", "资料核对")}</div>
+          <div style={{ fontWeight: 700, marginTop: 4 }}>{t(lang, "Student Source Not Set", "学生来源未设置")}</div>
+          <div style={{ marginTop: 6, fontSize: 22, fontWeight: 700 }}>{missingSourceCount}</div>
+        </a>
       </div>
 
       <details open={filtersOpen} style={{ ...workbenchFilterPanelStyle, marginBottom: 12 }}>
@@ -777,6 +796,7 @@ export default async function StudentsPage({
           </select>
           <select name="sourceChannelId" defaultValue={resolvedSourceChannelId}>
             <option value="">{t(lang, "All Sources", "全部来源")}</option>
+            <option value={MISSING_SOURCE_FILTER}>{t(lang, "Not set", "未设置")}</option>
             {sources.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}

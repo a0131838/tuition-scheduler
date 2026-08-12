@@ -9,7 +9,8 @@ type StudentCandidate = {
   grade: string | null;
   teachers: string[];
   courses: string[];
-  ticketSource?: string;
+  sourceChannelName: string | null;
+  ticketSource: string | null;
 };
 
 type SessionOption = {
@@ -198,6 +199,7 @@ export default function GuidedIntakeForm({
     setError("");
     setMessage("");
     if (!student) return setError("请先搜索并确认学生。"), undefined;
+    if (!student.ticketSource) return setError("该学生尚未设置学生来源。请先到学生档案补充来源，再创建工单。"), undefined;
     if (!actions.length) return setError("请至少添加一个排课动作。"), undefined;
     const missingSource = actions.find((row) => actionDefinition(row.actionType).needsSource && !row.sourceSessionId);
     if (missingSource) return setError(`“${actionDefinition(missingSource.actionType).label}”必须选择具体原课程。`), undefined;
@@ -209,7 +211,7 @@ export default function GuidedIntakeForm({
       guidedScheduling: true,
       studentId: student.studentId,
       studentName: student.name,
-      source: student.ticketSource || "自营学生",
+      source: student.ticketSource,
       type: actions.length > 1 ? "排课协调" : firstDefinition.ticketType,
       priority,
       status: "Need Info",
@@ -297,6 +299,7 @@ export default function GuidedIntakeForm({
               <button key={candidate.studentId} type="button" onClick={() => selectStudent(candidate)} style={{ width: "100%", display: "grid", gap: 3, padding: "13px 2px", border: 0, borderBottom: "1px solid #e7e5e4", background: "transparent", textAlign: "left", cursor: "pointer" }}>
                 <b style={{ fontSize: 15 }}>{candidate.name}{candidate.grade ? ` · ${candidate.grade}` : ""}</b>
                 <span style={{ color: "#78716c", fontSize: 12 }}>最近课程：{candidate.courses.join("、") || "暂无"} · 最近老师：{candidate.teachers.join("、") || "暂无"}</span>
+                <span style={{ color: candidate.sourceChannelName ? "#166534" : "#b91c1c", fontSize: 12, fontWeight: 750 }}>学生来源：{candidate.sourceChannelName || "未设置，请先补充"}</span>
               </button>
             ))}
           </div>
@@ -305,6 +308,8 @@ export default function GuidedIntakeForm({
           <div style={{ marginTop: 12, padding: "12px 0 2px", color: "#7c2d12" }}>
             <b>✓ 已选：{student.name}{student.grade ? ` · ${student.grade}` : ""}</b>
             <div style={{ marginTop: 4, fontSize: 13 }}>系统将读取该学生未来课程，避免改错课。</div>
+            <div style={{ marginTop: 4, fontSize: 13, color: student.sourceChannelName ? "#166534" : "#b91c1c", fontWeight: 750 }}>学生来源：{student.sourceChannelName || "未设置，暂不能创建工单"}</div>
+            {!student.sourceChannelName ? <a href={`/admin/students/${encodeURIComponent(student.studentId)}#edit-student`} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 6, fontSize: 13, fontWeight: 800 }}>打开学生档案补充来源</a> : null}
           </div>
         ) : null}
       </section>
@@ -414,9 +419,9 @@ export default function GuidedIntakeForm({
 
       <div style={{ paddingTop: 26 }}>
         <div style={{ marginBottom: 10, color: student && originalContent.trim() ? "#166534" : "#9a3412", fontSize: 13, fontWeight: 750 }}>
-          {!student ? "还差：选择学生" : !originalContent.trim() ? "还差：填写家长原话" : "信息已齐，可以创建"}
+          {!student ? "还差：选择学生" : !student.ticketSource ? "还差：在学生档案设置学生来源" : !originalContent.trim() ? "还差：填写家长原话" : "信息已齐，可以创建"}
         </div>
-        <button type="button" disabled={submitting || uploading || (duplicates.length > 0 && !forceDuplicate)} onClick={submit} style={{ width: "100%", minHeight: 52, border: 0, borderRadius: 11, background: submitting ? "#a8a29e" : "#ea580c", color: "#fff", fontSize: 17, fontWeight: 850, cursor: submitting ? "wait" : "pointer" }}>
+        <button type="button" disabled={submitting || uploading || !student?.ticketSource || (duplicates.length > 0 && !forceDuplicate)} onClick={submit} style={{ width: "100%", minHeight: 52, border: 0, borderRadius: 11, background: submitting || !student?.ticketSource ? "#a8a29e" : "#ea580c", color: "#fff", fontSize: 17, fontWeight: 850, cursor: submitting ? "wait" : "pointer" }}>
           {submitting ? "正在创建…" : `确认创建工单（${actions.length} 个动作）`}
         </button>
         <button type="button" onClick={onOpenLegacy} style={{ ...quietButton, width: "100%", marginTop: 10 }}>录入其他非排课工单 / 打开旧版完整字段</button>

@@ -2,6 +2,14 @@
 
 This file is the single source of truth for what changed in production.
 
+## 2026-08-12-r359 (Ready)
+
+- Ticket details now separate request entry, communication channel and student source instead of presenting one overloaded source field.
+- Linked-student ticket intake reads the student source from the student profile and blocks submission when that source is missing; it no longer silently classifies a missing source as an in-house student.
+- Advanced ticket editing can no longer overwrite the recorded source when staff save unrelated fields.
+- The student desk now has a dedicated missing-source review queue so the three current incomplete profiles can be corrected individually with an audit-friendly decision.
+- No existing ticket, student, lesson, attendance, package, invoice, receipt or finance record is rewritten by this release.
+
 ## 2026-08-12-r357 (Prepared)
 
 - AI course-change confirmation now shows the student's complete related-month calendar.

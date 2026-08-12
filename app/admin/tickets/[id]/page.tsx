@@ -17,7 +17,6 @@ import {
   TICKET_MODE_OPTIONS,
   TICKET_OWNER_OPTIONS,
   TICKET_PRIORITY_OPTIONS,
-  TICKET_SOURCE_OPTIONS,
   TICKET_STATUS_OPTIONS,
   TICKET_SYSTEM_UPDATED_OPTIONS,
   TICKET_TYPE_OPTIONS,
@@ -276,11 +275,10 @@ async function updateTicketFieldsAction(formData: FormData) {
   if (row.status === "Completed") redirect(appendQuery(back, { err: "completed-locked" }));
 
   const studentName = normalizeTicketString(formData.get("studentName"), 120);
-  const source = validateByOptions(normalizeTicketString(formData.get("source"), 60), TICKET_SOURCE_OPTIONS);
   const type = validateByOptions(normalizeTicketString(formData.get("type"), 60), TICKET_TYPE_OPTIONS);
   const priority = validateByOptions(normalizeTicketString(formData.get("priority"), 60), TICKET_PRIORITY_OPTIONS);
   const owner = validateByOptions(normalizeTicketString(formData.get("owner"), 20), TICKET_OWNER_OPTIONS);
-  if (!studentName || !source || !type || !priority || !owner) {
+  if (!studentName || !type || !priority || !owner) {
     redirect(appendQuery(back, { err: "edit-required" }));
   }
 
@@ -327,7 +325,6 @@ async function updateTicketFieldsAction(formData: FormData) {
     where: { id },
     data: {
       studentName,
-      source,
       type,
       priority,
       owner,
@@ -820,6 +817,7 @@ export default async function AdminTicketDetailPage({
   const row = await prisma.ticket.findUnique({
     where: { id },
     include: {
+      student: { select: { id: true, sourceChannel: { select: { name: true } } } },
       parentAvailabilityRequest: {
         select: {
           token: true,
@@ -837,6 +835,12 @@ export default async function AdminTicketDetailPage({
     },
   });
   if (!row) notFound();
+
+  const requestEntry = row.parentAssistedByName || row.createdByName?.startsWith("员工代录：")
+    ? "员工代家长录入 / Staff-assisted parent request"
+    : row.source === "家长小程序"
+      ? "家长小程序 / Parent miniapp"
+      : "后台或专用录入链接 / Admin or dedicated intake link";
 
   const isSchedulingTicket = TICKET_SCHEDULING_ACTION_TYPES.some((item) => item.ticketType === row.type) || row.type === "新排课";
   const sessionInclude = {
@@ -1494,7 +1498,17 @@ export default async function AdminTicketDetailPage({
         <div style={{ border: "1px solid #e2e8f0", borderRadius: 14, padding: 14, background: "#fff", display: "grid", gap: 12 }}>
           <div style={{ fontWeight: 700 }}>详细信息 / Details</div>
           <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", fontSize: 14 }}>
-            <div><b>来源</b>: {asText(row.source)}</div>
+            <div><b>工单入口 / Request Entry</b>: {requestEntry}</div>
+            <div><b>沟通渠道 / Communication Channel</b>: {asText(row.parentCommunicationSource)}</div>
+            <div>
+              <b>学生来源 / Student Source</b>: {row.student?.sourceChannel?.name ? (
+                row.student.sourceChannel.name
+              ) : row.studentId ? (
+                <span style={{ color: "#b91c1c", fontWeight: 800 }}>
+                  未设置 / Not set · <a href={`/admin/students/${encodeURIComponent(row.studentId)}#edit-student`}>打开学生档案补充</a>
+                </span>
+              ) : "未关联学生 / No linked student"}
+            </div>
             <div><b>工单类型</b>: {asText(normalizeTicketTypeValue(row.type))}</div>
             <div><b>优先级</b>: {asText(normalizeTicketPriorityValue(row.priority))}</div>
             <div><b>年级</b>: {asText(row.grade)}</div>
@@ -1832,14 +1846,21 @@ export default async function AdminTicketDetailPage({
                   学生姓名*
                   <input name="studentName" defaultValue={row.studentName} style={{ width: "100%", boxSizing: "border-box" }} />
                 </label>
-                <label>
-                  来源*
-                  <select name="source" defaultValue={row.source} style={{ width: "100%", boxSizing: "border-box" }}>
-                    {TICKET_SOURCE_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>{o.zh} / {o.en}</option>
-                    ))}
-                  </select>
-                </label>
+                <div style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 10px", background: "#f8fafc" }}>
+                  <div style={{ fontSize: 12, color: "#64748b", fontWeight: 700 }}>工单入口 / Request Entry</div>
+                  <div style={{ marginTop: 4, fontWeight: 700 }}>{requestEntry}</div>
+                  <div style={{ marginTop: 4, fontSize: 11, color: "#64748b" }}>系统记录，只读，不随编辑覆盖。</div>
+                </div>
+                <div style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 10px", background: "#f8fafc" }}>
+                  <div style={{ fontSize: 12, color: "#64748b", fontWeight: 700 }}>沟通渠道 / Communication Channel</div>
+                  <div style={{ marginTop: 4, fontWeight: 700 }}>{asText(row.parentCommunicationSource)}</div>
+                  <div style={{ marginTop: 4, fontSize: 11, color: "#64748b" }}>来自本次家长沟通记录。</div>
+                </div>
+                <div style={{ border: `1px solid ${row.student?.sourceChannel?.name ? "#bbf7d0" : "#fecaca"}`, borderRadius: 8, padding: "8px 10px", background: row.student?.sourceChannel?.name ? "#f0fdf4" : "#fef2f2" }}>
+                  <div style={{ fontSize: 12, color: row.student?.sourceChannel?.name ? "#166534" : "#991b1b", fontWeight: 700 }}>学生来源 / Student Source</div>
+                  <div style={{ marginTop: 4, fontWeight: 700 }}>{row.student?.sourceChannel?.name || "未设置 / Not set"}</div>
+                  {row.studentId && !row.student?.sourceChannel?.name ? <a href={`/admin/students/${encodeURIComponent(row.studentId)}#edit-student`} style={{ display: "inline-block", marginTop: 4, fontSize: 11, fontWeight: 800 }}>打开学生档案补充</a> : null}
+                </div>
                 <label>
                   工单类型*
                   <select name="type" defaultValue={row.type} style={{ width: "100%", boxSizing: "border-box" }}>
