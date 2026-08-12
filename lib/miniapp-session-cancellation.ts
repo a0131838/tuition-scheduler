@@ -1,7 +1,12 @@
 import crypto from "crypto";
 import { PackageStatus, PackageType, Prisma } from "@prisma/client";
 import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/lib/package-sharing";
-import { packageModeFromNote, packageModeSupportsClass, type PackageMode } from "@/lib/package-mode";
+import {
+  packageModeFromNote,
+  packageModeSupportsClass,
+  pickPreferredActivePackage,
+  type PackageMode,
+} from "@/lib/package-mode";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { applyLinkedTicketSchedulingAction } from "@/lib/ticket-scheduling-action-write";
 import { createTicketTeacherConfirmation, markTicketWaitingForTeacher } from "@/lib/ai-ticket-communication";
@@ -130,7 +135,7 @@ async function validateCancellation(db: DbClient, input: MiniappCancellationInpu
       const modeMatches = mode === "MONTHLY" || packageModeSupportsClass(mode, isGroupClass);
       return { ...pkg, mode, deduction: resolved, modeMatches };
     }).filter((pkg) => pkg.modeMatches && (pkg.mode === "MONTHLY" || (pkg.remainingMinutes ?? 0) >= pkg.deduction.units));
-    const pkg = eligible.find((row) => row.mode === "MONTHLY") ?? eligible[0] ?? null;
+    const pkg = pickPreferredActivePackage(eligible, isGroupClass);
     packageId = pkg?.id ?? null;
     packageMode = pkg?.mode ?? null;
     deduction = pkg?.deduction ?? deduction;

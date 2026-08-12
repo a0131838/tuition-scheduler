@@ -1,6 +1,8 @@
 # RELEASE BOARD
 
-- `2026-08-12-r361`: ready for guarded release. Corrects the remaining charged-cancellation package-mode gap: formal AI execution now supports HOURS_MINUTES, GROUP_MINUTES, legacy GROUP_COUNT, MONTHLY and shared-package access using the existing attendance/package rules. Focused tests, TypeScript, 247-page build and local Docker PostgreSQL UAT passed; no production data was used or changed.
+- `2026-08-12-r362`: ready for guarded release. The cancellation path now uses the formal package selector, preserving the existing `GROUP_MINUTES` before `GROUP_COUNT` priority even when both packages are active. TypeScript, focused tests and local Docker PostgreSQL UAT passed; no production data was used or changed.
+
+- `2026-08-12-r361`: live at commit `9b5a757cf7c4d6a5e31f990627f9965e09562a83` (PM2 PID `391229`, login health `200`). Corrects the charged-cancellation package-mode gap: HOURS_MINUTES, GROUP_MINUTES, legacy GROUP_COUNT, MONTHLY and shared-package access now use formal attendance/package rules.
 
 - `2026-08-12-r360`: AI ticket rule alignment is live on Tuition Scheduler commit `a4cc65f3594d651eb501aeb255957d96283f18cd` (PM2 PID `356031`) and SGT AI OS commit `5534ec5a14b2`. Formal login/authorization boundaries and AI health passed online checks. WeChat development version `1.0.53` uploaded successfully from the audited clean release worktree with AppID `wxe7017f8545e8ad49`; WeChat DevTools confirmed `代码上传成功` and replaced the existing experience version. Formal public release still requires the normal WeChat review/release step.
 
