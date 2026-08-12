@@ -11012,3 +11012,11 @@ This file is the single source of truth for what changed in production.
 - No lesson, package, attendance, payroll or finance data is changed.
 - Functional commit `bb7c8f4e` is live with all 123 migrations current, 246 generated pages, PM2 PID `4154640` and health 200. The paired AI functional commit is `b04088f`.
 - WeChat development version 1.0.50 upload is not complete: DevTools reached the approved AppID but the WeChat upload service returned platform error 41002 (`appid missing`).
+
+# 2026-08-12-r264 (miniapp candidate)
+
+- AI今日工作详情按员工思维展示“家长希望怎么处理、正式系统已核对、教务现在只做哪一步”。
+- 资料不足时展示课程、老师、时间、校区等具体缺项和下一步，不再只显示“还缺少正式操作所需信息”。
+- 老师日期可用时间不足统一翻译为中文操作建议，不再向员工暴露 `availability`、`No date slots`、`MISSING_COMMAND_INPUT` 或 `NO_FEASIBLE_SCHEDULE`。
+- 只修改员工小程序的解释与展示，不修改正式排课、课包、课时、考勤、工资或财务业务逻辑。
+- TypeScript、68页小程序发布审计与差异检查通过；待微信开发者工具上传后进行真机验收。

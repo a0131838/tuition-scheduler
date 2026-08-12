@@ -4,6 +4,18 @@ function actionFor(item) {
   return { kind: "prepare", label: "查看完整处理方案" };
 }
 
+function friendlyMessage(value, fallback = "处理失败，请稍后重试") {
+  const text = String(value || "").trim();
+  const weekday = { Sun: "周日", Mon: "周一", Tue: "周二", Wed: "周三", Thu: "周四", Fri: "周五", Sat: "周六" };
+  const missingDate = text.match(/No date availability on (Sun|Mon|Tue|Wed|Thu|Fri|Sat)/i);
+  if (missingDate) return `老师尚未维护${weekday[missingDate[1]] || missingDate[1]}当天的可排课时间。请联系老师补充该日期的时间，或改选其他老师/日期。`;
+  const outsideDate = text.match(/Outside date availability (Sun|Mon|Tue|Wed|Thu|Fri|Sat) ([0-9:]+)-([0-9:]+)\. Available: (.+)/i);
+  if (outsideDate) return `申请的${weekday[outsideDate[1]] || outsideDate[1]} ${outsideDate[2]}–${outsideDate[3]}不在老师可用时间内。老师当前可用：${outsideDate[4]}。请改选时间或老师。`;
+  if (/MISSING_COMMAND_INPUT/i.test(text)) return "AI还缺少生成正式操作所需的资料，请查看下方列出的具体缺失项。";
+  if (/NO_FEASIBLE_SCHEDULE/i.test(text)) return "现有老师、家长时间和课包条件暂时无法同时满足，请查看下方原因并调整一项条件。";
+  return text ? text.replace(/availability/ig, "可用时间") : fallback;
+}
+
 const ACTION_LABELS = {
   CREATE_SESSION: "新增课程", RESCHEDULE_SESSION: "调整课程时间", CANCEL_SESSION: "取消课程",
   REPLACE_TEACHER: "更换老师", CREATE_ASSESSMENT_TASK: "建立评估任务",
@@ -129,7 +141,7 @@ Page({
         this.setData({ items, selected, pendingReview: null });
         this.setupDecision(selected);
       })
-      .catch((error) => this.setData({ message: error.message || "读取失败" }))
+      .catch((error) => this.setData({ message: friendlyMessage(error.message, "读取失败") }))
       .finally(() => this.setData({ loading: false }));
   },
   select(event) {
@@ -172,7 +184,7 @@ Page({
         const teacherOptions = data.teachers || [];
         this.setData({ teacherOptions, "decision.newTeacherName": teacherOptions.length ? "点击选择老师" : "暂无通过校验的老师" });
       })
-      .catch((error) => this.setData({ message: error.message || "可用老师读取失败" }));
+      .catch((error) => this.setData({ message: friendlyMessage(error.message, "可用老师读取失败") }));
   },
   chooseTeacher(event) {
     const teacherIndex = Number(event.detail.value);
@@ -230,7 +242,7 @@ Page({
           });
           return null;
         });
-    }).catch((error) => this.setData({ message: error.message || "方案准备失败" }))
+    }).catch((error) => this.setData({ message: friendlyMessage(error.message, "方案准备失败") }))
       .finally(() => this.setData({ working: false }));
   },
   cancelReview() { this.setData({ pendingReview: null, message: "" }); },
@@ -254,7 +266,7 @@ Page({
           return api.requestStaff("/api/miniapp/staff/ai-work", { method: "POST", data: { action: "refresh", intakeId: item.intakeId, ticketId: item.formalTicketId }, timeout: 60000 })
             .then(() => this.load(item.intakeId));
         }
-        this.setData({ message: error.message || "执行失败" });
+        this.setData({ message: friendlyMessage(error.message, "执行失败") });
         return null;
       })
       .finally(() => this.setData({ working: false }));
