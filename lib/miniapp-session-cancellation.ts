@@ -43,13 +43,13 @@ export class MiniappCancellationError extends Error {
 const cancellationSessionInclude = Prisma.validator<Prisma.SessionInclude>()({
   student: { select: { id: true, name: true } },
   attendances: true,
-  teacher: { select: { name: true } },
+  teacher: { select: { id: true, name: true } },
   class: {
     include: {
       course: { select: { id: true, name: true } },
       subject: { select: { name: true } },
       level: { select: { name: true } },
-      teacher: { select: { name: true } },
+      teacher: { select: { id: true, name: true } },
       campus: { select: { name: true, isOnline: true } },
       room: { select: { name: true } },
       oneOnOneStudent: { select: { id: true, name: true } },
@@ -232,7 +232,14 @@ export async function applyMiniappSessionCancellation(
       const now = new Date();
       const actorName = actor.name?.trim() || actor.email;
       const resultText = `已处理请假/取消：${checked.preview.timeText}；${checked.preview.chargeLabel}。`;
-      const completedTickets = [];
+      const completedTickets: Array<{
+        id: string;
+        ticketNo: string;
+        studentId: string | null;
+        studentName: string;
+        parentVisible: boolean;
+        updatedAt: Date;
+      }> = [];
       for (const ticket of checked.tickets.filter((row) => requestedTicketIds.includes(row.id))) {
         const log = `[${formatBusinessDateTime(now)}] ${actorName} · 移动请假/取消\n${resultText}`;
         const previousNotes = String(ticket.risksNotes ?? "").trim();

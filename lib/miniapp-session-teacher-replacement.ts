@@ -237,7 +237,14 @@ export async function applyMiniappTeacherReplacement(
       const now = new Date();
       const actorName = actor.name?.trim() || actor.email;
       const resultText = `已更换本节课老师：${checked.preview.timeText}；${checked.preview.fromTeacherName} → ${checked.preview.toTeacherName}。`;
-      const completedTickets = [];
+      const completedTickets: Array<{
+        id: string;
+        ticketNo: string;
+        studentId: string | null;
+        studentName: string;
+        parentVisible: boolean;
+        updatedAt: Date;
+      }> = [];
       for (const ticket of checked.tickets.filter((row) => requestedIds.includes(row.id))) {
         const log = `[${formatBusinessDateTime(now)}] ${actorName} · 移动换老师\n${resultText}`;
         const previousNotes = String(ticket.risksNotes ?? "").trim();

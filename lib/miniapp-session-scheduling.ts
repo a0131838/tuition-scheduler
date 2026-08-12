@@ -10,6 +10,7 @@ import { schedulingCoordinationCourseLabelsMatch } from "@/lib/scheduling-coordi
 import { pickStudentSessionConflict, pickTeacherSessionConflict } from "@/lib/session-conflict";
 import { isSessionDuplicateError } from "@/lib/session-unique";
 import { checkTeacherSchedulingAvailability } from "@/lib/teacher-scheduling-availability";
+import { checkTeacherDeliveryMode, checkTeacherTravelBuffer } from "@/lib/teacher-delivery-mode";
 import { SCHEDULING_COORDINATION_TICKET_TYPE } from "@/lib/tickets";
 
 export type MiniappSchedulingAction = "create" | "reschedule";
@@ -21,6 +22,9 @@ type SchedulingInput = {
   sessionId: string;
   startAt: Date;
   durationMin: number;
+  campusId?: string;
+  roomId?: string | null;
+  reason?: string;
 };
 
 type SchedulingActor = {
@@ -116,6 +120,35 @@ function locationText(session: SessionContext) {
   const campus = session.class.campus;
   if (campus.isOnline) return campus.name || "线上";
   return session.class.room?.name ? `${campus.name} · ${session.class.room.name}` : campus.name;
+}
+
+function targetLocationText(campus: { name: string; isOnline: boolean }, room: { name: string } | null) {
+  if (campus.isOnline) return campus.name || "线上";
+  return room?.name ? `${campus.name} · ${room.name}` : campus.name;
+}
+
+async function createLocationClass(db: Prisma.TransactionClient, checked: Awaited<ReturnType<typeof validateScheduling>>) {
+  if (!checked.locationChanged) return checked.session.classId;
+  const source = checked.session.class;
+  const locationClass = await db.class.create({
+    data: {
+      courseId: source.courseId,
+      subjectId: source.subjectId,
+      levelId: source.levelId,
+      teacherId: source.teacherId,
+      campusId: checked.campus.id,
+      roomId: checked.room?.id ?? null,
+      capacity: source.capacity,
+      oneOnOneStudentId: source.oneOnOneStudentId,
+    },
+  });
+  if (source.enrollments.length) {
+    await db.enrollment.createMany({
+      data: source.enrollments.map((row) => ({ classId: locationClass.id, studentId: row.studentId })),
+      skipDuplicates: true,
+    });
+  }
+  return locationClass.id;
 }
 
 function conflictSelect() {
@@ -217,10 +250,37 @@ async function validateScheduling(db: DbClient, input: SchedulingInput) {
     throw new MiniappSchedulingError("当前课程没有可排课学生。", 409, "NO_STUDENTS");
   }
 
+  const campus = input.campusId
+    ? await db.campus.findUnique({ where: { id: input.campusId } })
+    : session.class.campus;
+  if (!campus) throw new MiniappSchedulingError("目标校区不存在。", 404, "CAMPUS_NOT_FOUND");
+  const roomId = input.campusId ? input.roomId ?? null : session.class.roomId;
+  const room = roomId ? await db.room.findUnique({ where: { id: roomId } }) : null;
+  if (roomId && (!room || room.campusId !== campus.id)) {
+    throw new MiniappSchedulingError("目标教室与校区不匹配。", 409, "ROOM_MISMATCH");
+  }
+  if (!roomId && campusRequiresRoom(campus)) {
+    throw new MiniappSchedulingError("目标线下校区必须选择教室。", 409, "ROOM_REQUIRED");
+  }
+  if (room && room.capacity < session.class.capacity) {
+    throw new MiniappSchedulingError(`目标教室容量 ${room.capacity} 小于班级容量 ${session.class.capacity}。`, 409, "ROOM_CAPACITY");
+  }
+  const locationChanged = campus.id !== session.class.campusId || (room?.id ?? null) !== session.class.roomId;
+
   const availabilityError = await checkTeacherSchedulingAvailability(db, teacherId, input.startAt, endAt);
   if (availabilityError) {
     throw new MiniappSchedulingError(`老师 availability 不匹配：${availabilityError}`, 409, "AVAIL_CONFLICT");
   }
+  const deliveryModeError = await checkTeacherDeliveryMode(db, teacherId, campus);
+  if (deliveryModeError) throw new MiniappSchedulingError(deliveryModeError, 409, "TEACHER_DELIVERY_MODE_MISMATCH");
+  const travelBufferError = await checkTeacherTravelBuffer(db, {
+    teacherId,
+    sessionId: input.action === "reschedule" ? session.id : null,
+    startAt: input.startAt,
+    endAt,
+    campus,
+  });
+  if (travelBufferError) throw new MiniappSchedulingError(travelBufferError, 409, "TRAVEL_BUFFER_CONFLICT");
 
   const duplicate = await db.session.findFirst({
     where: {
@@ -281,10 +341,6 @@ async function validateScheduling(db: DbClient, input: SchedulingInput) {
     throw new MiniappSchedulingError("老师与已有预约时间冲突。", 409, "APPOINTMENT_CONFLICT");
   }
 
-  const roomId = session.class.roomId;
-  if (!roomId && campusRequiresRoom(session.class.campus)) {
-    throw new MiniappSchedulingError("当前线下课程没有设置教室，请先在电脑后台补充。", 409, "ROOM_REQUIRED");
-  }
   if (roomId) {
     const roomConflicts = await db.session.findMany({
       where: {
@@ -318,6 +374,9 @@ async function validateScheduling(db: DbClient, input: SchedulingInput) {
 
   return {
     session,
+    campus,
+    room,
+    locationChanged,
     startAt: input.startAt,
     endAt,
     teacherId,
@@ -330,7 +389,10 @@ async function validateScheduling(db: DbClient, input: SchedulingInput) {
       courseLabel: expectedCourseLabel,
       teacherName: session.teacher?.name ?? session.class.teacher.name,
       studentText: students.map((student) => student.name).filter(Boolean).join("、") || "-",
-      locationText: locationText(session),
+      locationText: targetLocationText(campus, room),
+      beforeLocationText: locationText(session),
+      locationChanged,
+      reason: input.reason?.trim() || null,
       durationMin: input.durationMin,
       coordinationTickets: coordinationTickets.map((ticket) => ({
         id: ticket.id,
@@ -357,8 +419,8 @@ function validateBatchRescheduleRows(rows: Awaited<ReturnType<typeof validateSch
       if (left.students.some((student) => right.students.some((other) => other.id === student.id))) {
         throw new MiniappSchedulingError("整批改课后的学生时间互相冲突。", 409, "BATCH_STUDENT_CONFLICT");
       }
-      const leftRoom = left.session.class.roomId;
-      if (leftRoom && leftRoom === right.session.class.roomId) throw new MiniappSchedulingError("整批改课后的教室时间互相冲突。", 409, "BATCH_ROOM_CONFLICT");
+      const leftRoom = left.room?.id ?? null;
+      if (leftRoom && leftRoom === (right.room?.id ?? null)) throw new MiniappSchedulingError("整批改课后的教室时间互相冲突。", 409, "BATCH_ROOM_CONFLICT");
     }
   }
 }
@@ -391,7 +453,8 @@ export async function applyMiniappSessionReschedulingBatch(
       }
       const writtenSessionIds: string[] = [];
       for (const row of rows) {
-        const updated = await tx.session.update({ where: { id: row.session.id }, data: { startAt: row.startAt, endAt: row.endAt } });
+        const classId = await createLocationClass(tx, row);
+        const updated = await tx.session.update({ where: { id: row.session.id }, data: { startAt: row.startAt, endAt: row.endAt, classId } });
         writtenSessionIds.push(updated.id);
       }
       await tx.auditLog.createMany({ data: rows.map((row, index) => ({
@@ -450,16 +513,17 @@ export async function applyMiniappSessionScheduling(
         }
         let writtenSessionId: string;
         if (input.action === "reschedule") {
+          const classId = await createLocationClass(tx, checked);
           const updated = await tx.session.update({
             where: { id: checked.session.id },
-            data: { startAt: checked.startAt, endAt: checked.endAt },
+            data: { startAt: checked.startAt, endAt: checked.endAt, classId },
           });
           writtenSessionId = updated.id;
         } else {
           const teacherOverride = checked.teacherId === checked.session.class.teacherId ? null : checked.teacherId;
           const created = await tx.session.create({
             data: {
-              classId: checked.session.classId,
+              classId: await createLocationClass(tx, checked),
               startAt: checked.startAt,
               endAt: checked.endAt,
               teacherId: teacherOverride,
@@ -483,6 +547,11 @@ export async function applyMiniappSessionScheduling(
               startAt: checked.startAt.toISOString(),
               endAt: checked.endAt.toISOString(),
               durationMin: input.durationMin,
+              fromCampusId: checked.session.class.campusId,
+              fromRoomId: checked.session.class.roomId,
+              toCampusId: checked.campus.id,
+              toRoomId: checked.room?.id ?? null,
+              reason: input.reason?.trim() || null,
             },
           },
         });
