@@ -11087,6 +11087,15 @@ This file is the single source of truth for what changed in production.
 - 验证：26 项聚焦规则/网关测试、TypeScript、247 页生产构建、69 页小程序发布审计及 Docker PostgreSQL 隔离 UAT（20 条审计记录）通过。
 - 数据边界：两条增量迁移只增加老师授课方式字段和工单老师确认关联；无删除、无批量改课、无扣课、无真实消息发送。
 
+# 2026-08-12-r363 (released)
+
+- 常规改课、取消和既有老师排课不再因老师尚未点击“已知悉”而卡住家长；首次师生匹配、上门和 24 小时内安排仍明确等待老师同意。
+- 家长端区分“已正式生效”“暂定等待老师同意”“老师有异议、教务正在协调”，避免把内部错误码或未确认方案展示为最终结果。
+- 教务可代录电话/微信取得的老师同意，必须记录渠道和回复；老师反馈问题不会静默撤课，并会同步家长可见进度。
+- 家长通知排队失败会把工单转入异常待办，不会假装已完成。
+- 正式网页提交 `2aa4e5ce7477a88b82e3551671fb5e76551f4a1f` 已上线，PM2 PID `413257`，健康检查 200；SGT AI OS `1faf7a3bc412` 已按候选→正式只读流程上线。
+- 微信开发版/体验版 `1.0.54` 已上传成功；正式公开版本仍需正常微信审核与发布。
+
 # 2026-08-12-r361
 
 - Added an explicit observer mode for existing staff accounts while preserving broad ADMIN visibility.
