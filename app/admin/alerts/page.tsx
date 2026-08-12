@@ -294,7 +294,7 @@ export default async function AdminAlertsPage({
         </summary>
         <div style={{ marginTop: 12 }}>
           <AlertsThresholdClient
-            initialThreshold={threshold}
+            initialThreshold={thresholdMin}
             currentThresholdMin={thresholdMin}
             labels={{
               label: t(lang, "Alert Threshold (minutes)", "告警阈值(分钟)"),

@@ -56,6 +56,19 @@ test("formal confirmation token binds actor and every command field", () => {
   assert.equal(verifyAiTicketExecutionToken(expired, parsed, "U-1", secret), false);
 });
 
+test("reschedule workflow accepts a typed location or teaching-mode change", () => {
+  const parsed = parseAiTicketExecutionRequest({
+    ...request,
+    workflowKey: "RESCHEDULE",
+    commands: [{
+      commandType: "CHANGE_SESSION_LOCATION", idempotencyKey: "location-1",
+      sessionId: "S-1", campusId: "C-ONLINE", roomId: null, reason: "家长要求改为线上",
+    }],
+  }, "T-1");
+  assert.equal(parsed.commands[0].commandType, "CHANGE_SESSION_LOCATION");
+  assert.equal(parsed.commands[0].roomId, null);
+});
+
 test("formal role matrix keeps scheduling admin-only and scopes every case workflow", () => {
   const parsed = parseAiTicketExecutionRequest(request, "T-1");
   assert.equal(canExecuteAiTicketPackage({ role: "ADMIN" }, parsed), true);
@@ -154,6 +167,8 @@ test("staff AI work shows a direct queue-to-detail flow, complete calendar revie
   assert.match(pageSource, /function singaporeDateTimeLabel/);
   assert.match(pageSource, /sessionLabel[\s\S]*singaporeDateTimeLabel\(item\.startAt\)/);
   assert.match(pageSource, /dueLabel:\s*singaporeDateTimeLabel/);
+  assert.match(pageSource, /onShow\(\) \{ this\.load\(this\.data\.selected\?\.intakeId\); \}/);
+  assert.match(pageSource, /onPullDownRefresh\(\) \{ this\.load\(this\.data\.selected\?\.intakeId\)/);
   assert.doesNotMatch(pageSource, /String\(item\.(?:startAt|operation\?\.dueAt)\)\.replace\("T"/);
 });
 
@@ -168,4 +183,16 @@ test("new-student multi-subject miniapp keeps an independent three-teacher order
   assert.match(pageSource, /subjectTeacherPreferences/);
   assert.match(pageSource, /同一科目不能重复选择老师/);
   assert.match(bridgeSource, /miniapp-ai\/subject-teacher-plan/);
+});
+
+test("teacher confirmation closes the ticket and queues the parent update from either teacher entry", () => {
+  const dashboard = readFileSync(new URL("../app/api/miniapp/staff/teacher/dashboard/route.ts", import.meta.url), "utf8");
+  const dedicatedRoute = readFileSync(new URL("../app/api/miniapp/staff/teacher/arrangement-confirmations/[feedbackId]/route.ts", import.meta.url), "utf8");
+  const reportsRoute = readFileSync(new URL("../app/api/miniapp/staff/teacher/reports/route.ts", import.meta.url), "utf8");
+  const home = readFileSync(new URL("../miniapp/boss-academic-parent/pages/staff-home/staff-home.wxml", import.meta.url), "utf8");
+  assert.match(dashboard, /pendingArrangementConfirmations/);
+  assert.match(dedicatedRoute, /acknowledgeManagerTeacherFeedback/);
+  assert.match(dedicatedRoute, /queueMiniappNotificationsForStudent/);
+  assert.match(reportsRoute, /ACK_MANAGER_FEEDBACK[\s\S]*queueMiniappNotificationsForStudent/);
+  assert.match(home, /课程安排确认/);
 });

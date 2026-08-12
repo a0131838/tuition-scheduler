@@ -154,8 +154,8 @@ Page({
     targetOptions: [], targetIndex: -1, teacherOptions: [], teacherIndex: -1, subjectPlans: [], subjectPlanLoading: false,
     decision: { targetSessionId: "", targetSessionLabel: "点击选择具体课次", chargeValue: "", note: "", newTeacherId: "", newTeacherName: "点击选择老师", reason: "" },
   },
-  onShow() { this.load(); },
-  onPullDownRefresh() { this.load().finally(() => wx.stopPullDownRefresh()); },
+  onShow() { this.load(this.data.selected?.intakeId); },
+  onPullDownRefresh() { this.load(this.data.selected?.intakeId).finally(() => wx.stopPullDownRefresh()); },
   load(selectedId) {
     this.setData({ loading: true, message: "" });
     return api.requestStaff("/api/miniapp/staff/ai-work", { timeout: 30000 })

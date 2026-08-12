@@ -11,6 +11,7 @@
 
 ## Current Known State
 
+- Current release line prepared: `2026-08-12-r360` aligns AI ticket execution with the current formal scheduling-action model. New scheduling, batch rescheduling, cancellation, replacement and location/time changes re-check the formal student, package, teacher qualification/availability/delivery mode, 30-minute home-travel buffer, room and duplicate-operation rules; the ticket waits for all affected teachers before completion and parent notification. The Staff Mini Program preserves the selected ticket across refresh, displays Singapore time and a complete before/after calendar, and exposes teacher confirmation only when needed.
 - Current release line prepared: `2026-08-12-r359` separates ticket request entry, communication channel and student source; removes the false New Oriental default; blocks new linked-student tickets until a missing student source is corrected; and adds a three-record missing-source review queue without rewriting history.
 - Current release line prepared: `2026-08-12-r357` makes AI course-change confirmation show the student's complete related-month calendar: unchanged lessons are grey, the original lesson is red with a strike-through, and the proposed lesson is orange. AI detail back-navigation now returns to the preserved AI queue before leaving for Workbench. The formal system adds only protected read-only preview facts; scheduling, attendance, package, fee and notification writes are unchanged.
 - Current release line prepared: `2026-08-12-r356` makes AI Today open one task as a full working view, returns to the preserved queue position, translates workflow badges to Chinese and aligns the page with the existing orange Mini Program brand. No business write logic changes; a new WeChat development build and physical-phone visual check remain required.
@@ -1453,6 +1454,8 @@
   - Production verification left the training-progress table unchanged at zero rows; no employee was automatically marked complete.
 
 ## Open Risks
+
+- `2026-08-12-r360`: current formal `TicketSchedulingAction` tracking is preserved and teacher acknowledgement is added as the final completion gate. Additive schema columns are already present; runtime and a new WeChat development upload still require guarded deployment and physical Eva/teacher acceptance.
 
 - `2026-08-12-r358`: the staff miniapp now lets academic staff order up to three eligible teachers independently for every new-student subject. The signed bridge remains advisory until the existing formal preview/confirm gate; native development version `1.0.52` is uploaded and still requires physical-phone acceptance before production submission.
 
@@ -6940,7 +6943,7 @@
 - Task doc: `docs/tasks/TASK-20260811-ai-work-singapore-time-display-r263.md`
 - Production: functional commit `bb7c8f4e`, 123 migrations current, 246-page build, PM2 PID `4154640`, login health 200; AI functional commit `b04088f`, health 200.
 - Mini Program: 1.0.50 upload was attempted after opening the project with AppID `wxe7017f8545e8ad49`, but WeChat returned platform error 41002. The development-version upload is pending and must not be reported as complete.
-# 2026-08-12-r360 Ready
+# 2026-08-12-r361 Ready
 
 - Scope: activate a cross-channel observer account for Wang Jie across the SGT web system, staff miniapp and signed AI workspace.
 - Visibility: keep ADMIN-level read visibility, including finance, without exposing any business write capability.

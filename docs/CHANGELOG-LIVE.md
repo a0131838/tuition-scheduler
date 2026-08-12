@@ -2,6 +2,14 @@
 
 This file is the single source of truth for what changed in production.
 
+## 2026-08-12-r360 (Ready)
+
+- Align AI ticket execution with current formal scheduling actions, shared-package deductions, teacher dated/weekly availability, online/campus/home modes and 30-minute home-travel buffers.
+- New scheduling, rescheduling, cancellation and teacher replacement keep current per-action tracking, then wait for every affected teacher to acknowledge before the ticket completes and the parent status notification is queued.
+- The teacher Mini Program receives a conditional “课程安排确认” task; the existing AI work calendar and per-subject teacher-order experience remain unchanged.
+- Two additive migrations were registered before runtime during isolated-UAT setup; production audit confirmed no lesson, attendance, package, payroll or message data was changed.
+- Local evidence: focused rules 16/16, TypeScript, production build, 43-page Mini Program audit, AI 263/263, simulated UAT 13/13 and Docker PostgreSQL write UAT with 20 audit rows.
+
 ## 2026-08-12-r359 (Ready)
 
 - Ticket details now separate request entry, communication channel and student source instead of presenting one overloaded source field.
@@ -11046,7 +11054,16 @@ This file is the single source of truth for what changed in production.
 - 老师日期可用时间不足统一翻译为中文操作建议，不再向员工暴露 `availability`、`No date slots`、`MISSING_COMMAND_INPUT` 或 `NO_FEASIBLE_SCHEDULE`。
 - 只修改员工小程序的解释与展示，不修改正式排课、课包、课时、考勤、工资或财务业务逻辑。
 - TypeScript、68页小程序发布审计与差异检查通过；待微信开发者工具上传后进行真机验收。
-# 2026-08-12-r360
+# 2026-08-12-r360 — AI 工单按正式规则执行并由老师闭环确认
+
+- 客服仍在原小程序录入唯一正式工单；AI 读取正式工单、截图证据、学生课表、共享课包、历史老师、老师日期可用时间和授课方式，教务在完整方案上确认一次。
+- 新排课、整批改课、取消/请假、换老师以及时间与地点联合调整统一经过正式权限、工单版本、课包、学生/老师/教室冲突、线上/校区/上门资格、上门前后 30 分钟交通缓冲和重复操作校验。
+- 所有正式课表动作写入后先进入“等待老师确认”；所有受影响老师确认后，工单才完成并将家长可见状态加入通知队列。通知排队失败会转为异常，不会假装完成。
+- 小程序 AI 今日工作在刷新或从选择器返回后保持当前工单；月历同时显示学生其他课程、划线的原课程和调整后课程，并统一使用新加坡时间及原系统橙色品牌。
+- 验证：26 项聚焦规则/网关测试、TypeScript、247 页生产构建、69 页小程序发布审计及 Docker PostgreSQL 隔离 UAT（20 条审计记录）通过。
+- 数据边界：两条增量迁移只增加老师授课方式字段和工单老师确认关联；无删除、无批量改课、无扣课、无真实消息发送。
+
+# 2026-08-12-r361
 
 - Added an explicit observer mode for existing staff accounts while preserving broad ADMIN visibility.
 - Observer web sessions are cryptographically marked in the primary session token; all non-read HTTP methods and request-context database writes are rejected.

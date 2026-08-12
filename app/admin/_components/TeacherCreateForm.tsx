@@ -46,6 +46,8 @@ export default function TeacherCreateForm({
     offlineTeaching: string;
     offlineShanghai: string;
     offlineSingapore: string;
+    teachingOnline: string;
+    teachingHome: string;
     tutorCode: string;
     paymentMethod: string;
     paymentPayNow: string;
@@ -92,6 +94,8 @@ export default function TeacherCreateForm({
     subjectIds?: string[];
     offlineShanghai?: boolean | null;
     offlineSingapore?: boolean | null;
+    teachingOnline?: boolean | null;
+    teachingHome?: boolean | null;
     payNowType?: string | null;
     payNowValue?: string | null;
     payNowName?: string | null;
@@ -164,6 +168,8 @@ export default function TeacherCreateForm({
             teachingLanguageOther: String(fd.get("teachingLanguageOther") ?? ""),
             offlineShanghai: String(fd.get("offlineShanghai") ?? "") === "on",
             offlineSingapore: String(fd.get("offlineSingapore") ?? "") === "on",
+            teachingOnline: String(fd.get("teachingOnline") ?? "") === "on",
+            teachingHome: String(fd.get("teachingHome") ?? "") === "on",
             tutorCode: String(fd.get("tutorCode") ?? ""),
             paymentMethod: String(fd.get("paymentMethod") ?? ""),
             paymentProfileStatus: String(fd.get("paymentProfileStatus") ?? ""),
@@ -338,6 +344,14 @@ export default function TeacherCreateForm({
         <label style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
           <input type="checkbox" name="offlineSingapore" defaultChecked={!!initial?.offlineSingapore} />
           {labels.offlineSingapore}
+        </label>
+        <label>
+          <input type="checkbox" name="teachingOnline" defaultChecked={!!initial?.teachingOnline} />
+          {labels.teachingOnline}
+        </label>
+        <label>
+          <input type="checkbox" name="teachingHome" defaultChecked={!!initial?.teachingHome} />
+          {labels.teachingHome}
         </label>
       </div>
 

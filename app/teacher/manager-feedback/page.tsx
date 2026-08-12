@@ -7,6 +7,8 @@ import {
   categoryLabel,
   getTeacherManagerFeedbackState,
 } from "@/lib/manager-teacher-feedback";
+import { MINIAPP_TEMPLATE_KEYS, queueMiniappNotificationsForStudent } from "@/lib/miniapp-notifications";
+import { prisma } from "@/lib/prisma";
 
 function cardStyle(background: string, border: string) {
   return {
@@ -23,11 +25,39 @@ async function acknowledgeAction(formData: FormData) {
   "use server";
   const { user, teacher } = await requireTeacherProfile();
   if (!teacher) redirect("/teacher?err=Teacher+profile+not+linked");
-  await acknowledgeManagerTeacherFeedback({
+  const result = await acknowledgeManagerTeacherFeedback({
     feedbackId: String(formData.get("feedbackId") ?? ""),
     teacherId: teacher.id,
     userId: user.id,
   });
+  if (result.ticketCompleted && result.ticket?.parentVisible && result.ticket.studentId) {
+    try {
+      await queueMiniappNotificationsForStudent({
+        studentId: result.ticket.studentId,
+        templateKey: MINIAPP_TEMPLATE_KEYS.requestStatusChanged,
+        eventType: "REQUEST_STATUS_CHANGED",
+        targetType: "Ticket",
+        targetId: `${result.ticket.id}:${result.ticket.updatedAt}`,
+        permission: "canCreateRequests",
+        payload: {
+          ticketNo: result.ticket.ticketNo, type: result.ticket.type, status: "Completed",
+          ticketId: result.ticket.id, studentName: result.ticket.studentName,
+          updatedAt: result.ticket.updatedAt,
+        },
+      });
+    } catch (error) {
+      await prisma.ticket.update({
+        where: { id: result.ticket.id },
+        data: {
+          status: "Exception",
+          nextAction: "课程和老师确认已完成，但家长通知排队失败；请在通知中心重试后再关闭工单。",
+          completedAt: null,
+          completedByUserId: null,
+          risksNotes: `家长通知排队失败：${error instanceof Error ? error.message : "未知错误"}`,
+        },
+      });
+    }
+  }
   revalidatePath("/teacher");
   revalidatePath("/teacher/manager-feedback");
   redirect("/teacher/manager-feedback?ack=1");

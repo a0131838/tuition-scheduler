@@ -65,6 +65,7 @@ Page({
     teacherMetricClass: "",
     teacherPayrollPending: 0,
     teacherUnreadFeedbackCount: 0,
+    teacherConfirmationCount: 0,
     actionCenterCount: 0,
     assessmentAwaitingCount: 0,
     assessmentRequestCount: 0,
@@ -229,12 +230,13 @@ Page({
               teacherUpcomingCount: data.upcomingCount || 0,
               teacherCompletedCount: data.completedThisMonth || 0,
               teacherExpenseCount: (data.expenseNeedsAction || 0) + (data.expenseInProgress || 0),
+              teacherConfirmationCount: data.pendingArrangementConfirmations || 0,
               nextTeacherSession
             });
             this.refreshPresentation();
           })
           .catch(() => {
-            this.setData({ teacherAvailabilityCount: 0, teacherUpcomingCount: 0, teacherCompletedCount: 0, teacherExpenseCount: 0, nextTeacherSession: null });
+            this.setData({ teacherAvailabilityCount: 0, teacherUpcomingCount: 0, teacherCompletedCount: 0, teacherExpenseCount: 0, teacherConfirmationCount: 0, nextTeacherSession: null });
             this.refreshPresentation();
           });
         const todoTask = api.requestStaff("/api/miniapp/staff/teacher/todos", { timeout: 30000 })
@@ -350,6 +352,7 @@ Page({
   goTeacherTodos() { wx.navigateTo({ url: "/pages/staff-teacher-todos/staff-teacher-todos" }); },
   goTeacherPayroll() { wx.navigateTo({ url: "/pages/staff-teacher-payroll/staff-teacher-payroll" }); },
   goTeacherFeedbacks() { wx.navigateTo({ url: "/pages/staff-teacher-feedbacks/staff-teacher-feedbacks" }); },
+  goTeacherConfirmations() { wx.navigateTo({ url: "/pages/staff-teacher-confirmations/staff-teacher-confirmations" }); },
   goActionCenter() { wx.navigateTo({ url: "/pages/staff-action-center/staff-action-center" }); },
   goStudentWorkspace() { wx.navigateTo({ url: "/pages/staff-student-workspace/staff-student-workspace" }); },
   goOperations() { wx.navigateTo({ url: "/pages/staff-operations/staff-operations" }); },

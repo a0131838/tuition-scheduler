@@ -441,6 +441,8 @@ model Teacher {
   teachingLanguageOther      String?
   offlineShanghai            Boolean           @default(false)
   offlineSingapore           Boolean           @default(false)
+  teachingOnline             Boolean           @default(false)
+  teachingHome               Boolean           @default(false)
   paymentMethod              String?
   payNowType                 String?
   payNowValue                String?
@@ -2863,6 +2865,7 @@ model ManagerTeacherFeedback {
   teacherId            String
   managerUserId        String?
   sessionId            String?
+  ticketId             String?
   category             String
   body                 String
   requiresAck          Boolean   @default(true)
@@ -2875,10 +2878,12 @@ model ManagerTeacherFeedback {
   teacher     Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   managerUser User?    @relation("ManagerTeacherFeedbackCreatedBy", fields: [managerUserId], references: [id], onDelete: SetNull)
   session     Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  ticket      Ticket?  @relation(fields: [ticketId], references: [id], onDelete: SetNull)
 
   @@index([teacherId, archivedAt, createdAt])
   @@index([managerUserId, createdAt])
   @@index([sessionId])
+  @@index([ticketId, acknowledgedAt])
 }
 
 model TicketDailyCounter {
@@ -2937,6 +2942,7 @@ model Ticket {
   completedByUser           User?                      @relation("TicketCompletedBy", fields: [completedByUserId], references: [id], onDelete: SetNull)
   parentAvailabilityRequest ParentAvailabilityRequest?
   schedulingActions         TicketSchedulingAction[]
+  teacherConfirmationTasks  ManagerTeacherFeedback[]
 
   @@index([status, createdAt])
   @@index([isArchived, createdAt])

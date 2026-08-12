@@ -395,6 +395,8 @@ export default async function TeachersPage({
               offlineTeaching: t(lang, "Offline Teaching", "线下授课"),
               offlineShanghai: t(lang, "Shanghai", "上海线下"),
               offlineSingapore: t(lang, "Singapore", "新加坡线下"),
+              teachingOnline: t(lang, "Online", "线上"),
+              teachingHome: t(lang, "Home visit", "上门"),
               paymentMethod: t(lang, "Payment Method", "收款方式"),
               paymentPayNow: t(lang, "PayNow", "PayNow"),
               paymentWise: t(lang, "Wise (overseas tutors)", "Wise（海外老师）"),

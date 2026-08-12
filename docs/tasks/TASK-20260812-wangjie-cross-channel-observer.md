@@ -1,5 +1,7 @@
 # Wang Jie cross-channel observer account
 
+Release line: `2026-08-12-r361` (renumbered after integrating the concurrent r360 AI ticket-rule release).
+
 ## Request
 
 Keep Wang Jie's existing staff identity but make it a strict observer account that can enter the web system, staff miniapp and AI workspace without changing anything.

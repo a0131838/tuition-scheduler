@@ -7,6 +7,7 @@ import { acknowledgeManagerTeacherFeedback, getTeacherManagerFeedbackState } fro
 import { cleanMiniappText, isReportEditable } from "@/lib/miniapp-staff-action-center";
 import { parseReportDraft } from "@/lib/midterm-report";
 import { prisma } from "@/lib/prisma";
+import { MINIAPP_TEMPLATE_KEYS, queueMiniappNotificationsForStudent } from "@/lib/miniapp-notifications";
 import { getTeacherNoticeState, markTeacherNoticeRead } from "@/lib/teacher-notices";
 
 function midtermLocked(raw: unknown) {
@@ -65,9 +66,41 @@ export async function POST(req: Request) {
     return ok({ completed: true });
   }
   if (action === "ACK_MANAGER_FEEDBACK") {
-    await acknowledgeManagerTeacherFeedback({ feedbackId: id, teacherId: access.teacherId, userId: access.user.id });
+    const result = await acknowledgeManagerTeacherFeedback({ feedbackId: id, teacherId: access.teacherId, userId: access.user.id });
+    if (result.ticketCompleted && result.ticket?.parentVisible && result.ticket.studentId) {
+      try {
+        await queueMiniappNotificationsForStudent({
+          studentId: result.ticket.studentId,
+          templateKey: MINIAPP_TEMPLATE_KEYS.requestStatusChanged,
+          eventType: "REQUEST_STATUS_CHANGED",
+          targetType: "Ticket",
+          targetId: `${result.ticket.id}:${result.ticket.updatedAt}`,
+          permission: "canCreateRequests",
+          payload: {
+            ticketNo: result.ticket.ticketNo,
+            type: result.ticket.type,
+            status: "Completed",
+            ticketId: result.ticket.id,
+            studentName: result.ticket.studentName,
+            updatedAt: result.ticket.updatedAt,
+          },
+        });
+      } catch (error) {
+        await prisma.ticket.update({
+          where: { id: result.ticket.id },
+          data: {
+            status: "Exception",
+            nextAction: "老师已确认，但家长通知排队失败；请在通知中心重试。",
+            completedAt: null,
+            completedByUserId: null,
+            risksNotes: `家长通知排队失败：${error instanceof Error ? error.message : "未知错误"}`,
+          },
+        });
+        return bad("课程确认已保存，但家长通知未能排队，已交给教务处理。", 409);
+      }
+    }
     await logAudit({ actor: access.user, module: "manager-teacher-feedback", action: "ACK_MINIAPP", entityType: "ManagerTeacherFeedback", entityId: id });
-    return ok({ completed: true });
+    return ok({ completed: true, ticketCompleted: result.ticketCompleted });
   }
   if (!["SAVE_REPORT", "SUBMIT_REPORT"].includes(action)) return bad("Unsupported action");
   const kind = cleanMiniappText((body as any)?.kind, 20).toUpperCase();

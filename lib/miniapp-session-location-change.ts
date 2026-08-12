@@ -4,6 +4,8 @@ import { campusRequiresRoom } from "@/lib/campus";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { prisma } from "@/lib/prisma";
 import { pickTeacherSessionConflict } from "@/lib/session-conflict";
+import { checkTeacherDeliveryMode, checkTeacherTravelBuffer } from "@/lib/teacher-delivery-mode";
+import { createTicketTeacherConfirmation, markTicketWaitingForTeacher } from "@/lib/ai-ticket-communication";
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
 
@@ -14,7 +16,7 @@ export type MiniappLocationChangeInput = {
   reason: string;
 };
 
-type Actor = { email: string; name: string | null; role: string };
+type Actor = { userId: string; email: string; name: string | null; role: string };
 
 type TokenPayload = MiniappLocationChangeInput & { userId: string; expiresAt: number };
 
@@ -97,6 +99,13 @@ async function validate(db: DbClient, input: MiniappLocationChangeInput) {
   if (campus.id === session.class.campusId && (room?.id ?? null) === session.class.roomId) {
     throw new MiniappLocationChangeError("请选择不同于当前安排的地点。", 409, "SAME_LOCATION");
   }
+  const teacherId = session.teacherId ?? session.class.teacherId;
+  const deliveryModeError = await checkTeacherDeliveryMode(db, teacherId, campus);
+  if (deliveryModeError) throw new MiniappLocationChangeError(deliveryModeError, 409, "TEACHER_DELIVERY_MODE_MISMATCH");
+  const travelBufferError = await checkTeacherTravelBuffer(db, {
+    teacherId, sessionId: session.id, startAt: session.startAt, endAt: session.endAt, campus,
+  });
+  if (travelBufferError) throw new MiniappLocationChangeError(travelBufferError, 409, "TRAVEL_BUFFER_CONFLICT");
   if (room) {
     const conflicts = await db.session.findMany({
       where: {
@@ -136,7 +145,7 @@ export async function previewMiniappSessionLocationChange(input: MiniappLocation
   return validate(prisma, input);
 }
 
-export async function applyMiniappSessionLocationChange(input: MiniappLocationChangeInput, actor: Actor) {
+export async function applyMiniappSessionLocationChange(input: MiniappLocationChangeInput, actor: Actor, ticketIds: string[] = []) {
   return prisma.$transaction(async (tx) => {
     const checked = await validate(tx, input);
     const source = checked.session.class;
@@ -179,6 +188,23 @@ export async function applyMiniappSessionLocationChange(input: MiniappLocationCh
         },
       },
     });
+    const resultText = `已调整课程地点：${checked.preview.timeText}；${checked.preview.fromLocationText} → ${checked.preview.toLocationText}。`;
+    const teacherId = checked.session.teacherId ?? checked.session.class.teacherId;
+    for (const ticketId of Array.from(new Set(ticketIds))) {
+      const ticket = await tx.ticket.findFirst({
+        where: { id: ticketId, isArchived: false, status: { notIn: ["Completed", "Cancelled"] } },
+        select: { id: true, risksNotes: true },
+      });
+      if (!ticket) throw new MiniappLocationChangeError("地点变更工单已变化，请重新预检。", 409, "TICKET_PREVIEW_STALE");
+      await createTicketTeacherConfirmation(tx, {
+        ticketId, teacherId, managerUserId: actor.userId, sessionId: checked.session.id,
+        title: "课程地点变更确认", detail: `${resultText}\n请老师确认已知晓。`,
+      });
+      await markTicketWaitingForTeacher(tx, {
+        ticketId, resultText, actorUserId: actor.userId, risksNotes: String(ticket.risksNotes ?? ""),
+        logLabel: `${actor.name?.trim() || actor.email} · 移动端改地点`,
+      });
+    }
     return { preview: checked.preview, classId: locationClass.id };
   }, { maxWait: 5000, timeout: 20000, isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
