@@ -1,6 +1,6 @@
 # RELEASE BOARD
 
-- `2026-08-12-r364`: ready for guarded release. Repeated same-student requests retain every source record but become one executable case; stale versions, conflicting intentions, competing target-session tickets and concurrent execution are blocked. Parent-facing progress is consolidated and the Staff Mini Program explains the grouping. Focused tests, TypeScript and production build passed; isolated UAT is required before release.
+- `2026-08-12-r364`: guarded web release completed for the consolidation code. Repeated same-student requests retain every source record but become one executable case; stale versions, conflicting intentions, competing target-session tickets and concurrent execution are blocked. The first AI candidate correctly stopped because the production read-only role lacked `TicketSchedulingAction` access; a guarded SELECT-only migration is now included and must pass candidate audit before AI promotion.
 
 - `2026-08-12-r363`: live at commit `2aa4e5ce7477a88b82e3551671fb5e76551f4a1f` (PM2 PID `413257`, login health `200`). Parent-first teacher communication separates non-blocking acknowledgement from actual consent. Only first-teacher, home and under-24-hour arrangements wait for consent; staff can record phone/WeChat consent with an audit note, and teachers can raise an issue without silently reverting formal lessons. SGT AI OS `1faf7a3bc412` is live read-only; WeChat development/experience version `1.0.54` uploaded successfully. Formal WeChat release still requires normal review and publication.
 

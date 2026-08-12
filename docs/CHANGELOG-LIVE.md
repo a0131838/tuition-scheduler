@@ -9,6 +9,7 @@ This file is the single source of truth for what changed in production.
 - Scheduling and service workflows update included duplicate/supplement tickets together, while only the head ticket queues one parent completion notification.
 - The parent request list shows one consolidated active status, and the Staff Mini Program explains the number of merged submissions or an unresolved conflict in plain Chinese.
 - Verification: 47 focused formal tests, TypeScript, the 247-page production build and isolated Docker PostgreSQL UAT with 24 audit records passed. No production business record was changed during validation.
+- The production AI read-only role receives `SELECT` on `TicketSchedulingAction` through a guarded migration. No write permission is added, and the AI candidate audit must read the table successfully before promotion.
 
 ## 2026-08-12-r363 (Ready)
 
