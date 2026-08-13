@@ -1,5 +1,12 @@
 # CHANGELOG LIVE
 
+## 2026-08-13-r364
+
+- Added formal-account SSO for the independent SGT AI OS web workspace. Staff now reuse the existing Tuition Scheduler session and never send or copy formal passwords into AI OS.
+- The formal system issues a 60-second signed identity assertion after reading the existing `ts_admin_session`; AI OS exchanges it for its own HttpOnly session. Return paths are same-site only and staff roles are mapped server-side.
+- This release adds no business write: scheduling, package, attendance, payroll, finance, Ticket and notification behavior are unchanged.
+- Verification: focused delegation/SSO tests, TypeScript and production build pass; AI OS performs its own full safety, UX, UAT and public redirect verification before independent deployment.
+
 This file is the single source of truth for what changed in production.
 
 ## 2026-08-12-r364 (Ready)

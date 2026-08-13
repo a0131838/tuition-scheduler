@@ -10,6 +10,14 @@
 
 - `2026-08-12-r360`: AI ticket rule alignment is live on Tuition Scheduler commit `a4cc65f3594d651eb501aeb255957d96283f18cd` (PM2 PID `356031`) and SGT AI OS commit `5534ec5a14b2`. Formal login/authorization boundaries and AI health passed online checks. WeChat development version `1.0.53` uploaded successfully from the audited clean release worktree with AppID `wxe7017f8545e8ad49`; WeChat DevTools confirmed `代码上传成功` and replaced the existing experience version. Formal public release still requires the normal WeChat review/release step.
 
+## 2026-08-13-r364 Ready
+
+- Scope: make Tuition Scheduler the sole staff identity source for the AI OS web workspace.
+- UX: one original email/password login; an authenticated staff member enters AI OS without a second browser password prompt.
+- Safety: 60-second signed assertion, HttpOnly AI session, same-site return path, server-side role mapping, no password sharing and no business-data write.
+- Validation: focused SSO/delegation tests, TypeScript, production build and AI-side full release gates.
+- Task doc: `docs/tasks/TASK-20260813-ai-os-unified-staff-login.md`
+
 ## Current Production Snapshot
 
 - Current service: `sgtmanage.com`
