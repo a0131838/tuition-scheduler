@@ -8,6 +8,14 @@ function safeAiPath(value: string | null) {
   return value.slice(0, 1_000);
 }
 
+function formalOrigin(req: Request) {
+  const configured = String(process.env.NEXT_PUBLIC_APP_URL || "").trim();
+  if (configured) return new URL(configured).origin;
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
+  const protocol = req.headers.get("x-forwarded-proto") === "https" ? "https" : "http";
+  return host ? `${protocol}://${host}` : new URL(req.url).origin;
+}
+
 async function aiRoleFor(user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>) {
   if (isOwnerManager(user)) return "OWNER";
   if (user.role === "FINANCE") return "MANAGER_FINANCE";
@@ -20,11 +28,12 @@ async function aiRoleFor(user: NonNullable<Awaited<ReturnType<typeof getCurrentU
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
+  const origin = formalOrigin(req);
   const next = safeAiPath(url.searchParams.get("next"));
   const user = await getCurrentUser();
   if (!user) {
     const returnPath = `/api/admin/ai-os/sso?next=${encodeURIComponent(next)}`;
-    return Response.redirect(new URL(`/admin/login?next=${encodeURIComponent(returnPath)}`, url.origin), 302);
+    return Response.redirect(new URL(`/admin/login?next=${encodeURIComponent(returnPath)}`, origin), 302);
   }
 
   try {
@@ -40,6 +49,6 @@ export async function GET(req: Request) {
     target.searchParams.set("next", next);
     return Response.redirect(target, 302);
   } catch {
-    return Response.redirect(new URL("/admin?err=AI+OS+access+is+not+configured", url.origin), 302);
+    return Response.redirect(new URL("/admin?err=AI+OS+access+is+not+configured", origin), 302);
   }
 }

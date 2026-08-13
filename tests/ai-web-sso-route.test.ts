@@ -27,3 +27,10 @@ test("AI role override remains allowlisted and signed", () => {
   const claims = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString("utf8"));
   assert.deepEqual({ sub: claims.sub, role: claims.role, ttl: claims.exp - claims.iat }, { sub: "U-3", role: "CUSTOMER_SERVICE", ttl: 60 });
 });
+
+test("formal SSO redirects use the configured public origin behind a reverse proxy", () => {
+  const source = readFileSync(new URL("../app/api/admin/ai-os/sso/route.ts", import.meta.url), "utf8");
+  assert.match(source, /process\.env\.NEXT_PUBLIC_APP_URL/);
+  assert.match(source, /x-forwarded-host/);
+  assert.doesNotMatch(source, /admin\/login[^\n]+url\.origin/);
+});
