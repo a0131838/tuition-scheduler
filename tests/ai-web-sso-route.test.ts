@@ -32,5 +32,6 @@ test("formal SSO redirects use the configured public origin behind a reverse pro
   const source = readFileSync(new URL("../app/api/admin/ai-os/sso/route.ts", import.meta.url), "utf8");
   assert.match(source, /process\.env\.NEXT_PUBLIC_APP_URL/);
   assert.match(source, /x-forwarded-host/);
+  assert.match(source, /if \(host\) return/);
   assert.doesNotMatch(source, /admin\/login[^\n]+url\.origin/);
 });

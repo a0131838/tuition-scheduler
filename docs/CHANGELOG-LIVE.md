@@ -1,5 +1,10 @@
 # CHANGELOG LIVE
 
+## 2026-08-13-r365
+
+- Corrected the AI OS SSO return origin behind Nginx: the route now trusts the forwarded public host before a legacy internal `NEXT_PUBLIC_APP_URL` value, so staff are sent to `sgtmanage.com` rather than `localhost:3000`.
+- Focused SSO and observer-role tests pass; no business data or permission rule changes.
+
 ## 2026-08-13-r364
 
 - Added formal-account SSO for the independent SGT AI OS web workspace. Staff now reuse the existing Tuition Scheduler session and never send or copy formal passwords into AI OS.

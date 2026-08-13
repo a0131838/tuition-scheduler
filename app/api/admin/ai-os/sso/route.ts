@@ -9,11 +9,11 @@ function safeAiPath(value: string | null) {
 }
 
 function formalOrigin(req: Request) {
-  const configured = String(process.env.NEXT_PUBLIC_APP_URL || "").trim();
-  if (configured) return new URL(configured).origin;
   const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
   const protocol = req.headers.get("x-forwarded-proto") === "https" ? "https" : "http";
-  return host ? `${protocol}://${host}` : new URL(req.url).origin;
+  if (host) return `${protocol}://${host}`;
+  const configured = String(process.env.NEXT_PUBLIC_APP_URL || "").trim();
+  return configured ? new URL(configured).origin : new URL(req.url).origin;
 }
 
 async function aiRoleFor(user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>) {

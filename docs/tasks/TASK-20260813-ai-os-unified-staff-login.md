@@ -2,6 +2,8 @@
 
 状态：`READY FOR GUARDED DEPLOY`
 
+线上代理复验：Nginx 的 `x-forwarded-host` / `host` 优先于历史内部 `NEXT_PUBLIC_APP_URL`，避免登录页跳到 `localhost:3000`。
+
 ## 目标
 
 SGT AI OS 网页端不再维护或要求第二套员工用户名和密码。员工只使用正式 Tuition Scheduler 的邮箱、密码和账号状态；已登录正式系统时进入 AI OS 无需再次输入，未登录时先到正式登录页并在成功后返回原 AI 页面。
