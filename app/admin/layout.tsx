@@ -120,6 +120,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     pathname === "/admin/leads/new" ||
     pathname === "/admin/leads/dashboard" ||
     pathname === "/admin/leads/export" ||
+    (user.role === "CS" && pathname === "/admin/communication-reminders") ||
     (pathname.startsWith("/admin/leads/") && !pathname.startsWith("/admin/leads/owners")) ||
     (user.role === "CS" && user.workspaces.includes("CARE") && pathname.startsWith("/admin/care")) ||
     (user.role === "CS" && (pathname === "/admin/communications" || pathname === "/admin/mobile" || pathname === "/admin/mobile/parent-requests"));
@@ -162,6 +163,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               tone: "warning" as const,
             }]
           : []),
+        {
+          href: "/admin/communication-reminders",
+          label: t(lang, "Communication Reminders", "AI 沟通提醒"),
+          description: t(lang, "Bilingual reminders for classes, feedback, reports, and requests.", "课程、反馈、报告和工单的中英提醒。"),
+          tone: "accent" as const,
+        },
         {
           href: "/admin/mobile",
           label: t(lang, "Mobile Workbench", "员工移动端"),
@@ -450,6 +457,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         },
         ...(user.role === "CS"
           ? [
+              {
+                href: "/admin/communication-reminders",
+                label: t(lang, "AI Communication Reminders", "AI 沟通提醒"),
+                description: t(lang, "Copy bilingual messages and record the real follow-up status.", "复制中英提醒，并记录真实跟进状态。"),
+                tone: "warning" as const,
+              },
               {
                 href: "/admin/communications",
                 label: t(lang, "Parent Communication", "家长沟通与通知"),

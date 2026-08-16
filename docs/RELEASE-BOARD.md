@@ -1,5 +1,31 @@
 # RELEASE BOARD
 
+## 2026-08-16-r370 Ready
+
+- Scope: ship one bilingual communication-reminder queue for Emily across the formal web workspace and employee miniapp source.
+- Business impact:
+  - Emily can work from class, attendance, feedback, report, Ticket and teacher-confirmation reminders without maintaining a second manual list.
+  - Web and miniapp share the same copied/sent/waiting/replied/completed/snoozed/escalated state.
+  - Old attendance, feedback, report and test-ticket noise is excluded from the current operational window.
+  - No automatic WeChat send and no change to scheduling, attendance deduction, packages, payroll, finance, report publication or Ticket state.
+- Files:
+  - `lib/communication-reminders.ts`
+  - `app/admin/communication-reminders/*`
+  - `app/api/admin/communication-reminders/route.ts`
+  - `app/api/miniapp/staff/reminder-attention/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-reminder-attention/*`
+  - `lib/training-operation-coverage.ts`
+  - `docs/tasks/TASK-20260816-emily-ai-communication-reminders.md`
+- Verification before deploy:
+  - focused tests 4/4 and latest-branch backend regression 180/180
+  - 69-page miniapp release audit and JavaScript syntax
+  - clean-worktree `npm run build`
+  - guarded `release_to_server.sh --check`
+- Post-deploy verification:
+  - local/GitHub/server commit equality, PM2 online and `/admin/login` HTTP 200
+  - anonymous reminder page/API redirect to login
+  - native WeChat experience version remains a separate upload and physical-phone check
+
 - `2026-08-16-r369`: ready to expose renewal reminder operations to Jessika on Web and Staff Mini Program while keeping contract, billing, payment and package activation finance-only.
 
 ## 2026-08-16-r369 Ready

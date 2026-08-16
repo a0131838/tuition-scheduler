@@ -1,5 +1,27 @@
 # CHANGELOG LIVE
 
+## 2026-08-16-r370
+
+- Release ID: `2026-08-16-r370`
+- Date/Time (Asia/Singapore): `2026-08-16`
+- Deployment status: `READY FOR GUARDED DEPLOY`; native WeChat package upload remains a separate gate.
+- Scope: add the Emily AI communication reminder center to the formal web workspace and employee miniapp source, using one shared read projection and audited follow-up state for class, attendance, feedback, report, ticket and teacher-confirmation reminders.
+- Key files:
+  - `lib/communication-reminders.ts`
+  - `app/admin/communication-reminders/*`
+  - `app/api/admin/communication-reminders/route.ts`
+  - `app/api/miniapp/staff/reminder-attention/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-reminder-attention/*`
+  - `lib/training-operation-coverage.ts`
+  - `docs/tasks/TASK-20260816-emily-ai-communication-reminders.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low-to-medium, isolated communication workflow. The release reads formal records and writes reminder status only to `AuditLog`; it does not modify scheduling, attendance, package balance, payroll, finance, report publication, Ticket state or send real messages automatically.
+- Verification: focused reminder tests 4/4; latest-branch backend regression 180/180; miniapp release audit passed for 69 pages; local route compilation and anonymous redirect guards passed; real read-only projection returned 91 current tasks with zero missing recipients, bilingual copy or source links; latest-branch clean-worktree production build passed with 250 generated routes. Guarded release checks are required before deploy.
+- Rollback point: `67647f48` before `2026-08-16-r370`.
+
+---
+
 ## 2026-08-16-r369
 
 - Release ID: `2026-08-16-r369`

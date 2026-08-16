@@ -183,7 +183,7 @@
     </view>
     <view class="work-row" wx:if="{{canViewReminderAttention}}" bindtap="goReminderAttention">
       <view class="work-icon">醒</view>
-      <view class="work-copy"><view class="work-title">提醒异常</view><view class="work-detail">{{reminderAttentionCount}} 条消息需补授权</view></view>
+      <view class="work-copy"><view class="work-title">AI 沟通提醒</view><view class="work-detail">{{reminderAttentionCount}} 项课程、反馈和报告需跟进</view></view>
       <view class="work-badge alert" wx:if="{{hasReminderAttention}}">{{reminderAttentionCount}}</view><view class="work-arrow">›</view>
     </view>
     <view class="work-row" wx:if="{{canOpenApprovals}}" bindtap="goApprovals">

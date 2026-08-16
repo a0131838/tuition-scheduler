@@ -3,15 +3,29 @@ import { requireMiniappStaff } from "@/app/api/miniapp/staff/_lib";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { listMiniappConsentAttention } from "@/lib/miniapp-reminder-attention";
 import { canManageMiniappSchedulingCoordination } from "@/lib/miniapp-staff-session";
+import { logAudit } from "@/lib/audit-log";
+import {
+  COMMUNICATION_REMINDER_ENTITY,
+  COMMUNICATION_REMINDER_MODULE,
+  communicationReminderSummary,
+  listCommunicationReminders,
+  normalizeCommunicationReminderStatus,
+} from "@/lib/communication-reminders";
 
 export async function GET(req: Request) {
   const auth = await requireMiniappStaff(req);
   if (!auth.ok) return auth.response;
   if (!canManageMiniappSchedulingCoordination(auth.user)) return bad("Reminder attention permission required", 403);
-  const rows = await listMiniappConsentAttention(200);
+  const [items, rows] = await Promise.all([
+    listCommunicationReminders(new Date(), 200),
+    listMiniappConsentAttention(200),
+  ]);
   return ok({
-    total: rows.length,
-    reminders: rows.map((row) => {
+    total: items.length,
+    summary: communicationReminderSummary(items),
+    reminders: items,
+    consentTotal: rows.length,
+    consentReminders: rows.map((row) => {
       const payload = row.payloadJson && typeof row.payloadJson === "object" ? row.payloadJson as any : {};
       return {
         id: row.id,
@@ -41,4 +55,37 @@ export async function GET(req: Request) {
       };
     }),
   });
+}
+
+export async function POST(req: Request) {
+  const auth = await requireMiniappStaff(req);
+  if (!auth.ok) return auth.response;
+  if (!canManageMiniappSchedulingCoordination(auth.user)) return bad("Reminder attention permission required", 403);
+  let body: any;
+  try {
+    body = await req.json();
+  } catch {
+    return bad("Invalid JSON body");
+  }
+  const key = String(body?.key ?? "").trim();
+  const status = normalizeCommunicationReminderStatus(body?.status);
+  if (!key || key.length > 240 || !/^[A-Z0-9_:-]+$/i.test(key) || !status) return bad("Invalid reminder action", 409);
+  const snoozedUntil = status === "SNOOZED"
+    ? String(body?.snoozedUntil ?? new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()).trim()
+    : "";
+  if (snoozedUntil && Number.isNaN(new Date(snoozedUntil).getTime())) return bad("Invalid snooze time", 409);
+  await logAudit({
+    actor: auth.user,
+    module: COMMUNICATION_REMINDER_MODULE,
+    action: `REMINDER_${status}`,
+    entityType: COMMUNICATION_REMINDER_ENTITY,
+    entityId: key,
+    meta: {
+      status,
+      language: String(body?.language ?? ""),
+      note: String(body?.note ?? "").trim().slice(0, 500),
+      snoozedUntil: snoozedUntil || undefined,
+    },
+  });
+  return ok({ key, status });
 }

@@ -1,23 +1,32 @@
 <view class="page">
   <view class="top">
-    <view class="eyebrow">微信提醒</view>
-    <view class="title">{{total}} 条待跟进</view>
-    <view class="subtitle">以下消息因家长尚未授权而无法发送。</view>
+    <view class="eyebrow">客服与教务 · 同一份待办</view>
+    <view class="title">AI 沟通提醒</view>
+    <view class="subtitle">课程、反馈、报告和工单都在这里；Emily 现在只处理最紧急的一项。</view>
   </view>
-
-  <view class="reminder-card" wx:for="{{reminders}}" wx:key="id">
-    <view class="row">
-      <view>
-        <view class="student">{{item.studentName}}</view>
-        <view class="parent">{{item.parentName}} {{item.parentPhone}}</view>
-      </view>
-      <button class="phone-button" data-phone="{{item.parentPhone}}" bindtap="callParent">联系</button>
+  <view class="summary">
+    <view><text>需处理</text><text class="metric-value">{{total}}</text></view><view class="overdue"><text>已逾期</text><text class="metric-value">{{summary.overdue}}</text></view><view><text>今天</text><text class="metric-value">{{summary.today}}</text></view><view><text>等回复</text><text class="metric-value">{{summary.waitingReply}}</text></view>
+  </view>
+  <scroll-view class="filters" scroll-x="true" enhanced="true" show-scrollbar="false">
+    <view class="filter-row">
+      <button class="filter {{filter === 'ACTION' ? 'active' : ''}}" data-filter="ACTION" bindtap="changeFilter">现在处理</button><button class="filter {{filter === 'OVERDUE' ? 'active' : ''}}" data-filter="OVERDUE" bindtap="changeFilter">已逾期</button><button class="filter {{filter === 'TODAY' ? 'active' : ''}}" data-filter="TODAY" bindtap="changeFilter">今天</button><button class="filter {{filter === 'WAITING_REPLY' ? 'active' : ''}}" data-filter="WAITING_REPLY" bindtap="changeFilter">等待回复</button><button class="filter {{filter === 'ALL' ? 'active' : ''}}" data-filter="ALL" bindtap="changeFilter">全部</button>
     </view>
-    <view class="course">{{item.categoryLabel}} · {{item.eventTimeText}}</view>
-    <view class="teacher">{{item.subjectLabel}}</view>
-    <view class="teacher" wx:if="{{item.detailLabel}}">{{item.detailLabel}}</view>
-    <view class="instruction">{{item.instruction}}</view>
+  </scroll-view>
+  <view class="reminder {{expandedKey === item.key ? 'expanded' : ''}}" wx:for="{{visibleReminders}}" wx:key="key">
+    <view class="reminder-head" data-key="{{item.key}}" bindtap="toggleReminder">
+      <view class="urgency-dot {{item.urgency}}"></view><view class="head-copy"><view class="student">{{item.title}}</view><view class="meta">{{item.categoryLabel}} · {{item.recipientName}}</view><view class="meta">{{item.dueText}} · {{item.statusLabel}}</view></view><view class="chevron">{{expandedKey === item.key ? '−' : '›'}}</view>
+    </view>
+    <view class="reminder-detail" wx:if="{{expandedKey === item.key}}">
+      <view class="subject">{{item.subject}}</view><view class="copy-label">AI 已按正式数据准备</view><view class="copy-text">{{item.copyBilingual}}</view>
+      <button class="primary" data-key="{{item.key}}" data-language="BILINGUAL" bindtap="copyText">复制中英双语</button>
+      <view class="copy-row"><button data-key="{{item.key}}" data-language="ZH" bindtap="copyText">只复制中文</button><button data-key="{{item.key}}" data-language="EN" bindtap="copyText">Copy English</button></view>
+      <view class="status-label">复制不等于已发送，请选择真实状态</view>
+      <view class="action-grid"><button data-key="{{item.key}}" data-status="SENT" bindtap="markStatus">已发送</button><button data-key="{{item.key}}" data-status="WAITING_REPLY" bindtap="markStatus">等回复</button><button data-key="{{item.key}}" data-status="REPLIED" bindtap="markStatus">已回复</button><button data-key="{{item.key}}" data-status="SNOOZED" bindtap="markStatus">2小时后提醒</button><button class="done" data-key="{{item.key}}" data-status="COMPLETED" bindtap="markStatus">完成</button><button class="escalate" data-key="{{item.key}}" data-status="ESCALATED" bindtap="markStatus">升级给教务/管理</button></view>
+    </view>
   </view>
-
-  <view class="empty" wx:if="{{!loading && !reminders.length}}">当前没有需要补授权的微信提醒</view>
+  <view class="empty" wx:if="{{!loading && !visibleReminders.length}}">这个分类暂无待办</view>
+  <view class="consent-section" wx:if="{{consentReminders.length}}">
+    <view class="section-title">微信通知授权补齐 · {{consentReminders.length}}</view>
+    <view class="consent-item" wx:for="{{consentReminders}}" wx:key="id"><view><text class="consent-student">{{item.studentName}}</text><text>{{item.categoryLabel}} · {{item.parentName}}</text><text>{{item.instruction}}</text></view><button data-phone="{{item.parentPhone}}" bindtap="callParent">联系</button></view>
+  </view>
 </view>
