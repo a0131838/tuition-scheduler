@@ -1,6 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolveOnlineSettlementTrancheMinutes } from "../lib/partner-settlement";
+import {
+  isPartnerSettlementBlockingCandidateStatus,
+  resolveOnlineSettlementTrancheMinutes,
+} from "../lib/partner-settlement";
+
+test("reverted partner settlements return to the candidate queue", () => {
+  assert.equal(isPartnerSettlementBlockingCandidateStatus("PENDING"), true);
+  assert.equal(isPartnerSettlementBlockingCandidateStatus("INVOICED"), true);
+  assert.equal(isPartnerSettlementBlockingCandidateStatus("CANCELLED"), true);
+  assert.equal(isPartnerSettlementBlockingCandidateStatus("REVERTED"), false);
+});
 
 test("online partner settlement waits for active incomplete packages", () => {
   assert.deepEqual(

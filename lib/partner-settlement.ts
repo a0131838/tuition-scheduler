@@ -1,6 +1,12 @@
 import { prisma } from "@/lib/prisma";
 
-const ACTIVE_SETTLEMENT_STATUSES = ["PENDING", "INVOICED", "CANCELLED"] as const;
+export const BLOCKING_PARTNER_SETTLEMENT_STATUSES = ["PENDING", "INVOICED", "CANCELLED"] as const;
+
+export function isPartnerSettlementBlockingCandidateStatus(status: string) {
+  return BLOCKING_PARTNER_SETTLEMENT_STATUSES.includes(
+    status as (typeof BLOCKING_PARTNER_SETTLEMENT_STATUSES)[number]
+  );
+}
 
 export type OnlinePartnerSettlementCandidate = {
   id: string;
@@ -101,7 +107,7 @@ export async function listOnlinePartnerSettlementCandidates(input: {
     prisma.partnerSettlement.findMany({
       where: {
         mode: "ONLINE_PACKAGE_END",
-        status: { in: [...ACTIVE_SETTLEMENT_STATUSES] },
+        status: { in: [...BLOCKING_PARTNER_SETTLEMENT_STATUSES] },
         packageTxnId: { in: Array.from(purchaseTxnIdSet) },
       },
       select: { packageTxnId: true },
@@ -109,7 +115,7 @@ export async function listOnlinePartnerSettlementCandidates(input: {
     prisma.partnerSettlement.findMany({
       where: {
         mode: "ONLINE_PACKAGE_END",
-        status: { in: [...ACTIVE_SETTLEMENT_STATUSES] },
+        status: { in: [...BLOCKING_PARTNER_SETTLEMENT_STATUSES] },
         packageId: { in: packageIds },
         packageTxnId: null,
       },

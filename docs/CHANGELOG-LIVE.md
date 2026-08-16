@@ -1,5 +1,28 @@
 # CHANGELOG LIVE
 
+## 2026-08-16-r367
+
+- Release ID: `2026-08-16-r367`
+- Date/Time (Asia/Singapore): `2026-08-16`
+- Deployment status: `READY`
+- Scope: return reverted New Oriental offline monthly settlement records to the candidate queue and safely reuse the existing record when staff resubmit it.
+- Key files:
+  - `app/admin/reports/partner-settlement/page.tsx`
+  - `lib/partner-settlement.ts`
+  - `tests/partner-settlement.test.ts`
+  - `docs/tasks/TASK-20260816-offline-settlement-reverted-recovery.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low and limited to partner settlement candidate filtering and resubmission. Existing lessons, attendance, feedback, invoices, receipts and settlement records are not rewritten by deployment.
+- Verification:
+  - `npx tsx --test tests/partner-settlement.test.ts`
+  - `npx tsc --noEmit`
+  - `npm run build`
+  - `git diff --check`
+- Rollback point: `706b23f9e0c47275f9652fea98d08990f7c43ed3` before `2026-08-16-r367`.
+
+---
+
 ## 2026-08-16-r366
 
 - Release ID: `2026-08-16-r366`

@@ -1,8 +1,33 @@
 # RELEASE BOARD
 
+- `2026-08-16-r367`: ready to restore reverted New Oriental offline monthly settlement records to the candidate queue and reactivate the existing record with recalculated hours and amount when staff resubmit it. No lesson, attendance, feedback, invoice, receipt or existing settlement data is rewritten by deployment.
+
 - `2026-08-16-r366`: ready to extend Web and Staff Mini Program cancellation-ticket intake with a recent/future date picker, actual student-session matching, visible lesson state and a review-only manual fallback. Started, ended, attendance-linked and manually entered cases cannot auto-execute; formal scheduling, attendance, package, payroll and finance logic remain unchanged.
 
 - `2026-08-13-r365`: ready guarded proxy-origin correction for unified AI OS login. Public forwarded host takes precedence over the legacy internal URL; focused auth tests pass and business writes remain unchanged.
+
+## 2026-08-16-r367 Ready
+
+- Scope: make `REVERTED` offline monthly partner settlements eligible for settlement again, while continuing to block duplicate `PENDING`, `INVOICED` and `CANCELLED` records.
+- Business impact:
+  - reverted July students return to the New Oriental offline settlement candidate list
+  - resubmission reuses the original settlement row, recalculates current eligible hours and amount, and clears the reverted marker
+  - no duplicate settlement row is created
+  - deployment does not modify lessons, attendance, feedback, invoices, receipts or production finance records
+- Files:
+  - `app/admin/reports/partner-settlement/page.tsx`
+  - `lib/partner-settlement.ts`
+  - `tests/partner-settlement.test.ts`
+- Verification before deploy:
+  - `npx tsx --test tests/partner-settlement.test.ts`
+  - `npx tsc --noEmit`
+  - `npm run build`
+  - `git diff --check`
+- Post-deploy verification:
+  - confirm local, GitHub and server commits align
+  - confirm PM2 is online and `/admin/login` returns HTTP 200
+  - confirm the three July offline records remain `REVERTED` until staff deliberately resubmit them
+- Task doc: `docs/tasks/TASK-20260816-offline-settlement-reverted-recovery.md`
 
 ## 2026-08-16-r366 Ready
 

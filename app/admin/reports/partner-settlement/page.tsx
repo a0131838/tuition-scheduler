@@ -1,7 +1,10 @@
 ﻿import { getCurrentUser, requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { listPartnerBilling } from "@/lib/partner-billing";
-import { listOnlinePartnerSettlementCandidates } from "@/lib/partner-settlement";
+import {
+  BLOCKING_PARTNER_SETTLEMENT_STATUSES,
+  listOnlinePartnerSettlementCandidates,
+} from "@/lib/partner-settlement";
 import { getPartnerByIdOrDefault, listActivePartners, type PartnerConfig } from "@/lib/partners";
 import { prisma } from "@/lib/prisma";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
@@ -279,7 +282,7 @@ async function createOfflineSettlementAction(formData: FormData) {
     throw err;
   }
 
-  if (existed) {
+  if (existed && existed.status !== "REVERTED") {
     redirect(buildSettlementPageUrl(month, { partnerId: partner.id, msg: "already-settled" }));
   }
 
@@ -312,20 +315,35 @@ async function createOfflineSettlementAction(formData: FormData) {
 
   let created: { id: string };
   try {
-    created = await prisma.partnerSettlement.create({
-      data: {
-        partnerId: partner.id,
-        studentId,
-        monthKey: month,
-        mode: "OFFLINE_MONTHLY",
-        status: "PENDING",
-        hours: Number(toHours(totalMinutes).toFixed(2)),
-        amount: calcAmountByRatePer45(totalMinutes, partner.offlineRatePer45),
-        note: `Offline monthly settlement ${month}${courseNote ? ` | Courses: ${courseNote}` : ""}${
-          chargedExcusedCount > 0 ? ` | Charged excused sessions: ${chargedExcusedCount}` : ""
-        }`,
-      },
-    });
+    const settlementData = {
+      partnerId: partner.id,
+      studentId,
+      monthKey: month,
+      mode: "OFFLINE_MONTHLY" as const,
+      status: "PENDING" as const,
+      hours: Number(toHours(totalMinutes).toFixed(2)),
+      amount: calcAmountByRatePer45(totalMinutes, partner.offlineRatePer45),
+      note: `Offline monthly settlement ${month}${courseNote ? ` | Courses: ${courseNote}` : ""}${
+        chargedExcusedCount > 0 ? ` | Charged excused sessions: ${chargedExcusedCount}` : ""
+      }`,
+    };
+
+    if (existed) {
+      created = await prisma.partnerSettlement.update({
+        where: { id: existed.id },
+        data: {
+          ...settlementData,
+          revertedAt: null,
+          revertedBy: null,
+        },
+        select: { id: true },
+      });
+    } else {
+      created = await prisma.partnerSettlement.create({
+        data: settlementData,
+        select: { id: true },
+      });
+    }
   } catch (err) {
     if (isSchemaNotReadyError(err)) {
       redirect(buildSettlementPageUrl(month, { partnerId: partner.id, err: "schema-not-ready" }));
@@ -642,6 +660,7 @@ export default async function PartnerSettlementPage({
         where: {
           mode: "OFFLINE_MONTHLY",
           monthKey: month,
+          status: { in: [...BLOCKING_PARTNER_SETTLEMENT_STATUSES] },
           OR: [
             { partnerId },
             { partnerId: null, student: { sourceChannelId: selectedPartner.sourceChannelId } },
