@@ -46,6 +46,18 @@ const statuses = [
   ["PAUSED_SPECIAL", "停课/特殊处理"],
 ];
 
+const operationsStatuses = statuses.filter(([value]) =>
+  ["PENDING_CONTACT", "PARENT_NOTIFIED", "PARENT_CONSIDERING", "RENEWAL_CONFIRMED", "NOT_RENEWING", "PAUSED_SPECIAL"].includes(value)
+);
+
+function selectableStatuses(row: RenewalTask, operationsOnly: boolean) {
+  const allStatuses = row.cohort === "XDF" ? xdfStatuses : statuses;
+  if (!operationsOnly) return allStatuses;
+  const allowed = allStatuses.filter(([value]) => operationsStatuses.some(([operationsValue]) => operationsValue === value));
+  const current = allStatuses.find(([value]) => value === row.status);
+  return current && !allowed.some(([value]) => value === row.status) ? [current] : allowed;
+}
+
 const xdfStatuses = statuses.map(([value, label]) => [
   value,
   {
@@ -78,9 +90,11 @@ function fmtDate(value: string | null) {
 export default function RenewalWorkbenchClient({
   initialTasks,
   initialCohortCounts,
+  operationsOnly,
 }: {
   initialTasks: RenewalTask[];
   initialCohortCounts: { BOSS_OTHER: number; XDF: number };
+  operationsOnly: boolean;
 }) {
   const [tasks, setTasks] = useState(initialTasks);
   const [cohort, setCohort] = useState<"BOSS_OTHER" | "XDF">("BOSS_OTHER");
@@ -236,6 +250,7 @@ export default function RenewalWorkbenchClient({
         {tasks.map((row) => {
           const draft = draftFor(row);
           const open = expanded === row.id;
+          const financialStage = operationsOnly && !operationsStatuses.some(([value]) => value === row.status);
           return (
             <article key={row.id} className={styles.task} data-risk={row.riskLevel}>
               <button className={styles.taskHeader} onClick={() => setExpanded(open ? "" : row.id)}>
@@ -262,8 +277,12 @@ export default function RenewalWorkbenchClient({
                   <div className={styles.columns}>
                     <div className={styles.workflow}>
                       <label>当前状态
-                        <select value={String(draft.status || "")} onChange={(event) => setDraft(row.id, "status", event.target.value)}>
-                          {(row.cohort === "XDF" ? xdfStatuses : statuses).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                        <select
+                          value={String(draft.status || "")}
+                          disabled={financialStage}
+                          onChange={(event) => setDraft(row.id, "status", event.target.value)}
+                        >
+                          {selectableStatuses(row, operationsOnly).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                         </select>
                       </label>
                       <label>负责人
@@ -281,8 +300,8 @@ export default function RenewalWorkbenchClient({
                       <label>内部备注
                         <textarea value={String(draft.note || "")} onChange={(event) => setDraft(row.id, "note", event.target.value)} placeholder="折扣、停课、共享课包等特殊情况" />
                       </label>
-                      <button className={styles.primary} disabled={busyId === row.id} onClick={() => save(row)}>
-                        {busyId === row.id ? "保存中…" : "保存进度"}
+                      <button className={styles.primary} disabled={busyId === row.id || financialStage} onClick={() => save(row)}>
+                        {financialStage ? "已交财务继续处理" : busyId === row.id ? "保存中…" : "保存进度"}
                       </button>
                     </div>
 
@@ -295,9 +314,9 @@ export default function RenewalWorkbenchClient({
                       </label>
                       {row.evidenceUrl ? <a href={row.evidenceUrl} target="_blank">查看已上传截图</a> : <span className={styles.required}>确认已发送前必须上传截图</span>}
                       <div className={styles.quickActions}>
-                        <button disabled={!row.evidenceUrl} onClick={() => save(row, "PARENT_NOTIFIED")}>确认已通知{row.communicationAudience}</button>
-                        <a href={`/admin/packages/${row.packageId}/contract`}>创建/查看续费合同</a>
-                        <a href={`/admin/packages/${row.packageId}/billing`}>进入账单与收款</a>
+                        <button disabled={!row.evidenceUrl || financialStage} onClick={() => save(row, "PARENT_NOTIFIED")}>确认已通知{row.communicationAudience}</button>
+                        {!operationsOnly ? <a href={`/admin/packages/${row.packageId}/contract`}>创建/查看续费合同</a> : null}
+                        {!operationsOnly ? <a href={`/admin/packages/${row.packageId}/billing`}>进入账单与收款</a> : null}
                         <a href={`/admin/students/${row.studentId}`}>查看学生详情</a>
                       </div>
                     </div>

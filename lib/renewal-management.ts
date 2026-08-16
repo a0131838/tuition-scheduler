@@ -35,7 +35,25 @@ type RenewalActor = {
   email?: string | null;
   name?: string | null;
   role?: string | null;
+  operationsAdmin?: boolean;
 };
+
+export const OPERATIONS_RENEWAL_STATUSES = [
+  "PENDING_CONTACT",
+  "PARENT_NOTIFIED",
+  "PARENT_CONSIDERING",
+  "RENEWAL_CONFIRMED",
+  "NOT_RENEWING",
+  "PAUSED_SPECIAL",
+] as const;
+
+export function canOperationsAdminSetRenewalStatus(currentStatus: string, nextStatus: string) {
+  if (currentStatus === nextStatus) return true;
+  if (!["PENDING_CONTACT", "PARENT_NOTIFIED", "PARENT_CONSIDERING", "RENEWAL_CONFIRMED"].includes(currentStatus)) {
+    return false;
+  }
+  return (OPERATIONS_RENEWAL_STATUSES as readonly string[]).includes(nextStatus);
+}
 
 function endOfDayFromNow(days: number) {
   const value = new Date();
@@ -531,6 +549,9 @@ export async function updateRenewalTask(input: {
   const cohort = renewalCohortForSourceName(task.student.sourceChannel?.name);
   const status = String(input.status ?? task.status);
   if (!RENEWAL_STATUS_LABELS[status]) throw new Error("Invalid renewal status");
+  if (input.actor.operationsAdmin && !canOperationsAdminSetRenewalStatus(task.status, status)) {
+    throw new Error("财务续费阶段只能由财务或管理人员更新");
+  }
   if (status === "PARENT_NOTIFIED" && !task.evidenceUrl) {
     throw new Error(cohort === "XDF" ? "请先上传对接群发送截图，再确认已通知新东方" : "请先上传微信群发送截图，再确认已提醒家长");
   }

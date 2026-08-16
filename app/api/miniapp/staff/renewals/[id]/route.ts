@@ -10,7 +10,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const { id } = await params;
   const body = await req.json().catch(() => ({}));
   try {
-    const task = await updateRenewalTask({ id, actor: auth.user, ...(body ?? {}) });
+    const task = await updateRenewalTask({ ...(body ?? {}), id, actor: auth.user });
     return ok({ task });
   } catch (error) {
     return bad(error instanceof Error ? error.message : "Failed to update renewal task");

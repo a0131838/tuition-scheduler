@@ -4,6 +4,7 @@ export async function requireRenewalCenterUser() {
   const user = await requireAdminAreaUser();
   const allowed =
     user.role === "ADMIN" ||
+    user.operationsAdmin ||
     user.role === "CS" ||
     user.role === "FINANCE" ||
     user.workspaces.includes("CS") ||

@@ -35,7 +35,7 @@ export async function canUseMiniappApprovalDesk(user: MiniappStaffUser) {
 }
 
 export function canUseMiniappRenewalDesk(user: MiniappStaffUser) {
-  return !user.operationsAdmin && canUseMiniappAcademicDesk(user);
+  return canUseMiniappAcademicDesk(user);
 }
 
 export function cleanMiniappText(value: unknown, max = 1000) {

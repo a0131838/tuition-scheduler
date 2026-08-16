@@ -12,6 +12,14 @@ const statuses = [
   { value: "NOT_RENEWING", label: "暂不续费" },
   { value: "PAUSED_SPECIAL", label: "停课/特殊处理" }
 ];
+const operationsStatuses = statuses.filter((item) => [
+  "PENDING_CONTACT",
+  "PARENT_NOTIFIED",
+  "PARENT_CONSIDERING",
+  "RENEWAL_CONFIRMED",
+  "NOT_RENEWING",
+  "PAUSED_SPECIAL"
+].includes(item.value));
 const xdfStatuses = statuses.map((item) => Object.assign({}, item, {
   label: {
     PENDING_CONTACT: "待联系新东方",
@@ -44,9 +52,15 @@ function formatDate(value) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-function present(tasks) {
+function present(tasks, operationsOnly) {
   return (tasks || []).map((row) => {
-    const statusOptions = row.cohort === "XDF" ? xdfStatuses : statuses;
+    const financialStage = operationsOnly && !operationsStatuses.some((item) => item.value === row.status);
+    const sourceStatuses = financialStage
+      ? statuses.filter((item) => item.value === row.status)
+      : operationsOnly ? operationsStatuses : statuses;
+    const statusOptions = row.cohort === "XDF"
+      ? xdfStatuses.filter((item) => sourceStatuses.some((allowed) => allowed.value === item.value))
+      : sourceStatuses;
     const statusIndex = Math.max(0, statusOptions.findIndex((item) => item.value === row.status));
     return Object.assign({}, row, {
       statusIndex,
@@ -74,6 +88,7 @@ function present(tasks) {
       uploadLabel: row.evidenceUrl ? "重新上传截图" : "从相册上传截图",
       evidenceClass: row.evidenceUrl ? "done" : "",
       evidenceText: row.evidenceUrl ? "已上传截图" : "请先上传发送截图",
+      financialStage,
       showDetail: false,
       cardClass: ["RED", "EXHAUSTED"].includes(row.riskLevel) ? "danger" : row.riskLevel === "ORANGE" ? "warning" : ""
     });
@@ -99,7 +114,8 @@ Page({
     total: 0,
     urgent: 0,
     due: 0,
-    showEmpty: false
+    showEmpty: false,
+    operationsOnly: false
   },
 
   onShow() { this.syncAndLoad(); },
@@ -116,7 +132,8 @@ Page({
   load() {
     return api.requestStaff(`/api/miniapp/staff/renewals?status=${this.data.filter}&cohort=${this.data.cohort}&limit=300`, { timeout: 30000 })
       .then((data) => {
-        const tasks = present(data.tasks);
+        const operationsOnly = Boolean(data.operationsOnly);
+        const tasks = present(data.tasks, operationsOnly);
         const now = Date.now();
         const filterOptions = this.data.filterOptions.map((item) => Object.assign({}, item, { className: item.value === this.data.filter ? "active" : "" }));
         const counts = data.cohortCounts || {};
@@ -126,6 +143,7 @@ Page({
         }));
         this.setData({
           tasks,
+          operationsOnly,
           filterOptions,
           cohortOptions,
           total: tasks.length,

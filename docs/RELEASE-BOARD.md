@@ -1,5 +1,28 @@
 # RELEASE BOARD
 
+- `2026-08-16-r369`: ready to expose renewal reminder operations to Jessika on Web and Staff Mini Program while keeping contract, billing, payment and package activation finance-only.
+
+## 2026-08-16-r369 Ready
+
+- Scope: correct the operations ACL so `Renewal Follow-up / 续费跟进` is treated as parent communication rather than a finance workspace.
+- Business impact:
+  - Jessika sees the renewal queue on the normal Admin sidebar and Staff Mini Program action center
+  - she can review balance risk, copy the fixed message, upload WeChat evidence, record parent replies, assign ownership and schedule the next follow-up
+  - her permitted workflow ends at `RENEWAL_CONFIRMED`; contract, billing, payment and package activation stages remain read-only or blocked
+  - contract and billing links remain hidden, and direct finance URLs remain denied by the route firewall
+  - no package, invoice, receipt, payment, attendance or payroll calculation changes
+- Verification before deploy:
+  - 16 operations-admin and renewal regression tests
+  - `npx tsc --noEmit`
+  - `npm run build`
+  - `git diff --check`
+- Post-deploy verification:
+  - confirm local, GitHub and server commits align
+  - confirm PM2 is online and `/admin/login` returns HTTP 200
+  - confirm Jessika's ACL remains active and the renewal path policy is enabled
+  - confirm finance routes remain denied by permission tests
+- Task doc: `docs/tasks/TASK-20260816-jessika-renewal-reminders.md`
+
 - `2026-08-16-r368`: ready to let Jessika enter the normal Admin workspace with teaching operations across Web, Staff Mini Program and AI while company finance remains absent from navigation, dashboards and server routes.
 
 ## 2026-08-16-r368 Ready

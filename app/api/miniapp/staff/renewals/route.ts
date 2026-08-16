@@ -25,7 +25,11 @@ export async function GET(req: Request) {
     cohort,
     limit: Number(url.searchParams.get("limit") ?? 300),
   });
-  return ok({ tasks: rows.map(renewalTaskDto), cohortCounts: await getRenewalCohortCounts(status) });
+  return ok({
+    tasks: rows.map(renewalTaskDto),
+    cohortCounts: await getRenewalCohortCounts(status),
+    operationsOnly: Boolean(auth.user.operationsAdmin),
+  });
 }
 
 export async function POST(req: Request) {

@@ -1,5 +1,35 @@
 # CHANGELOG LIVE
 
+## 2026-08-16-r369
+
+- Release ID: `2026-08-16-r369`
+- Date/Time (Asia/Singapore): `2026-08-16`
+- Deployment status: `READY`
+- Scope: classify renewal reminders as teaching operations so Jessika can follow up parents on Web and Staff Mini Program while contract, billing, payment and package activation remain finance-only.
+- Key files:
+  - `lib/operations-admin-access.ts`
+  - `lib/renewal-access.ts`
+  - `lib/renewal-management.ts`
+  - `lib/miniapp-staff-action-center.ts`
+  - `app/admin/renewals/page.tsx`
+  - `app/admin/renewals/RenewalWorkbenchClient.tsx`
+  - `app/api/admin/renewals/[id]/route.ts`
+  - `app/api/miniapp/staff/renewals/route.ts`
+  - `app/api/miniapp/staff/renewals/[id]/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-renewals/staff-renewals.js`
+  - `miniapp/boss-academic-parent/pages/staff-renewals/staff-renewals.wxml`
+  - `tests/operations-admin-access.test.ts`
+  - `docs/tasks/TASK-20260816-jessika-renewal-reminders.md`
+- Risk impact (if any): Low and isolated to renewal reminder access. Jessika can view risk queues, copy approved messages, upload WeChat evidence and record follow-up outcomes through `RENEWAL_CONFIRMED`; she cannot open contract or billing routes or advance a task into contract, payment or package-activation states. No package, invoice, receipt or payment record is changed by deployment.
+- Verification:
+  - 16 operations-admin and renewal regression tests passed
+  - `npx tsc --noEmit` passed
+  - `npm run build` passed
+  - `git diff --check` passed
+- Rollback point: `ccfe4ea0af64f0affd4e122c4c7655b2a895be81` before `2026-08-16-r369`.
+
+---
+
 ## 2026-08-16-r368
 
 - Release ID: `2026-08-16-r368`

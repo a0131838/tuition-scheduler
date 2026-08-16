@@ -6,7 +6,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const { id } = await params;
   const body = await req.json().catch(() => ({}));
   try {
-    const task = await updateRenewalTask({ id, actor: user, ...(body ?? {}) });
+    const task = await updateRenewalTask({ ...(body ?? {}), id, actor: user });
     return Response.json({ ok: true, task });
   } catch (error) {
     return Response.json(

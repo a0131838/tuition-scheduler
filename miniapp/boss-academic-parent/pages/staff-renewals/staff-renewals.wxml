@@ -44,7 +44,7 @@
 
       <view class="section-title">更新跟进进度</view>
       <view class="field-label">当前状态</view>
-      <picker mode="selector" range="{{item.statusOptions}}" range-key="label" value="{{item.statusIndex}}" data-index="{{index}}" bindchange="changeStatus">
+      <picker mode="selector" range="{{item.statusOptions}}" range-key="label" value="{{item.statusIndex}}" disabled="{{item.financialStage}}" data-index="{{index}}" bindchange="changeStatus">
         <view class="picker-field">{{item.statusOptions[item.statusIndex].label}} ›</view>
       </picker>
       <view class="field-label">负责人</view>
@@ -57,11 +57,12 @@
       <textarea class="field textarea" value="{{item.responseDraft}}" data-index="{{index}}" data-field="responseDraft" bindinput="inputField" placeholder="{{item.responsePlaceholder}}" />
       <view class="field-label">内部备注</view>
       <textarea class="field textarea" value="{{item.noteDraft}}" data-index="{{index}}" data-field="noteDraft" bindinput="inputField" placeholder="折扣、停课、共享课包等特殊情况" />
-      <button class="primary" loading="{{loading}}" data-index="{{index}}" bindtap="save">保存进度并记录日志</button>
+      <button class="primary" loading="{{loading}}" disabled="{{item.financialStage}}" data-index="{{index}}" bindtap="save">{{item.financialStage ? '已交财务继续处理' : '保存进度并记录日志'}}</button>
 
       <view class="links">
         <navigator url="/pages/staff-student-workspace/staff-student-workspace?id={{item.studentId}}">打开学生360°</navigator>
-        <text>合同、发票与收款请在网页版续费工作台继续处理。</text>
+        <text wx:if="{{!operationsOnly}}">合同、发票与收款请在网页版续费工作台继续处理。</text>
+        <text wx:else>家长确认续费后，请交由财务继续处理合同、发票与收款。</text>
       </view>
       <view class="history" wx:if="{{item.history.length}}">
         <view class="section-title">最近操作</view>
