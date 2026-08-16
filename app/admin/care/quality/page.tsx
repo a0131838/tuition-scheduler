@@ -39,7 +39,7 @@ export default async function CareQualityPage({
   const query = String(sp?.q ?? "").trim().toLowerCase();
   const selectedQueue = String(sp?.queue ?? "ALL").toUpperCase();
   const urgency = String(sp?.urgency ?? "ALL").toUpperCase();
-  const broadAccess = actor.role === "ADMIN" || await isManagerUser(actor);
+  const broadAccess = actor.role === "ADMIN" || actor.operationsAdmin || await isManagerUser(actor);
   const accessWhere = broadAccess ? {} : { members: { some: { userId: actor.id, isActive: true } } };
   const now = new Date();
   const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);

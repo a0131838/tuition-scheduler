@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
+import { getOperationsAdminEmailSet } from "@/lib/auth";
 
 export const STAFF_MINIAPP_SESSION_DAYS = 30;
 
@@ -41,7 +42,14 @@ export async function getStaffMiniappSession(token: string) {
     await prisma.staffMiniappSession.delete({ where: { id: session.id } }).catch(() => null);
     return null;
   }
-  return session;
+  const operationsAdminEmails = await getOperationsAdminEmailSet();
+  return {
+    ...session,
+    user: {
+      ...session.user,
+      operationsAdmin: operationsAdminEmails.has(session.user.email.trim().toLowerCase()),
+    },
+  };
 }
 
 export function staffMiniappUserDto(user: {
@@ -52,6 +60,7 @@ export function staffMiniappUserDto(user: {
   teacherId: string | null;
   isObserver: boolean;
   workspaceAccesses?: Array<{ workspace: string }>;
+  operationsAdmin?: boolean;
 }) {
   return {
     id: user.id,
@@ -60,6 +69,7 @@ export function staffMiniappUserDto(user: {
     role: user.role,
     teacherId: user.teacherId,
     isObserver: user.isObserver,
+    operationsAdmin: Boolean(user.operationsAdmin),
     workspaces: (user.workspaceAccesses ?? []).map((x) => x.workspace),
   };
 }
@@ -81,7 +91,11 @@ export async function listStaffMiniappAccounts(openId: string) {
     },
     orderBy: [{ boundAt: "asc" }, { createdAt: "asc" }],
   });
-  return bindings.map((binding) => staffMiniappUserDto(binding.user));
+  const operationsAdminEmails = await getOperationsAdminEmailSet();
+  return bindings.map((binding) => staffMiniappUserDto({
+    ...binding.user,
+    operationsAdmin: operationsAdminEmails.has(binding.user.email.trim().toLowerCase()),
+  }));
 }
 
 export async function resolveStaffWechatIdentity(input: { code?: string | null; mockOpenId?: string | null }) {

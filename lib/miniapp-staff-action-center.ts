@@ -7,6 +7,7 @@ export type MiniappStaffUser = {
   role: string;
   teacherId?: string | null;
   workspaceAccesses?: Array<{ workspace: string }>;
+  operationsAdmin?: boolean;
 };
 
 export function hasMiniappWorkspace(user: MiniappStaffUser, workspace: string) {
@@ -14,12 +15,13 @@ export function hasMiniappWorkspace(user: MiniappStaffUser, workspace: string) {
 }
 
 export function canUseMiniappAcademicDesk(user: MiniappStaffUser) {
-  return user.role === "ADMIN" || user.role === "CS" || hasMiniappWorkspace(user, "CS");
+  return Boolean(user.operationsAdmin) || user.role === "ADMIN" || user.role === "CS" || hasMiniappWorkspace(user, "CS");
 }
 
 export function canUseMiniappLeadDesk(user: MiniappStaffUser) {
   return (
     user.role === "ADMIN" ||
+    Boolean(user.operationsAdmin) ||
     user.role === "CS" ||
     user.role === "SALES" ||
     hasMiniappWorkspace(user, "CS") ||
@@ -28,7 +30,12 @@ export function canUseMiniappLeadDesk(user: MiniappStaffUser) {
 }
 
 export async function canUseMiniappApprovalDesk(user: MiniappStaffUser) {
+  if (user.operationsAdmin) return false;
   return isManagerUser({ role: user.role as any, email: user.email });
+}
+
+export function canUseMiniappRenewalDesk(user: MiniappStaffUser) {
+  return !user.operationsAdmin && canUseMiniappAcademicDesk(user);
 }
 
 export function cleanMiniappText(value: unknown, max = 1000) {

@@ -1,5 +1,36 @@
 # CHANGELOG LIVE
 
+## 2026-08-16-r368
+
+- Release ID: `2026-08-16-r368`
+- Date/Time (Asia/Singapore): `2026-08-16`
+- Deployment status: `READY`
+- Scope: let Jessika reuse her existing teacher account to enter the standard Admin workspace across Web, Staff Mini Program and AI while company finance remains hidden and server-blocked.
+- Key files:
+  - `lib/operations-admin-access.ts`
+  - `lib/operations-admin-mode.ts`
+  - `lib/auth.ts`
+  - `middleware.ts`
+  - `app/admin/layout.tsx`
+  - `app/admin/page.tsx`
+  - `lib/miniapp-staff-action-center.ts`
+  - `app/api/admin/ai-os/sso/route.ts`
+  - `prisma/migrations/20260816173000_add_operations_admin_acl/migration.sql`
+  - `tests/operations-admin-access.test.ts`
+  - `docs/tasks/TASK-20260816-jessika-nonfinance-admin.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Medium and isolated to access control. Jessika receives student, teacher, schedule, ticket, communication, care and training operations; company billing, packages, renewals, approvals, receipts, payroll approval, expense approval, settlement and finance reports remain denied. No business calculation or customer record is changed by deployment.
+- Verification:
+  - Prisma client generation passed
+  - `npx tsc --noEmit` passed
+  - 32 existing and new permission regression tests passed
+  - `npm run build` passed with 248 generated pages
+  - `git diff --check` passed
+- Rollback point: `8f4d9bd80e423f4d1fd05b2620d03bddb12ab06f` before `2026-08-16-r368`.
+
+---
+
 ## 2026-08-16-r367
 
 - Release ID: `2026-08-16-r367`

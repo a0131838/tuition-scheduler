@@ -6,6 +6,7 @@ import {
   canUseMiniappAcademicDesk,
   canUseMiniappApprovalDesk,
   canUseMiniappLeadDesk,
+  canUseMiniappRenewalDesk,
 } from "@/lib/miniapp-staff-action-center";
 import { getTeacherManagerFeedbackState } from "@/lib/manager-teacher-feedback";
 import { prisma } from "@/lib/prisma";
@@ -24,7 +25,7 @@ export async function GET(req: Request) {
   const user = auth.user;
   const now = new Date();
 
-  if (user.role === "TEACHER" && user.teacherId) {
+  if (user.role === "TEACHER" && user.teacherId && !user.operationsAdmin) {
     const lookback = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const recent = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const teacherWhere = { OR: [{ teacherId: user.teacherId }, { teacherId: null, class: { teacherId: user.teacherId } }] };
@@ -181,8 +182,9 @@ export async function GET(req: Request) {
 
   const canAcademic = canUseMiniappAcademicDesk(user);
   const canLeads = canUseMiniappLeadDesk(user);
+  const canRenewals = canUseMiniappRenewalDesk(user);
   const canApprovals = await canUseMiniappApprovalDesk(user);
-  if (canAcademic && !user.isObserver) await syncRenewalTasks(user);
+  if (canRenewals && !user.isObserver) await syncRenewalTasks(user);
   const [openTickets, overdueTickets, communications, monthlyScheduling, renewalTasks, renewalXdf, overdueRenewals, dueLeads, approvalData] = await Promise.all([
     canAcademic ? prisma.ticket.count({ where: { isArchived: false, status: { in: OPEN_TICKET_STATUSES } } }) : 0,
     canAcademic
@@ -194,13 +196,13 @@ export async function GET(req: Request) {
     canAcademic
       ? prisma.monthlySchedulingItem.count({ where: { campaign: { status: "OPEN" }, status: { in: ["NOT_SENT", "SENT", "VIEWED", "SUBMITTED", "OFFERED", "PARENT_SELECTED", "NO_RESPONSE", "NEEDS_CLARIFICATION", "TEACHER_EXCEPTION", "CHANGE_REQUESTED"] } } })
       : 0,
-    canAcademic
+    canRenewals
       ? prisma.renewalTask.count({ where: { completedAt: null } })
       : 0,
-    canAcademic
+    canRenewals
       ? prisma.renewalTask.count({ where: { completedAt: null, student: { sourceChannel: { name: LEGACY_XDF_SOURCE_CHANNEL_NAME } } } })
       : 0,
-    canAcademic
+    canRenewals
       ? prisma.renewalTask.count({ where: { completedAt: null, nextFollowUpAt: { lte: now } } })
       : 0,
     canLeads
@@ -215,7 +217,7 @@ export async function GET(req: Request) {
           { key: "tickets", title: "工单待处理", detail: `${overdueTickets} 条已逾期`, count: openTickets, target: "requests", urgent: overdueTickets > 0 },
           { key: "communications", title: "家长沟通待完成", detail: "审核、转发微信群并留下发送记录", count: communications, target: "communications", urgent: communications > 0 },
           { key: "monthly-scheduling", title: "下月排课待确认", detail: "按学生和课程跟进家长时间", count: monthlyScheduling, target: "monthly-scheduling", urgent: monthlyScheduling > 0 },
-          { key: "renewals", title: "续费待跟进", detail: `博思及其他 ${renewalTasks - renewalXdf} · 新东方 ${renewalXdf} · ${overdueRenewals} 条到期`, count: renewalTasks, target: "renewals", urgent: overdueRenewals > 0 },
+          ...(canRenewals ? [{ key: "renewals", title: "续费待跟进", detail: `博思及其他 ${renewalTasks - renewalXdf} · 新东方 ${renewalXdf} · ${overdueRenewals} 条到期`, count: renewalTasks, target: "renewals", urgent: overdueRenewals > 0 }] : []),
         ]
       : []),
     ...(canApprovals
@@ -229,6 +231,6 @@ export async function GET(req: Request) {
     roleMode: canApprovals ? "MANAGER" : canAcademic ? "ACADEMIC" : "STAFF",
     total: items.reduce((sum, item) => sum + item.count, 0),
     items,
-    capabilities: { studentWorkspace: canAcademic, operations: canAcademic || canApprovals, approvals: canApprovals, leads: canLeads, teacherReports: false },
+    capabilities: { studentWorkspace: canAcademic, operations: canAcademic || canApprovals, approvals: canApprovals, leads: canLeads, renewals: canRenewals, teacherReports: Boolean(user.teacherId) },
   });
 }

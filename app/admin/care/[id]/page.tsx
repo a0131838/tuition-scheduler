@@ -100,7 +100,7 @@ export default async function CareDetailPage({
 }) {
   const { id } = await params;
   const actor = await requireCareEngagementAccess(id);
-  const canManageConfig = actor.role === "ADMIN" || (await isManagerUser(actor));
+  const canManageConfig = actor.role === "ADMIN" || actor.operationsAdmin || (await isManagerUser(actor));
   const lang = await getLang();
   const sp = await searchParams;
   const msg = first(sp?.msg).trim();
@@ -161,7 +161,7 @@ export default async function CareDetailPage({
   async function configAction(formData: FormData) {
     "use server";
     const current = await requireCareEngagementAccess(id);
-    const canManage = current.role === "ADMIN" || (await isManagerUser(current));
+    const canManage = current.role === "ADMIN" || current.operationsAdmin || (await isManagerUser(current));
     if (!canManage) redirect(`/admin/care/${encodeURIComponent(id)}?err=${encodeURIComponent("Only managers can change care scope and owners")}`);
     await runCareAction(id, "Configuration updated",
       updateCareEngagementConfig({
@@ -209,7 +209,7 @@ export default async function CareDetailPage({
   async function activityPublicationAction(formData: FormData) {
     "use server";
     const current = await requireCareEngagementAccess(id);
-    const canPublish = current.role === "ADMIN" || (await isManagerUser(current));
+    const canPublish = current.role === "ADMIN" || current.operationsAdmin || (await isManagerUser(current));
     if (!canPublish) redirect(`/admin/care/${encodeURIComponent(id)}?err=${encodeURIComponent("Only managers can publish parent updates")}`);
     await runCareAction(id, "Parent update publication changed",
       changeCareActivityPublicationStatus({
@@ -225,7 +225,7 @@ export default async function CareDetailPage({
   async function universityProfileAction(formData: FormData) {
     "use server";
     const current = await requireCareEngagementAccess(id);
-    const canManage = current.role === "ADMIN" || (await isManagerUser(current));
+    const canManage = current.role === "ADMIN" || current.operationsAdmin || (await isManagerUser(current));
     if (!canManage) redirect(`/admin/care/${encodeURIComponent(id)}?err=${encodeURIComponent("Only managers can change university profile settings")}`);
     await runCareAction(id, "University profile updated",
       upsertCareUniversityProfile({

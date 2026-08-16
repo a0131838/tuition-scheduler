@@ -30,6 +30,7 @@ type StaffUser = {
   role: string;
   teacherId: string | null;
   workspaceAccesses?: Array<{ workspace: string }>;
+  operationsAdmin?: boolean;
 };
 
 export async function getMiniappStaffSessionContext(sessionId: string) {
@@ -43,17 +44,19 @@ export function canTeachMiniappSession(user: StaffUser, session: MiniappStaffSes
 }
 
 export function canAccessMiniappStaffSession(user: StaffUser, session: MiniappStaffSessionContext) {
+  if (user.operationsAdmin) return true;
   if (user.role !== "TEACHER") return true;
   return canTeachMiniappSession(user, session);
 }
 
 export function canManageMiniappSchedulingCoordination(user: StaffUser) {
+  if (user.operationsAdmin) return true;
   if (user.role === "ADMIN" || user.role === "CS") return true;
   return (user.workspaceAccesses ?? []).some((row) => row.workspace === "CS");
 }
 
 export function canManageMiniappSchedulingWrites(user: StaffUser) {
-  return user.role === "ADMIN";
+  return user.role === "ADMIN" || Boolean(user.operationsAdmin);
 }
 
 export function miniappStaffSessionCourseLabel(session: MiniappStaffSessionContext) {

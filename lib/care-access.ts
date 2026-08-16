@@ -8,11 +8,13 @@ export type CareAccessUser = {
   name: string;
   role: string;
   workspaces: readonly string[];
+  operationsAdmin?: boolean;
 };
 
 export async function hasGeneralCareAccess(user: CareAccessUser | null | undefined) {
   if (!user) return false;
   if (user.role === "ADMIN") return true;
+  if (user.operationsAdmin) return true;
   if (await isManagerUser(user as never)) return true;
   return user.role === "CS" && user.workspaces.includes("CARE");
 }
@@ -25,7 +27,7 @@ export async function requireCareStaff() {
 
 export async function canAccessCareEngagement(user: CareAccessUser, engagementId: string) {
   if (!(await hasGeneralCareAccess(user))) return false;
-  if (user.role === "ADMIN" || (await isManagerUser(user as never))) return true;
+  if (user.role === "ADMIN" || user.operationsAdmin || (await isManagerUser(user as never))) return true;
   const member = await prisma.careEngagementMember.findFirst({
     where: { engagementId, userId: user.id, isActive: true },
     select: { id: true },

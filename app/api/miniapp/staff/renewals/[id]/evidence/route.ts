@@ -2,7 +2,7 @@ import { bad, ok } from "@/app/api/miniapp/_lib";
 import { requireMiniappStaff } from "@/app/api/miniapp/staff/_lib";
 import { logAudit } from "@/lib/audit-log";
 import { BUSINESS_UPLOAD_PREFIX, storeBusinessUpload } from "@/lib/business-file-storage";
-import { canUseMiniappAcademicDesk } from "@/lib/miniapp-staff-action-center";
+import { canUseMiniappRenewalDesk } from "@/lib/miniapp-staff-action-center";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireMiniappStaff(req);
   if (!auth.ok) return auth.response;
-  if (!canUseMiniappAcademicDesk(auth.user)) return bad("Renewal center permission required", 403);
+  if (!canUseMiniappRenewalDesk(auth.user)) return bad("Renewal center permission required", 403);
   const { id } = await params;
   const task = await prisma.renewalTask.findUnique({ where: { id } });
   if (!task) return bad("Renewal task not found", 404);

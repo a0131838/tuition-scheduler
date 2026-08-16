@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { isManagerUser, requireManager } from "@/lib/auth";
+import { isManagerUser } from "@/lib/auth";
 import { requireCommunicationCenterUser } from "@/lib/communication-access";
 import {
   createParentCommunicationTemplateVersion,
@@ -10,7 +10,7 @@ import {
 
 async function createVersionAction(formData: FormData) {
   "use server";
-  const user = await requireManager();
+  const user = await requireCommunicationCenterUser();
   try {
     await createParentCommunicationTemplateVersion({
       code: String(formData.get("code") ?? ""), title: String(formData.get("title") ?? ""),
@@ -26,7 +26,7 @@ async function createVersionAction(formData: FormData) {
 
 async function publishAction(formData: FormData) {
   "use server";
-  const user = await requireManager();
+  const user = await requireCommunicationCenterUser();
   try {
     await publishParentCommunicationTemplate(String(formData.get("id") ?? ""), { id: user.id, email: user.email, name: user.name, role: user.role });
   } catch (error) {
@@ -40,7 +40,7 @@ const button: React.CSSProperties = { padding: "9px 12px", border: "1px solid #b
 
 export default async function CommunicationTemplatesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requireCommunicationCenterUser();
-  const canManage = await isManagerUser(user);
+  const canManage = user.operationsAdmin || await isManagerUser(user);
   const params = await searchParams;
   const rows = await listParentCommunicationTemplates();
   const latestMap = new Map<string, (typeof rows)[number]>();

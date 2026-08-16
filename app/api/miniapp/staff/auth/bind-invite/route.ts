@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { bad, ok } from "@/app/api/miniapp/_lib";
 import { bindStaffMiniappInvite, createStaffMiniappSession, resolveStaffWechatIdentity, staffMiniappUserDto } from "@/lib/miniapp-staff";
+import { isOperationsAdminUser } from "@/lib/auth";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
@@ -27,9 +28,10 @@ export async function POST(req: Request) {
     if (!user) return bad("User not found", 404);
 
     const session = await createStaffMiniappSession(user.id, identity.openId);
+    const operationsAdmin = await isOperationsAdminUser({ role: user.role as any, email: user.email });
     return ok({
       token: session.token,
-      staff: staffMiniappUserDto(user),
+      staff: staffMiniappUserDto({ ...user, operationsAdmin }),
     });
   } catch (error: any) {
     return bad(error?.message || "Bind failed", 409);

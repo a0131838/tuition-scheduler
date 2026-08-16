@@ -135,7 +135,7 @@ export default async function CareReportPage({
   });
   if (!report) notFound();
 
-  const manager = actor.role === "ADMIN" || await isManagerUser(actor);
+  const manager = actor.role === "ADMIN" || actor.operationsAdmin || await isManagerUser(actor);
   const designatedReviewer = report.engagement.members.some((member) => member.userId === actor.id && ["REVIEWER", "EXECUTIVE_OWNER"].includes(member.role));
   const canReview = manager || designatedReviewer;
   const editable = canEditCareReport(report.status);

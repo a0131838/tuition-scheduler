@@ -71,7 +71,7 @@ export default async function CareOperationsPage({
 }) {
   const { id } = await params;
   const actor = await requireCareEngagementAccess(id);
-  const manager = actor.role === "ADMIN" || await isManagerUser(actor);
+  const manager = actor.role === "ADMIN" || actor.operationsAdmin || await isManagerUser(actor);
   const lang = await getLang();
   const sp = await searchParams;
   const msg = first(sp?.msg).trim();
@@ -111,7 +111,7 @@ export default async function CareOperationsPage({
   async function coverageCreateAction(formData: FormData) {
     "use server";
     const current = await requireCareEngagementAccess(id);
-    if (!(current.role === "ADMIN" || await isManagerUser(current))) redirect(`/admin/care/${id}/operations?err=Manager+access+required`);
+    if (!(current.role === "ADMIN" || current.operationsAdmin || await isManagerUser(current))) redirect(`/admin/care/${id}/operations?err=Manager+access+required`);
     await actionRedirect(id, "Coverage scheduled", createCareCoveragePeriod({
       actor: current,
       engagementId: id,
@@ -128,7 +128,7 @@ export default async function CareOperationsPage({
   async function coverageStatusAction(formData: FormData) {
     "use server";
     const current = await requireCareEngagementAccess(id);
-    if (!(current.role === "ADMIN" || await isManagerUser(current))) redirect(`/admin/care/${id}/operations?err=Manager+access+required`);
+    if (!(current.role === "ADMIN" || current.operationsAdmin || await isManagerUser(current))) redirect(`/admin/care/${id}/operations?err=Manager+access+required`);
     await actionRedirect(id, "Coverage updated", changeCareCoverageStatus({
       actor: current,
       engagementId: id,
@@ -182,7 +182,7 @@ export default async function CareOperationsPage({
     "use server";
     const current = await requireCareEngagementAccess(id);
     const nextStatus = String(formData.get("nextStatus")) as CareServiceReviewStatus;
-    if (nextStatus === "APPROVED" && !(current.role === "ADMIN" || await isManagerUser(current))) {
+    if (nextStatus === "APPROVED" && !(current.role === "ADMIN" || current.operationsAdmin || await isManagerUser(current))) {
       redirect(`/admin/care/${id}/operations?err=Manager+approval+required`);
     }
     await actionRedirect(id, "Service review updated", changeCareServiceReviewStatus({

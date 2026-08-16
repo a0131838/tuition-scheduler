@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import crypto from "crypto";
 import { canAccessResourceWorkspaceRole, StaffWorkspace, SystemUserRole } from "@/lib/staff-roles";
 import { observerSessionToken } from "@/lib/observer-mode";
+import { operationsAdminSessionToken } from "@/lib/operations-admin-mode";
 
 const SESSION_COOKIE = "ts_admin_session";
 const SESSION_DAYS = 30;
@@ -21,6 +22,7 @@ type AuthUser = {
   workspaces: StaffWorkspace[];
   trainingRoles: SystemUserRole[];
   isObserver: boolean;
+  operationsAdmin: boolean;
 };
 
 function managerEmailSet() {
@@ -35,6 +37,16 @@ function managerEmailSet() {
 
 function teacherLeadEmailSet() {
   const raw = process.env.TEACHER_LEAD_EMAILS ?? "";
+  return new Set(
+    raw
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean)
+  );
+}
+
+function operationsAdminEmailSet() {
+  const raw = process.env.OPERATIONS_ADMIN_EMAILS ?? "";
   return new Set(
     raw
       .split(",")
@@ -79,6 +91,24 @@ export async function getTeacherLeadEmailSet() {
   return set;
 }
 
+export function operationsAdminEmailsFromEnv() {
+  return Array.from(operationsAdminEmailSet());
+}
+
+export async function getOperationsAdminEmailSet() {
+  const set = operationsAdminEmailSet();
+  try {
+    const rows = await prisma.operationsAdminAcl.findMany({
+      where: { isActive: true },
+      select: { email: true },
+    });
+    for (const row of rows) set.add(row.email.trim().toLowerCase());
+  } catch {
+    // Fallback to env-only while a release migration is still rolling out.
+  }
+  return set;
+}
+
 export async function isManagerUser(user: Pick<AuthUser, "role" | "email"> | null | undefined) {
   if (!user) return false;
   if (user.role !== "ADMIN" && user.role !== "TEACHER") return false;
@@ -92,6 +122,12 @@ export async function isTeacherLeadUser(user: Pick<AuthUser, "role" | "email" | 
   if (user.role !== "TEACHER" && !(user.role === "ADMIN" && user.teacherId)) return false;
   const set = await getTeacherLeadEmailSet();
   return set.has(user.email.toLowerCase());
+}
+
+export async function isOperationsAdminUser(user: Pick<AuthUser, "role" | "email"> | null | undefined) {
+  if (!user || user.role === "FINANCE" || user.role === "STUDENT") return false;
+  const set = await getOperationsAdminEmailSet();
+  return set.has(user.email.trim().toLowerCase());
 }
 
 export async function isTeacherTrainingReviewer(
@@ -141,10 +177,18 @@ export async function verifyPassword(password: string, salt: string, hash: strin
 }
 
 export async function createSession(userId: string) {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { isObserver: true } });
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true, role: true, isObserver: true },
+  });
   if (!user) throw new Error("User not found");
   const baseToken = crypto.randomBytes(32).toString("hex");
-  const token = user.isObserver ? await observerSessionToken(baseToken) : baseToken;
+  const operationsAdmin = await isOperationsAdminUser({ role: user.role as AuthUser["role"], email: user.email });
+  const token = user.isObserver
+    ? await observerSessionToken(baseToken)
+    : operationsAdmin
+      ? await operationsAdminSessionToken(baseToken)
+      : baseToken;
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
 
   await prisma.authSession.create({
@@ -210,6 +254,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     workspaces: u.workspaceAccesses.map((item) => item.workspace as StaffWorkspace),
     trainingRoles: u.trainingRoleAssignments.map((item) => item.role as SystemUserRole),
     isObserver: u.isObserver,
+    operationsAdmin: await isOperationsAdminUser({ role: u.role as AuthUser["role"], email: u.email }),
   };
 }
 
@@ -221,6 +266,7 @@ export async function requireAdmin() {
   }
   if (user.role === "ADMIN" || user.role === "FINANCE") return user;
   if (await isManagerUser(user)) return user;
+  if (user.operationsAdmin) return user;
   redirect("/admin/login");
   throw new Error("unreachable");
 }
@@ -233,6 +279,7 @@ export async function requireAdminAreaUser() {
   }
   if (user.role === "ADMIN" || user.role === "FINANCE" || user.role === "SALES" || user.role === "CS") return user;
   if (await isManagerUser(user)) return user;
+  if (user.operationsAdmin) return user;
   redirect("/admin/login");
   throw new Error("unreachable");
 }
@@ -244,13 +291,14 @@ export async function requireResourceUser() {
     throw new Error("unreachable");
   }
   if (canAccessResourceWorkspaceRole(user.role)) return user;
+  if (user.operationsAdmin) return user;
   redirect("/admin");
   throw new Error("unreachable");
 }
 
 export async function requireResourceAdmin() {
   const user = await requireAdmin();
-  if (user.role === "ADMIN") return user;
+  if (user.role === "ADMIN" || user.operationsAdmin) return user;
   redirect("/admin/leads");
   throw new Error("unreachable");
 }

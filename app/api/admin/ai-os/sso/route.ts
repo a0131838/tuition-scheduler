@@ -18,6 +18,7 @@ function formalOrigin(req: Request) {
 
 async function aiRoleFor(user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>) {
   if (isOwnerManager(user)) return "OWNER";
+  if (user.operationsAdmin) return "ACADEMIC";
   if (user.role === "FINANCE") return "MANAGER_FINANCE";
   if (user.role === "CS" || user.role === "SALES") return "CUSTOMER_SERVICE";
   if (user.role === "TEACHER") return "VIEWER";

@@ -1996,6 +1996,15 @@ model TeacherLeadAcl {
   updatedAt DateTime @updatedAt
 }
 
+model OperationsAdminAcl {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  isActive  Boolean  @default(true)
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model DocumentCategory {
   id        String   @id @default(uuid())
   name      String   @unique

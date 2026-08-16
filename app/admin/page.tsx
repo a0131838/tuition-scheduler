@@ -19,6 +19,7 @@ export default async function AdminHome({
   const requestedWorkspaceRaw = first(sp?.workspace).trim().toUpperCase();
   const requestedWorkspace = isStaffWorkspace(requestedWorkspaceRaw) ? requestedWorkspaceRaw : null;
   const isFinance = user?.role === "FINANCE";
+  const isOperationsAdmin = Boolean(user?.operationsAdmin);
   const isResourceOnly = isResourceOnlyRole(user?.role);
   const activeResourceWorkspace =
     isResourceOnly
@@ -26,7 +27,9 @@ export default async function AdminHome({
       : requestedWorkspace && hasWorkspaceAccess(user?.workspaces, requestedWorkspace)
         ? requestedWorkspace
         : null;
-  const approvalInbox = await getApprovalInboxData(user?.email, user?.role);
+  const approvalInbox = isOperationsAdmin
+    ? { items: [], summary: { total: 0, overdue: 0, manager: 0, finance: 0, expense: 0 }, visibility: { manager: false, finance: false, expense: false } }
+    : await getApprovalInboxData(user?.email, user?.role);
   const cardStyle = {
     padding: "16px 18px",
     borderRadius: 16,
@@ -246,11 +249,15 @@ export default async function AdminHome({
         <div style={{ marginTop: 6, color: "#475569", lineHeight: 1.45, maxWidth: 760 }}>
           {t(
             lang,
-            "Use this page as a daily router: clear today’s blockers first, then move into student, schedule, and finance workflows only when needed.",
-            "把这里当成日常路由页：先清掉今天的阻塞项，再进入学生、排课和财务流程。"
+            isOperationsAdmin
+              ? "Use this page as the standard admin workspace for students, teachers, schedules and daily operations."
+              : "Use this page as a daily router: clear today’s blockers first, then move into student, schedule, and finance workflows only when needed.",
+            isOperationsAdmin
+              ? "这是标准管理后台，用于处理学生、老师、排课和日常运营。"
+              : "把这里当成日常路由页：先清掉今天的阻塞项，再进入学生、排课和财务流程。"
           )}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
+        {!isOperationsAdmin ? <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
           <div style={compactMetricStyle}>
             <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Approvals", "待审批")}</div>
             <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>{approvalInbox.summary.total}</div>
@@ -267,7 +274,7 @@ export default async function AdminHome({
             <div style={{ fontSize: 12, color: "#166534" }}>{t(lang, "Expense", "报销审批")}</div>
             <div style={{ fontSize: 22, fontWeight: 800, color: "#166534" }}>{approvalInbox.summary.expense}</div>
           </div>
-        </div>
+        </div> : null}
       </section>
 
       <section style={{ ...cardStyle, background: "#f8fafc" }}>
@@ -275,20 +282,20 @@ export default async function AdminHome({
           <div style={{ fontSize: 12, fontWeight: 800, color: "#475569", letterSpacing: 0.3 }}>
             {t(lang, "Immediate work", "优先工作")}
           </div>
-          <a href="/admin/approvals" style={{ fontWeight: 800, color: "#1d4ed8" }}>
+          {!isOperationsAdmin ? <a href="/admin/approvals" style={{ fontWeight: 800, color: "#1d4ed8" }}>
             {t(lang, "Open approval inbox", "打开审批提醒中心")}
-          </a>
+          </a> : null}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginTop: 12 }}>
-          <a href="/admin/todos" style={{ ...tileStyle, background: "#fff7ed", borderColor: "#fdba74" }}>
+          {!isOperationsAdmin ? <a href="/admin/todos" style={{ ...tileStyle, background: "#fff7ed", borderColor: "#fdba74" }}>
             <div style={{ fontWeight: 800 }}>{t(lang, "Todo Center", "待办中心")}</div>
             <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Attendance, follow-up, renewal, and repair work.", "点名、跟进、续费和修复事项。")}</div>
-          </a>
-          <a href="/admin/approvals" style={{ ...tileStyle, background: "#f8fbff", borderColor: "#bfdbfe" }}>
+          </a> : null}
+          {!isOperationsAdmin ? <a href="/admin/approvals" style={{ ...tileStyle, background: "#f8fbff", borderColor: "#bfdbfe" }}>
             <div style={{ fontWeight: 800 }}>{t(lang, "Approval Inbox", "审批提醒中心")}</div>
             <div style={{ fontSize: 24, fontWeight: 800, color: "#1d4ed8" }}>{approvalInbox.summary.total}</div>
             <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Start here when a manager or finance decision is blocking work.", "当管理或财务审批阻塞工作时，先从这里开始。")}</div>
-          </a>
+          </a> : null}
           <a href="/admin/schedule" style={{ ...tileStyle, background: "#eff6ff", borderColor: "#93c5fd" }}>
             <div style={{ fontWeight: 800 }}>{t(lang, "Weekly Schedule", "周课表")}</div>
             <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Live schedule changes and daily classroom coordination.", "实时排课调整和日常教室协调。")}</div>
@@ -300,7 +307,7 @@ export default async function AdminHome({
         </div>
       </section>
 
-      <section style={{ ...cardStyle, background: "#f8fbff", borderColor: "#bfdbfe" }}>
+      {!isOperationsAdmin ? <section style={{ ...cardStyle, background: "#f8fbff", borderColor: "#bfdbfe" }}>
         <div style={{ fontSize: 12, fontWeight: 800, color: "#1d4ed8", letterSpacing: 0.3 }}>
           {t(lang, "Pending approvals", "待审批提醒")}
         </div>
@@ -331,7 +338,7 @@ export default async function AdminHome({
             {t(lang, "Open Approval Inbox", "打开审批提醒中心")}
           </a>
         </div>
-      </section>
+      </section> : null}
 
       <section style={cardStyle}>
         <div style={{ fontSize: 12, fontWeight: 800, color: "#475569", letterSpacing: 0.3 }}>
@@ -340,7 +347,13 @@ export default async function AdminHome({
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginTop: 12 }}>
           <a href="/admin/students" style={tileStyle}>
             <div style={{ fontWeight: 800 }}>{t(lang, "Students", "学生")}</div>
-            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Student detail, packages, and quick scheduling.", "学生详情、课时包和快速排课。")}</div>
+            <div style={{ fontSize: 12, color: "#64748b" }}>
+              {t(
+                lang,
+                isOperationsAdmin ? "Student detail and quick scheduling." : "Student detail, packages, and quick scheduling.",
+                isOperationsAdmin ? "学生详情和快速排课。" : "学生详情、课时包和快速排课。",
+              )}
+            </div>
           </a>
           <a href="/admin/teachers" style={tileStyle}>
             <div style={{ fontWeight: 800 }}>{t(lang, "Teachers", "老师")}</div>

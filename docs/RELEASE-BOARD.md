@@ -1,5 +1,41 @@
 # RELEASE BOARD
 
+- `2026-08-16-r368`: ready to let Jessika enter the normal Admin workspace with teaching operations across Web, Staff Mini Program and AI while company finance remains absent from navigation, dashboards and server routes.
+
+## 2026-08-16-r368 Ready
+
+- Scope: add a dedicated non-finance operations ACL to Jessika's existing linked teacher account instead of creating a duplicate user.
+- Business impact:
+  - Jessika signs in through the normal Admin login and sees the standard Admin page and navigation
+  - student, teacher, schedule, ticket, communication, care, feedback and training operations are available
+  - company packages, renewals, invoices, receipts, approvals, payroll approval, expense approval, settlement and finance reports are hidden and rejected server-side
+  - Staff Mini Program scheduling and academic operations use the same ACL; approval and renewal desks remain denied
+  - AI SSO maps the account to `ACADEMIC`, never finance or manager-finance
+  - no scheduling, attendance, deduction, package balance, invoice, receipt, payroll or settlement business rule changes
+- Files:
+  - `lib/operations-admin-access.ts`
+  - `lib/operations-admin-mode.ts`
+  - `lib/auth.ts`
+  - `middleware.ts`
+  - `app/admin/layout.tsx`
+  - `app/admin/page.tsx`
+  - `lib/miniapp-staff-action-center.ts`
+  - `app/api/admin/ai-os/sso/route.ts`
+  - `prisma/migrations/20260816173000_add_operations_admin_acl/migration.sql`
+  - `tests/operations-admin-access.test.ts`
+- Verification before deploy:
+  - Prisma client generation
+  - `npx tsc --noEmit`
+  - 32 focused and existing permission regression tests
+  - `npm run build`
+  - `git diff --check`
+- Post-deploy verification:
+  - confirm local, GitHub and server commits align
+  - confirm PM2 is online and `/admin/login` returns HTTP 200
+  - confirm Jessika ACL is active and old web sessions are invalidated
+  - confirm unauthenticated login health remains unchanged and finance route policy tests remain green
+- Task doc: `docs/tasks/TASK-20260816-jessika-nonfinance-admin.md`
+
 - `2026-08-16-r367`: ready to restore reverted New Oriental offline monthly settlement records to the candidate queue and reactivate the existing record with recalculated hours and amount when staff resubmit it. No lesson, attendance, feedback, invoice, receipt or existing settlement data is rewritten by deployment.
 
 - `2026-08-16-r366`: ready to extend Web and Staff Mini Program cancellation-ticket intake with a recent/future date picker, actual student-session matching, visible lesson state and a review-only manual fallback. Started, ended, attendance-linked and manually entered cases cannot auto-execute; formal scheduling, attendance, package, payroll and finance logic remain unchanged.

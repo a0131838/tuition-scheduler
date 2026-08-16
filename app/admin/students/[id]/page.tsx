@@ -1420,7 +1420,7 @@ async function createSchedulingCoordinationTicket(studentId: string, formData: F
 async function regenerateSchedulingCoordinationParentLink(studentId: string, ticketId: string) {
   "use server";
   const user = await getCurrentUser();
-  if (!user || user.role !== "ADMIN") {
+  if (!user || (user.role !== "ADMIN" && !user.operationsAdmin)) {
     redirect(`/login?next=${encodeURIComponent(`/admin/students/${studentId}`)}`);
   }
 
@@ -1473,7 +1473,7 @@ async function regenerateSchedulingCoordinationParentLink(studentId: string, tic
 async function markSchedulingCoordinationParentChoice(studentId: string, formData: FormData) {
   "use server";
   const user = await getCurrentUser();
-  if (!user || user.role !== "ADMIN") {
+  if (!user || (user.role !== "ADMIN" && !user.operationsAdmin)) {
     redirect(`/login?next=${encodeURIComponent(`/admin/students/${studentId}`)}`);
   }
 
@@ -1525,7 +1525,7 @@ async function markSchedulingCoordinationParentChoice(studentId: string, formDat
 async function markSchedulingCoordinationTeacherException(studentId: string, formData: FormData) {
   "use server";
   const user = await getCurrentUser();
-  if (!user || user.role !== "ADMIN") {
+  if (!user || (user.role !== "ADMIN" && !user.operationsAdmin)) {
     redirect(`/login?next=${encodeURIComponent(`/admin/students/${studentId}`)}`);
   }
 

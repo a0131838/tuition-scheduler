@@ -1,5 +1,6 @@
 import {
   getManagerEmailSet,
+  getOperationsAdminEmailSet,
   getTeacherLeadEmailSet,
   isOwnerManager,
   managerEmailsFromEnv,
@@ -19,6 +20,7 @@ import SystemUserActionsClient from "./_components/SystemUserActionsClient";
 import UserWorkspaceAccessFormClient from "./_components/UserWorkspaceAccessFormClient";
 import UserTrainingRoleFormClient from "./_components/UserTrainingRoleFormClient";
 import UserObserverModeClient from "./_components/UserObserverModeClient";
+import UserOperationsAdminModeClient from "./_components/UserOperationsAdminModeClient";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { StaffWorkspace, SystemUserRole } from "@/lib/staff-roles";
 
@@ -58,7 +60,7 @@ export default async function ManagerUsersPage({
   const sp = await searchParams;
   const isEditMode = canEdit && (sp?.mode ?? "").toLowerCase() === "edit";
 
-  const [users, teachers, sessions, managerAclRows, teacherLeadAclRows, managerSet, teacherLeadSet] = await Promise.all([
+  const [users, teachers, sessions, managerAclRows, teacherLeadAclRows, managerSet, teacherLeadSet, operationsAdminSet] = await Promise.all([
     prisma.user.findMany({
       orderBy: [{ role: "asc" }, { createdAt: "asc" }],
       include: {
@@ -94,6 +96,7 @@ export default async function ManagerUsersPage({
     }),
     getManagerEmailSet(),
     getTeacherLeadEmailSet(),
+    getOperationsAdminEmailSet(),
   ]);
   const envManagerEmails = managerEmailsFromEnv();
   const envTeacherLeadEmails = teacherLeadEmailsFromEnv();
@@ -341,6 +344,7 @@ export default async function ManagerUsersPage({
               const sess = sessionInfo.get(u.id);
               const isManager = managerSet.has(u.email.toLowerCase()) && u.role === "ADMIN";
               const isTeacherLead = teacherLeadSet.has(u.email.toLowerCase());
+              const isOperationsAdmin = operationsAdminSet.has(u.email.toLowerCase());
               const rowEditable = canEditTargetUser(currentUser, u as BasicUser, managerSet).ok;
               return (
                 <tr key={u.id} style={{ borderTop: "1px solid #f1f5f9", verticalAlign: "top" }}>
@@ -351,6 +355,7 @@ export default async function ManagerUsersPage({
                       {t(lang, "Created", "创建")}: {formatBusinessDateTime(u.createdAt)}
                       {isManager ? ` | ${t(lang, "Manager", "管理者")}` : ""}
                       {isTeacherLead ? ` | ${t(lang, "Teacher Lead", "老师主管")}` : ""}
+                      {isOperationsAdmin ? ` | ${t(lang, "Teaching Operations Admin (no finance)", "教学运营管理员（无财务）")}` : ""}
                       {u.isObserver ? ` | ${t(lang, "Observer (read-only)", "观察者（只读）")}` : ""}
                     </div>
                   </td>
@@ -430,16 +435,28 @@ export default async function ManagerUsersPage({
                       {rowEditable ? (
                         <>
                           {canEditWorkspaces ? (
-                            <UserObserverModeClient
-                              userId={u.id}
-                              enabled={u.isObserver}
-                              labels={{
-                                observer: t(lang, "Observer mode", "观察者模式"),
-                                save: t(lang, "Apply access change", "应用权限变更"),
-                                confirm: t(lang, "Change observer mode and sign this user out everywhere?", "确认更改观察者权限，并让该账号在网页和小程序全部退出？"),
-                                errorPrefix: t(lang, "Error", "错误"),
-                              }}
-                            />
+                            <>
+                              <UserObserverModeClient
+                                userId={u.id}
+                                enabled={u.isObserver}
+                                labels={{
+                                  observer: t(lang, "Observer mode", "观察者模式"),
+                                  save: t(lang, "Apply access change", "应用权限变更"),
+                                  confirm: t(lang, "Change observer mode and sign this user out everywhere?", "确认更改观察者权限，并让该账号在网页和小程序全部退出？"),
+                                  errorPrefix: t(lang, "Error", "错误"),
+                                }}
+                              />
+                              <UserOperationsAdminModeClient
+                                userId={u.id}
+                                enabled={isOperationsAdmin}
+                                labels={{
+                                  title: t(lang, "Teaching operations admin (no company finance)", "教学运营管理员（不含公司财务）"),
+                                  save: t(lang, "Apply access change", "应用权限变更"),
+                                  confirm: t(lang, "Change operations access and sign this user out everywhere?", "确认更改运营权限，并让该账号在网页和小程序全部退出？"),
+                                  errorPrefix: t(lang, "Error", "错误"),
+                                }}
+                              />
+                            </>
                           ) : null}
                           <SystemUserActionsClient
                             userId={u.id}

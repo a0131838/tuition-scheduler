@@ -25,19 +25,23 @@ const OPERATION_MODULES = [
   "teacher-reports",
 ];
 
+const ACADEMIC_OPERATION_MODULES = OPERATION_MODULES.filter(
+  (module) => module !== "expense-claims" && module !== "TEACHER_PAYROLL",
+);
+
 export async function GET(req: Request) {
   const auth = await requireMiniappStaff(req);
   if (!auth.ok) return auth.response;
   const canAcademic = canUseMiniappAcademicDesk(auth.user);
   const canManager = await canUseMiniappApprovalDesk(auth.user);
-  const ownOnly = auth.user.role === "TEACHER";
+  const ownOnly = auth.user.role === "TEACHER" && !auth.user.operationsAdmin;
   if (!canAcademic && !canManager && !ownOnly) return bad("Operation log permission required", 403);
   const url = new URL(req.url);
   const limit = parseMiniappLimit(url.searchParams.get("limit"), 60, 150);
   const rows = await prisma.auditLog.findMany({
     where: ownOnly
       ? { actorEmail: auth.user.email.toLowerCase() }
-      : { OR: OPERATION_MODULES.map((module) => ({ module: { contains: module, mode: "insensitive" as const } })) },
+      : { OR: (auth.user.operationsAdmin ? ACADEMIC_OPERATION_MODULES : OPERATION_MODULES).map((module) => ({ module: { contains: module, mode: "insensitive" as const } })) },
     orderBy: { createdAt: "desc" },
     take: limit,
   });

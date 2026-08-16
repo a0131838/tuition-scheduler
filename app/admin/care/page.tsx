@@ -44,13 +44,13 @@ export default async function CarePage({
   const studentId = first(sp?.studentId).trim();
   const msg = first(sp?.msg).trim();
   const err = first(sp?.err).trim();
-  const broadAccess = actor.role === "ADMIN" || (await isManagerUser(actor));
+  const broadAccess = actor.role === "ADMIN" || actor.operationsAdmin || (await isManagerUser(actor));
   const accessWhere = broadAccess ? {} : { members: { some: { userId: actor.id, isActive: true } } };
 
   async function createAction(formData: FormData) {
     "use server";
     const current = await requireCareStaff();
-    const canCreate = current.role === "ADMIN" || (await isManagerUser(current));
+    const canCreate = current.role === "ADMIN" || current.operationsAdmin || (await isManagerUser(current));
     if (!canCreate) redirect(`/admin/care?err=${encodeURIComponent("Only managers can create care projects")}`);
     let engagementId = "";
     try {

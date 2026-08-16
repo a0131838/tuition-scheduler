@@ -1,6 +1,6 @@
 import { bad, ok } from "@/app/api/miniapp/_lib";
 import { requireMiniappStaff } from "@/app/api/miniapp/staff/_lib";
-import { canUseMiniappAcademicDesk } from "@/lib/miniapp-staff-action-center";
+import { canUseMiniappRenewalDesk } from "@/lib/miniapp-staff-action-center";
 import {
   getRenewalCohortCounts,
   listRenewalTasks,
@@ -16,7 +16,7 @@ function cohortFrom(value: string | null): RenewalCohort {
 export async function GET(req: Request) {
   const auth = await requireMiniappStaff(req);
   if (!auth.ok) return auth.response;
-  if (!canUseMiniappAcademicDesk(auth.user)) return bad("Renewal center permission required", 403);
+  if (!canUseMiniappRenewalDesk(auth.user)) return bad("Renewal center permission required", 403);
   const url = new URL(req.url);
   const status = String(url.searchParams.get("status") ?? "OPEN");
   const cohort = cohortFrom(url.searchParams.get("cohort"));
@@ -31,7 +31,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const auth = await requireMiniappStaff(req);
   if (!auth.ok) return auth.response;
-  if (!canUseMiniappAcademicDesk(auth.user)) return bad("Renewal center permission required", 403);
+  if (!canUseMiniappRenewalDesk(auth.user)) return bad("Renewal center permission required", 403);
   const result = await syncRenewalTasks(auth.user);
   return ok({ sync: { created: result.created, updated: result.updated, resolved: result.resolved } });
 }

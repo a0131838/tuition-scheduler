@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 export async function requireCommunicationCenterUser() {
   const user = await requireAdminAreaUser();
-  const allowed = user.role === "ADMIN" || user.role === "CS" || user.workspaces.includes("CS") || await isManagerUser(user);
+  const allowed = user.operationsAdmin || user.role === "ADMIN" || user.role === "CS" || user.workspaces.includes("CS") || await isManagerUser(user);
   if (!allowed) redirect("/admin");
   return user;
 }

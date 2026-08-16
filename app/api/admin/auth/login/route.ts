@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { createSession, isManagerUser, verifyPassword } from "@/lib/auth";
+import { createSession, isManagerUser, isOperationsAdminUser, verifyPassword } from "@/lib/auth";
 import { sanitizeNextPath } from "@/lib/route-guards";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
@@ -30,7 +30,8 @@ export async function POST(req: Request) {
   const canEnterAdmin =
     user.role === "ADMIN" ||
     user.role === "FINANCE" ||
-    (await isManagerUser({ role: user.role as any, email: user.email }));
+    (await isManagerUser({ role: user.role as any, email: user.email })) ||
+    (await isOperationsAdminUser({ role: user.role as any, email: user.email }));
 
   await createSession(user.id);
 

@@ -4,6 +4,7 @@ import { parseLedgerIntegrityAlertState, LEDGER_INTEGRITY_ALERT_KEY } from "@/li
 import { getApprovalInboxData } from "@/lib/approval-inbox";
 import { prisma } from "@/lib/prisma";
 import { isResourceOnlyRole } from "@/lib/staff-roles";
+import { isOperationsAdminPathAllowed } from "@/lib/operations-admin-access";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -58,19 +59,26 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   const user = await requireAdminAreaUser();
+  if (user.operationsAdmin && !isOperationsAdminPathAllowed(pathname)) {
+    redirect("/admin");
+  }
   const lang = await getLang();
   const showManagerConsole = await isManagerUser(user);
-  const canSeeCare = user.role === "ADMIN" || showManagerConsole || user.workspaces.includes("CARE");
+  const canSeeCare = user.role === "ADMIN" || showManagerConsole || user.operationsAdmin || user.workspaces.includes("CARE");
   const canSeeSharedDocs = showManagerConsole && user.role === "ADMIN";
   const isFinance = user.role === "FINANCE";
   const isResourceOnly = isResourceOnlyRole(user.role);
   const isCareWorkspace = pathname.startsWith("/admin/care");
-  const ledgerAlertRow = await prisma.appSetting.findUnique({
-    where: { key: LEDGER_INTEGRITY_ALERT_KEY },
-    select: { value: true },
-  });
+  const ledgerAlertRow = user.operationsAdmin
+    ? null
+    : await prisma.appSetting.findUnique({
+        where: { key: LEDGER_INTEGRITY_ALERT_KEY },
+        select: { value: true },
+      });
   const ledgerAlert = parseLedgerIntegrityAlertState(ledgerAlertRow?.value);
-  const approvalInbox = await getApprovalInboxData(user.email, user.role);
+  const approvalInbox = user.operationsAdmin
+    ? { items: [], summary: { total: 0, overdue: 0, manager: 0, finance: 0, expense: 0 }, visibility: { manager: false, finance: false, expense: false } }
+    : await getApprovalInboxData(user.email, user.role);
   const approvalInboxLabel =
     approvalInbox.summary.total > 0
       ? `${t(lang, "Approval Inbox", "审批提醒")} (${approvalInbox.summary.total})`
@@ -125,7 +133,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       title: t(lang, "Today", "今天"),
       summary: t(lang, "Start with the next task that blocks operations.", "先处理会阻塞运营的下一件事。"),
       items: [
-        ...((user.role === "ADMIN" || user.role === "CS" || user.workspaces.includes("CS"))
+        ...((user.role === "ADMIN" || user.role === "CS" || user.operationsAdmin || user.workspaces.includes("CS"))
           ? [{ href: "/admin/communications", label: t(lang, "Parent Communication", "家长沟通与通知"), description: t(lang, "Review feedback and complete manual WeChat follow-up.", "审核反馈并完成微信群人工通知。"), tone: "warning" as const }]
           : []),
         {
@@ -146,7 +154,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           description: t(lang, "Attendance, follow-up, renewal, and repair queues.", "点名、跟进、续费和修复队列。"),
           tone: "warning" as const,
         },
-        ...((user.role === "ADMIN" || user.role === "CS" || user.role === "FINANCE" || user.workspaces.includes("CS") || showManagerConsole)
+        ...((user.role === "ADMIN" || user.role === "CS" || user.role === "FINANCE" || user.operationsAdmin || user.workspaces.includes("CS") || showManagerConsole)
           ? [{
               href: "/admin/renewals",
               label: t(lang, "Renewal Follow-up", "续费跟进"),
@@ -184,7 +192,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           description: t(lang, "Review the month view without leaving the day-first desk.", "在今天工作台附近直接查看整月课表。"),
           tone: "neutral" as const,
         },
-        ...((user.role === "ADMIN" || user.role === "CS" || user.role === "FINANCE" || user.workspaces.includes("CS") || showManagerConsole)
+        ...((user.role === "ADMIN" || user.role === "CS" || user.role === "FINANCE" || user.operationsAdmin || user.workspaces.includes("CS") || showManagerConsole)
           ? [{
               href: "/admin/monthly-scheduling",
               label: t(lang, "Next-month Scheduling", "下月排课确认"),
@@ -316,6 +324,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       ],
     },
   ];
+  const operationsAdminNavGroups = adminNavGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => isOperationsAdminPathAllowed(item.href)),
+    }))
+    .filter((group) => group.items.length > 0);
 
   const financeNavGroups = [
     {
@@ -539,7 +553,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
       </div>
 
-      <AdminSidebarNavClient groups={isFinance ? financeNavGroups : isResourceOnly ? resourceNavGroups : adminNavGroups} />
+      <AdminSidebarNavClient groups={isFinance ? financeNavGroups : isResourceOnly ? resourceNavGroups : user.operationsAdmin ? operationsAdminNavGroups : adminNavGroups} />
 
       <div
         style={{
