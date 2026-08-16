@@ -3,7 +3,8 @@ import { requireMiniappStaff } from "@/app/api/miniapp/staff/_lib";
 import { miniappRequestConfig, miniappRequestDto, normalizeMiniappStaffRequestType } from "@/lib/miniapp-parent-requests";
 import { prisma } from "@/lib/prisma";
 import { allocateTicketNo, composeTicketSituation, normalizeTicketString, parseDateLike } from "@/lib/tickets";
-import { normalizeSchedulingActionInput } from "@/lib/ticket-scheduling-actions";
+import { normalizeSchedulingActionInput, schedulingActionDefinition } from "@/lib/ticket-scheduling-actions";
+import { attendanceLocksCancellation, cancellationSourceStatus, isManualCancellationTarget } from "@/lib/ticket-cancellation-intake";
 import { sessionBelongsToStudentWhere } from "@/lib/session-students";
 
 function toInt(v: string | null, fallback: number) {
@@ -98,6 +99,12 @@ export async function POST(req: Request) {
   if (!originalContent) return bad("Original content is required");
   if (!publicSummary) return bad("Parent visible summary is required");
   if (rawSchedulingActions.length !== normalizedSchedulingActions.length) return bad("Invalid scheduling action", 409);
+  const missingRequiredSource = schedulingActions.find((action) =>
+    schedulingActionDefinition(action.actionType)?.needsSource &&
+    !action.sourceSessionId &&
+    !isManualCancellationTarget(action)
+  );
+  if (missingRequiredSource) return bad("请选择具体原课程，或完整填写手动取消课程信息", 409);
 
   const student = await prisma.student.findUnique({
     where: { id: studentId },
@@ -122,20 +129,48 @@ export async function POST(req: Request) {
 
   const ticket = await prisma.$transaction(async (tx) => {
     const sourceIds: string[] = Array.from(new Set(schedulingActions.map((item) => item.sourceSessionId).filter((value): value is string => Boolean(value))));
-    const sourceCourseLabels = new Map<string, string>();
+    const sourceDetails = new Map<string, { courseLabel: string; cancellationState: ReturnType<typeof cancellationSourceStatus> }>();
     if (sourceIds.length) {
       const matched = await tx.session.findMany({
         where: { id: { in: sourceIds }, ...sessionBelongsToStudentWhere(student.id) },
-        select: { id: true, class: { select: { course: { select: { name: true } }, subject: { select: { name: true } }, level: { select: { name: true } } } } },
+        select: {
+          id: true,
+          startAt: true,
+          endAt: true,
+          attendances: {
+            where: { studentId: student.id },
+            select: { status: true, deductedMinutes: true, deductedCount: true, packageId: true, excusedCharge: true },
+          },
+          class: { select: { course: { select: { name: true } }, subject: { select: { name: true } }, level: { select: { name: true } } } },
+        },
       });
       if (matched.length !== sourceIds.length) throw new Error("SCHEDULING_SOURCE_MISMATCH");
-      matched.forEach((session) => sourceCourseLabels.set(session.id, [session.class.course.name, session.class.subject?.name, session.class.level?.name].filter(Boolean).join(" / ")));
+      matched.forEach((session) => sourceDetails.set(session.id, {
+        courseLabel: [session.class.course.name, session.class.subject?.name, session.class.level?.name].filter(Boolean).join(" / "),
+        cancellationState: cancellationSourceStatus({
+          startAt: session.startAt,
+          endAt: session.endAt,
+          attendanceLocked: attendanceLocksCancellation(session.attendances[0]),
+        }),
+      }));
     }
-    const sourceDefaultCourseLabel = sourceIds.map((id) => sourceCourseLabels.get(id)).find(Boolean) || null;
-    const actionRows = schedulingActions.map((action) => ({
-      ...action,
-      courseLabel: action.courseLabel || (action.sourceSessionId ? sourceCourseLabels.get(action.sourceSessionId) || null : null) || (action.actionType === "CREATE_SESSION" ? sourceDefaultCourseLabel : null),
-    }));
+    const sourceDefaultCourseLabel = sourceIds.map((id) => sourceDetails.get(id)?.courseLabel).find(Boolean) || null;
+    const actionRows = schedulingActions.map((action) => {
+      const source = action.sourceSessionId ? sourceDetails.get(action.sourceSessionId) : null;
+      const reviewReason = action.actionType === "CANCEL_SESSION"
+        ? isManualCancellationTarget(action)
+          ? "手动记录课程，待教务匹配原课程，禁止自动执行"
+          : source && !source.cancellationState.canAutoExecute
+            ? source.cancellationState.label
+            : null
+        : null;
+      return {
+        ...action,
+        status: reviewReason ? "NEED_INFO" : action.status,
+        notes: reviewReason ? [action.notes, `系统状态：${reviewReason}`].filter(Boolean).join("\n") : action.notes,
+        courseLabel: action.courseLabel || source?.courseLabel || (action.actionType === "CREATE_SESSION" ? sourceDefaultCourseLabel : null),
+      };
+    });
     const ticketNo = await allocateTicketNo(tx);
     const created = await tx.ticket.create({
       data: {

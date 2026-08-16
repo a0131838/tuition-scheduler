@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { Prisma } from "@prisma/client";
 import { campusRequiresRoom } from "@/lib/campus";
 import { formatBusinessDateTime } from "@/lib/date-only";
+import { getTicketSourceSessionOptions } from "@/lib/ticket-source-session-options";
 import { applyLinkedTicketSchedulingAction } from "@/lib/ticket-scheduling-action-write";
 import { createTicketTeacherConfirmation, finishTicketAfterFormalExecution, isFirstTeacherForStudents, teacherConsentRequired } from "@/lib/ai-ticket-communication";
 import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
@@ -289,7 +290,7 @@ export async function getTicketNewSessionOptions(ticketId: string) {
   return getStudentNewSessionOptions(studentId);
 }
 
-export async function getStudentNewSessionOptions(studentId: string) {
+export async function getStudentNewSessionOptions(studentId: string, sourceDate?: string | null) {
   const now = new Date();
   const student = await prisma.student.findUnique({
     where: { id: studentId },
@@ -344,7 +345,7 @@ export async function getStudentNewSessionOptions(studentId: string) {
       orderBy: { name: "asc" },
     }),
   ]);
-  const [openTickets, upcomingSessions] = await Promise.all([
+  const [openTickets, upcomingSessions, sourceSessionOptions] = await Promise.all([
     prisma.ticket.findMany({
       where: {
         studentId,
@@ -386,13 +387,17 @@ export async function getStudentNewSessionOptions(studentId: string) {
       orderBy: { startAt: "asc" },
       take: 12,
     }),
+    getTicketSourceSessionOptions(studentId, sourceDate),
   ]);
+  if (!sourceSessionOptions) return null;
   return {
     student,
     courses: Array.from(courseMap.values()),
     teachers,
     campuses,
     openTickets,
+    sourceSessionWindow: sourceSessionOptions.window,
+    sourceSessions: sourceSessionOptions.sessions,
     upcomingSessions: upcomingSessions.map((session) => ({
       id: session.id,
       startText: formatBusinessDateTime(session.startAt),

@@ -17,10 +17,38 @@ const actionOptions = typeOptions.slice(0, 5);
 const communicationSources = ["微信群", "电话", "线下", "老师转达", "内部发现", "家长小程序", "其他"];
 const priorities = ["普通", "1小时紧急", "6小时紧急", "24小时紧急"];
 const owners = ["自动分配", "Jasmine", "Eva", "Emily"];
+const leaveParties = ["学生/家长", "老师", "学校安排变动", "其他"];
 
 let searchTimer = null;
 let studentSearchSeq = 0;
 const REQUEST_DRAFT_KEY = "staff_request_new_draft_v2";
+
+function localDate(value) {
+  const date = value || new Date();
+  return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+}
+
+function localTime(value) {
+  const date = value || new Date();
+  return String(date.getHours()).padStart(2, "0") + ":" + String(date.getMinutes()).padStart(2, "0");
+}
+
+function manualCancellationReady(action) {
+  return action && action.actionType === "CANCEL_SESSION" && action.manualSource && action.manualDate && action.manualTime && String(action.manualCourse || "").trim();
+}
+
+function composedActionNotes(action) {
+  const rows = [];
+  if (action.actionType === "CANCEL_SESSION") {
+    rows.push("请假方：" + leaveParties[action.leavePartyIndex || 0]);
+    rows.push("通知时间：" + action.noticeDate + " " + action.noticeTime);
+    if (action.manualSource) {
+      rows.push("手动目标课程：" + action.manualDate + " " + action.manualTime + " · " + String(action.manualCourse || "").trim() + (String(action.manualTeacher || "").trim() ? " · " + String(action.manualTeacher).trim() : ""));
+    }
+  }
+  if (String(action.notes || "").trim()) rows.push(String(action.notes).trim());
+  return rows.join("\n") || null;
+}
 
 Page({
   data: {
@@ -28,6 +56,7 @@ Page({
     communicationSources,
     priorities,
     owners,
+    leaveParties,
     typeIndex: 0,
     communicationSourceIndex: 0,
     priorityIndex: 0,
@@ -37,6 +66,8 @@ Page({
     selectedStudentId: "",
     selectedStudentLabel: "",
     upcomingSessions: [],
+    sourceDate: localDate(),
+    sourceWindow: { minDate: "", maxDate: "" },
     schedulingActions: [],
     scheduleOptionsLoading: false,
     sourceDetail: "",
@@ -64,9 +95,14 @@ Page({
       selectedStudentLabel: studentLabel,
       studentQuery: studentLabel
     });
-    if (!studentId && draft && typeof draft === "object" && draft.savedAt) this.setData(Object.assign({}, draft, { files: [], loading: false, searching: false, draftRestored: true }));
+    if (!studentId && draft && typeof draft === "object" && draft.savedAt) {
+      const restoredActions = Array.isArray(draft.schedulingActions)
+        ? draft.schedulingActions.map((action) => Object.assign(this.newSchedulingAction(action.actionType), action))
+        : [this.newSchedulingAction(typeOptions[0].actionType)];
+      this.setData(Object.assign({}, draft, { schedulingActions: restoredActions, sourceDate: draft.sourceDate || localDate(), files: [], loading: false, searching: false, draftRestored: true }));
+    }
     const activeStudentId = studentId || (draft && draft.selectedStudentId) || "";
-    if (activeStudentId) this.loadSchedulingOptions(activeStudentId);
+    if (activeStudentId) this.loadSchedulingOptions(activeStudentId, this.data.sourceDate);
   },
 
   onHide() { this.saveDraft(); },
@@ -84,6 +120,7 @@ Page({
       priorityIndex: this.data.priorityIndex, ownerIndex: this.data.ownerIndex,
       studentQuery: this.data.studentQuery, selectedStudentId: this.data.selectedStudentId,
       selectedStudentLabel: this.data.selectedStudentLabel, schedulingActions: this.data.schedulingActions,
+      sourceDate: this.data.sourceDate,
       sourceDetail: this.data.sourceDetail, originalContent: this.data.originalContent,
       publicSummary: this.data.publicSummary, requiredAction: this.data.requiredAction,
       latestDeadlineText: this.data.latestDeadlineText, advancedOpen: this.data.advancedOpen,
@@ -114,7 +151,15 @@ Page({
       requestedDate: now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0"),
       requestedTime: "",
       notes: "",
-      replacementRequired: false
+      replacementRequired: false,
+      manualSource: false,
+      manualDate: localDate(),
+      manualTime: "",
+      manualCourse: "",
+      manualTeacher: "",
+      leavePartyIndex: 0,
+      noticeDate: localDate(),
+      noticeTime: localTime()
     };
   },
 
@@ -195,21 +240,35 @@ Page({
       searching: false,
       schedulingActions
     });
-    this.loadSchedulingOptions(id);
+    this.loadSchedulingOptions(id, this.data.sourceDate);
   },
 
-  loadSchedulingOptions(studentId) {
+  loadSchedulingOptions(studentId, sourceDate) {
     if (!studentId) return;
     this.setData({ scheduleOptionsLoading: true, upcomingSessions: [] });
-    api.requestStaff("/api/miniapp/staff/students/" + encodeURIComponent(studentId) + "/scheduling", { timeout: 15000 })
+    api.requestStaff("/api/miniapp/staff/students/" + encodeURIComponent(studentId) + "/scheduling?sourceDate=" + encodeURIComponent(sourceDate || this.data.sourceDate), { timeout: 15000 })
       .then((data) => {
         if (this.data.selectedStudentId !== studentId) return;
-        this.setData({ upcomingSessions: (data.options && data.options.upcomingSessions) || [] });
+        this.setData({
+          upcomingSessions: (data.options && data.options.sourceSessions) || [],
+          sourceWindow: (data.options && data.options.sourceSessionWindow) || { minDate: "", maxDate: "" }
+        });
       })
       .catch((err) => api.toast(err.message))
       .finally(() => {
         if (this.data.selectedStudentId === studentId) this.setData({ scheduleOptionsLoading: false });
       });
+  },
+
+  changeSourceDate(e) {
+    const sourceDate = e.detail.value;
+    const schedulingActions = this.data.schedulingActions.map((action) => Object.assign({}, action, {
+      sourceIndex: -1,
+      sourceSessionId: "",
+      sourceSessionLabel: "请选择原来的课程"
+    }));
+    this.setData({ sourceDate, schedulingActions });
+    this.loadSchedulingOptions(this.data.selectedStudentId, sourceDate);
   },
 
   addSchedulingAction() {
@@ -239,10 +298,47 @@ Page({
     actions[index] = Object.assign({}, actions[index], {
       sourceIndex,
       sourceSessionId: session.id,
-      sourceSessionLabel: session.startText + " · " + session.courseLabel + " · " + session.teacherName
+      sourceSessionLabel: session.startText + " · " + session.courseLabel + " · " + session.teacherName + " · " + session.statusLabel,
+      manualSource: false,
+      manualCourse: session.courseLabel || "",
+      manualTeacher: session.teacherName || ""
+    });
+    let publicSummary = this.data.publicSummary;
+    if (!publicSummary.trim() && actions[index].actionType === "CANCEL_SESSION") {
+      publicSummary = "已收到关于 " + session.startText + " 课程的请假/取消申请，教务正在核实处理。";
+    }
+    this.setData({ schedulingActions: actions, publicSummary });
+  },
+
+  toggleManualSource(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const actions = this.data.schedulingActions.slice();
+    if (!actions[index]) return;
+    const enabled = Boolean(e.detail.value);
+    actions[index] = Object.assign({}, actions[index], {
+      manualSource: enabled,
+      sourceIndex: enabled ? -1 : actions[index].sourceIndex,
+      sourceSessionId: enabled ? "" : actions[index].sourceSessionId,
+      sourceSessionLabel: enabled ? "手动记录，待教务匹配" : actions[index].sourceSessionLabel
     });
     this.setData({ schedulingActions: actions });
   },
+
+  updateActionField(e, field, value) {
+    const index = Number(e.currentTarget.dataset.index);
+    const actions = this.data.schedulingActions.slice();
+    if (!actions[index]) return;
+    actions[index] = Object.assign({}, actions[index], { [field]: value });
+    this.setData({ schedulingActions: actions });
+  },
+
+  changeManualDate(e) { this.updateActionField(e, "manualDate", e.detail.value); },
+  changeManualTime(e) { this.updateActionField(e, "manualTime", e.detail.value); },
+  inputManualCourse(e) { this.updateActionField(e, "manualCourse", e.detail.value); },
+  inputManualTeacher(e) { this.updateActionField(e, "manualTeacher", e.detail.value); },
+  changeLeaveParty(e) { this.updateActionField(e, "leavePartyIndex", Number(e.detail.value || 0)); },
+  changeNoticeDate(e) { this.updateActionField(e, "noticeDate", e.detail.value); },
+  changeNoticeTime(e) { this.updateActionField(e, "noticeTime", e.detail.value); },
 
   changeActionDate(e) {
     const index = Number(e.currentTarget.dataset.index);
@@ -375,7 +471,7 @@ Page({
       api.toast("请填写对家长可见摘要");
       return;
     }
-    const missingSource = this.data.schedulingActions.find((action) => action.needsSource && !action.sourceSessionId);
+    const missingSource = this.data.schedulingActions.find((action) => action.needsSource && !action.sourceSessionId && !manualCancellationReady(action));
     if (missingSource) {
       api.toast("请为“" + missingSource.actionLabel + "”选择原课程");
       return;
@@ -411,9 +507,14 @@ Page({
         schedulingActions: this.data.schedulingActions.map((action) => ({
           actionType: action.actionType,
           sourceSessionId: action.sourceSessionId || null,
-          requestedStartAt: action.requestedTime ? action.requestedDate + "T" + action.requestedTime + ":00+08:00" : null,
+          requestedStartAt: action.manualSource && action.actionType === "CANCEL_SESSION"
+            ? action.manualDate + "T" + action.manualTime + ":00+08:00"
+            : action.requestedTime
+              ? action.requestedDate + "T" + action.requestedTime + ":00+08:00"
+              : null,
+          courseLabel: action.manualSource ? String(action.manualCourse || "").trim() || null : null,
           replacementRequired: action.replacementRequired,
-          notes: action.notes.trim() || null
+          notes: composedActionNotes(action)
         }))
       },
       timeout: 20000

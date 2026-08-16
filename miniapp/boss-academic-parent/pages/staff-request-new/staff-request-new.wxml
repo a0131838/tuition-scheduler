@@ -33,21 +33,43 @@
 
     <view class="action-builder" wx:if="{{schedulingActions.length}}">
       <view class="action-builder-head"><view><view class="question-label">排课执行动作</view><view class="hint">一条消息有多个要求时，继续添加动作，不要重复建工单。</view></view><button class="add-action" bindtap="addSchedulingAction">＋ 添加</button></view>
-      <view class="schedule-loading" wx:if="{{scheduleOptionsLoading}}">正在读取该学生未来课程…</view>
+      <view class="field" wx:if="{{selectedStudentId}}">
+        <view class="label">查找哪一天的原课程</view>
+        <picker mode="date" value="{{sourceDate}}" start="{{sourceWindow.minDate}}" end="{{sourceWindow.maxDate}}" bindchange="changeSourceDate"><view class="compact-picker">{{sourceDate}}<text>更换 ›</text></view></picker>
+        <view class="hint">可查询最近 7 天至未来 90 天；当天已开始或结束的课程也会显示。</view>
+      </view>
+      <view class="schedule-loading" wx:if="{{scheduleOptionsLoading}}">正在读取当天课程…</view>
       <view class="schedule-action" wx:for="{{schedulingActions}}" wx:key="index">
         <view class="schedule-action-head"><view><view class="action-order">动作 {{index + 1}}</view><view class="action-name">{{item.actionLabel}}</view></view><button class="remove-action" wx:if="{{schedulingActions.length > 1}}" data-index="{{index}}" bindtap="removeSchedulingAction">删除</button></view>
-        <view class="field" wx:if="{{item.needsSource}}">
+        <view class="field" wx:if="{{item.needsSource && !item.manualSource}}">
           <view class="label">选择要处理的原课程 <text class="required">必选</text></view>
           <picker mode="selector" range="{{upcomingSessions}}" range-key="startText" value="{{item.sourceIndex}}" data-index="{{index}}" bindchange="changeActionSource">
             <view class="action-picker {{item.sourceSessionId ? 'selected' : ''}}">{{item.sourceSessionLabel}}<text>选择 ›</text></view>
           </picker>
-          <view class="hint" wx:if="{{!scheduleOptionsLoading && !upcomingSessions.length}}">没有找到未来课程，请先保存为“时间未确定，需要协调”，由教务补充关联。</view>
+          <view class="hint" wx:if="{{!scheduleOptionsLoading && !upcomingSessions.length}}">当天没有找到系统课程。取消/请假可使用下面的手动记录，由教务后续匹配。</view>
         </view>
         <view class="requested-time" wx:if="{{item.actionType === 'RESCHEDULE_SESSION' || item.actionType === 'CREATE_SESSION' || item.actionType === 'COORDINATE_ONLY'}}">
           <view class="field"><view class="label">希望日期（可先不填具体时间）</view><picker mode="date" value="{{item.requestedDate}}" data-index="{{index}}" bindchange="changeActionDate"><view class="compact-picker">{{item.requestedDate}}</view></picker></view>
           <view class="field"><view class="label">希望时间</view><picker mode="time" value="{{item.requestedTime}}" data-index="{{index}}" bindchange="changeActionTime"><view class="compact-picker">{{item.requestedTime || '待家长确认'}}</view></picker></view>
         </view>
-        <view class="replacement-line" wx:if="{{item.actionType === 'CANCEL_SESSION'}}"><view><view class="label">取消后还需要补课吗？</view><view class="hint">打开后，这张工单不会在取消完成时提前关闭。</view></view><switch checked="{{item.replacementRequired}}" data-index="{{index}}" bindchange="changeReplacementRequired" color="#ec5e0a" /></view>
+        <view wx:if="{{item.actionType === 'CANCEL_SESSION'}}">
+          <view class="replacement-line"><view><view class="label">找不到系统课程，手动记录</view><view class="hint">只建待匹配工单，不会自动取消课程或修改扣课。</view></view><switch checked="{{item.manualSource}}" data-index="{{index}}" bindchange="toggleManualSource" color="#ec5e0a" /></view>
+          <view class="manual-source" wx:if="{{item.manualSource}}">
+            <view class="manual-warning">待教务匹配原课程，禁止自动执行</view>
+            <view class="requested-time">
+              <view class="field"><view class="label">课程日期</view><picker mode="date" value="{{item.manualDate}}" start="{{sourceWindow.minDate}}" end="{{sourceWindow.maxDate}}" data-index="{{index}}" bindchange="changeManualDate"><view class="compact-picker">{{item.manualDate}}</view></picker></view>
+              <view class="field"><view class="label">开始时间</view><picker mode="time" value="{{item.manualTime}}" data-index="{{index}}" bindchange="changeManualTime"><view class="compact-picker">{{item.manualTime || '请选择'}}</view></picker></view>
+            </view>
+            <view class="field"><view class="label">课程名称 <text class="required">必填</text></view><input class="input" value="{{item.manualCourse}}" data-index="{{index}}" placeholder="例如：A-Level 生物" bindinput="inputManualCourse" /></view>
+            <view class="field"><view class="label">老师（可选）</view><input class="input" value="{{item.manualTeacher}}" data-index="{{index}}" placeholder="例如：王老师" bindinput="inputManualTeacher" /></view>
+          </view>
+          <view class="grid cancellation-meta">
+            <view class="field"><view class="label">请假方</view><picker mode="selector" range="{{leaveParties}}" value="{{item.leavePartyIndex}}" data-index="{{index}}" bindchange="changeLeaveParty"><view class="compact-picker">{{leaveParties[item.leavePartyIndex]}}</view></picker></view>
+            <view class="field"><view class="label">收到通知日期</view><picker mode="date" value="{{item.noticeDate}}" data-index="{{index}}" bindchange="changeNoticeDate"><view class="compact-picker">{{item.noticeDate}}</view></picker></view>
+            <view class="field"><view class="label">收到通知时间</view><picker mode="time" value="{{item.noticeTime}}" data-index="{{index}}" bindchange="changeNoticeTime"><view class="compact-picker">{{item.noticeTime}}</view></picker></view>
+          </view>
+          <view class="replacement-line"><view><view class="label">取消后还需要补课吗？</view><view class="hint">打开后，这张工单不会在取消完成时提前关闭。</view></view><switch checked="{{item.replacementRequired}}" data-index="{{index}}" bindchange="changeReplacementRequired" color="#ec5e0a" /></view>
+        </view>
         <view class="field"><view class="label">这个动作的补充说明</view><textarea class="textarea action-notes" value="{{item.notes}}" data-index="{{index}}" placeholder="例如：老师已确认；家长只能周六；取消不扣课时待管理员确认" bindinput="inputActionNotes" /></view>
       </view>
     </view>

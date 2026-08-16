@@ -1,6 +1,7 @@
 import { bad, ok } from "@/app/api/miniapp/_lib";
 import { requireMiniappStaff } from "@/app/api/miniapp/staff/_lib";
 import { canManageMiniappSchedulingCoordination, canManageMiniappSchedulingWrites } from "@/lib/miniapp-staff-session";
+import { cancellationSourceDateWindow } from "@/lib/ticket-cancellation-intake";
 import {
   applyTicketNewSession,
   createTicketNewSessionToken,
@@ -38,7 +39,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ studentId: stri
   if (!auth.ok) return auth.response;
   if (!canManageMiniappSchedulingCoordination(auth.user)) return bad("Scheduling coordination permission required", 403);
   const { studentId } = await ctx.params;
-  const options = await getStudentNewSessionOptions(studentId);
+  const sourceDate = String(new URL(req.url).searchParams.get("sourceDate") ?? "").trim();
+  if (sourceDate && !cancellationSourceDateWindow(sourceDate)) return bad("课程查询日期须在最近7天至未来90天内", 409);
+  const options = await getStudentNewSessionOptions(studentId, sourceDate || null);
   if (!options) return bad("Student not found", 404);
   return ok({
     options,

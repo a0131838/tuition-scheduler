@@ -19,6 +19,9 @@ type SessionOption = {
   courseLabel: string;
   teacherName: string;
   locationText?: string;
+  status: string;
+  statusLabel: string;
+  canAutoExecute: boolean;
 };
 
 type GuidedAction = {
@@ -31,6 +34,14 @@ type GuidedAction = {
   durationMin: string;
   replacementRequired: boolean;
   notes: string;
+  manualSource: boolean;
+  manualDate: string;
+  manualTime: string;
+  manualCourse: string;
+  manualTeacher: string;
+  leaveParty: string;
+  noticeDate: string;
+  noticeTime: string;
 };
 
 const ACTIONS = [
@@ -68,6 +79,16 @@ function tomorrowDate() {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+function todayDate() {
+  const date = new Date();
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function currentTime() {
+  const date = new Date();
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
 function defaultDeadline() {
   return `${tomorrowDate()}T18:00`;
 }
@@ -87,7 +108,33 @@ function newAction(actionType: string = ACTIONS[0].actionType): GuidedAction {
     durationMin: "60",
     replacementRequired: false,
     notes: "",
+    manualSource: false,
+    manualDate: todayDate(),
+    manualTime: "",
+    manualCourse: "",
+    manualTeacher: "",
+    leaveParty: "学生/家长",
+    noticeDate: todayDate(),
+    noticeTime: currentTime(),
   };
+}
+
+function manualCancellationReady(action: GuidedAction) {
+  return action.actionType === "CANCEL_SESSION" && action.manualSource && Boolean(action.manualDate && action.manualTime && action.manualCourse.trim());
+}
+
+function actionNotes(action: GuidedAction) {
+  const rows = action.actionType === "CANCEL_SESSION"
+    ? [
+        `请假方：${action.leaveParty}`,
+        `通知时间：${action.noticeDate} ${action.noticeTime}`,
+        ...(action.manualSource
+          ? [`手动目标课程：${action.manualDate} ${action.manualTime} · ${action.manualCourse.trim()}${action.manualTeacher.trim() ? ` · ${action.manualTeacher.trim()}` : ""}`]
+          : []),
+      ]
+    : [];
+  if (action.notes.trim()) rows.push(action.notes.trim());
+  return rows.join("\n") || null;
 }
 
 function StepTitle({ number, title, hint }: { number: string; title: string; hint: string }) {
@@ -118,6 +165,8 @@ export default function GuidedIntakeForm({
   const [student, setStudent] = useState<StudentCandidate | null>(null);
   const [sessions, setSessions] = useState<SessionOption[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sourceDate, setSourceDate] = useState(todayDate());
+  const [sourceWindow, setSourceWindow] = useState({ minDate: "", maxDate: "" });
   const [actions, setActions] = useState<GuidedAction[]>([newAction()]);
   const [originalContent, setOriginalContent] = useState("");
   const [requiredAction, setRequiredAction] = useState("");
@@ -166,29 +215,34 @@ export default function GuidedIntakeForm({
     return () => window.clearTimeout(timer);
   }, [student, studentLookupPath, studentQuery]);
 
-  const progress = [Boolean(student), actions.length > 0 && actions.every((row) => !actionDefinition(row.actionType).needsSource || row.sourceSessionId), Boolean(originalContent.trim())];
+  const progress = [Boolean(student), actions.length > 0 && actions.every((row) => !actionDefinition(row.actionType).needsSource || row.sourceSessionId || manualCancellationReady(row)), Boolean(originalContent.trim())];
   const actionSummary = useMemo(
     () => actions.map((row) => actionDefinition(row.actionType).label).join("、"),
     [actions]
   );
 
-  const selectStudent = async (candidate: StudentCandidate) => {
-    setStudent(candidate);
-    setStudentQuery(candidate.name);
-    setStudentCandidates([]);
+  const loadSessions = async (studentId: string, date: string) => {
     setSessionsLoading(true);
     setSessions([]);
-    setActions((rows) => rows.map((row) => ({ ...row, sourceSessionId: "", courseLabel: row.courseLabel || candidate.courses[0] || "" })));
     try {
-      const res = await fetch(`${sessionLookupPath}?studentId=${encodeURIComponent(candidate.studentId)}`);
+      const res = await fetch(`${sessionLookupPath}?studentId=${encodeURIComponent(studentId)}&date=${encodeURIComponent(date)}`);
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.ok) throw new Error(String(data?.message ?? "课程读取失败"));
       setSessions(Array.isArray(data.sessions) ? data.sessions : []);
+      setSourceWindow({ minDate: String(data.window?.minDate ?? ""), maxDate: String(data.window?.maxDate ?? "") });
     } catch (err) {
       setError(err instanceof Error ? err.message : "课程读取失败");
     } finally {
       setSessionsLoading(false);
     }
+  };
+
+  const selectStudent = async (candidate: StudentCandidate) => {
+    setStudent(candidate);
+    setStudentQuery(candidate.name);
+    setStudentCandidates([]);
+    setActions((rows) => rows.map((row) => ({ ...row, sourceSessionId: "", courseLabel: row.courseLabel || candidate.courses[0] || "" })));
+    await loadSessions(candidate.studentId, sourceDate);
   };
 
   const updateAction = (key: string, patch: Partial<GuidedAction>) => {
@@ -201,7 +255,7 @@ export default function GuidedIntakeForm({
     if (!student) return setError("请先搜索并确认学生。"), undefined;
     if (!student.ticketSource) return setError("该学生尚未设置学生来源。请先到学生档案补充来源，再创建工单。"), undefined;
     if (!actions.length) return setError("请至少添加一个排课动作。"), undefined;
-    const missingSource = actions.find((row) => actionDefinition(row.actionType).needsSource && !row.sourceSessionId);
+    const missingSource = actions.find((row) => actionDefinition(row.actionType).needsSource && !row.sourceSessionId && !manualCancellationReady(row));
     if (missingSource) return setError(`“${actionDefinition(missingSource.actionType).label}”必须选择具体原课程。`), undefined;
     if (!originalContent.trim()) return setError("请粘贴或概括家长原话。"), undefined;
 
@@ -217,8 +271,8 @@ export default function GuidedIntakeForm({
       status: "Need Info",
       owner,
       grade: student.grade || "",
-      course: actions.find((row) => row.courseLabel.trim())?.courseLabel || firstSource?.courseLabel || student.courses[0] || "待教务确认",
-      teacher: firstSource?.teacherName || student.teachers[0] || "",
+      course: actions.map((row) => row.manualSource ? row.manualCourse.trim() : row.courseLabel.trim()).find(Boolean) || firstSource?.courseLabel || student.courses[0] || "待教务确认",
+      teacher: actions.find((row) => row.manualSource && row.manualTeacher.trim())?.manualTeacher.trim() || firstSource?.teacherName || student.teachers[0] || "",
       version: "V1",
       systemUpdated: "N",
       wechat: sourceDetail,
@@ -232,11 +286,15 @@ export default function GuidedIntakeForm({
       schedulingActions: actions.map((row) => ({
         actionType: row.actionType,
         sourceSessionId: row.sourceSessionId || null,
-        requestedStartAt: row.requestedTime ? `${row.requestedDate}T${row.requestedTime}:00+08:00` : null,
-        courseLabel: row.courseLabel.trim() || null,
+        requestedStartAt: row.manualSource && row.actionType === "CANCEL_SESSION"
+          ? `${row.manualDate}T${row.manualTime}:00+08:00`
+          : row.requestedTime
+            ? `${row.requestedDate}T${row.requestedTime}:00+08:00`
+            : null,
+        courseLabel: row.manualSource ? row.manualCourse.trim() || null : row.courseLabel.trim() || null,
         durationMin: row.durationMin ? Number(row.durationMin) : null,
         replacementRequired: row.replacementRequired,
-        notes: row.notes.trim() || null,
+        notes: actionNotes(row),
       })),
     };
 
@@ -316,7 +374,26 @@ export default function GuidedIntakeForm({
 
       <section style={{ padding: "30px 0", borderBottom: "1px solid #e7e5e4" }}>
         <StepTitle number="2" title="家长希望教务做什么？" hint="一条消息有多个要求时，继续添加动作，不要重复建工单。" />
-        {sessionsLoading ? <div style={{ marginBottom: 12, color: "#9a3412", fontSize: 13 }}>正在读取未来课程…</div> : null}
+        {student ? (
+          <label style={{ display: "grid", gap: 6, marginBottom: 16, fontWeight: 750, fontSize: 13 }}>
+            查找哪一天的原课程
+            <input
+              type="date"
+              value={sourceDate}
+              min={sourceWindow.minDate || undefined}
+              max={sourceWindow.maxDate || undefined}
+              onChange={(event) => {
+                const date = event.target.value;
+                setSourceDate(date);
+                setActions((rows) => rows.map((row) => ({ ...row, sourceSessionId: "" })));
+                if (student) void loadSessions(student.studentId, date);
+              }}
+              style={inputStyle}
+            />
+            <span style={{ color: "#78716c", fontWeight: 500 }}>可查询最近 7 天至未来 90 天；当天已开始或结束的课程也会显示。</span>
+          </label>
+        ) : null}
+        {sessionsLoading ? <div style={{ marginBottom: 12, color: "#9a3412", fontSize: 13 }}>正在读取当天课程…</div> : null}
         <div style={{ display: "grid", gap: 20 }}>
           {actions.map((action, index) => {
             const definition = actionDefinition(action.actionType);
@@ -328,18 +405,19 @@ export default function GuidedIntakeForm({
                 </div>
                 <label style={{ display: "grid", gap: 6, fontWeight: 750, fontSize: 13 }}>
                   动作类型
-                  <select value={action.actionType} onChange={(event) => updateAction(action.key, { actionType: event.target.value, sourceSessionId: "", replacementRequired: false })} style={inputStyle}>
+                  <select value={action.actionType} onChange={(event) => updateAction(action.key, { actionType: event.target.value, sourceSessionId: "", replacementRequired: false, manualSource: false })} style={inputStyle}>
                     {ACTIONS.map((item) => <option key={item.actionType} value={item.actionType}>{item.label}</option>)}
                   </select>
                 </label>
                 {definition.needsSource ? (
                   <label style={{ display: "grid", gap: 6, fontWeight: 750, fontSize: 13 }}>
                     选择要处理的原课程 <span style={{ color: "#b91c1c" }}>必选</span>
-                    <select value={action.sourceSessionId} onChange={(event) => { const source = sessions.find((row) => row.id === event.target.value); updateAction(action.key, { sourceSessionId: event.target.value, courseLabel: source?.courseLabel || action.courseLabel }); }} style={inputStyle}>
+                    <select disabled={action.manualSource} value={action.sourceSessionId} onChange={(event) => { const source = sessions.find((row) => row.id === event.target.value); updateAction(action.key, { sourceSessionId: event.target.value, courseLabel: source?.courseLabel || action.courseLabel, manualSource: false }); }} style={{ ...inputStyle, background: action.manualSource ? "#f5f5f4" : "#fff" }}>
                       <option value="">请选择具体课程</option>
-                      {sessions.map((session) => <option key={session.id} value={session.id}>{session.startText} · {session.courseLabel} · {session.teacherName}</option>)}
+                      {sessions.map((session) => <option key={session.id} value={session.id}>{session.startText} · {session.courseLabel} · {session.teacherName} · {session.statusLabel}</option>)}
                     </select>
-                    {!sessionsLoading && student && sessions.length === 0 ? <span style={{ color: "#b91c1c", fontWeight: 500 }}>没有找到未来课程。请改选“时间未定，先协调”，由教务补充。</span> : null}
+                    {action.sourceSessionId ? <span style={{ color: sessions.find((row) => row.id === action.sourceSessionId)?.canAutoExecute ? "#166534" : "#b45309", fontWeight: 650 }}>{sessions.find((row) => row.id === action.sourceSessionId)?.statusLabel}</span> : null}
+                    {!sessionsLoading && student && sessions.length === 0 ? <span style={{ color: "#b91c1c", fontWeight: 500 }}>当天没有找到系统课程。取消/请假可以使用下面的手动记录，由教务后续匹配。</span> : null}
                   </label>
                 ) : (
                   <label style={{ display: "grid", gap: 6, fontWeight: 750, fontSize: 13 }}>
@@ -355,10 +433,32 @@ export default function GuidedIntakeForm({
                   </div>
                 ) : null}
                 {action.actionType === "CANCEL_SESSION" ? (
-                  <label style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 14 }}>
-                    <input type="checkbox" checked={action.replacementRequired} onChange={(event) => updateAction(action.key, { replacementRequired: event.target.checked })} />
-                    取消后还需要安排补课
-                  </label>
+                  <div style={{ display: "grid", gap: 12 }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 14 }}>
+                      <input type="checkbox" checked={action.manualSource} onChange={(event) => updateAction(action.key, { manualSource: event.target.checked, sourceSessionId: event.target.checked ? "" : action.sourceSessionId })} />
+                      找不到系统课程，手动记录课程时间
+                    </label>
+                    {action.manualSource ? (
+                      <div style={{ padding: 12, border: "1px solid #f59e0b", borderRadius: 8, background: "#fffbeb", display: "grid", gap: 10 }}>
+                        <b style={{ color: "#92400e" }}>仅创建待匹配工单，不会自动取消课程或修改扣课。</b>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 10 }}>
+                          <label style={{ display: "grid", gap: 5, fontSize: 13, fontWeight: 750 }}>课程日期<input type="date" value={action.manualDate} min={sourceWindow.minDate || undefined} max={sourceWindow.maxDate || undefined} onChange={(event) => updateAction(action.key, { manualDate: event.target.value })} style={inputStyle} /></label>
+                          <label style={{ display: "grid", gap: 5, fontSize: 13, fontWeight: 750 }}>开始时间<input type="time" value={action.manualTime} onChange={(event) => updateAction(action.key, { manualTime: event.target.value })} style={inputStyle} /></label>
+                          <label style={{ display: "grid", gap: 5, fontSize: 13, fontWeight: 750 }}>课程名称<input value={action.manualCourse} onChange={(event) => updateAction(action.key, { manualCourse: event.target.value })} placeholder="例如：A-Level 生物" style={inputStyle} /></label>
+                          <label style={{ display: "grid", gap: 5, fontSize: 13, fontWeight: 750 }}>老师（可选）<input value={action.manualTeacher} onChange={(event) => updateAction(action.key, { manualTeacher: event.target.value })} placeholder="例如：王老师" style={inputStyle} /></label>
+                        </div>
+                      </div>
+                    ) : null}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 10 }}>
+                      <label style={{ display: "grid", gap: 5, fontSize: 13, fontWeight: 750 }}>请假方<select value={action.leaveParty} onChange={(event) => updateAction(action.key, { leaveParty: event.target.value })} style={inputStyle}><option>学生/家长</option><option>老师</option><option>学校安排变动</option><option>其他</option></select></label>
+                      <label style={{ display: "grid", gap: 5, fontSize: 13, fontWeight: 750 }}>收到通知日期<input type="date" value={action.noticeDate} onChange={(event) => updateAction(action.key, { noticeDate: event.target.value })} style={inputStyle} /></label>
+                      <label style={{ display: "grid", gap: 5, fontSize: 13, fontWeight: 750 }}>收到通知时间<input type="time" value={action.noticeTime} onChange={(event) => updateAction(action.key, { noticeTime: event.target.value })} style={inputStyle} /></label>
+                    </div>
+                    <label style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 14 }}>
+                      <input type="checkbox" checked={action.replacementRequired} onChange={(event) => updateAction(action.key, { replacementRequired: event.target.checked })} />
+                      取消后还需要安排补课
+                    </label>
+                  </div>
                 ) : null}
                 <label style={{ display: "grid", gap: 6, fontWeight: 750, fontSize: 13 }}>补充说明<textarea value={action.notes} onChange={(event) => updateAction(action.key, { notes: event.target.value })} placeholder={action.actionType === "REPLACE_TEACHER" ? "请写目标老师或老师要求；不确定可以写“待匹配”" : "例如：家长只能周六；老师已确认"} rows={2} style={inputStyle} /></label>
               </div>

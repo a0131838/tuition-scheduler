@@ -1,5 +1,33 @@
 # CHANGELOG LIVE
 
+## 2026-08-16-r366
+
+- Release ID: `2026-08-16-r366`
+- Date/Time (Asia/Singapore): `2026-08-16`
+- Deployment status: `READY`
+- Scope: let Web and Staff Mini Program ticket intake find a student's actual lesson by date, including recently started or ended lessons, with a review-only manual fallback when no system lesson can be matched.
+- Key files:
+  - `app/tickets/intake/GuidedIntakeForm.tsx`
+  - `app/api/tickets/intake/[token]/route.ts`
+  - `app/api/miniapp/staff/parent-requests/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-request-new/staff-request-new.js`
+  - `lib/ticket-cancellation-intake.ts`
+  - `lib/ticket-source-session-options.ts`
+  - `tests/ticket-cancellation-intake.test.ts`
+  - `docs/tasks/TASK-20260816-ticket-cancellation-source-time.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low to medium and contained to ticket intake. Started, ended, attendance-linked and manually described cancellations are forced to `NEED_INFO`; this release does not directly cancel lessons or change scheduling, attendance, package deductions, payroll, invoices, receipts or finance.
+- Verification:
+  - focused ticket-intake and scheduling-action tests
+  - `npx tsc --noEmit`
+  - `npm run miniapp:audit-release`
+  - `npm run build`
+  - read-only Playwright verification of student lookup, cancellation mode, date lookup, manual fallback and zero browser-console errors
+- Rollback point: production commit before `2026-08-16-r366`.
+
+---
+
 ## 2026-08-13-r365
 
 - Corrected the AI OS SSO return origin behind Nginx: the route now trusts the forwarded public host before a legacy internal `NEXT_PUBLIC_APP_URL` value, so staff are sent to `sgtmanage.com` rather than `localhost:3000`.

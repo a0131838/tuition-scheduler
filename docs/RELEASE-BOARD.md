@@ -1,6 +1,36 @@
 # RELEASE BOARD
 
+- `2026-08-16-r366`: ready to extend Web and Staff Mini Program cancellation-ticket intake with a recent/future date picker, actual student-session matching, visible lesson state and a review-only manual fallback. Started, ended, attendance-linked and manually entered cases cannot auto-execute; formal scheduling, attendance, package, payroll and finance logic remain unchanged.
+
 - `2026-08-13-r365`: ready guarded proxy-origin correction for unified AI OS login. Public forwarded host takes precedence over the legacy internal URL; focused auth tests pass and business writes remain unchanged.
+
+## 2026-08-16-r366 Ready
+
+- Scope: allow customer service to identify the lesson being cancelled by selecting any date from the previous 7 days through the next 90 days on both Web and Staff Mini Program intake.
+- Business impact:
+  - the selected date shows the student's actual lessons, including lessons already started or ended, with clear handling-state labels
+  - when no system lesson can be found, staff can record the exact lesson date, time, course, optional teacher, leave party and notification time
+  - manual, started, ended or attendance-linked cancellations are saved as `NEED_INFO` for Academic matching and review, never silently executed
+  - no formal lesson, attendance, package balance, payroll, invoice, receipt or finance behavior changes
+- Files:
+  - `app/tickets/intake/GuidedIntakeForm.tsx`
+  - `app/api/tickets/intake/[token]/route.ts`
+  - `app/api/miniapp/staff/parent-requests/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-request-new/staff-request-new.js`
+  - `lib/ticket-cancellation-intake.ts`
+  - `lib/ticket-source-session-options.ts`
+  - `tests/ticket-cancellation-intake.test.ts`
+- Verification before deploy:
+  - focused ticket-intake and scheduling-action tests
+  - `npx tsc --noEmit`
+  - `npm run miniapp:audit-release`
+  - `npm run build`
+  - read-only Playwright Web intake check with zero browser-console errors
+- Post-deploy verification:
+  - confirm local, GitHub and server commits align
+  - confirm `/admin/login` returns HTTP 200
+  - confirm the production date-based source-session endpoint returns its date window and status labels without creating a ticket
+- Task doc: `docs/tasks/TASK-20260816-ticket-cancellation-source-time.md`
 
 - `2026-08-12-r364`: guarded web release completed for the consolidation code. Repeated same-student requests retain every source record but become one executable case; stale versions, conflicting intentions, competing target-session tickets and concurrent execution are blocked. The first AI candidate correctly stopped because the production read-only role lacked `TicketSchedulingAction` access; a guarded SELECT-only migration is now included and must pass candidate audit before AI promotion.
 

@@ -30,6 +30,7 @@ import {
   schedulingCoordinationCourseLabelsMatch,
 } from "@/lib/scheduling-coordination";
 import { sessionBelongsToStudentWhere } from "@/lib/session-students";
+import { attendanceLocksCancellation, cancellationSourceStatus, isManualCancellationTarget } from "@/lib/ticket-cancellation-intake";
 import {
   normalizeSchedulingActionInput,
   schedulingActionDefinition,
@@ -189,8 +190,12 @@ export async function POST(
   if (!source) {
     return bad("Student source is required / 学生来源必填");
   }
-  const missingRequiredSource = schedulingActions.find((action) => schedulingActionDefinition(action.actionType)?.needsSource && !action.sourceSessionId);
-  if (missingRequiredSource) return bad("Please select the exact original lesson / 请选择具体原课程", 409);
+  const missingRequiredSource = schedulingActions.find((action) =>
+    schedulingActionDefinition(action.actionType)?.needsSource &&
+    !action.sourceSessionId &&
+    !isManualCancellationTarget(action)
+  );
+  if (missingRequiredSource) return bad("Please select the exact original lesson or complete the manual cancellation target / 请选择具体原课程，或完整填写手动取消课程信息", 409);
 
   if (normalizedType === SCHEDULING_COORDINATION_TICKET_TYPE && linkedStudent && schedulingActions.length === 0) {
     const existingCoordinations = await prisma.ticket.findMany({
@@ -294,7 +299,13 @@ export async function POST(
           where: { id: { in: sourceIds }, ...sessionBelongsToStudentWhere(linkedStudent.id) },
           select: {
             id: true,
+            startAt: true,
+            endAt: true,
             teacher: { select: { name: true } },
+            attendances: {
+              where: { studentId: linkedStudent.id },
+              select: { status: true, deductedMinutes: true, deductedCount: true, packageId: true, excusedCharge: true },
+            },
             class: {
               select: {
                 course: { select: { name: true } },
@@ -310,11 +321,28 @@ export async function POST(
     const sourceById = new Map(sourceDetails.map((session) => [session.id, {
       courseLabel: [session.class.course.name, session.class.subject?.name, session.class.level?.name].filter(Boolean).join(" / "),
       teacherName: session.teacher?.name ?? session.class.teacher.name,
+      cancellationState: cancellationSourceStatus({
+        startAt: session.startAt,
+        endAt: session.endAt,
+        attendanceLocked: attendanceLocksCancellation(session.attendances[0]),
+      }),
     }]));
-    const actionRows = schedulingActions.map((action) => ({
-      ...action,
-      courseLabel: action.courseLabel || (action.sourceSessionId ? sourceById.get(action.sourceSessionId)?.courseLabel ?? null : null) || course,
-    }));
+    const actionRows = schedulingActions.map((action) => {
+      const source = action.sourceSessionId ? sourceById.get(action.sourceSessionId) : null;
+      const reviewReason = action.actionType === "CANCEL_SESSION"
+        ? isManualCancellationTarget(action)
+          ? "手动记录课程，待教务匹配原课程，禁止自动执行"
+          : source && !source.cancellationState.canAutoExecute
+            ? source.cancellationState.label
+            : null
+        : null;
+      return {
+        ...action,
+        status: reviewReason ? "NEED_INFO" : action.status,
+        notes: reviewReason ? [action.notes, `系统状态：${reviewReason}`].filter(Boolean).join("\n") : action.notes,
+        courseLabel: action.courseLabel || source?.courseLabel || course,
+      };
+    });
     const resolvedCourse = actionRows.find((action) => action.courseLabel)?.courseLabel || course;
     const resolvedTeacher = sourceIds.map((id) => sourceById.get(id)?.teacherName).find(Boolean) || teacher;
     const ticketNo = await allocateTicketNo(tx);
