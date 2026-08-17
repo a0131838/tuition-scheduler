@@ -22,7 +22,7 @@ const bank = bankSource as unknown as {
   pathAssignments: BankRow[];
 };
 
-export const ACADEMIC_ASSESSMENT_VERSION = `${bank.version}-pathway-v3`;
+export const ACADEMIC_ASSESSMENT_VERSION = `${bank.version}-pathway-v4`;
 export const ACADEMIC_ASSESSMENT_STATUS = bank.releaseStatus;
 export const ACADEMIC_ASSESSMENT_AGE_BANDS = ["3–5岁", "6–8岁", "9–11岁", "12–14岁", "15–17岁"] as const;
 export const ACADEMIC_ASSESSMENT_PRODUCTS = ["INTERNATIONAL_ENGLISH", "AEIS_PRIMARY", "AEIS_SECONDARY"] as const;
@@ -39,13 +39,13 @@ const PRODUCT_DEFINITIONS: Record<AssessmentProduct, {
   INTERNATIONAL_ENGLISH: {
     title: "国际学校英语入学准备度",
     allowedAgeBands: ["6–8岁", "9–11岁", "12–14岁", "15–17岁"],
-    domains: [{ domain: "英语", objectiveLimit: 12, manualLimit: 3 }],
+    domains: [{ domain: "英语", objectiveLimit: 16, manualLimit: 1 }],
   },
   AEIS_PRIMARY: {
     title: "AEIS小学入学准备度",
     allowedAgeBands: ["6–8岁", "9–11岁"],
     domains: [
-      { domain: "CEQ英语准备", objectiveLimit: 8, manualLimit: 1 },
+      { domain: "CEQ英语准备", objectiveLimit: 12, manualLimit: 1 },
       { domain: "数学", objectiveLimit: 12, manualLimit: 0 },
     ],
   },
@@ -53,7 +53,7 @@ const PRODUCT_DEFINITIONS: Record<AssessmentProduct, {
     title: "AEIS中学入学准备度",
     allowedAgeBands: ["12–14岁", "15–17岁"],
     domains: [
-      { domain: "英语", objectiveLimit: 10, manualLimit: 2 },
+      { domain: "英语", objectiveLimit: 14, manualLimit: 1 },
       { domain: "数学", objectiveLimit: 14, manualLimit: 0 },
     ],
   },
@@ -101,6 +101,25 @@ export function chooseLeastUsedForm(ageBand: string, counts: Record<string, numb
   const forms = formIdsForAge(ageBand).filter((formId) => !excludedFormIds.includes(formId));
   if (!forms.length) throw new Error("INVALID_AGE_BAND");
   return forms.sort((a, b) => (counts[a] ?? 0) - (counts[b] ?? 0) || a.localeCompare(b))[0];
+}
+
+export function recentParallelFormExclusions(
+  sessions: Array<{ formId: string; createdAt: Date }>,
+  availableFormIds: string[],
+  now = new Date(),
+) {
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  let excluded = [...new Set(sessions.filter((row) => row.createdAt >= thirtyDaysAgo).map((row) => row.formId))];
+  if (excluded.length >= availableFormIds.length) {
+    const newestFirst = [...sessions].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    excluded = [...new Set(newestFirst.slice(0, Math.max(0, availableFormIds.length - 1)).map((row) => row.formId))];
+  }
+  return excluded.filter((formId) => availableFormIds.includes(formId));
+}
+
+export function parallelRetestLimitReached(createdAts: Date[], now = new Date(), limit = 3) {
+  const oneDayAgo = now.getTime() - 24 * 60 * 60 * 1000;
+  return createdAts.filter((createdAt) => createdAt.getTime() >= oneDayAgo).length >= limit;
 }
 
 function pathLabel(path: string) {
@@ -358,7 +377,16 @@ export function calculateAssessmentResult(input: {
     : legacyOverallScore;
   const overallBand = overallScore == null ? "分科查看，不合并总分" : scoreBand(overallScore);
   const minutes = input.durationSeconds / 60;
-  const confidence = pendingManual > 0 ? "待人工" : completionRate < 0.75 ? "低" : completionRate >= 0.9 && minutes >= 24 && minutes <= 54 ? "高" : "中";
+  const objectiveItemCount = input.questionIds.filter((id) => !assessmentInternalQuestion(input.formId, id).requiresReviewer).length;
+  const manualItemCount = input.questionIds.length - objectiveItemCount;
+  const evidenceThreshold = product ? (input.targetPath === "INTERNATIONAL_ENGLISH" ? 16 : 20) : 20;
+  const confidence = pendingManual > 0
+    ? "待人工"
+    : completionRate < 0.9 || input.questionIds.length < evidenceThreshold
+      ? "低"
+      : minutes >= 20 && minutes <= 60
+        ? "高"
+        : "中";
   const ranked = Object.entries(domainScores).sort((a, b) => b[1] - a[1]);
   const strengths = ranked.slice(0, 3).map(([name, score]) => `${name}：本次内部任务得分 ${score}`);
   const priorities = [...ranked].reverse().slice(0, 3).map(([name, score]) => `${name}：建议优先复核与训练（本次 ${score}）`);
@@ -388,14 +416,22 @@ export function calculateAssessmentResult(input: {
     overallBand,
     confidence,
     report: {
-      scoreModelVersion: product ? "PATHWAY_V3" : "LEGACY_V1",
+      scoreModelVersion: product ? "PATHWAY_V4" : "LEGACY_V1",
       productTitle: product?.title ?? (pathLabel(input.targetPath) || "入学准备度"),
       scorecards,
       skillScores,
       measuredSkills: Object.keys(skillScores),
       unmeasuredSkills: product ? ["听力", "口语"] : [],
+      evidence: product ? {
+        totalItems: input.questionIds.length,
+        objectiveItems: objectiveItemCount,
+        reviewedItems: manualItemCount,
+        skillCoverage: Object.keys(skillScores),
+        ageBandSpecific: true,
+        parallelForm: input.formId.slice(-1),
+      } : null,
       standard: product
-        ? "博思内部诊断，不是学校、iTEP、CEQ、MOE或AEIS官方成绩。CEFR为阅读、语言运用与写作的初步参考区间；本轮未测听力和口语，不据此推断录取。"
+        ? "博思内部诊断，不是学校、iTEP、CEQ、MOE或AEIS官方成绩。CEFR为按年龄分层、基于阅读、语言运用与写作的初步参考区间（待对照样本校准）；本轮未测听力和口语，不据此推断录取。"
         : "博思内部入学准备度标准，不是学校、MOE、AEIS官方分数、百分位或录取预测。",
       strengths,
       priorities,

@@ -194,21 +194,65 @@ Page({
       ...item,
       scoreLabel: item.score == null ? "待老师复核" : `${item.score} / 100`
     }));
+    const evidence = session.report && session.report.evidence ? session.report.evidence : null;
+    const evidenceText = evidence
+      ? `${evidence.totalItems}题（${evidence.objectiveItems}题客观题 + ${evidence.reviewedItems}题写作/复核）· ${evidence.skillCoverage.join("、")} · ${evidence.parallelForm}卷`
+      : "";
     const retestDateText = formatDate(session.retestRecommendedAt);
-    this.setData({ session: { ...session, retestDateText }, phase, hasSession: true, answerInput: session.currentAnswer || "", domainRows, skillRows, comparisonRows, unmeasuredText, scorecards, questionStartedAt: Date.now() });
-    if (session.status === "COMPLETED" && this.data.sessionToken) this.rememberSession(session, retestDateText);
+    this.setData({ session: { ...session, retestDateText, evidenceText }, phase, hasSession: true, answerInput: session.currentAnswer || "", domainRows, skillRows, comparisonRows, unmeasuredText, scorecards, questionStartedAt: Date.now() });
+    if (["AWAITING_REVIEW", "COMPLETED"].includes(session.status) && this.data.sessionToken) this.rememberSession(session, retestDateText);
   },
 
   rememberSession(session, retestDateText) {
-    const row = { token: this.data.sessionToken, studentCode: session.studentCode, studentNickname: session.studentNickname || "学生", score: session.overallScore == null ? session.overallBand : `${session.overallScore}分`, completedAt: formatDate(session.completedAt), retestDateText };
+    const scoreLabel = session.status === "AWAITING_REVIEW"
+      ? "等待老师复核"
+      : session.overallScore == null ? session.overallBand : `${session.overallScore}分`;
+    const row = { token: this.data.sessionToken, studentCode: session.studentCode, studentNickname: session.studentNickname || "学生", scoreLabel, completedAt: formatDate(session.completedAt || session.submittedAt), retestDateText };
     const history = [row].concat((this.data.history || []).filter((item) => item.token !== row.token)).slice(0, 10);
     wx.setStorageSync(HISTORY_KEY, history);
     this.setData({ history });
   },
 
   startNewRound() {
+    if (this.data.sessionToken && this.data.session && ["AWAITING_REVIEW", "COMPLETED"].includes(this.data.session.status)) {
+      return this.startParallelRetest();
+    }
+    return this.resetForNewProduct();
+  },
+
+  resetForNewProduct() {
     wx.removeStorageSync(SESSION_KEY);
     this.setData({ sessionToken: "", session: null, hasSession: false, phase: "setup", consent: false, answerInput: "", domainRows: [], skillRows: [], comparisonRows: [], scorecards: [] });
+  },
+
+  startParallelRetest() {
+    const source = this.data.session;
+    if (!source || !this.data.sessionToken) return api.toast("没有可复测的原记录");
+    wx.showModal({
+      title: "开始平行卷复测",
+      content: "本轮记录会保留，新一轮将优先更换A/B/C平行卷。24小时内最多开始3轮，避免记忆题目影响结果。",
+      success: (result) => {
+        if (!result.confirm) return;
+        this.setData({ loading: true });
+        api.request("/api/public/school-guide/academic-assessment/start", {
+          method: "POST",
+          data: {
+            retestSessionToken: this.data.sessionToken,
+            studentNickname: source.studentNickname,
+            currentGrade: source.currentGrade,
+            languageBackground: source.languageBackground,
+            ageBand: source.ageBand,
+            targetPath: source.targetPath,
+            consent: "yes"
+          },
+          timeout: 20000
+        }).then((data) => {
+          wx.setStorageSync(SESSION_KEY, data.sessionToken);
+          this.setData({ sessionToken: data.sessionToken, hasSession: true });
+          this.applySession(data.session);
+        }).catch((err) => api.toast(err.message)).finally(() => this.setData({ loading: false }));
+      }
+    });
   },
 
   startForAnotherChild() {

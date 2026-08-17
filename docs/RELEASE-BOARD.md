@@ -1,5 +1,30 @@
 # RELEASE BOARD
 
+- `2026-08-17-r376`: ready to add age-stratified evidence and immediate A/B/C parallel-form retesting to the school-readiness experience.
+
+## 2026-08-17-r376 Ready
+
+- Scope: increase the evidence in each assessment product and allow a new parallel form without waiting for writing review.
+- Business impact:
+  - international-school English now uses 16 objective items plus one writing task;
+  - AEIS Primary uses 12 English objective items, one writing task and 12 mathematics items;
+  - AEIS Secondary uses 14 English objective items, one writing task and 14 mathematics items;
+  - all questions remain age-banded across 6–8, 9–11, 12–14 and 15–17, with A/B/C parallel forms;
+  - a submitted attempt remains visible while the family immediately starts another form; no earlier result is overwritten;
+  - a 24-hour cap of three started forms limits memorisation effects;
+  - CEFR remains a preliminary age-stratified reference pending calibration and does not claim to test listening, speaking or predict admission.
+- Verification before deploy:
+  - focused assessment tests 16/16
+  - backend tests 180/180
+  - 69-page miniapp release audit with zero errors
+  - JavaScript syntax, TypeScript, `git diff --check` and 251-page production build
+  - guarded `release_to_server.sh --check`
+- Post-deploy verification:
+  - confirm local, GitHub and server commit equality, PM2 online and `/admin/login` HTTP 200
+  - upload WeChat experience version only; do not submit review or publish formally
+  - physical-phone test: submit one form, start the next form while review is pending, and confirm both records remain visible
+- Task doc: `docs/tasks/TASK-20260817-school-guide-assessment-product-split.md`
+
 - `2026-08-17-r375`: ready to separate Final and Midterm Report learning hours by student, subject and original submission cutoff.
 
 ## 2026-08-17-r375 Ready
