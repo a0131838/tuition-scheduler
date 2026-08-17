@@ -4620,8 +4620,12 @@ export default async function StudentDetailPage({
               <div style={{ marginTop: 4 }}>
                 {tl(lang, "Note")}: {a.note ?? "-"}
               </div>
-              <div style={{ marginTop: 4, color: a.session.feedbacks.length > 0 ? "#027a48" : "#b45309", fontWeight: 700 }}>
-                {tl(lang, "Feedback")}: {a.session.feedbacks.length > 0 ? tl(lang, "Submitted") : tl(lang, "Missing")}
+              <div style={{ marginTop: 4, color: a.status === "EXCUSED" ? "#64748b" : a.session.feedbacks.length > 0 ? "#027a48" : "#b45309", fontWeight: 700 }}>
+                {tl(lang, "Feedback")}: {a.status === "EXCUSED"
+                  ? tl(lang, "Not required - cancelled")
+                  : a.session.feedbacks.length > 0
+                    ? tl(lang, "Submitted")
+                    : tl(lang, "Missing")}
               </div>
             </div>
           ))}

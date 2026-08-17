@@ -30,6 +30,7 @@ export default async function TeacherLayout({ children }: { children: React.Reac
       title: t(lang, "My Work", "我的任务"),
       items: [
         { href: "/teacher/sessions", label: t(lang, "My Sessions", "我的课次") },
+        { href: "/teacher/sessions/history", label: t(lang, "Historical Feedback", "历史待补反馈") },
         { href: "/teacher/assessments", label: t(lang, "Assessment Requests", "评估请求") },
         { href: "/teacher/student-feedbacks", label: t(lang, "Student Feedbacks", "学生课后反馈") },
         { href: "/teacher/tickets", label: t(lang, "Ticket Board", "工单看板") },

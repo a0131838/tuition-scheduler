@@ -12,6 +12,13 @@ function decode(v: string | undefined) {
   return v ? decodeURIComponent(v) : "";
 }
 
+function safeSessionReturnPath(value: string | undefined) {
+  const decoded = decode(value);
+  if (decoded === "/teacher/sessions") return decoded;
+  if (decoded === "/teacher/sessions/history" || decoded.startsWith("/teacher/sessions/history?")) return decoded;
+  return "/teacher/sessions";
+}
+
 function toInputDateTimeValue(value: Date | null | undefined) {
   if (!value) return "";
   const d = new Date(value);
@@ -30,7 +37,7 @@ export default async function TeacherSessionDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ msg?: string; err?: string }>;
+  searchParams?: Promise<{ msg?: string; err?: string; returnTo?: string }>;
 }) {
   const lang = await getLang();
   const { user, teacher } = await requireTeacherProfile();
@@ -40,6 +47,8 @@ export default async function TeacherSessionDetailPage({
 
   const { id: sessionId } = await params;
   const sp = await searchParams;
+  const returnTo = safeSessionReturnPath(sp?.returnTo);
+  const returningToHistory = returnTo.startsWith("/teacher/sessions/history");
 
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
@@ -162,11 +171,13 @@ export default async function TeacherSessionDetailPage({
             "The class roster is already settled, so you can move straight into after-class feedback without more attendance work.",
             "本节课的点名已经确认完成，现在可以直接进入课后反馈，不需要再处理点名。"
           );
-  const sessionCompletionHref = pendingAttendanceCount > 0 ? "#attendance" : feedback ? "/teacher/sessions" : "#feedback";
+  const sessionCompletionHref = pendingAttendanceCount > 0 ? "#attendance" : feedback ? returnTo : "#feedback";
   const sessionCompletionAction = pendingAttendanceCount > 0
     ? t(lang, "Go finish attendance", "去完成点名")
     : feedback
-      ? t(lang, "Back to my sessions", "返回我的课次")
+      ? returningToHistory
+        ? t(lang, "Back to historical feedback", "返回历史待补反馈")
+        : t(lang, "Back to my sessions", "返回我的课次")
       : t(lang, "Go submit feedback", "去提交反馈");
 
   const msg = decode(sp?.msg);
@@ -176,7 +187,9 @@ export default async function TeacherSessionDetailPage({
     <div>
       <h2>{t(lang, "Session Detail", "课次详情")}</h2>
       <p>
-        <a href="/teacher/sessions">{t(lang, "Back", "返回")}</a>
+        <a href={returnTo}>
+          {returningToHistory ? t(lang, "Back to historical feedback", "返回历史待补反馈") : t(lang, "Back", "返回")}
+        </a>
       </p>
       {err && <div style={{ color: "#b00", marginBottom: 10 }}>{err}</div>}
       {msg && <div style={{ color: "#087", marginBottom: 10 }}>{msg}</div>}
@@ -453,11 +466,17 @@ export default async function TeacherSessionDetailPage({
           title: t(lang, "Feedback saved. This session record is up to date.", "反馈已保存，这节课的记录已更新。"),
           detail: t(
             lang,
-            "You can return to My Sessions now, or stay here only if you still want to refine what you submitted.",
-            "现在可以返回我的课次；只有在还要补充或修改内容时，才继续停留在这里。"
+            returningToHistory
+              ? "You can return to the historical feedback queue and continue with the next item."
+              : "You can return to My Sessions now, or stay here only if you still want to refine what you submitted.",
+            returningToHistory
+              ? "现在可以返回历史待补反馈队列，继续处理下一条。"
+              : "现在可以返回我的课次；只有在还要补充或修改内容时，才继续停留在这里。"
           ),
-          href: "/teacher/sessions",
-          actionLabel: t(lang, "Back to my sessions", "返回我的课次"),
+          href: returnTo,
+          actionLabel: returningToHistory
+            ? t(lang, "Back to historical feedback", "返回历史待补反馈")
+            : t(lang, "Back to my sessions", "返回我的课次"),
         }}
         labels={{
           submit: t(lang, "Submit Feedback", "提交反馈"),

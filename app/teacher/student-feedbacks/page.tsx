@@ -27,17 +27,23 @@ type FeedbackFlatRow = {
   roomName: string | null;
 };
 
-function parseDateRange(fromRaw?: string, toRaw?: string) {
+function parseDateRange(fromRaw?: string, toRaw?: string, allHistory = false) {
   const now = new Date();
   const defaultFrom = new Date(now);
   defaultFrom.setDate(defaultFrom.getDate() - 30);
-  const from = fromRaw ? new Date(`${fromRaw}T00:00:00`) : defaultFrom;
+  const from = fromRaw ? new Date(`${fromRaw}T00:00:00`) : allHistory ? null : defaultFrom;
   const to = toRaw ? new Date(`${toRaw}T00:00:00`) : now;
-  const safeFrom = Number.isNaN(from.getTime()) ? defaultFrom : from;
+  const safeFrom = from && !Number.isNaN(from.getTime()) ? from : fromRaw ? defaultFrom : from;
   const safeTo = Number.isNaN(to.getTime()) ? now : to;
   const dayEnd = new Date(safeTo);
   dayEnd.setHours(23, 59, 59, 999);
   return { from: safeFrom, to: dayEnd };
+}
+
+function daysAgoInput(days: number, now = new Date()) {
+  const value = new Date(now);
+  value.setDate(value.getDate() - days);
+  return formatDateOnly(value);
 }
 
 function textMatch(row: FeedbackFlatRow, q: string) {
@@ -159,6 +165,7 @@ export default async function TeacherStudentFeedbacksPage({
     handoffRisk?: string;
     studentId?: string;
     page?: string;
+    range?: string;
     msg?: string;
     err?: string;
   }>;
@@ -177,7 +184,8 @@ export default async function TeacherStudentFeedbacksPage({
   const selectedStudentId = String(sp?.studentId ?? "").trim();
   const page = Math.max(1, Number(sp?.page ?? 1) || 1);
   const pageSize = 20;
-  const { from, to } = parseDateRange(sp?.from, sp?.to);
+  const allHistory = String(sp?.range ?? "") === "all" && !String(sp?.from ?? "").trim();
+  const { from, to } = parseDateRange(sp?.from, sp?.to, allHistory);
 
   const taughtRows = await prisma.attendance.findMany({
     where: {
@@ -227,7 +235,7 @@ export default async function TeacherStudentFeedbacksPage({
 
   const feedbacks = await prisma.sessionFeedback.findMany({
     where: {
-      submittedAt: { gte: from, lte: to },
+      submittedAt: { ...(from ? { gte: from } : {}), lte: to },
       ...(onlyOthers ? { teacherId: { not: teacher.id } } : {}),
       session: {
         attendances: {
@@ -410,8 +418,8 @@ export default async function TeacherStudentFeedbacksPage({
   const latestOther = selectedTimelineAll.find((x) => x.teacherId !== teacher.id) ?? null;
 
   const queryBase = `q=${encodeURIComponent(q)}&from=${encodeURIComponent(
-    sp?.from ?? formatDateOnly(from)
-  )}&to=${encodeURIComponent(sp?.to ?? formatDateOnly(to))}&onlyOthers=${
+    sp?.from ?? (from ? formatDateOnly(from) : "")
+  )}&to=${encodeURIComponent(sp?.to ?? formatDateOnly(to))}&range=${allHistory ? "all" : "custom"}&onlyOthers=${
     onlyOthers ? "1" : "0"
   }&onlyUnreadOthers=${onlyUnreadOthers ? "1" : "0"}&handoffRisk=${handoffRisk ? "1" : "0"}`;
 
@@ -567,6 +575,7 @@ export default async function TeacherStudentFeedbacksPage({
         actions={[
           { href: "/teacher", label: t(lang, "Back to dashboard", "返回工作台") },
           { href: "/teacher/sessions", label: t(lang, "Open sessions", "打开课次") },
+          { href: "/teacher/student-feedbacks?range=all", label: t(lang, "Earlier feedbacks", "查看更早反馈") },
           { href: "/teacher/student-feedbacks?onlyOthers=1&onlyUnreadOthers=1&handoffRisk=1", label: t(lang, "Open handoff risks", "查看交接风险") },
         ]}
       />
@@ -597,7 +606,20 @@ export default async function TeacherStudentFeedbacksPage({
 
       <section style={{ border: "1px solid #e2e8f0", borderRadius: 16, padding: 16, background: "#ffffff", display: "grid", gap: 12 }}>
       <div style={{ fontWeight: 700 }}>{t(lang, "Feedback filters", "反馈筛选")}</div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <span style={{ color: "#475569", fontSize: 13, fontWeight: 700 }}>{t(lang, "Quick range", "快捷时间范围")}:</span>
+        <a href={`/teacher/student-feedbacks?from=${daysAgoInput(30)}&to=${formatDateOnly(new Date())}`} className="secondary-btn">{t(lang, "Last 30 days", "近30天")}</a>
+        <a href={`/teacher/student-feedbacks?from=${daysAgoInput(90)}&to=${formatDateOnly(new Date())}`} className="secondary-btn">{t(lang, "Last 90 days", "近90天")}</a>
+        <a href={`/teacher/student-feedbacks?from=${daysAgoInput(180)}&to=${formatDateOnly(new Date())}`} className="secondary-btn">{t(lang, "Last 180 days", "近180天")}</a>
+        <a href="/teacher/student-feedbacks?range=all" className="secondary-btn">{t(lang, "All available history", "全部历史")}</a>
+      </div>
+      {allHistory ? (
+        <div style={{ border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 10, padding: "10px 12px", color: "#1e40af", fontWeight: 700 }}>
+          {t(lang, "Showing all available feedback history for students you have taught.", "正在显示你教过学生的全部可用反馈历史。")}
+        </div>
+      ) : null}
       <form method="GET" className="filter-bar ts-filter-bar">
+        {allHistory ? <input type="hidden" name="range" value="all" /> : null}
         <input
           name="q"
           defaultValue={q}
@@ -607,7 +629,7 @@ export default async function TeacherStudentFeedbacksPage({
         />
         <label>
           {t(lang, "From", "开始")}:
-          <input name="from" type="date" defaultValue={sp?.from ?? formatDateOnly(from)} style={{ marginLeft: 6 }} />
+          <input name="from" type="date" defaultValue={sp?.from ?? (from ? formatDateOnly(from) : "")} style={{ marginLeft: 6 }} />
         </label>
         <label>
           {t(lang, "To", "结束")}:
@@ -815,12 +837,10 @@ export default async function TeacherStudentFeedbacksPage({
               </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <a
-                  href={`/teacher/student-feedbacks?studentId=${encodeURIComponent(selectedStudentId)}&from=${encodeURIComponent(
-                    formatDateOnly(from)
-                  )}&to=${encodeURIComponent(formatDateOnly(to))}&page=${safePage}`}
+                  href={`/teacher/student-feedbacks?studentId=${encodeURIComponent(selectedStudentId)}&range=all&page=${safePage}`}
                   style={primaryButtonStyle}
                 >
-                  {t(lang, "Open full timeline for this student", "查看该学生完整时间线")}
+                  {t(lang, "Open all history for this student", "查看该学生全部历史")}
                 </a>
                 <a href={`/teacher/student-feedbacks?${queryBase}&page=${safePage}`} style={secondaryButtonStyle}>
                   {t(lang, "Back to student list", "回到学生列表")}

@@ -326,7 +326,7 @@ export default async function ManagerQualityPage({
             <h1>Lead Desk Daily Schedule / Lead Desk 当日课表</h1>
             <div style={{ marginTop: 3, color: "#374151", fontSize: 9.5 }}>
               {data.date} · {data.leadDeskTotals.sessions} sessions / 课次 · {data.leadDeskTotals.teachers} teachers / 老师 ·{" "}
-              {data.leadDeskTotals.students} students / 学生
+              {data.leadDeskTotals.students} students / 学生 · {data.leadDeskTotals.cancelledExcluded} cancelled excluded / 已排除取消课
             </div>
           </div>
           <div style={{ fontWeight: 900, color: "#1f2937", fontSize: 10 }}>SGT Lead Desk</div>
@@ -546,7 +546,7 @@ export default async function ManagerQualityPage({
       </section>
 
       <section className="no-print" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
-        <MetricCard label={t(lang, "Lead Desk sessions", "Lead Desk 课次")} value={data.leadDeskTotals.sessions} detail={`${data.leadDeskTotals.teachers} teachers / 老师`} />
+        <MetricCard label={t(lang, "Lead Desk sessions", "Lead Desk 课次")} value={data.leadDeskTotals.sessions} detail={`${data.leadDeskTotals.teachers} teachers / 老师 · ${data.leadDeskTotals.cancelledExcluded} cancelled excluded / 已排除取消课`} />
         <MetricCard label={t(lang, "Students scheduled", "当日学生")} value={data.leadDeskTotals.students} detail={data.date} />
         <MetricCard label={t(lang, "Feedback issues", "反馈质量提醒")} value={data.feedbackSummary.issueCount} detail={`${data.feedbackSummary.recentCount} recent feedbacks / 近 7 天反馈`} />
         <MetricCard label={t(lang, "Reflection completion", "复盘完成率")} value={`${data.kpiSummary.completionRate}%`} detail={`${data.kpiSummary.completedLogDays}/${data.kpiSummary.logDays} days / 近 ${data.historyDays} 天`} />

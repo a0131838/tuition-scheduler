@@ -2,33 +2,10 @@ import { requireTeacherLead } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly, parseBusinessDateEnd, parseBusinessDateStart } from "@/lib/date-only";
 import { prisma } from "@/lib/prisma";
+import { getVisibleSessionStudentNames, isSessionFullyCancelled } from "@/lib/session-students";
 import TeacherWorkspaceHero from "../_components/TeacherWorkspaceHero";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-function resolveSessionStudents(session: any) {
-  const cancelledSet = new Set(
-    Array.isArray(session.attendances)
-      ? session.attendances.filter((a: any) => a?.status === "EXCUSED").map((a: any) => a.studentId as string)
-      : []
-  );
-  const enrolled = (session.class?.enrollments ?? []).map((e: any) => ({
-    id: e.studentId as string,
-    name: e.student?.name ?? "-",
-  }));
-
-  if (session.class?.capacity === 1) {
-    const candidateId = (session.studentId as string | null) ?? (session.class?.oneOnOneStudent?.id as string | null) ?? (enrolled[0]?.id ?? null);
-    const candidateName =
-      (session.student?.name as string | null) ??
-      (session.class?.oneOnOneStudent?.name as string | null) ??
-      (candidateId ? enrolled.find((x: any) => x.id === candidateId)?.name ?? null : null);
-    if (candidateId && cancelledSet.has(candidateId)) return [] as string[];
-    return candidateName ? [candidateName] : [];
-  }
-
-  return enrolled.filter((x: any) => !cancelledSet.has(x.id)).map((x: any) => x.name);
-}
 
 function startOfWeek(dateOnly: string) {
   const start = parseBusinessDateStart(dateOnly);
@@ -117,9 +94,10 @@ export default async function TeacherLeadPage({
     }),
   ]);
 
-  const calendarItems = sessions.map((session) => {
+  const cancelledSessionCount = sessions.filter((session) => isSessionFullyCancelled(session)).length;
+  const calendarItems = sessions.filter((session) => !isSessionFullyCancelled(session)).map((session) => {
     const teacherName = session.teacher?.name ?? session.class.teacher.name;
-    const students = resolveSessionStudents(session);
+    const students = getVisibleSessionStudentNames(session);
     return {
       id: session.id,
       startAt: session.startAt,
@@ -192,6 +170,9 @@ export default async function TeacherLeadPage({
           <div style={{ fontSize: 28, fontWeight: 800, color: "#0f172a", marginTop: 6 }}>{visibleStudentCount}</div>
           <div style={{ marginTop: 4, color: "#92400e", fontSize: 12 }}>
             {t(lang, "Campus combinations", "校区组合")}: {visibleCampusCount}
+          </div>
+          <div style={{ marginTop: 4, color: "#64748b", fontSize: 12 }}>
+            {t(lang, "Cancelled sessions excluded", "已排除取消课")}: {cancelledSessionCount}
           </div>
         </div>
       </div>

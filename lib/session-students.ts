@@ -32,6 +32,8 @@ export type SessionStudent = {
   name: string | null;
 };
 
+export type SessionTeachingState = "ACTIVE" | "PARTIALLY_CANCELLED" | "FULLY_CANCELLED";
+
 type StudentIdFilter = string | { in: string[] };
 
 function sessionStudentScope(studentId: StudentIdFilter): Prisma.SessionWhereInput {
@@ -125,8 +127,23 @@ export function getVisibleSessionStudentNames(session: SessionLike) {
     .filter((name): name is string => Boolean(name));
 }
 
-export function isSessionFullyCancelled(session: SessionLike) {
+export function getSessionTeachingState(session: SessionLike): SessionTeachingState {
   const allStudents = getSessionStudents(session);
-  if (allStudents.length === 0) return false;
-  return getVisibleSessionStudents(session).length === 0 && getCancelledSessionStudentIds(session).size > 0;
+  if (allStudents.length === 0) return "ACTIVE";
+
+  const allStudentIds = new Set(allStudents.map((row) => row.id));
+  const cancelledCount = Array.from(getCancelledSessionStudentIds(session)).filter((studentId) =>
+    allStudentIds.has(studentId)
+  ).length;
+  if (cancelledCount === 0) return "ACTIVE";
+  if (cancelledCount === allStudents.length) return "FULLY_CANCELLED";
+  return "PARTIALLY_CANCELLED";
+}
+
+export function isStudentCancelledForSession(session: SessionLike, studentId: string) {
+  return getCancelledSessionStudentIds(session).has(studentId);
+}
+
+export function isSessionFullyCancelled(session: SessionLike) {
+  return getSessionTeachingState(session) === "FULLY_CANCELLED";
 }

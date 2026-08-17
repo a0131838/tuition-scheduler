@@ -1,6 +1,6 @@
 import { requireTeacherLead } from "@/lib/auth";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly, parseBusinessDateEnd, parseBusinessDateStart } from "@/lib/date-only";
-import { getLang, t } from "@/lib/i18n";
+import { getLang, t, type Lang } from "@/lib/i18n";
 import {
   categoryLabel,
   createManagerTeacherFeedback,
@@ -8,6 +8,8 @@ import {
   MANAGER_TEACHER_FEEDBACK_CATEGORIES,
 } from "@/lib/manager-teacher-feedback";
 import { prisma } from "@/lib/prisma";
+import { getVisibleSessionStudentNames, isSessionFullyCancelled } from "@/lib/session-students";
+import { resolveTeacherQualityFeedbackState, type TeacherQualityFeedbackState } from "@/lib/teacher-quality-status";
 import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -16,6 +18,12 @@ const panel = { border: "1px solid #dbe5ef", borderRadius: 8, background: "#fff"
 
 function read(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
+}
+
+function feedbackStateMeta(state: TeacherQualityFeedbackState, lang: Lang) {
+  if (state === "SUBMITTED") return { label: t(lang, "Submitted", "已提交"), color: "#047857" };
+  if (state === "PROXY_DRAFT") return { label: t(lang, "Proxy draft pending", "代填草稿待补全"), color: "#b45309" };
+  return { label: t(lang, "Missing", "缺失"), color: "#b91c1c" };
 }
 
 async function sendTeacherFeedbackAction(formData: FormData) {
@@ -64,16 +72,20 @@ export default async function TeacherLeadQualityPage({
         endAt: true,
         teacherId: true,
         teacher: { select: { id: true, name: true } },
-        student: { select: { name: true } },
-        feedbacks: { select: { id: true } },
+        studentId: true,
+        student: { select: { id: true, name: true } },
+        attendances: { select: { studentId: true, status: true } },
+        feedbacks: { select: { teacherId: true, isProxyDraft: true, status: true } },
         class: {
           select: {
+            capacity: true,
+            oneOnOneStudentId: true,
             teacher: { select: { id: true, name: true } },
             course: { select: { name: true } },
             subject: { select: { name: true } },
             level: { select: { name: true } },
-            oneOnOneStudent: { select: { name: true } },
-            enrollments: { select: { student: { select: { name: true } } } },
+            oneOnOneStudent: { select: { id: true, name: true } },
+            enrollments: { select: { studentId: true, student: { select: { id: true, name: true } } } },
           },
         },
       },
@@ -81,25 +93,23 @@ export default async function TeacherLeadQualityPage({
     getRecentManagerTeacherFeedback(20),
   ]);
 
-  const rows = sessions.map((session) => {
+  const cancelledSessions = sessions.filter((session) => isSessionFullyCancelled(session));
+  const rows = sessions.filter((session) => !isSessionFullyCancelled(session)).map((session) => {
     const teacher = session.teacher ?? session.class.teacher;
-    const students = session.student?.name
-      ? [session.student.name]
-      : session.class.oneOnOneStudent?.name
-        ? [session.class.oneOnOneStudent.name]
-        : session.class.enrollments.map((item) => item.student.name);
+    const students = getVisibleSessionStudentNames(session);
     return {
       ...session,
       effectiveTeacherId: teacher.id,
       teacherName: teacher.name,
       students: students.join(", ") || "-",
       course: [session.class.course.name, session.class.subject?.name, session.class.level?.name].filter(Boolean).join(" / "),
-      feedbackComplete: session.feedbacks.length > 0,
+      feedbackState: resolveTeacherQualityFeedbackState(session.feedbacks, teacher.id),
     };
   });
   const selectedSession = rows.find((row) => row.id === sp?.sessionId);
   const selectedTeacherId = selectedSession?.effectiveTeacherId || (teachers.some((teacher) => teacher.id === sp?.teacherId) ? String(sp?.teacherId) : teachers[0]?.id || "");
-  const missingFeedback = rows.filter((row) => !row.feedbackComplete).length;
+  const missingFeedback = rows.filter((row) => row.feedbackState === "MISSING").length;
+  const proxyDraftFeedback = rows.filter((row) => row.feedbackState === "PROXY_DRAFT").length;
 
   return (
     <main style={{ padding: 24, display: "grid", gap: 16, color: "#172033" }}>
@@ -120,22 +130,56 @@ export default async function TeacherLeadQualityPage({
         </form>
         <strong>{t(lang, "Sessions", "课次")}：{rows.length}</strong>
         <strong style={{ color: missingFeedback ? "#b91c1c" : "#047857" }}>{t(lang, "Without feedback", "尚无课后反馈")}：{missingFeedback}</strong>
+        <strong style={{ color: proxyDraftFeedback ? "#b45309" : "#64748b" }}>{t(lang, "Proxy drafts", "代填待补全")}：{proxyDraftFeedback}</strong>
+        <strong style={{ color: "#64748b" }}>{t(lang, "Cancelled and excluded", "已取消并排除")}：{cancelledSessions.length}</strong>
       </section>
 
       <section style={{ ...panel, overflowX: "auto" }}>
         <h2>{t(lang, "Daily teaching overview", "当日教学概览")}</h2>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}>
           <thead><tr><th align="left">{t(lang, "Time", "时间")}</th><th align="left">{t(lang, "Teacher", "老师")}</th><th align="left">{t(lang, "Course", "课程")}</th><th align="left">{t(lang, "Students", "学生")}</th><th align="left">{t(lang, "Feedback", "课后反馈")}</th><th /></tr></thead>
-          <tbody>{rows.map((row) => (
-            <tr key={row.id} style={{ borderTop: "1px solid #e2e8f0" }}>
-              <td style={{ padding: "9px 4px" }}>{formatBusinessTimeOnly(row.startAt)}-{formatBusinessTimeOnly(row.endAt)}</td>
-              <td>{row.teacherName}</td><td>{row.course}</td><td>{row.students}</td>
-              <td style={{ color: row.feedbackComplete ? "#047857" : "#b91c1c", fontWeight: 700 }}>{row.feedbackComplete ? t(lang, "Submitted", "已提交") : t(lang, "Missing", "缺失")}</td>
-              <td><Link href={`/teacher/lead/quality?date=${date}&teacherId=${row.effectiveTeacherId}&sessionId=${row.id}#give-feedback`}>{t(lang, "Give feedback", "给反馈")}</Link></td>
-            </tr>
-          ))}</tbody>
+          <tbody>{rows.map((row) => {
+            const state = feedbackStateMeta(row.feedbackState, lang);
+            return (
+              <tr key={row.id} style={{ borderTop: "1px solid #e2e8f0" }}>
+                <td style={{ padding: "9px 4px" }}>{formatBusinessTimeOnly(row.startAt)}-{formatBusinessTimeOnly(row.endAt)}</td>
+                <td>{row.teacherName}</td><td>{row.course}</td><td>{row.students}</td>
+                <td style={{ color: state.color, fontWeight: 700 }}>{state.label}</td>
+                <td><Link href={`/teacher/lead/quality?date=${date}&teacherId=${row.effectiveTeacherId}&sessionId=${row.id}#give-feedback`}>{t(lang, "Give feedback", "给反馈")}</Link></td>
+              </tr>
+            );
+          })}</tbody>
         </table>
       </section>
+
+      {cancelledSessions.length > 0 ? (
+        <details style={panel}>
+          <summary style={{ cursor: "pointer", fontWeight: 800 }}>
+            {t(lang, "Cancelled sessions excluded from feedback monitoring", "已从反馈监控排除的取消课程")} ({cancelledSessions.length})
+          </summary>
+          <div style={{ overflowX: "auto", marginTop: 12 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
+              <thead><tr><th align="left">{t(lang, "Time", "时间")}</th><th align="left">{t(lang, "Teacher", "老师")}</th><th align="left">{t(lang, "Course", "课程")}</th><th align="left">{t(lang, "Students", "学生")}</th><th align="left">{t(lang, "Status", "状态")}</th></tr></thead>
+              <tbody>{cancelledSessions.map((session) => {
+                const teacher = session.teacher ?? session.class.teacher;
+                const students = session.student?.name
+                  ? [session.student.name]
+                  : session.class.oneOnOneStudent?.name
+                    ? [session.class.oneOnOneStudent.name]
+                    : session.class.enrollments.map((item) => item.student.name);
+                const course = [session.class.course.name, session.class.subject?.name, session.class.level?.name].filter(Boolean).join(" / ");
+                return (
+                  <tr key={session.id} style={{ borderTop: "1px solid #e2e8f0" }}>
+                    <td style={{ padding: "9px 4px" }}>{formatBusinessTimeOnly(session.startAt)}-{formatBusinessTimeOnly(session.endAt)}</td>
+                    <td>{teacher.name}</td><td>{course}</td><td>{students.join(", ") || "-"}</td>
+                    <td style={{ color: "#64748b", fontWeight: 700 }}>{t(lang, "Cancelled - excluded", "已取消，不计缺失")}</td>
+                  </tr>
+                );
+              })}</tbody>
+            </table>
+          </div>
+        </details>
+      ) : null}
 
       <section id="give-feedback" style={{ ...panel, scrollMarginTop: 20 }}>
         <h2>{t(lang, "Internal feedback to teacher", "给老师的内部反馈")}</h2>

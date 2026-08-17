@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getVisibleSessionStudentNames, isSessionFullyCancelled } from "@/lib/session-students";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly, parseBusinessDateStart } from "@/lib/date-only";
 import { loadJsonAppSettingForDb, mutateJsonAppSetting } from "@/lib/app-setting-lock";
 import { getApprovalInboxData } from "@/lib/approval-inbox";
@@ -210,7 +211,6 @@ export async function loadManagerQualityWorkspace(input: {
 
   const [
     sessions,
-    enrollments,
     recentFeedbacks,
     midtermReports,
     finalReports,
@@ -222,6 +222,7 @@ export async function loadManagerQualityWorkspace(input: {
       include: {
         teacher: true,
         student: true,
+        attendances: { select: { studentId: true, status: true } },
         class: {
           include: {
             teacher: true,
@@ -236,9 +237,6 @@ export async function loadManagerQualityWorkspace(input: {
         },
       },
       orderBy: [{ startAt: "asc" }],
-    }),
-    prisma.enrollment.findMany({
-      include: { student: true },
     }),
     prisma.sessionFeedback.findMany({
       where: { submittedAt: { gte: last7Start, lt: end } },
@@ -265,22 +263,11 @@ export async function loadManagerQualityWorkspace(input: {
     getApprovalInboxData(input.managerEmail, input.managerRole),
   ]);
 
-  const enrollmentsByClass = new Map<string, string[]>();
-  for (const enrollment of enrollments) {
-    const list = enrollmentsByClass.get(enrollment.classId) ?? [];
-    list.push(enrollment.student.name);
-    enrollmentsByClass.set(enrollment.classId, list);
-  }
-
-  const leadDeskRows = sessions.map((session) => {
+  const cancelledSessionCount = sessions.filter((session) => isSessionFullyCancelled(session)).length;
+  const leadDeskRows = sessions.filter((session) => !isSessionFullyCancelled(session)).map((session) => {
     const teacherId = session.teacherId ?? session.class.teacherId;
     const teacherName = session.teacher?.name ?? session.class.teacher.name;
-    const studentNames =
-      session.student?.name
-        ? [session.student.name]
-        : session.class.oneOnOneStudent?.name
-          ? [session.class.oneOnOneStudent.name]
-          : enrollmentsByClass.get(session.classId) ?? [];
+    const studentNames = getVisibleSessionStudentNames(session);
     return {
       id: session.id,
       teacherId,
@@ -360,6 +347,7 @@ export async function loadManagerQualityWorkspace(input: {
       sessions: leadDeskRows.length,
       teachers: leadDeskGroups.length,
       students: new Set(leadDeskRows.flatMap((row) => row.students.split(", ").filter((name) => name && name !== "-"))).size,
+      cancelledExcluded: cancelledSessionCount,
     },
     approvalInboxSummary: approvalInbox.summary,
     feedbackRows,

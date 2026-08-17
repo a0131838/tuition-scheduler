@@ -8,6 +8,13 @@ import {
   teacherTrainingMaterialTransitionAllowed,
   TRAINING_MATERIAL_ACTION,
 } from "../lib/teacher-training-materials";
+import {
+  getSessionTeachingState,
+  getVisibleSessionStudentNames,
+  isSessionFullyCancelled,
+  isStudentCancelledForSession,
+} from "../lib/session-students";
+import { resolveTeacherQualityFeedbackState } from "../lib/teacher-quality-status";
 
 test("teacher lead can review teacher training only", () => {
   assert.equal(trainingTargetRoleAllowed({ manager: false, teacherLead: true, targetRole: "TEACHER" }), true);
@@ -42,6 +49,50 @@ test("teacher lead quality desk has no finance or payroll data dependency", () =
   const source = fs.readFileSync(path.join(process.cwd(), "app/teacher/lead/quality/page.tsx"), "utf8");
   assert.doesNotMatch(source, /teacher-payroll|partner-settlement|finance\/|payment-details|bankAccount|courseRates/);
   assert.match(source, /requireTeacherLead/);
+  assert.match(source, /isSessionFullyCancelled/);
+  assert.match(source, /Cancelled and excluded/);
+});
+
+test("teacher quality excludes fully cancelled sessions but retains partially active classes", () => {
+  const oneToOne = {
+    studentId: "student-1",
+    student: { id: "student-1", name: "Student One" },
+    attendances: [{ studentId: "student-1", status: "EXCUSED" }],
+    class: { capacity: 1, oneOnOneStudentId: "student-1", enrollments: [] },
+  };
+  assert.equal(isSessionFullyCancelled(oneToOne), true);
+  assert.equal(getSessionTeachingState(oneToOne), "FULLY_CANCELLED");
+  assert.equal(isStudentCancelledForSession(oneToOne, "student-1"), true);
+
+  const group = {
+    attendances: [{ studentId: "student-1", status: "EXCUSED" }],
+    class: {
+      capacity: 2,
+      enrollments: [
+        { studentId: "student-1", student: { id: "student-1", name: "Student One" } },
+        { studentId: "student-2", student: { id: "student-2", name: "Student Two" } },
+      ],
+    },
+  };
+  assert.equal(isSessionFullyCancelled(group), false);
+  assert.equal(getSessionTeachingState(group), "PARTIALLY_CANCELLED");
+  assert.deepEqual(getVisibleSessionStudentNames(group), ["Student Two"]);
+});
+
+test("teacher quality only accepts final feedback from the responsible teacher", () => {
+  assert.equal(resolveTeacherQualityFeedbackState([], "teacher-1"), "MISSING");
+  assert.equal(
+    resolveTeacherQualityFeedbackState([{ teacherId: "teacher-2", isProxyDraft: false, status: "ON_TIME" }], "teacher-1"),
+    "MISSING",
+  );
+  assert.equal(
+    resolveTeacherQualityFeedbackState([{ teacherId: "teacher-1", isProxyDraft: true, status: "PROXY_DRAFT" }], "teacher-1"),
+    "PROXY_DRAFT",
+  );
+  assert.equal(
+    resolveTeacherQualityFeedbackState([{ teacherId: "teacher-1", isProxyDraft: false, status: "LATE" }], "teacher-1"),
+    "SUBMITTED",
+  );
 });
 
 test("training sign-off loads teacher rows for teacher leads and rechecks target role on save", () => {

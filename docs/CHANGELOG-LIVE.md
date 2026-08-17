@@ -1,5 +1,38 @@
 # CHANGELOG LIVE
 
+## 2026-08-17-r373
+
+- Release ID: `2026-08-17-r373`
+- Date/Time (Asia/Singapore): `2026-08-17`
+- Deployment status: `READY`
+- Scope: restore teacher access to earlier submitted and pending feedback while applying one cancellation-aware feedback rule across Teacher Quality, student history, academic management, lead desks and the parent miniapp next-lesson card.
+- Key files:
+  - `lib/session-students.ts`
+  - `lib/teacher-quality-status.ts`
+  - `app/teacher/sessions/history/page.tsx`
+  - `app/teacher/student-feedbacks/page.tsx`
+  - `app/teacher/lead/quality/page.tsx`
+  - `app/teacher/lead/page.tsx`
+  - `lib/manager-quality-workspace.ts`
+  - `app/admin/manager/quality/page.tsx`
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/reports/academic-management/page.tsx`
+  - `app/api/miniapp/students/[studentId]/home/route.ts`
+  - `tests/cancelled-session-consistency.test.ts`
+  - `tests/teacher-feedback-history.test.ts`
+  - `tests/teacher-lead-scope.test.ts`
+  - `docs/tasks/TASK-20260817-feedback-history-cancellation-consistency.md`
+- Risk impact (if any): Low to medium and limited to feedback visibility and read-only reporting. Fully cancelled lessons no longer create false missing-feedback or active-workload signals; partially cancelled group lessons retain active students. No cancellation, attendance deduction, package balance, payroll, invoice, receipt or partner-settlement rule changed.
+- Verification:
+  - 34 focused feedback, cancellation, academic, parent-miniapp and care-report tests passed
+  - `npx tsc --noEmit` passed
+  - `npm run build` passed with 251 generated pages
+  - read-only reconciliation classified 914 sessions as 803 active, 111 fully cancelled and 0 partially cancelled; 102 false-missing candidates are now excluded
+  - `git diff --check` passed
+- Rollback point: `96b14dcc` before `2026-08-17-r373`.
+
+---
+
 ## 2026-08-17-r372
 
 - Release ID: `2026-08-17-r372`

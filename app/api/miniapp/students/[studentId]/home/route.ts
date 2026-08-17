@@ -39,6 +39,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       where: {
         startAt: { gte: now },
         ...sessionBelongsToStudentWhere(studentId),
+        NOT: { attendances: { some: { studentId, status: "EXCUSED" } } },
       },
       include: {
         teacher: true,

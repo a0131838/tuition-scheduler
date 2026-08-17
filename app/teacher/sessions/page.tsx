@@ -181,6 +181,7 @@ export default async function TeacherSessionsPage() {
         actions={[
           { href: "/teacher", label: t(lang, "Back to dashboard", "返回工作台") },
           { href: "/teacher/availability", label: t(lang, "Open availability", "打开可上课时间") },
+          { href: "/teacher/sessions/history", label: t(lang, "Historical feedback", "历史待补反馈") },
         ]}
       />
 
@@ -216,6 +217,11 @@ export default async function TeacherSessionsPage() {
               `${recoveryCount} past session(s) from the last ${FEEDBACK_RECOVERY_LOOKBACK_DAYS} days still need your feedback, so they are shown together with your normal timeline.`,
               `最近 ${FEEDBACK_RECOVERY_LOOKBACK_DAYS} 天内有 ${recoveryCount} 节历史课仍需补老师反馈，因此已和正常时间线一起显示。`
             )}
+          </div>
+          <div style={{ marginTop: 10 }}>
+            <a href="/teacher/sessions/history" style={{ color: "#9a3412", fontWeight: 800 }}>
+              {t(lang, "Open all historical feedback tasks", "查看全部历史待补反馈")}
+            </a>
           </div>
         </section>
       ) : null}

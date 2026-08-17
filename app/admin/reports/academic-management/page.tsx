@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
+import { getVisibleSessionStudents } from "@/lib/session-students";
 import {
   ACADEMIC_MANAGEMENT_LOOKAHEAD_DAYS,
   ACADEMIC_STUDENT_LANES,
@@ -38,16 +39,6 @@ function fmtMinutes(minutes: number) {
   const m = minutes % 60;
   if (h <= 0) return `${m}m`;
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
-}
-
-function sessionStudentIds(session: any) {
-  return new Set<string>(
-    [
-      session.studentId,
-      session.class?.oneOnOneStudentId,
-      ...(session.class?.enrollments ?? []).map((enrollment: any) => enrollment.studentId),
-    ].filter(Boolean)
-  );
 }
 
 export default async function AcademicManagementReportPage({
@@ -102,9 +93,12 @@ export default async function AcademicManagementReportPage({
           },
           include: {
             feedbacks: true,
+            student: { select: { id: true, name: true } },
+            attendances: { select: { studentId: true, status: true } },
             class: {
               include: {
-                enrollments: { select: { studentId: true } },
+                oneOnOneStudent: { select: { id: true, name: true } },
+                enrollments: { select: { studentId: true, student: { select: { id: true, name: true } } } },
               },
             },
           },
@@ -121,7 +115,14 @@ export default async function AcademicManagementReportPage({
             ],
           },
           include: {
-            class: { include: { enrollments: { select: { studentId: true } } } },
+            student: { select: { id: true, name: true } },
+            attendances: { select: { studentId: true, status: true } },
+            class: {
+              include: {
+                oneOnOneStudent: { select: { id: true, name: true } },
+                enrollments: { select: { studentId: true, student: { select: { id: true, name: true } } } },
+              },
+            },
           },
           orderBy: { startAt: "asc" },
           take: 5000,
@@ -159,7 +160,7 @@ export default async function AcademicManagementReportPage({
   }
 
   for (const session of monthSessions) {
-    for (const studentId of sessionStudentIds(session)) {
+    for (const studentId of getVisibleSessionStudents(session).map((student) => student.id)) {
       const row = byStudent.get(studentId);
       if (!row) continue;
       row.monthLessons += 1;
@@ -169,7 +170,7 @@ export default async function AcademicManagementReportPage({
   }
 
   for (const session of upcomingSessions) {
-    for (const studentId of sessionStudentIds(session)) {
+    for (const studentId of getVisibleSessionStudents(session).map((student) => student.id)) {
       const row = byStudent.get(studentId);
       if (!row) continue;
       if (!row.nextLessonAt || session.startAt < row.nextLessonAt) row.nextLessonAt = session.startAt;

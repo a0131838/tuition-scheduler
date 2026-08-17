@@ -1,5 +1,40 @@
 # RELEASE BOARD
 
+- `2026-08-17-r373`: ready to expose complete teacher feedback history and remove fully cancelled lessons from feedback monitoring, student history warnings, academic statistics, lead-desk workload and parent next-lesson results.
+
+## 2026-08-17-r373 Ready
+
+- Scope: use one student-aware cancellation rule for feedback and operational reporting, and add dedicated teacher access to earlier submitted, missing and proxy-draft feedback.
+- Business impact:
+  - teachers can open all submitted history and a separate historical completion queue without old work cluttering the daily schedule
+  - Teacher Quality counts only final feedback from the responsible teacher; proxy drafts stay visible as pending, while fully cancelled lessons are excluded with an audit count
+  - student attendance history labels cancelled lessons as feedback not required instead of missing
+  - academic monthly statistics and next-lesson dates exclude only the cancelled student, preserving the remaining students in partially cancelled group lessons
+  - Teacher Lead and Manager Lead Desk active workload excludes fully cancelled lessons and shows the excluded count
+  - the parent miniapp next-lesson card skips lessons cancelled for that student
+  - Full Care already filters attendance for the report student and remains unchanged; partner charged-cancellation settlement and all finance rules remain unchanged
+- Files:
+  - `lib/session-students.ts`
+  - `lib/teacher-quality-status.ts`
+  - `app/teacher/sessions/history/page.tsx`
+  - `app/teacher/student-feedbacks/page.tsx`
+  - `app/teacher/lead/quality/page.tsx`
+  - `app/admin/reports/academic-management/page.tsx`
+  - `app/api/miniapp/students/[studentId]/home/route.ts`
+  - `tests/cancelled-session-consistency.test.ts`
+- Verification before deploy:
+  - 34 focused tests
+  - `npx tsc --noEmit`
+  - `npm run build`
+  - read-only 914-session cancellation reconciliation
+  - `git diff --check`
+- Post-deploy verification:
+  - confirm local, GitHub and server commits align
+  - confirm PM2 is online and `/admin/login` returns HTTP 200
+  - confirm Teacher Quality on 2026-08-15 shows 8 active, 3 cancelled excluded and 0 missing
+  - confirm teacher historical-feedback and parent miniapp home routes respond successfully
+- Task doc: `docs/tasks/TASK-20260817-feedback-history-cancellation-consistency.md`
+
 ## 2026-08-17-r372 Ready
 
 - Scope: let Jessika's existing non-finance operations account use the Web AI communication reminder center with the same permission already available in the Staff Mini Program.
@@ -77,7 +112,6 @@
   - local/GitHub/server commit equality, PM2 online and `/admin/login` HTTP 200
   - anonymous reminder page/API redirect to login
   - native WeChat experience version remains a separate upload and physical-phone check
-
 - `2026-08-16-r369`: ready to expose renewal reminder operations to Jessika on Web and Staff Mini Program while keeping contract, billing, payment and package activation finance-only.
 
 ## 2026-08-16-r369 Ready
