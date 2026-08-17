@@ -90,6 +90,57 @@ const READING_CHECKS = {
   ],
 } as const;
 
+const LANGUAGE_EXTENSION = [
+  [
+    ["Choose the best word: The children worked ___ to finish the poster.", ["together", "yesterday", "outside", "yellow"], "A"],
+    ["Which sentence tells us the reason?", ["We stayed inside because it rained.", "We stayed inside at noon.", "We stayed inside quietly.", "We stayed inside together."], "A"],
+    ["Choose the word closest in meaning to tiny.", ["small", "heavy", "bright", "late"], "A"],
+    ["Which sentence is in the past tense?", ["They visit the museum.", "They visited the museum.", "They will visit the museum.", "They are visiting the museum."], "B"],
+    ["Choose the best joining word: I packed an umbrella ___ the sky was dark.", ["because", "but", "after", "or"], "A"],
+    ["Which sentence is a clear instruction?", ["Please place the books on the shelf.", "The books are on the shelf.", "I like the shelf.", "The shelf is brown."], "A"],
+    ["Choose the correctly spelled word.", ["becose", "because", "becaus", "beacause"], "B"],
+    ["Which title best fits a paragraph about caring for a class pet?", ["Our New Library", "Looking After a Hamster", "A Rainy Journey", "Sports Day"], "B"],
+    ["Choose the best pronoun: Maya has a bicycle. ___ rides it to the park.", ["He", "She", "It", "They"], "B"],
+    ["Which sentence compares two things?", ["The blue bag is heavier than the red bag.", "The bag is beside the door.", "Please carry the bag.", "I bought a bag."], "A"],
+  ],
+  [
+    ["Choose the closest meaning of essential.", ["necessary", "optional", "unusual", "temporary"], "A"],
+    ["Which sentence uses evidence?", ["The trial reduced waste by 20%, according to the class record.", "The idea is obviously perfect.", "Everyone must agree with me.", "It just feels better."], "A"],
+    ["Choose the best transition: The route was shorter; ___, it had two unsafe crossings.", ["however", "therefore", "for example", "similarly"], "A"],
+    ["Which sentence is written in the passive voice?", ["The team measured the results.", "The results were measured by the team.", "The team will measure results.", "Measure the results."], "B"],
+    ["What does revise most nearly mean in school writing?", ["improve by reviewing and changing", "copy without reading", "submit immediately", "remove every example"], "A"],
+    ["Choose the sentence with correct subject-verb agreement.", ["The list of activities are long.", "The list of activities is long.", "The activities list are long.", "The list is have many activities."], "B"],
+    ["Which statement is an opinion?", ["The library opens at nine.", "The library has two floors.", "The library is the most welcoming place in town.", "The library closes on Sunday."], "C"],
+    ["Choose the most precise verb: The scientist ___ the temperature every hour.", ["did", "made", "recorded", "got"], "C"],
+    ["Which sentence clearly shows contrast?", ["Although the task was difficult, the group completed it.", "The group completed the task yesterday.", "The difficult task had four parts.", "The group met after lunch."], "A"],
+    ["Choose the best summary of a text explaining three ways to save water.", ["Water is useful.", "The text gives practical methods for reducing water use.", "The writer likes showers.", "Three paragraphs are included."], "B"],
+  ],
+  [
+    ["Choose the closest meaning of feasible.", ["possible and practical", "expensive and risky", "already completed", "impossible to measure"], "A"],
+    ["Which sentence makes a qualified claim?", ["This method always works.", "The results suggest the method may help in similar conditions.", "Nobody could disagree.", "The method proves everything."], "B"],
+    ["Choose the best transition: The sample was small; ___, the result should be interpreted cautiously.", ["consequently", "meanwhile", "likewise", "otherwise"], "A"],
+    ["Which revision removes ambiguity?", ["When Lina met Priya, she was late.", "Lina was late when she met Priya.", "When they met, she was late.", "She met her because she was late."], "B"],
+    ["What is the function of a counterargument?", ["To ignore the main claim", "To consider an opposing view before responding", "To repeat the introduction", "To replace all evidence"], "B"],
+    ["Choose the correctly structured sentence.", ["Despite the rain, the event continued.", "Despite it rained, the event continued.", "Despite of rain continued the event.", "The event despite continued rain."], "A"],
+    ["Which source would best support a claim about school attendance?", ["An anonymous rumour", "Verified attendance records over several terms", "One student's guess", "An advertisement"], "B"],
+    ["Choose the most precise phrase.", ["a lot of things changed", "weekly attendance increased from 62 to 81 students", "it became much better", "everyone noticed something"], "B"],
+    ["Which sentence distinguishes correlation from cause?", ["Scores rose after the change, but other factors may also have contributed.", "The change definitely caused every improvement.", "Two events occurred, so one caused the other.", "Cause never requires evidence."], "A"],
+    ["Choose the best concluding sentence for a balanced argument.", ["Therefore, a limited trial with published results is more justified than an immediate permanent change.", "That is all I know.", "Everyone should agree.", "The other side is wrong."], "A"],
+  ],
+  [
+    ["Choose the closest meaning of mitigate.", ["reduce the severity of", "prove beyond doubt", "increase without limit", "describe in detail"], "A"],
+    ["Which claim is appropriately cautious?", ["The findings indicate a possible benefit, but replication is needed.", "The findings settle the issue forever.", "This must work for every population.", "No limitation matters."], "A"],
+    ["Choose the best transition: The policy may improve access; ___, it could create new privacy risks.", ["conversely", "for instance", "therefore", "similarly"], "A"],
+    ["Which revision improves logical parallelism?", ["The course develops analysis, communication, and students learn to collaborate.", "The course develops analysis, communication, and collaboration.", "The course is analytical, communicating, and collaboration.", "Analysis, to communicate, and collaboration are developed."], "B"],
+    ["What makes a source authoritative for a policy date?", ["It is frequently reposted.", "It is issued by the responsible official body and is current.", "It has a persuasive headline.", "It agrees with the reader."], "B"],
+    ["Choose the sentence that separates evidence from interpretation.", ["Attendance increased by 12%; this may indicate that the later time helped.", "Attendance increased, proving the policy perfect.", "The policy was obviously successful.", "Everyone preferred the change."], "A"],
+    ["Which limitation most weakens a broad conclusion?", ["The study used one small, self-selected group.", "The report includes a title.", "The table has three columns.", "The study lasted several months."], "A"],
+    ["Choose the most coherent thesis.", ["Schools should pilot the policy because it may improve access, but they must publish cost and privacy safeguards.", "Schools, policies, access and privacy are important things.", "There are many opinions about school.", "This essay will discuss stuff."], "A"],
+    ["Which sentence accurately synthesises two sources?", ["Both sources report improved access, while only the second identifies a rise in administrative cost.", "The sources say exactly the same thing.", "One source is longer, so it is correct.", "Both sources prove all outcomes."], "A"],
+    ["Choose the strongest conclusion for an evaluative essay.", ["On balance, the evidence supports a reversible trial rather than immediate full adoption.", "In conclusion, this topic exists.", "Clearly no objection matters.", "The first idea is always best."], "A"],
+  ],
+] as const;
+
 function choice(id: string, domain: string, subskill: string, prompt: string, options: string[], answer: string): ProductQuestion {
   return {
     id, domain, subskill, type: "single_choice", prompt,
@@ -136,10 +187,18 @@ function englishQuestions(product: string, ageBand: string, variant: Variant, co
   ));
   const passage = READING[variant][level];
   const readingItems = READING_CHECKS[variant][level];
-  const readingCount = Math.max(0, count - rows.length);
+  const readingCount = Math.min(4, Math.max(0, count - rows.length));
   readingItems.slice(0, readingCount).forEach((item, index) => rows.push(choice(
     `${prefix}-RD-${index + 1}`, "英语", "阅读理解", `${passage}\n\n${item[0]}`, [...item[1]], item[2],
   )));
+  const extensionCount = Math.max(0, count - rows.length);
+  const extensionPool = LANGUAGE_EXTENSION[level];
+  const extensionOffset = ({ A: 0, B: 3, C: 6 }[variant] ?? 0);
+  Array.from({ length: Math.min(extensionCount, extensionPool.length) }, (_, index) => extensionPool[(extensionOffset + index) % extensionPool.length])
+    .forEach((item, index) => rows.push(choice(
+      `${prefix}-EV-${index + 1}`, "英语", index % 3 === 0 ? "词汇与语境" : index % 3 === 1 ? "证据与推理" : "语言运用",
+      item[0], [...item[1]], item[2],
+    )));
   if (includeWriting) rows.push({
     id: `${prefix}-WR-1`, domain: "英语", subskill: "写作", type: "extended_response",
     prompt: WRITING[variant][level], options: [], answer: "", maxScore: 12, expectedMinutes: level < 2 ? 12 : 20,
@@ -208,16 +267,16 @@ function mathQuestions(product: string, ageBand: string, variant: Variant, count
 export function productQuestions(formId: string, targetPath: string, ageBand: string): ProductQuestion[] {
   const variant = (formId.slice(-1) as Variant) || "A";
   if (!(variant in READING) || !(ageBand in AGE_LEVEL)) return [];
-  if (targetPath === "INTERNATIONAL_ENGLISH") return englishQuestions("INT", ageBand, variant, 9, true);
+  if (targetPath === "INTERNATIONAL_ENGLISH") return englishQuestions("INT", ageBand, variant, 16, true);
   if (targetPath === "AEIS_PRIMARY") {
     return [
-      ...englishQuestions("AEP", ageBand, variant, 8, true).map((item) => ({ ...item, domain: "CEQ英语准备" })),
+      ...englishQuestions("AEP", ageBand, variant, 12, true).map((item) => ({ ...item, domain: "CEQ英语准备" })),
       ...mathQuestions("AEP", ageBand, variant, 12),
     ];
   }
   if (targetPath === "AEIS_SECONDARY") {
     return [
-      ...englishQuestions("AES", ageBand, variant, 10, true).map((item) => ({ ...item, domain: "英语" })),
+      ...englishQuestions("AES", ageBand, variant, 14, true).map((item) => ({ ...item, domain: "英语" })),
       ...mathQuestions("AES", ageBand, variant, 14),
     ];
   }

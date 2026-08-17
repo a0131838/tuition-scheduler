@@ -1,5 +1,7 @@
 # TASK-20260817-midterm-subject-candidates
 
+Release ID: `2026-08-17-r377`
+
 ## Context
 
 Midterm Report candidates were selected when an entire HOURS package reached 45% to 70% consumption. In a shared package, one sibling's lessons could therefore make another sibling appear ready even when that student's own subject attendance was still low. The candidate row also collapsed a student's different subjects into one latest-teacher choice.

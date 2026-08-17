@@ -14,16 +14,18 @@ import {
   fullQuestionIds,
   initialQuestionIds,
   normalizeAssessmentCode,
+  parallelRetestLimitReached,
   productQuestionIds,
   publicQuestion,
+  recentParallelFormExclusions,
   resolveRoute,
   scoreAnswer,
   validateAssessmentProductAge,
   type AcademicAssessmentStoredAnswer,
 } from "../lib/school-guide-academic-assessment";
 
-test("assessment bank is a controlled pathway V3 pilot with five age bands", () => {
-  assert.equal(ACADEMIC_ASSESSMENT_VERSION, "V1.4-20260805-pathway-v3");
+test("assessment bank is a controlled pathway V4 pilot with five age bands", () => {
+  assert.equal(ACADEMIC_ASSESSMENT_VERSION, "V1.4-20260805-pathway-v4");
   assert.equal(ACADEMIC_ASSESSMENT_STATUS, "pilot");
   assert.equal(ACADEMIC_ASSESSMENT_AGE_BANDS.length, 5);
   assert.deepEqual(ACADEMIC_ASSESSMENT_PRODUCTS, ["INTERNATIONAL_ENGLISH", "AEIS_PRIMARY", "AEIS_SECONDARY"]);
@@ -31,14 +33,14 @@ test("assessment bank is a controlled pathway V3 pilot with five age bands", () 
 
 test("new products select only their intended subjects", () => {
   const international = productQuestionIds("CORE-A1214-A", "INTERNATIONAL_ENGLISH");
-  assert.equal(international.length, 10);
+  assert.equal(international.length, 17);
   assert.deepEqual(new Set(international.map((id) => publicQuestion("CORE-A1214-A", id).domain)), new Set(["英语"]));
   assert.equal(international.filter((id) => publicQuestion("CORE-A1214-A", id).requiresReviewer).length, 1);
 
   for (const product of ["AEIS_PRIMARY", "AEIS_SECONDARY"]) {
     const formId = product === "AEIS_PRIMARY" ? "CORE-A911-A" : "CORE-A1214-A";
     const ids = productQuestionIds(formId, product);
-    assert.ok(ids.length >= 18);
+    assert.ok(ids.length >= 25);
     const expectedDomains = product === "AEIS_PRIMARY" ? new Set(["CEQ英语准备", "数学"]) : new Set(["英语", "数学"]);
     assert.deepEqual(new Set(ids.map((id) => publicQuestion(formId, id).domain)), expectedDomains);
     assert.equal(ids.filter((id) => publicQuestion(formId, id).requiresReviewer).length, 1);
@@ -51,6 +53,19 @@ test("parallel forms rotate product questions without duplicate ids", () => {
   for (const ids of variants) assert.equal(new Set(ids).size, ids.length);
   assert.notDeepEqual(variants[0], variants[1]);
   assert.notDeepEqual(variants[1], variants[2]);
+});
+
+test("parallel retests exclude recent forms and cap three starts per day", () => {
+  const now = new Date("2026-08-17T12:00:00.000Z");
+  const forms = ["CORE-A1214-A", "CORE-A1214-B", "CORE-A1214-C"];
+  const sessions = [
+    { formId: forms[0], createdAt: new Date("2026-08-17T09:00:00.000Z") },
+    { formId: forms[1], createdAt: new Date("2026-08-17T10:00:00.000Z") },
+  ];
+  assert.deepEqual(recentParallelFormExclusions(sessions, forms, now).sort(), [forms[0], forms[1]].sort());
+  assert.equal(chooseLeastUsedForm("12–14岁", {}, recentParallelFormExclusions(sessions, forms, now)), forms[2]);
+  assert.equal(parallelRetestLimitReached(sessions.map((row) => row.createdAt), now), false);
+  assert.equal(parallelRetestLimitReached([...sessions.map((row) => row.createdAt), new Date("2026-08-17T11:00:00.000Z")], now), true);
 });
 
 test("product age boundaries block unsuitable online assessments", () => {
@@ -73,7 +88,7 @@ test("new product reports never blend AEIS subjects into one total", () => {
   const result = calculateAssessmentResult({ formId, questionIds: ids, answers, durationSeconds: 30 * 60, targetPath: "AEIS_PRIMARY" });
   assert.equal(result.overallScore, null);
   assert.equal(result.overallBand, "分科查看，不合并总分");
-  assert.equal(result.report.scoreModelVersion, "PATHWAY_V3");
+  assert.equal(result.report.scoreModelVersion, "PATHWAY_V4");
   assert.deepEqual(result.report.scorecards.map((row) => row.label), ["CEQ英语资格准备", "AEIS小学数学准备"]);
 });
 
@@ -91,6 +106,9 @@ test("international English report labels CEFR as provisional", () => {
   assert.equal(typeof result.overallScore, "number");
   assert.match(result.report.standard, /CEFR.*初步参考/);
   assert.ok(result.report.scorecards[0].cefrReference);
+  assert.ok(result.report.evidence);
+  assert.equal(result.report.evidence?.totalItems, 17);
+  assert.equal(result.report.evidence?.ageBandSpecific, true);
 });
 
 test("form assignment balances A B C and code normalization is forgiving", () => {
@@ -167,4 +185,14 @@ test("assessment migration is additive and isolated", () => {
   assert.match(sql, /CREATE TABLE "SchoolGuideAssessmentCode"/);
   assert.match(sql, /CREATE TABLE "SchoolGuideAssessmentSession"/);
   assert.doesNotMatch(sql, /DROP TABLE|DROP COLUMN|TRUNCATE|DELETE FROM/);
+});
+
+test("pending review exposes an immediate parallel-form retest without reusing the original code", () => {
+  const page = fs.readFileSync(path.join(process.cwd(), "miniapp/boss-academic-parent/pages/guide-academic-assessment/guide-academic-assessment.wxml"), "utf8");
+  const controller = fs.readFileSync(path.join(process.cwd(), "miniapp/boss-academic-parent/pages/guide-academic-assessment/guide-academic-assessment.js"), "utf8");
+  const startRoute = fs.readFileSync(path.join(process.cwd(), "app/api/public/school-guide/academic-assessment/start/route.ts"), "utf8");
+  assert.match(page, /等待老师复核[\s\S]*立即开始下一套平行卷/);
+  assert.match(controller, /retestSessionToken:\s*this\.data\.sessionToken/);
+  assert.match(startRoute, /sourceMode:\s*retestSource \? "PARALLEL_RETEST"/);
+  assert.match(startRoute, /parallelRetestLimitReached/);
 });
