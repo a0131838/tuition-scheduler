@@ -28,7 +28,7 @@
 
 - Release ID: `2026-08-17-r376`
 - Date/Time (Asia/Singapore): `2026-08-17`
-- Deployment status: `READY FOR GUARDED DEPLOY`; WeChat package is experience-only and will not be submitted for review or formal release.
+- Deployment status: `LIVE`; WeChat development/experience package `1.0.57` uploaded successfully and was not submitted for review or formal release.
 - Scope: strengthen the school-readiness test with age-specific evidence and let families start an immediate A/B/C parallel-form retest while writing is still awaiting teacher review.
 - Key files:
   - `lib/school-guide-product-assessment-bank.ts`
@@ -39,7 +39,8 @@
   - `docs/tasks/TASK-20260817-school-guide-assessment-product-split.md`
 - Risk impact (if any): Low-to-medium and assessment-isolated. New sessions use `PATHWAY_V4`; existing reports remain unchanged. No student, timetable, package, finance, payroll, Ticket, login, permission or notification write path changes.
 - Verification: focused assessment tests 16/16, backend tests 180/180, miniapp release audit 69 pages with zero errors, TypeScript check, JavaScript syntax check, `git diff --check`, and 251-page production build.
-- Rollback point: production commit before `2026-08-17-r376`.
+- Production result: commit `d1630e618483a46cd4686c3072fe6f9512be3238`, PM2 PID `2624294`, `/admin/login` and `/school-guide/assessment` HTTP 200, consent rejection contract HTTP 400 as expected. WeChat package size `785,112` bytes.
+- Rollback point: `a7d3ef4ab2ae452ed7ba40ce73cd06fff3656b30` before `2026-08-17-r376`.
 
 ---
 

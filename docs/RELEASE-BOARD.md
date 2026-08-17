@@ -28,7 +28,7 @@
 
 - `2026-08-17-r376`: ready to add age-stratified evidence and immediate A/B/C parallel-form retesting to the school-readiness experience.
 
-## 2026-08-17-r376 Ready
+## 2026-08-17-r376 Live
 
 - Scope: increase the evidence in each assessment product and allow a new parallel form without waiting for writing review.
 - Business impact:
@@ -50,6 +50,7 @@
   - upload WeChat experience version only; do not submit review or publish formally
   - physical-phone test: submit one form, start the next form while review is pending, and confirm both records remain visible
 - Task doc: `docs/tasks/TASK-20260817-school-guide-assessment-product-split.md`
+- Live result: application commit `d1630e618483a46cd4686c3072fe6f9512be3238`, PM2 PID `2624294`, login and assessment pages HTTP 200. WeChat development/experience version `1.0.57` uploaded successfully at `785,112` bytes; formal review and publication remain intentionally pending.
 
 - `2026-08-17-r375`: ready to separate Final and Midterm Report learning hours by student, subject and original submission cutoff.
 
