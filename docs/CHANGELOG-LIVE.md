@@ -1,5 +1,28 @@
 # CHANGELOG LIVE
 
+## 2026-08-17-r367
+
+- Release ID: `2026-08-17-r367`
+- Date/Time (Asia/Singapore): `2026-08-17`
+- Deployment status: `READY FOR GUARDED DEPLOY`; WeChat package is experience-only and will not be submitted for review or formal release.
+- Scope: split the school-readiness pilot into international-school English, AEIS Primary and AEIS Secondary products, with independent question selection and interpretable product-specific reports.
+- Key files:
+  - `lib/school-guide-academic-assessment.ts`
+  - `app/api/public/school-guide/academic-assessment/start/route.ts`
+  - `app/api/public/school-guide/academic-assessment/session/route.ts`
+  - `app/api/miniapp/staff/academic-assessments/route.ts`
+  - `miniapp/boss-academic-parent/pages/guide-academic-assessment/*`
+  - `miniapp/boss-academic-parent/pages/staff-assessments/staff-assessments.js`
+  - `miniapp/boss-academic-parent/pages/staff-assessment-detail/staff-assessment-detail.wxml`
+  - `docs/tasks/TASK-20260817-school-guide-assessment-product-split.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low-to-medium and assessment-isolated. Existing sessions retain `LEGACY_V1`; new products use `PATHWAY_V2`. No Student, Session timetable, attendance, package, finance, payroll, Ticket, login or notification write path changes.
+- Verification: focused assessment tests 14/14, miniapp release audit 69 pages with zero errors, JavaScript syntax checks, clean-candidate 251-page production build and guarded release checks.
+- Rollback point: production commit before `2026-08-17-r367`.
+
+---
+
 ## 2026-08-17-r374
 
 - Release ID: `2026-08-17-r374`

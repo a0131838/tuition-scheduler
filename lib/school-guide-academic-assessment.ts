@@ -23,7 +23,39 @@ const bank = bankSource as unknown as {
 export const ACADEMIC_ASSESSMENT_VERSION = bank.version;
 export const ACADEMIC_ASSESSMENT_STATUS = bank.releaseStatus;
 export const ACADEMIC_ASSESSMENT_AGE_BANDS = ["3–5岁", "6–8岁", "9–11岁", "12–14岁", "15–17岁"] as const;
-export const ACADEMIC_ASSESSMENT_PATHS = ["UNSURE", "INTERNATIONAL", "MOE_AEIS", "DSA"] as const;
+export const ACADEMIC_ASSESSMENT_PRODUCTS = ["INTERNATIONAL_ENGLISH", "AEIS_PRIMARY", "AEIS_SECONDARY"] as const;
+export const ACADEMIC_ASSESSMENT_LEGACY_PATHS = ["UNSURE", "INTERNATIONAL", "MOE_AEIS", "DSA"] as const;
+export const ACADEMIC_ASSESSMENT_PATHS = [...ACADEMIC_ASSESSMENT_PRODUCTS, ...ACADEMIC_ASSESSMENT_LEGACY_PATHS] as const;
+
+type AssessmentProduct = (typeof ACADEMIC_ASSESSMENT_PRODUCTS)[number];
+
+const PRODUCT_DEFINITIONS: Record<AssessmentProduct, {
+  title: string;
+  allowedAgeBands: string[];
+  domains: Array<{ domain: string; objectiveLimit: number; manualLimit: number }>;
+}> = {
+  INTERNATIONAL_ENGLISH: {
+    title: "国际学校英语入学准备度",
+    allowedAgeBands: ["6–8岁", "9–11岁", "12–14岁", "15–17岁"],
+    domains: [{ domain: "英语", objectiveLimit: 12, manualLimit: 3 }],
+  },
+  AEIS_PRIMARY: {
+    title: "AEIS小学入学准备度",
+    allowedAgeBands: ["6–8岁", "9–11岁"],
+    domains: [
+      { domain: "英语", objectiveLimit: 8, manualLimit: 2 },
+      { domain: "数学", objectiveLimit: 12, manualLimit: 0 },
+    ],
+  },
+  AEIS_SECONDARY: {
+    title: "AEIS中学入学准备度",
+    allowedAgeBands: ["12–14岁", "15–17岁"],
+    domains: [
+      { domain: "英语", objectiveLimit: 10, manualLimit: 2 },
+      { domain: "数学", objectiveLimit: 14, manualLimit: 0 },
+    ],
+  },
+};
 
 const AGE_FORM_CODE: Record<string, string> = {
   "3–5岁": "A35",
@@ -70,22 +102,74 @@ export function chooseLeastUsedForm(ageBand: string, counts: Record<string, numb
 }
 
 function pathLabel(path: string) {
+  if (path === "INTERNATIONAL_ENGLISH") return "国际学校英语";
+  if (path === "AEIS_PRIMARY") return "AEIS小学";
+  if (path === "AEIS_SECONDARY") return "AEIS中学";
   if (path === "INTERNATIONAL") return "国际学校";
   if (path === "MOE_AEIS") return "政府学校/AEIS";
   if (path === "DSA") return "DSA/面试/作品集";
   return "";
 }
 
+export function isAssessmentProduct(value: string): value is AssessmentProduct {
+  return ACADEMIC_ASSESSMENT_PRODUCTS.includes(value as AssessmentProduct);
+}
+
+export function assessmentProductDefinition(value: string) {
+  return isAssessmentProduct(value) ? PRODUCT_DEFINITIONS[value] : null;
+}
+
+export function validateAssessmentProductAge(targetPath: string, ageBand: string) {
+  const product = assessmentProductDefinition(targetPath);
+  if (!product) return true;
+  return product.allowedAgeBands.includes(ageBand);
+}
+
 function assignmentForQuestion(formId: string, questionId: string) {
   const core = bank.assignments.find((row) => row.form_id === formId && row.question_id === questionId);
   if (core) return core;
   const form = bank.forms.find((row) => row.form_id === formId);
-  return bank.pathAssignments.find((row) =>
+  const path = bank.pathAssignments.find((row) =>
     row.question_id === questionId && row["年龄"] === form?.["年龄"] && row["卷型"] === form?.["卷型"],
   );
+  return path || bank.questions.find((row) => row.question_id === questionId);
 }
 
-export function initialQuestionIds(formId: string) {
+function ageCodeForForm(formId: string) {
+  const form = bank.forms.find((row) => row.form_id === formId);
+  return String(form?.["年龄"] ?? "").replace("岁", "").replace(/[–—]/g, "-");
+}
+
+function rotatedTake<T>(rows: T[], limit: number, variant: string) {
+  if (!rows.length || limit <= 0) return [];
+  const offset = ({ A: 0, B: 1, C: 2 }[variant] ?? 0) * Math.max(1, Math.floor(rows.length / 3));
+  return Array.from({ length: Math.min(limit, rows.length) }, (_, index) => rows[(offset + index) % rows.length]);
+}
+
+export function productQuestionIds(formId: string, targetPath: string) {
+  const product = assessmentProductDefinition(targetPath);
+  if (!product) return [];
+  const ageCode = ageCodeForForm(formId);
+  const variant = formId.slice(-1);
+  const applicable = bank.questions.filter((row) => String(row["适用年龄"] ?? "")
+    .split("|")
+    .map((value) => value.trim())
+    .includes(ageCode));
+  return product.domains.flatMap((rule) => {
+    const rows = applicable
+      .filter((row) => row["能力域"] === rule.domain)
+      .sort((a, b) => String(a.question_id).localeCompare(String(b.question_id)));
+    const objective = rows.filter((row) => !isManualRule(String(row["题型"] ?? ""), String(row["答案/评分方式"] ?? "")));
+    const manual = rows.filter((row) => isManualRule(String(row["题型"] ?? ""), String(row["答案/评分方式"] ?? "")));
+    return [
+      ...rotatedTake(objective, rule.objectiveLimit, variant),
+      ...rotatedTake(manual, rule.manualLimit, variant),
+    ].map((row) => String(row.question_id));
+  });
+}
+
+export function initialQuestionIds(formId: string, targetPath = "") {
+  if (isAssessmentProduct(targetPath)) return productQuestionIds(formId, targetPath);
   const rows = bank.assignments.filter((row) => row.form_id === formId);
   const hasAnchors = rows.some((row) => row["阶段"] === "定位锚题");
   return rows
@@ -101,6 +185,7 @@ export function resolveRoute(anchorCorrect: number) {
 }
 
 export function fullQuestionIds(formId: string, route: string | null, targetPath: string) {
+  if (isAssessmentProduct(targetPath)) return productQuestionIds(formId, targetPath);
   const rows = bank.assignments.filter((row) => row.form_id === formId);
   const form = bank.forms.find((row) => row.form_id === formId);
   if (!form) throw new Error("FORM_NOT_FOUND");
@@ -193,6 +278,18 @@ export function anchorCorrectCount(formId: string, answers: Record<string, Store
   return anchorIds.filter((id) => (answers[id]?.autoScore ?? 0) > 0).length;
 }
 
+function scoreBand(score: number) {
+  return score < 40 ? "基础待建立" : score < 55 ? "发展中" : score < 70 ? "接近当前阶段要求" : score < 85 ? "表现稳定" : "表现较强";
+}
+
+function provisionalCefrRange(score: number) {
+  if (score < 35) return "Pre-A1–A1";
+  if (score < 50) return "A1–A2";
+  if (score < 65) return "A2–B1";
+  if (score < 80) return "B1–B2";
+  return "B2–C1";
+}
+
 export function manualQuestionIds(formId: string, questionIds: string[]) {
   return questionIds.filter((id) => publicQuestion(formId, id).requiresReviewer);
 }
@@ -233,13 +330,35 @@ export function calculateAssessmentResult(input: {
   const completionRate = input.questionIds.length ? answered / input.questionIds.length : 0;
   const domainScores = Object.fromEntries(Object.entries(domains).map(([name, value]) => [name, Math.round((value.score / value.max) * 100)]));
   const values = Object.values(domainScores);
-  const overallScore = values.length ? Math.round(values.reduce((sum, score) => sum + score, 0) / values.length) : 0;
-  const overallBand = overallScore < 40 ? "基础待建立" : overallScore < 55 ? "发展中" : overallScore < 70 ? "接近当前阶段要求" : overallScore < 85 ? "表现稳定" : "表现较强";
+  const legacyOverallScore = values.length ? Math.round(values.reduce((sum, score) => sum + score, 0) / values.length) : 0;
+  const product = assessmentProductDefinition(input.targetPath);
+  const overallScore = product
+    ? input.targetPath === "INTERNATIONAL_ENGLISH" ? (domainScores["英语"] ?? 0) : null
+    : legacyOverallScore;
+  const overallBand = overallScore == null ? "分科查看，不合并总分" : scoreBand(overallScore);
   const minutes = input.durationSeconds / 60;
   const confidence = pendingManual > 0 ? "待人工" : completionRate < 0.75 ? "低" : completionRate >= 0.9 && minutes >= 24 && minutes <= 54 ? "高" : "中";
   const ranked = Object.entries(domainScores).sort((a, b) => b[1] - a[1]);
   const strengths = ranked.slice(0, 3).map(([name, score]) => `${name}：本次内部任务得分 ${score}`);
   const priorities = [...ranked].reverse().slice(0, 3).map(([name, score]) => `${name}：建议优先复核与训练（本次 ${score}）`);
+  const scorecards = product ? product.domains.map((rule) => {
+    const score = domainScores[rule.domain] ?? 0;
+    const label = input.targetPath === "AEIS_PRIMARY" && rule.domain === "英语"
+      ? "CEQ英语资格准备"
+      : input.targetPath === "AEIS_PRIMARY"
+        ? "AEIS小学数学准备"
+        : input.targetPath === "AEIS_SECONDARY"
+          ? `AEIS中学${rule.domain}准备`
+          : "国际学校英语准备度";
+    return {
+      key: rule.domain === "英语" ? "english" : "math",
+      label,
+      score,
+      scoreLabel: `${score} / 100`,
+      band: scoreBand(score),
+      cefrReference: rule.domain === "英语" ? provisionalCefrRange(score) : null,
+    };
+  }) : [];
   return {
     completionRate,
     pendingManual,
@@ -248,11 +367,18 @@ export function calculateAssessmentResult(input: {
     overallBand,
     confidence,
     report: {
-      standard: "博思内部入学准备度标准，不是学校、MOE、AEIS官方分数、百分位或录取预测。",
+      scoreModelVersion: product ? "PATHWAY_V2" : "LEGACY_V1",
+      productTitle: product?.title ?? (pathLabel(input.targetPath) || "入学准备度"),
+      scorecards,
+      standard: product
+        ? "博思内部试测结果，不是学校、iTEP、CEQ、MOE或AEIS官方成绩。CEFR仅为未经外部校准的初步参考范围，不可单独用于学校录取预测。"
+        : "博思内部入学准备度标准，不是学校、MOE、AEIS官方分数、百分位或录取预测。",
       strengths,
       priorities,
       targetPath: pathLabel(input.targetPath) || "暂未确定",
-      nextStep: "建议由顾问与学科老师结合目标学校官方要求，制定8–12周准备计划。",
+      nextStep: product
+        ? "由顾问结合学生年龄、年级、入学时间、课程体系和目标学校解读；数学或其他学科补习前，由学科老师在首节1对1课堂中完成学科诊断。"
+        : "建议由顾问与学科老师结合目标学校官方要求，制定8–12周准备计划。",
     },
   };
 }

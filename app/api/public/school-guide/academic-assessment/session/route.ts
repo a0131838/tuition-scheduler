@@ -39,7 +39,7 @@ export async function POST(req: Request) {
 
     let route = session.route;
     let questionIds = ids;
-    const anchors = initialQuestionIds(session.formId);
+    const anchors = initialQuestionIds(session.formId, session.targetPath);
     if (!route && anchors.length === 6 && anchors.every((id) => Boolean(answers[id]?.value))) {
       route = resolveRoute(anchorCorrectCount(session.formId, answers));
       questionIds = fullQuestionIds(session.formId, route, session.targetPath);
