@@ -1,5 +1,16 @@
 ﻿import { requireAdmin } from "@/lib/auth";
+import { logAudit } from "@/lib/audit-log";
+import { formatBusinessDateOnly, parseBusinessDateStart } from "@/lib/date-only";
 import { getLang, t } from "@/lib/i18n";
+import {
+  clearTeacherPayrollSessionOverride,
+  loadTeacherPayrollAdministration,
+  saveTeacherEmploymentTerm,
+  saveTeacherPayrollNote,
+  saveTeacherPayrollSessionOverride,
+  TEACHER_EMPLOYMENT_TYPES,
+  TEACHER_LESSON_PAY_MODES,
+} from "@/lib/teacher-employment-payroll";
 import {
   formatComboLabel,
   formatMoneyCents,
@@ -7,6 +18,8 @@ import {
   monthKey,
   parseMonth,
 } from "@/lib/teacher-payroll";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import {
   workbenchFilterPanelStyle,
   workbenchHeroStyle,
@@ -57,14 +70,162 @@ function pendingReasonLabel(lang: Awaited<ReturnType<typeof getLang>>, reason: s
   return "-";
 }
 
+function payrollDetailHref(teacherId: string, month: string, scope: string, params?: Record<string, string>) {
+  const query = new URLSearchParams({ month, scope, ...(params ?? {}) });
+  return `/admin/reports/teacher-payroll/${encodeURIComponent(teacherId)}?${query.toString()}`;
+}
+
+function parseEmploymentEndDate(value: string) {
+  const start = parseBusinessDateStart(value);
+  return start ? new Date(start.getTime() + 24 * 60 * 60 * 1000) : null;
+}
+
+function employmentTypeLabel(lang: Awaited<ReturnType<typeof getLang>>, value: string) {
+  if (value === "FULL_TIME") return t(lang, "Full-time employee", "全职员工");
+  if (value === "CONTRACT") return t(lang, "Contract employee", "合同员工");
+  return t(lang, "Part-time tutor", "兼职老师");
+}
+
+function lessonPayModeLabel(lang: Awaited<ReturnType<typeof getLang>>, value: string) {
+  return value === "INCLUDED_IN_SALARY"
+    ? t(lang, "Included in monthly salary", "已含在全职月薪")
+    : t(lang, "Separately payable", "单独计薪");
+}
+
+async function saveEmploymentTermAction(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  const teacherId = String(formData.get("teacherId") ?? "").trim();
+  const month = String(formData.get("month") ?? "").trim();
+  const scope = String(formData.get("scope") ?? "all") === "completed" ? "completed" : "all";
+  if (user.role === "FINANCE") redirect(payrollDetailHref(teacherId, month, scope, { error: "employment-permission" }));
+  const effectiveFrom = parseBusinessDateStart(String(formData.get("effectiveFrom") ?? ""));
+  const effectiveToRaw = String(formData.get("effectiveTo") ?? "").trim();
+  const effectiveTo = effectiveToRaw ? parseEmploymentEndDate(effectiveToRaw) : null;
+  if (!teacherId || !parseMonth(month) || !effectiveFrom || (effectiveToRaw && !effectiveTo)) {
+    redirect(payrollDetailHref(teacherId, month, scope, { error: "employment-input" }));
+  }
+  try {
+    const saved = await saveTeacherEmploymentTerm({
+      id: String(formData.get("employmentTermId") ?? "").trim() || null,
+      teacherId,
+      employmentType: String(formData.get("employmentType") ?? "PART_TIME"),
+      lessonPayMode: String(formData.get("lessonPayMode") ?? "SEPARATELY_PAYABLE"),
+      effectiveFrom,
+      effectiveTo,
+      note: String(formData.get("note") ?? ""),
+      actorEmail: user.email,
+    });
+    await logAudit({
+      actor: user,
+      module: "teacher-payroll",
+      action: "SAVE_EMPLOYMENT_TERM",
+      entityType: "TeacherEmploymentTerm",
+      entityId: saved.id,
+      meta: { teacherId, effectiveFrom: effectiveFrom.toISOString(), effectiveTo: effectiveTo?.toISOString() ?? null },
+    });
+  } catch {
+    redirect(payrollDetailHref(teacherId, month, scope, { error: "employment-overlap" }));
+  }
+  revalidatePath("/admin/reports/teacher-payroll");
+  revalidatePath(`/admin/reports/teacher-payroll/${teacherId}`);
+  redirect(payrollDetailHref(teacherId, month, scope, { employmentSaved: "1" }));
+}
+
+async function savePayrollNoteAction(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  const teacherId = String(formData.get("teacherId") ?? "").trim();
+  const month = String(formData.get("month") ?? "").trim();
+  const scope = String(formData.get("scope") ?? "all") === "completed" ? "completed" : "all";
+  if (!teacherId || !parseMonth(month)) redirect(payrollDetailHref(teacherId, month, scope, { error: "note-input" }));
+  const note = String(formData.get("payrollNote") ?? "");
+  const saved = await saveTeacherPayrollNote({ teacherId, month, note, actorEmail: user.email });
+  await logAudit({
+    actor: user,
+    module: "teacher-payroll",
+    action: "SAVE_PAYROLL_NOTE",
+    entityType: "TeacherPayrollNote",
+    entityId: saved?.id ?? `${teacherId}:${month}`,
+    meta: { teacherId, month, cleared: !note.trim() },
+  });
+  revalidatePath(`/admin/reports/teacher-payroll/${teacherId}`);
+  redirect(payrollDetailHref(teacherId, month, scope, { noteSaved: "1" }));
+}
+
+async function saveSessionPayOverrideAction(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  const teacherId = String(formData.get("teacherId") ?? "").trim();
+  const sessionId = String(formData.get("sessionId") ?? "").trim();
+  const month = String(formData.get("month") ?? "").trim();
+  const scope = String(formData.get("scope") ?? "all") === "completed" ? "completed" : "all";
+  if (user.role === "FINANCE") redirect(payrollDetailHref(teacherId, month, scope, { error: "override-permission" }));
+  try {
+    const saved = await saveTeacherPayrollSessionOverride({
+      teacherId,
+      sessionId,
+      payMode: String(formData.get("payMode") ?? "SEPARATELY_PAYABLE"),
+      reason: String(formData.get("reason") ?? ""),
+      actorEmail: user.email,
+    });
+    await logAudit({
+      actor: user,
+      module: "teacher-payroll",
+      action: "SAVE_SESSION_PAY_OVERRIDE",
+      entityType: "TeacherPayrollSessionOverride",
+      entityId: saved.id,
+      meta: { teacherId, sessionId, payMode: saved.payMode, reason: saved.reason },
+    });
+  } catch {
+    redirect(payrollDetailHref(teacherId, month, scope, { error: "override-input" }));
+  }
+  revalidatePath("/admin/reports/teacher-payroll");
+  revalidatePath(`/admin/reports/teacher-payroll/${teacherId}`);
+  redirect(payrollDetailHref(teacherId, month, scope, { overrideSaved: "1" }));
+}
+
+async function clearSessionPayOverrideAction(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  const teacherId = String(formData.get("teacherId") ?? "").trim();
+  const sessionId = String(formData.get("sessionId") ?? "").trim();
+  const month = String(formData.get("month") ?? "").trim();
+  const scope = String(formData.get("scope") ?? "all") === "completed" ? "completed" : "all";
+  if (user.role === "FINANCE") redirect(payrollDetailHref(teacherId, month, scope, { error: "override-permission" }));
+  await clearTeacherPayrollSessionOverride({ teacherId, sessionId });
+  await logAudit({
+    actor: user,
+    module: "teacher-payroll",
+    action: "CLEAR_SESSION_PAY_OVERRIDE",
+    entityType: "Session",
+    entityId: sessionId,
+    meta: { teacherId, sessionId },
+  });
+  revalidatePath("/admin/reports/teacher-payroll");
+  revalidatePath(`/admin/reports/teacher-payroll/${teacherId}`);
+  redirect(payrollDetailHref(teacherId, month, scope, { overrideCleared: "1" }));
+}
+
 export default async function TeacherPayrollDetailPage({
   params,
   searchParams,
 }: {
   params: Promise<{ teacherId: string }>;
-  searchParams?: Promise<{ month?: string; scope?: string; pendingOnly?: string; fallbackOnly?: string; chargedOnly?: string }>;
+  searchParams?: Promise<{
+    month?: string;
+    scope?: string;
+    pendingOnly?: string;
+    fallbackOnly?: string;
+    chargedOnly?: string;
+    employmentSaved?: string;
+    noteSaved?: string;
+    overrideSaved?: string;
+    overrideCleared?: string;
+    error?: string;
+  }>;
 }) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const lang = await getLang();
   const p = await params;
   const sp = await searchParams;
@@ -94,6 +255,9 @@ export default async function TeacherPayrollDetailPage({
     );
   }
 
+  const administration = await loadTeacherPayrollAdministration(p.teacherId, month);
+  const canManageEmployment = admin.role !== "FINANCE";
+
   const periodText = `${DATE_FMT.format(data.range.start)} - ${DATE_FMT.format(new Date(data.range.end.getTime() - 1000))}`;
   const filteredComboRows = data.comboRows.filter((row) => {
     if (fallbackOnly && !row.usedRateFallback) return false;
@@ -109,6 +273,9 @@ export default async function TeacherPayrollDetailPage({
   const pendingCount = data.sessionRows.filter((row) => !row.isCompleted).length;
   const fallbackCount = data.sessionRows.filter((row) => row.usedRateFallback).length;
   const chargedCount = data.sessionRows.filter((row) => row.isChargedExcused).length;
+  const includedInSalaryCount = data.sessionRows.filter(
+    (row) => row.paymentTreatment.payMode === "INCLUDED_IN_SALARY",
+  ).length;
   const buildDetailHref = (kind?: "pending" | "fallback" | "charged") => {
     const params = new URLSearchParams();
     params.set("month", month);
@@ -259,6 +426,124 @@ export default async function TeacherPayrollDetailPage({
         </div>
       ) : null}
 
+      {sp?.employmentSaved || sp?.noteSaved || sp?.overrideSaved || sp?.overrideCleared ? (
+        <div style={{ marginBottom: 12, padding: "9px 11px", border: "1px solid #86efac", borderRadius: 8, background: "#f0fdf4", color: "#166534" }}>
+          {t(lang, "Payroll settings saved.", "工资设置已保存。")}
+        </div>
+      ) : null}
+      {sp?.error ? (
+        <div style={{ marginBottom: 12, padding: "9px 11px", border: "1px solid #fca5a5", borderRadius: 8, background: "#fef2f2", color: "#b91c1c" }}>
+          {sp.error === "employment-overlap"
+            ? t(lang, "Employment periods cannot overlap. Check the effective dates and try again.", "任职期间不能重叠，请检查生效日期后重试。")
+            : sp.error.includes("permission")
+              ? t(lang, "Finance can add payroll notes but cannot change employment or per-session pay treatment.", "财务可以填写工资备注，但不能修改任职状态或逐课计薪方式。")
+              : t(lang, "The payroll setting could not be saved. Check all required fields.", "工资设置未能保存，请检查必填项。")}
+        </div>
+      ) : null}
+
+      <section style={{ marginBottom: 16, padding: 14, border: "1px solid #bfdbfe", borderRadius: 10, background: "#f8fbff", display: "grid", gap: 12 }}>
+        <div>
+          <h3 style={{ margin: 0 }}>{t(lang, "Employment and lesson-pay treatment", "任职与课次计薪方式")}</h3>
+          <div style={{ marginTop: 4, color: "#475569", fontSize: 13 }}>
+            {t(
+              lang,
+              "Effective dates preserve historical payroll. Full-time lessons remain visible, but their payable amount is zero unless management records a session exception.",
+              "生效日期用于保留历史工资。全职课次仍会显示，但应付金额为零；如需单独计薪，须由管理为具体课次登记例外。",
+            )}
+          </div>
+        </div>
+        {administration.terms.length === 0 ? (
+          <div style={{ color: "#64748b" }}>{t(lang, "No employment term recorded; hourly lesson pay applies.", "尚未登记任职期间，按课时费正常计薪。")}</div>
+        ) : (
+          <div style={{ display: "grid", gap: 10 }}>
+            {administration.terms.map((term) => (
+              <form key={term.id} action={saveEmploymentTermAction} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, alignItems: "end", padding: 10, border: "1px solid #dbeafe", borderRadius: 8, background: "#fff" }}>
+                <input type="hidden" name="teacherId" value={p.teacherId} />
+                <input type="hidden" name="employmentTermId" value={term.id} />
+                <input type="hidden" name="month" value={month} />
+                <input type="hidden" name="scope" value={scope} />
+                <label style={{ display: "grid", gap: 4 }}>
+                  <span>{t(lang, "Employment type", "任职类型")}</span>
+                  <select name="employmentType" defaultValue={term.employmentType} disabled={!canManageEmployment}>
+                    {TEACHER_EMPLOYMENT_TYPES.map((value) => <option key={value} value={value}>{employmentTypeLabel(lang, value)}</option>)}
+                  </select>
+                </label>
+                <label style={{ display: "grid", gap: 4 }}>
+                  <span>{t(lang, "Lesson pay", "课次计薪")}</span>
+                  <select name="lessonPayMode" defaultValue={term.lessonPayMode} disabled={!canManageEmployment}>
+                    {TEACHER_LESSON_PAY_MODES.map((value) => <option key={value} value={value}>{lessonPayModeLabel(lang, value)}</option>)}
+                  </select>
+                </label>
+                <label style={{ display: "grid", gap: 4 }}>
+                  <span>{t(lang, "Effective from", "生效日期")}</span>
+                  <input name="effectiveFrom" type="date" defaultValue={formatBusinessDateOnly(term.effectiveFrom)} disabled={!canManageEmployment} required />
+                </label>
+                <label style={{ display: "grid", gap: 4 }}>
+                  <span>{t(lang, "Effective through (optional)", "有效至（可选）")}</span>
+                  <input name="effectiveTo" type="date" defaultValue={term.effectiveTo ? formatBusinessDateOnly(new Date(term.effectiveTo.getTime() - 1)) : ""} disabled={!canManageEmployment} />
+                </label>
+                <label style={{ display: "grid", gap: 4, gridColumn: "span 2" }}>
+                  <span>{t(lang, "Internal basis", "内部依据")}</span>
+                  <input name="note" defaultValue={term.note ?? ""} disabled={!canManageEmployment} placeholder={t(lang, "e.g. Full-time start confirmed by management", "例如：管理确认的全职入职日")} />
+                </label>
+                {canManageEmployment ? <button type="submit">{t(lang, "Save employment term", "保存任职期间")}</button> : null}
+              </form>
+            ))}
+          </div>
+        )}
+        {canManageEmployment ? (
+          <details>
+            <summary style={{ cursor: "pointer", fontWeight: 700 }}>{t(lang, "Add a new employment term", "新增任职期间")}</summary>
+            <form action={saveEmploymentTermAction} style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, alignItems: "end" }}>
+              <input type="hidden" name="teacherId" value={p.teacherId} />
+              <input type="hidden" name="month" value={month} />
+              <input type="hidden" name="scope" value={scope} />
+              <label style={{ display: "grid", gap: 4 }}>
+                <span>{t(lang, "Employment type", "任职类型")}</span>
+                <select name="employmentType" defaultValue="FULL_TIME">
+                  {TEACHER_EMPLOYMENT_TYPES.map((value) => <option key={value} value={value}>{employmentTypeLabel(lang, value)}</option>)}
+                </select>
+              </label>
+              <label style={{ display: "grid", gap: 4 }}>
+                <span>{t(lang, "Lesson pay", "课次计薪")}</span>
+                <select name="lessonPayMode" defaultValue="INCLUDED_IN_SALARY">
+                  {TEACHER_LESSON_PAY_MODES.map((value) => <option key={value} value={value}>{lessonPayModeLabel(lang, value)}</option>)}
+                </select>
+              </label>
+              <label style={{ display: "grid", gap: 4 }}>
+                <span>{t(lang, "Effective from", "生效日期")}</span>
+                <input name="effectiveFrom" type="date" required />
+              </label>
+              <label style={{ display: "grid", gap: 4 }}>
+                <span>{t(lang, "Effective through (optional)", "有效至（可选）")}</span>
+                <input name="effectiveTo" type="date" />
+              </label>
+              <label style={{ display: "grid", gap: 4, gridColumn: "span 2" }}>
+                <span>{t(lang, "Internal basis", "内部依据")}</span>
+                <input name="note" required />
+              </label>
+              <button type="submit">{t(lang, "Add employment term", "新增任职期间")}</button>
+            </form>
+          </details>
+        ) : null}
+      </section>
+
+      <section style={{ marginBottom: 16, padding: 14, border: "1px solid #e2e8f0", borderRadius: 10, background: "#fff", display: "grid", gap: 8 }}>
+        <div>
+          <h3 style={{ margin: 0 }}>{t(lang, "Payroll note for this month", "本月工资备注")}</h3>
+          <div style={{ marginTop: 4, color: "#64748b", fontSize: 13 }}>
+            {t(lang, "Use this for payroll explanation only. It does not create or replace academic lesson feedback.", "这里只记录工资说明，不会生成或替代老师的课后反馈。")}
+          </div>
+        </div>
+        <form action={savePayrollNoteAction} style={{ display: "grid", gap: 8 }}>
+          <input type="hidden" name="teacherId" value={p.teacherId} />
+          <input type="hidden" name="month" value={month} />
+          <input type="hidden" name="scope" value={scope} />
+          <textarea name="payrollNote" rows={3} defaultValue={administration.note?.note ?? ""} placeholder={t(lang, "Example: Full-time from 10 Aug 2026; lessons from that date are included in monthly salary.", "例如：2026年8月10日起转为全职，该日起课次已含在月薪中。")}/>
+          <button type="submit">{t(lang, "Save payroll note", "保存工资备注")}</button>
+        </form>
+      </section>
+
       <div style={{ marginBottom: 16, padding: 10, border: "1px solid #eee", borderRadius: 8, background: "#fafafa" }}>
         <div>
           <b>{t(lang, "Sessions", "课次数")}</b>: {data.totalSessions}
@@ -273,6 +558,9 @@ export default async function TeacherPayrollDetailPage({
             : data.totalCurrencyTotals.map((item) => (
                 <div key={item.currencyCode}>{formatMoneyCents(item.amountCents, item.currencyCode)}</div>
               ))}
+        </div>
+        <div>
+          <b>{t(lang, "Included in monthly salary", "已含在全职月薪")}</b>: {includedInSalaryCount} {t(lang, "session(s)", "节课")}
         </div>
       </div>
 
@@ -323,6 +611,7 @@ export default async function TeacherPayrollDetailPage({
               <th align="left">{t(lang, "Course Combo", "课程组合")}</th>
               <th align="left">{t(lang, "Sessions", "课次数")}</th>
               <th align="left">{t(lang, "Cancelled+Charged", "取消但扣课时")}</th>
+              <th align="left">{t(lang, "Included in salary", "已含月薪")}</th>
               <th align="left">{t(lang, "Hours", "课时")}</th>
               <th align="left">{t(lang, "Hourly Rate", "课时费")}</th>
               <th align="left">{t(lang, "Amount", "金额")}</th>
@@ -341,6 +630,7 @@ export default async function TeacherPayrollDetailPage({
                 </td>
                 <td>{row.sessionCount}</td>
                 <td style={{ color: row.chargedExcusedSessions > 0 ? "#9a3412" : "#64748b", fontWeight: 700 }}>{row.chargedExcusedSessions}</td>
+                <td style={{ color: row.includedInSalarySessions > 0 ? "#1d4ed8" : "#64748b", fontWeight: 700 }}>{row.includedInSalarySessions}</td>
                 <td>{row.totalHours}</td>
                 <td>{formatMoneyCents(row.hourlyRateCents, row.currencyCode)}</td>
                 <td>{formatMoneyCents(row.amountCents, row.currencyCode)}</td>
@@ -388,11 +678,40 @@ export default async function TeacherPayrollDetailPage({
                 <td>{row.totalHours}</td>
                 <td>{formatMoneyCents(row.hourlyRateCents, row.currencyCode)}</td>
                 <td>
-                  {row.isChargedExcused ? (
-                    <span style={{ color: "#9a3412", fontWeight: 700 }}>{t(lang, "Cancelled+Charged", "取消但扣课时")}</span>
-                  ) : (
-                    "-"
-                  )}
+                  <div style={{ display: "grid", gap: 5 }}>
+                    {row.isChargedExcused ? <span style={{ color: "#9a3412", fontWeight: 700 }}>{t(lang, "Cancelled+Charged", "取消但扣课时")}</span> : null}
+                    <span style={{ color: row.paymentTreatment.payMode === "INCLUDED_IN_SALARY" ? "#1d4ed8" : "#166534", fontWeight: 700 }}>
+                      {lessonPayModeLabel(lang, row.paymentTreatment.payMode)}
+                    </span>
+                    {row.paymentTreatment.source === "SESSION_OVERRIDE" ? (
+                      <span style={{ color: "#7c3aed", fontSize: 12 }}>{t(lang, "Session exception", "逐课例外")}: {row.paymentTreatment.reason}</span>
+                    ) : null}
+                    {canManageEmployment ? (
+                      <details>
+                        <summary style={{ cursor: "pointer", fontSize: 12 }}>{t(lang, "Manage session pay", "管理逐课计薪")}</summary>
+                        <form action={saveSessionPayOverrideAction} style={{ marginTop: 6, display: "grid", gap: 6, minWidth: 220 }}>
+                          <input type="hidden" name="teacherId" value={p.teacherId} />
+                          <input type="hidden" name="sessionId" value={row.sessionId} />
+                          <input type="hidden" name="month" value={month} />
+                          <input type="hidden" name="scope" value={scope} />
+                          <select name="payMode" defaultValue={row.paymentTreatment.payMode}>
+                            {TEACHER_LESSON_PAY_MODES.map((value) => <option key={value} value={value}>{lessonPayModeLabel(lang, value)}</option>)}
+                          </select>
+                          <input name="reason" defaultValue={row.paymentTreatment.source === "SESSION_OVERRIDE" ? row.paymentTreatment.reason ?? "" : ""} required placeholder={t(lang, "Required exception reason", "必填例外原因")} />
+                          <button type="submit">{t(lang, "Save exception", "保存例外")}</button>
+                        </form>
+                        {row.paymentTreatment.overrideId ? (
+                          <form action={clearSessionPayOverrideAction} style={{ marginTop: 6 }}>
+                            <input type="hidden" name="teacherId" value={p.teacherId} />
+                            <input type="hidden" name="sessionId" value={row.sessionId} />
+                            <input type="hidden" name="month" value={month} />
+                            <input type="hidden" name="scope" value={scope} />
+                            <button type="submit">{t(lang, "Clear exception", "清除例外")}</button>
+                          </form>
+                        ) : null}
+                      </details>
+                    ) : null}
+                  </div>
                 </td>
                 <td>
                   <span style={{ color: row.isCompleted ? "#166534" : "#b91c1c", fontWeight: 700 }}>
@@ -402,7 +721,12 @@ export default async function TeacherPayrollDetailPage({
                 <td style={{ color: row.isCompleted ? "#64748b" : "#b45309", fontWeight: row.isCompleted ? 400 : 700 }}>
                   {row.isCompleted ? "-" : pendingReasonLabel(lang, row.pendingReason)}
                 </td>
-                <td>{formatMoneyCents(row.amountCents, row.currencyCode)}</td>
+                <td>
+                  <div>{formatMoneyCents(row.amountCents, row.currencyCode)}</div>
+                  {row.amountCents !== row.contractualAmountCents ? (
+                    <div style={{ color: "#64748b", fontSize: 12 }}>{t(lang, "Hourly equivalent", "原课时费折算")}: {formatMoneyCents(row.contractualAmountCents, row.currencyCode)}</div>
+                  ) : null}
+                </td>
               </tr>
             ))}
           </tbody>

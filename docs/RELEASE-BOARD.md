@@ -1,5 +1,36 @@
 # RELEASE BOARD
 
+- `2026-08-17-r374`: ready to apply effective-dated full-time payroll treatment for Jessika, Jasmine and Sharilyn without rewriting historical course rates or academic feedback.
+
+## 2026-08-17-r374 Ready
+
+- Scope: keep all teaching sessions auditable while setting standard lesson pay to zero from each approved full-time effective date.
+- Business impact:
+  - Jessika remains hourly-payable before 10 Aug 2026 and is included in monthly salary from 10 Aug onward
+  - Jasmine and Sharilyn are included in monthly salary from 1 Jun 2026
+  - finance can record month-specific payroll explanations without creating fake academic feedback
+  - management can approve a separately payable session exception with a required reason
+  - teacher web, staff miniapp, payroll CSV and tutor-cost Excel all show the same treatment
+- Files:
+  - `prisma/migrations/20260817143000_add_effective_teacher_employment_payroll/migration.sql`
+  - `lib/teacher-employment-payroll.ts`
+  - `lib/teacher-payroll.ts`
+  - `app/admin/reports/teacher-payroll/*`
+  - `app/teacher/payroll/page.tsx`
+  - `app/api/miniapp/staff/teacher/payroll/route.ts`
+  - `app/api/exports/tutor-cost-cutoff/route.ts`
+  - `tests/teacher-employment-payroll.test.ts`
+- Verification before deploy:
+  - 10 focused payroll tests
+  - Prisma validation, TypeScript check and 251-route production build
+  - `git diff --check` and guarded release preflight
+- Post-deploy verification:
+  - confirm migration and three effective-date terms exist
+  - reconcile Jessika before/after 10 Aug and Jasmine/Sharilyn from 1 Jun
+  - confirm local, GitHub and server commits align
+  - confirm PM2 is online and `/admin/login` returns HTTP 200
+- Task doc: `docs/tasks/TASK-20260817-effective-full-time-payroll.md`
+
 - `2026-08-17-r373`: ready to expose complete teacher feedback history and remove fully cancelled lessons from feedback monitoring, student history warnings, academic statistics, lead-desk workload and parent next-lesson results.
 
 ## 2026-08-17-r373 Ready

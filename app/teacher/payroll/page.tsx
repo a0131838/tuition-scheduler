@@ -13,6 +13,7 @@ import {
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { formatBusinessDateTime } from "@/lib/date-only";
+import { loadTeacherPayrollAdministration } from "@/lib/teacher-employment-payroll";
 import TeacherWorkspaceHero from "../_components/TeacherWorkspaceHero";
 
 const DATE_FMT = new Intl.DateTimeFormat("en-GB", {
@@ -393,7 +394,10 @@ async function TeacherPayrollBody({
   financeApproverEmails: string[];
   lang: Awaited<ReturnType<typeof getLang>>;
 }) {
-  const data = await loadTeacherPayrollDetail(month, teacherId, scope);
+  const [data, administration] = await Promise.all([
+    loadTeacherPayrollDetail(month, teacherId, scope),
+    loadTeacherPayrollAdministration(teacherId, month),
+  ]);
   if (!data) {
     return <div style={{ color: "#b00" }}>{t(lang, "Payroll data not found.", "未找到工资数据。")}</div>;
   }
@@ -424,6 +428,9 @@ async function TeacherPayrollBody({
     data.totalCurrencyTotals.length === 0
       ? formatMoneyCents(0)
       : data.totalCurrencyTotals.map((item) => formatMoneyCents(item.amountCents, item.currencyCode)).join(" / ");
+  const includedInSalaryCount = data.sessionRows.filter(
+    (row) => row.paymentTreatment.payMode === "INCLUDED_IN_SALARY",
+  ).length;
 
   return (
     <>
@@ -449,6 +456,16 @@ async function TeacherPayrollBody({
           <div style={{ color: "#475569", marginTop: 4 }}>{t(lang, "The teaching period used for this payroll.", "这张工资单所使用的教学统计周期。")}</div>
         </div>
       </section>
+      {administration.note?.note ? (
+        <div style={{ marginBottom: 12, padding: "10px 12px", border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 8, color: "#1e3a8a" }}>
+          <b>{t(lang, "Payroll note", "工资备注")}</b>: {administration.note.note}
+        </div>
+      ) : null}
+      {includedInSalaryCount > 0 ? (
+        <div style={{ marginBottom: 12, padding: "10px 12px", border: "1px solid #86efac", background: "#f0fdf4", borderRadius: 8, color: "#166534" }}>
+          {t(lang, `${includedInSalaryCount} session(s) are included in monthly salary and therefore show a payable amount of zero.`, `${includedInSalaryCount} 节课已含在全职月薪中，因此应付金额显示为零。`)}
+        </div>
+      ) : null}
       <div style={{ marginBottom: 12, padding: "10px 12px", border: "1px solid #dbeafe", background: "#f8fbff", borderRadius: 8 }}>
         <div style={{ display: "flex", gap: 8, justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
           <div style={{ fontWeight: 700, color: "#1d4ed8" }}>
@@ -579,6 +596,7 @@ async function TeacherPayrollBody({
             <tr style={{ background: "#f5f5f5" }}>
               <th align="left">{t(lang, "Course Combo", "课程组合")}</th>
               <th align="left">{t(lang, "Sessions", "课次数")}</th>
+              <th align="left">{t(lang, "Included in salary", "已含月薪")}</th>
               <th align="left">{t(lang, "Hours", "课时")}</th>
               <th align="left">{t(lang, "Hourly Rate", "课时费")}</th>
               <th align="left">{t(lang, "Amount", "金额")}</th>
@@ -596,6 +614,7 @@ async function TeacherPayrollBody({
                   ) : null}
                 </td>
                 <td>{row.sessionCount}</td>
+                <td>{row.includedInSalarySessions}</td>
                 <td>{row.totalHours}</td>
                 <td>{formatMoneyCents(row.hourlyRateCents, row.currencyCode)}</td>
                 <td>{formatMoneyCents(row.amountCents, row.currencyCode)}</td>
@@ -622,6 +641,7 @@ async function TeacherPayrollBody({
               <th align="left">{t(lang, "Course Combo", "课程组合")}</th>
               <th align="left">{t(lang, "Hours", "课时")}</th>
               <th align="left">{t(lang, "Hourly Rate", "课时费")}</th>
+              <th align="left">{t(lang, "Pay treatment", "计薪方式")}</th>
               <th align="left">{t(lang, "Status", "状态")}</th>
               <th align="left">{t(lang, "Pending Reason", "未完成原因")}</th>
               <th align="left">{t(lang, "Amount", "金额")}</th>
@@ -644,6 +664,11 @@ async function TeacherPayrollBody({
                 </td>
                 <td>{row.totalHours}</td>
                 <td>{formatMoneyCents(row.hourlyRateCents, row.currencyCode)}</td>
+                <td style={{ color: row.paymentTreatment.payMode === "INCLUDED_IN_SALARY" ? "#1d4ed8" : "#166534", fontWeight: 700 }}>
+                  {row.paymentTreatment.payMode === "INCLUDED_IN_SALARY"
+                    ? t(lang, "Included in monthly salary", "已含在全职月薪")
+                    : t(lang, "Separately payable", "单独计薪")}
+                </td>
                 <td>
                   <span style={{ color: row.isCompleted ? "#166534" : "#b91c1c", fontWeight: 700 }}>
                     {row.isCompleted ? t(lang, "Completed", "已完成") : t(lang, "Pending", "未完成")}
@@ -652,7 +677,12 @@ async function TeacherPayrollBody({
                 <td style={{ color: row.isCompleted ? "#64748b" : "#b45309", fontWeight: row.isCompleted ? 400 : 700 }}>
                   {row.isCompleted ? "-" : pendingReasonLabel(lang, row.pendingReason)}
                 </td>
-                <td>{formatMoneyCents(row.amountCents, row.currencyCode)}</td>
+                <td>
+                  <div>{formatMoneyCents(row.amountCents, row.currencyCode)}</div>
+                  {row.amountCents !== row.contractualAmountCents ? (
+                    <div style={{ color: "#64748b", fontSize: 12 }}>{t(lang, "Hourly equivalent", "原课时费折算")}: {formatMoneyCents(row.contractualAmountCents, row.currencyCode)}</div>
+                  ) : null}
+                </td>
               </tr>
             ))}
           </tbody>

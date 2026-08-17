@@ -124,6 +124,7 @@ export default async function TutorCostExportPage({
                   <tr style={{ background: "#f8fafc", borderTop: "1px solid #e5e7eb" }}>
                     <th align="left">{t(lang, "Teacher", "老师")}</th>
                     <th align="right">{t(lang, "Sessions", "课次")}</th>
+                    <th align="right">{t(lang, "Included in salary", "已含月薪")}</th>
                     <th align="right">{t(lang, "Hours", "课时")}</th>
                     <th align="left">{t(lang, "Currency", "币种")}</th>
                     <th align="right">{t(lang, "Tutor cost", "老师成本")}</th>
@@ -134,6 +135,7 @@ export default async function TutorCostExportPage({
                     <tr key={`${row.teacherId}-${row.currencyCode}`} style={{ borderTop: "1px solid #eef2f7" }}>
                       <td style={{ fontWeight: 700 }}>{row.teacherName}</td>
                       <td align="right">{row.sessionCount}</td>
+                      <td align="right" style={{ color: row.includedInSalarySessions > 0 ? "#1d4ed8" : "#64748b", fontWeight: 700 }}>{row.includedInSalarySessions}</td>
                       <td align="right">{row.totalHours.toFixed(2)}</td>
                       <td>{row.currencyCode}</td>
                       <td align="right">{moneyCents(row.amountCents)}</td>

@@ -98,7 +98,7 @@ export async function GET(req: Request) {
   workbook.modified = new Date();
 
   const summary = workbook.addWorksheet("Summary");
-  summary.mergeCells("A1:Y1");
+  summary.mergeCells("A1:W1");
   summary.getCell("A1").value = "Tutor Cost Cut-off Report";
   summary.getCell("A1").font = { bold: true, size: 15, color: { argb: "FF0F172A" } };
   summary.getCell("A2").value = `Period: ${report.periodLabel} (inclusive of the 15th)`;
@@ -126,6 +126,7 @@ export async function GET(req: Request) {
     { header: "Legacy Bank Account Number", key: "bankAccountNumber", width: 22 },
     { header: "Legacy SWIFT / Branch Code", key: "bankBranchCode", width: 20 },
     { header: "Sessions", key: "sessionCount", width: 12 },
+    { header: "Included in Monthly Salary", key: "includedInSalarySessions", width: 24 },
     { header: "Hours", key: "totalHours", width: 12 },
     { header: "Currency", key: "currencyCode", width: 12 },
     { header: "Tutor Cost", key: "amount", width: 16 },
@@ -155,6 +156,7 @@ export async function GET(req: Request) {
       bankAccountNumber: profile?.bankAccountNumber ?? "",
       bankBranchCode: profile?.bankBranchCode ?? "",
       sessionCount: row.sessionCount,
+      includedInSalarySessions: row.includedInSalarySessions,
       totalHours: row.totalHours,
       currencyCode: row.currencyCode,
       amount: moneyCents(row.amountCents),
@@ -162,9 +164,9 @@ export async function GET(req: Request) {
     });
   }
   summary.views = [{ state: "frozen", ySplit: 7 }];
-  summary.autoFilter = { from: "A7", to: "Y7" };
-  summary.getColumn("V").numFmt = "0.00";
-  summary.getColumn("X").numFmt = "#,##0.00";
+  summary.autoFilter = { from: "A7", to: "W7" };
+  summary.getColumn("T").numFmt = "0.00";
+  summary.getColumn("V").numFmt = "#,##0.00";
   applyDataBorders(summary, 8);
 
   const details = workbook.addWorksheet("Details");
@@ -201,6 +203,9 @@ export async function GET(req: Request) {
     { header: "Teaching Mode", key: "teachingMode", width: 14 },
     { header: "Hours", key: "totalHours", width: 10 },
     { header: "Hourly Rate", key: "hourlyRate", width: 14 },
+    { header: "Payment Treatment", key: "paymentTreatment", width: 24 },
+    { header: "Contractual Hourly Equivalent", key: "contractualAmount", width: 24 },
+    { header: "Exception Reason", key: "exceptionReason", width: 28 },
     { header: "Currency", key: "currencyCode", width: 10 },
     { header: "Tutor Cost", key: "amount", width: 14 },
     { header: "Session ID", key: "sessionId", width: 38 },
@@ -238,6 +243,9 @@ export async function GET(req: Request) {
       teachingMode: formatTeachingModeLabel(row.teachingMode),
       totalHours: row.totalHours,
       hourlyRate: moneyCents(row.hourlyRateCents),
+      paymentTreatment: row.paymentTreatment.payMode === "INCLUDED_IN_SALARY" ? "Included in monthly salary" : "Separately payable",
+      contractualAmount: moneyCents(row.contractualAmountCents),
+      exceptionReason: row.paymentTreatment.source === "SESSION_OVERRIDE" ? row.paymentTreatment.reason ?? "" : "",
       currencyCode: row.currencyCode,
       amount: moneyCents(row.amountCents),
       sessionId: row.sessionId,
@@ -245,8 +253,9 @@ export async function GET(req: Request) {
   }
   details.views = [{ state: "frozen", ySplit: 5 }];
   details.autoFilter = { from: "A5", to: "AG5" };
-  details.getColumn("AC").numFmt = "0.00";
-  details.getColumn("AD").numFmt = "#,##0.00";
+  details.getColumn("Z").numFmt = "0.00";
+  details.getColumn("AA").numFmt = "#,##0.00";
+  details.getColumn("AC").numFmt = "#,##0.00";
   details.getColumn("AF").numFmt = "#,##0.00";
   applyDataBorders(details, 6);
 

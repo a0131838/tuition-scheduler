@@ -3,6 +3,7 @@ import { requireMiniappTeacher } from "@/app/api/miniapp/staff/teacher/_lib";
 import { logAudit } from "@/lib/audit-log";
 import { areAllApproversConfirmed, getApprovalRoleConfig } from "@/lib/approval-flow";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
+import { loadTeacherPayrollAdministration } from "@/lib/teacher-employment-payroll";
 import {
   confirmTeacherPayroll,
   formatMoneyCents,
@@ -41,9 +42,10 @@ export async function GET(req: Request) {
     return ok({ month, scope, available: false, status: { code: "NOT_SENT", text: "工资单暂未开放", needsAction: false } });
   }
 
-  const [detail, approvalConfig] = await Promise.all([
+  const [detail, approvalConfig, administration] = await Promise.all([
     loadTeacherPayrollDetail(month, access.teacherId, scope),
     getApprovalRoleConfig(),
+    loadTeacherPayrollAdministration(access.teacherId, month),
   ]);
   if (!detail) return bad("未找到工资数据", 404);
   const managerApproved = areAllApproversConfirmed(publish.managerApprovedBy, approvalConfig.managerApproverEmails);
@@ -82,12 +84,14 @@ export async function GET(req: Request) {
     available: true,
     status: { code: stage, text: stageText[stage], needsAction: stage === "TEACHER_CONFIRM" },
     financeRejectReason: publish.financeRejectReason,
+    payrollNote: administration.note?.note ?? "",
     summary: {
       totalAmountText: detail.totalCurrencyTotals.length
         ? detail.totalCurrencyTotals.map((item) => formatMoneyCents(item.amountCents, item.currencyCode)).join(" / ")
         : formatMoneyCents(0),
       totalSessions: detail.totalSessions,
       totalHours: detail.totalHours,
+      includedInSalarySessions: detail.sessionRows.filter((row) => row.paymentTreatment.payMode === "INCLUDED_IN_SALARY").length,
       periodText: `${formatBusinessDateOnly(detail.range.start)} - ${formatBusinessDateOnly(new Date(detail.range.end.getTime() - 1000))}`,
     },
     timeline: [
@@ -104,6 +108,7 @@ export async function GET(req: Request) {
       totalHours: row.totalHours,
       hourlyRateText: formatMoneyCents(row.hourlyRateCents, row.currencyCode),
       amountText: formatMoneyCents(row.amountCents, row.currencyCode),
+      includedInSalarySessions: row.includedInSalarySessions,
       usedRateFallback: row.usedRateFallback,
     })),
     sessions: detail.sessionRows.slice().reverse().map((row) => ({
@@ -113,6 +118,10 @@ export async function GET(req: Request) {
       comboLabel: comboLabel(row),
       totalHours: row.totalHours,
       amountText: formatMoneyCents(row.amountCents, row.currencyCode),
+      contractualAmountText: formatMoneyCents(row.contractualAmountCents, row.currencyCode),
+      paymentTreatment: row.paymentTreatment.payMode,
+      paymentTreatmentText: row.paymentTreatment.payMode === "INCLUDED_IN_SALARY" ? "已含在全职月薪" : "单独计薪",
+      paymentExceptionReason: row.paymentTreatment.source === "SESSION_OVERRIDE" ? row.paymentTreatment.reason : "",
       completed: row.isCompleted,
       pendingReasonText: pendingReasonText(row.pendingReason),
     })),

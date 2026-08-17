@@ -1,6 +1,11 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit-log";
+import {
+  loadPayrollEmploymentContext,
+  resolvePayrollPaymentTreatment,
+  type PayrollPaymentTreatment,
+} from "@/lib/teacher-employment-payroll";
 
 const BIZ_UTC_OFFSET_MS = 8 * 60 * 60 * 1000;
 const PAYROLL_RATE_FALLBACK_KEY = "teacher_payroll_rates_v1";
@@ -40,6 +45,8 @@ export type PayrollBreakdownRow = {
   currencyCode: PayrollCurrencyCode;
   amountCents: number;
   chargedExcusedSessions: number;
+  includedInSalarySessions: number;
+  separatelyPayableSessions: number;
   usedRateFallback: boolean;
 };
 
@@ -54,6 +61,7 @@ export type PayrollTeacherSummary = {
   completedSessions: number;
   pendingSessions: number;
   chargedExcusedSessions: number;
+  includedInSalarySessions: number;
 };
 
 export type PayrollRateEditorRow = {
@@ -70,6 +78,7 @@ export type PayrollRateEditorRow = {
   currencyCode: PayrollCurrencyCode;
   matchedSessions: number;
   matchedHours: number;
+  matchedPayableSessions: number;
   usesFallbackRate: boolean;
 };
 
@@ -88,6 +97,7 @@ export type PayrollTeacherDetailComboRow = {
   currencyCode: PayrollCurrencyCode;
   amountCents: number;
   chargedExcusedSessions: number;
+  includedInSalarySessions: number;
   usedRateFallback: boolean;
 };
 
@@ -106,6 +116,8 @@ export type PayrollTeacherDetailSessionRow = {
   hourlyRateCents: number;
   currencyCode: PayrollCurrencyCode;
   amountCents: number;
+  contractualAmountCents: number;
+  paymentTreatment: PayrollPaymentTreatment;
   isCompleted: boolean;
   isChargedExcused: boolean;
   pendingReason: PayrollPendingReason | null;
@@ -120,6 +132,7 @@ export type TutorCostCutoffSummaryRow = {
   totalHours: number;
   currencyCode: PayrollCurrencyCode;
   amountCents: number;
+  includedInSalarySessions: number;
 };
 
 export type TutorCostCutoffDetailRow = {
@@ -139,6 +152,8 @@ export type TutorCostCutoffDetailRow = {
   hourlyRateCents: number;
   currencyCode: PayrollCurrencyCode;
   amountCents: number;
+  contractualAmountCents: number;
+  paymentTreatment: PayrollPaymentTreatment;
   usedRateFallback: boolean;
 };
 
@@ -917,6 +932,10 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
       currencyCode: normalizePayrollCurrencyCode(r.currencyCode),
     });
   }
+  const employmentContext = await loadPayrollEmploymentContext({
+    teacherIds: Array.from(teacherIds),
+    range,
+  });
 
   const breakdownByCombo = new Map<string, PayrollBreakdownRow>();
   const teacherTotals = new Map<string, PayrollTeacherSummary>();
@@ -950,7 +969,15 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
     const resolvedRate = resolveRate(rateMap, effectiveTeacher.id, courseId, subjectId, levelId, teachingMode);
     const hourlyRateCents = resolvedRate.hourlyRateCents;
     const currencyCode = resolvedRate.currencyCode;
-    const amountCents = Math.round((totalMinutes * hourlyRateCents) / 60);
+    const contractualAmountCents = Math.round((totalMinutes * hourlyRateCents) / 60);
+    const paymentTreatment = resolvePayrollPaymentTreatment({
+      teacherId: effectiveTeacher.id,
+      sessionId: s.id,
+      startAt: s.startAt,
+      context: employmentContext,
+    });
+    const includedInSalary = paymentTreatment.payMode === "INCLUDED_IN_SALARY";
+    const amountCents = includedInSalary ? 0 : contractualAmountCents;
 
     const key = comboCurrencyKey(effectiveTeacher.id, courseId, subjectId, levelId, teachingMode, currencyCode);
     const prev = breakdownByCombo.get(key);
@@ -960,6 +987,8 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
       prev.totalHours = toHours(prev.totalMinutes);
       prev.amountCents += amountCents;
       if (chargedExcused) prev.chargedExcusedSessions += 1;
+      if (includedInSalary) prev.includedInSalarySessions += 1;
+      else prev.separatelyPayableSessions += 1;
       if (resolvedRate.usedFallback) prev.usedRateFallback = true;
     } else {
       breakdownByCombo.set(key, {
@@ -979,6 +1008,8 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
         currencyCode,
         amountCents,
         chargedExcusedSessions: chargedExcused ? 1 : 0,
+        includedInSalarySessions: includedInSalary ? 1 : 0,
+        separatelyPayableSessions: includedInSalary ? 0 : 1,
         usedRateFallback: resolvedRate.usedFallback,
       });
     }
@@ -995,6 +1026,7 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
       if (completed) teacherPrev.completedSessions += 1;
       else teacherPrev.pendingSessions += 1;
       if (chargedExcused) teacherPrev.chargedExcusedSessions += 1;
+      if (includedInSalary) teacherPrev.includedInSalarySessions += 1;
     } else {
       const teacherCurrencyMap = new Map<PayrollCurrencyCode, number>();
       upsertCurrencyTotal(teacherCurrencyMap, currencyCode, amountCents);
@@ -1009,6 +1041,7 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
         completedSessions: completed ? 1 : 0,
         pendingSessions: completed ? 0 : 1,
         chargedExcusedSessions: chargedExcused ? 1 : 0,
+        includedInSalarySessions: includedInSalary ? 1 : 0,
       });
     }
   }
@@ -1041,6 +1074,7 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
       currencyCode: row.currencyCode,
       matchedSessions: row.sessionCount,
       matchedHours: row.totalHours,
+      matchedPayableSessions: row.separatelyPayableSessions,
       usesFallbackRate: row.usedRateFallback,
     });
   }
@@ -1063,6 +1097,7 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
         currencyCode: normalizePayrollCurrencyCode(r.currencyCode),
         matchedSessions: 0,
         matchedHours: 0,
+        matchedPayableSessions: 0,
         usesFallbackRate: false,
       });
     }
@@ -1192,6 +1227,10 @@ export async function loadTutorCostCutoffReport(month: string) {
       currencyCode: normalizePayrollCurrencyCode(rate.currencyCode),
     });
   }
+  const employmentContext = await loadPayrollEmploymentContext({
+    teacherIds: Array.from(teacherIds),
+    range,
+  });
 
   const detailRows: TutorCostCutoffDetailRow[] = [];
   const summaryMap = new Map<string, TutorCostCutoffSummaryRow>();
@@ -1231,7 +1270,15 @@ export async function loadTutorCostCutoffReport(month: string) {
     const resolvedRate = resolveRate(rateMap, effectiveTeacher.id, courseId, subjectId, levelId, teachingMode);
     const hourlyRateCents = resolvedRate.hourlyRateCents;
     const currencyCode = resolvedRate.currencyCode;
-    const amountCents = Math.round((minutes * hourlyRateCents) / 60);
+    const contractualAmountCents = Math.round((minutes * hourlyRateCents) / 60);
+    const paymentTreatment = resolvePayrollPaymentTreatment({
+      teacherId: effectiveTeacher.id,
+      sessionId: session.id,
+      startAt: session.startAt,
+      context: employmentContext,
+    });
+    const includedInSalary = paymentTreatment.payMode === "INCLUDED_IN_SALARY";
+    const amountCents = includedInSalary ? 0 : contractualAmountCents;
 
     detailRows.push({
       sessionId: session.id,
@@ -1250,6 +1297,8 @@ export async function loadTutorCostCutoffReport(month: string) {
       hourlyRateCents,
       currencyCode,
       amountCents,
+      contractualAmountCents,
+      paymentTreatment,
       usedRateFallback: resolvedRate.usedFallback,
     });
 
@@ -1260,6 +1309,7 @@ export async function loadTutorCostCutoffReport(month: string) {
       prev.totalMinutes += minutes;
       prev.totalHours = toHours(prev.totalMinutes);
       prev.amountCents += amountCents;
+      if (includedInSalary) prev.includedInSalarySessions += 1;
     } else {
       summaryMap.set(summaryKey, {
         teacherId: effectiveTeacher.id,
@@ -1269,6 +1319,7 @@ export async function loadTutorCostCutoffReport(month: string) {
         totalHours: toHours(minutes),
         currencyCode,
         amountCents,
+        includedInSalarySessions: includedInSalary ? 1 : 0,
       });
     }
     totalMinutes += minutes;
@@ -1477,6 +1528,7 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
       currencyCode: normalizePayrollCurrencyCode(r.currencyCode),
     });
   }
+  const employmentContext = await loadPayrollEmploymentContext({ teacherIds: [teacherId], range });
 
   const comboMap = new Map<string, PayrollTeacherDetailComboRow>();
   const sessionRows: PayrollTeacherDetailSessionRow[] = [];
@@ -1506,7 +1558,15 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
     const resolvedRate = resolveRate(rateMap, teacherId, courseId, subjectId, levelId, teachingMode);
     const hourlyRateCents = resolvedRate.hourlyRateCents;
     const currencyCode = resolvedRate.currencyCode;
-    const amountCents = Math.round((minutes * hourlyRateCents) / 60);
+    const contractualAmountCents = Math.round((minutes * hourlyRateCents) / 60);
+    const paymentTreatment = resolvePayrollPaymentTreatment({
+      teacherId,
+      sessionId: s.id,
+      startAt: s.startAt,
+      context: employmentContext,
+    });
+    const includedInSalary = paymentTreatment.payMode === "INCLUDED_IN_SALARY";
+    const amountCents = includedInSalary ? 0 : contractualAmountCents;
 
     const key = comboCurrencyKey(teacherId, courseId, subjectId, levelId, teachingMode, currencyCode);
     const prev = comboMap.get(key);
@@ -1516,6 +1576,7 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
       prev.totalHours = toHours(prev.totalMinutes);
       prev.amountCents += amountCents;
       if (chargedExcused) prev.chargedExcusedSessions += 1;
+      if (includedInSalary) prev.includedInSalarySessions += 1;
       if (resolvedRate.usedFallback) prev.usedRateFallback = true;
     } else {
       comboMap.set(key, {
@@ -1533,6 +1594,7 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
         currencyCode,
         amountCents,
         chargedExcusedSessions: chargedExcused ? 1 : 0,
+        includedInSalarySessions: includedInSalary ? 1 : 0,
         usedRateFallback: resolvedRate.usedFallback,
       });
     }
@@ -1552,6 +1614,8 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
       hourlyRateCents,
       currencyCode,
       amountCents,
+      contractualAmountCents,
+      paymentTreatment,
       isCompleted: completed,
       isChargedExcused: chargedExcused,
       pendingReason: completion.pendingReason,

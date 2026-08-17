@@ -533,6 +533,7 @@ export default async function TeacherPayrollPage({
   const shownHours = payrollRows.reduce((sum, row) => sum + row.totalHours, 0);
   const shownPending = payrollRows.reduce((sum, row) => sum + row.pendingSessions, 0);
   const shownCompleted = payrollRows.reduce((sum, row) => sum + row.completedSessions, 0);
+  const shownIncludedInSalary = payrollRows.reduce((sum, row) => sum + row.includedInSalarySessions, 0);
   const shownCurrencyMap = new Map<PayrollCurrencyCode, number>();
   for (const row of payrollRows) {
     for (const item of row.currencyTotals) {
@@ -550,12 +551,12 @@ export default async function TeacherPayrollPage({
   if (unsentOnly) exportParams.set("unsentOnly", "1");
   const exportCsvHref = `/admin/reports/teacher-payroll/export?${exportParams.toString()}`;
   const missingRateTeacherSet = new Set(
-    data.rateEditorRows.filter((r) => r.hourlyRateCents <= 0).map((r) => r.teacherId)
+    data.rateEditorRows.filter((r) => r.matchedPayableSessions > 0 && r.hourlyRateCents <= 0).map((r) => r.teacherId)
   );
-  const unconfiguredRateCount = data.rateEditorRows.filter((r) => r.hourlyRateCents <= 0).length;
+  const unconfiguredRateCount = data.rateEditorRows.filter((r) => r.matchedPayableSessions > 0 && r.hourlyRateCents <= 0).length;
   const fallbackRateCount = data.rateEditorRows.filter((r) => r.usesFallbackRate).length;
   const rateRows = rateMissingOnly
-    ? data.rateEditorRows.filter((r) => r.hourlyRateCents <= 0)
+    ? data.rateEditorRows.filter((r) => r.matchedPayableSessions > 0 && r.hourlyRateCents <= 0)
     : data.rateEditorRows;
   const savedRateRowKey = saved && savedTeacherId && savedCourseId && savedTeachingMode
     ? `rate-${savedTeacherId}-${savedCourseId}-${savedSubjectId || "-"}-${savedLevelId || "-"}-${savedTeachingMode}`
@@ -1031,6 +1032,10 @@ export default async function TeacherPayrollPage({
           <div style={{ color: "#64748b", fontSize: 12 }}>{t(lang, "Completed", "已完成")}</div>
           <div style={{ fontSize: 22, fontWeight: 700, color: "#166534" }}>{shownCompleted}</div>
         </div>
+        <div style={{ border: "1px solid #bfdbfe", borderRadius: 10, padding: 10, background: "#eff6ff" }}>
+          <div style={{ color: "#1e40af", fontSize: 12 }}>{t(lang, "Included in monthly salary", "已含在全职月薪")}</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#1d4ed8" }}>{shownIncludedInSalary}</div>
+        </div>
         <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
           <div style={{ color: "#64748b", fontSize: 12 }}>{t(lang, "Estimated Salary", "预估工资")}</div>
           <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.35 }}>
@@ -1269,6 +1274,7 @@ export default async function TeacherPayrollPage({
                 <th align="left" style={payrollTableHeaderCellStyle}>{t(lang, "Completed", "已完成")}</th>
                 <th align="left" style={payrollTableHeaderCellStyle}>{t(lang, "Pending", "未完成")}</th>
                 <th align="left" style={payrollTableHeaderCellStyle}>{t(lang, "Hours", "课时")}</th>
+                <th align="left" style={payrollTableHeaderCellStyle}>{t(lang, "Included in salary", "已含月薪")}</th>
                 <th align="left" style={payrollTableHeaderCellStyle}>{t(lang, "Salary", "工资")}</th>
                 <th align="left" style={payrollTableHeaderCellStyle}>{t(lang, "Workflow", "流程状态")}</th>
                 <th align="left" style={payrollTableHeaderCellStyle}>{t(lang, "Actions", "操作")}</th>
@@ -1305,6 +1311,9 @@ export default async function TeacherPayrollPage({
                     <td style={{ borderTop: "1px solid #eee", color: "#166534", fontWeight: 700 }}>{row.completedSessions}</td>
                     <td style={{ borderTop: "1px solid #eee", color: row.pendingSessions > 0 ? "#b91c1c" : "#64748b", fontWeight: 700 }}>{row.pendingSessions}</td>
                     <td style={{ borderTop: "1px solid #eee" }}>{row.totalHours}</td>
+                    <td style={{ borderTop: "1px solid #eee", color: row.includedInSalarySessions > 0 ? "#1d4ed8" : "#64748b", fontWeight: 700 }}>
+                      {row.includedInSalarySessions}
+                    </td>
                     <td style={{ borderTop: "1px solid #eee" }}>
                       {row.currencyTotals.map((item) => (
                         <div key={item.currencyCode}>{formatMoneyCents(item.amountCents, item.currencyCode)}</div>

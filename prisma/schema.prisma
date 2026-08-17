@@ -486,10 +486,62 @@ model Teacher {
   selectedBookingSlots      StudentBookingLinkSelectedSlot[]
   bookingRequestSlotLocks   StudentBookingRequestSlotLock[]
   courseRates               TeacherCourseRate[]
+  employmentTerms           TeacherEmploymentTerm[]
+  payrollSessionOverrides   TeacherPayrollSessionOverride[]
+  payrollNotes              TeacherPayrollNote[]
   midtermReports            MidtermReport[]
   finalReports              FinalReport[]
   leadAssessmentRequests    LeadAssessmentRequest[]
   monthlySchedulingOffers   MonthlySchedulingOffer[]
+}
+
+model TeacherEmploymentTerm {
+  id             String    @id @default(uuid())
+  teacherId      String
+  employmentType String    @default("PART_TIME")
+  lessonPayMode  String    @default("SEPARATELY_PAYABLE")
+  effectiveFrom  DateTime
+  effectiveTo    DateTime?
+  note           String?
+  createdBy      String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId, effectiveFrom])
+  @@index([teacherId, effectiveTo])
+}
+
+model TeacherPayrollSessionOverride {
+  id        String   @id @default(uuid())
+  sessionId String   @unique
+  teacherId String
+  payMode   String
+  reason    String
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId, updatedAt])
+}
+
+model TeacherPayrollNote {
+  id        String   @id @default(uuid())
+  teacherId String
+  month     String
+  note      String
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, month])
+  @@index([month, updatedAt])
 }
 
 model TeacherCourseRate {
@@ -762,17 +814,18 @@ model Session {
   teacherId String?
   studentId String?
 
-  class                     Class                    @relation(fields: [classId], references: [id])
-  teacher                   Teacher?                 @relation("SessionTeacherOverride", fields: [teacherId], references: [id])
-  student                   Student?                 @relation("SessionStudent", fields: [studentId], references: [id])
+  class                     Class                          @relation(fields: [classId], references: [id])
+  teacher                   Teacher?                       @relation("SessionTeacherOverride", fields: [teacherId], references: [id])
+  student                   Student?                       @relation("SessionStudent", fields: [studentId], references: [id])
   attendances               Attendance[]
   feedbacks                 SessionFeedback[]
   teacherChanges            SessionTeacherChange[]
   bookingRequests           StudentBookingRequest[]
   signInAlerts              SignInAlert[]
   managerFeedbacks          ManagerTeacherFeedback[]
-  schedulingActionsAsSource TicketSchedulingAction[] @relation("TicketSchedulingSourceSession")
-  schedulingActionsAsResult TicketSchedulingAction[] @relation("TicketSchedulingResultSession")
+  payrollOverride           TeacherPayrollSessionOverride?
+  schedulingActionsAsSource TicketSchedulingAction[]       @relation("TicketSchedulingSourceSession")
+  schedulingActionsAsResult TicketSchedulingAction[]       @relation("TicketSchedulingResultSession")
 
   @@unique([classId, startAt, endAt])
   @@index([studentId])

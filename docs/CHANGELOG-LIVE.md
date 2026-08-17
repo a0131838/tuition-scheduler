@@ -1,5 +1,34 @@
 # CHANGELOG LIVE
 
+## 2026-08-17-r374
+
+- Release ID: `2026-08-17-r374`
+- Date/Time (Asia/Singapore): `2026-08-17`
+- Deployment status: `READY`
+- Scope: add effective-dated full-time employment treatment to teacher payroll so standard lessons remain visible but become non-payable from the approved start date.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260817143000_add_effective_teacher_employment_payroll/migration.sql`
+  - `lib/teacher-employment-payroll.ts`
+  - `lib/teacher-payroll.ts`
+  - `app/admin/reports/teacher-payroll/*`
+  - `app/teacher/payroll/page.tsx`
+  - `app/api/miniapp/staff/teacher/payroll/route.ts`
+  - `app/admin/finance/tutor-cost-export/page.tsx`
+  - `app/api/exports/tutor-cost-cutoff/route.ts`
+  - `tests/teacher-employment-payroll.test.ts`
+  - `docs/tasks/TASK-20260817-effective-full-time-payroll.md`
+- Risk impact (if any): Medium and payroll-specific. Effective dates preserve historical hourly payroll; the system shows zero payable amount only for lessons included in monthly salary. Finance notes are separate from academic feedback, and only management can change employment terms or session exceptions.
+- Verification:
+  - 10 focused payroll tests passed
+  - `npx tsc --noEmit` passed
+  - `npm run build` passed with 251 generated pages
+  - Prisma schema validation and `git diff --check` passed
+  - guarded release preflight and post-deploy reconciliation remain required
+- Rollback point: `2b5568ca4ffb7d6c3deffd877a109ef0b7eca76f` before `2026-08-17-r374`.
+
+---
+
 ## 2026-08-17-r373
 
 - Release ID: `2026-08-17-r373`
