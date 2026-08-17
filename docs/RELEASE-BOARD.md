@@ -1,5 +1,31 @@
 # RELEASE BOARD
 
+- `2026-08-17-r376`: ready to make Midterm Report candidate timing student- and subject-specific, including shared packages.
+
+## 2026-08-17-r376 Ready
+
+- Scope: replace whole-package midpoint detection with each student's actual subject attendance measured against that student's reference share of the package.
+- Business impact:
+  - siblings sharing one package no longer move each other into the Midterm Report candidate queue
+  - different subjects for the same student are evaluated independently
+  - candidate rows show subject, actual attended hours, personal reference hours and shared-student count
+  - assignment and exempt actions carry the selected subject and recalculate attendance before saving
+  - operations still makes the final push/exempt decision; no teacher task is created automatically
+  - existing reports, Final Report triggers, attendance, package balances, scheduling, payroll and finance remain unchanged
+- Files:
+  - `lib/midterm-report.ts`
+  - `app/admin/reports/midterm/page.tsx`
+  - `tests/midterm-report-candidate-progress.test.ts`
+- Verification before deploy:
+  - 9 focused tests, TypeScript check and 251-route production build
+  - production read-only comparison of old whole-package and new student-subject candidates
+  - `git diff --check` and guarded release preflight
+- Post-deploy verification:
+  - confirm local, GitHub and server commits align and PM2 is online
+  - confirm `/admin/login` returns HTTP 200
+  - run the deployed candidate helper and confirm Allie and Steven have separate English attendance progress
+- Task doc: `docs/tasks/TASK-20260817-midterm-subject-candidates.md`
+
 - `2026-08-17-r375`: ready to separate Final and Midterm Report learning hours by student, subject and original submission cutoff.
 
 ## 2026-08-17-r375 Ready

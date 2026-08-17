@@ -1,5 +1,29 @@
 # CHANGELOG LIVE
 
+## 2026-08-17-r376
+
+- Release ID: `2026-08-17-r376`
+- Date/Time (Asia/Singapore): `2026-08-17`
+- Deployment status: `READY`
+- Scope: trigger Midterm Report candidates by each student's subject-specific attendance against an individual reference share instead of whole-package consumption.
+- Key files:
+  - `lib/midterm-report.ts`
+  - `app/admin/reports/midterm/page.tsx`
+  - `tests/midterm-report-candidate-progress.test.ts`
+  - `docs/tasks/TASK-20260817-midterm-subject-candidates.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low to medium and limited to Midterm Report candidate discovery and assignment metadata. Existing reports are not rewritten, operations still decides whether to push or exempt a candidate, and attendance, package balances, Final Reports, scheduling, payroll, invoices and receipts are unchanged.
+- Verification:
+  - 9 focused midpoint and learning-report tests passed
+  - `npx tsc --noEmit` passed
+  - `npm run build` passed with 251 generated pages
+  - production read-only comparison found 6 old package-based rows versus 15 student-subject candidates; shared-package examples were independently calculated for Allie and Steven
+  - `git diff --check` passed
+- Rollback point: `a7d3ef4ab2ae452ed7ba40ce73cd06fff3656b30` before `2026-08-17-r376`.
+
+---
+
 ## 2026-08-17-r375
 
 - Release ID: `2026-08-17-r375`

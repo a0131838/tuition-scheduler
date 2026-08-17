@@ -1,11 +1,13 @@
 import { requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import {
+  calculateMidtermSubjectProgress,
   formatMinutesToHours,
   loadMidtermCandidates,
   MIDTERM_REPORT_EXEMPT_REASONS,
   parseMidtermExemptReason,
 } from "@/lib/midterm-report";
+import { createLearningReportAttendanceSnapshot } from "@/lib/learning-report-attendance";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -47,39 +49,76 @@ function exemptReasonLabel(lang: "BILINGUAL" | "ZH" | "EN", value: string) {
   }
 }
 
+async function loadMidtermSubjectAssignmentContext(input: {
+  packageId: string;
+  studentId: string;
+  teacherId: string;
+  subjectId: string | null;
+}) {
+  const pkg = await prisma.coursePackage.findUnique({
+    where: { id: input.packageId },
+    include: { sharedStudents: { select: { studentId: true } } },
+  });
+  if (!pkg || pkg.type !== "HOURS") redirect("/admin/reports/midterm?err=pkg");
+
+  const participantIds = new Set([pkg.studentId, ...pkg.sharedStudents.map((row) => row.studentId)]);
+  if (!participantIds.has(input.studentId)) redirect("/admin/reports/midterm?err=student");
+
+  const teacherAttendance = await prisma.attendance.findFirst({
+    where: {
+      packageId: input.packageId,
+      studentId: input.studentId,
+      status: { in: ["PRESENT", "LATE"] },
+      session: {
+        class: { subjectId: input.subjectId },
+        OR: [
+          { teacherId: input.teacherId },
+          { teacherId: null, class: { teacherId: input.teacherId, subjectId: input.subjectId } },
+        ],
+      },
+    },
+    select: { id: true },
+  });
+  if (!teacherAttendance) redirect("/admin/reports/midterm?err=teacher");
+
+  const attendance = await createLearningReportAttendanceSnapshot({
+    packageId: input.packageId,
+    studentId: input.studentId,
+    subjectId: input.subjectId,
+    teacherId: input.teacherId,
+    throughAt: new Date(),
+  });
+  const progress = calculateMidtermSubjectProgress({
+    packageTotalMinutes: Number(pkg.totalMinutes ?? 0),
+    participantCount: participantIds.size,
+    attendedMinutes: attendance.attendedMinutes,
+  });
+
+  const reports = await prisma.midtermReport.findMany({
+    where: { packageId: input.packageId, teacherId: input.teacherId, studentId: input.studentId },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+  const exact = reports.find((report) => report.subjectId === input.subjectId);
+  const legacy = input.subjectId ? reports.find((report) => report.subjectId === null) : null;
+
+  return { pkg, progress, latestForTeacher: exact ?? legacy ?? null };
+}
+
 async function assignMidtermReport(formData: FormData) {
   "use server";
   const user = await requireAdmin();
   const packageId = String(formData.get("packageId") ?? "").trim();
   const studentId = String(formData.get("studentId") ?? "").trim();
   const teacherId = String(formData.get("teacherId") ?? "").trim();
+  const subjectId = String(formData.get("subjectId") ?? "").trim() || null;
   if (!packageId || !studentId || !teacherId) redirect("/admin/reports/midterm?err=missing");
 
-  const pkg = await prisma.coursePackage.findUnique({
-    where: { id: packageId },
-    include: {
-      sharedStudents: { select: { studentId: true } },
-    },
-  });
-  if (!pkg || pkg.type !== "HOURS") redirect("/admin/reports/midterm?err=pkg");
-  const accessibleStudentIds = new Set([pkg.studentId, ...pkg.sharedStudents.map((row) => row.studentId)]);
-  if (!accessibleStudentIds.has(studentId)) redirect("/admin/reports/midterm?err=student");
-
-  const total = Math.max(0, Number(pkg.totalMinutes ?? 0));
-  const remaining = Math.max(0, Number(pkg.remainingMinutes ?? 0));
-  const consumed = Math.max(0, total - remaining);
-  const progress = total > 0 ? Math.round((consumed / total) * 100) : 0;
-
-  const latestAttendance = await prisma.attendance.findFirst({
-    where: { packageId, studentId, session: { OR: [{ teacherId }, { teacherId: null, class: { teacherId } }] } },
-    orderBy: { session: { startAt: "desc" } },
-    include: { session: { include: { class: { select: { subjectId: true } } } } },
-  });
-  const subjectId = latestAttendance?.session.class.subjectId ?? null;
-
-  const latestForTeacher = await prisma.midtermReport.findFirst({
-    where: { packageId, teacherId, studentId },
-    orderBy: { createdAt: "desc" },
+  const { pkg, progress, latestForTeacher } = await loadMidtermSubjectAssignmentContext({
+    packageId,
+    studentId,
+    teacherId,
+    subjectId,
   });
 
   if (latestForTeacher?.status === "SUBMITTED") {
@@ -97,9 +136,9 @@ async function assignMidtermReport(formData: FormData) {
         subjectId,
         assignedByUserId: user.id,
         assignedAt: new Date(),
-        progressPercent: progress,
-        consumedMinutes: consumed,
-        totalMinutes: total,
+        progressPercent: progress.progressPercent,
+        consumedMinutes: progress.attendedMinutes,
+        totalMinutes: progress.referenceMinutes,
       },
     });
   } else {
@@ -112,9 +151,9 @@ async function assignMidtermReport(formData: FormData) {
         subjectId,
         packageId: pkg.id,
         assignedByUserId: user.id,
-        progressPercent: progress,
-        consumedMinutes: consumed,
-        totalMinutes: total,
+        progressPercent: progress.progressPercent,
+        consumedMinutes: progress.attendedMinutes,
+        totalMinutes: progress.referenceMinutes,
         reportPeriodLabel: null,
       },
     });
@@ -132,6 +171,7 @@ async function exemptMidtermReport(formData: FormData) {
   const packageId = String(formData.get("packageId") ?? "").trim();
   const studentId = String(formData.get("studentId") ?? "").trim();
   const teacherId = String(formData.get("teacherId") ?? "").trim();
+  const subjectId = String(formData.get("subjectId") ?? "").trim() || null;
   const exemptReason = parseMidtermExemptReason(formData.get("exemptReason"));
   if (!exemptReason) redirect("/admin/reports/midterm?err=missing");
 
@@ -157,32 +197,11 @@ async function exemptMidtermReport(formData: FormData) {
   } else {
     if (!packageId || !studentId || !teacherId) redirect("/admin/reports/midterm?err=missing");
 
-    const pkg = await prisma.coursePackage.findUnique({
-      where: { id: packageId },
-      include: {
-        sharedStudents: { select: { studentId: true } },
-      },
-    });
-    if (!pkg || pkg.type !== "HOURS") redirect("/admin/reports/midterm?err=pkg");
-    const accessibleStudentIds = new Set([pkg.studentId, ...pkg.sharedStudents.map((row) => row.studentId)]);
-    if (!accessibleStudentIds.has(studentId)) redirect("/admin/reports/midterm?err=student");
-
-    const total = Math.max(0, Number(pkg.totalMinutes ?? 0));
-    const remaining = Math.max(0, Number(pkg.remainingMinutes ?? 0));
-    const consumed = Math.max(0, total - remaining);
-    const progress = total > 0 ? Math.round((consumed / total) * 100) : 0;
-
-    const latestAttendance = await prisma.attendance.findFirst({
-      where: { packageId, studentId, session: { OR: [{ teacherId }, { teacherId: null, class: { teacherId } }] } },
-      orderBy: { session: { startAt: "desc" } },
-      include: { session: { include: { class: { select: { subjectId: true } } } } },
-    });
-    const subjectId = latestAttendance?.session.class.subjectId ?? null;
-
-    const latestForTeacher = await prisma.midtermReport.findFirst({
-      where: { packageId, teacherId, studentId },
-      orderBy: { createdAt: "desc" },
-      select: { id: true, reportJson: true },
+    const { pkg, progress, latestForTeacher } = await loadMidtermSubjectAssignmentContext({
+      packageId,
+      studentId,
+      teacherId,
+      subjectId,
     });
 
     if (latestForTeacher?.id) {
@@ -207,9 +226,9 @@ async function exemptMidtermReport(formData: FormData) {
           subjectId,
           packageId: pkg.id,
           assignedByUserId: user.id,
-          progressPercent: progress,
-          consumedMinutes: consumed,
-          totalMinutes: total,
+          progressPercent: progress.progressPercent,
+          consumedMinutes: progress.attendedMinutes,
+          totalMinutes: progress.referenceMinutes,
           reportPeriodLabel: null,
           exemptReason,
           exemptedAt: now,
@@ -366,8 +385,8 @@ export default async function AdminMidtermReportCenterPage({
           <div style={{ color: "#475569", marginTop: 6 }}>
             {t(
               lang,
-              "Detect students near half-package progress and assign report writing to the subject teacher.",
-              "系统会识别接近课时包中点的学生，教务可按任课老师分别推送中期报告。"
+              "Detect each student's subject attendance near their individual midpoint, then assign the report to the subject teacher.",
+              "系统按学生本人及对应科目的实际出勤识别个人中点，教务再推送给该科目老师。"
             )}
           </div>
         </div>
@@ -473,19 +492,26 @@ export default async function AdminMidtermReportCenterPage({
               {candidates.map((row) => (
                 <tr key={row.candidateKey} style={{ borderTop: "1px solid #fed7aa" }}>
                   <td style={{ padding: 6, fontWeight: 700 }}>{row.studentName}</td>
-                  <td style={{ padding: 6 }}>{row.courseName}</td>
+                  <td style={{ padding: 6 }}>
+                    <div>{row.courseName}</div>
+                    <div style={{ color: "#64748b", fontSize: 12 }}>{row.subjectName ?? t(lang, "Teacher scope", "按老师范围")}</div>
+                  </td>
                   <td style={{ padding: 6 }}>
                     <b>{row.progressPercent}%</b> ({formatMinutesToHours(row.consumedMinutes)}h / {formatMinutesToHours(row.totalMinutes)}h)
+                    <div style={{ color: "#64748b", fontSize: 12 }}>
+                      {t(lang, "Actual subject attendance / individual reference hours", "本科目实际出勤 / 个人参考课时")}
+                      {row.participantCount > 1 ? ` · ${t(lang, `Shared by ${row.participantCount} students`, `${row.participantCount}名学生共享`)}` : ""}
+                    </div>
                   </td>
                   <td style={{ padding: 6 }}>
                     <form action={assignMidtermReport} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                       <input type="hidden" name="packageId" value={row.packageId} />
                       <input type="hidden" name="studentId" value={row.studentId} />
+                      <input type="hidden" name="subjectId" value={row.subjectId ?? ""} />
                       <select name="teacherId" defaultValue={row.defaultTeacherId}>
                         {row.teacherOptions.map((opt) => (
                           <option key={opt.id} value={opt.id}>
                             {opt.name}
-                            {opt.subjectName ? ` (${opt.subjectName})` : ""}
                             {opt.latestReportStatus === "ASSIGNED"
                               ? " - Assigned"
                               : opt.latestReportStatus === "SUBMITTED"
@@ -504,11 +530,11 @@ export default async function AdminMidtermReportCenterPage({
                       <form action={exemptMidtermReport} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                         <input type="hidden" name="packageId" value={row.packageId} />
                         <input type="hidden" name="studentId" value={row.studentId} />
+                        <input type="hidden" name="subjectId" value={row.subjectId ?? ""} />
                         <select name="teacherId" defaultValue={row.defaultTeacherId}>
                           {row.teacherOptions.map((opt) => (
                             <option key={`${row.candidateKey}-${opt.id}-exempt`} value={opt.id}>
                               {opt.name}
-                              {opt.subjectName ? ` (${opt.subjectName})` : ""}
                             </option>
                           ))}
                         </select>
