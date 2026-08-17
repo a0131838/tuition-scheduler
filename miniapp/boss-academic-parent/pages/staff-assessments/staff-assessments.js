@@ -18,8 +18,8 @@ Page({
     note: "",
     ageLabels: ["不锁定", "3–5岁", "6–8岁", "9–11岁", "12–14岁", "15–17岁"],
     ageIndex: 0,
-    pathLabels: ["不锁定", "暂不确定", "国际学校", "政府学校 / AEIS", "DSA / 面试 / 作品集"],
-    pathValues: ["", "UNSURE", "INTERNATIONAL", "MOE_AEIS", "DSA"],
+    pathLabels: ["不锁定", "国际学校英语", "AEIS小学", "AEIS中学"],
+    pathValues: ["", "INTERNATIONAL_ENGLISH", "AEIS_PRIMARY", "AEIS_SECONDARY"],
     pathIndex: 0,
     issuedCode: "",
     issuedMessage: ""

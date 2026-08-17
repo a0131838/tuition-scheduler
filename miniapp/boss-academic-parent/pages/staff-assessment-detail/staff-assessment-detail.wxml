@@ -6,7 +6,11 @@
   </view>
 
   <view class="card" wx:if="{{session.status === 'COMPLETED'}}">
-    <view class="row-title">{{session.overallScore}} · {{session.overallBand}} · 可信度{{session.confidence}}</view>
+    <view class="row-title">{{session.report.productTitle || '入学准备度'}} · {{session.overallBand}} · 可信度{{session.confidence}}</view>
+    <view class="row-meta" wx:for="{{session.report.scorecards}}" wx:key="key">
+      <text>{{item.label}}：{{item.scoreLabel}}</text>
+      <text wx:if="{{item.cefrReference}}"> · CEFR初步参考 {{item.cefrReference}}（待校准）</text>
+    </view>
     <view class="row-meta">评分完成于 {{session.reviewedAt || session.submittedAt}}</view>
   </view>
 

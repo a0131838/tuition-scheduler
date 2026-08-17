@@ -31,6 +31,31 @@
   - run the production helper against Huang Zihao's submitted Final Report and confirm 30 subject-attendance hours rather than 50h or 100h package capacity
 - Task doc: `docs/tasks/TASK-20260817-learning-report-attendance.md`
 
+## 2026-08-17-r367 Ready
+
+- Scope: publish an experience-only school-readiness test split into international-school English, AEIS Primary and AEIS Secondary.
+- Business impact:
+  - international-school assessment contains English only and labels CEFR as preliminary and uncalibrated;
+  - AEIS reports English and mathematics separately, without science or a blended total;
+  - ages 3–5 are redirected to teacher 1:1 observation;
+  - legacy sessions and reports are preserved without recalculation.
+- Files:
+  - `lib/school-guide-academic-assessment.ts`
+  - `app/api/public/school-guide/academic-assessment/*`
+  - `app/api/miniapp/staff/academic-assessments/route.ts`
+  - `miniapp/boss-academic-parent/pages/guide-academic-assessment/*`
+  - `miniapp/boss-academic-parent/pages/staff-assessments/staff-assessments.js`
+  - `miniapp/boss-academic-parent/pages/staff-assessment-detail/staff-assessment-detail.wxml`
+- Verification before deploy:
+  - focused assessment tests 14/14
+  - 69-page miniapp release audit and JavaScript syntax checks
+  - clean-worktree `npm run build`
+  - guarded `release_to_server.sh --check`
+- Post-deploy verification:
+  - local/GitHub/server commit equality, PM2 online and `/admin/login` HTTP 200
+  - upload WeChat experience version only; do not submit review or publish formally
+  - run one physical-phone flow for each of the three products before launch decision
+
 - `2026-08-17-r374`: ready to apply effective-dated full-time payroll treatment for Jessika, Jasmine and Sharilyn without rewriting historical course rates or academic feedback.
 
 ## 2026-08-17-r374 Ready
@@ -7259,3 +7284,10 @@
 - Validation: Prisma generation, TypeScript, focused observer/delegation/route tests, miniapp JavaScript syntax, 246-page production build and release preflight.
 - Activation after deploy: mark the existing `wangjie.admin@123.com` account as observer, revoke old sessions and issue one new miniapp binding invite.
 - Task doc: `docs/tasks/TASK-20260812-wangjie-cross-channel-observer.md`
+
+# 2026-08-17-r375 Candidate
+
+- Scope: school-guide PATHWAY_V3 product split, one writing task, AI double grading, A/B/C retest comparison.
+- Gates: assessment 14/14, TypeScript, 251-page production build and 69-page miniapp audit passed; deployment pending.
+- Boundary: additive API and presentation only; no existing report recalculation, scheduling/package/finance mutation or formal miniapp release.
+- Task: `docs/tasks/TASK-20260817-school-guide-assessment-product-split.md`.

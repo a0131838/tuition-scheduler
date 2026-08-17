@@ -9,6 +9,7 @@ import {
   generateAssessmentCode,
   normalizeAssessmentCode,
   sha256,
+  validateAssessmentProductAge,
 } from "@/lib/school-guide-academic-assessment";
 
 function clean(value: unknown, max = 120) {
@@ -102,6 +103,7 @@ export async function POST(req: Request) {
   const targetPath = clean(body?.targetPath, 30);
   if (ageBand && !ACADEMIC_ASSESSMENT_AGE_BANDS.includes(ageBand as never)) return NextResponse.json({ ok: false, message: "年龄段不正确。" }, { status: 400 });
   if (targetPath && !ACADEMIC_ASSESSMENT_PATHS.includes(targetPath as never)) return NextResponse.json({ ok: false, message: "目标路径不正确。" }, { status: 400 });
+  if (ageBand && targetPath && !validateAssessmentProductAge(targetPath, ageBand)) return NextResponse.json({ ok: false, message: ageBand === "3–5岁" ? "3–5岁请改为老师一对一观察评估。" : "年龄段与测评产品不匹配。" }, { status: 400 });
   const rawCode = generateAssessmentCode();
   const normalized = normalizeAssessmentCode(rawCode);
   const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);

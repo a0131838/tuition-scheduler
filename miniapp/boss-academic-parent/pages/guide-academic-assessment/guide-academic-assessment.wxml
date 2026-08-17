@@ -1,9 +1,9 @@
 <view class="guide-page assessment-page">
   <block wx:if="{{phase === 'hub'}}">
     <view class="assessment-hero">
-      <view class="guide-kicker">英文水平测评</view>
-      <view class="assessment-title">测出孩子目前的<br/>英文水平</view>
-      <view class="assessment-lead">30–45分钟 · 无需登录或评估码</view>
+      <view class="guide-kicker">入学准备度测评</view>
+      <view class="assessment-title">三套测评独立进行<br/>结果更容易解释</view>
+      <view class="assessment-lead">约20–35分钟 · 无需登录或评估码</view>
       <button class="assessment-primary" bindtap="openCodeSetup">立即免费测评</button>
     </view>
     <view class="assessment-choice-list">
@@ -45,11 +45,11 @@
       <view class="guide-field"><view class="guide-label">年龄段</view><picker range="{{ageOptions}}" value="{{ageIndex}}" bindchange="setAge"><view class="guide-picker">{{ageOptions[ageIndex]}}</view></picker></view>
       <view class="guide-field"><view class="guide-label">当前年级</view><input class="guide-input" maxlength="40" placeholder="如 P4 / Grade 4" value="{{currentGrade}}" bindinput="setGrade" /></view>
     </view>
-    <view class="guide-field"><view class="guide-label">目标路径</view><picker range="{{pathLabels}}" value="{{pathIndex}}" bindchange="setPath"><view class="guide-picker">{{pathLabels[pathIndex]}}</view></picker></view>
+    <view class="guide-field"><view class="guide-label">选择测评（三者独立）</view><picker range="{{pathLabels}}" value="{{pathIndex}}" bindchange="setPath"><view class="guide-picker">{{pathLabels[pathIndex]}}</view></picker><view class="assessment-form-note">国际学校只测英语；AEIS按英语与数学分科报告，不混入科学、不合并总分。</view></view>
     <view class="guide-field"><view class="guide-label">语言背景（可选）</view><input class="guide-input" maxlength="160" placeholder="如 中文为主，英文学习3年" value="{{languageBackground}}" bindinput="setLanguage" /></view>
     <checkbox-group class="guide-check" bindchange="toggleConsent"><checkbox value="yes" color="#ec5e0a"/><text>我是家长或监护人，并同意保存本次作答、用时、老师评分和必要操作日志，用于测评、人工复核和后续教育咨询。</text></checkbox-group>
     <view class="guide-text-link" bindtap="openPrivacy">查看隐私说明</view>
-    <button class="assessment-primary sticky-action" loading="{{loading}}" bindtap="start">开始30–45分钟测评</button>
+    <button class="assessment-primary sticky-action" loading="{{loading}}" bindtap="start">开始分项测评</button>
   </block>
 
   <block wx:if="{{phase === 'test'}}">
@@ -59,7 +59,7 @@
     <button wx:if="{{session.canSubmit}}" class="assessment-primary" loading="{{loading}}" bindtap="submitAssessment">全部完成，提交测评</button>
   </block>
 
-  <block wx:if="{{phase === 'awaiting'}}"><view class="assessment-result"><view class="guide-kicker">已提交</view><view class="assessment-section-title">等待老师复核</view><view class="assessment-form-note">选择题已经保存；写作、口语或观察任务评分完成后，本页会显示完整测评报告。</view><button class="assessment-primary" loading="{{loading}}" bindtap="refresh">刷新评分状态</button></view></block>
+  <block wx:if="{{phase === 'awaiting'}}"><view class="assessment-result"><view class="guide-kicker">已提交</view><view class="assessment-section-title">等待老师复核</view><view class="assessment-form-note">选择题已经保存；AI双重评分出现分歧或暂不可用时，写作会自动转老师复核。本轮不测试口语和听力。</view><button class="assessment-primary" loading="{{loading}}" bindtap="refresh">刷新评分状态</button></view></block>
 
-  <block wx:if="{{phase === 'report'}}"><view class="assessment-result"><view class="guide-kicker">免费系统报告</view><view class="assessment-report-score">{{session.overallScore}}</view><view class="assessment-section-title">{{session.overallBand}} · 可信度{{session.confidence}}</view><view class="assessment-form-note">{{session.report.standard}}</view><view class="report-section"><b>能力域</b><view class="assessment-report-row" wx:for="{{domainRows}}" wx:key="name">{{item.name}}：{{item.score}}</view></view><view class="report-section"><b>本次相对优势</b><text wx:for="{{session.report.strengths}}" wx:key="*this">• {{item}}</text></view><view class="report-section"><b>优先补强</b><text wx:for="{{session.report.priorities}}" wx:key="*this">• {{item}}</text><view class="assessment-boundary">{{session.report.nextStep}}</view></view><view class="assessment-boundary"><b>可以再次测评</b><text>本次报告会保留。建议在{{session.retestDateText}}后复测，提前复测也不会被锁定，系统会优先更换平行卷。</text></view><button class="assessment-secondary" bindtap="startNewRound">开始新一轮测评</button><button class="assessment-text-button" bindtap="startForAnotherChild">为另一个孩子测评</button><view class="assessment-boundary"><b>需要更具体的下一步？</b><text>顾问可结合当前学校、目标学校和时间线，提供专业解读、精准选校及备考方案。是否联系完全由您决定。</text></view><button class="assessment-primary" bindtap="goConsult">联系顾问获取专业分析</button></view></block>
+  <block wx:if="{{phase === 'report'}}"><view class="assessment-result"><view class="guide-kicker">免费系统报告</view><view class="assessment-section-title">{{session.report.productTitle || '入学准备度'}}</view><view wx:if="{{scorecards.length}}"><view class="assessment-scorecard" wx:for="{{scorecards}}" wx:key="key"><view class="guide-kicker">{{item.label}}</view><view class="assessment-report-score">{{item.scoreLabel}}</view><view class="assessment-form-note">{{item.band}}</view><view class="assessment-cefr" wx:if="{{item.cefrReference}}">CEFR初步参考：{{item.cefrReference}}（阅读、语言运用与写作）</view></view></view><view class="assessment-report-score" wx:else>{{session.overallScore}} / 100</view><view class="assessment-section-title">{{session.overallBand}} · 可信度{{session.confidence}}</view><view class="assessment-form-note">{{session.report.standard}}</view><view class="report-section" wx:if="{{skillRows.length}}"><b>具体英文/数学能力</b><view class="assessment-report-row" wx:for="{{skillRows}}" wx:key="name">{{item.name}}：{{item.score}} / 100</view><view class="assessment-form-note" wx:if="{{unmeasuredText}}">本轮未测试：{{unmeasuredText}}</view></view><view class="report-section" wx:if="{{comparisonRows.length}}"><b>与上一次平行卷相比</b><view class="assessment-report-row" wx:for="{{comparisonRows}}" wx:key="name">{{item.name}}：{{item.label}}</view></view><view class="report-section"><b>本次相对优势</b><text wx:for="{{session.report.strengths}}" wx:key="*this">• {{item}}</text></view><view class="report-section"><b>优先补强</b><text wx:for="{{session.report.priorities}}" wx:key="*this">• {{item}}</text><view class="assessment-boundary">{{session.report.nextStep}}</view></view><view class="assessment-boundary"><b>可以再次测评</b><text>本次报告会保留。建议在{{session.retestDateText}}后复测，提前复测也不会被锁定，系统会优先更换A/B/C平行卷，并显示能力变化。</text></view><button class="assessment-secondary" bindtap="startNewRound">开始新一轮测评</button><button class="assessment-text-button" bindtap="startForAnotherChild">为另一个孩子测评</button><view class="assessment-boundary"><b>需要更具体的下一步？</b><text>顾问可结合当前学校、目标学校和时间线，提供专业解读、精准选校及备考方案。是否联系完全由您决定。</text></view><button class="assessment-primary" bindtap="goConsult">联系顾问获取专业分析</button></view></block>
 </view>

@@ -11,8 +11,10 @@ import {
   generateSessionToken,
   generateStudentCode,
   initialQuestionIds,
+  isAssessmentProduct,
   normalizeAssessmentCode,
   sha256,
+  validateAssessmentProductAge,
 } from "@/lib/school-guide-academic-assessment";
 import { cleanText, publicSessionView } from "../_lib";
 
@@ -25,6 +27,13 @@ function allowed(ip: string) {
   recent.push(now);
   hits.set(ip, recent);
   return true;
+}
+
+function lockedPathMatches(codePath: string | null, requestedPath: string) {
+  if (!codePath || codePath === requestedPath) return true;
+  if (codePath === "INTERNATIONAL" && requestedPath === "INTERNATIONAL_ENGLISH") return true;
+  if (codePath === "MOE_AEIS" && ["AEIS_PRIMARY", "AEIS_SECONDARY"].includes(requestedPath)) return true;
+  return false;
 }
 
 export async function POST(req: NextRequest) {
@@ -48,6 +57,12 @@ export async function POST(req: NextRequest) {
   }
   if (!ACADEMIC_ASSESSMENT_PATHS.includes(requestedTargetPath as never)) {
     return NextResponse.json({ ok: false, message: "请选择目标路径。" }, { status: 400 });
+  }
+  if (!validateAssessmentProductAge(requestedTargetPath, requestedAgeBand)) {
+    const message = requestedAgeBand === "3–5岁"
+      ? "3–5岁不使用在线CEFR或AEIS卷，请由老师安排一对一观察评估。"
+      : "当前年龄段与所选测评不匹配，请重新选择。";
+    return NextResponse.json({ ok: false, message }, { status: 400 });
   }
   if (requestedTargetPath === "DSA" && ["3–5岁", "6–8岁"].includes(requestedAgeBand)) {
     return NextResponse.json({ ok: false, message: "当前年龄段没有已配置的DSA试测卷，请选择其他路径或联系老师。" }, { status: 400 });
@@ -82,7 +97,7 @@ export async function POST(req: NextRequest) {
       if (code.expiresAt < new Date()) throw new Error("EXPIRED_CODE");
       if (code.usedCount >= code.maxUses) throw new Error("USED_CODE");
       if (code.ageBand && code.ageBand !== requestedAgeBand) throw new Error("AGE_MISMATCH");
-      if (code.targetPath && code.targetPath !== requestedTargetPath) throw new Error("PATH_MISMATCH");
+      if (!lockedPathMatches(code.targetPath, requestedTargetPath)) throw new Error("PATH_MISMATCH");
 
       const studentNickname = cleanText(body?.studentNickname || code.studentNickname, 60);
 
@@ -97,6 +112,7 @@ export async function POST(req: NextRequest) {
           where: {
             studentNickname: { equals: studentNickname, mode: "insensitive" },
             ageBand: requestedAgeBand,
+            targetPath: requestedTargetPath,
             createdAt: { gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) },
           },
           select: { id: true, formId: true, status: true, createdAt: true },
@@ -113,7 +129,8 @@ export async function POST(req: NextRequest) {
       const formId = chooseLeastUsedForm(requestedAgeBand, counts, excludedForms);
       const previousSession = previousSessions[0] || null;
       const sessionToken = generateSessionToken();
-      const questionIds = initialQuestionIds(formId);
+      const questionIds = initialQuestionIds(formId, requestedTargetPath);
+      if (!questionIds.length) throw new Error("PRODUCT_QUESTIONS_MISSING");
       const session = await tx.schoolGuideAssessmentSession.create({
         data: {
           accessCodeId: code.id,
@@ -127,6 +144,7 @@ export async function POST(req: NextRequest) {
           formId,
           formVariant: formId.slice(-1),
           bankVersion: ACADEMIC_ASSESSMENT_VERSION,
+          route: isAssessmentProduct(requestedTargetPath) ? "product-v2" : null,
           questionIds,
           answers: {},
           currentQuestionId: questionIds[0] || null,
@@ -165,6 +183,7 @@ export async function POST(req: NextRequest) {
       USED_CODE: "评估码已使用；如需继续，请使用原设备上的“继续测评”。",
       AGE_MISMATCH: "所选年龄段与评估码不一致，请联系发码员工核对。",
       PATH_MISMATCH: "所选目标路径与评估码不一致，请联系发码员工核对。",
+      PRODUCT_QUESTIONS_MISSING: "当前测评产品的试题配置不完整，请联系老师。",
     };
     if (messages[code]) return NextResponse.json({ ok: false, message: messages[code] }, { status: 409 });
     throw error;

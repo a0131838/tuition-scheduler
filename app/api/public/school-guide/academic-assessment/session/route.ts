@@ -3,11 +3,13 @@ import { prisma } from "@/lib/prisma";
 import {
   anchorCorrectCount,
   calculateAssessmentResult,
+  assessmentInternalQuestion,
   fullQuestionIds,
   initialQuestionIds,
   resolveRoute,
   scoreAnswer,
 } from "@/lib/school-guide-academic-assessment";
+import { gradeAcademicWriting } from "@/lib/school-guide-assessment-ai-grader";
 import { answersFromJson, cleanText, idsFromJson, publicSessionView, sessionByToken } from "../_lib";
 
 export async function POST(req: Request) {
@@ -39,7 +41,7 @@ export async function POST(req: Request) {
 
     let route = session.route;
     let questionIds = ids;
-    const anchors = initialQuestionIds(session.formId);
+    const anchors = initialQuestionIds(session.formId, session.targetPath);
     if (!route && anchors.length === 6 && anchors.every((id) => Boolean(answers[id]?.value))) {
       route = resolveRoute(anchorCorrectCount(session.formId, answers));
       questionIds = fullQuestionIds(session.formId, route, session.targetPath);
@@ -83,6 +85,26 @@ export async function POST(req: Request) {
     if (ids.some((id) => !answers[id]?.value)) {
       return NextResponse.json({ ok: false, message: "还有题目未完成，请完成后再提交。" }, { status: 409 });
     }
+    const aiGrades: Array<{ questionId: string; accepted: boolean; confidence?: string }> = [];
+    for (const questionId of ids) {
+      const question = assessmentInternalQuestion(session.formId, questionId);
+      if (!question.requiresReviewer || answers[questionId]?.manualScore != null) continue;
+      const grade = await gradeAcademicWriting({
+        questionId,
+        product: session.targetPath,
+        ageBand: session.ageBand,
+        prompt: question.prompt,
+        answer: answers[questionId].value,
+        rubric: ("rubric" in question ? question.rubric : "") || question.answerRule || "按任务、内容、结构、词汇和语法评分。",
+        maxScore: question.maxScore,
+      });
+      if (grade?.accepted && grade.score != null) {
+        answers[questionId].manualScore = Number(grade.score);
+        answers[questionId].reviewerNote = [grade.strength, grade.priority].filter(Boolean).join("；");
+        answers[questionId].aiReview = { confidence: grade.confidence, criteria: grade.criteria, modelRegion: grade.modelRegion };
+      }
+      aiGrades.push({ questionId, accepted: Boolean(grade?.accepted), confidence: grade?.confidence });
+    }
     const result = calculateAssessmentResult({
       formId: session.formId,
       questionIds: ids,
@@ -90,12 +112,27 @@ export async function POST(req: Request) {
       durationSeconds: session.durationSeconds,
       targetPath: session.targetPath,
     });
+    const previous = await prisma.schoolGuideAssessmentSession.findFirst({
+      where: { id: { not: session.id }, studentNickname: session.studentNickname, ageBand: session.ageBand, targetPath: session.targetPath, status: "COMPLETED" },
+      orderBy: { completedAt: "desc" },
+      select: { completedAt: true, formVariant: true, report: true },
+    });
+    const previousReport = previous?.report && typeof previous.report === "object" && !Array.isArray(previous.report) ? previous.report as Record<string, unknown> : null;
+    const priorSkills = previousReport?.skillScores && typeof previousReport.skillScores === "object" && !Array.isArray(previousReport.skillScores) ? previousReport.skillScores as Record<string, number> : {};
+    const currentSkills = result.report.skillScores as Record<string, number>;
+    const comparison = previous ? {
+      previousCompletedAt: previous.completedAt,
+      previousFormVariant: previous.formVariant,
+      skillDeltas: Object.fromEntries(Object.entries(currentSkills).map(([name, score]) => [name, priorSkills[name] == null ? null : score - Number(priorSkills[name])])),
+    } : null;
+    const report = { ...result.report, comparison, aiWritingReview: { attempted: aiGrades.length, accepted: aiGrades.filter((item) => item.accepted).length } };
     const status = result.pendingManual > 0 ? "AWAITING_REVIEW" : "COMPLETED";
     const updated = await prisma.$transaction(async (tx) => {
       const row = await tx.schoolGuideAssessmentSession.update({
         where: { id: session.id },
         data: {
           status,
+          answers,
           submittedAt: new Date(),
           completedAt: status === "COMPLETED" ? new Date() : null,
           completionRate: result.completionRate,
@@ -103,7 +140,7 @@ export async function POST(req: Request) {
           domainScores: result.domainScores,
           overallScore: status === "COMPLETED" ? result.overallScore : null,
           overallBand: status === "COMPLETED" ? result.overallBand : null,
-          report: result.report,
+          report,
         },
       });
       await tx.auditLog.create({
@@ -115,7 +152,7 @@ export async function POST(req: Request) {
           action: "SUBMIT",
           entityType: "SchoolGuideAssessmentSession",
           entityId: session.id,
-          meta: { status, pendingManual: result.pendingManual, completionRate: result.completionRate },
+          meta: { status, pendingManual: result.pendingManual, completionRate: result.completionRate, aiGrades },
         },
       });
       const accessCode = await tx.schoolGuideAssessmentCode.findUnique({ where: { id: session.accessCodeId }, select: { assessmentRequestId: true } });
@@ -131,7 +168,7 @@ export async function POST(req: Request) {
       }
       return row;
     });
-    return NextResponse.json({ ok: true, message: status === "AWAITING_REVIEW" ? "已提交，开放任务等待老师评分。" : "测评已完成。", session: publicSessionView(updated) });
+    return NextResponse.json({ ok: true, message: status === "AWAITING_REVIEW" ? "已提交；AI评分分歧或暂不可用，已转老师复核。" : "测评已完成，写作已由双重AI评分并通过一致性检查。", session: publicSessionView(updated) });
   }
 
   return NextResponse.json({ ok: false, message: "不支持的操作。" }, { status: 400 });

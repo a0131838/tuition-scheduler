@@ -30,8 +30,8 @@ Page({
     consent: false,
     ageOptions: ["3–5岁", "6–8岁", "9–11岁", "12–14岁", "15–17岁"],
     ageIndex: 1,
-    pathLabels: ["暂不确定", "国际学校", "政府学校 / AEIS", "DSA / 面试 / 作品集"],
-    pathValues: ["UNSURE", "INTERNATIONAL", "MOE_AEIS", "DSA"],
+    pathLabels: ["国际学校英语入学准备度", "AEIS小学入学准备度", "AEIS中学入学准备度"],
+    pathValues: ["INTERNATIONAL_ENGLISH", "AEIS_PRIMARY", "AEIS_SECONDARY"],
     pathIndex: 0,
     sessionToken: "",
     session: null,
@@ -39,6 +39,10 @@ Page({
     history: [],
     answerInput: "",
     domainRows: [],
+    skillRows: [],
+    comparisonRows: [],
+    unmeasuredText: "",
+    scorecards: [],
     questionStartedAt: 0,
     requestToken: "",
     request: null,
@@ -182,13 +186,21 @@ Page({
     if (session.status === "AWAITING_REVIEW") phase = "awaiting";
     if (session.status === "COMPLETED") phase = "report";
     const domainRows = Object.keys(session.domainScores || {}).map((name) => ({ name, score: session.domainScores[name] }));
+    const skillRows = Object.keys((session.report && session.report.skillScores) || {}).map((name) => ({ name, score: session.report.skillScores[name] }));
+    const deltas = (session.report && session.report.comparison && session.report.comparison.skillDeltas) || {};
+    const comparisonRows = Object.keys(deltas).filter((name) => deltas[name] != null).map((name) => ({ name, delta: Number(deltas[name]), label: `${Number(deltas[name]) >= 0 ? "+" : ""}${Number(deltas[name])}分` }));
+    const unmeasuredText = (((session.report && session.report.unmeasuredSkills) || [])).join("、");
+    const scorecards = (session.report && Array.isArray(session.report.scorecards) ? session.report.scorecards : []).map((item) => ({
+      ...item,
+      scoreLabel: item.score == null ? "待老师复核" : `${item.score} / 100`
+    }));
     const retestDateText = formatDate(session.retestRecommendedAt);
-    this.setData({ session: { ...session, retestDateText }, phase, hasSession: true, answerInput: session.currentAnswer || "", domainRows, questionStartedAt: Date.now() });
+    this.setData({ session: { ...session, retestDateText }, phase, hasSession: true, answerInput: session.currentAnswer || "", domainRows, skillRows, comparisonRows, unmeasuredText, scorecards, questionStartedAt: Date.now() });
     if (session.status === "COMPLETED" && this.data.sessionToken) this.rememberSession(session, retestDateText);
   },
 
   rememberSession(session, retestDateText) {
-    const row = { token: this.data.sessionToken, studentCode: session.studentCode, studentNickname: session.studentNickname || "学生", score: session.overallScore, completedAt: formatDate(session.completedAt), retestDateText };
+    const row = { token: this.data.sessionToken, studentCode: session.studentCode, studentNickname: session.studentNickname || "学生", score: session.overallScore == null ? session.overallBand : `${session.overallScore}分`, completedAt: formatDate(session.completedAt), retestDateText };
     const history = [row].concat((this.data.history || []).filter((item) => item.token !== row.token)).slice(0, 10);
     wx.setStorageSync(HISTORY_KEY, history);
     this.setData({ history });
@@ -196,12 +208,12 @@ Page({
 
   startNewRound() {
     wx.removeStorageSync(SESSION_KEY);
-    this.setData({ sessionToken: "", session: null, hasSession: false, phase: "setup", consent: false, answerInput: "", domainRows: [] });
+    this.setData({ sessionToken: "", session: null, hasSession: false, phase: "setup", consent: false, answerInput: "", domainRows: [], skillRows: [], comparisonRows: [], scorecards: [] });
   },
 
   startForAnotherChild() {
     wx.removeStorageSync(SESSION_KEY);
-    this.setData({ sessionToken: "", session: null, hasSession: false, phase: "setup", consent: false, studentNickname: "", currentGrade: "", languageBackground: "", answerInput: "", domainRows: [] });
+    this.setData({ sessionToken: "", session: null, hasSession: false, phase: "setup", consent: false, studentNickname: "", currentGrade: "", languageBackground: "", answerInput: "", domainRows: [], skillRows: [], comparisonRows: [], scorecards: [] });
   },
 
   loadSession() {

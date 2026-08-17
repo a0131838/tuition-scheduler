@@ -28,6 +28,7 @@ Final Report mixed two package-level values: the package capacity saved when a r
 - `npm run build`
 - `git diff --check`
 - Production read-only attendance reconciliation by student and subject.
+- Integrated and reverified against the latest production branch before guarded deployment.
 
 ## Risk
 
