@@ -5,24 +5,31 @@
     <view class="subtitle">课程、反馈、报告和工单都在这里；Emily 现在只处理最紧急的一项。</view>
   </view>
   <view class="summary">
-    <view><text>需处理</text><text class="metric-value">{{total}}</text></view><view class="overdue"><text>已逾期</text><text class="metric-value">{{summary.overdue}}</text></view><view><text>今天</text><text class="metric-value">{{summary.today}}</text></view><view><text>等回复</text><text class="metric-value">{{summary.waitingReply}}</text></view>
+    <view class="P0"><text>P0 立即</text><text class="metric-value">{{summary.priority.P0 || 0}}</text></view><view class="P1"><text>P1 今天</text><text class="metric-value">{{summary.priority.P1 || 0}}</text></view><view class="P2"><text>P2 等回复</text><text class="metric-value">{{summary.priority.P2 || 0}}</text></view><view class="P3"><text>P3 后续</text><text class="metric-value">{{summary.priority.P3 || 0}}</text></view>
   </view>
   <scroll-view class="filters" scroll-x="true" enhanced="true" show-scrollbar="false">
     <view class="filter-row">
-      <button class="filter {{filter === 'ACTION' ? 'active' : ''}}" data-filter="ACTION" bindtap="changeFilter">现在处理</button><button class="filter {{filter === 'OVERDUE' ? 'active' : ''}}" data-filter="OVERDUE" bindtap="changeFilter">已逾期</button><button class="filter {{filter === 'TODAY' ? 'active' : ''}}" data-filter="TODAY" bindtap="changeFilter">今天</button><button class="filter {{filter === 'WAITING_REPLY' ? 'active' : ''}}" data-filter="WAITING_REPLY" bindtap="changeFilter">等待回复</button><button class="filter {{filter === 'ALL' ? 'active' : ''}}" data-filter="ALL" bindtap="changeFilter">全部</button>
+      <button wx:for="{{priorityFilters}}" wx:key="value" class="filter {{filter === item.value ? 'active' : ''}}" data-filter="{{item.value}}" bindtap="changeFilter">{{item.label}}</button>
     </view>
   </scroll-view>
-  <view class="reminder {{expandedKey === item.key ? 'expanded' : ''}}" wx:for="{{visibleReminders}}" wx:key="key">
-    <view class="reminder-head" data-key="{{item.key}}" bindtap="toggleReminder">
-      <view class="urgency-dot {{item.urgency}}"></view><view class="head-copy"><view class="student">{{item.title}}</view><view class="meta">{{item.categoryLabel}} · {{item.recipientName}}</view><view class="meta">{{item.dueText}} · {{item.statusLabel}}</view></view><view class="chevron">{{expandedKey === item.key ? '−' : '›'}}</view>
+  <scroll-view class="group-filters" scroll-x="true" enhanced="true" show-scrollbar="false">
+    <view class="filter-row"><button wx:for="{{groupFilters}}" wx:key="value" class="group-filter {{group === item.value ? 'active' : ''}}" data-group="{{item.value}}" bindtap="changeGroup">{{item.label}}<text>{{item.count || 0}}</text></button></view>
+  </scroll-view>
+  <view class="priority-section" wx:for="{{groupedReminders}}" wx:key="priority" wx:for-item="section">
+    <view class="priority-heading {{section.priority}}"><text>{{section.priority}} · {{section.label}}</text><text>{{section.items.length}} 项</text></view>
+    <view class="reminder {{expandedKey === row.key ? 'expanded' : ''}}" wx:for="{{section.items}}" wx:key="key" wx:for-item="row">
+    <view class="reminder-head" data-key="{{row.key}}" bindtap="toggleReminder">
+      <view class="priority-bar {{row.priority}}"></view><view class="head-copy"><view class="tag-row"><text>{{row.groupLabel}}</text><text>{{row.categoryLabel}}</text></view><view class="student">{{row.title}}</view><view class="meta">{{row.recipientName}} · {{row.dueText}}</view><view class="meta">{{row.statusLabel}} · {{row.priorityReason}}</view></view><view class="chevron">{{expandedKey === row.key ? '−' : '›'}}</view>
     </view>
-    <view class="reminder-detail" wx:if="{{expandedKey === item.key}}">
-      <view class="subject">{{item.subject}}</view><view class="copy-label">AI 已按正式数据准备</view><view class="copy-text">{{item.copyBilingual}}</view>
-      <button class="primary" data-key="{{item.key}}" data-language="BILINGUAL" bindtap="copyText">复制中英双语</button>
-      <view class="copy-row"><button data-key="{{item.key}}" data-language="ZH" bindtap="copyText">只复制中文</button><button data-key="{{item.key}}" data-language="EN" bindtap="copyText">Copy English</button></view>
+    <view class="reminder-detail" wx:if="{{expandedKey === row.key}}">
+      <view class="priority-notice {{row.priority}}"><text>{{row.priority}} · {{row.priorityLabel}}</text><text>{{row.priorityReason}}</text></view>
+      <view class="subject">{{row.subject}}</view><view class="copy-label">AI 已按正式数据准备</view><view class="copy-text">{{row.copyBilingual}}</view>
+      <button class="primary" data-key="{{row.key}}" data-language="BILINGUAL" bindtap="copyText">复制中英双语</button>
+      <view class="copy-row"><button data-key="{{row.key}}" data-language="ZH" bindtap="copyText">只复制中文</button><button data-key="{{row.key}}" data-language="EN" bindtap="copyText">Copy English</button></view>
       <view class="status-label">复制不等于已发送，请选择真实状态</view>
-      <view class="action-grid"><button data-key="{{item.key}}" data-status="SENT" bindtap="markStatus">已发送</button><button data-key="{{item.key}}" data-status="WAITING_REPLY" bindtap="markStatus">等回复</button><button data-key="{{item.key}}" data-status="REPLIED" bindtap="markStatus">已回复</button><button data-key="{{item.key}}" data-status="SNOOZED" bindtap="markStatus">2小时后提醒</button><button class="done" data-key="{{item.key}}" data-status="COMPLETED" bindtap="markStatus">完成</button><button class="escalate" data-key="{{item.key}}" data-status="ESCALATED" bindtap="markStatus">升级给教务/管理</button></view>
+      <view class="action-grid"><button data-key="{{row.key}}" data-status="SENT" bindtap="markStatus">已发送</button><button data-key="{{row.key}}" data-status="WAITING_REPLY" bindtap="markStatus">等回复</button><button data-key="{{row.key}}" data-status="REPLIED" bindtap="markStatus">已回复</button><button data-key="{{row.key}}" data-status="SNOOZED" bindtap="markStatus">2小时后提醒</button><button class="done" data-key="{{row.key}}" data-status="COMPLETED" bindtap="markStatus">完成</button><button class="escalate" data-key="{{row.key}}" data-status="ESCALATED" bindtap="markStatus">升级给教务/管理</button></view>
     </view>
+  </view>
   </view>
   <view class="empty" wx:if="{{!loading && !visibleReminders.length}}">这个分类暂无待办</view>
   <view class="consent-section" wx:if="{{consentReminders.length}}">

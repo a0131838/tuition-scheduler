@@ -14,6 +14,9 @@ export type CommunicationReminderStatus =
   | "SNOOZED"
   | "ESCALATED";
 
+export type CommunicationReminderPriority = "P0" | "P1" | "P2" | "P3";
+export type CommunicationReminderGroup = "COURSE" | "TEACHING" | "REPORT" | "TICKET";
+
 export type CommunicationReminderItem = {
   key: string;
   category: string;
@@ -36,6 +39,11 @@ export type CommunicationReminderItem = {
   copyEn: string;
   copyBilingual: string;
   snoozedUntil?: string;
+  priority: CommunicationReminderPriority;
+  priorityLabel: string;
+  priorityReason: string;
+  group: CommunicationReminderGroup;
+  groupLabel: string;
 };
 
 const STATUS_LABELS: Record<CommunicationReminderStatus, string> = {
@@ -51,6 +59,29 @@ const STATUS_LABELS: Record<CommunicationReminderStatus, string> = {
 
 const DAY = 24 * 60 * 60 * 1000;
 
+const GROUP_META: Record<string, { group: CommunicationReminderGroup; groupLabel: string }> = {
+  CLASS_REMINDER: { group: "COURSE", groupLabel: "课程提醒" },
+  TEACHER_CLASS_REMINDER: { group: "COURSE", groupLabel: "课程提醒" },
+  ATTENDANCE: { group: "TEACHING", groupLabel: "教学跟进" },
+  FEEDBACK: { group: "TEACHING", groupLabel: "教学跟进" },
+  FEEDBACK_FORWARD: { group: "TEACHING", groupLabel: "教学跟进" },
+  MIDTERM_REPORT: { group: "REPORT", groupLabel: "学习报告" },
+  FINAL_REPORT: { group: "REPORT", groupLabel: "学习报告" },
+  TICKET: { group: "TICKET", groupLabel: "工单确认" },
+  TEACHER_CONFIRM: { group: "TICKET", groupLabel: "工单确认" },
+};
+
+export function classifyCommunicationReminder(input: Pick<CommunicationReminderItem, "category" | "urgency" | "status">) {
+  const group = GROUP_META[input.category] ?? { group: "TICKET" as const, groupLabel: "工单确认" };
+  if (input.status === "WAITING_REPLY") return { ...group, priority: "P2" as const, priorityLabel: "等待回复", priorityReason: "已经联系，等待对方回复" };
+  if (input.status === "SNOOZED") return { ...group, priority: "P3" as const, priorityLabel: "后续跟进", priorityReason: "已经安排稍后提醒" };
+  if (input.status === "ESCALATED") return { ...group, priority: "P0" as const, priorityLabel: "立即处理", priorityReason: "已经升级，需要立即接手" };
+  if (input.status === "REPLIED") return { ...group, priority: "P0" as const, priorityLabel: "立即处理", priorityReason: "已经收到回复，需要继续处理" };
+  if (input.urgency === "OVERDUE") return { ...group, priority: "P0" as const, priorityLabel: "立即处理", priorityReason: "已经超过计划处理时间" };
+  if (input.urgency === "TODAY") return { ...group, priority: "P1" as const, priorityLabel: "今天处理", priorityReason: "需要在今天完成" };
+  return { ...group, priority: "P3" as const, priorityLabel: "后续跟进", priorityReason: "尚未到处理截止时间" };
+}
+
 function bilingual(zh: string, en: string) {
   return `${zh}\n\nEnglish:\n${en}`;
 }
@@ -61,15 +92,19 @@ function urgencyFor(dueAt: Date, now: Date): CommunicationReminderItem["urgency"
   return sgDay(dueAt) === sgDay(now) ? "TODAY" : "UPCOMING";
 }
 
-function reminder(input: Omit<CommunicationReminderItem, "dueAt" | "dueText" | "urgency" | "status" | "statusLabel" | "copyBilingual"> & { dueAt: Date; now: Date }) {
+function reminder(input: Omit<CommunicationReminderItem, "dueAt" | "dueText" | "urgency" | "status" | "statusLabel" | "copyBilingual" | "priority" | "priorityLabel" | "priorityReason" | "group" | "groupLabel"> & { dueAt: Date; now: Date }): CommunicationReminderItem {
+  const { dueAt, now, ...base } = input;
+  const urgency = urgencyFor(dueAt, now);
+  const classified = classifyCommunicationReminder({ category: input.category, urgency, status: "READY" });
   return {
-    ...input,
-    dueAt: input.dueAt.toISOString(),
-    dueText: formatBusinessDateTime(input.dueAt),
-    urgency: urgencyFor(input.dueAt, input.now),
+    ...base,
+    dueAt: dueAt.toISOString(),
+    dueText: formatBusinessDateTime(dueAt),
+    urgency,
     status: "READY" as const,
     statusLabel: STATUS_LABELS.READY,
     copyBilingual: bilingual(input.copyZh, input.copyEn),
+    ...classified,
   };
 }
 
@@ -251,14 +286,15 @@ export async function listCommunicationReminders(now = new Date(), limit = 300) 
     let status = (rawStatus in STATUS_LABELS ? rawStatus : "READY") as CommunicationReminderStatus;
     const snoozedUntil = typeof meta.snoozedUntil === "string" ? meta.snoozedUntil : undefined;
     if (status === "SNOOZED" && (!snoozedUntil || new Date(snoozedUntil).getTime() <= now.getTime())) status = "READY";
-    return { ...item, status, statusLabel: STATUS_LABELS[status], snoozedUntil };
+    const classified = classifyCommunicationReminder({ category: item.category, urgency: item.urgency, status });
+    return { ...item, status, statusLabel: STATUS_LABELS[status], snoozedUntil, ...classified };
   }).filter((item) => item.status !== "COMPLETED");
 
   visible.sort((a, b) => {
-    const rank = { OVERDUE: 0, TODAY: 1, UPCOMING: 2 };
-    const categoryRank: Record<string, number> = { TICKET: 0, TEACHER_CONFIRM: 1, CLASS_REMINDER: 2, TEACHER_CLASS_REMINDER: 2, ATTENDANCE: 3, FEEDBACK: 4, FEEDBACK_FORWARD: 4, MIDTERM_REPORT: 5, FINAL_REPORT: 5 };
-    return rank[a.urgency] - rank[b.urgency]
-      || (categoryRank[a.category] ?? 9) - (categoryRank[b.category] ?? 9)
+    const priorityRank = { P0: 0, P1: 1, P2: 2, P3: 3 };
+    const groupRank = { TICKET: 0, COURSE: 1, TEACHING: 2, REPORT: 3 };
+    return priorityRank[a.priority] - priorityRank[b.priority]
+      || groupRank[a.group] - groupRank[b.group]
       || new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime();
   });
   return visible.slice(0, limit);
@@ -271,6 +307,18 @@ export function communicationReminderSummary(items: CommunicationReminderItem[],
     today: items.filter((item) => item.urgency === "TODAY").length,
     waitingReply: items.filter((item) => item.status === "WAITING_REPLY").length,
     escalated: items.filter((item) => item.status === "ESCALATED").length,
+    priority: {
+      P0: items.filter((item) => item.priority === "P0").length,
+      P1: items.filter((item) => item.priority === "P1").length,
+      P2: items.filter((item) => item.priority === "P2").length,
+      P3: items.filter((item) => item.priority === "P3").length,
+    },
+    groups: {
+      COURSE: items.filter((item) => item.group === "COURSE").length,
+      TEACHING: items.filter((item) => item.group === "TEACHING").length,
+      REPORT: items.filter((item) => item.group === "REPORT").length,
+      TICKET: items.filter((item) => item.group === "TICKET").length,
+    },
     generatedAt: now.toISOString(),
   };
 }
