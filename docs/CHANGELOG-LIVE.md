@@ -1,5 +1,32 @@
 # CHANGELOG LIVE
 
+## 2026-08-17-r375
+
+- Release ID: `2026-08-17-r375`
+- Date/Time (Asia/Singapore): `2026-08-17`
+- Deployment status: `READY`
+- Scope: make Final and Midterm Report learning hours reflect each student's subject-specific attendance through the original submission time, including shared packages.
+- Key files:
+  - `lib/learning-report-attendance.ts`
+  - `app/teacher/final-reports/[id]/page.tsx`
+  - `app/teacher/midterm-reports/[id]/page.tsx`
+  - `app/api/miniapp/staff/teacher/reports/route.ts`
+  - `app/api/admin/final-reports/[id]/pdf/route.ts`
+  - `app/api/admin/midterm-reports/[id]/pdf/route.ts`
+  - `app/final-report/[id]/page.tsx`
+  - `tests/learning-report-attendance.test.ts`
+  - `docs/tasks/TASK-20260817-learning-report-attendance.md`
+- Risk impact (if any): Low to medium and report-only. PDF, teacher report views, miniapp submissions and final-report share pages now use attendance snapshots; package balances, deductions, attendance records, scheduling, payroll, invoices and receipts are unchanged.
+- Verification:
+  - 8 focused learning-report and miniapp teacher tests passed
+  - `npx tsc --noEmit` passed
+  - `npm run build` passed with 251 generated pages
+  - production read-only reconciliation confirmed package-capacity mismatch and subject-level attendance totals
+  - `git diff --check` passed
+- Rollback point: `04c7a1de9a541cd42872eb2f7e39f2021d91af4c` before `2026-08-17-r375`.
+
+---
+
 ## 2026-08-17-r374
 
 - Release ID: `2026-08-17-r374`

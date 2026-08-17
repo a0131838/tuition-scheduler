@@ -1,5 +1,36 @@
 # RELEASE BOARD
 
+- `2026-08-17-r375`: ready to separate Final and Midterm Report learning hours by student, subject and original submission cutoff.
+
+## 2026-08-17-r375 Ready
+
+- Scope: replace package-capacity wording in learning reports with actual student attendance captured by subject at first submission.
+- Business impact:
+  - Final Report Learning Period and Learning Snapshot show the same actual attended hours instead of old and current package capacities
+  - Midterm Report teacher detail and PDF use the same student-and-subject attendance basis
+  - shared packages no longer make one sibling inherit the other sibling's report hours
+  - existing submitted reports are recalculated read-only through their original submission timestamp; newly submitted web and miniapp reports retain an immutable snapshot
+  - custom period notes remain available, while legacy labels such as `50h package completed` and `26 sessions completed` are suppressed
+  - no package, attendance, scheduling, payroll, invoice, receipt or settlement record is changed
+- Files:
+  - `lib/learning-report-attendance.ts`
+  - `app/teacher/final-reports/[id]/page.tsx`
+  - `app/teacher/midterm-reports/[id]/page.tsx`
+  - `app/api/miniapp/staff/teacher/reports/route.ts`
+  - `app/api/admin/final-reports/[id]/pdf/route.ts`
+  - `app/api/admin/midterm-reports/[id]/pdf/route.ts`
+  - `app/final-report/[id]/page.tsx`
+  - `tests/learning-report-attendance.test.ts`
+- Verification before deploy:
+  - 8 focused tests, TypeScript check and 251-route production build
+  - production read-only reconciliation for Huang Zihao, Allie and Steven
+  - `git diff --check` and guarded release preflight
+- Post-deploy verification:
+  - confirm local, GitHub and server commits align and PM2 is online
+  - confirm `/admin/login` returns HTTP 200
+  - run the production helper against Huang Zihao's submitted Final Report and confirm 30 subject-attendance hours rather than 50h or 100h package capacity
+- Task doc: `docs/tasks/TASK-20260817-learning-report-attendance.md`
+
 - `2026-08-17-r374`: ready to apply effective-dated full-time payroll treatment for Jessika, Jasmine and Sharilyn without rewriting historical course rates or academic feedback.
 
 ## 2026-08-17-r374 Ready

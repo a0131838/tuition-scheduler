@@ -58,7 +58,6 @@ async function assignMidtermReport(formData: FormData) {
   const pkg = await prisma.coursePackage.findUnique({
     where: { id: packageId },
     include: {
-      txns: { where: { kind: "DEDUCT" }, select: { id: true } },
       sharedStudents: { select: { studentId: true } },
     },
   });
@@ -116,7 +115,7 @@ async function assignMidtermReport(formData: FormData) {
         progressPercent: progress,
         consumedMinutes: consumed,
         totalMinutes: total,
-        reportPeriodLabel: `${pkg.txns.length} sessions completed`,
+        reportPeriodLabel: null,
       },
     });
   }
@@ -161,7 +160,6 @@ async function exemptMidtermReport(formData: FormData) {
     const pkg = await prisma.coursePackage.findUnique({
       where: { id: packageId },
       include: {
-        txns: { where: { kind: "DEDUCT" }, select: { id: true } },
         sharedStudents: { select: { studentId: true } },
       },
     });
@@ -212,7 +210,7 @@ async function exemptMidtermReport(formData: FormData) {
           progressPercent: progress,
           consumedMinutes: consumed,
           totalMinutes: total,
-          reportPeriodLabel: `${pkg.txns.length} sessions completed`,
+          reportPeriodLabel: null,
           exemptReason,
           exemptedAt: now,
           exemptedByUserId: user.id,

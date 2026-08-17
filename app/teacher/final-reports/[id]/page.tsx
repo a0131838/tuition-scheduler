@@ -6,6 +6,12 @@ import {
   parseFinalDraftFromFormData,
   parseFinalReportDraft,
 } from "@/lib/final-report";
+import {
+  createLearningReportAttendanceSnapshot,
+  isLegacyLearningPeriodLabel,
+  mergeLearningReportAttendanceSnapshot,
+  parseLearningReportAttendanceSnapshot,
+} from "@/lib/learning-report-attendance";
 import { getLang, t } from "@/lib/i18n";
 import { formatMinutesToHours } from "@/lib/midterm-report";
 import { prisma } from "@/lib/prisma";
@@ -177,7 +183,16 @@ export default async function TeacherFinalReportDetailPage({
 
     const latest = await prisma.finalReport.findUnique({
       where: { id: reportId },
-      select: { status: true, submittedAt: true, archivedAt: true },
+      select: {
+        status: true,
+        submittedAt: true,
+        archivedAt: true,
+        reportJson: true,
+        packageId: true,
+        studentId: true,
+        subjectId: true,
+        teacherId: true,
+      },
     });
     if (!latest || latest.status === "FORWARDED" || latest.status === "EXEMPT" || latest.archivedAt) {
       redirect(`/teacher/final-reports/${encodeURIComponent(reportId)}?err=locked`);
@@ -188,17 +203,29 @@ export default async function TeacherFinalReportDetailPage({
     const periodLabel = String(formData.get("reportPeriodLabel") ?? "").trim();
     const finalLevel = String(formData.get("finalLevel") ?? "").trim();
     const score = asScore(String(formData.get("overallScore") ?? ""));
+    const submittedAt = latest.submittedAt ?? new Date();
+    const existingSnapshot = parseLearningReportAttendanceSnapshot(latest.reportJson);
+    const attendanceSnapshot =
+      intent === "submit" && !existingSnapshot
+        ? await createLearningReportAttendanceSnapshot({
+            packageId: latest.packageId,
+            studentId: latest.studentId,
+            subjectId: latest.subjectId,
+            teacherId: latest.teacherId,
+            throughAt: submittedAt,
+          })
+        : existingSnapshot;
 
     await prisma.finalReport.update({
       where: { id: reportId },
       data: {
-        reportJson: draft as any,
+        reportJson: mergeLearningReportAttendanceSnapshot(draft, latest.reportJson, attendanceSnapshot) as any,
         reportPeriodLabel: periodLabel || null,
         finalLevel: finalLevel || null,
         overallScore: score,
         recommendation: draft.recommendedNextStep || null,
         status: intent === "submit" ? "SUBMITTED" : latest.status,
-        submittedAt: intent === "submit" ? new Date() : latest.submittedAt,
+        submittedAt: intent === "submit" ? submittedAt : latest.submittedAt,
       },
     });
 
@@ -279,7 +306,12 @@ export default async function TeacherFinalReportDetailPage({
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
               <label>
                 {t(lang, "Learning period", "学习阶段")}
-                <input name="reportPeriodLabel" defaultValue={report.reportPeriodLabel ?? ""} style={{ width: "100%" }} />
+                <input
+                  name="reportPeriodLabel"
+                  defaultValue={isLegacyLearningPeriodLabel(report.reportPeriodLabel) ? "" : report.reportPeriodLabel ?? ""}
+                  placeholder={t(lang, "Optional custom note; attendance is calculated automatically", "可选备注；实际出勤由系统自动计算")}
+                  style={{ width: "100%" }}
+                />
               </label>
               <label>
                 {t(lang, "Final level", "最终水平")}

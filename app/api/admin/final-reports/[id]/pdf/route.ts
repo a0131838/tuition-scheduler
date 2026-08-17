@@ -1,5 +1,11 @@
 import { requireAdmin } from "@/lib/auth";
 import { parseFinalReportDraft } from "@/lib/final-report";
+import {
+  createLearningReportAttendanceSnapshot,
+  learningReportPeriodLabel,
+  finalReportStageProgressLabel,
+  parseLearningReportAttendanceSnapshot,
+} from "@/lib/learning-report-attendance";
 import { getLang } from "@/lib/i18n";
 import { setPdfBoldFont, setPdfFont } from "@/lib/pdf-font";
 import { prisma } from "@/lib/prisma";
@@ -133,15 +139,6 @@ function recommendationLabel(value: string, lang: "BILINGUAL" | "ZH" | "EN") {
             : value === "COURSE_COMPLETED"
               ? "Course completed"
               : "-";
-  if (lang === "ZH") return zh;
-  if (lang === "EN") return en;
-  return `${en} / ${zh}`;
-}
-
-function packageCompletionLabel(totalMinutes: number | null | undefined, lang: "BILINGUAL" | "ZH" | "EN") {
-  const totalHours = Math.max(0, Math.round(Number(totalMinutes ?? 0) / 60));
-  const zh = totalHours > 0 ? `已完成 ${totalHours} 小时课包学习` : "已完成本阶段学习";
-  const en = totalHours > 0 ? `Completed ${totalHours} hours of study in this package` : "Completed this learning stage";
   if (lang === "ZH") return zh;
   if (lang === "EN") return en;
   return `${en} / ${zh}`;
@@ -333,6 +330,15 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     ...(report.reportJson && typeof report.reportJson === "object" ? report.reportJson : {}),
     recommendedNextStep: report.recommendation ?? (report.reportJson as any)?.recommendedNextStep,
   });
+  const attendanceSnapshot =
+    parseLearningReportAttendanceSnapshot(report.reportJson) ??
+    (await createLearningReportAttendanceSnapshot({
+      packageId: report.packageId,
+      studentId: report.studentId,
+      subjectId: report.subjectId,
+      teacherId: report.teacherId,
+      throughAt: report.submittedAt ?? new Date(),
+    }));
   const sections = buildSections(lang, draft, report);
 
   const doc = new PDFDocument({
@@ -380,7 +386,10 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     { label: lang === "ZH" ? "学生" : lang === "EN" ? "Student" : "Student / 学生", value: report.student.name },
     { label: lang === "ZH" ? "课程" : lang === "EN" ? "Course" : "Course / 课程", value: `${report.course.name}${report.subject ? ` / ${report.subject.name}` : ""}` },
     { label: lang === "ZH" ? "老师" : lang === "EN" ? "Teacher" : "Teacher / 老师", value: report.teacher.name },
-    { label: lang === "ZH" ? "学习阶段" : lang === "EN" ? "Learning period" : "Learning period / 学习阶段", value: report.reportPeriodLabel || (lang === "ZH" ? "本课包结课总结" : lang === "EN" ? "End-of-package summary" : "End-of-package summary / 本课包结课总结") },
+    {
+      label: lang === "ZH" ? "学习阶段" : lang === "EN" ? "Learning period" : "Learning period / 学习阶段",
+      value: learningReportPeriodLabel(attendanceSnapshot, report.reportPeriodLabel, lang),
+    },
   ]);
   y += summaryH + gap;
 
@@ -391,7 +400,10 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     title: "#166534",
   });
   const snapshotItems = [
-    { label: lang === "ZH" ? "阶段完成情况" : lang === "EN" ? "Stage progress" : "Stage progress / 阶段完成情况", value: packageCompletionLabel(report.package.totalMinutes, lang) },
+    {
+      label: lang === "ZH" ? "阶段完成情况" : lang === "EN" ? "Stage progress" : "Stage progress / 阶段完成情况",
+      value: finalReportStageProgressLabel(attendanceSnapshot, lang),
+    },
     { label: lang === "ZH" ? "当前成长重点" : lang === "EN" ? "Current growth focus" : "Current growth focus / 当前成长重点", value: focusLabel(report.recommendation || draft.recommendedNextStep, lang, draft.areasToContinue) },
   ];
   const finalLevelValue = normalizeOptionalText(report.finalLevel);

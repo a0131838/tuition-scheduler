@@ -3,6 +3,12 @@ import { requireMiniappTeacher } from "@/app/api/miniapp/staff/teacher/_lib";
 import { logAudit } from "@/lib/audit-log";
 import { formatBusinessDateOnly } from "@/lib/date-only";
 import { FINAL_REPORT_RECOMMENDATIONS, parseFinalReportDraft } from "@/lib/final-report";
+import {
+  createLearningReportAttendanceSnapshot,
+  isLegacyLearningPeriodLabel,
+  mergeLearningReportAttendanceSnapshot,
+  parseLearningReportAttendanceSnapshot,
+} from "@/lib/learning-report-attendance";
 import { acknowledgeManagerTeacherFeedback, getTeacherManagerFeedbackState } from "@/lib/manager-teacher-feedback";
 import { cleanMiniappText, isReportEditable } from "@/lib/miniapp-staff-action-center";
 import { parseReportDraft } from "@/lib/midterm-report";
@@ -26,7 +32,7 @@ function reportDto(row: any, kind: "MIDTERM" | "FINAL") {
     status: row.status,
     assignedText: formatBusinessDateOnly(row.assignedAt),
     submittedText: row.submittedAt ? formatBusinessDateOnly(row.submittedAt) : "",
-    reportPeriodLabel: row.reportPeriodLabel || "",
+    reportPeriodLabel: isLegacyLearningPeriodLabel(row.reportPeriodLabel) ? "" : row.reportPeriodLabel || "",
     editable,
     draft: kind === "FINAL" ? parseFinalReportDraft({ ...(row.reportJson && typeof row.reportJson === "object" ? row.reportJson : {}), recommendedNextStep: row.recommendation || (row.reportJson as any)?.recommendedNextStep }) : parseReportDraft(row.reportJson),
   };
@@ -108,7 +114,20 @@ export async function POST(req: Request) {
   const submit = action === "SUBMIT_REPORT";
 
   if (kind === "MIDTERM") {
-    const report = await prisma.midtermReport.findFirst({ where: { id, teacherId: access.teacherId }, select: { id: true, status: true, submittedAt: true, archivedAt: true, reportJson: true } });
+    const report = await prisma.midtermReport.findFirst({
+      where: { id, teacherId: access.teacherId },
+      select: {
+        id: true,
+        status: true,
+        submittedAt: true,
+        archivedAt: true,
+        reportJson: true,
+        packageId: true,
+        studentId: true,
+        subjectId: true,
+        teacherId: true,
+      },
+    });
     if (!report) return bad("Report not found", 404);
     if (!isReportEditable(report.status, report.archivedAt) || midtermLocked(report.reportJson)) return bad("Report is read only", 409);
     const current = parseReportDraft(report.reportJson);
@@ -121,9 +140,42 @@ export async function POST(req: Request) {
       suggestedPracticeLoad: cleanMiniappText(draftInput.suggestedPracticeLoad, 1500),
     };
     if (submit && draft.overallSummary.length < 10) return bad("Please complete the overall summary before submitting");
-    await prisma.midtermReport.update({ where: { id }, data: { reportJson: draft as any, reportPeriodLabel: cleanMiniappText((body as any)?.reportPeriodLabel, 120) || null, status: submit ? "SUBMITTED" : report.status, submittedAt: submit ? new Date() : report.submittedAt } });
+    const submittedAt = report.submittedAt ?? new Date();
+    const existingSnapshot = parseLearningReportAttendanceSnapshot(report.reportJson);
+    const snapshot =
+      submit && !existingSnapshot
+        ? await createLearningReportAttendanceSnapshot({
+            packageId: report.packageId,
+            studentId: report.studentId,
+            subjectId: report.subjectId,
+            teacherId: report.teacherId,
+            throughAt: submittedAt,
+          })
+        : existingSnapshot;
+    await prisma.midtermReport.update({
+      where: { id },
+      data: {
+        reportJson: mergeLearningReportAttendanceSnapshot(draft, report.reportJson, snapshot) as any,
+        reportPeriodLabel: cleanMiniappText((body as any)?.reportPeriodLabel, 120) || null,
+        status: submit ? "SUBMITTED" : report.status,
+        submittedAt: submit ? submittedAt : report.submittedAt,
+      },
+    });
   } else if (kind === "FINAL") {
-    const report = await prisma.finalReport.findFirst({ where: { id, teacherId: access.teacherId }, select: { id: true, status: true, submittedAt: true, archivedAt: true, reportJson: true } });
+    const report = await prisma.finalReport.findFirst({
+      where: { id, teacherId: access.teacherId },
+      select: {
+        id: true,
+        status: true,
+        submittedAt: true,
+        archivedAt: true,
+        reportJson: true,
+        packageId: true,
+        studentId: true,
+        subjectId: true,
+        teacherId: true,
+      },
+    });
     if (!report) return bad("Report not found", 404);
     if (!isReportEditable(report.status, report.archivedAt) || report.status === "FORWARDED") return bad("Report is read only", 409);
     const current = parseFinalReportDraft(report.reportJson);
@@ -138,7 +190,28 @@ export async function POST(req: Request) {
       recommendedNextStep: FINAL_REPORT_RECOMMENDATIONS.includes(recommendation as any) ? recommendation : "",
     });
     if (submit && draft.finalSummary.length < 10) return bad("Please complete the final summary before submitting");
-    await prisma.finalReport.update({ where: { id }, data: { reportJson: draft as any, reportPeriodLabel: cleanMiniappText((body as any)?.reportPeriodLabel, 120) || null, recommendation: draft.recommendedNextStep || null, status: submit ? "SUBMITTED" : report.status, submittedAt: submit ? new Date() : report.submittedAt } });
+    const submittedAt = report.submittedAt ?? new Date();
+    const existingSnapshot = parseLearningReportAttendanceSnapshot(report.reportJson);
+    const attendanceSnapshot =
+      submit && !existingSnapshot
+        ? await createLearningReportAttendanceSnapshot({
+            packageId: report.packageId,
+            studentId: report.studentId,
+            subjectId: report.subjectId,
+            teacherId: report.teacherId,
+            throughAt: submittedAt,
+          })
+        : existingSnapshot;
+    await prisma.finalReport.update({
+      where: { id },
+      data: {
+        reportJson: mergeLearningReportAttendanceSnapshot(draft, report.reportJson, attendanceSnapshot) as any,
+        reportPeriodLabel: cleanMiniappText((body as any)?.reportPeriodLabel, 120) || null,
+        recommendation: draft.recommendedNextStep || null,
+        status: submit ? "SUBMITTED" : report.status,
+        submittedAt: submit ? submittedAt : report.submittedAt,
+      },
+    });
   } else {
     return bad("Unknown report type");
   }

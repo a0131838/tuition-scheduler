@@ -1,6 +1,12 @@
 import { requireTeacherProfile } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
-import { EMPTY_REPORT_DRAFT, parseDraftFromFormData, parseReportDraft } from "@/lib/midterm-report";
+import { EMPTY_REPORT_DRAFT, formatMinutesToHours, parseDraftFromFormData, parseReportDraft } from "@/lib/midterm-report";
+import {
+  createLearningReportAttendanceSnapshot,
+  isLegacyLearningPeriodLabel,
+  mergeLearningReportAttendanceSnapshot,
+  parseLearningReportAttendanceSnapshot,
+} from "@/lib/learning-report-attendance";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -174,9 +180,16 @@ export default async function TeacherMidtermReportDetailPage({
 
   const reportId = report.id;
   const ownerTeacherId = report.teacherId;
-  const currentStatus = report.status;
-  const currentSubmittedAt = report.submittedAt;
   const isLocked = readLockedAfterForward(report.reportJson);
+  const attendanceSnapshot =
+    parseLearningReportAttendanceSnapshot(report.reportJson) ??
+    (await createLearningReportAttendanceSnapshot({
+      packageId: report.packageId,
+      studentId: report.studentId,
+      subjectId: report.subjectId,
+      teacherId: report.teacherId,
+      throughAt: report.submittedAt ?? new Date(),
+    }));
 
   async function saveReport(formData: FormData) {
     "use server";
@@ -187,7 +200,16 @@ export default async function TeacherMidtermReportDetailPage({
 
     const latest = await prisma.midtermReport.findUnique({
       where: { id: reportId },
-      select: { reportJson: true, status: true, submittedAt: true, archivedAt: true },
+      select: {
+        reportJson: true,
+        status: true,
+        submittedAt: true,
+        archivedAt: true,
+        packageId: true,
+        studentId: true,
+        subjectId: true,
+        teacherId: true,
+      },
     });
     if (!latest || latest.status === "EXEMPT" || latest.archivedAt || readLockedAfterForward(latest.reportJson)) {
       redirect(`/teacher/midterm-reports/${encodeURIComponent(reportId)}?err=locked`);
@@ -198,16 +220,28 @@ export default async function TeacherMidtermReportDetailPage({
     const estimatedCefr = String(formData.get("examTargetStatus") ?? "").trim();
     const periodLabel = String(formData.get("reportPeriodLabel") ?? "").trim();
     const score = asScore(String(formData.get("overallScore") ?? ""));
+    const submittedAt = latest.submittedAt ?? new Date();
+    const existingSnapshot = parseLearningReportAttendanceSnapshot(latest.reportJson);
+    const snapshot =
+      intent === "submit" && !existingSnapshot
+        ? await createLearningReportAttendanceSnapshot({
+            packageId: latest.packageId,
+            studentId: latest.studentId,
+            subjectId: latest.subjectId,
+            teacherId: latest.teacherId,
+            throughAt: submittedAt,
+          })
+        : existingSnapshot;
 
     await prisma.midtermReport.update({
       where: { id: reportId },
       data: {
-        reportJson: draft as any,
+        reportJson: mergeLearningReportAttendanceSnapshot(draft, latest.reportJson, snapshot) as any,
         examTargetStatus: estimatedCefr || null,
         reportPeriodLabel: periodLabel || null,
         overallScore: score,
         status: intent === "submit" ? "SUBMITTED" : latest.status,
-        submittedAt: intent === "submit" ? new Date() : latest.submittedAt,
+        submittedAt: intent === "submit" ? submittedAt : latest.submittedAt,
       },
     });
 
@@ -241,9 +275,13 @@ export default async function TeacherMidtermReportDetailPage({
           <div style={{ fontSize: 22, fontWeight: 800, color: "#1d4ed8", marginTop: 10 }}>{formatBusinessDateOnly(new Date(report.assignedAt))}</div>
         </div>
         <div style={statCard("#ecfdf5", "#bbf7d0")}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "#166534" }}>{t(lang, "Progress", "学习进度")}</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "#166534", marginTop: 10 }}>{report.progressPercent}%</div>
-          <div style={{ color: "#166534", marginTop: 4 }}>{`${report.consumedMinutes} / ${report.totalMinutes} min`}</div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#166534" }}>{t(lang, "Actual attendance", "实际出勤")}</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#166534", marginTop: 10 }}>
+            {formatMinutesToHours(attendanceSnapshot.attendedMinutes)}h
+          </div>
+          <div style={{ color: "#166534", marginTop: 4 }}>
+            {t(lang, `${attendanceSnapshot.sessionCount} attended sessions`, `${attendanceSnapshot.sessionCount} 节有效出勤`)}
+          </div>
         </div>
         <div style={statCard("#f5f3ff", "#ddd6fe")}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#6d28d9" }}>{t(lang, "Report mode", "报告模式")}</div>
@@ -275,7 +313,12 @@ export default async function TeacherMidtermReportDetailPage({
               </label>
               <label>
                 {t(lang, "Assessment Period", "评估阶段")}
-                <input name="reportPeriodLabel" defaultValue={report.reportPeriodLabel ?? ""} style={{ width: "100%" }} />
+                <input
+                  name="reportPeriodLabel"
+                  defaultValue={isLegacyLearningPeriodLabel(report.reportPeriodLabel) ? "" : report.reportPeriodLabel ?? ""}
+                  placeholder={t(lang, "Optional custom note; attendance is calculated automatically", "可选备注；实际出勤由系统自动计算")}
+                  style={{ width: "100%" }}
+                />
               </label>
               <label>
                 {t(lang, "Assessment Tool Used", "评估工具")}

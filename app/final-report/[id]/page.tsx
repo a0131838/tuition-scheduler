@@ -1,6 +1,11 @@
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
 import { parseFinalReportDraft } from "@/lib/final-report";
 import { getLang, t } from "@/lib/i18n";
+import {
+  createLearningReportAttendanceSnapshot,
+  learningReportPeriodLabel,
+  parseLearningReportAttendanceSnapshot,
+} from "@/lib/learning-report-attendance";
 import { prisma } from "@/lib/prisma";
 
 function cardStyle(border: string, background: string) {
@@ -128,6 +133,15 @@ export default async function FinalReportSharePage({
     ...(report.reportJson && typeof report.reportJson === "object" ? report.reportJson : {}),
     recommendedNextStep: report.recommendation ?? (report.reportJson as any)?.recommendedNextStep,
   });
+  const attendanceSnapshot =
+    parseLearningReportAttendanceSnapshot(report.reportJson) ??
+    (await createLearningReportAttendanceSnapshot({
+      packageId: report.packageId,
+      studentId: report.studentId,
+      subjectId: report.subjectId,
+      teacherId: report.teacherId,
+      throughAt: report.submittedAt ?? new Date(),
+    }));
 
   const viewedAt = new Date();
   await prisma.finalReport.update({
@@ -165,7 +179,9 @@ export default async function FinalReportSharePage({
       <section style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
         <div style={infoCard("#dbeafe")}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#1d4ed8" }}>{t(lang, "Report period", "报告阶段")}</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>{report.reportPeriodLabel || "-"}</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>
+            {learningReportPeriodLabel(attendanceSnapshot, report.reportPeriodLabel, lang)}
+          </div>
         </div>
         <div style={infoCard("#bbf7d0")}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#166534" }}>{t(lang, "Final level", "最终水平")}</div>

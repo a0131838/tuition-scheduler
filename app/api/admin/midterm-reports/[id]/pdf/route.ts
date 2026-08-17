@@ -1,5 +1,10 @@
 ﻿import { requireAdmin } from "@/lib/auth";
 import { parseReportDraft } from "@/lib/midterm-report";
+import {
+  createLearningReportAttendanceSnapshot,
+  learningReportPeriodLabel,
+  parseLearningReportAttendanceSnapshot,
+} from "@/lib/learning-report-attendance";
 import { setPdfBoldFont, setPdfFont } from "@/lib/pdf-font";
 import { prisma } from "@/lib/prisma";
 import { formatBusinessDateOnly } from "@/lib/date-only";
@@ -284,6 +289,15 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   if (!report) return new Response("Report not found", { status: 404 });
 
   const draft = parseReportDraft(report.reportJson);
+  const attendanceSnapshot =
+    parseLearningReportAttendanceSnapshot(report.reportJson) ??
+    (await createLearningReportAttendanceSnapshot({
+      packageId: report.packageId,
+      studentId: report.studentId,
+      subjectId: report.subjectId,
+      teacherId: report.teacherId,
+      throughAt: report.submittedAt ?? new Date(),
+    }));
 
   const doc = new PDFDocument({
     size: "A4",
@@ -332,7 +346,14 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   infoCell(doc, left + 8, r1, colW, ZH.name, report.student.name);
   infoCell(doc, left + 8 + colW + cGap, r1, colW, ZH.date, formatBusinessDateOnly(new Date()));
-  infoCell(doc, left + 8 + (colW + cGap) * 2, r1, colW, ZH.period, report.reportPeriodLabel || "-");
+  infoCell(
+    doc,
+    left + 8 + (colW + cGap) * 2,
+    r1,
+    colW,
+    ZH.period,
+    learningReportPeriodLabel(attendanceSnapshot, report.reportPeriodLabel, "ZH"),
+  );
   infoCell(doc, left + 8, r2, colW, ZH.tool, draft.assessmentTool || "-");
   infoCell(doc, left + 8 + colW + cGap, r2, colW, ZH.score, String(report.overallScore ?? "-"));
   infoCell(doc, left + 8 + (colW + cGap) * 2, r2, colW, ZH.cefr, report.examTargetStatus || "-");

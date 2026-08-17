@@ -206,7 +206,7 @@ async function assignFinalReport(formData: FormData) {
         subjectId,
         packageId: pkg.id,
         assignedByUserId: user.id,
-        reportPeriodLabel: `${formatMinutesToHours(Math.max(0, Number(pkg.totalMinutes ?? 0)))}h package completed`,
+        reportPeriodLabel: null,
       },
     });
   }
@@ -346,7 +346,7 @@ async function exemptFinalReport(formData: FormData) {
           subjectId,
           packageId: pkg.id,
           assignedByUserId: user.id,
-          reportPeriodLabel: `${formatMinutesToHours(Math.max(0, Number(pkg.totalMinutes ?? 0)))}h package completed`,
+          reportPeriodLabel: null,
           exemptReason,
           exemptedAt: now,
           exemptedByUserId: user.id,
