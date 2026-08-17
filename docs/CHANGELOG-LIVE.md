@@ -1,5 +1,26 @@
 # CHANGELOG LIVE
 
+## 2026-08-17-r371
+
+- Release ID: `2026-08-17-r371`
+- Date/Time (Asia/Singapore): `2026-08-17`
+- Deployment status: `READY FOR GUARDED DEPLOY`; native WeChat package upload remains a separate gate.
+- Scope: reorganize the Emily AI communication reminder center into one shared P0-P3 priority queue with course, teaching, report and Ticket categories across the formal web workspace and employee miniapp source.
+- Key files:
+  - `lib/communication-reminders.ts`
+  - `app/admin/communication-reminders/CommunicationReminderClient.tsx`
+  - `app/admin/communication-reminders/communication-reminders.module.css`
+  - `miniapp/boss-academic-parent/pages/staff-reminder-attention/*`
+  - `tests/communication-reminder-priority.test.ts`
+  - `docs/tasks/TASK-20260817-communication-reminder-priority.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low and isolated to reminder classification and presentation. Existing bilingual copy, communication audit states and source links remain unchanged; the release does not alter scheduling, attendance, package balance, payroll, finance, Ticket state or send real messages automatically.
+- Verification: Next.js production build passed; reminder tests 7/7; backend regression 180/180; miniapp release audit passed for 69 pages with production API, no mock login and zero errors; `git diff --check` passed.
+- Rollback point: `76ff0e7a4c4cd09140e7d0713c5090cc728df952` before `2026-08-17-r371`.
+
+---
+
 ## 2026-08-16-r370
 
 - Release ID: `2026-08-16-r370`

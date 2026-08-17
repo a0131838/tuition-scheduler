@@ -1,5 +1,33 @@
 # RELEASE BOARD
 
+## 2026-08-17-r371 Ready
+
+- Scope: put every Emily communication reminder into one prioritized queue shared by Web and the Staff Mini Program.
+- Business impact:
+  - P0 shows overdue, escalated and replied items that require immediate action.
+  - P1 shows work due today; P2 contains items waiting for a reply; P3 contains later or snoozed follow-up.
+  - Course reminders, teaching follow-up, learning reports and Ticket confirmations can be filtered independently while remaining in one workspace.
+  - Each item explains why it has its priority and retains bilingual copy plus copied/sent/waiting/replied/completed/snoozed/escalated states.
+  - No automatic WeChat send and no change to scheduling, attendance deduction, packages, payroll, finance, report publication or Ticket state.
+- Files:
+  - `lib/communication-reminders.ts`
+  - `app/admin/communication-reminders/CommunicationReminderClient.tsx`
+  - `app/admin/communication-reminders/communication-reminders.module.css`
+  - `miniapp/boss-academic-parent/pages/staff-reminder-attention/*`
+  - `tests/communication-reminder-priority.test.ts`
+- Verification before deploy:
+  - reminder tests 7/7 and backend regression 180/180
+  - clean-worktree `npm run build`
+  - 69-page miniapp release audit and JavaScript syntax check
+  - `git diff --check`
+  - guarded `release_to_server.sh --check`
+- Post-deploy verification:
+  - confirm local, GitHub and server commits align
+  - confirm PM2 is online and `/admin/login` returns HTTP 200
+  - confirm production reminder page and API remain authentication-protected
+  - native WeChat experience version remains a separate upload and physical-phone check
+- Task doc: `docs/tasks/TASK-20260817-communication-reminder-priority.md`
+
 ## 2026-08-16-r370 Ready
 
 - Scope: ship one bilingual communication-reminder queue for Emily across the formal web workspace and employee miniapp source.
