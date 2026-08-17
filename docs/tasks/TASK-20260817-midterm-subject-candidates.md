@@ -32,6 +32,8 @@ Midterm Report candidates were selected when an entire HOURS package reached 45%
 - `git diff --check`
 - Production read-only comparison of current package-based and proposed student-subject candidate counts.
 - Confirmed the first deployment attempt stopped before service restart during a concurrent server build; production remained HTTP 200 and the retry is serialized after that build completed.
+- Serialized deployment completed at application commit `ae267e21245b8587ecd40748cfb4c6ab7cd97a8b`; PM2 is online and the login health check returned HTTP 200.
+- The deployed helper independently calculated Allie at 32/50 subject hours (64%) and Steven at 26/50 subject hours (52%).
 
 ## Risk
 

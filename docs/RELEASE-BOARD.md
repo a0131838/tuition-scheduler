@@ -2,7 +2,7 @@
 
 - `2026-08-17-r377`: ready to make Midterm Report candidate timing student- and subject-specific, including shared packages.
 
-## 2026-08-17-r377 Ready
+## 2026-08-17-r377 Live
 
 - Scope: replace whole-package midpoint detection with each student's actual subject attendance measured against that student's reference share of the package.
 - Business impact:
@@ -22,9 +22,9 @@
   - `git diff --check` and guarded release preflight
   - serialized retry prepared after the first attempt safely stopped before restart during a concurrent server build; the existing service stayed online
 - Post-deploy verification:
-  - confirm local, GitHub and server commits align and PM2 is online
-  - confirm `/admin/login` returns HTTP 200
-  - run the deployed candidate helper and confirm Allie and Steven have separate English attendance progress
+  - local, GitHub and server application commit aligned at `ae267e21245b8587ecd40748cfb4c6ab7cd97a8b`; PM2 PID `2631632` is online
+  - `/admin/login` returned HTTP 200
+  - deployed candidate helper confirmed separate English attendance progress: Allie 32/50 hours (64%) and Steven 26/50 hours (52%)
 - Task doc: `docs/tasks/TASK-20260817-midterm-subject-candidates.md`
 
 - `2026-08-17-r376`: ready to add age-stratified evidence and immediate A/B/C parallel-form retesting to the school-readiness experience.
