@@ -39,6 +39,9 @@ Page({
     history: [],
     answerInput: "",
     domainRows: [],
+    skillRows: [],
+    comparisonRows: [],
+    unmeasuredText: "",
     scorecards: [],
     questionStartedAt: 0,
     requestToken: "",
@@ -183,12 +186,16 @@ Page({
     if (session.status === "AWAITING_REVIEW") phase = "awaiting";
     if (session.status === "COMPLETED") phase = "report";
     const domainRows = Object.keys(session.domainScores || {}).map((name) => ({ name, score: session.domainScores[name] }));
+    const skillRows = Object.keys((session.report && session.report.skillScores) || {}).map((name) => ({ name, score: session.report.skillScores[name] }));
+    const deltas = (session.report && session.report.comparison && session.report.comparison.skillDeltas) || {};
+    const comparisonRows = Object.keys(deltas).filter((name) => deltas[name] != null).map((name) => ({ name, delta: Number(deltas[name]), label: `${Number(deltas[name]) >= 0 ? "+" : ""}${Number(deltas[name])}分` }));
+    const unmeasuredText = (((session.report && session.report.unmeasuredSkills) || [])).join("、");
     const scorecards = (session.report && Array.isArray(session.report.scorecards) ? session.report.scorecards : []).map((item) => ({
       ...item,
       scoreLabel: item.score == null ? "待老师复核" : `${item.score} / 100`
     }));
     const retestDateText = formatDate(session.retestRecommendedAt);
-    this.setData({ session: { ...session, retestDateText }, phase, hasSession: true, answerInput: session.currentAnswer || "", domainRows, scorecards, questionStartedAt: Date.now() });
+    this.setData({ session: { ...session, retestDateText }, phase, hasSession: true, answerInput: session.currentAnswer || "", domainRows, skillRows, comparisonRows, unmeasuredText, scorecards, questionStartedAt: Date.now() });
     if (session.status === "COMPLETED" && this.data.sessionToken) this.rememberSession(session, retestDateText);
   },
 
@@ -201,12 +208,12 @@ Page({
 
   startNewRound() {
     wx.removeStorageSync(SESSION_KEY);
-    this.setData({ sessionToken: "", session: null, hasSession: false, phase: "setup", consent: false, answerInput: "", domainRows: [], scorecards: [] });
+    this.setData({ sessionToken: "", session: null, hasSession: false, phase: "setup", consent: false, answerInput: "", domainRows: [], skillRows: [], comparisonRows: [], scorecards: [] });
   },
 
   startForAnotherChild() {
     wx.removeStorageSync(SESSION_KEY);
-    this.setData({ sessionToken: "", session: null, hasSession: false, phase: "setup", consent: false, studentNickname: "", currentGrade: "", languageBackground: "", answerInput: "", domainRows: [], scorecards: [] });
+    this.setData({ sessionToken: "", session: null, hasSession: false, phase: "setup", consent: false, studentNickname: "", currentGrade: "", languageBackground: "", answerInput: "", domainRows: [], skillRows: [], comparisonRows: [], scorecards: [] });
   },
 
   loadSession() {

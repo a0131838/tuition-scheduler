@@ -11386,3 +11386,11 @@ This file is the single source of truth for what changed in production.
 - Added owner-only observer account controls, forced web/miniapp sign-out after access changes, audit logging and clear read-only notices on web and miniapp.
 - Viewing renewals, health, action center, alerts or shared documents as an observer no longer triggers their page-level synchronization writes.
 - No scheduling, attendance, package, billing, receipt, payroll or ticket business rules were changed.
+
+# 2026-08-17-r375（学校指南测评测试候选）
+
+- 国际学校、AEIS小学、AEIS中学改为三套独立产品卷；国际学校只测英语，AEIS小学显示CEQ英语准备与数学，AEIS中学显示英语与数学，均不加入科学。
+- 每套卷只保留1道写作；阅读题改为逐篇事实/推断/词义题，数学按年龄覆盖应用题、比例、几何、代数和数据，不再使用低区分度通用题。
+- 写作由新加坡AI双重独立评分；分歧、超时或不合规结果转老师人工复核。模型只接收题目、匿名答案和量表，不能写正式业务数据。
+- 报告显示具体分项、CEFR初步参考、未测听力口语和A/B/C复测变化；旧报告不重算。
+- 仅为测试候选；不提交微信审核、不发布正式版本。

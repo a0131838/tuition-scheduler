@@ -7253,3 +7253,10 @@
 - Validation: Prisma generation, TypeScript, focused observer/delegation/route tests, miniapp JavaScript syntax, 246-page production build and release preflight.
 - Activation after deploy: mark the existing `wangjie.admin@123.com` account as observer, revoke old sessions and issue one new miniapp binding invite.
 - Task doc: `docs/tasks/TASK-20260812-wangjie-cross-channel-observer.md`
+
+# 2026-08-17-r375 Candidate
+
+- Scope: school-guide PATHWAY_V3 product split, one writing task, AI double grading, A/B/C retest comparison.
+- Gates: assessment 14/14, TypeScript, 251-page production build and 69-page miniapp audit passed; deployment pending.
+- Boundary: additive API and presentation only; no existing report recalculation, scheduling/package/finance mutation or formal miniapp release.
+- Task: `docs/tasks/TASK-20260817-school-guide-assessment-product-split.md`.

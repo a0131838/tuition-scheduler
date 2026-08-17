@@ -22,8 +22,8 @@ import {
   type AcademicAssessmentStoredAnswer,
 } from "../lib/school-guide-academic-assessment";
 
-test("assessment bank is a controlled V1.4 pilot with five age bands", () => {
-  assert.equal(ACADEMIC_ASSESSMENT_VERSION, "V1.4-20260805");
+test("assessment bank is a controlled pathway V3 pilot with five age bands", () => {
+  assert.equal(ACADEMIC_ASSESSMENT_VERSION, "V1.4-20260805-pathway-v3");
   assert.equal(ACADEMIC_ASSESSMENT_STATUS, "pilot");
   assert.equal(ACADEMIC_ASSESSMENT_AGE_BANDS.length, 5);
   assert.deepEqual(ACADEMIC_ASSESSMENT_PRODUCTS, ["INTERNATIONAL_ENGLISH", "AEIS_PRIMARY", "AEIS_SECONDARY"]);
@@ -31,14 +31,18 @@ test("assessment bank is a controlled V1.4 pilot with five age bands", () => {
 
 test("new products select only their intended subjects", () => {
   const international = productQuestionIds("CORE-A1214-A", "INTERNATIONAL_ENGLISH");
-  assert.ok(international.length >= 12);
+  assert.equal(international.length, 10);
   assert.deepEqual(new Set(international.map((id) => publicQuestion("CORE-A1214-A", id).domain)), new Set(["英语"]));
+  assert.equal(international.filter((id) => publicQuestion("CORE-A1214-A", id).requiresReviewer).length, 1);
 
   for (const product of ["AEIS_PRIMARY", "AEIS_SECONDARY"]) {
     const formId = product === "AEIS_PRIMARY" ? "CORE-A911-A" : "CORE-A1214-A";
     const ids = productQuestionIds(formId, product);
     assert.ok(ids.length >= 18);
-    assert.deepEqual(new Set(ids.map((id) => publicQuestion(formId, id).domain)), new Set(["英语", "数学"]));
+    const expectedDomains = product === "AEIS_PRIMARY" ? new Set(["CEQ英语准备", "数学"]) : new Set(["英语", "数学"]);
+    assert.deepEqual(new Set(ids.map((id) => publicQuestion(formId, id).domain)), expectedDomains);
+    assert.equal(ids.filter((id) => publicQuestion(formId, id).requiresReviewer).length, 1);
+    assert.equal(ids.some((id) => publicQuestion(formId, id).domain === "科学"), false);
   }
 });
 
@@ -69,7 +73,7 @@ test("new product reports never blend AEIS subjects into one total", () => {
   const result = calculateAssessmentResult({ formId, questionIds: ids, answers, durationSeconds: 30 * 60, targetPath: "AEIS_PRIMARY" });
   assert.equal(result.overallScore, null);
   assert.equal(result.overallBand, "分科查看，不合并总分");
-  assert.equal(result.report.scoreModelVersion, "PATHWAY_V2");
+  assert.equal(result.report.scoreModelVersion, "PATHWAY_V3");
   assert.deepEqual(result.report.scorecards.map((row) => row.label), ["CEQ英语资格准备", "AEIS小学数学准备"]);
 });
 
