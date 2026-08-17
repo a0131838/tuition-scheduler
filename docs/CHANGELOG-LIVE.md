@@ -4,7 +4,7 @@
 
 - Release ID: `2026-08-17-r377`
 - Date/Time (Asia/Singapore): `2026-08-17`
-- Deployment status: `READY`
+- Deployment status: `READY FOR SERIALIZED RETRY`
 - Scope: trigger Midterm Report candidates by each student's subject-specific attendance against an individual reference share instead of whole-package consumption.
 - Key files:
   - `lib/midterm-report.ts`
@@ -20,6 +20,7 @@
   - `npm run build` passed with 251 generated pages
   - production read-only comparison found 6 old package-based rows versus 15 student-subject candidates; shared-package examples were independently calculated for Allie and Steven
   - `git diff --check` passed
+  - first deployment attempt stopped before service restart when a concurrent release was building in the shared server dependency directory; the existing service remained HTTP 200, the competing build completed, and this retry is intentionally serialized
 - Rollback point: `a7d3ef4ab2ae452ed7ba40ce73cd06fff3656b30` before `2026-08-17-r377`.
 
 ---

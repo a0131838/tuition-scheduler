@@ -31,6 +31,7 @@ Midterm Report candidates were selected when an entire HOURS package reached 45%
 - `npm run build`
 - `git diff --check`
 - Production read-only comparison of current package-based and proposed student-subject candidate counts.
+- Confirmed the first deployment attempt stopped before service restart during a concurrent server build; production remained HTTP 200 and the retry is serialized after that build completed.
 
 ## Risk
 

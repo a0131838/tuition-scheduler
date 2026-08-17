@@ -20,6 +20,7 @@
   - 9 focused tests, TypeScript check and 251-route production build
   - production read-only comparison of old whole-package and new student-subject candidates
   - `git diff --check` and guarded release preflight
+  - serialized retry prepared after the first attempt safely stopped before restart during a concurrent server build; the existing service stayed online
 - Post-deploy verification:
   - confirm local, GitHub and server commits align and PM2 is online
   - confirm `/admin/login` returns HTTP 200
