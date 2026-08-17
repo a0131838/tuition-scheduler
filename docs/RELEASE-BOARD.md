@@ -1,5 +1,29 @@
 # RELEASE BOARD
 
+## 2026-08-17-r372 Ready
+
+- Scope: let Jessika's existing non-finance operations account use the Web AI communication reminder center with the same permission already available in the Staff Mini Program.
+- Business impact:
+  - Jessika can open the reminder page, read the shared queue and record audited follow-up states on Web.
+  - The web page, API and operations route firewall now recognize the same `OperationsAdminAcl`.
+  - Finance, packages, receipts, payroll, approvals and settlements remain hidden and server-blocked.
+  - No schedule, attendance, Ticket, report publication or real-message behavior changes.
+- Files:
+  - `app/admin/communication-reminders/page.tsx`
+  - `app/api/admin/communication-reminders/route.ts`
+  - `lib/operations-admin-access.ts`
+  - `tests/communication-reminders.test.ts`
+  - `tests/operations-admin-access.test.ts`
+- Verification before deploy:
+  - focused communication-reminder and operations-admin permission tests 16/16
+  - backend regression 180/180 and 250-route `npm run build`
+  - `git diff --check` and guarded release preflight
+- Post-deploy verification:
+  - confirm local, GitHub and server commits align
+  - confirm PM2 is online and `/admin/login` returns HTTP 200
+  - confirm the reminder route remains denied to anonymous users and company-finance paths remain denied to operations admins
+- Task doc: `docs/tasks/TASK-20260817-jessika-communication-reminder-access.md`
+
 ## 2026-08-17-r371 Ready
 
 - Scope: put every Emily communication reminder into one prioritized queue shared by Web and the Staff Mini Program.

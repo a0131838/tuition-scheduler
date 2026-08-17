@@ -33,11 +33,14 @@ test("miniapp communication page keeps consent repair as a separate section", ()
 test("operational queue excludes stale reminder noise and narrows web permissions", () => {
   const projection = readFileSync("lib/communication-reminders.ts", "utf8");
   const webApi = readFileSync("app/api/admin/communication-reminders/route.ts", "utf8");
+  const webPage = readFileSync("app/admin/communication-reminders/page.tsx", "utf8");
   const layout = readFileSync("app/admin/layout.tsx", "utf8");
   assert.match(projection, /2 \* DAY/);
   assert.match(projection, /\(isFill \? 30 : 14\) \* DAY/);
   assert.match(projection, /MiniappOperation/);
   assert.match(webApi, /user\.role === "CS"/);
   assert.match(webApi, /user\.workspaces\.includes\("CS"\)/);
+  assert.match(webApi, /user\.operationsAdmin/);
+  assert.match(webPage, /user\.operationsAdmin/);
   assert.match(layout, /user\.role === "CS" && pathname === "\/admin\/communication-reminders"/);
 });

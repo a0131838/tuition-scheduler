@@ -1,5 +1,26 @@
 # CHANGELOG LIVE
 
+## 2026-08-17-r372
+
+- Release ID: `2026-08-17-r372`
+- Date/Time (Asia/Singapore): `2026-08-17`
+- Deployment status: `READY`
+- Scope: align Jessika's existing non-finance operations account with the AI communication reminder center on Web, matching the employee miniapp permission already in place.
+- Key files:
+  - `app/admin/communication-reminders/page.tsx`
+  - `app/api/admin/communication-reminders/route.ts`
+  - `lib/operations-admin-access.ts`
+  - `tests/communication-reminders.test.ts`
+  - `tests/operations-admin-access.test.ts`
+  - `docs/tasks/TASK-20260817-jessika-communication-reminder-access.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low and permission-only. Jessika can use teaching-operation reminders but receives no company-finance, package, receipt, payroll, approval or settlement access. No scheduling, attendance, Ticket, report or message-send behavior changes.
+- Verification: focused permission tests 16/16; backend regression 180/180; Next.js production build generated 250 routes; `git diff --check` passed. Guarded release preflight and post-deploy health checks remain required.
+- Rollback point: `76459eddba085bcc27fb4dc7d001da57f11762fd` before `2026-08-17-r372`.
+
+---
+
 ## 2026-08-17-r371
 
 - Release ID: `2026-08-17-r371`

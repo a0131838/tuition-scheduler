@@ -4,6 +4,6 @@ import CommunicationReminderClient from "./CommunicationReminderClient";
 
 export default async function CommunicationRemindersPage() {
   const user = await requireAdminAreaUser();
-  if (!(user.role === "ADMIN" || user.role === "CS" || user.workspaces.includes("CS") || await isManagerUser(user))) redirect("/admin");
+  if (!(user.operationsAdmin || user.role === "ADMIN" || user.role === "CS" || user.workspaces.includes("CS") || await isManagerUser(user))) redirect("/admin");
   return <CommunicationReminderClient />;
 }

@@ -10,7 +10,7 @@ import {
 
 export async function GET() {
   const user = await requireAdminAreaUser();
-  if (!(user.role === "ADMIN" || user.role === "CS" || user.workspaces.includes("CS") || await isManagerUser(user))) {
+  if (!(user.operationsAdmin || user.role === "ADMIN" || user.role === "CS" || user.workspaces.includes("CS") || await isManagerUser(user))) {
     return Response.json({ ok: false, message: "Communication reminder permission required" }, { status: 403 });
   }
   const items = await listCommunicationReminders();
@@ -19,7 +19,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const user = await requireAdminAreaUser();
-  if (!(user.role === "ADMIN" || user.role === "CS" || user.workspaces.includes("CS") || await isManagerUser(user))) {
+  if (!(user.operationsAdmin || user.role === "ADMIN" || user.role === "CS" || user.workspaces.includes("CS") || await isManagerUser(user))) {
     return Response.json({ ok: false, message: "Communication reminder permission required" }, { status: 403 });
   }
   let body: any;
