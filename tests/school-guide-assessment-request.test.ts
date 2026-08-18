@@ -63,7 +63,10 @@ test("native miniapp starts public assessment directly while preserving legacy s
   assert.match(parent, /无需登录或评估码/);
   assert.doesNotMatch(parent, /验证评估码并开始/);
   assert.match(parent, /评估已就绪，开始测评/);
-  assert.match(parent, /联系顾问获取专业分析/);
+  assert.match(parent, /测评结果/);
+  assert.match(parent, /接下来怎么提高/);
+  assert.match(parent, /联系规划老师制定学习方案/);
+  assert.match(parent, /查看详细分析/);
   assert.match(startRoute, /DIRECT_SELF_SERVE/);
   assert.match(startRoute, /公开自助测评内部凭证/);
   assert.match(staff, /确认资料并生成评估码/);
@@ -79,8 +82,9 @@ test("completed assessment can start another round without a permanent retest lo
   assert.doesNotMatch(startRoute, /RETEST_REQUIRES_APPROVAL/);
   assert.match(startRoute, /recommendedIntervalDays: 30/);
   assert.match(miniapp, /startNewRound/);
+  assert.match(miniapp, /reportImprovementPlan/);
   assert.match(miniapp, /school_guide_academic_assessment_history/);
-  assert.match(view, /开始新一轮测评/);
+  assert.match(view, /再测一套平行卷/);
   assert.match(view, /为另一个孩子测评/);
 });
 

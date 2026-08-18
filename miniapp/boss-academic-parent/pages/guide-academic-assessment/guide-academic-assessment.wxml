@@ -62,7 +62,47 @@
     <button wx:if="{{session.canSubmit}}" class="assessment-primary" loading="{{loading}}" bindtap="submitAssessment">全部完成，提交测评</button>
   </block>
 
-  <block wx:if="{{phase === 'awaiting'}}"><view class="assessment-result"><view class="guide-kicker">已提交 · {{session.formVariant}}卷</view><view class="assessment-section-title">等待老师复核</view><view class="assessment-form-note">语法、听力、阅读与写作均已保存；AI双重评分出现分歧或暂不可用时，写作会自动转老师复核。本轮暂不测试口语。</view><view class="assessment-boundary" wx:if="{{session.evidenceText}}"><b>本轮证据</b><text>{{session.evidenceText}}</text></view><button class="assessment-primary" loading="{{loading}}" bindtap="refresh">刷新评分状态</button><button class="assessment-secondary" loading="{{loading}}" bindtap="startNewRound">开始新一轮测评：立即开始下一套平行卷</button><button class="assessment-text-button" bindtap="startForAnotherChild">为另一个孩子测评</button></view></block>
+  <block wx:if="{{phase === 'awaiting'}}"><view class="assessment-result"><view class="guide-kicker">已提交 · {{session.formVariant}}卷</view><view class="assessment-section-title">结果正在复核</view><view class="assessment-form-note">作答已保存。需要老师确认的内容完成后，这里会直接显示结果和提升计划。</view><button class="assessment-primary" loading="{{loading}}" bindtap="refresh">刷新评分状态</button><button class="assessment-secondary" loading="{{loading}}" bindtap="startNewRound">再测一套平行卷</button><button class="assessment-text-button" bindtap="startForAnotherChild">为另一个孩子测评</button></view></block>
 
-  <block wx:if="{{phase === 'report'}}"><view class="assessment-result"><view class="guide-kicker">免费系统报告 · {{session.formVariant}}卷</view><view class="assessment-section-title">{{session.report.productTitle || '入学准备度'}}</view><view wx:if="{{scorecards.length}}"><view class="assessment-scorecard" wx:for="{{scorecards}}" wx:key="key"><view class="guide-kicker">{{item.label}}</view><view class="assessment-report-score">{{item.scoreLabel}}</view><view class="assessment-form-note">{{item.band}}</view><view class="assessment-cefr" wx:if="{{item.cefrReference}}">CEFR初步参考范围（待校准）：{{item.cefrReference}}</view></view></view><view class="assessment-report-score" wx:else>{{session.overallScore}} / 100</view><view class="assessment-section-title">{{session.overallBand}} · 可信度{{session.confidence}}</view><view class="assessment-form-note">{{session.report.standard}}</view><view class="assessment-boundary" wx:if="{{session.evidenceText}}"><b>本轮证据</b><text>{{session.evidenceText}}</text></view><view class="report-section" wx:if="{{moduleRows.length}}"><b>四项分区结果</b><view class="assessment-module-grid"><view class="assessment-module" wx:for="{{moduleRows}}" wx:key="name"><text>{{item.name}}</text><b>{{item.score}}</b></view></view></view><view class="report-section" wx:if="{{skillRows.length}}"><b>具体能力证据</b><view class="assessment-report-row" wx:for="{{skillRows}}" wx:key="name">{{item.name}}：{{item.score}} / 100</view><view class="assessment-form-note" wx:if="{{unmeasuredText}}">本轮未测试：{{unmeasuredText}}</view></view><view class="report-section" wx:if="{{comparisonRows.length}}"><b>与上一次平行卷相比</b><view class="assessment-report-row" wx:for="{{comparisonRows}}" wx:key="name">{{item.name}}：{{item.label}}</view></view><view class="report-section"><b>本次相对优势</b><text wx:for="{{session.report.strengths}}" wx:key="*this">• {{item}}</text></view><view class="report-section"><b>优先补强</b><text wx:for="{{session.report.priorities}}" wx:key="*this">• {{item}}</text><view class="assessment-boundary">{{session.report.nextStep}}</view></view><view class="assessment-boundary"><b>可以再次测评</b><text>本次报告会保留。可立即换A/B/C平行卷再测；建议间隔30天用于观察学习变化，24小时内最多3轮。</text></view><button class="assessment-secondary" loading="{{loading}}" bindtap="startNewRound">开始新一轮测评：立即开始下一套平行卷</button><button class="assessment-text-button" bindtap="resetForNewProduct">改测其他方向</button><button class="assessment-text-button" bindtap="startForAnotherChild">为另一个孩子测评</button><view class="assessment-boundary"><b>需要更具体的下一步？</b><text>顾问可结合当前学校、目标学校和时间线，提供专业解读、精准选校及备考方案。是否联系完全由您决定。</text></view><button class="assessment-primary" bindtap="goConsult">联系顾问获取专业分析</button></view></block>
+  <block wx:if="{{phase === 'report'}}">
+    <view class="assessment-result action-report">
+      <view class="guide-kicker">测评已完成 · {{session.formVariant}}卷</view>
+      <view class="assessment-section-title">{{session.report.productTitle || '入学准备度'}}</view>
+
+      <view class="action-report-section">
+        <view class="action-report-number">01</view><view class="action-report-heading">测评结果</view>
+        <view wx:if="{{scorecards.length}}"><view class="assessment-scorecard" wx:for="{{scorecards}}" wx:key="key"><view class="guide-kicker">{{item.label}}</view><view class="assessment-report-score">{{item.scoreLabel}}</view><view class="assessment-form-note">{{item.band}}</view><view class="assessment-cefr" wx:if="{{item.cefrReference}}">CEFR初步参考：{{item.cefrReference}}</view></view></view>
+        <view class="assessment-scorecard" wx:else><view class="assessment-report-score">{{session.overallScore}} / 100</view><view class="assessment-form-note">{{session.overallBand}}</view></view>
+      </view>
+
+      <view class="action-report-section">
+        <view class="action-report-number">02</view><view class="action-report-heading">接下来怎么提高</view>
+        <view class="improvement-plan">
+          <view class="improvement-step" wx:for="{{improvementPlan}}" wx:key="stage"><view class="improvement-stage">{{item.stage}}</view><view><b>{{item.title}}</b><text>{{item.detail}}</text></view></view>
+        </view>
+      </view>
+
+      <view class="action-report-section contact-plan">
+        <view class="action-report-number">03</view><view class="action-report-heading">制定个人学习方案</view>
+        <view class="assessment-form-note">规划老师会结合孩子当前学校、目标学校、时间线和本次结果，给出具体课程与复测安排。</view>
+        <button class="assessment-primary" bindtap="goConsult">联系规划老师制定学习方案</button>
+      </view>
+
+      <button class="assessment-secondary compact-action" bindtap="toggleReportDetails">{{detailsExpanded ? '收起详细分析' : '查看详细分析'}}</button>
+      <view wx:if="{{detailsExpanded}}" class="report-details">
+        <view class="assessment-form-note">{{session.report.standard}}</view>
+        <view class="assessment-boundary" wx:if="{{session.evidenceText}}"><b>本轮证据</b><text>{{session.evidenceText}}</text></view>
+        <view class="report-section" wx:if="{{moduleRows.length}}"><b>分项结果</b><view class="assessment-module-grid"><view class="assessment-module" wx:for="{{moduleRows}}" wx:key="name"><text>{{item.name}}</text><b>{{item.score}}</b></view></view></view>
+        <view class="report-section" wx:if="{{skillRows.length}}"><b>能力证据</b><view class="assessment-report-row" wx:for="{{skillRows}}" wx:key="name">{{item.name}}：{{item.score}} / 100</view><view class="assessment-form-note" wx:if="{{unmeasuredText}}">本轮未测：{{unmeasuredText}}</view></view>
+        <view class="report-section" wx:if="{{comparisonRows.length}}"><b>与上一次相比</b><view class="assessment-report-row" wx:for="{{comparisonRows}}" wx:key="name">{{item.name}}：{{item.label}}</view></view>
+        <view class="report-section"><b>结果说明</b><text>{{session.report.nextStep}}</text></view>
+      </view>
+
+      <view class="report-secondary-actions">
+        <button class="assessment-text-button" loading="{{loading}}" bindtap="startNewRound">再测一套平行卷</button>
+        <button class="assessment-text-button" bindtap="resetForNewProduct">改测其他方向</button>
+        <button class="assessment-text-button" bindtap="startForAnotherChild">为另一个孩子测评</button>
+      </view>
+    </view>
+  </block>
 </view>

@@ -1,5 +1,26 @@
 # RELEASE BOARD
 
+- `2026-08-18-r379`: ready to make every completed assessment report action-first and parent-readable.
+
+## 2026-08-18-r379 Ready
+
+- Scope: unify international-school English, AEIS Primary and AEIS Secondary result pages around three parent decisions: understand the result, follow an eight-week improvement plan, and contact a planning teacher.
+- Business impact:
+  - the main report no longer leads with confidence labels, evidence counts, long skill tables or repeated disclaimers;
+  - every new report carries a three-stage improvement plan derived from its actual weakest domains;
+  - historical stored reports receive the same display structure without recalculation or database rewrites;
+  - technical evidence remains available under an explicit collapsed detail control;
+  - unmeasured abilities are labelled as unmeasured instead of appearing as zero in the main result;
+  - consultation opens with the student's assessment summary and priority domains already filled in.
+- Verification before deploy:
+  - focused assessment/request tests 26/26 and full repository tests 546/546;
+  - TypeScript, 251-page production build, 69-page miniapp audit, JavaScript syntax and `git diff --check` passed.
+- Post-deploy verification:
+  - confirm local, GitHub and server application commit equality and HTTP 200;
+  - upload WeChat development version `1.0.59` only; do not submit review or publish formally;
+  - physical-device check one completed international-school report and one AEIS report, including detail expansion and consultation prefilling.
+- Task doc: `docs/tasks/TASK-20260818-assessment-report-action-first.md`.
+
 - `2026-08-18-r378`: live with a 51-item original iTEP-structure-aligned international-school English assessment, excluding speaking.
 
 ## 2026-08-18-r378 Live

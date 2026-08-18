@@ -20,6 +20,23 @@ function formatDate(value) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+function priorityName(value, fallback) {
+  const name = String(value || "").split("：")[0].trim();
+  return name || fallback;
+}
+
+function reportImprovementPlan(report) {
+  if (report && Array.isArray(report.improvementPlan) && report.improvementPlan.length) return report.improvementPlan.slice(0, 3);
+  const priorities = report && Array.isArray(report.priorities) ? report.priorities : [];
+  const primary = priorityName(priorities[0], "当前薄弱项");
+  const secondary = priorities.slice(1, 3).map((value) => priorityName(value, "")).filter(Boolean).join("、") || "已掌握内容";
+  return [
+    { stage: "第1–2周", title: `补稳${primary}`, detail: "由规划老师结合错题确认基础缺口，每周安排针对性讲解与练习。" },
+    { stage: "第3–6周", title: `强化${secondary}`, detail: "按目标考试题型训练，并根据每周完成情况调整难度和训练量。" },
+    { stage: "第7–8周", title: "模拟与复测", detail: "完成一次计时模拟，再使用下一套平行卷复测并比较进步。" }
+  ];
+}
+
 Page({
   data: {
     phase: "hub",
@@ -45,6 +62,8 @@ Page({
     unmeasuredText: "",
     scorecards: [],
     moduleRows: [],
+    improvementPlan: [],
+    detailsExpanded: false,
     sectionTimerText: "",
     sectionExpiring: false,
     audioPlaying: false,
@@ -256,6 +275,7 @@ Page({
       scoreLabel: item.score == null ? "待老师复核" : `${item.score} / 100`
     }));
     const moduleRows = Object.keys((session.report && session.report.moduleScores) || {}).map((name) => ({ name, score: session.report.moduleScores[name] }));
+    const improvementPlan = reportImprovementPlan(session.report);
     const evidence = session.report && session.report.evidence ? session.report.evidence : null;
     const evidenceText = evidence
       ? `${evidence.totalItems}题（${evidence.objectiveItems}题客观题 + ${evidence.reviewedItems}题写作/复核）· ${evidence.skillCoverage.join("、")} · ${evidence.parallelForm}卷`
@@ -263,7 +283,7 @@ Page({
     const retestDateText = formatDate(session.retestRecommendedAt);
     this.sectionReceivedAt = Date.now();
     const currentAudioUrl = session.question && session.question.audioUrl;
-    this.setData({ session: { ...session, retestDateText, evidenceText }, phase, hasSession: true, answerInput: session.currentAnswer || "", domainRows, skillRows, moduleRows, comparisonRows, unmeasuredText, scorecards, currentAudioPlayed: Boolean(currentAudioUrl && this.data.audioPlayedUrls[currentAudioUrl]), questionStartedAt: Date.now() }, () => this.startSectionTimer());
+    this.setData({ session: { ...session, retestDateText, evidenceText }, phase, hasSession: true, answerInput: session.currentAnswer || "", domainRows, skillRows, moduleRows, improvementPlan, comparisonRows, unmeasuredText, scorecards, detailsExpanded: false, currentAudioPlayed: Boolean(currentAudioUrl && this.data.audioPlayedUrls[currentAudioUrl]), questionStartedAt: Date.now() }, () => this.startSectionTimer());
     if (["AWAITING_REVIEW", "COMPLETED"].includes(session.status) && this.data.sessionToken) this.rememberSession(session, retestDateText);
   },
 
@@ -287,7 +307,7 @@ Page({
   resetForNewProduct() {
     wx.removeStorageSync(SESSION_KEY);
     this.stopSectionTimer();
-    this.setData({ sessionToken: "", session: null, hasSession: false, phase: "setup", consent: false, answerInput: "", domainRows: [], skillRows: [], moduleRows: [], comparisonRows: [], scorecards: [], audioPlayedUrls: {} });
+    this.setData({ sessionToken: "", session: null, hasSession: false, phase: "setup", consent: false, answerInput: "", domainRows: [], skillRows: [], moduleRows: [], improvementPlan: [], comparisonRows: [], scorecards: [], detailsExpanded: false, audioPlayedUrls: {} });
   },
 
   startParallelRetest() {
@@ -323,7 +343,7 @@ Page({
   startForAnotherChild() {
     wx.removeStorageSync(SESSION_KEY);
     this.stopSectionTimer();
-    this.setData({ sessionToken: "", session: null, hasSession: false, phase: "setup", consent: false, studentNickname: "", currentGrade: "", languageBackground: "", answerInput: "", domainRows: [], skillRows: [], moduleRows: [], comparisonRows: [], scorecards: [], audioPlayedUrls: {} });
+    this.setData({ sessionToken: "", session: null, hasSession: false, phase: "setup", consent: false, studentNickname: "", currentGrade: "", languageBackground: "", answerInput: "", domainRows: [], skillRows: [], moduleRows: [], improvementPlan: [], comparisonRows: [], scorecards: [], detailsExpanded: false, audioPlayedUrls: {} });
   },
 
   loadSession() {
@@ -376,8 +396,14 @@ Page({
   },
 
   refresh() { this.setData({ loading: true }); this.loadSession().catch((err) => api.toast(err.message)).finally(() => this.setData({ loading: false })); },
+  toggleReportDetails() { this.setData({ detailsExpanded: !this.data.detailsExpanded }); },
   goConsult() {
-    const summary = this.data.session ? `希望顾问专业分析：${this.data.session.studentCode}；${this.data.session.ageBand}；${this.data.session.overallBand || "待评分"}` : "希望顾问专业分析入学准备度测评";
+    const session = this.data.session;
+    const scoreSummary = (this.data.scorecards || []).map((item) => `${item.label}${item.scoreLabel}`).join("；");
+    const prioritySummary = ((session && session.report && session.report.priorities) || []).slice(0, 3).join("；");
+    const summary = session
+      ? `希望规划老师制定学习方案：${session.studentCode}；${session.ageBand}；${scoreSummary || session.overallBand || "待评分"}；优先提升：${prioritySummary || "待老师结合报告确认"}`
+      : "希望规划老师结合入学准备度测评制定学习方案";
     wx.navigateTo({ url: "/pages/guide-consult/guide-consult?summary=" + encodeURIComponent(summary) });
   },
   onShareAppMessage() { return { title: "新加坡学校指南｜入学准备度测评", path: "/pages/guide-academic-assessment/guide-academic-assessment" }; }

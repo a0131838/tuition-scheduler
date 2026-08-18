@@ -95,6 +95,8 @@ test("new product reports never blend AEIS subjects into one total", () => {
   assert.equal(result.overallBand, "分科查看，不合并总分");
   assert.equal(result.report.scoreModelVersion, "PATHWAY_V4");
   assert.deepEqual(result.report.scorecards.map((row) => row.label), ["CEQ英语资格准备", "AEIS小学数学准备"]);
+  assert.equal(result.report.improvementPlan.length, 3);
+  assert.deepEqual(result.report.improvementPlan.map((row) => row.stage), ["第1–2周", "第3–6周", "第7–8周"]);
 });
 
 test("international English report labels CEFR as provisional", () => {
@@ -117,6 +119,7 @@ test("international English report labels CEFR as provisional", () => {
   assert.equal(result.report.scoreModelVersion, "PATHWAY_V5_ITEP_ALIGNED");
   assert.deepEqual(Object.keys(result.report.moduleScores), ["语法", "听力", "阅读", "写作"]);
   assert.deepEqual(result.report.unmeasuredSkills, ["口语"]);
+  assert.equal(result.report.improvementPlan[2].title, "模拟与复测");
 });
 
 test("iTEP-aligned public payload exposes audio but never transcripts", () => {
@@ -229,11 +232,11 @@ test("assessment migration is additive and isolated", () => {
   assert.doesNotMatch(sql, /DROP TABLE|DROP COLUMN|TRUNCATE|DELETE FROM/);
 });
 
-test("pending review exposes an immediate parallel-form retest without reusing the original code", () => {
+test("pending review exposes a concise status and parallel-form retest without reusing the original code", () => {
   const page = fs.readFileSync(path.join(process.cwd(), "miniapp/boss-academic-parent/pages/guide-academic-assessment/guide-academic-assessment.wxml"), "utf8");
   const controller = fs.readFileSync(path.join(process.cwd(), "miniapp/boss-academic-parent/pages/guide-academic-assessment/guide-academic-assessment.js"), "utf8");
   const startRoute = fs.readFileSync(path.join(process.cwd(), "app/api/public/school-guide/academic-assessment/start/route.ts"), "utf8");
-  assert.match(page, /等待老师复核[\s\S]*立即开始下一套平行卷/);
+  assert.match(page, /结果正在复核[\s\S]*再测一套平行卷/);
   assert.match(controller, /retestSessionToken:\s*this\.data\.sessionToken/);
   assert.match(startRoute, /sourceMode:\s*retestSource \? "PARALLEL_RETEST"/);
   assert.match(startRoute, /parallelRetestLimitReached/);

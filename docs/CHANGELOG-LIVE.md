@@ -1,5 +1,23 @@
 # CHANGELOG LIVE
 
+## 2026-08-18-r379
+
+- Release ID: `2026-08-18-r379`
+- Date/Time (Asia/Singapore): `2026-08-18`
+- Deployment status: `READY`
+- Scope: simplify every completed school-guide assessment report into result, an actionable eight-week improvement plan, and one planning-teacher contact action.
+- Key files:
+  - `lib/school-guide-academic-assessment.ts`
+  - `miniapp/boss-academic-parent/pages/guide-academic-assessment/*`
+  - `tests/school-guide-academic-assessment.test.ts`
+  - `tests/school-guide-assessment-request.test.ts`
+  - `docs/tasks/TASK-20260818-assessment-report-action-first.md`
+- Risk impact (if any): Low and isolated to assessment report payload/presentation. Existing stored reports receive a display-only fallback plan without being rewritten; no scheduling, package, attendance, finance, payroll, Ticket, login, permission or message behavior changes.
+- Verification: focused tests 26/26 and full repository tests 546/546 passed; TypeScript, the 251-page production build, the 69-page miniapp release audit, miniapp JavaScript syntax and `git diff --check` passed.
+- Rollback point: `1fad6fd8a6ae432304192823185514c0970c98dc` before `2026-08-18-r379`.
+
+---
+
 ## 2026-08-18-r378
 
 - Release ID: `2026-08-18-r378`

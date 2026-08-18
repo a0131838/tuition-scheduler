@@ -410,6 +410,14 @@ export function calculateAssessmentResult(input: {
   const ranked = Object.entries(domainScores).sort((a, b) => b[1] - a[1]);
   const strengths = ranked.slice(0, 3).map(([name, score]) => `${name}：本次内部任务得分 ${score}`);
   const priorities = [...ranked].reverse().slice(0, 3).map(([name, score]) => `${name}：建议优先复核与训练（本次 ${score}）`);
+  const priorityDomains = [...ranked].reverse().slice(0, 3).map(([name]) => name);
+  const primaryPriority = priorityDomains[0] || "当前薄弱项";
+  const secondaryPriorities = priorityDomains.slice(1).join("、") || "已掌握内容";
+  const improvementPlan = [
+    { stage: "第1–2周", title: `补稳${primaryPriority}`, detail: "由规划老师结合错题确认基础缺口，每周安排针对性讲解与练习。" },
+    { stage: "第3–6周", title: `强化${secondaryPriorities}`, detail: "按目标考试题型训练，并根据每周完成情况调整难度和训练量。" },
+    { stage: "第7–8周", title: "模拟与复测", detail: "完成一次计时模拟，再使用下一套平行卷复测并比较进步。" },
+  ];
   const scorecards = product ? product.domains.map((rule) => {
     const score = domainScores[rule.domain] ?? 0;
     const label = input.targetPath === "AEIS_PRIMARY" && rule.domain === "CEQ英语准备"
@@ -460,6 +468,7 @@ export function calculateAssessmentResult(input: {
         : "博思内部入学准备度标准，不是学校、MOE、AEIS官方分数、百分位或录取预测。",
       strengths,
       priorities,
+      improvementPlan,
       targetPath: pathLabel(input.targetPath) || "暂未确定",
       nextStep: product
         ? input.targetPath === "AEIS_PRIMARY"
