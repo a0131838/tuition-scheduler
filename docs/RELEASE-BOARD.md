@@ -1,8 +1,8 @@
 # RELEASE BOARD
 
-- 2026-08-18-r380: ready to put only Jessika-confirmed Midterm and Final Reports into Emily's delivery queue and close the formal report on real parent delivery.
+- 2026-08-18-r380: live with Jessika-confirmed Midterm and Final Reports entering Emily's delivery queue and formal delivery closing only after real parent sending.
 
-## 2026-08-18-r380 Ready
+## 2026-08-18-r380 Live
 
 - Scope: replace generic reminder completion with an explicit report approval and delivery state bridge.
 - Business impact:
@@ -17,8 +17,10 @@
   - TypeScript, 251-page production build, 69-page miniapp release audit and git diff --check;
   - no database migration or protected scheduling, attendance, package, payroll or finance change.
 - Post-deploy verification:
-  - confirm local, GitHub and server commit equality, PM2 online and /admin/login HTTP 200;
-  - upload a WeChat development version only;
+  - feature commit 41b682aa1efd9673dd2a78cc4700cf9d29739b62 aligned locally, on GitHub and on the server;
+  - all 129 migrations were current, PM2 PID 2971673 was online and /admin/login returned HTTP 200;
+  - the protected miniapp PDF endpoint returned HTTP 401 without staff authentication;
+  - WeChat development version 1.0.60 uploaded successfully at 796,307 bytes; no review submission or formal publication was performed;
   - Jessika confirms 黄梓皓's Final Maths Report, then Emily verifies the PDF and sent action on a physical device.
 - Task doc: docs/tasks/TASK-20260818-learning-report-approved-delivery.md.
 

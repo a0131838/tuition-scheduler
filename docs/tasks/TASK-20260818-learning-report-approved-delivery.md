@@ -36,6 +36,7 @@ The website showed 黄梓皓's Final Maths Report as SUBMITTED, but the app proj
 
 ## Production acceptance
 
-- Deploy with the guarded server release script and verify commit equality, PM2 and HTTP health.
-- Upload a WeChat development version only; no review submission or formal publication.
+- Guarded server deployment completed for feature commit 41b682aa1efd9673dd2a78cc4700cf9d29739b62; local, GitHub and server matched, all 129 migrations were current, PM2 PID 2971673 was online and /admin/login returned HTTP 200.
+- The approved-report miniapp PDF endpoint returned HTTP 401 without authentication.
+- WeChat development version 1.0.60 uploaded successfully at 796,307 bytes. It was not submitted for review or formally published.
 - Jessika confirms 黄梓皓's Final Maths Report; Emily then verifies it appears, opens the PDF, and completes the task only after sending it to the parent.
