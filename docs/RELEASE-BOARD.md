@@ -1,5 +1,28 @@
 # RELEASE BOARD
 
+- 2026-08-18-r382: ready to let academic staff close already-handled scheduling tickets with one truthful, audited confirmation instead of repeating action fields.
+
+## 2026-08-18-r382 Ready for guarded deployment
+
+- Scope: add one ticket-level resolution control for scheduling work completed before or outside the ticket workflow.
+- Business impact:
+  - Eva selects one of three distinct outcomes: completed elsewhere, genuinely unnecessary, or partially completed;
+  - the shared note, actor and verification time are entered once and applied to the selected action set;
+  - completed work and unnecessary work no longer share the same ambiguous status;
+  - the ticket automatically completes, cancels or remains open according to unresolved actions;
+  - historical tickets without a source lesson can close truthfully without inventing a lesson record;
+  - repeated per-action state editing remains available only as a collapsed exception tool.
+- Safety boundary:
+  - a human verification checkbox and note are mandatory;
+  - existing applied work blocks an entire-ticket “no action required” result;
+  - normal scheduling execution continues through the formal schedule and its existing permission, conflict and duplicate guards;
+  - no scheduling, attendance, package, payroll, finance or notification record is directly changed by this feature.
+- Verification before deploy:
+  - focused ticket tests 13/13 and full repository tests 555/555;
+  - TypeScript, 251-page production build and git diff check passed;
+  - no database migration and no WeChat package change.
+- Task doc: docs/tasks/TASK-20260818-ticket-manual-resolution.md.
+
 - 2026-08-18-r381: live with course reminders following the session's actual student instead of reusable Class history.
 
 ## 2026-08-18-r381 Live

@@ -15,8 +15,28 @@ export const TICKET_SCHEDULING_ACTION_STATUSES = [
   { value: "READY", label: "可执行" },
   { value: "CONFLICT", label: "预检有冲突" },
   { value: "APPLIED", label: "已执行" },
-  { value: "CANCELLED", label: "无需执行" },
+  { value: "CANCELLED", label: "单项无需处理" },
 ] as const;
+
+export const TICKET_SCHEDULING_RESOLUTION_MODES = [
+  {
+    value: "COMPLETED_EXTERNALLY",
+    label: "已在正式系统或其他页面处理完成",
+    description: "实际排课、改课或取消已经完成，只补录核验结果并关闭工单。",
+  },
+  {
+    value: "NOT_REQUIRED",
+    label: "整张工单确实无需处理",
+    description: "仅用于家长撤回、重复工单或需求已经失效；不会标记为已执行。",
+  },
+  {
+    value: "PARTIALLY_COMPLETED_EXTERNALLY",
+    label: "部分动作已经处理完成",
+    description: "一次勾选已经完成的动作，其余动作继续保留在待办中。",
+  },
+] as const;
+
+export type TicketSchedulingResolutionMode = typeof TICKET_SCHEDULING_RESOLUTION_MODES[number]["value"];
 
 const RESOLVED_SCHEDULING_ACTION_STATUSES = new Set(["APPLIED", "CANCELLED"]);
 
@@ -71,6 +91,22 @@ export function schedulingActionDefinition(actionType: string) {
 
 export function schedulingActionStatusLabel(status: string) {
   return TICKET_SCHEDULING_ACTION_STATUSES.find((item) => item.value === status)?.label ?? status;
+}
+
+export function schedulingResolutionDefinition(mode: string) {
+  return TICKET_SCHEDULING_RESOLUTION_MODES.find((item) => item.value === mode) ?? null;
+}
+
+export function schedulingResolutionActionStatus(mode: TicketSchedulingResolutionMode) {
+  return mode === "NOT_REQUIRED" ? "CANCELLED" : "APPLIED";
+}
+
+export function schedulingResolutionTicketStatus(
+  mode: TicketSchedulingResolutionMode,
+  unresolvedAfter: number,
+) {
+  if (unresolvedAfter > 0) return null;
+  return mode === "NOT_REQUIRED" ? "Cancelled" : "Completed";
 }
 
 export function normalizeSchedulingActionInput(input: TicketSchedulingActionInput) {

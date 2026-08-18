@@ -66,8 +66,12 @@ import {
   schedulingActionDefinition,
   schedulingActionStatusLabel,
   schedulingActionInclude,
+  schedulingResolutionActionStatus,
+  schedulingResolutionDefinition,
+  schedulingResolutionTicketStatus,
   TICKET_SCHEDULING_ACTION_STATUSES,
   TICKET_SCHEDULING_ACTION_TYPES,
+  TICKET_SCHEDULING_RESOLUTION_MODES,
 } from "@/lib/ticket-scheduling-actions";
 
 function trimValue(formData: FormData, key: string, max = 400) {
@@ -632,6 +636,149 @@ async function updateTicketSchedulingActionAction(formData: FormData) {
   redirect(appendQuery(back, { ok: "scheduling-action-updated" }));
 }
 
+async function resolveTicketSchedulingActionsAction(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  const ticketId = trimValue(formData, "id", 80);
+  const back = sanitizeAdminBack(trimValue(formData, "back", 1000), `/admin/tickets/${ticketId}#scheduling-actions`);
+  const resolution = schedulingResolutionDefinition(trimValue(formData, "resolutionMode", 80));
+  const resolutionNote = trimValue(formData, "resolutionNote", 1500);
+  const verified = trimValue(formData, "resolutionVerified", 10) === "1";
+  const selectedActionIds = new Set(
+    formData
+      .getAll("resolvedActionId")
+      .map((value) => String(value ?? "").trim())
+      .filter(Boolean),
+  );
+
+  if (!resolution) redirect(appendQuery(back, { err: "scheduling-resolution-mode" }));
+  if (!resolutionNote) redirect(appendQuery(back, { err: "scheduling-resolution-note" }));
+  if (!verified) redirect(appendQuery(back, { err: "scheduling-resolution-verification" }));
+
+  const now = new Date();
+  const actorName = user.name?.trim() || user.email;
+  const outcome = await prisma.$transaction(async (tx) => {
+    const latestTicket = await tx.ticket.findUnique({
+      where: { id: ticketId },
+      select: {
+        status: true,
+        summary: true,
+        risksNotes: true,
+        isArchived: true,
+        schedulingActions: {
+          orderBy: { sequence: "asc" },
+          select: { id: true, sequence: true, actionType: true, status: true, notes: true },
+        },
+      },
+    });
+    if (!latestTicket || latestTicket.isArchived || ["Completed", "Cancelled"].includes(latestTicket.status)) {
+      return "closed" as const;
+    }
+
+    const unresolvedActions = latestTicket.schedulingActions.filter((action) => !isTicketSchedulingActionResolved(action));
+    if (
+      resolution.value === "NOT_REQUIRED" &&
+      latestTicket.schedulingActions.some((action) => action.status === "APPLIED")
+    ) {
+      return "mixed" as const;
+    }
+
+    const targetActions = resolution.value === "PARTIALLY_COMPLETED_EXTERNALLY"
+      ? unresolvedActions.filter((action) => selectedActionIds.has(action.id))
+      : unresolvedActions;
+    if (resolution.value === "PARTIALLY_COMPLETED_EXTERNALLY" && targetActions.length === 0) {
+      return "selection" as const;
+    }
+
+    const nextActionStatus = schedulingResolutionActionStatus(resolution.value);
+    for (const action of targetActions) {
+      const notePrefix = resolution.value === "NOT_REQUIRED"
+        ? "[工单级核验：无需处理]"
+        : "[工单级核验：已在其他页面处理完成]";
+      const updated = await tx.ticketSchedulingAction.updateMany({
+        where: {
+          id: action.id,
+          ticketId,
+          status: { notIn: ["APPLIED", "CANCELLED"] },
+        },
+        data: {
+          status: nextActionStatus,
+          appliedAt: nextActionStatus === "APPLIED" ? now : undefined,
+          appliedByUserId: nextActionStatus === "APPLIED" ? user.id : undefined,
+          notes: action.notes
+            ? `${action.notes}\n\n${notePrefix} ${resolutionNote}`
+            : `${notePrefix} ${resolutionNote}`,
+        },
+      });
+      if (updated.count !== 1) return "stale" as const;
+    }
+
+    const unresolvedAfter = unresolvedActions.length - targetActions.length;
+    const closingStatus = schedulingResolutionTicketStatus(resolution.value, unresolvedAfter);
+    const completed = closingStatus === "Completed";
+    const closed = Boolean(closingStatus);
+    const visibleLog = `[${formatBusinessDateTime(now)}] ${actorName} · ${resolution.label}\n${resolutionNote}`;
+    const nextAction = closingStatus === "Cancelled"
+      ? "已核验整张工单无需处理，工单关闭。"
+      : completed
+        ? "实际处理结果已统一核验，工单完成。"
+        : `已补录 ${targetActions.length} 个动作，仍有 ${unresolvedAfter} 个排课动作待处理。`;
+
+    await tx.ticket.update({
+      where: { id: ticketId },
+      data: {
+        status: closingStatus ?? undefined,
+        systemUpdated: completed ? "Y" : undefined,
+        completedAt: completed ? now : undefined,
+        completedByUserId: completed ? user.id : undefined,
+        nextAction,
+        nextActionDue: closed ? null : undefined,
+        summary: closingStatus
+          ? `${latestTicket.summary ? `${latestTicket.summary}\n` : ""}${completed ? "[Completed Note]" : "[Cancelled Note]"} ${resolutionNote}`
+          : undefined,
+        risksNotes: latestTicket.risksNotes
+          ? `${latestTicket.risksNotes}\n\n${visibleLog}`
+          : visibleLog,
+        lastUpdateAt: now,
+      },
+    });
+    if (closed) {
+      await tx.parentAvailabilityRequest.updateMany({ where: { ticketId }, data: { isActive: false } });
+    }
+    await tx.auditLog.create({
+      data: {
+        actorEmail: user.email.trim().toLowerCase(),
+        actorName: user.name?.trim() || null,
+        actorRole: user.role,
+        module: "TICKETS",
+        action: "ADMIN_RESOLVE_TICKET_SCHEDULING_ACTIONS",
+        entityType: "Ticket",
+        entityId: ticketId,
+        meta: {
+          resolutionMode: resolution.value,
+          resolutionNote,
+          affectedActionIds: targetActions.map((action) => action.id),
+          affectedActionCount: targetActions.length,
+          unresolvedAfter,
+          closingStatus,
+        },
+      },
+    });
+    return "ok" as const;
+  });
+
+  if (outcome === "closed") redirect(appendQuery(back, { err: "scheduling-action-closed" }));
+  if (outcome === "mixed") redirect(appendQuery(back, { err: "scheduling-resolution-mixed" }));
+  if (outcome === "selection") redirect(appendQuery(back, { err: "scheduling-resolution-selection" }));
+  if (outcome === "stale") redirect(appendQuery(back, { err: "scheduling-action-resolved" }));
+
+  revalidatePath("/admin/tickets");
+  revalidatePath(`/admin/tickets/${ticketId}`);
+  revalidatePath("/admin/todos");
+  revalidatePath("/teacher/tickets");
+  redirect(appendQuery(back, { ok: "scheduling-resolution-saved" }));
+}
+
 async function linkExistingSchedulingResultAction(formData: FormData) {
   "use server";
   const user = await requireAdmin();
@@ -1119,6 +1266,11 @@ export default async function AdminTicketDetailPage({
           {err === "existing-result-note" && "关联已有结果时必须填写核验备注 / Verification note is required."}
           {err === "existing-result-verification" && "请先确认正式课表已经完成对应处理 / Confirm the formal schedule was already updated."}
           {err === "existing-result-session" && "请选择属于该学生的实际处理课程 / Select the student's actual result lesson."}
+          {err === "scheduling-resolution-mode" && "请选择这张工单的实际处理方式 / Select how this ticket was actually handled."}
+          {err === "scheduling-resolution-note" && "请只填写一次共同核验说明 / Add one shared verification note."}
+          {err === "scheduling-resolution-verification" && "请确认已经核对正式系统或真实沟通记录 / Confirm the formal record was verified."}
+          {err === "scheduling-resolution-selection" && "部分完成时至少勾选一个已经完成的动作 / Select at least one completed action."}
+          {err === "scheduling-resolution-mixed" && "这张工单已有动作实际执行，不能整单标记为无需处理；请选择部分完成或继续正常执行。"}
           {err === "completed-locked" && "已完成工单不可修改，请使用归档 / Completed ticket is locked. Use archive."}
           {err === "archived-locked" && "已归档工单不可修改 / Archived ticket is locked."}
           {err === "need-closed-archive" && "仅已完成或已取消工单可归档 / Only completed or cancelled tickets can be archived."}
@@ -1175,6 +1327,11 @@ export default async function AdminTicketDetailPage({
       {ok === "existing-result-linked" ? (
         <div style={{ color: "#166534", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: 10 }}>
           已关联正式课表中的处理结果，并写入审计记录 / Existing schedule result linked and audited
+        </div>
+      ) : null}
+      {ok === "scheduling-resolution-saved" ? (
+        <div style={{ color: "#166534", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: 10 }}>
+          整张工单的实际处理结果已保存；动作与工单状态已自动更新。
         </div>
       ) : null}
 
@@ -1307,10 +1464,74 @@ export default async function AdminTicketDetailPage({
             <div>
               <div style={{ color: "#9a3412", fontSize: 12, fontWeight: 800 }}>排课执行单 / Scheduling work order</div>
               <div style={{ fontSize: 20, fontWeight: 850, marginTop: 4 }}>从家长需求直接进入正式课表</div>
-              <div style={{ color: "#57534e", fontSize: 13, marginTop: 6 }}>改课、取消和换老师必须先关联原课程；执行仍走现有课表预检与权限，不在这里直接绕过校验。</div>
+              <div style={{ color: "#57534e", fontSize: 13, marginTop: 6 }}>正常执行仍走正式课表预检；如果员工已经提前处理，只需在下方整单核验一次，不再逐项重复填写。</div>
             </div>
             <a href={row.studentId ? `/admin/students/${row.studentId}#scheduling-coordination` : "/admin/schedule"} style={{ fontWeight: 750 }}>打开学生排课工作区 →</a>
           </div>
+
+          {!row.isArchived && !["Completed", "Cancelled"].includes(row.status) ? (
+            <form
+              action={resolveTicketSchedulingActionsAction}
+              style={{
+                border: "2px solid #fdba74",
+                borderRadius: 14,
+                padding: 14,
+                background: "#fff",
+                display: "grid",
+                gap: 12,
+              }}
+            >
+              <input type="hidden" name="id" value={row.id} />
+              <input type="hidden" name="back" value={`${selfHref}#scheduling-actions`} />
+              <div>
+                <div style={{ color: "#9a3412", fontSize: 12, fontWeight: 850 }}>已经在别处处理过？整张工单只填一次</div>
+                <div style={{ fontSize: 18, fontWeight: 900, marginTop: 4 }}>选择实际结果，系统自动更新所有动作和工单状态</div>
+                <div style={{ color: "#57534e", fontSize: 13, marginTop: 5 }}>
+                  “已处理完成”表示正式系统已有真实结果；“无需处理”只用于家长撤回、重复工单或需求失效，两者不会再混在一起。
+                </div>
+              </div>
+              <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))" }}>
+                {TICKET_SCHEDULING_RESOLUTION_MODES.map((mode) => (
+                  <label key={mode.value} style={{ border: "1px solid #fed7aa", borderRadius: 10, padding: 12, display: "flex", gap: 9, alignItems: "flex-start", cursor: "pointer" }}>
+                    <input type="radio" name="resolutionMode" value={mode.value} required style={{ marginTop: 3 }} />
+                    <span><b>{mode.label}</b><span style={{ display: "block", color: "#78716c", fontSize: 12, marginTop: 4 }}>{mode.description}</span></span>
+                  </label>
+                ))}
+              </div>
+              <div style={{ border: "1px solid #e7e5e4", borderRadius: 10, padding: 12, background: "#fafaf9" }}>
+                <div style={{ fontWeight: 800 }}>仅选择“部分动作已经处理完成”时勾选</div>
+                {unresolvedSchedulingActions.length ? (
+                  <div style={{ display: "grid", gap: 7, marginTop: 9, gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))" }}>
+                    {unresolvedSchedulingActions.map((action, index) => (
+                      <label key={action.id} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                        <input type="checkbox" name="resolvedActionId" value={action.id} style={{ marginTop: 3 }} />
+                        <span>动作 {index + 1} · {schedulingActionDefinition(action.actionType)?.label ?? action.actionType}</span>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ color: "#78716c", fontSize: 13, marginTop: 6 }}>这张旧工单没有结构化动作；可以直接选择“已处理完成”或“无需处理”关闭。</div>
+                )}
+              </div>
+              <label style={{ fontWeight: 800 }}>
+                共同核验说明（只填写一次）
+                <textarea
+                  name="resolutionNote"
+                  rows={3}
+                  required
+                  placeholder="例如：Eva 已于 8 月 17 日在学生课表完成改课，并与家长确认；本工单是事后补录。"
+                  style={{ width: "100%", boxSizing: "border-box", marginTop: 5 }}
+                />
+              </label>
+              <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                <input name="resolutionVerified" type="checkbox" value="1" required style={{ marginTop: 3 }} />
+                <span>我已核对正式课表或真实沟通记录，确认不会造成重复排课、重复取消或漏处理。</span>
+              </label>
+              <button type="submit" style={{ justifySelf: "start", padding: "11px 16px", fontWeight: 850 }}>
+                保存实际结果并自动更新工单
+              </button>
+            </form>
+          ) : null}
 
           {row.schedulingActions.length ? (
             <div style={{ display: "grid", gap: 12 }}>
@@ -1394,10 +1615,11 @@ export default async function AdminTicketDetailPage({
                             {row.studentId ? "请先在下方补充原课程或动作资料。" : "请先给工单关联正确学生。"}
                           </div>
                         )}
-                        <details open={Boolean(definition?.needsSource && !action.sourceSessionId)} style={{ borderTop: "1px solid #fdba74", paddingTop: 10 }}>
+                        <details style={{ borderTop: "1px solid #fdba74", paddingTop: 10 }}>
                           <summary style={{ cursor: "pointer", color: "#7c2d12", fontWeight: 800 }}>
-                            补充资料或设置等待状态 / Update details
+                            单项例外：补资料或修改等待状态
                           </summary>
+                          <div style={{ color: "#78716c", fontSize: 12, marginTop: 7 }}>只有这一项与整张工单不同，或仍需正常执行时才打开。</div>
                           <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", marginTop: 10 }}>
                             <label>原课程
                               <select name="sourceSessionId" defaultValue={action.sourceSessionId ?? ""} style={{ width: "100%" }}>
@@ -1405,7 +1627,7 @@ export default async function AdminTicketDetailPage({
                                 {upcomingSessions.map((session) => <option key={session.id} value={session.id}>{formatBusinessDateTime(session.startAt)} · {session.class.course.name} · {session.teacher?.name ?? session.class.teacher.name}</option>)}
                               </select>
                             </label>
-                            <label>当前等待状态
+                            <label>本动作等待状态（仅异常时修改）
                               <select name="actionStatus" defaultValue={action.status} style={{ width: "100%" }}>
                                 {TICKET_SCHEDULING_ACTION_STATUSES.filter((item) => item.value !== "APPLIED").map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
                               </select>
@@ -1461,7 +1683,7 @@ export default async function AdminTicketDetailPage({
                         ) : null}
                       </div>
                     ) : (
-                      <div style={{ color: "#57534e", fontSize: 13 }}>该动作已经锁定；执行结果必须来自正式排课操作。</div>
+                      <div style={{ color: "#57534e", fontSize: 13 }}>该动作已经锁定；状态来自正式课表执行或员工核验补录。</div>
                     )}
                     {action.resultSession ? <div style={{ color: "#166534", fontWeight: 750 }}>执行结果：{formatBusinessDateTime(action.resultSession.startAt)} · {action.resultSession.class.course.name}</div> : null}
                   </form>

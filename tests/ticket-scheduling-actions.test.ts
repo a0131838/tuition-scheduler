@@ -7,7 +7,11 @@ import {
   normalizeSchedulingActionInput,
   schedulingActionCanBeReady,
   schedulingActionDefinition,
+  schedulingResolutionActionStatus,
+  schedulingResolutionDefinition,
+  schedulingResolutionTicketStatus,
   TICKET_SCHEDULING_ACTION_TYPES,
+  TICKET_SCHEDULING_RESOLUTION_MODES,
   unresolvedTicketSchedulingActions,
 } from "../lib/ticket-scheduling-actions";
 
@@ -64,6 +68,19 @@ test("only applied or cancelled scheduling actions are resolved", () => {
   );
 });
 
+test("ticket-level manual resolution separates completed work from genuinely unnecessary work", () => {
+  assert.equal(TICKET_SCHEDULING_RESOLUTION_MODES.length, 3);
+  assert.equal(schedulingResolutionDefinition("COMPLETED_EXTERNALLY")?.label, "已在正式系统或其他页面处理完成");
+  assert.equal(schedulingResolutionDefinition("NOT_REQUIRED")?.label, "整张工单确实无需处理");
+  assert.equal(schedulingResolutionDefinition("UNKNOWN"), null);
+  assert.equal(schedulingResolutionActionStatus("COMPLETED_EXTERNALLY"), "APPLIED");
+  assert.equal(schedulingResolutionActionStatus("PARTIALLY_COMPLETED_EXTERNALLY"), "APPLIED");
+  assert.equal(schedulingResolutionActionStatus("NOT_REQUIRED"), "CANCELLED");
+  assert.equal(schedulingResolutionTicketStatus("COMPLETED_EXTERNALLY", 0), "Completed");
+  assert.equal(schedulingResolutionTicketStatus("NOT_REQUIRED", 0), "Cancelled");
+  assert.equal(schedulingResolutionTicketStatus("PARTIALLY_COMPLETED_EXTERNALLY", 2), null);
+});
+
 test("existing-result links require an actual lesson result", () => {
   assert.equal(
     existingResultSessionIdForAction({
@@ -107,6 +124,11 @@ test("ticket workbench exposes blockers and audited existing-result recovery", (
   assert.match(webDetail, /ADMIN_LINK_EXISTING_SCHEDULING_RESULT/);
   assert.match(webDetail, /existingResultVerified/);
   assert.match(webDetail, /关联已有结果并写入审计/);
+  assert.match(webDetail, /ADMIN_RESOLVE_TICKET_SCHEDULING_ACTIONS/);
+  assert.match(webDetail, /已经在别处处理过？整张工单只填一次/);
+  assert.match(webDetail, /保存实际结果并自动更新工单/);
+  assert.match(webDetail, /这张旧工单没有结构化动作/);
+  assert.match(webDetail, /单项例外：补资料或修改等待状态/);
 });
 
 test("execution services write structured action results inside their existing transactions", () => {
