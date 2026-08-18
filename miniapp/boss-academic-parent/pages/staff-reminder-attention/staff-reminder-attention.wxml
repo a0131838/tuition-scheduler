@@ -23,11 +23,14 @@
     </view>
     <view class="reminder-detail" wx:if="{{expandedKey === row.key}}">
       <view class="priority-notice {{row.priority}}"><text>{{row.priority}} · {{row.priorityLabel}}</text><text>{{row.priorityReason}}</text></view>
+      <view class="report-approval" wx:if="{{row.reportDeliveryReady}}"><text>已审核确认，可发送给家长</text><text>{{row.approvedByName}} · 确认后只能查看和交付，不能修改报告</text></view>
       <view class="subject">{{row.subject}}</view><view class="copy-label">AI 已按正式数据准备</view><view class="copy-text">{{row.copyBilingual}}</view>
+      <button class="report-open" wx:if="{{row.reportDeliveryReady}}" data-key="{{row.key}}" bindtap="openReport">查看 / 转发 PDF</button>
       <button class="primary" data-key="{{row.key}}" data-language="BILINGUAL" bindtap="copyText">复制中英双语</button>
       <view class="copy-row"><button data-key="{{row.key}}" data-language="ZH" bindtap="copyText">只复制中文</button><button data-key="{{row.key}}" data-language="EN" bindtap="copyText">Copy English</button></view>
-      <view class="status-label">复制不等于已发送，请选择真实状态</view>
-      <view class="action-grid"><button data-key="{{row.key}}" data-status="SENT" bindtap="markStatus">已发送</button><button data-key="{{row.key}}" data-status="WAITING_REPLY" bindtap="markStatus">等回复</button><button data-key="{{row.key}}" data-status="REPLIED" bindtap="markStatus">已回复</button><button data-key="{{row.key}}" data-status="SNOOZED" bindtap="markStatus">2小时后提醒</button><button class="done" data-key="{{row.key}}" data-status="COMPLETED" bindtap="markStatus">完成</button><button class="escalate" data-key="{{row.key}}" data-status="ESCALATED" bindtap="markStatus">升级给教务/管理</button></view>
+      <view class="status-label" wx:if="{{row.reportDeliveryReady}}">只有真实发出 PDF 后才能确认；确认后会同步网页端正式报告状态。</view>
+      <view class="report-action-grid" wx:if="{{row.reportDeliveryReady}}"><button class="done" data-key="{{row.key}}" bindtap="confirmReportSent">已发送给家长</button><button data-key="{{row.key}}" data-status="SNOOZED" bindtap="markStatus">2小时后提醒</button><button class="escalate" data-key="{{row.key}}" data-status="ESCALATED" bindtap="markStatus">升级给教务/管理</button></view>
+      <block wx:else><view class="status-label">复制不等于已发送，请选择真实状态</view><view class="action-grid"><button data-key="{{row.key}}" data-status="SENT" bindtap="markStatus">已发送</button><button data-key="{{row.key}}" data-status="WAITING_REPLY" bindtap="markStatus">等回复</button><button data-key="{{row.key}}" data-status="REPLIED" bindtap="markStatus">已回复</button><button data-key="{{row.key}}" data-status="SNOOZED" bindtap="markStatus">2小时后提醒</button><button class="done" data-key="{{row.key}}" data-status="COMPLETED" bindtap="markStatus">完成</button><button class="escalate" data-key="{{row.key}}" data-status="ESCALATED" bindtap="markStatus">升级给教务/管理</button></view></block>
     </view>
   </view>
   </view>

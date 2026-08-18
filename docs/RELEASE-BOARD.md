@@ -1,5 +1,27 @@
 # RELEASE BOARD
 
+- 2026-08-18-r380: ready to put only Jessika-confirmed Midterm and Final Reports into Emily's delivery queue and close the formal report on real parent delivery.
+
+## 2026-08-18-r380 Ready
+
+- Scope: replace generic reminder completion with an explicit report approval and delivery state bridge.
+- Business impact:
+  - teacher submission no longer implies that a report is approved for parent delivery;
+  - Jessika/admin confirms each Midterm or Final Report before Emily can see it;
+  - Emily can open the protected PDF, copy the message and mark it sent, but cannot edit or approve the report;
+  - the sent action updates the formal report's delivery actor, time and channel, so website and app use the same truth;
+  - revoking and re-approving creates a new versioned task, preventing old communication audit state from hiding new work;
+  - existing submitted reports are not automatically approved.
+- Verification before deploy:
+  - report/communication tests 9/9 and backend tests 180/180;
+  - TypeScript, 251-page production build, 69-page miniapp release audit and git diff --check;
+  - no database migration or protected scheduling, attendance, package, payroll or finance change.
+- Post-deploy verification:
+  - confirm local, GitHub and server commit equality, PM2 online and /admin/login HTTP 200;
+  - upload a WeChat development version only;
+  - Jessika confirms 黄梓皓's Final Maths Report, then Emily verifies the PDF and sent action on a physical device.
+- Task doc: docs/tasks/TASK-20260818-learning-report-approved-delivery.md.
+
 - `2026-08-18-r379`: live with action-first, parent-readable reports for every school-guide assessment.
 
 ## 2026-08-18-r379 Live

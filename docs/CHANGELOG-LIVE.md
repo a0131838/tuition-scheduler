@@ -1,5 +1,26 @@
 # CHANGELOG LIVE
 
+## 2026-08-18-r380
+
+- Release ID: 2026-08-18-r380
+- Date/Time (Asia/Singapore): 2026-08-18
+- Deployment status: READY FOR GUARDED DEPLOY; WeChat development package only, with no review submission or formal publication.
+- Scope: add a Jessika/admin confirmation gate before Midterm and Final Reports enter Emily's AI communication queue, then write Emily's real parent delivery back to the formal report.
+- Key files:
+  - lib/learning-report-delivery.ts
+  - lib/communication-reminders.ts
+  - app/admin/reports/{midterm,final}/page.tsx
+  - app/api/{admin,miniapp}/**/communication-reminders
+  - app/api/miniapp/staff/reminder-attention/reports/*
+  - miniapp/boss-academic-parent/pages/staff-reminder-attention/*
+  - tests/learning-report-delivery.test.ts
+  - docs/tasks/TASK-20260818-learning-report-approved-delivery.md
+- Risk impact (if any): Medium and report-delivery-only. Existing submitted reports require explicit confirmation and are not backfilled. Emily gains protected PDF access and a delivery action, not report editing or approval. No scheduling, attendance, package, payroll or finance records change.
+- Verification: focused report/communication tests 9/9 and backend tests 180/180 passed; TypeScript, the 251-page production build, the 69-page miniapp release audit and git diff --check passed.
+- Rollback point: a4dc4d90 before 2026-08-18-r380.
+
+---
+
 ## 2026-08-18-r379
 
 - Release ID: `2026-08-18-r379`

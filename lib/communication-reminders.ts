@@ -1,5 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { formatBusinessDateTime } from "@/lib/date-only";
+import {
+  learningReportDeliveryApproval,
+  learningReportDeliveryDueAt,
+  learningReportDeliveryReminderKey,
+  type LearningReportKind,
+} from "@/lib/learning-report-delivery";
 
 export const COMMUNICATION_REMINDER_MODULE = "COMMUNICATION_REMINDERS";
 export const COMMUNICATION_REMINDER_ENTITY = "CommunicationReminder";
@@ -44,6 +50,13 @@ export type CommunicationReminderItem = {
   priorityReason: string;
   group: CommunicationReminderGroup;
   groupLabel: string;
+  reportKind?: LearningReportKind;
+  reportId?: string;
+  reportPdfPath?: string;
+  reportAdminPdfPath?: string;
+  reportDeliveryReady?: boolean;
+  approvedByName?: string;
+  approvedAt?: string;
 };
 
 const STATUS_LABELS: Record<CommunicationReminderStatus, string> = {
@@ -235,26 +248,52 @@ export async function listCommunicationReminders(now = new Date(), limit = 300) 
 
   for (const report of midterms) {
     const isFill = report.status === "ASSIGNED";
-    const activityAt = isFill ? report.assignedAt : report.submittedAt ?? report.updatedAt;
+    const approval = learningReportDeliveryApproval(report.reportJson);
+    if (!isFill && !approval.approvedAt) continue;
+    const activityAt = isFill ? report.assignedAt : new Date(approval.approvedAt as string);
     if (activityAt.getTime() < now.getTime() - (isFill ? 30 : 14) * DAY) continue;
-    const dueAt = new Date((isFill ? report.assignedAt : report.submittedAt ?? report.updatedAt).getTime() + (isFill ? 7 : 2) * DAY);
+    const dueAt = isFill
+      ? new Date(report.assignedAt.getTime() + 7 * DAY)
+      : learningReportDeliveryDueAt(activityAt);
     if (!isFill && reportMetaForwarded(report.reportJson)) continue;
     const label = [report.course.name, report.subject?.name].filter(Boolean).join(" / ");
     const zh = isFill ? `${report.teacher.name}老师您好，${report.student.name}的${label}中期报告尚未填写，请尽快完成，谢谢。` : `${report.student.name}的${label}中期报告已提交，请完成审核并发送家长。`;
     const en = isFill ? `Hello ${report.teacher.name}, ${report.student.name}'s ${label} midterm report is still pending. Please complete it as soon as possible. Thank you.` : `${report.student.name}'s ${label} midterm report has been submitted. Please review and send it to the parent.`;
-    items.push(reminder({ key: `${isFill ? "MIDTERM_FILL" : "MIDTERM_DELIVER"}:${report.id}`, category: "MIDTERM_REPORT", categoryLabel: isFill ? "中期报告填写" : "中期报告发放", title: `${report.student.name} · 中期报告`, subject: label, recipientType: isFill ? "TEACHER" : "INTERNAL", recipientName: isFill ? report.teacher.name : "Emily", studentName: report.student.name, teacherName: report.teacher.name, dueAt, now, sourceHref: "/admin/reports/midterm", sourceLabel: "中期报告", copyZh: zh, copyEn: en }));
+    items.push(reminder({
+      key: isFill ? `MIDTERM_FILL:${report.id}` : learningReportDeliveryReminderKey("MIDTERM", report.id, approval.approvedAt as string),
+      category: "MIDTERM_REPORT", categoryLabel: isFill ? "中期报告填写" : "中期报告发放", title: `${report.student.name} · 中期报告`, subject: label,
+      recipientType: isFill ? "TEACHER" : "INTERNAL", recipientName: isFill ? report.teacher.name : "Emily", studentName: report.student.name, teacherName: report.teacher.name,
+      dueAt, now, sourceHref: "/admin/reports/midterm", sourceLabel: "中期报告", copyZh: zh, copyEn: en,
+      reportKind: isFill ? undefined : "MIDTERM", reportId: isFill ? undefined : report.id,
+      reportPdfPath: isFill ? undefined : `/api/miniapp/staff/reminder-attention/reports/MIDTERM/${report.id}/pdf`,
+      reportAdminPdfPath: isFill ? undefined : `/api/admin/midterm-reports/${report.id}/pdf`,
+      reportDeliveryReady: !isFill, approvedByName: approval.approvedByName ?? undefined, approvedAt: approval.approvedAt ?? undefined,
+    }));
   }
 
   for (const report of finals) {
     const isFill = report.status === "ASSIGNED";
     if (!isFill && report.deliveredAt) continue;
-    const activityAt = isFill ? report.assignedAt : report.submittedAt ?? report.forwardedAt ?? report.updatedAt;
+    const approval = learningReportDeliveryApproval(report.reportJson);
+    if (!isFill && !approval.approvedAt) continue;
+    const activityAt = isFill ? report.assignedAt : new Date(approval.approvedAt as string);
     if (activityAt.getTime() < now.getTime() - (isFill ? 30 : 14) * DAY) continue;
-    const dueAt = new Date((isFill ? report.assignedAt : report.submittedAt ?? report.forwardedAt ?? report.updatedAt).getTime() + (isFill ? 7 : 2) * DAY);
+    const dueAt = isFill
+      ? new Date(report.assignedAt.getTime() + 7 * DAY)
+      : learningReportDeliveryDueAt(activityAt);
     const label = [report.course.name, report.subject?.name].filter(Boolean).join(" / ");
     const zh = isFill ? `${report.teacher.name}老师您好，${report.student.name}的${label}期末报告尚未填写，请尽快完成，谢谢。` : `${report.student.name}的${label}期末报告已准备好，请完成审核并发送家长。`;
     const en = isFill ? `Hello ${report.teacher.name}, ${report.student.name}'s ${label} final report is still pending. Please complete it as soon as possible. Thank you.` : `${report.student.name}'s ${label} final report is ready. Please review and send it to the parent.`;
-    items.push(reminder({ key: `${isFill ? "FINAL_FILL" : "FINAL_DELIVER"}:${report.id}`, category: "FINAL_REPORT", categoryLabel: isFill ? "期末报告填写" : "期末报告发放", title: `${report.student.name} · 期末报告`, subject: label, recipientType: isFill ? "TEACHER" : "INTERNAL", recipientName: isFill ? report.teacher.name : "Emily", studentName: report.student.name, teacherName: report.teacher.name, dueAt, now, sourceHref: "/admin/reports/final", sourceLabel: "期末报告", copyZh: zh, copyEn: en }));
+    items.push(reminder({
+      key: isFill ? `FINAL_FILL:${report.id}` : learningReportDeliveryReminderKey("FINAL", report.id, approval.approvedAt as string),
+      category: "FINAL_REPORT", categoryLabel: isFill ? "期末报告填写" : "期末报告发放", title: `${report.student.name} · 期末报告`, subject: label,
+      recipientType: isFill ? "TEACHER" : "INTERNAL", recipientName: isFill ? report.teacher.name : "Emily", studentName: report.student.name, teacherName: report.teacher.name,
+      dueAt, now, sourceHref: "/admin/reports/final", sourceLabel: "期末报告", copyZh: zh, copyEn: en,
+      reportKind: isFill ? undefined : "FINAL", reportId: isFill ? undefined : report.id,
+      reportPdfPath: isFill ? undefined : `/api/miniapp/staff/reminder-attention/reports/FINAL/${report.id}/pdf`,
+      reportAdminPdfPath: isFill ? undefined : `/api/admin/final-reports/${report.id}/pdf`,
+      reportDeliveryReady: !isFill, approvedByName: approval.approvedByName ?? undefined, approvedAt: approval.approvedAt ?? undefined,
+    }));
   }
 
   for (const ticket of tickets) {

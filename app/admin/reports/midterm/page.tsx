@@ -12,6 +12,12 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { formatBusinessDateTime } from "@/lib/date-only";
+import {
+  approveLearningReportForDelivery,
+  deliverApprovedLearningReport,
+  learningReportDeliveryApproval,
+  revokeLearningReportDeliveryApproval,
+} from "@/lib/learning-report-delivery";
 
 function readForwardMeta(raw: unknown): { forwardedAt: string | null; forwardedByName: string | null; locked: boolean } {
   if (!raw || typeof raw !== "object") return { forwardedAt: null, forwardedByName: null, locked: false };
@@ -249,35 +255,43 @@ async function markForwardedAndLock(formData: FormData) {
   const reportId = String(formData.get("reportId") ?? "").trim();
   if (!reportId) redirect("/admin/reports/midterm?err=missing");
 
-  const row = await prisma.midtermReport.findUnique({
-    where: { id: reportId },
-    select: { id: true, status: true, reportJson: true },
-  });
-  if (!row || row.status !== "SUBMITTED") redirect("/admin/reports/midterm?err=status");
-
-  const nowIso = new Date().toISOString();
-  const prev = row.reportJson && typeof row.reportJson === "object" ? (row.reportJson as Record<string, unknown>) : {};
-  const prevMeta = prev._meta && typeof prev._meta === "object" ? (prev._meta as Record<string, unknown>) : {};
-
-  await prisma.midtermReport.update({
-    where: { id: row.id },
-    data: {
-      reportJson: {
-        ...prev,
-        _meta: {
-          ...prevMeta,
-          forwardedAt: nowIso,
-          forwardedByUserId: user.id,
-          forwardedByName: user.name,
-          lockedAfterForwarded: true,
-        },
-      } as any,
-    },
-  });
+  try {
+    await deliverApprovedLearningReport({ kind: "MIDTERM", reportId, actor: user, channel: "MANUAL" });
+  } catch {
+    redirect("/admin/reports/midterm?err=status");
+  }
 
   revalidatePath("/admin/reports/midterm");
   revalidatePath("/teacher/midterm-reports");
   redirect("/admin/reports/midterm?ok=forwarded");
+}
+
+async function approveMidtermReportForDelivery(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  const reportId = String(formData.get("reportId") ?? "").trim();
+  if (!reportId) redirect("/admin/reports/midterm?err=missing");
+  try {
+    await approveLearningReportForDelivery({ kind: "MIDTERM", reportId, actor: user });
+  } catch {
+    redirect("/admin/reports/midterm?err=status");
+  }
+  revalidatePath("/admin/reports/midterm");
+  redirect("/admin/reports/midterm?ok=approved");
+}
+
+async function revokeMidtermReportDeliveryApproval(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  const reportId = String(formData.get("reportId") ?? "").trim();
+  if (!reportId) redirect("/admin/reports/midterm?err=missing");
+  try {
+    await revokeLearningReportDeliveryApproval({ kind: "MIDTERM", reportId, actor: user });
+  } catch {
+    redirect("/admin/reports/midterm?err=status");
+  }
+  revalidatePath("/admin/reports/midterm");
+  redirect("/admin/reports/midterm?ok=approval-revoked");
 }
 
 async function archiveMidtermReport(formData: FormData) {
@@ -442,6 +456,14 @@ export default async function AdminMidtermReportCenterPage({
       ) : ok === "forwarded" ? (
         <div style={{ background: "#ecfdf3", border: "1px solid #34d399", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
           {t(lang, "Marked as forwarded and locked.", "已标记为已转发并锁定。")}
+        </div>
+      ) : ok === "approved" ? (
+        <div style={{ background: "#ecfdf3", border: "1px solid #34d399", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
+          {t(lang, "Confirmed for Emily to send.", "已确认可由 Emily 发送，将进入学习报告待办。")}
+        </div>
+      ) : ok === "approval-revoked" ? (
+        <div style={{ background: "#fffbeb", border: "1px solid #f59e0b", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
+          {t(lang, "Sending approval revoked.", "已撤回发送确认，Emily 待办将移除。")}
         </div>
       ) : ok === "exempt" ? (
         <div style={{ background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
@@ -652,6 +674,7 @@ export default async function AdminMidtermReportCenterPage({
             <tbody>
               {filteredReports.map((r) => {
                 const forwardMeta = readForwardMeta(r.reportJson);
+                const deliveryApproval = learningReportDeliveryApproval(r.reportJson);
                 return (
                   <tr key={r.id} style={{ borderTop: "1px solid #dbeafe" }}>
                     <td style={{ padding: 6, fontWeight: 700 }}>{r.student.name}</td>
@@ -675,6 +698,11 @@ export default async function AdminMidtermReportCenterPage({
                           {r.archivedByUser?.name ? ` (${r.archivedByUser.name})` : ""}
                         </div>
                       ) : null}
+                      {deliveryApproval.approvedAt && !forwardMeta.locked ? (
+                        <div style={{ color: "#166534", fontSize: 12, marginTop: 4 }}>
+                          {t(lang, "Approved for Emily to send", "已确认可由 Emily 发送")}: {formatBusinessDateTime(new Date(deliveryApproval.approvedAt))} ({deliveryApproval.approvedByName || "-"})
+                        </div>
+                      ) : null}
                     </td>
                     <td style={{ padding: 6 }}>
                       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -689,10 +717,22 @@ export default async function AdminMidtermReportCenterPage({
                           <span style={{ color: "#1d4ed8", fontSize: 12 }}>
                             {t(lang, "Forwarded", "已转发")}: {forwardMeta.forwardedAt ? formatBusinessDateTime(new Date(forwardMeta.forwardedAt)) : "-"} ({forwardMeta.forwardedByName || "-"})
                           </span>
-                        ) : r.status === "SUBMITTED" ? (
+                        ) : r.status === "SUBMITTED" && deliveryApproval.approvedAt ? (
                           <form action={markForwardedAndLock}>
                             <input type="hidden" name="reportId" value={r.id} />
-                            <button type="submit">{t(lang, "Mark Forwarded + Lock", "标记已转发并锁定")}</button>
+                            <button type="submit">{t(lang, "Mark manually delivered", "管理端标记已交付")}</button>
+                          </form>
+                        ) : null}
+                        {!r.archivedAt && r.status === "SUBMITTED" && !forwardMeta.locked && !deliveryApproval.approvedAt ? (
+                          <form action={approveMidtermReportForDelivery}>
+                            <input type="hidden" name="reportId" value={r.id} />
+                            <button type="submit">{t(lang, "Confirm for Emily to send", "确认可由 Emily 发送")}</button>
+                          </form>
+                        ) : null}
+                        {!r.archivedAt && r.status === "SUBMITTED" && !forwardMeta.locked && deliveryApproval.approvedAt ? (
+                          <form action={revokeMidtermReportDeliveryApproval}>
+                            <input type="hidden" name="reportId" value={r.id} />
+                            <button type="submit">{t(lang, "Revoke sending approval", "撤回发送确认")}</button>
                           </form>
                         ) : null}
                         {!r.archivedAt && !forwardMeta.locked && r.status !== "EXEMPT" ? (

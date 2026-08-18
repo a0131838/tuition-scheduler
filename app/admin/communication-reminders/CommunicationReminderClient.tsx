@@ -10,6 +10,8 @@ type Reminder = {
   sourceHref: string; sourceLabel: string; copyZh: string; copyEn: string; copyBilingual: string;
   priority: "P0" | "P1" | "P2" | "P3"; priorityLabel: string; priorityReason: string;
   group: "COURSE" | "TEACHING" | "REPORT" | "TICKET"; groupLabel: string;
+  reportDeliveryReady?: boolean; reportKind?: "MIDTERM" | "FINAL"; reportId?: string;
+  reportAdminPdfPath?: string; approvedByName?: string; approvedAt?: string;
 };
 
 type Summary = {
@@ -76,6 +78,12 @@ export default function CommunicationReminderClient() {
     setMessage(language === "ZH" ? "已复制中文" : language === "EN" ? "English copied" : "已复制中英双语");
   }
 
+  async function deliverReport(item: Reminder) {
+    if (!window.confirm(`请确认已将${item.studentName || "该学生"}的报告真实发给家长。确认后会写入正式交付记录。`)) return;
+    await act(item, "SENT");
+    setMessage("已记录正式交付");
+  }
+
   return <main className={styles.page}>
     <header className={styles.header}>
       <div><p className={styles.eyebrow}>客服与教务 · 同一份待办</p><h1>AI 沟通提醒中心</h1><p>系统读取课表、考勤、反馈、报告和工单；Emily 只处理现在该发的一条。</p></div>
@@ -108,9 +116,10 @@ export default function CommunicationReminderClient() {
         {current ? <>
           <div className={styles.detailTop}><div><span className={styles.category}>{current.groupLabel} · {current.categoryLabel}</span><h2>{current.title}</h2><p>{current.subject}</p></div><span className={`${styles.urgency} ${styles[current.priority.toLowerCase()]}`}>{current.priority} · {current.priorityLabel}</span></div>
           <div className={`${styles.priorityNotice} ${styles[current.priority.toLowerCase()]}`}><strong>{current.priorityReason}</strong><span>系统依据截止时间和当前处理状态自动判断；员工仍可升级或稍后提醒。</span></div>
+          {current.reportDeliveryReady ? <div className={styles.reportApproval}><strong>已审核确认，可由 Emily 发送</strong><span>{current.approvedByName || "-"} · 发送前可查看 PDF，不能修改报告。</span></div> : null}
           <div className={styles.facts}><div><span>发给</span><strong>{current.recipientName}</strong></div><div><span>完成前</span><strong>{current.dueText}</strong></div><div><span>来源</span><a href={current.sourceHref}>{current.sourceLabel}</a></div></div>
-          <div className={styles.copyBlock}><div className={styles.copyHeading}><div><span>AI 已按正式数据准备</span><h3>中英对照沟通稿</h3></div><button onClick={() => void copy(current, "BILINGUAL")}>复制中英双语</button></div><pre>{current.copyBilingual}</pre><div className={styles.copyActions}><button onClick={() => void copy(current, "ZH")}>只复制中文</button><button onClick={() => void copy(current, "EN")}>Copy English</button></div></div>
-          <div className={styles.nextAction}><div><span>复制不等于已发送</span><strong>发出后选择真实状态</strong></div><div><button onClick={() => void act(current, "SENT")}>标记已发送</button><button onClick={() => void act(current, "WAITING_REPLY")}>等待回复</button><button onClick={() => void act(current, "REPLIED")}>已收到回复</button><button onClick={() => void act(current, "SNOOZED")}>两小时后提醒</button><button className={styles.complete} onClick={() => void act(current, "COMPLETED")}>完成</button><button className={styles.escalate} onClick={() => void act(current, "ESCALATED")}>升级给教务/管理</button></div></div>
+          <div className={styles.copyBlock}><div className={styles.copyHeading}><div><span>AI 已按正式数据准备</span><h3>中英对照沟通稿</h3></div><button onClick={() => void copy(current, "BILINGUAL")}>复制中英双语</button></div><pre>{current.copyBilingual}</pre><div className={styles.copyActions}>{current.reportDeliveryReady && current.reportAdminPdfPath ? <a className={styles.pdfLink} href={current.reportAdminPdfPath} target="_blank">查看 / 下载 PDF</a> : null}<button onClick={() => void copy(current, "ZH")}>只复制中文</button><button onClick={() => void copy(current, "EN")}>Copy English</button></div></div>
+          {current.reportDeliveryReady ? <div className={styles.nextAction}><div><span>只有真实发出后才确认</span><strong>确认后同步正式报告交付状态</strong></div><div><button className={styles.complete} onClick={() => void deliverReport(current)}>已发送给家长</button><button onClick={() => void act(current, "SNOOZED")}>两小时后提醒</button><button className={styles.escalate} onClick={() => void act(current, "ESCALATED")}>升级给教务/管理</button></div></div> : <div className={styles.nextAction}><div><span>复制不等于已发送</span><strong>发出后选择真实状态</strong></div><div><button onClick={() => void act(current, "SENT")}>标记已发送</button><button onClick={() => void act(current, "WAITING_REPLY")}>等待回复</button><button onClick={() => void act(current, "REPLIED")}>已收到回复</button><button onClick={() => void act(current, "SNOOZED")}>两小时后提醒</button><button className={styles.complete} onClick={() => void act(current, "COMPLETED")}>完成</button><button className={styles.escalate} onClick={() => void act(current, "ESCALATED")}>升级给教务/管理</button></div></div>}
         </> : <div className={styles.empty}>选择一项工作查看文案</div>}
       </section>
     </div>

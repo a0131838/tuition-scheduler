@@ -2,6 +2,12 @@ import crypto from "crypto";
 import { requireAdmin } from "@/lib/auth";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import {
+  approveLearningReportForDelivery,
+  deliverApprovedLearningReport,
+  learningReportDeliveryApproval,
+  revokeLearningReportDeliveryApproval,
+} from "@/lib/learning-report-delivery";
+import {
   FINAL_REPORT_DELIVERY_CHANNELS,
   FINAL_REPORT_EXEMPT_REASONS,
   FINAL_REPORT_SHARE_DURATION_DAYS,
@@ -216,40 +222,32 @@ async function assignFinalReport(formData: FormData) {
   redirect("/admin/reports/final?ok=assigned");
 }
 
-async function markFinalReportForwarded(formData: FormData) {
+async function approveFinalReportForDelivery(formData: FormData) {
   "use server";
   const user = await requireAdmin();
   const reportId = String(formData.get("reportId") ?? "").trim();
   if (!reportId) redirect("/admin/reports/final?err=missing");
-
-  const row = await prisma.finalReport.findUnique({
-    where: { id: reportId },
-    select: { id: true, status: true, reportJson: true },
-  });
-  if (!row || row.status !== "SUBMITTED") redirect("/admin/reports/final?err=status");
-
-  const prev = row.reportJson && typeof row.reportJson === "object" ? (row.reportJson as Record<string, unknown>) : {};
-  const prevMeta = prev._meta && typeof prev._meta === "object" ? (prev._meta as Record<string, unknown>) : {};
-
-  await prisma.finalReport.update({
-    where: { id: row.id },
-    data: {
-      status: "FORWARDED",
-      forwardedAt: new Date(),
-      reportJson: {
-        ...prev,
-        _meta: {
-          ...prevMeta,
-          forwardedByUserId: user.id,
-          forwardedByName: user.name,
-        },
-      } as any,
-    },
-  });
-
+  try {
+    await approveLearningReportForDelivery({ kind: "FINAL", reportId, actor: user });
+  } catch {
+    redirect("/admin/reports/final?err=status");
+  }
   revalidatePath("/admin/reports/final");
-  revalidatePath("/teacher/final-reports");
-  redirect("/admin/reports/final?ok=forwarded");
+  redirect("/admin/reports/final?ok=approved");
+}
+
+async function revokeFinalReportDeliveryApproval(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  const reportId = String(formData.get("reportId") ?? "").trim();
+  if (!reportId) redirect("/admin/reports/final?err=missing");
+  try {
+    await revokeLearningReportDeliveryApproval({ kind: "FINAL", reportId, actor: user });
+  } catch {
+    redirect("/admin/reports/final?err=status");
+  }
+  revalidatePath("/admin/reports/final");
+  redirect("/admin/reports/final?ok=approval-revoked");
 }
 
 async function exemptFinalReport(formData: FormData) {
@@ -370,22 +368,32 @@ async function markFinalReportDelivered(formData: FormData) {
 
   const row = await prisma.finalReport.findUnique({
     where: { id: reportId },
-    select: { id: true, status: true, reportJson: true, forwardedAt: true },
+    select: { id: true, status: true, reportJson: true, forwardedAt: true, deliveredAt: true },
   });
-  if (!row || (row.status !== "SUBMITTED" && row.status !== "FORWARDED")) {
+  if (!row || row.deliveredAt || (row.status !== "SUBMITTED" && row.status !== "FORWARDED")) {
     redirect("/admin/reports/final?err=status");
+  }
+
+  if (row.status === "SUBMITTED") {
+    try {
+      await deliverApprovedLearningReport({ kind: "FINAL", reportId, actor: user, channel: deliveryChannel || "WECHAT", note: deliveryNote });
+    } catch {
+      redirect("/admin/reports/final?err=status");
+    }
+    revalidatePath("/admin/reports/final");
+    revalidatePath("/teacher/final-reports");
+    redirect("/admin/reports/final?ok=delivered");
   }
 
   const prev = row.reportJson && typeof row.reportJson === "object" ? (row.reportJson as Record<string, unknown>) : {};
   const prevMeta = prev._meta && typeof prev._meta === "object" ? (prev._meta as Record<string, unknown>) : {};
   const now = new Date();
-  const autoForward = row.status === "SUBMITTED";
 
   await prisma.finalReport.update({
     where: { id: row.id },
     data: {
-      status: autoForward ? "FORWARDED" : row.status,
-      forwardedAt: autoForward ? now : row.forwardedAt,
+      status: row.status,
+      forwardedAt: row.forwardedAt,
       deliveredAt: now,
       deliveredByUserId: user.id,
       deliveryChannel: deliveryChannel || null,
@@ -393,8 +401,8 @@ async function markFinalReportDelivered(formData: FormData) {
         ...prev,
         _meta: {
           ...prevMeta,
-          forwardedByUserId: autoForward ? user.id : prevMeta.forwardedByUserId,
-          forwardedByName: autoForward ? user.name : prevMeta.forwardedByName,
+          forwardedByUserId: prevMeta.forwardedByUserId,
+          forwardedByName: prevMeta.forwardedByName,
           deliveryNote,
         },
       } as any,
@@ -645,6 +653,14 @@ export default async function AdminFinalReportCenterPage({
         <div style={{ background: "#ecfdf3", border: "1px solid #34d399", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
           {t(lang, "Marked as forwarded to parent follow-up.", "已标记为已转发给家长跟进。")}
         </div>
+      ) : ok === "approved" ? (
+        <div style={{ background: "#ecfdf3", border: "1px solid #34d399", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
+          {t(lang, "Confirmed for Emily to send.", "已确认可由 Emily 发送，将进入学习报告待办。")}
+        </div>
+      ) : ok === "approval-revoked" ? (
+        <div style={{ background: "#fffbeb", border: "1px solid #f59e0b", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
+          {t(lang, "Sending approval revoked.", "已撤回发送确认，Emily 待办将移除。")}
+        </div>
       ) : ok === "delivered" ? (
         <div style={{ background: "#ecfdf3", border: "1px solid #34d399", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
           {t(lang, "Delivery record saved.", "家长交付记录已保存。")}
@@ -856,6 +872,7 @@ export default async function AdminFinalReportCenterPage({
                   recommendedNextStep: report.recommendation ?? (report.reportJson as any)?.recommendedNextStep,
                 });
                 const meta = parseFinalReportMeta(report.reportJson);
+                const deliveryApproval = learningReportDeliveryApproval(report.reportJson);
                 const hasActiveShare = isShareActive(report);
                 const hasExpiredShare = isShareExpired(report);
                 const canShare = report.status === "SUBMITTED" || report.status === "FORWARDED";
@@ -887,6 +904,11 @@ export default async function AdminFinalReportCenterPage({
                           {t(lang, "Delivered", "已交付")}: {formatBusinessDateTime(new Date(report.deliveredAt))}
                           {report.deliveredByUser?.name ? ` (${report.deliveredByUser.name})` : ""}
                           {report.deliveryChannel ? ` · ${deliveryChannelLabel(lang, report.deliveryChannel)}` : ""}
+                        </div>
+                      ) : null}
+                      {deliveryApproval.approvedAt && !report.deliveredAt ? (
+                        <div style={{ color: "#166534", fontSize: 12, marginTop: 4 }}>
+                          {t(lang, "Approved for Emily to send", "已确认可由 Emily 发送")}: {formatBusinessDateTime(new Date(deliveryApproval.approvedAt))} ({deliveryApproval.approvedByName || "-"})
                         </div>
                       ) : null}
                       {report.status === "EXEMPT" ? (
@@ -954,10 +976,16 @@ export default async function AdminFinalReportCenterPage({
                               <button type="submit">{t(lang, "Restore", "恢复")}</button>
                             </form>
                           ) : null}
-                          {report.status === "SUBMITTED" ? (
-                            <form action={markFinalReportForwarded}>
+                          {report.status === "SUBMITTED" && !report.deliveredAt && !deliveryApproval.approvedAt ? (
+                            <form action={approveFinalReportForDelivery}>
                               <input type="hidden" name="reportId" value={report.id} />
-                              <button type="submit">{t(lang, "Mark forwarded to parent", "标记已转发给家长")}</button>
+                              <button type="submit">{t(lang, "Confirm for Emily to send", "确认可由 Emily 发送")}</button>
+                            </form>
+                          ) : null}
+                          {report.status === "SUBMITTED" && !report.deliveredAt && deliveryApproval.approvedAt ? (
+                            <form action={revokeFinalReportDeliveryApproval}>
+                              <input type="hidden" name="reportId" value={report.id} />
+                              <button type="submit">{t(lang, "Revoke sending approval", "撤回发送确认")}</button>
                             </form>
                           ) : null}
                         </div>
@@ -974,7 +1002,7 @@ export default async function AdminFinalReportCenterPage({
                           </form>
                         ) : null}
 
-                        {!report.archivedAt && (report.status === "SUBMITTED" || report.status === "FORWARDED") ? (
+                        {!report.archivedAt && !report.deliveredAt && ((report.status === "SUBMITTED" && Boolean(deliveryApproval.approvedAt)) || report.status === "FORWARDED") ? (
                           <form action={markFinalReportDelivered} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                             <input type="hidden" name="reportId" value={report.id} />
                             <select name="deliveryChannel" defaultValue={report.deliveryChannel ?? "WECHAT"}>

@@ -7,6 +7,7 @@ import {
   listCommunicationReminders,
   normalizeCommunicationReminderStatus,
 } from "@/lib/communication-reminders";
+import { deliverApprovedLearningReport, parseLearningReportDeliveryReminderKey } from "@/lib/learning-report-delivery";
 
 export async function GET() {
   const user = await requireAdminAreaUser();
@@ -32,6 +33,24 @@ export async function POST(req: Request) {
   const status = normalizeCommunicationReminderStatus(body?.status);
   if (!key || key.length > 240 || !/^[A-Z0-9_:-]+$/i.test(key) || !status) {
     return Response.json({ ok: false, message: "Invalid reminder action" }, { status: 409 });
+  }
+  const reportTask = parseLearningReportDeliveryReminderKey(key);
+  if (reportTask && status === "COMPLETED") {
+    return Response.json({ ok: false, message: "报告任务请使用“已发送给家长”完成正式交付" }, { status: 409 });
+  }
+  if (reportTask && status === "SENT") {
+    try {
+      const delivered = await deliverApprovedLearningReport({
+        ...reportTask,
+        actor: user,
+        channel: String(body?.channel ?? "WECHAT"),
+        note: String(body?.note ?? ""),
+      });
+      await logAudit({ actor: user, module: COMMUNICATION_REMINDER_MODULE, action: "REMINDER_SENT", entityType: COMMUNICATION_REMINDER_ENTITY, entityId: key, meta: { status: "SENT", reportKind: reportTask.kind, reportId: reportTask.reportId, deliveredAt: delivered.deliveredAt } });
+      return Response.json({ ok: true, key, status: "SENT", delivered: true });
+    } catch (error) {
+      return Response.json({ ok: false, message: error instanceof Error ? error.message : "Report delivery failed" }, { status: 409 });
+    }
   }
   const snoozedUntil = status === "SNOOZED"
     ? String(body?.snoozedUntil ?? new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()).trim()

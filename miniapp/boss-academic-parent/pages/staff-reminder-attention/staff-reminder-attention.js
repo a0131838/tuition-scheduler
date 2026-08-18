@@ -99,6 +99,30 @@ Page({
     this.updateStatus(item, e.currentTarget.dataset.status).catch((err) => api.toast(err.message));
   },
 
+  openReport(e) {
+    const item = this.data.reminders.find((row) => row.key === e.currentTarget.dataset.key);
+    if (!item || !item.reportPdfPath) return api.toast("报告暂时无法打开");
+    api.openStaffDocument(item.reportPdfPath, `${item.studentName || "student"}-${item.reportKind || "report"}.pdf`)
+      .catch((err) => api.toast(err.message));
+  },
+
+  confirmReportSent(e) {
+    const item = this.data.reminders.find((row) => row.key === e.currentTarget.dataset.key);
+    if (!item || !item.reportDeliveryReady) return;
+    wx.showModal({
+      title: "确认已发送给家长",
+      content: `请确认已通过微信将${item.studentName || "该学生"}的报告发给家长。确认后会写入正式交付记录。`,
+      confirmText: "确认已发送",
+      confirmColor: "#173d34",
+      success: (res) => {
+        if (!res.confirm) return;
+        api.requestStaff("/api/miniapp/staff/reminder-attention", {
+          method: "POST", data: { key: item.key, status: "SENT", channel: "WECHAT" }, timeout: 12000
+        }).then(() => this.load()).then(() => api.toast("已记录正式交付")).catch((err) => api.toast(err.message));
+      }
+    });
+  },
+
   callParent(e) {
     const phone = e.currentTarget.dataset.phone;
     if (!phone) return api.toast("家长未填写电话");

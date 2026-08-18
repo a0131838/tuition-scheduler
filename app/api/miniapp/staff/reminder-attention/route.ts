@@ -11,6 +11,7 @@ import {
   listCommunicationReminders,
   normalizeCommunicationReminderStatus,
 } from "@/lib/communication-reminders";
+import { deliverApprovedLearningReport, parseLearningReportDeliveryReminderKey } from "@/lib/learning-report-delivery";
 
 export async function GET(req: Request) {
   const auth = await requireMiniappStaff(req);
@@ -70,6 +71,29 @@ export async function POST(req: Request) {
   const key = String(body?.key ?? "").trim();
   const status = normalizeCommunicationReminderStatus(body?.status);
   if (!key || key.length > 240 || !/^[A-Z0-9_:-]+$/i.test(key) || !status) return bad("Invalid reminder action", 409);
+  const reportTask = parseLearningReportDeliveryReminderKey(key);
+  if (reportTask && status === "COMPLETED") return bad("报告任务请使用“已发送给家长”完成正式交付", 409);
+  if (reportTask && status === "SENT") {
+    try {
+      const delivered = await deliverApprovedLearningReport({
+        ...reportTask,
+        actor: auth.user,
+        channel: String(body?.channel ?? "WECHAT"),
+        note: String(body?.note ?? ""),
+      });
+      await logAudit({
+        actor: auth.user,
+        module: COMMUNICATION_REMINDER_MODULE,
+        action: "REMINDER_SENT",
+        entityType: COMMUNICATION_REMINDER_ENTITY,
+        entityId: key,
+        meta: { status: "SENT", reportKind: reportTask.kind, reportId: reportTask.reportId, deliveredAt: delivered.deliveredAt },
+      });
+      return ok({ key, status: "SENT", delivered: true });
+    } catch (error) {
+      return bad(error instanceof Error ? error.message : "Report delivery failed", 409);
+    }
+  }
   const snoozedUntil = status === "SNOOZED"
     ? String(body?.snoozedUntil ?? new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()).trim()
     : "";
