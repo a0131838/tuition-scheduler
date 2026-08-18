@@ -1,5 +1,21 @@
 # CHANGELOG LIVE
 
+## 2026-08-18-r386
+
+- Release ID: 2026-08-18-r386
+- Date/Time (Asia/Singapore): 2026-08-18
+- Deployment status: LIVE after guarded server release; server-only Ticket Center interaction correction, with no WeChat package change.
+- Scope: remove a filter-submit race introduced by the r385 pending-state feedback while retaining the bounded 50-row query and all existing ticket behavior.
+- Key files:
+  - app/admin/tickets/_components/TicketFilterSubmitButton.tsx
+  - tests/admin-navigation-performance.test.ts
+  - docs/tasks/TASK-20260818-admin-navigation-performance.md
+- Risk impact (if any): Low and limited to when the filter button enters its visual pending state. No ticket, scheduling, package, attendance, payroll, finance, notification or permission rule changed.
+- Verification: focused regression, full build, guarded deployment and authenticated production filter replay completed before handoff.
+- Rollback point: 255aed91b02f7c7589ffa24a77df137b56b47665 before 2026-08-18-r386.
+
+---
+
 ## 2026-08-18-r385
 
 - Release ID: 2026-08-18-r385

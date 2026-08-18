@@ -19,12 +19,16 @@ test("shared admin shell does not rebuild the full approval inbox on every navig
 
 test("ticket filtering uses client navigation and bounded pagination", () => {
   const tickets = read("app/admin/tickets/page.tsx");
+  const submitButton = read("app/admin/tickets/_components/TicketFilterSubmitButton.tsx");
 
   assert.match(tickets, /<Form action="\/admin\/tickets" scroll=\{false\}/);
   assert.match(tickets, /take:\s*51/);
   assert.match(tickets, /skip:\s*\(page - 1\) \* 50/);
   assert.match(tickets, /aria-label="工单分页"/);
   assert.doesNotMatch(tickets, /take:\s*200/);
+  assert.match(submitButton, /window\.setTimeout\(\(\) => setPending\(true\), 0\)/);
+  assert.match(submitButton, /\[searchKey\]/);
+  assert.doesNotMatch(submitButton, /onClick=\{\(\) => setPending\(true\)\}/);
 });
 
 test("todo attendance window is loaded once instead of once per day bucket", () => {

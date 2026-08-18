@@ -1,5 +1,22 @@
 # RELEASE BOARD
 
+- 2026-08-18-r386: live with Ticket Center filtering submitting before its pending-state button is disabled.
+
+## 2026-08-18-r386 Live
+
+- Scope: correct the filter-button pending feedback found during authenticated production replay of r385.
+- Business impact:
+  - a filter click always starts the existing GET navigation;
+  - `正在筛选…` still prevents repeated clicks while the new list is loading;
+  - the pending state resets from the resulting URL search parameters.
+- Safety boundary:
+  - no database migration and no miniapp package change;
+  - no ticket content, workflow, AI plan, scheduling, finance, package, attendance, payroll, notification or permission behavior changed.
+- Verification:
+  - regression coverage asserts that the pending state is deferred until after native form submission;
+  - production build, guarded deployment and authenticated browser replay completed before handoff.
+- Task doc: docs/tasks/TASK-20260818-admin-navigation-performance.md.
+
 - 2026-08-18-r385: live with faster shared admin navigation, bounded Ticket Center filtering and consolidated Today/Todos reads.
 
 ## 2026-08-18-r385 Live

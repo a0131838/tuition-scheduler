@@ -20,7 +20,7 @@ Make the existing web administration pages respond quickly enough for daily oper
 
 2. Ticket Center
    - Use Next.js in-app form navigation and preserve the current filters.
-   - Disable the filter button and display `正在筛选…` immediately after submission.
+   - Let the browser complete the native GET submission before disabling the filter button and displaying `正在筛选…`.
    - Fetch 51 records, render 50 and use the extra record only to determine whether a next page exists.
    - Preserve ticket content, permissions, statuses, AI advice and manual execution.
 
@@ -46,6 +46,7 @@ Make the existing web administration pages respond quickly enough for daily oper
 - 34/34 focused navigation and ticket regression tests passed.
 - `tests/admin-navigation-performance.test.ts` locks the new bounded/cached query structure.
 - Full repository regression suite passed 565/565; release-doc gate and guarded server deployment are required before release completion.
+- Production browser replay caught and corrected a submit-state race: the pending UI now begins on the next event-loop turn, after the native form action has already started.
 
 ## Rollback
 
