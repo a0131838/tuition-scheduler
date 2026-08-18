@@ -4,7 +4,7 @@
 
 - Release ID: `2026-08-18-r379`
 - Date/Time (Asia/Singapore): `2026-08-18`
-- Deployment status: `READY`
+- Deployment status: `LIVE`; WeChat development version `1.0.59` uploaded, with no review submission or formal publication.
 - Scope: simplify every completed school-guide assessment report into result, an actionable eight-week improvement plan, and one planning-teacher contact action.
 - Key files:
   - `lib/school-guide-academic-assessment.ts`
@@ -13,7 +13,7 @@
   - `tests/school-guide-assessment-request.test.ts`
   - `docs/tasks/TASK-20260818-assessment-report-action-first.md`
 - Risk impact (if any): Low and isolated to assessment report payload/presentation. Existing stored reports receive a display-only fallback plan without being rewritten; no scheduling, package, attendance, finance, payroll, Ticket, login, permission or message behavior changes.
-- Verification: focused tests 26/26 and full repository tests 546/546 passed; TypeScript, the 251-page production build, the 69-page miniapp release audit, miniapp JavaScript syntax and `git diff --check` passed.
+- Verification: focused tests 26/26 and full repository tests 546/546 passed; TypeScript, the 251-page production build, the 69-page miniapp release audit, miniapp JavaScript syntax and `git diff --check` passed. Guarded deployment completed for feature commit `6976ac7c4c722ae6085e5c3af178037a6071f68f`; all 129 migrations were current, PM2 PID `2948493` was online and `/admin/login` returned HTTP 200. WeChat development version `1.0.59` uploaded at 793,721 bytes.
 - Rollback point: `1fad6fd8a6ae432304192823185514c0970c98dc` before `2026-08-18-r379`.
 
 ---
