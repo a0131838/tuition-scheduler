@@ -28,5 +28,5 @@ No session, enrollment, attendance, package or communication audit record is del
 
 ## Production acceptance
 
-- Guarded release confirms local, GitHub and server commit equality, PM2 online and /admin/login HTTP 200.
-- Re-run the production read-only projection for session 04fb6fdb-b4c9-475b-8746-1575b1da7e70 and confirm zero remaining reminders.
+- Guarded release completed for feature commit 9a479bcb1fbdf3dd2d5e09df4fe15a9108106995 with local, GitHub and server equality, all 129 migrations current, PM2 PID 2997687 online and /admin/login HTTP 200.
+- Post-deploy production read-only projection for session 04fb6fdb-b4c9-475b-8746-1575b1da7e70 returned zero remaining reminders.

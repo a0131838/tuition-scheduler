@@ -4,14 +4,14 @@
 
 - Release ID: 2026-08-18-r381
 - Date/Time (Asia/Singapore): 2026-08-18
-- Deployment status: READY FOR GUARDED DEPLOY; server-only reminder projection change, so no new WeChat package is required.
+- Deployment status: LIVE; server-only reminder projection change, so no new WeChat package was required.
 - Scope: prevent a single-student session from generating course reminders for historical Class enrollments.
 - Key files:
   - lib/communication-reminders.ts
   - tests/communication-reminders.test.ts
   - docs/tasks/TASK-20260818-course-reminder-explicit-student.md
 - Risk impact (if any): Low and isolated to communication reminder audience projection. Explicit session students and fixed one-to-one students now take precedence; true group sessions continue using the deduplicated Class roster. No scheduling, enrollment, attendance, package, payroll or finance records change.
-- Verification: regression test reproduced the historical-enrollment leak before the fix; communication/report tests 12/12, backend tests 180/180, TypeScript and the 251-page production build passed. Production read-only replay reduced the screenshot session from nine false reminders to zero remaining reminders.
+- Verification: regression test reproduced the historical-enrollment leak before the fix; communication/report tests 12/12, backend tests 180/180, TypeScript and the 251-page production build passed. Guarded deployment completed for feature commit 9a479bcb1fbdf3dd2d5e09df4fe15a9108106995 with all 129 migrations current, PM2 PID 2997687 online and /admin/login HTTP 200. Post-deploy production read-only replay reduced the screenshot session from nine false reminders to zero remaining reminders.
 - Rollback point: f03f5c5354f39338cd33ad337c64d59472077412 before 2026-08-18-r381.
 
 ---

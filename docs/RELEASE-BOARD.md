@@ -1,8 +1,8 @@
 # RELEASE BOARD
 
-- 2026-08-18-r381: ready to make course reminders follow the session's actual student instead of reusable Class history.
+- 2026-08-18-r381: live with course reminders following the session's actual student instead of reusable Class history.
 
-## 2026-08-18-r381 Ready
+## 2026-08-18-r381 Live
 
 - Scope: correct the student audience projection for tomorrow-course reminders.
 - Business impact:
@@ -14,9 +14,9 @@
   - regression test failed with the old union behavior and passed with the priority rule;
   - communication/report tests 12/12, backend tests 180/180, TypeScript and 251-page production build passed;
   - production read-only replay for the affected session returned zero remaining projected reminders.
-- Post-deploy verification:
-  - confirm local, GitHub and server commit equality, PM2 online and /admin/login HTTP 200;
-  - reload Emily's AI communication queue and confirm the nine historical students are absent.
+- Production verification:
+  - feature commit 9a479bcb1fbdf3dd2d5e09df4fe15a9108106995 matched local, GitHub and server; all 129 migrations were current, PM2 PID 2997687 was online and /admin/login returned HTTP 200;
+  - post-deploy production read-only projection for the affected session returned zero remaining reminders, confirming the nine historical students are absent.
 - Task doc: docs/tasks/TASK-20260818-course-reminder-explicit-student.md.
 
 - 2026-08-18-r380: live with Jessika-confirmed Midterm and Final Reports entering Emily's delivery queue and formal delivery closing only after real parent sending.
