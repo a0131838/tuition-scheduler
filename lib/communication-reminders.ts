@@ -121,9 +121,11 @@ function reminder(input: Omit<CommunicationReminderItem, "dueAt" | "dueText" | "
   };
 }
 
-function sessionStudents(session: any) {
+export function communicationReminderSessionStudents(session: any) {
+  if (session.student?.id) return [session.student];
+  if (session.class?.oneOnOneStudent?.id) return [session.class.oneOnOneStudent];
   const byId = new Map<string, { id: string; name: string; parentLinks: any[] }>();
-  for (const student of [session.student, session.class.oneOnOneStudent, ...(session.class.enrollments ?? []).map((row: any) => row.student)]) {
+  for (const student of (session.class?.enrollments ?? []).map((row: any) => row.student)) {
     if (student?.id) byId.set(student.id, student);
   }
   return [...byId.values()];
@@ -204,7 +206,7 @@ export async function listCommunicationReminders(now = new Date(), limit = 300) 
     const label = courseLabel(session);
     const time = `${formatBusinessDateTime(session.startAt)}–${new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Singapore", hour: "2-digit", minute: "2-digit", hour12: false }).format(session.endAt)}`;
     const location = session.class.campus.isOnline ? "线上" : [session.class.campus.name, session.class.room?.name].filter(Boolean).join(" · ");
-    const students = sessionStudents(session);
+    const students = communicationReminderSessionStudents(session);
 
     if (session.startAt > now && session.startAt.getTime() - now.getTime() <= 30 * 60 * 60 * 1000) {
       for (const student of students) {

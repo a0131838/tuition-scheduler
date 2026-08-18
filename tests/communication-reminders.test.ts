@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { normalizeCommunicationReminderStatus } from "../lib/communication-reminders";
+import {
+  communicationReminderSessionStudents,
+  normalizeCommunicationReminderStatus,
+} from "../lib/communication-reminders";
 
 test("communication reminder states accept only the closed workflow vocabulary", () => {
   assert.equal(normalizeCommunicationReminderStatus("copied"), "COPIED");
@@ -43,4 +46,41 @@ test("operational queue excludes stale reminder noise and narrows web permission
   assert.match(webApi, /user\.operationsAdmin/);
   assert.match(webPage, /user\.operationsAdmin/);
   assert.match(layout, /user\.role === "CS" && pathname === "\/admin\/communication-reminders"/);
+});
+
+test("an explicitly scheduled student wins over historical class enrollments", () => {
+  const scheduled = { id: "scheduled", name: "Scheduled", parentLinks: [] };
+  const fixedOneOnOne = { id: "fixed", name: "Fixed", parentLinks: [] };
+  const historical = { id: "historical", name: "Historical", parentLinks: [] };
+  const students = communicationReminderSessionStudents({
+    student: scheduled,
+    class: {
+      oneOnOneStudent: fixedOneOnOne,
+      enrollments: [{ student: scheduled }, { student: historical }],
+    },
+  });
+  assert.deepEqual(students.map((student) => student.id), ["scheduled"]);
+});
+
+test("a fixed one-to-one student wins when the session has no explicit student", () => {
+  const fixedOneOnOne = { id: "fixed", name: "Fixed", parentLinks: [] };
+  const historical = { id: "historical", name: "Historical", parentLinks: [] };
+  const students = communicationReminderSessionStudents({
+    student: null,
+    class: { oneOnOneStudent: fixedOneOnOne, enrollments: [{ student: historical }] },
+  });
+  assert.deepEqual(students.map((student) => student.id), ["fixed"]);
+});
+
+test("a true group session uses the deduplicated class roster", () => {
+  const first = { id: "first", name: "First", parentLinks: [] };
+  const second = { id: "second", name: "Second", parentLinks: [] };
+  const students = communicationReminderSessionStudents({
+    student: null,
+    class: {
+      oneOnOneStudent: null,
+      enrollments: [{ student: first }, { student: second }, { student: first }],
+    },
+  });
+  assert.deepEqual(students.map((student) => student.id), ["first", "second"]);
 });
