@@ -1,5 +1,23 @@
 # CHANGELOG LIVE
 
+## 2026-08-18-r384
+
+- Release ID: 2026-08-18-r384
+- Date/Time (Asia/Singapore): 2026-08-18
+- Deployment status: LIVE after guarded server release; server-only formal web Ticket Center integration, with no WeChat package change.
+- Scope: show the shared SGT AI OS ticket plan inside the formal web Ticket Center while permanently retaining employee-controlled manual execution.
+- Key files:
+  - app/admin/tickets/[id]/page.tsx
+  - app/api/admin/ai-os/sso/route.ts
+  - lib/admin-ai-ticket-plan.ts
+  - tests/admin-ai-ticket-plan.test.ts
+  - docs/tasks/TASK-20260818-web-ticket-ai-manual-dual-track.md
+- Risk impact (if any): Low to medium and limited to reading/preparing AI advice. AI cannot write formal schedules, package deductions, attendance, payroll or messages; existing formal permissions, conflicts, source-session checks and employee confirmation remain authoritative. The old manual path remains permanently available even when AI is unavailable or incorrect.
+- Verification: TypeScript passed; 27/27 focused AI/ticket execution tests and 561/561 full regression tests passed; Next.js production build generated 251/251 pages. Guarded deployment and production health were verified during release.
+- Rollback point: e582037bab9ae9ccc22cbd9240cfa2a04635ef3d before 2026-08-18-r384.
+
+---
+
 ## 2026-08-18-r382
 
 - Release ID: 2026-08-18-r382

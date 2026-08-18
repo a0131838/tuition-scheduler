@@ -1,5 +1,28 @@
 # RELEASE BOARD
 
+- 2026-08-18-r384: live with shared AI advice and a permanently retained manual execution path in the formal web Ticket Center.
+
+## 2026-08-18-r384 Live
+
+- Scope: bring the same AI OS ticket interpretation and proposed operations into the formal web Ticket Center without giving AI formal write authority.
+- Business impact:
+  - employees see one shared AI business instruction, confidence, proposed actions and blockers beside the original request;
+  - a missing or stale plan can be refreshed from the formal page with the employee's existing login;
+  - staff can proceed by AI guidance, ignore AI and execute manually, or truthfully audit work already completed elsewhere;
+  - AI service delay or failure does not block the formal ticket page or its manual controls.
+- Safety boundary:
+  - the web page consumes the AI OS structured projection instead of creating another interpretation;
+  - AI preparation writes only to the isolated AI workspace;
+  - all real schedule, source-session, teacher availability, conflict, package, attendance, payroll, duplicate and permission checks remain in the original system;
+  - no database migration and no WeChat package change.
+- Verification:
+  - TypeScript passed;
+  - 27 focused AI, SSO and ticket execution tests passed;
+  - 561/561 full repository regression tests passed;
+  - production build generated 251/251 pages;
+  - guarded release and production health checks passed.
+- Task doc: docs/tasks/TASK-20260818-web-ticket-ai-manual-dual-track.md.
+
 - 2026-08-18-r383: live with a single-step web ticket desk aligned to the staff miniapp.
 
 ## 2026-08-18-r383 Live

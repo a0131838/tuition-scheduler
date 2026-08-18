@@ -74,6 +74,11 @@ import {
   TICKET_SCHEDULING_RESOLUTION_MODES,
 } from "@/lib/ticket-scheduling-actions";
 import { buildTicketOperationCard, isSchedulingTicketType } from "@/lib/ticket-operation-card";
+import {
+  AI_TICKET_COMMAND_LABELS,
+  prepareAdminAiTicketPlan,
+  readAdminAiTicketPlan,
+} from "@/lib/admin-ai-ticket-plan";
 
 function trimValue(formData: FormData, key: string, max = 400) {
   const v = String(formData.get(key) ?? "").trim();
@@ -100,6 +105,11 @@ function normalizeProofUrl(item: string) {
     return `/api/tickets/files/${encodeURIComponent(name)}`;
   }
   return item;
+}
+
+function formatAiPlanDateTime(value: string | null) {
+  if (!value || !Number.isFinite(Date.parse(value))) return "";
+  return formatBusinessDateTime(new Date(value));
 }
 
 function extractTicketProofFilename(item: string) {
@@ -930,12 +940,33 @@ async function linkExistingSchedulingResultAction(formData: FormData) {
   redirect(appendQuery(back, { ok: "existing-result-linked" }));
 }
 
+async function prepareAiTicketPlanAction(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  const ticketId = trimValue(formData, "id", 80);
+  const back = sanitizeAdminBack(trimValue(formData, "back", 1_000), `/admin/tickets/${ticketId}#ticket-decision`);
+  const ticket = await prisma.ticket.findUnique({
+    where: { id: ticketId },
+    select: { id: true, isArchived: true, status: true },
+  });
+  if (!ticket || ticket.isArchived || ["Completed", "Cancelled"].includes(ticket.status)) {
+    redirect(appendQuery(back, { err: "ai-plan-closed" }));
+  }
+  try {
+    await prepareAdminAiTicketPlan(user, ticketId);
+  } catch {
+    redirect(appendQuery(back, { err: "ai-plan-unavailable" }));
+  }
+  revalidatePath(`/admin/tickets/${ticketId}`);
+  redirect(appendQuery(back, { ok: "ai-plan-prepared" }));
+}
+
 export default async function AdminTicketDetailPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ back?: string; err?: string; ok?: string; fields?: string; source?: string; todoBack?: string; work?: string }>;
+  searchParams?: Promise<{ back?: string; err?: string; ok?: string; fields?: string; source?: string; todoBack?: string; work?: string; guide?: string }>;
 }) {
   const adminUser = await requireAdmin();
   const route = await params;
@@ -991,6 +1022,9 @@ export default async function AdminTicketDetailPage({
       : "后台或专用录入链接 / Admin or dedicated intake link";
 
   const isSchedulingTicket = isSchedulingTicketType(row.type);
+  const aiPlanResult = !row.isArchived && !["Completed", "Cancelled"].includes(row.status)
+    ? await readAdminAiTicketPlan(adminUser, row.id)
+    : null;
   const sessionInclude = {
     teacher: { select: { name: true } },
     class: {
@@ -1150,7 +1184,10 @@ export default async function AdminTicketDetailPage({
     schedulingActions: row.schedulingActions,
   });
   const showFormalExecution = String(sp?.work ?? "").trim() === "execute";
-  const formalExecutionHref = `${appendQuery(selfHref, { work: "execute" })}#scheduling-actions`;
+  const executionGuide = String(sp?.guide ?? "").trim() === "ai" ? "ai" : "manual";
+  const formalExecutionHref = `${appendQuery(selfHref, { work: "execute", guide: "ai" })}#scheduling-actions`;
+  const manualExecutionHref = `${appendQuery(selfHref, { work: "execute", guide: "manual" })}#scheduling-actions`;
+  const aiOsTicketHref = `/api/admin/ai-os/sso?next=${encodeURIComponent(`/?ticket=${row.id}`)}`;
   const businessStatusLabel = row.isArchived
     ? "已归档"
     : row.status === "Completed"
@@ -1266,6 +1303,8 @@ export default async function AdminTicketDetailPage({
           {err === "edit-situation" && "编辑保存失败：Situation 三项必填 / Situation fields are required."}
           {err === "delete-forbidden" && "只有 Zhao Hongwei 可以永久删除工单 / Only Zhao Hongwei can permanently delete tickets."}
           {err === "need-closed-delete" && "只有已完成、已取消或已归档工单可以永久删除 / Only completed, cancelled, or archived tickets can be permanently deleted."}
+          {err === "ai-plan-closed" && "已关闭工单不再重新生成AI方案。"}
+          {err === "ai-plan-unavailable" && "AI方案暂时未能生成；你仍可使用下方人工处理，不会阻塞工单。"}
         </div>
       ) : null}
       {ok === "edited" ? (
@@ -1276,6 +1315,11 @@ export default async function AdminTicketDetailPage({
       {ok === "status" ? (
         <div style={{ color: "#166534", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: 10 }}>
           工单状态已更新 / Ticket status updated
+        </div>
+      ) : null}
+      {ok === "ai-plan-prepared" ? (
+        <div style={{ color: "#166534", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: 10 }}>
+          AI已按最新工单、课表和课包重新准备建议；正式操作仍需员工确认。
         </div>
       ) : null}
       {ok === "archived" ? (
@@ -1386,17 +1430,104 @@ export default async function AdminTicketDetailPage({
           <div style={{ color: "#475569", maxWidth: 880, lineHeight: 1.6 }}>{operationCard.stepDescription}</div>
         </div>
 
+        {aiPlanResult ? (
+          <div style={{ border: "1px solid #fdba74", borderRadius: 14, background: "#fff7ed", padding: 16, display: "grid", gap: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
+              <div>
+                <div style={{ color: "#c2410c", fontSize: 12, fontWeight: 900 }}>AI处理建议 · 不直接修改正式数据</div>
+                <div style={{ fontSize: 20, fontWeight: 900, marginTop: 4 }}>
+                  {aiPlanResult.status === "READY" ? aiPlanResult.plan.workflowLabel : "让AI先读取整张工单"}
+                </div>
+              </div>
+              {aiPlanResult.status === "READY" ? (
+                <span style={{ borderRadius: 999, padding: "5px 10px", background: "#ffedd5", color: "#9a3412", fontSize: 12, fontWeight: 850 }}>
+                  {aiPlanResult.plan.preparationStatus === "READY" ? "方案已准备" : aiPlanResult.plan.preparationStatus === "BLOCKED" ? "有条件待处理" : "待生成方案"}
+                </span>
+              ) : null}
+            </div>
+
+            {aiPlanResult.status === "READY" ? (
+              <>
+                <div style={{ borderLeft: "4px solid #ea580c", paddingLeft: 12, display: "grid", gap: 5 }}>
+                  <div style={{ fontSize: 12, color: "#9a3412", fontWeight: 800 }}>AI理解的完整业务指令</div>
+                  <div style={{ fontWeight: 800, lineHeight: 1.65 }}>{aiPlanResult.plan.canonicalRequestText}</div>
+                  <div style={{ color: aiPlanResult.plan.consistencyNeedsConfirmation ? "#b91c1c" : "#57534e", fontSize: 12 }}>
+                    {aiPlanResult.plan.consistencyNeedsConfirmation
+                      ? "正文与截图有差异：只确认冲突事实后再执行。"
+                      : `已按同一份AI结果整理 · 识别参考 ${aiPlanResult.plan.confidencePercent}%`}
+                  </div>
+                </div>
+
+                {aiPlanResult.plan.operations.length ? (
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <div style={{ fontWeight: 900 }}>建议执行 {aiPlanResult.plan.operations.length} 项</div>
+                    {aiPlanResult.plan.operations.slice(0, 12).map((operation) => {
+                      const time = formatAiPlanDateTime(operation.startAt);
+                      return (
+                        <div key={`${operation.sequence}-${operation.commandType}-${operation.targetId ?? "new"}`} style={{ background: "#fff", border: "1px solid #fed7aa", borderRadius: 9, padding: "9px 11px" }}>
+                          <b>{operation.sequence}. {AI_TICKET_COMMAND_LABELS[operation.commandType] ?? "人工核对操作"}</b>
+                          {[time, operation.teacherName].filter(Boolean).length ? (
+                            <span style={{ color: "#57534e", marginLeft: 8 }}>{[time, operation.teacherName].filter(Boolean).join(" · ")}</span>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
+
+                {aiPlanResult.plan.blockers.length ? (
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <div style={{ color: "#991b1b", fontWeight: 900 }}>执行前还要处理</div>
+                    {aiPlanResult.plan.blockers.map((blocker, index) => (
+                      <div key={`${blocker.code}-${index}`} style={{ background: "#fff", border: "1px solid #fecaca", borderRadius: 9, padding: "10px 12px", display: "grid", gap: 3 }}>
+                        <b>{blocker.title}</b>
+                        <span style={{ color: "#57534e" }}>{blocker.detail}</span>
+                        <span style={{ color: "#9a3412", fontSize: 12 }}>下一步：{blocker.action}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <div style={{ color: aiPlanResult.status === "UNAVAILABLE" ? "#b91c1c" : "#57534e" }}>
+                {aiPlanResult.message} 人工处理入口仍然可用。
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <form action={prepareAiTicketPlanAction}>
+                <input type="hidden" name="id" value={row.id} />
+                <input type="hidden" name="back" value={`${selfHref}#ticket-decision`} />
+                <button type="submit" style={{ padding: "10px 15px", background: "#ea580c", color: "#fff", fontWeight: 850 }}>
+                  {aiPlanResult.status === "READY" ? "按最新数据重新生成AI建议" : "让AI读取并生成建议"}
+                </button>
+              </form>
+              <a href={aiOsTicketHref} style={{ fontWeight: 800 }}>在AI OS查看完整方案 →</a>
+            </div>
+            <div style={{ color: "#78716c", fontSize: 12 }}>
+              AI只负责读取、核对和准备建议；前期不会自动落课、扣课时、改考勤、算工资或发送真实消息。
+            </div>
+          </div>
+        ) : null}
+
         {isSchedulingTicket && !row.isArchived && !["Completed", "Cancelled"].includes(row.status) ? (
           <div style={{ display: "grid", gap: 16 }}>
-            <div style={{ borderLeft: "4px solid #0f766e", paddingLeft: 14, display: "grid", gap: 8 }}>
-              <div style={{ fontWeight: 900, fontSize: 18 }}>方案一：继续由系统完成正式课表操作</div>
-              <div style={{ color: "#475569", fontSize: 13 }}>适用于仍未处理的排课、改课、取消或换老师；会继续检查原课程、老师时间和冲突。</div>
-              <a
-                href={formalExecutionHref}
-                style={{ justifySelf: "start", padding: "10px 15px", borderRadius: 8, background: "#0f766e", color: "#fff", fontWeight: 850, textDecoration: "none" }}
-              >
-                进入正式执行 →
-              </a>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 12 }}>
+              <div style={{ borderLeft: "4px solid #ea580c", padding: "12px 14px", display: "grid", gap: 8, background: "#fff7ed" }}>
+                <div style={{ color: "#9a3412", fontSize: 12, fontWeight: 850 }}>方案一：继续由系统完成正式课表操作</div>
+                <div style={{ fontWeight: 900, fontSize: 18 }}>按AI建议，由员工正式执行</div>
+                <div style={{ color: "#57534e", fontSize: 13 }}>先看上方AI整理的完整方案，再进入原系统完成最终核对，由系统继续正式执行。</div>
+                <a href={formalExecutionHref} style={{ justifySelf: "start", padding: "10px 15px", borderRadius: 8, background: "#ea580c", color: "#fff", fontWeight: 850, textDecoration: "none" }}>
+                  按AI建议进入人工确认 →
+                </a>
+              </div>
+              <div style={{ borderLeft: "4px solid #0f766e", padding: "12px 14px", display: "grid", gap: 8, background: "#f0fdfa" }}>
+                <div style={{ fontWeight: 900, fontSize: 18 }}>人工手动处理（始终保留）</div>
+                <div style={{ color: "#475569", fontSize: 13 }}>AI不准确、暂时不可用或员工已有更可靠信息时，直接按原流程处理。</div>
+                <a href={manualExecutionHref} style={{ justifySelf: "start", padding: "10px 15px", borderRadius: 8, border: "1px solid #0f766e", color: "#0f766e", fontWeight: 850, textDecoration: "none", background: "#fff" }}>
+                  不采用AI，直接人工处理 →
+                </a>
+              </div>
             </div>
 
             <form
@@ -1541,14 +1672,20 @@ export default async function AdminTicketDetailPage({
       {isSchedulingTicket ? (
         <details id="scheduling-actions" open={showFormalExecution} style={{ border: "1px solid #99f6e4", borderRadius: 14, padding: 14, background: "#f0fdfa", scrollMarginTop: 24 }}>
           <summary style={{ cursor: "pointer", fontWeight: 900, fontSize: 18 }}>
-            由系统继续正式执行 · {unresolvedSchedulingActions.length} 个动作待处理
+            {executionGuide === "ai" ? "按AI建议人工确认并正式执行" : "人工手动执行（保留）"} · {unresolvedSchedulingActions.length} 个动作待处理
           </summary>
           <div style={{ display: "grid", gap: 14, marginTop: 16 }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
             <div>
               <div style={{ color: "#047857", fontSize: 12, fontWeight: 800 }}>排课执行单 / Scheduling work order</div>
-              <div style={{ fontSize: 20, fontWeight: 850, marginTop: 4 }}>从家长需求直接进入正式课表</div>
-              <div style={{ color: "#57534e", fontSize: 13, marginTop: 6 }}>只在实际工作尚未完成时使用；正式执行仍会检查课程、老师时间、冲突和权限。</div>
+              <div style={{ fontSize: 20, fontWeight: 850, marginTop: 4 }}>
+                {executionGuide === "ai" ? "员工核对AI建议后进入正式课表" : "按原有方式人工处理正式课表"}
+              </div>
+              <div style={{ color: "#57534e", fontSize: 13, marginTop: 6 }}>
+                {executionGuide === "ai"
+                  ? "AI建议不是执行结果；员工仍需核对课程、老师、日期、时间和课时影响，正式系统会再次检查权限与冲突。"
+                  : "人工入口不会被AI替代；AI不可用或建议不准确时直接使用，仍执行原有课程、老师时间、冲突和权限校验。"}
+              </div>
             </div>
             <a href={row.studentId ? `/admin/students/${row.studentId}#scheduling-coordination` : "/admin/schedule"} style={{ fontWeight: 750 }}>打开学生排课工作区 →</a>
           </div>

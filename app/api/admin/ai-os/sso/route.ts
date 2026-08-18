@@ -1,5 +1,6 @@
-import { getCurrentUser, isManagerUser, isOwnerManager } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { issueAiMiniappDelegation } from "@/lib/ai-miniapp-delegation";
+import { aiRoleForAdminAi } from "@/lib/admin-ai-ticket-plan";
 
 const AI_ORIGIN = "https://gtaisg.com";
 
@@ -14,17 +15,6 @@ function formalOrigin(req: Request) {
   if (host) return `${protocol}://${host}`;
   const configured = String(process.env.NEXT_PUBLIC_APP_URL || "").trim();
   return configured ? new URL(configured).origin : new URL(req.url).origin;
-}
-
-async function aiRoleFor(user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>) {
-  if (isOwnerManager(user)) return "OWNER";
-  if (user.operationsAdmin) return "ACADEMIC";
-  if (user.role === "FINANCE") return "MANAGER_FINANCE";
-  if (user.role === "CS" || user.role === "SALES") return "CUSTOMER_SERVICE";
-  if (user.role === "TEACHER") return "VIEWER";
-  if (user.role === "ADMIN" && await isManagerUser(user)) return "MANAGER";
-  if (user.role === "ADMIN") return "ACADEMIC";
-  throw new Error("Current account cannot access AI OS");
 }
 
 export async function GET(req: Request) {
@@ -43,7 +33,7 @@ export async function GET(req: Request) {
       id: user.id,
       name: user.name,
       role: user.role,
-      aiRole: await aiRoleFor(user),
+      aiRole: await aiRoleForAdminAi(user),
     }, secret, Date.now(), 60);
     const target = new URL("/auth/sso", AI_ORIGIN);
     target.searchParams.set("token", token);

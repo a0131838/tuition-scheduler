@@ -115,9 +115,11 @@ test("release migration grants Jessika the restricted ACL and invalidates old we
 });
 
 test("AI SSO maps operations administrators to academic rather than finance or manager", () => {
-  const source = fs.readFileSync(path.join(process.cwd(), "app/api/admin/ai-os/sso/route.ts"), "utf8");
-  assert.match(source, /user\.operationsAdmin\) return "ACADEMIC"/);
-  assert.doesNotMatch(source, /user\.operationsAdmin\) return "MANAGER_FINANCE"/);
+  const route = fs.readFileSync(path.join(process.cwd(), "app/api/admin/ai-os/sso/route.ts"), "utf8");
+  const sharedMapping = fs.readFileSync(path.join(process.cwd(), "lib/admin-ai-ticket-plan.ts"), "utf8");
+  assert.match(route, /aiRoleForAdminAi\(user\)/);
+  assert.match(sharedMapping, /user\.operationsAdmin\) return "ACADEMIC"/);
+  assert.doesNotMatch(sharedMapping, /user\.operationsAdmin\) return "MANAGER_FINANCE"/);
 });
 
 test("operations administrators keep the standard admin home while finance widgets are omitted", () => {
