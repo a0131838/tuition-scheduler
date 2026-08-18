@@ -73,6 +73,7 @@ import {
   TICKET_SCHEDULING_ACTION_TYPES,
   TICKET_SCHEDULING_RESOLUTION_MODES,
 } from "@/lib/ticket-scheduling-actions";
+import { buildTicketOperationCard, isSchedulingTicketType } from "@/lib/ticket-operation-card";
 
 function trimValue(formData: FormData, key: string, max = 400) {
   const v = String(formData.get(key) ?? "").trim();
@@ -934,7 +935,7 @@ export default async function AdminTicketDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ back?: string; err?: string; ok?: string; fields?: string; source?: string; todoBack?: string }>;
+  searchParams?: Promise<{ back?: string; err?: string; ok?: string; fields?: string; source?: string; todoBack?: string; work?: string }>;
 }) {
   const adminUser = await requireAdmin();
   const route = await params;
@@ -989,7 +990,7 @@ export default async function AdminTicketDetailPage({
       ? "家长小程序 / Parent miniapp"
       : "后台或专用录入链接 / Admin or dedicated intake link";
 
-  const isSchedulingTicket = TICKET_SCHEDULING_ACTION_TYPES.some((item) => item.ticketType === row.type) || row.type === "新排课";
+  const isSchedulingTicket = isSchedulingTicketType(row.type);
   const sessionInclude = {
     teacher: { select: { name: true } },
     class: {
@@ -1140,6 +1141,16 @@ export default async function AdminTicketDetailPage({
     { key: "Cancelled", label: "已取消", caption: "Cancelled" },
   ];
   const unresolvedSchedulingActions = row.schedulingActions.filter((action) => !isTicketSchedulingActionResolved(action));
+  const operationCard = buildTicketOperationCard({
+    type: row.type,
+    status: row.status,
+    owner: row.owner,
+    nextAction: row.nextAction,
+    isArchived: row.isArchived,
+    schedulingActions: row.schedulingActions,
+  });
+  const showFormalExecution = String(sp?.work ?? "").trim() === "execute";
+  const formalExecutionHref = `${appendQuery(selfHref, { work: "execute" })}#scheduling-actions`;
   const businessStatusLabel = row.isArchived
     ? "已归档"
     : row.status === "Completed"
@@ -1158,8 +1169,6 @@ export default async function AdminTicketDetailPage({
                   ? "处理中"
                   : row.status;
   const proofItems = proofItemsAll(row.proof);
-  const nextActionLabel = row.nextAction?.trim() || (row.status === "Completed" ? "Closed / 已闭环" : "Need manual follow-up / 需要人工跟进");
-
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <style>{`
@@ -1171,20 +1180,19 @@ export default async function AdminTicketDetailPage({
 
       <div
         style={{
-          border: "1px solid #dbeafe",
-          background: "linear-gradient(135deg, #eff6ff 0%, #fff 100%)",
-          borderRadius: 16,
-          padding: 16,
+          borderBottom: "1px solid #cbd5e1",
+          padding: "4px 0 18px",
           display: "grid",
-          gap: 12,
+          gap: 14,
         }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <div>
-            <div style={{ fontSize: 12, color: "#2563eb", fontWeight: 700, marginBottom: 4 }}>后台工单详情 / Ticket Detail</div>
-            <h2 style={{ margin: 0 }}>{row.ticketNo}</h2>
-            <div style={{ color: "#475569", marginTop: 6 }}>
-              先确认家长需求，再逐项完成正式课表动作；系统会自动更新动作和工单状态。
+            <div style={{ fontSize: 12, color: "#047857", fontWeight: 800, marginBottom: 5 }}>{row.ticketNo}</div>
+            <h2 style={{ margin: 0, fontSize: 28 }}>{row.studentName} · {normalizeTicketTypeValue(row.type)}</h2>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", color: "#475569", marginTop: 8, fontSize: 13 }}>
+              <span>{businessStatusLabel}</span><span>·</span><span>负责人 {asText(row.owner)}</span>
+              {row.nextActionDue ? <><span>·</span><span style={{ color: overdue ? "#b91c1c" : "inherit", fontWeight: overdue ? 800 : 500 }}>截止 {formatBusinessDateTime(row.nextActionDue)}</span></> : null}
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -1198,44 +1206,20 @@ export default async function AdminTicketDetailPage({
             ) : null}
           </div>
         </div>
-        <div id="ticket-overview" style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", scrollMarginTop: 96 }}>
-          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
-            <div style={{ fontSize: 12, color: "#64748b" }}>Student / 学生</div>
-            <div style={{ fontWeight: 800, marginTop: 8 }}>{row.studentName}</div>
-          </div>
-          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
-            <div style={{ fontSize: 12, color: "#64748b" }}>Status / 当前状态</div>
-            <div style={{ fontWeight: 800, marginTop: 8 }}>{businessStatusLabel}</div>
-          </div>
-          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
-            <div style={{ fontSize: 12, color: "#64748b" }}>Owner / 负责人</div>
-            <div style={{ fontWeight: 800, marginTop: 8 }}>{asText(row.owner)}</div>
-          </div>
-          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
-            <div style={{ fontSize: 12, color: "#64748b" }}>Next action / 下一步</div>
-            <div style={{ fontWeight: 800, marginTop: 8 }}>{nextActionLabel}</div>
-          </div>
-        </div>
       </div>
 
       <div
         style={{
-          position: "sticky",
-          top: 12,
-          zIndex: 5,
-          border: "1px solid #dbeafe",
-          background: "rgba(255,255,255,0.96)",
-          backdropFilter: "blur(8px)",
-          borderRadius: 14,
-          padding: 10,
           display: "flex",
-          gap: 8,
+          gap: 14,
           flexWrap: "wrap",
+          fontSize: 13,
+          fontWeight: 750,
         }}
       >
-        <a href="#ticket-request">Request / 家长需求</a>
-        {isSchedulingTicket ? <a href="#scheduling-actions">Actions / 执行动作</a> : null}
-        <a href="#ticket-advanced">History & advanced / 历史与高级操作</a>
+        <a href={isSchedulingTicket ? "#ticket-decision" : "#ticket-request"}>处理当前工单</a>
+        <a href="#ticket-request">查看家长需求</a>
+        <a href="#ticket-advanced">完整资料与历史</a>
       </div>
 
       {sourceWorkflow === "todo" ? (
@@ -1386,6 +1370,102 @@ export default async function AdminTicketDetailPage({
         ) : null}
       </section>
 
+      <section
+        id="ticket-decision"
+        style={{
+          borderTop: "4px solid #0f766e",
+          padding: "18px 0 4px",
+          display: "grid",
+          gap: 16,
+          scrollMarginTop: 24,
+        }}
+      >
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ color: "#047857", fontSize: 12, fontWeight: 850 }}>{operationCard.laneLabel} · 当前只做这一步</div>
+          <div style={{ fontSize: 24, fontWeight: 900 }}>{operationCard.stepTitle}</div>
+          <div style={{ color: "#475569", maxWidth: 880, lineHeight: 1.6 }}>{operationCard.stepDescription}</div>
+        </div>
+
+        {isSchedulingTicket && !row.isArchived && !["Completed", "Cancelled"].includes(row.status) ? (
+          <div style={{ display: "grid", gap: 16 }}>
+            <div style={{ borderLeft: "4px solid #0f766e", paddingLeft: 14, display: "grid", gap: 8 }}>
+              <div style={{ fontWeight: 900, fontSize: 18 }}>方案一：继续由系统完成正式课表操作</div>
+              <div style={{ color: "#475569", fontSize: 13 }}>适用于仍未处理的排课、改课、取消或换老师；会继续检查原课程、老师时间和冲突。</div>
+              <a
+                href={formalExecutionHref}
+                style={{ justifySelf: "start", padding: "10px 15px", borderRadius: 8, background: "#0f766e", color: "#fff", fontWeight: 850, textDecoration: "none" }}
+              >
+                进入正式执行 →
+              </a>
+            </div>
+
+            <form
+              action={resolveTicketSchedulingActionsAction}
+              style={{
+                borderTop: "1px solid #d6d3d1",
+                paddingTop: 16,
+                display: "grid",
+                gap: 13,
+              }}
+            >
+              <input type="hidden" name="id" value={row.id} />
+              <input type="hidden" name="back" value={`${selfHref}#ticket-decision`} />
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 900 }}>方案二：实际工作已经处理过，只核验一次</div>
+                <div style={{ color: "#57534e", fontSize: 13, marginTop: 5 }}>
+                  不需要再逐项填写。“已处理完成”和“无需处理”会写入不同审计结果，避免把未做的工作记成已执行。
+                </div>
+              </div>
+              <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))" }}>
+                {TICKET_SCHEDULING_RESOLUTION_MODES.map((mode) => (
+                  <label key={mode.value} style={{ border: "1px solid #a8a29e", borderRadius: 10, padding: 12, display: "flex", gap: 9, alignItems: "flex-start", cursor: "pointer", background: "#fff" }}>
+                    <input type="radio" name="resolutionMode" value={mode.value} required style={{ marginTop: 3 }} />
+                    <span><b>{mode.label}</b><span style={{ display: "block", color: "#78716c", fontSize: 12, marginTop: 4 }}>{mode.description}</span></span>
+                  </label>
+                ))}
+              </div>
+              <details style={{ borderLeft: "3px solid #d6d3d1", paddingLeft: 12 }}>
+                <summary style={{ cursor: "pointer", fontWeight: 800 }}>只有部分动作已完成？在这里选择具体动作</summary>
+                {unresolvedSchedulingActions.length ? (
+                  <div style={{ display: "grid", gap: 7, marginTop: 10, gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))" }}>
+                    {unresolvedSchedulingActions.map((action, index) => (
+                      <label key={action.id} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                        <input type="checkbox" name="resolvedActionId" value={action.id} style={{ marginTop: 3 }} />
+                        <span>动作 {index + 1} · {schedulingActionDefinition(action.actionType)?.label ?? action.actionType}</span>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ color: "#78716c", fontSize: 13, marginTop: 8 }}>这张旧工单没有结构化动作，可直接选择“已处理完成”或“无需处理”。</div>
+                )}
+              </details>
+              <label style={{ fontWeight: 800 }}>
+                一次性核验说明
+                <textarea
+                  name="resolutionNote"
+                  rows={3}
+                  required
+                  placeholder="例如：Eva 已在学生课表完成改课并与家长确认；本工单为事后补录。"
+                  style={{ width: "100%", boxSizing: "border-box", marginTop: 5 }}
+                />
+              </label>
+              <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                <input name="resolutionVerified" type="checkbox" value="1" required style={{ marginTop: 3 }} />
+                <span>我已核对正式课表或真实沟通记录，确认不会造成重复排课、重复取消或漏处理。</span>
+              </label>
+              <button type="submit" style={{ justifySelf: "start", padding: "11px 18px", fontWeight: 850, background: "#0f766e", color: "#fff" }}>
+                保存实际结果并自动更新工单
+              </button>
+            </form>
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ color: "#334155" }}>{operationCard.stepDescription}</div>
+            <a href="#ticket-advanced" style={{ fontWeight: 800 }}>查看处理资料与状态 →</a>
+          </div>
+        )}
+      </section>
+
       <details id="ticket-workflow" style={{ border: "1px solid #e2e8f0", borderRadius: 14, padding: 14, background: "#fff", scrollMarginTop: 96 }}>
         <summary style={{ cursor: "pointer", fontWeight: 800 }}>内部流程状态（高级）/ Internal workflow state</summary>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
@@ -1459,79 +1539,19 @@ export default async function AdminTicketDetailPage({
       </details>
 
       {isSchedulingTicket ? (
-        <div id="scheduling-actions" style={{ border: "1px solid #fed7aa", borderRadius: 16, padding: 16, background: "#fffaf5", display: "grid", gap: 14, scrollMarginTop: 96 }}>
+        <details id="scheduling-actions" open={showFormalExecution} style={{ border: "1px solid #99f6e4", borderRadius: 14, padding: 14, background: "#f0fdfa", scrollMarginTop: 24 }}>
+          <summary style={{ cursor: "pointer", fontWeight: 900, fontSize: 18 }}>
+            由系统继续正式执行 · {unresolvedSchedulingActions.length} 个动作待处理
+          </summary>
+          <div style={{ display: "grid", gap: 14, marginTop: 16 }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
             <div>
-              <div style={{ color: "#9a3412", fontSize: 12, fontWeight: 800 }}>排课执行单 / Scheduling work order</div>
+              <div style={{ color: "#047857", fontSize: 12, fontWeight: 800 }}>排课执行单 / Scheduling work order</div>
               <div style={{ fontSize: 20, fontWeight: 850, marginTop: 4 }}>从家长需求直接进入正式课表</div>
-              <div style={{ color: "#57534e", fontSize: 13, marginTop: 6 }}>正常执行仍走正式课表预检；如果员工已经提前处理，只需在下方整单核验一次，不再逐项重复填写。</div>
+              <div style={{ color: "#57534e", fontSize: 13, marginTop: 6 }}>只在实际工作尚未完成时使用；正式执行仍会检查课程、老师时间、冲突和权限。</div>
             </div>
             <a href={row.studentId ? `/admin/students/${row.studentId}#scheduling-coordination` : "/admin/schedule"} style={{ fontWeight: 750 }}>打开学生排课工作区 →</a>
           </div>
-
-          {!row.isArchived && !["Completed", "Cancelled"].includes(row.status) ? (
-            <form
-              action={resolveTicketSchedulingActionsAction}
-              style={{
-                border: "2px solid #fdba74",
-                borderRadius: 14,
-                padding: 14,
-                background: "#fff",
-                display: "grid",
-                gap: 12,
-              }}
-            >
-              <input type="hidden" name="id" value={row.id} />
-              <input type="hidden" name="back" value={`${selfHref}#scheduling-actions`} />
-              <div>
-                <div style={{ color: "#9a3412", fontSize: 12, fontWeight: 850 }}>已经在别处处理过？整张工单只填一次</div>
-                <div style={{ fontSize: 18, fontWeight: 900, marginTop: 4 }}>选择实际结果，系统自动更新所有动作和工单状态</div>
-                <div style={{ color: "#57534e", fontSize: 13, marginTop: 5 }}>
-                  “已处理完成”表示正式系统已有真实结果；“无需处理”只用于家长撤回、重复工单或需求失效，两者不会再混在一起。
-                </div>
-              </div>
-              <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))" }}>
-                {TICKET_SCHEDULING_RESOLUTION_MODES.map((mode) => (
-                  <label key={mode.value} style={{ border: "1px solid #fed7aa", borderRadius: 10, padding: 12, display: "flex", gap: 9, alignItems: "flex-start", cursor: "pointer" }}>
-                    <input type="radio" name="resolutionMode" value={mode.value} required style={{ marginTop: 3 }} />
-                    <span><b>{mode.label}</b><span style={{ display: "block", color: "#78716c", fontSize: 12, marginTop: 4 }}>{mode.description}</span></span>
-                  </label>
-                ))}
-              </div>
-              <div style={{ border: "1px solid #e7e5e4", borderRadius: 10, padding: 12, background: "#fafaf9" }}>
-                <div style={{ fontWeight: 800 }}>仅选择“部分动作已经处理完成”时勾选</div>
-                {unresolvedSchedulingActions.length ? (
-                  <div style={{ display: "grid", gap: 7, marginTop: 9, gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))" }}>
-                    {unresolvedSchedulingActions.map((action, index) => (
-                      <label key={action.id} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                        <input type="checkbox" name="resolvedActionId" value={action.id} style={{ marginTop: 3 }} />
-                        <span>动作 {index + 1} · {schedulingActionDefinition(action.actionType)?.label ?? action.actionType}</span>
-                      </label>
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{ color: "#78716c", fontSize: 13, marginTop: 6 }}>这张旧工单没有结构化动作；可以直接选择“已处理完成”或“无需处理”关闭。</div>
-                )}
-              </div>
-              <label style={{ fontWeight: 800 }}>
-                共同核验说明（只填写一次）
-                <textarea
-                  name="resolutionNote"
-                  rows={3}
-                  required
-                  placeholder="例如：Eva 已于 8 月 17 日在学生课表完成改课，并与家长确认；本工单是事后补录。"
-                  style={{ width: "100%", boxSizing: "border-box", marginTop: 5 }}
-                />
-              </label>
-              <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                <input name="resolutionVerified" type="checkbox" value="1" required style={{ marginTop: 3 }} />
-                <span>我已核对正式课表或真实沟通记录，确认不会造成重复排课、重复取消或漏处理。</span>
-              </label>
-              <button type="submit" style={{ justifySelf: "start", padding: "11px 16px", fontWeight: 850 }}>
-                保存实际结果并自动更新工单
-              </button>
-            </form>
-          ) : null}
 
           {row.schedulingActions.length ? (
             <div style={{ display: "grid", gap: 12 }}>
@@ -1706,7 +1726,8 @@ export default async function AdminTicketDetailPage({
               </form>
             </details>
           ) : null}
-        </div>
+          </div>
+        </details>
       ) : null}
 
       <details id="ticket-advanced" style={{ border: "1px solid #cbd5e1", borderRadius: 14, padding: 14, background: "#f8fafc", scrollMarginTop: 96 }}>

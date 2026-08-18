@@ -1,5 +1,25 @@
 # RELEASE BOARD
 
+- 2026-08-18-r383: live with a single-step web ticket desk aligned to the staff miniapp.
+
+## 2026-08-18-r383 Live
+
+- Scope: replace the web ticket desk's default management-heavy layout with one current decision per ticket.
+- Business impact:
+  - Eva first sees actionable and waiting work, ordered by current step and deadline;
+  - opening a scheduling ticket lands directly on one decision: continue formal execution, or verify once that the work was already completed, unnecessary or partially completed;
+  - the parent request remains visible before the decision, while workflow state, intake administration and the legacy wide table move to advanced disclosure;
+  - historical tickets without a source lesson can close truthfully without creating a false lesson record;
+  - website and miniapp now follow the same action-first mental model without introducing another system or login.
+- Safety boundary:
+  - formal scheduling still uses existing permission, source-session, teacher availability, conflict, package and idempotency checks;
+  - externally completed or unnecessary work still requires a verification note and checkbox and writes the existing audit event;
+  - no database migration and no schedule, attendance, package, payroll, finance or notification data change.
+- Verification:
+  - focused ticket tests 16/16, full regression suite 558/558 and 251-page production build passed;
+  - guarded release preflight, deployment and production health verification completed through the standard release script.
+- Task doc: docs/tasks/TASK-20260818-ticket-workbench-v2.md.
+
 - 2026-08-18-r382: live with one truthful, audited confirmation for scheduling work already completed before or outside the ticket workflow.
 
 ## 2026-08-18-r382 Live

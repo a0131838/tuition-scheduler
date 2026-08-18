@@ -125,7 +125,7 @@ test("ticket workbench exposes blockers and audited existing-result recovery", (
   assert.match(webDetail, /existingResultVerified/);
   assert.match(webDetail, /关联已有结果并写入审计/);
   assert.match(webDetail, /ADMIN_RESOLVE_TICKET_SCHEDULING_ACTIONS/);
-  assert.match(webDetail, /已经在别处处理过？整张工单只填一次/);
+  assert.match(webDetail, /方案二：实际工作已经处理过，只核验一次/);
   assert.match(webDetail, /保存实际结果并自动更新工单/);
   assert.match(webDetail, /这张旧工单没有结构化动作/);
   assert.match(webDetail, /单项例外：补资料或修改等待状态/);
@@ -167,14 +167,18 @@ test("simplified ticket desk keeps one execution path and moves legacy controls 
   const detail = readFileSync("app/admin/tickets/[id]/page.tsx", "utf8");
   const list = readFileSync("app/admin/tickets/page.tsx", "utf8");
   assert.match(detail, /Request \/ 家长需求/);
-  assert.match(detail, /Actions \/ 执行动作/);
-  assert.match(detail, /History & advanced \/ 历史与高级操作/);
+  assert.match(detail, /方案一：继续由系统完成正式课表操作/);
+  assert.match(detail, /完整资料与历史/);
   assert.match(detail, /ticketActionType/);
   assert.match(detail, /安排新课程 \/ Schedule lesson/);
   assert.match(detail, /处理取消或请假 \/ Process cancellation/);
   assert.match(detail, /历史、状态与高级修改/);
+  assert.match(detail, /由系统继续正式执行/);
+  assert.match(detail, /ticket-decision/);
   assert.doesNotMatch(detail, /href=\{`\/admin\/schedule\?sessionId=/);
   assert.match(list, /unresolvedActions\.length === 0 \? \(/);
+  assert.match(list, /先处理现在能做的工单/);
+  assert.match(list, /管理、录入链接与完整字段（高级）/);
 });
 
 test("student schedule clients return to the originating ticket after an atomic action update", () => {

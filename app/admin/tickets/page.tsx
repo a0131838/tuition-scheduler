@@ -24,6 +24,7 @@ import {
   isTicketSchedulingActionResolved,
   schedulingActionStatusLabel,
 } from "@/lib/ticket-scheduling-actions";
+import { buildTicketOperationCard } from "@/lib/ticket-operation-card";
 import TicketStatusSubmitButton from "@/app/admin/_components/TicketStatusSubmitButton";
 import RememberedWorkbenchQueryClient from "../_components/RememberedWorkbenchQueryClient";
 import WorkbenchActionBanner from "../_components/WorkbenchActionBanner";
@@ -369,6 +370,28 @@ export default async function AdminTicketsPage({
   const overdueTicketCount = overdueGroups.reduce((sum, group) => sum + group.count, 0);
   const activeTicketCount = rows.filter((row) => !["Completed", "Cancelled"].includes(row.status)).length;
   const activeFilterCount = [q, status, owner, type, focus].filter(Boolean).length;
+  const operationRows = rows
+    .map((row) => ({
+      row,
+      operation: buildTicketOperationCard({
+        status: row.status,
+        type: row.type,
+        isArchived: row.isArchived,
+        schedulingActions: row.schedulingActions,
+      }),
+    }))
+    .filter(({ operation }) => status || operation.lane !== "DONE")
+    .sort((a, b) => {
+      const laneOrder = { DO_NOW: 0, WAITING: 1, DONE: 2 } as const;
+      const laneDiff = laneOrder[a.operation.lane] - laneOrder[b.operation.lane];
+      if (laneDiff !== 0) return laneDiff;
+      const aDue = a.row.nextActionDue?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      const bDue = b.row.nextActionDue?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      if (aDue !== bDue) return aDue - bDue;
+      return b.row.createdAt.getTime() - a.row.createdAt.getTime();
+    });
+  const doNowCount = operationRows.filter(({ operation }) => operation.lane === "DO_NOW").length;
+  const waitingCount = operationRows.filter(({ operation }) => operation.lane === "WAITING").length;
   const ticketErrorMessage =
     err === "status-flow" ? t(lang, "Invalid status transition.", "状态流转不允许。")
     : err === "need-note" ? t(lang, "Completion note is required when marking completed.", "标记完成时必须填写完成说明。")
@@ -430,6 +453,96 @@ export default async function AdminTicketsPage({
           </div>
         </div>
       </section>
+
+      <section id="ticket-primary-queue" style={{ margin: "18px 0 14px", display: "grid", gap: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "end" }}>
+          <div>
+            <div style={{ color: "#047857", fontSize: 12, fontWeight: 850 }}>日常工作入口</div>
+            <h3 style={{ margin: "4px 0 0", fontSize: 24 }}>先处理现在能做的工单</h3>
+            <div style={{ color: "#64748b", marginTop: 5 }}>每张工单只显示一个当前决定；打开后无需再从长页面里找操作入口。</div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", fontSize: 13 }}>
+            <span style={{ padding: "6px 10px", borderRadius: 999, background: "#d1fae5", color: "#065f46", fontWeight: 800 }}>现在可办 {doNowCount}</span>
+            <span style={{ padding: "6px 10px", borderRadius: 999, background: "#f1f5f9", color: "#475569", fontWeight: 800 }}>等待中 {waitingCount}</span>
+          </div>
+        </div>
+
+        <form method="GET" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", alignItems: "center" }}>
+          <input name="q" defaultValue={q ?? ""} placeholder={t(lang, "Search ticket or student", "搜索学生或工单号")} />
+          <select name="owner" defaultValue={owner ?? ""}>
+            <option value="">{t(lang, "All owners", "全部负责人")}</option>
+            {TICKET_OWNER_OPTIONS.map((item) => <option key={item.value} value={item.value}>{t(lang, item.en, item.zh)}</option>)}
+          </select>
+          <select name="type" defaultValue={type ?? ""}>
+            <option value="">{t(lang, "All types", "全部类型")}</option>
+            {TICKET_TYPE_OPTIONS.map((item) => <option key={item.value} value={item.value}>{t(lang, item.en, item.zh)}</option>)}
+          </select>
+          <select name="status" defaultValue={status ?? ""}>
+            <option value="">{t(lang, "Open work", "未结束工单")}</option>
+            {TICKET_STATUS_OPTIONS.map((item) => <option key={item.value} value={item.value}>{t(lang, item.en, item.zh)}</option>)}
+          </select>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button type="submit">筛选</button>
+            {activeFilterCount > 0 ? <Link scroll={false} href="/admin/tickets?clearDesk=1">清空</Link> : null}
+          </div>
+        </form>
+
+        {ticketErrorMessage ? (
+          <div role="alert" style={{ borderLeft: "4px solid #dc2626", background: "#fff7f7", padding: "10px 12px", color: "#991b1b" }}>{ticketErrorMessage}</div>
+        ) : null}
+
+        <div style={{ borderTop: "1px solid #cbd5e1" }}>
+          {operationRows.length === 0 ? (
+            <div style={{ padding: "24px 0", color: "#64748b" }}>当前条件下没有待处理工单。</div>
+          ) : operationRows.map(({ row, operation }) => {
+            const dueAt = row.nextActionDue?.getTime() ?? 0;
+            const isOverdue = operation.lane !== "DONE" && dueAt > 0 && dueAt < Date.now();
+            const href = `/admin/tickets/${row.id}?back=${encodeURIComponent(`${backHref}#ticket-primary-queue`)}#ticket-decision`;
+            return (
+              <Link
+                key={row.id}
+                scroll={false}
+                href={href}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))",
+                  gap: 18,
+                  alignItems: "center",
+                  padding: "15px 4px",
+                  borderBottom: "1px solid #e2e8f0",
+                  color: "inherit",
+                  textDecoration: "none",
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 900, fontSize: 17 }}>{row.studentName}</div>
+                  <div style={{ color: "#64748b", fontSize: 12, marginTop: 4 }}>{normalizeTicketTypeValue(row.type)} · {row.ticketNo}</div>
+                </div>
+                <div>
+                  <div style={{ color: operation.lane === "DO_NOW" ? "#065f46" : "#475569", fontSize: 12, fontWeight: 850 }}>{operation.laneLabel}</div>
+                  <div style={{ fontWeight: 850, marginTop: 4 }}>{operation.stepTitle}</div>
+                  <div style={{ color: "#64748b", fontSize: 12, marginTop: 4 }}>{operation.stepDescription}</div>
+                </div>
+                <div style={{ fontSize: 13, color: isOverdue ? "#b91c1c" : "#475569", fontWeight: isOverdue ? 850 : 600 }}>
+                  {row.nextActionDue ? `${isOverdue ? "已超时 · " : "截止 · "}${formatBusinessDateTime(row.nextActionDue)}` : "无单独截止时间"}
+                  <div style={{ color: "#64748b", fontWeight: 500, marginTop: 5 }}>负责人 {row.owner ?? "-"}</div>
+                </div>
+                <div style={{ color: "#047857", fontWeight: 900, whiteSpace: "nowrap" }}>{operation.actionLabel} →</div>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
+      <details
+        id="ticket-management-tools"
+        open={Boolean(err || ok || tokenSaved || focus === "mgmt")}
+        style={{ borderTop: "1px solid #cbd5e1", paddingTop: 14, marginTop: 18 }}
+      >
+        <summary style={{ cursor: "pointer", fontWeight: 850, color: "#475569", padding: "8px 0" }}>
+          管理、录入链接与完整字段（高级）
+        </summary>
+        <div style={{ marginTop: 12 }}>
 
       <section
         style={{
@@ -908,6 +1021,8 @@ export default async function AdminTicketsPage({
           </tbody>
         </table>
       </div>
+        </div>
+      </details>
     </div>
   );
 }
