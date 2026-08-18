@@ -1,5 +1,26 @@
 # CHANGELOG LIVE
 
+## 2026-08-18-r385
+
+- Release ID: 2026-08-18-r385
+- Date/Time (Asia/Singapore): 2026-08-18
+- Deployment status: LIVE after guarded server release; server-only performance change, with no WeChat package change.
+- Scope: reduce repeated work in the shared admin shell, Ticket Center filtering and Today/Todos pages while preserving every existing business rule and write path.
+- Key files:
+  - app/admin/layout.tsx
+  - app/admin/loading.tsx
+  - app/admin/tickets/page.tsx
+  - app/admin/tickets/_components/TicketFilterSubmitButton.tsx
+  - app/admin/todos/page.tsx
+  - lib/approval-inbox.ts
+  - tests/admin-navigation-performance.test.ts
+  - docs/tasks/TASK-20260818-admin-navigation-performance.md
+- Risk impact (if any): Low and limited to read performance and loading feedback. The full approval inbox remains uncached on its own page; only the shared navigation badge uses a 20-second cache. Ticket content, status transitions, scheduling, conflicts, package deductions, attendance, payroll, finance and notifications are unchanged.
+- Verification: production build generated 251/251 pages; 34/34 focused navigation and ticket regression tests and 565/565 full repository regression tests passed; guarded release checks were run before deployment.
+- Rollback point: 511d64f5ec94c886e638496dab851dadc59e6527 before 2026-08-18-r385.
+
+---
+
 ## 2026-08-18-r384
 
 - Release ID: 2026-08-18-r384

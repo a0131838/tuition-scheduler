@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { ExpenseClaimStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { areAllApproversConfirmed, getApprovalRoleConfig, isRoleApprover } from "@/lib/approval-flow";
@@ -352,3 +353,14 @@ export const getApprovalInboxData = cache(async function getApprovalInboxData(
     },
   };
 });
+
+// The admin shell only needs the badge summary. Rebuilding the complete approval
+// inbox on every navigation made unrelated pages wait on all finance sources.
+// Keep the real approval page uncached; only the shared sidebar uses this short
+// cross-request cache.
+export const getApprovalInboxShellData = unstable_cache(
+  async (actorEmail: string | null | undefined, actorRole: string | null | undefined) =>
+    getApprovalInboxData(actorEmail, actorRole),
+  ["approval-inbox-shell-v1"],
+  { revalidate: 20 },
+);

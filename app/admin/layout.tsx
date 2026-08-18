@@ -1,7 +1,7 @@
 import { isManagerUser, requireAdminAreaUser } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { parseLedgerIntegrityAlertState, LEDGER_INTEGRITY_ALERT_KEY } from "@/lib/ledger-integrity-alert";
-import { getApprovalInboxData } from "@/lib/approval-inbox";
+import { getApprovalInboxShellData } from "@/lib/approval-inbox";
 import { prisma } from "@/lib/prisma";
 import { isResourceOnlyRole } from "@/lib/staff-roles";
 import { isOperationsAdminPathAllowed } from "@/lib/operations-admin-access";
@@ -62,23 +62,25 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (user.operationsAdmin && !isOperationsAdminPathAllowed(pathname)) {
     redirect("/admin");
   }
-  const lang = await getLang();
-  const showManagerConsole = await isManagerUser(user);
+  const [lang, showManagerConsole, ledgerAlertRow, approvalInbox] = await Promise.all([
+    getLang(),
+    isManagerUser(user),
+    user.operationsAdmin
+      ? Promise.resolve(null)
+      : prisma.appSetting.findUnique({
+          where: { key: LEDGER_INTEGRITY_ALERT_KEY },
+          select: { value: true },
+        }),
+    user.operationsAdmin
+      ? Promise.resolve({ items: [], summary: { total: 0, overdue: 0, manager: 0, finance: 0, expense: 0 }, visibility: { manager: false, finance: false, expense: false } })
+      : getApprovalInboxShellData(user.email, user.role),
+  ]);
   const canSeeCare = user.role === "ADMIN" || showManagerConsole || user.operationsAdmin || user.workspaces.includes("CARE");
   const canSeeSharedDocs = showManagerConsole && user.role === "ADMIN";
   const isFinance = user.role === "FINANCE";
   const isResourceOnly = isResourceOnlyRole(user.role);
   const isCareWorkspace = pathname.startsWith("/admin/care");
-  const ledgerAlertRow = user.operationsAdmin
-    ? null
-    : await prisma.appSetting.findUnique({
-        where: { key: LEDGER_INTEGRITY_ALERT_KEY },
-        select: { value: true },
-      });
   const ledgerAlert = parseLedgerIntegrityAlertState(ledgerAlertRow?.value);
-  const approvalInbox = user.operationsAdmin
-    ? { items: [], summary: { total: 0, overdue: 0, manager: 0, finance: 0, expense: 0 }, visibility: { manager: false, finance: false, expense: false } }
-    : await getApprovalInboxData(user.email, user.role);
   const approvalInboxLabel =
     approvalInbox.summary.total > 0
       ? `${t(lang, "Approval Inbox", "审批提醒")} (${approvalInbox.summary.total})`

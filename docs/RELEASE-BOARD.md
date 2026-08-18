@@ -1,5 +1,27 @@
 # RELEASE BOARD
 
+- 2026-08-18-r385: live with faster shared admin navigation, bounded Ticket Center filtering and consolidated Today/Todos reads.
+
+## 2026-08-18-r385 Live
+
+- Scope: remove repeated read-only database work from the pages staff use throughout the day.
+- Business impact:
+  - the shared admin shell loads independent language, role, ledger-alert and navigation-badge reads concurrently;
+  - the navigation badge reuses a short 20-second cache instead of rebuilding the complete finance and approval inbox on every page change;
+  - Ticket Center filters use in-app navigation, show an immediate pending state and load 50 rows per page instead of constructing a 200-row result before every response;
+  - Today/Todos loads the historical session window once and derives today, yesterday and overdue groups in memory, while enrollment and attendance are each read once for that window;
+  - every admin page receives an immediate loading screen so staff do not repeatedly click while a route is resolving.
+- Safety boundary:
+  - no database migration and no miniapp package change;
+  - no scheduling, conflict, package, attendance, payroll, finance, notification or permission rule changed;
+  - the actual approval inbox remains live and uncached when opened; only its shared navigation count is briefly cached;
+  - existing ticket execution and manual fallback flows are unchanged.
+- Verification:
+  - focused navigation, source-integrity, scheduling-action, workspace and access tests passed 34/34;
+  - TypeScript and the 251-page production build passed;
+  - full regression, guarded deployment and production health verification were completed before handoff.
+- Task doc: docs/tasks/TASK-20260818-admin-navigation-performance.md.
+
 - 2026-08-18-r384: live with shared AI advice and a permanently retained manual execution path in the formal web Ticket Center.
 
 ## 2026-08-18-r384 Live

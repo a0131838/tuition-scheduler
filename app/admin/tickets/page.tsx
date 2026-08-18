@@ -16,6 +16,7 @@ import {
 import { getOverdueTicketFollowupGroups } from "@/lib/ticket-followups";
 import { revalidatePath } from "next/cache";
 import Link from "next/link";
+import Form from "next/form";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { formatBusinessDateTime } from "@/lib/date-only";
@@ -31,6 +32,7 @@ import WorkbenchActionBanner from "../_components/WorkbenchActionBanner";
 import WorkbenchFormSection from "../_components/WorkbenchFormSection";
 import WorkbenchScrollMemoryClient from "../_components/WorkbenchScrollMemoryClient";
 import WorkbenchStatusChip from "../_components/WorkbenchStatusChip";
+import TicketFilterSubmitButton from "./_components/TicketFilterSubmitButton";
 import {
   workbenchFilterPanelStyle,
   workbenchHeroStyle,
@@ -277,7 +279,7 @@ async function deleteTokenAction(formData: FormData) {
 export default async function AdminTicketsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ q?: string; status?: string; owner?: string; type?: string; err?: string; tok?: string; focus?: string; ok?: string; fields?: string; clearDesk?: string; blockedTicket?: string }>;
+  searchParams?: Promise<{ q?: string; status?: string; owner?: string; type?: string; err?: string; tok?: string; focus?: string; ok?: string; fields?: string; clearDesk?: string; blockedTicket?: string; page?: string }>;
 }) {
   const adminUser = await requireAdmin();
   const lang = await getLang();
@@ -304,6 +306,7 @@ export default async function AdminTicketsPage({
   const owner = hasOwnerParam ? String(sp?.owner ?? "").trim() : rememberedDesk.owner;
   const type = hasTypeParam ? String(sp?.type ?? "").trim() : rememberedDesk.type;
   const focus = hasFocusParam ? String(sp?.focus ?? "").trim() : rememberedDesk.focus;
+  const page = Math.max(1, Number.parseInt(String(sp?.page ?? "1"), 10) || 1);
   const resumedRememberedDesk = canResumeRememberedDesk && Boolean(rememberedDesk.value);
   const rememberedDeskValue = (() => {
     const params = new URLSearchParams();
@@ -316,7 +319,7 @@ export default async function AdminTicketsPage({
   })();
   const canHardDeleteTickets = isStrictSuperAdmin(adminUser);
 
-  const [rows, tokens, overdueGroups] = await Promise.all([
+  const [rowWindow, tokens, overdueGroups] = await Promise.all([
     prisma.ticket.findMany({
       where: {
         isArchived: false,
@@ -355,7 +358,8 @@ export default async function AdminTicketsPage({
         },
       },
       orderBy: [{ createdAt: "desc" }],
-      take: 200,
+      skip: (page - 1) * 50,
+      take: 51,
     }),
     prisma.ticketIntakeToken.findMany({
       orderBy: [{ isActive: "desc" }, { createdAt: "desc" }],
@@ -364,9 +368,23 @@ export default async function AdminTicketsPage({
     getOverdueTicketFollowupGroups({ perOwnerLimit: 5, totalLimit: 80 }),
   ]);
 
+  const hasNextPage = rowWindow.length > 50;
+  const rows = rowWindow.slice(0, 50);
+
   const activeToken = tokens.find((x) => x.isActive && (!x.expiresAt || x.expiresAt.getTime() > Date.now()));
   const intakeLink = activeToken ? `/tickets/intake/${activeToken.token}` : "";
-  const backHref = `/admin/tickets?q=${encodeURIComponent(q ?? "")}&status=${encodeURIComponent(status ?? "")}&owner=${encodeURIComponent(owner ?? "")}&type=${encodeURIComponent(type ?? "")}&focus=${encodeURIComponent(focus ?? "")}`;
+  const ticketListHref = (targetPage: number) => {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (status) params.set("status", status);
+    if (owner) params.set("owner", owner);
+    if (type) params.set("type", type);
+    if (focus) params.set("focus", focus);
+    if (targetPage > 1) params.set("page", String(targetPage));
+    const query = params.toString();
+    return `/admin/tickets${query ? `?${query}` : ""}`;
+  };
+  const backHref = ticketListHref(page);
   const overdueTicketCount = overdueGroups.reduce((sum, group) => sum + group.count, 0);
   const activeTicketCount = rows.filter((row) => !["Completed", "Cancelled"].includes(row.status)).length;
   const activeFilterCount = [q, status, owner, type, focus].filter(Boolean).length;
@@ -467,7 +485,7 @@ export default async function AdminTicketsPage({
           </div>
         </div>
 
-        <form method="GET" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", alignItems: "center" }}>
+        <Form action="/admin/tickets" scroll={false} style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", alignItems: "center" }}>
           <input name="q" defaultValue={q ?? ""} placeholder={t(lang, "Search ticket or student", "搜索学生或工单号")} />
           <select name="owner" defaultValue={owner ?? ""}>
             <option value="">{t(lang, "All owners", "全部负责人")}</option>
@@ -482,10 +500,10 @@ export default async function AdminTicketsPage({
             {TICKET_STATUS_OPTIONS.map((item) => <option key={item.value} value={item.value}>{t(lang, item.en, item.zh)}</option>)}
           </select>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <button type="submit">筛选</button>
+            <TicketFilterSubmitButton />
             {activeFilterCount > 0 ? <Link scroll={false} href="/admin/tickets?clearDesk=1">清空</Link> : null}
           </div>
-        </form>
+        </Form>
 
         {ticketErrorMessage ? (
           <div role="alert" style={{ borderLeft: "4px solid #dc2626", background: "#fff7f7", padding: "10px 12px", color: "#991b1b" }}>{ticketErrorMessage}</div>
@@ -532,6 +550,13 @@ export default async function AdminTicketsPage({
             );
           })}
         </div>
+        {(page > 1 || hasNextPage) ? (
+          <nav aria-label="工单分页" style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 12, padding: "12px 0 4px" }}>
+            {page > 1 ? <Link scroll={false} href={`${ticketListHref(page - 1)}#ticket-primary-queue`}>← 上一页</Link> : <span style={{ color: "#94a3b8" }}>← 上一页</span>}
+            <strong>第 {page} 页</strong>
+            {hasNextPage ? <Link scroll={false} href={`${ticketListHref(page + 1)}#ticket-primary-queue`}>下一页 →</Link> : <span style={{ color: "#94a3b8" }}>下一页 →</span>}
+          </nav>
+        ) : null}
       </section>
 
       <details

@@ -374,27 +374,13 @@ export default async function AdminTodosPage({
   const pastSince = new Date(dayStart);
   pastSince.setDate(dayStart.getDate() - pastDays);
 
-  const [sessionsTodayAll, sessionsYesterdayAll, pastSessionsAll, sessionsTomorrow, sessionsTomorrowAll] = await Promise.all([
+  const [sessionsHistoryWindow, sessionsTomorrow] = await Promise.all([
     prisma.session.findMany({
-      where: { startAt: { gte: dayStart, lte: dayEnd } },
+      where: { startAt: { gte: pastSince, lte: dayEnd } },
       include: {
         class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
       },
       orderBy: { startAt: "asc" },
-    }),
-    prisma.session.findMany({
-      where: { startAt: { gte: yesterdayStart, lte: yesterdayEnd } },
-      include: {
-        class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
-      },
-      orderBy: { startAt: "asc" },
-    }),
-    prisma.session.findMany({
-      where: { startAt: { lt: dayStart, gte: pastSince } },
-      include: {
-        class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
-      },
-      orderBy: { startAt: "desc" },
     }),
     prisma.session.findMany({
       where: { startAt: { gte: tomorrowStart, lte: tomorrowEnd } },
@@ -408,47 +394,54 @@ export default async function AdminTodosPage({
       },
       orderBy: { startAt: "asc" },
     }),
-    prisma.session.findMany({
-      where: { startAt: { gte: tomorrowStart, lte: tomorrowEnd } },
-      include: {
-        class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
-      },
-      orderBy: { startAt: "asc" },
-    }),
   ]);
-  const todayClassIds = Array.from(new Set(sessionsTodayAll.map((s) => s.classId)));
-  const todayEnrollments = todayClassIds.length
-    ? await prisma.enrollment.findMany({
-        where: { classId: { in: todayClassIds } },
-        select: { classId: true, studentId: true },
-      })
-    : [];
-  const todayEnrollmentsByClass = new Map<string, typeof todayEnrollments>();
-  for (const e of todayEnrollments) {
-    const arr = todayEnrollmentsByClass.get(e.classId) ?? [];
+  const sessionsTodayAll = sessionsHistoryWindow.filter((s) => s.startAt >= dayStart && s.startAt <= dayEnd);
+  const sessionsYesterdayAll = sessionsHistoryWindow.filter((s) => s.startAt >= yesterdayStart && s.startAt <= yesterdayEnd);
+  const pastSessionsAll = sessionsHistoryWindow.filter((s) => s.startAt < dayStart).reverse();
+  const sessionsTomorrowAll = sessionsTomorrow;
+
+  const historyClassIds = Array.from(new Set(sessionsHistoryWindow.map((s) => s.classId)));
+  const historySessionIds = sessionsHistoryWindow.map((s) => s.id);
+  const [historyEnrollments, historyAttendances] = await Promise.all([
+    historyClassIds.length
+      ? prisma.enrollment.findMany({
+          where: { classId: { in: historyClassIds } },
+          select: { classId: true, studentId: true },
+        })
+      : Promise.resolve([]),
+    historySessionIds.length
+      ? prisma.attendance.findMany({
+          where: { sessionId: { in: historySessionIds } },
+          select: {
+            sessionId: true,
+            studentId: true,
+            status: true,
+            deductedMinutes: true,
+            deductedCount: true,
+            excusedCharge: true,
+            waiveDeduction: true,
+          },
+        })
+      : Promise.resolve([]),
+  ]);
+  const historyEnrollmentsByClass = new Map<string, typeof historyEnrollments>();
+  for (const e of historyEnrollments) {
+    const arr = historyEnrollmentsByClass.get(e.classId) ?? [];
     arr.push(e);
-    todayEnrollmentsByClass.set(e.classId, arr);
+    historyEnrollmentsByClass.set(e.classId, arr);
   }
-  const todayAttendances = sessionsTodayAll.length
-    ? await prisma.attendance.findMany({
-        where: { sessionId: { in: sessionsTodayAll.map((s) => s.id) } },
-        select: {
-          sessionId: true,
-          studentId: true,
-          status: true,
-          deductedMinutes: true,
-          deductedCount: true,
-          excusedCharge: true,
-          waiveDeduction: true,
-        },
-      })
-    : [];
-  const todayAttendanceBySession = new Map<string, typeof todayAttendances>();
-  for (const a of todayAttendances) {
-    const arr = todayAttendanceBySession.get(a.sessionId) ?? [];
+  const historyAttendanceBySession = new Map<string, typeof historyAttendances>();
+  for (const a of historyAttendances) {
+    const arr = historyAttendanceBySession.get(a.sessionId) ?? [];
     arr.push(a);
-    todayAttendanceBySession.set(a.sessionId, arr);
+    historyAttendanceBySession.set(a.sessionId, arr);
   }
+  const todayEnrollmentsByClass = historyEnrollmentsByClass;
+  const yesterdayEnrollmentsByClass = historyEnrollmentsByClass;
+  const pastEnrollmentsByClass = historyEnrollmentsByClass;
+  const todayAttendanceBySession = historyAttendanceBySession;
+  const yesterdayAttendanceBySession = historyAttendanceBySession;
+  const pastAttendanceBySession = historyAttendanceBySession;
   const unmarkedMap = new Map<string, number>();
   const deductRequiredMap = new Map<string, number>();
   const deductDoneMap = new Map<string, number>();
@@ -511,31 +504,6 @@ export default async function AdminTodosPage({
   const sessionsTodayVisible = sessionsTodayAll.filter(
     (s) => expectedStudentIdsForAttendanceTask(s, todayEnrollmentsByClass, todayAttendanceBySession).length > 0
   );
-  const yesterdayClassIds = Array.from(new Set(sessionsYesterdayAll.map((s) => s.classId)));
-  const yesterdayEnrollments = yesterdayClassIds.length
-    ? await prisma.enrollment.findMany({
-        where: { classId: { in: yesterdayClassIds } },
-        select: { classId: true, studentId: true },
-      })
-    : [];
-  const yesterdayEnrollmentsByClass = new Map<string, typeof yesterdayEnrollments>();
-  for (const e of yesterdayEnrollments) {
-    const arr = yesterdayEnrollmentsByClass.get(e.classId) ?? [];
-    arr.push(e);
-    yesterdayEnrollmentsByClass.set(e.classId, arr);
-  }
-  const yesterdayAttendances = sessionsYesterdayAll.length
-    ? await prisma.attendance.findMany({
-        where: { sessionId: { in: sessionsYesterdayAll.map((s) => s.id) } },
-        select: { sessionId: true, studentId: true, status: true },
-      })
-    : [];
-  const yesterdayAttendanceBySession = new Map<string, typeof yesterdayAttendances>();
-  for (const a of yesterdayAttendances) {
-    const arr = yesterdayAttendanceBySession.get(a.sessionId) ?? [];
-    arr.push(a);
-    yesterdayAttendanceBySession.set(a.sessionId, arr);
-  }
   const unmarkedYesterdayMap = new Map<string, number>();
   const sessionsYesterday = sessionsYesterdayAll.filter((s) => {
     const expectedStudentIds = expectedStudentIdsForAttendanceTask(s, yesterdayEnrollmentsByClass, yesterdayAttendanceBySession);
@@ -556,31 +524,6 @@ export default async function AdminTodosPage({
     return true;
   });
 
-  const pastClassIds = Array.from(new Set(pastSessionsAll.map((s) => s.classId)));
-  const pastEnrollments = pastClassIds.length
-    ? await prisma.enrollment.findMany({
-        where: { classId: { in: pastClassIds } },
-        select: { classId: true, studentId: true },
-      })
-    : [];
-  const pastEnrollmentsByClass = new Map<string, typeof pastEnrollments>();
-  for (const e of pastEnrollments) {
-    const arr = pastEnrollmentsByClass.get(e.classId) ?? [];
-    arr.push(e);
-    pastEnrollmentsByClass.set(e.classId, arr);
-  }
-  const pastAttendances = pastSessionsAll.length
-    ? await prisma.attendance.findMany({
-        where: { sessionId: { in: pastSessionsAll.map((s) => s.id) } },
-        select: { sessionId: true, studentId: true, status: true },
-      })
-    : [];
-  const pastAttendanceBySession = new Map<string, typeof pastAttendances>();
-  for (const a of pastAttendances) {
-    const arr = pastAttendanceBySession.get(a.sessionId) ?? [];
-    arr.push(a);
-    pastAttendanceBySession.set(a.sessionId, arr);
-  }
   const pastCalculated = pastSessionsAll
     .map((s) => {
       const expectedStudentIds = expectedStudentIdsForAttendanceTask(s, pastEnrollmentsByClass, pastAttendanceBySession);
