@@ -177,7 +177,15 @@ export async function POST(req: NextRequest) {
           bankVersion: ACADEMIC_ASSESSMENT_VERSION,
           route: isAssessmentProduct(requestedTargetPath) ? "product-v2" : null,
           questionIds,
-          answers: {},
+          answers: requestedTargetPath === "INTERNATIONAL_ENGLISH" ? {
+            __ITEP_SECTION_META__: {
+              value: "",
+              durationSeconds: 0,
+              updatedAt: new Date().toISOString(),
+              autoScore: null,
+              sectionStartedAt: { GRAMMAR: new Date().toISOString() },
+            },
+          } : {},
           currentQuestionId: questionIds[0] || null,
         },
       });

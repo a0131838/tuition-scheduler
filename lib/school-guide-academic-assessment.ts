@@ -11,6 +11,7 @@ type StoredAnswer = {
   manualScore?: number | null;
   reviewerNote?: string | null;
   aiReview?: { confidence?: string; criteria?: Record<string, number>; modelRegion?: string } | null;
+  sectionStartedAt?: Record<string, string>;
 };
 
 const bank = bankSource as unknown as {
@@ -22,7 +23,7 @@ const bank = bankSource as unknown as {
   pathAssignments: BankRow[];
 };
 
-export const ACADEMIC_ASSESSMENT_VERSION = `${bank.version}-pathway-v4`;
+export const ACADEMIC_ASSESSMENT_VERSION = `${bank.version}-pathway-v5-itep-aligned`;
 export const ACADEMIC_ASSESSMENT_STATUS = bank.releaseStatus;
 export const ACADEMIC_ASSESSMENT_AGE_BANDS = ["3–5岁", "6–8岁", "9–11岁", "12–14岁", "15–17岁"] as const;
 export const ACADEMIC_ASSESSMENT_PRODUCTS = ["INTERNATIONAL_ENGLISH", "AEIS_PRIMARY", "AEIS_SECONDARY"] as const;
@@ -37,9 +38,9 @@ const PRODUCT_DEFINITIONS: Record<AssessmentProduct, {
   domains: Array<{ domain: string; objectiveLimit: number; manualLimit: number }>;
 }> = {
   INTERNATIONAL_ENGLISH: {
-    title: "国际学校英语入学准备度",
+    title: "国际学校英语诊断 · iTEP结构对齐版（非官方）",
     allowedAgeBands: ["6–8岁", "9–11岁", "12–14岁", "15–17岁"],
-    domains: [{ domain: "英语", objectiveLimit: 16, manualLimit: 1 }],
+    domains: [{ domain: "英语", objectiveLimit: 49, manualLimit: 2 }],
   },
   AEIS_PRIMARY: {
     title: "AEIS小学入学准备度",
@@ -251,6 +252,13 @@ export function publicQuestion(formId: string, questionId: string) {
     options: productQuestion.options,
     expectedMinutes: productQuestion.expectedMinutes,
     requiresReviewer: productQuestion.type === "extended_response",
+    stimulus: productQuestion.stimulus,
+    section: productQuestion.section,
+    sectionLabel: productQuestion.sectionLabel,
+    sectionPart: productQuestion.sectionPart,
+    sectionDurationMinutes: productQuestion.sectionDurationMinutes,
+    sectionInstructions: productQuestion.sectionInstructions,
+    audioUrl: productQuestion.audioUrl,
   };
   const row = assignmentForQuestion(formId, questionId);
   if (!row) throw new Error("QUESTION_NOT_FOUND");
@@ -348,6 +356,7 @@ export function calculateAssessmentResult(input: {
 }) {
   const domains: Record<string, { score: number; max: number }> = {};
   const skills: Record<string, { score: number; max: number }> = {};
+  const modules: Record<string, { score: number; max: number }> = {};
   let answered = 0;
   let pendingManual = 0;
   for (const id of input.questionIds) {
@@ -365,26 +374,37 @@ export function calculateAssessmentResult(input: {
     skillBucket.max += question.maxScore;
     skillBucket.score += typeof score === "number" ? Math.max(0, Math.min(question.maxScore, score)) : 0;
     skills[skillName] = skillBucket;
+    const moduleName = String(question.sectionLabel || "综合");
+    const moduleBucket = modules[moduleName] ?? { score: 0, max: 0 };
+    moduleBucket.max += question.maxScore;
+    moduleBucket.score += typeof score === "number" ? Math.max(0, Math.min(question.maxScore, score)) : 0;
+    modules[moduleName] = moduleBucket;
   }
   const completionRate = input.questionIds.length ? answered / input.questionIds.length : 0;
   const domainScores = Object.fromEntries(Object.entries(domains).map(([name, value]) => [name, Math.round((value.score / value.max) * 100)]));
   const skillScores = Object.fromEntries(Object.entries(skills).map(([name, value]) => [name, Math.round((value.score / value.max) * 100)]));
+  const moduleScores = Object.fromEntries(Object.entries(modules).map(([name, value]) => [name, Math.round((value.score / value.max) * 100)]));
   const values = Object.values(domainScores);
   const legacyOverallScore = values.length ? Math.round(values.reduce((sum, score) => sum + score, 0) / values.length) : 0;
   const product = assessmentProductDefinition(input.targetPath);
+  const isItepAligned = input.targetPath === "INTERNATIONAL_ENGLISH"
+    && input.questionIds.some((id) => Boolean(assessmentInternalQuestion(input.formId, id).section));
+  const itepModuleValues = ["语法", "听力", "阅读", "写作"].map((name) => moduleScores[name]).filter((score): score is number => typeof score === "number");
   const overallScore = product
-    ? input.targetPath === "INTERNATIONAL_ENGLISH" ? (domainScores["英语"] ?? 0) : null
+    ? input.targetPath === "INTERNATIONAL_ENGLISH"
+      ? (isItepAligned && itepModuleValues.length ? Math.round(itepModuleValues.reduce((sum, score) => sum + score, 0) / itepModuleValues.length) : (domainScores["英语"] ?? 0))
+      : null
     : legacyOverallScore;
   const overallBand = overallScore == null ? "分科查看，不合并总分" : scoreBand(overallScore);
   const minutes = input.durationSeconds / 60;
   const objectiveItemCount = input.questionIds.filter((id) => !assessmentInternalQuestion(input.formId, id).requiresReviewer).length;
   const manualItemCount = input.questionIds.length - objectiveItemCount;
-  const evidenceThreshold = product ? (input.targetPath === "INTERNATIONAL_ENGLISH" ? 16 : 20) : 20;
+  const evidenceThreshold = product ? (isItepAligned ? 51 : input.targetPath === "INTERNATIONAL_ENGLISH" ? 17 : 20) : 20;
   const confidence = pendingManual > 0
     ? "待人工"
     : completionRate < 0.9 || input.questionIds.length < evidenceThreshold
       ? "低"
-      : minutes >= 20 && minutes <= 60
+      : minutes >= (isItepAligned ? 50 : 20) && minutes <= (isItepAligned ? 100 : 60)
         ? "高"
         : "中";
   const ranked = Object.entries(domainScores).sort((a, b) => b[1] - a[1]);
@@ -416,12 +436,15 @@ export function calculateAssessmentResult(input: {
     overallBand,
     confidence,
     report: {
-      scoreModelVersion: product ? "PATHWAY_V4" : "LEGACY_V1",
+      scoreModelVersion: product
+        ? isItepAligned ? "PATHWAY_V5_ITEP_ALIGNED" : "PATHWAY_V4"
+        : "LEGACY_V1",
       productTitle: product?.title ?? (pathLabel(input.targetPath) || "入学准备度"),
       scorecards,
       skillScores,
+      moduleScores,
       measuredSkills: Object.keys(skillScores),
-      unmeasuredSkills: product ? ["听力", "口语"] : [],
+      unmeasuredSkills: product ? (isItepAligned ? ["口语"] : ["听力", "口语"]) : [],
       evidence: product ? {
         totalItems: input.questionIds.length,
         objectiveItems: objectiveItemCount,
@@ -431,7 +454,9 @@ export function calculateAssessmentResult(input: {
         parallelForm: input.formId.slice(-1),
       } : null,
       standard: product
-        ? "博思内部诊断，不是学校、iTEP、CEQ、MOE或AEIS官方成绩。CEFR为按年龄分层、基于阅读、语言运用与写作的初步参考区间（待对照样本校准）；本轮未测听力和口语，不据此推断录取。"
+        ? isItepAligned
+          ? "博思原创内部英语诊断，按iTEP Academic公开的语法、听力、阅读和写作结构组织，暂不含口语；不是iTEP官方考试或官方成绩。内部/100与CEFR仅为待对照样本校准的初步参考，不用于录取承诺。听力音频为AI合成的原创练习材料。"
+          : "博思内部诊断，不是学校、iTEP、CEQ、MOE或AEIS官方成绩。CEFR为按年龄分层、基于阅读、语言运用与写作的初步参考区间（待对照样本校准）；本轮未测听力和口语，不据此推断录取。"
         : "博思内部入学准备度标准，不是学校、MOE、AEIS官方分数、百分位或录取预测。",
       strengths,
       priorities,
@@ -441,7 +466,9 @@ export function calculateAssessmentResult(input: {
           ? "小学AEIS正式考试只考数学，报名还需满足CEQ要求；本报告分别显示CEQ英语准备与AEIS数学诊断，不合并总分。学科补习前由老师首节1对1复核。"
           : input.targetPath === "AEIS_SECONDARY"
             ? "中学AEIS按英语与数学分别诊断，不设置科学分数，也不合并成录取概率。由老师结合目标年级完成首节1对1复核。"
-            : "由顾问结合目标学校解读CEFR参考区间；听力、口语和具体学科应在首节1对1课堂中补充诊断。"
+            : isItepAligned
+              ? "由顾问结合语法、听力、阅读、写作四项结果与目标学校解读CEFR参考区间；口语及具体学科在首节1对1课堂中补充诊断。"
+              : "由顾问结合目标学校解读CEFR参考区间；听力、口语和具体学科应在首节1对1课堂中补充诊断。"
         : "建议由顾问与学科老师结合目标学校官方要求，制定8–12周准备计划。",
     },
   };

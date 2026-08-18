@@ -10,7 +10,20 @@ import {
   scoreAnswer,
 } from "@/lib/school-guide-academic-assessment";
 import { gradeAcademicWriting } from "@/lib/school-guide-assessment-ai-grader";
-import { answersFromJson, cleanText, idsFromJson, publicSessionView, sessionByToken } from "../_lib";
+import { answersFromJson, cleanText, idsFromJson, ITEP_SECTION_META_KEY, publicSessionView, sessionByToken } from "../_lib";
+
+function ensureSectionStarted(answers: ReturnType<typeof answersFromJson>, formId: string, questionId: string | null) {
+  if (!questionId) return;
+  const section = assessmentInternalQuestion(formId, questionId).section;
+  if (!section) return;
+  const meta = answers[ITEP_SECTION_META_KEY] ?? {
+    value: "", durationSeconds: 0, updatedAt: new Date().toISOString(), autoScore: null, sectionStartedAt: {},
+  };
+  meta.sectionStartedAt = meta.sectionStartedAt ?? {};
+  meta.sectionStartedAt[section] = meta.sectionStartedAt[section] || new Date().toISOString();
+  meta.updatedAt = new Date().toISOString();
+  answers[ITEP_SECTION_META_KEY] = meta;
+}
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
@@ -20,6 +33,36 @@ export async function POST(req: Request) {
   if (action === "load") return NextResponse.json({ ok: true, session: publicSessionView(session) });
   if (["COMPLETED", "AWAITING_REVIEW"].includes(session.status)) {
     return NextResponse.json({ ok: true, session: publicSessionView(session) });
+  }
+
+  if (action === "expire_section") {
+    if (session.targetPath !== "INTERNATIONAL_ENGLISH") return NextResponse.json({ ok: false, message: "当前测评不使用分区计时。" }, { status: 400 });
+    const ids = idsFromJson(session.questionIds);
+    const answers = answersFromJson(session.answers);
+    const currentId = ids.find((id) => !answers[id]?.value) || null;
+    if (!currentId) return NextResponse.json({ ok: true, session: publicSessionView(session) });
+    const section = assessmentInternalQuestion(session.formId, currentId).section;
+    for (const id of ids) {
+      const question = assessmentInternalQuestion(session.formId, id);
+      if (question.section === section && !answers[id]?.value) {
+        answers[id] = {
+          value: "__TIME_EXPIRED__",
+          durationSeconds: 0,
+          updatedAt: new Date().toISOString(),
+          autoScore: question.requiresReviewer ? null : 0,
+          ...(question.requiresReviewer ? { manualScore: 0, reviewerNote: "本区超时，未提交作答。" } : {}),
+        };
+      }
+    }
+    const nextId = ids.find((id) => !answers[id]?.value) || currentId;
+    ensureSectionStarted(answers, session.formId, nextId);
+    const answeredCount = ids.filter((id) => Boolean(answers[id]?.value)).length;
+    const updated = await prisma.schoolGuideAssessmentSession.update({
+      where: { id: session.id },
+      data: { answers, currentQuestionId: nextId, lastActiveAt: new Date(), completionRate: ids.length ? answeredCount / ids.length : 0, status: answeredCount === ids.length ? "READY_TO_SUBMIT" : "IN_PROGRESS" },
+    });
+    await prisma.auditLog.create({ data: { actorEmail: "public-assessment@system.local", actorName: session.studentCode, actorRole: "PUBLIC", module: "SCHOOL_GUIDE_ASSESSMENT", action: "SECTION_TIMEOUT", entityType: "SchoolGuideAssessmentSession", entityId: session.id, meta: { section, answeredCount, totalQuestions: ids.length } } });
+    return NextResponse.json({ ok: true, message: `${assessmentInternalQuestion(session.formId, currentId).sectionLabel || "当前部分"}时间已到，已进入下一部分。`, session: publicSessionView(updated, nextId) });
   }
 
   if (action === "answer") {
@@ -47,6 +90,7 @@ export async function POST(req: Request) {
       questionIds = fullQuestionIds(session.formId, route, session.targetPath);
     }
     const nextId = questionIds.find((id) => !answers[id]?.value) || questionId;
+    ensureSectionStarted(answers, session.formId, nextId);
     const answeredCount = questionIds.filter((id) => Boolean(answers[id]?.value)).length;
     const updated = await prisma.$transaction(async (tx) => {
       const row = await tx.schoolGuideAssessmentSession.update({

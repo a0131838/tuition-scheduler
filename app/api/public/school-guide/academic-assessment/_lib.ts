@@ -1,10 +1,40 @@
 import type { SchoolGuideAssessmentSession } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
+  assessmentInternalQuestion,
   publicQuestion,
   sha256,
   type AcademicAssessmentStoredAnswer,
 } from "@/lib/school-guide-academic-assessment";
+
+export const ITEP_SECTION_META_KEY = "__ITEP_SECTION_META__";
+
+function questionAnswered(value: AcademicAssessmentStoredAnswer | undefined) {
+  return Boolean(value?.value);
+}
+
+function itepSectionState(session: SchoolGuideAssessmentSession, selected: string | null, answers: Record<string, AcademicAssessmentStoredAnswer>) {
+  if (session.targetPath !== "INTERNATIONAL_ENGLISH" || !selected) return null;
+  const current = assessmentInternalQuestion(session.formId, selected);
+  if (!current.section || !current.sectionDurationMinutes) return null;
+  const ids = idsFromJson(session.questionIds);
+  const sectionIds = ids.filter((id) => assessmentInternalQuestion(session.formId, id).section === current.section);
+  const meta = answers[ITEP_SECTION_META_KEY];
+  const startedAt = meta?.sectionStartedAt?.[current.section] || session.startedAt.toISOString();
+  const elapsedSeconds = Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000));
+  const totalSeconds = current.sectionDurationMinutes * 60;
+  return {
+    key: current.section,
+    label: current.sectionLabel,
+    part: current.sectionPart,
+    durationMinutes: current.sectionDurationMinutes,
+    instructions: current.sectionInstructions,
+    answered: sectionIds.filter((id) => questionAnswered(answers[id])).length,
+    total: sectionIds.length,
+    remainingSeconds: Math.max(0, totalSeconds - elapsedSeconds),
+    expired: elapsedSeconds >= totalSeconds,
+  };
+}
 
 export function cleanText(value: unknown, max = 120) {
   return String(value ?? "").trim().slice(0, max);
@@ -28,12 +58,12 @@ export async function sessionByToken(token: unknown) {
 export function publicSessionView(session: SchoolGuideAssessmentSession, preferredQuestionId?: string | null) {
   const questionIds = idsFromJson(session.questionIds);
   const answers = answersFromJson(session.answers);
-  const firstUnanswered = questionIds.find((id) => !answers[id]?.value);
+  const firstUnanswered = questionIds.find((id) => !questionAnswered(answers[id]));
   const selected = preferredQuestionId && questionIds.includes(preferredQuestionId)
     ? preferredQuestionId
     : firstUnanswered || questionIds[questionIds.length - 1] || null;
   const question = selected ? publicQuestion(session.formId, selected) : null;
-  const answeredCount = questionIds.filter((id) => Boolean(answers[id]?.value)).length;
+  const answeredCount = questionIds.filter((id) => questionAnswered(answers[id])).length;
   const currentIndex = selected ? questionIds.indexOf(selected) : -1;
   const safeReport = session.report && typeof session.report === "object" ? session.report : null;
   const retestBase = session.completedAt || session.submittedAt || session.startedAt;
@@ -55,7 +85,8 @@ export function publicSessionView(session: SchoolGuideAssessmentSession, preferr
     progressPercent: questionIds.length ? Math.round((answeredCount / questionIds.length) * 100) : 0,
     currentIndex,
     question,
-    currentAnswer: selected ? answers[selected]?.value ?? "" : "",
+    currentAnswer: selected && answers[selected]?.value !== "__TIME_EXPIRED__" ? answers[selected]?.value ?? "" : "",
+    section: itepSectionState(session, selected, answers),
     canSubmit: questionIds.length > 0 && answeredCount === questionIds.length,
     confidence: session.confidence,
     domainScores: session.domainScores,

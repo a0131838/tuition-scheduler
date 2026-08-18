@@ -24,8 +24,8 @@ import {
   type AcademicAssessmentStoredAnswer,
 } from "../lib/school-guide-academic-assessment";
 
-test("assessment bank is a controlled pathway V4 pilot with five age bands", () => {
-  assert.equal(ACADEMIC_ASSESSMENT_VERSION, "V1.4-20260805-pathway-v4");
+test("assessment bank is a controlled pathway V5 pilot with five age bands", () => {
+  assert.equal(ACADEMIC_ASSESSMENT_VERSION, "V1.4-20260805-pathway-v5-itep-aligned");
   assert.equal(ACADEMIC_ASSESSMENT_STATUS, "pilot");
   assert.equal(ACADEMIC_ASSESSMENT_AGE_BANDS.length, 5);
   assert.deepEqual(ACADEMIC_ASSESSMENT_PRODUCTS, ["INTERNATIONAL_ENGLISH", "AEIS_PRIMARY", "AEIS_SECONDARY"]);
@@ -33,9 +33,14 @@ test("assessment bank is a controlled pathway V4 pilot with five age bands", () 
 
 test("new products select only their intended subjects", () => {
   const international = productQuestionIds("CORE-A1214-A", "INTERNATIONAL_ENGLISH");
-  assert.equal(international.length, 17);
+  assert.equal(international.length, 51);
   assert.deepEqual(new Set(international.map((id) => publicQuestion("CORE-A1214-A", id).domain)), new Set(["英语"]));
-  assert.equal(international.filter((id) => publicQuestion("CORE-A1214-A", id).requiresReviewer).length, 1);
+  assert.equal(international.filter((id) => publicQuestion("CORE-A1214-A", id).requiresReviewer).length, 2);
+  const sections = international.map((id) => publicQuestion("CORE-A1214-A", id).section);
+  assert.equal(sections.filter((value) => value === "GRAMMAR").length, 25);
+  assert.equal(sections.filter((value) => value === "LISTENING").length, 14);
+  assert.equal(sections.filter((value) => value === "READING").length, 10);
+  assert.equal(sections.filter((value) => value === "WRITING").length, 2);
 
   for (const product of ["AEIS_PRIMARY", "AEIS_SECONDARY"]) {
     const formId = product === "AEIS_PRIMARY" ? "CORE-A911-A" : "CORE-A1214-A";
@@ -102,13 +107,50 @@ test("international English report labels CEFR as provisional", () => {
     autoScore: scoreAnswer(formId, id, "A"),
     manualScore: publicQuestion(formId, id).requiresReviewer ? 3 : undefined,
   }]));
-  const result = calculateAssessmentResult({ formId, questionIds: ids, answers, durationSeconds: 25 * 60, targetPath: "INTERNATIONAL_ENGLISH" });
+  const result = calculateAssessmentResult({ formId, questionIds: ids, answers, durationSeconds: 75 * 60, targetPath: "INTERNATIONAL_ENGLISH" });
   assert.equal(typeof result.overallScore, "number");
   assert.match(result.report.standard, /CEFR.*初步参考/);
   assert.ok(result.report.scorecards[0].cefrReference);
   assert.ok(result.report.evidence);
-  assert.equal(result.report.evidence?.totalItems, 17);
+  assert.equal(result.report.evidence?.totalItems, 51);
   assert.equal(result.report.evidence?.ageBandSpecific, true);
+  assert.equal(result.report.scoreModelVersion, "PATHWAY_V5_ITEP_ALIGNED");
+  assert.deepEqual(Object.keys(result.report.moduleScores), ["语法", "听力", "阅读", "写作"]);
+  assert.deepEqual(result.report.unmeasuredSkills, ["口语"]);
+});
+
+test("iTEP-aligned public payload exposes audio but never transcripts", () => {
+  const formId = "CORE-A1214-C";
+  const ids = productQuestionIds(formId, "INTERNATIONAL_ENGLISH");
+  const listeningIds = ids.filter((id) => publicQuestion(formId, id).section === "LISTENING");
+  assert.equal(listeningIds.length, 14);
+  for (const id of listeningIds) {
+    const safe = publicQuestion(formId, id) as Record<string, unknown>;
+    assert.match(String(safe.audioUrl), /^\/school-guide\/assessment-audio\/itep-c-part[123]\.mp3$/);
+    assert.equal("audioTranscript" in safe, false);
+    const audioPath = path.join(process.cwd(), "public", String(safe.audioUrl).replace(/^\//, ""));
+    assert.ok(fs.statSync(audioPath).size > 100_000, `${audioPath} has generated audio`);
+  }
+});
+
+test("unfinished V4 international sessions remain readable and keep their old scoring model", () => {
+  const formId = "CORE-A1214-A";
+  const prefix = "P-INT-1214-A";
+  const ids = [
+    ...Array.from({ length: 5 }, (_, index) => `${prefix}-LU-${index + 1}`),
+    ...Array.from({ length: 4 }, (_, index) => `${prefix}-RD-${index + 1}`),
+    ...Array.from({ length: 7 }, (_, index) => `${prefix}-EV-${index + 1}`),
+    `${prefix}-WR-1`,
+  ];
+  const answers: Record<string, AcademicAssessmentStoredAnswer> = Object.fromEntries(ids.map((id) => [id, {
+    value: "A", durationSeconds: 60, updatedAt: new Date().toISOString(), autoScore: scoreAnswer(formId, id, "A"),
+    manualScore: publicQuestion(formId, id).requiresReviewer ? 6 : undefined,
+  }]));
+  assert.equal(ids.every((id) => Boolean(publicQuestion(formId, id).prompt)), true);
+  const result = calculateAssessmentResult({ formId, questionIds: ids, answers, durationSeconds: 25 * 60, targetPath: "INTERNATIONAL_ENGLISH" });
+  assert.equal(result.report.scoreModelVersion, "PATHWAY_V4");
+  assert.deepEqual(result.report.unmeasuredSkills, ["听力", "口语"]);
+  assert.equal(typeof result.overallScore, "number");
 });
 
 test("form assignment balances A B C and code normalization is forgiving", () => {

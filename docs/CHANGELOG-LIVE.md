@@ -1,5 +1,26 @@
 # CHANGELOG LIVE
 
+## 2026-08-18-r378
+
+- Release ID: `2026-08-18-r378`
+- Date/Time (Asia/Singapore): `2026-08-18`
+- Deployment status: `READY FOR GUARDED DEPLOY`; WeChat development/experience upload only, with no review submission or formal publication.
+- Scope: replace the short international-school English diagnostic with a 51-item, four-section, original iTEP-structure-aligned assessment while leaving speaking out of this round.
+- Key files:
+  - `lib/school-guide-itep-aligned-bank.ts`
+  - `lib/school-guide-product-assessment-bank.ts`
+  - `lib/school-guide-academic-assessment.ts`
+  - `app/api/public/school-guide/academic-assessment/*`
+  - `public/school-guide/assessment-audio/*`
+  - `miniapp/boss-academic-parent/pages/guide-academic-assessment/*`
+  - `tests/school-guide-academic-assessment.test.ts`
+  - `docs/tasks/TASK-20260818-school-guide-itep-aligned-assessment.md`
+- Risk impact (if any): Medium and isolated to new international-school English assessment sessions. The structure matches published iTEP Academic section counts and timing, but the questions, audio, internal percentage and CEFR reference are GT originals and remain uncalibrated. Existing reports stay unchanged; no formal scheduling, package, finance, payroll, Ticket or message behavior changes.
+- Verification before deploy: 26/26 focused assessment/request tests and 546/546 full repository tests passed; Next.js production build generated 251 pages; the 69-page miniapp release audit passed with zero errors; all nine MP3 files passed format inspection; JavaScript syntax and `git diff --check` passed. Guarded release preflight, server health and physical-device listening remain release steps.
+- Rollback point: `fc4f67252eb6b4f019e84c8a1d6412610f04d274` before `2026-08-18-r378`.
+
+---
+
 ## 2026-08-17-r377
 
 - Release ID: `2026-08-17-r377`

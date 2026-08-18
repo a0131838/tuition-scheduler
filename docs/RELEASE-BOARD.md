@@ -1,5 +1,24 @@
 # RELEASE BOARD
 
+- `2026-08-18-r378`: ready to replace the short international-school English diagnostic with a 51-item original iTEP-structure-aligned assessment, excluding speaking.
+
+## 2026-08-18-r378 Ready
+
+- Scope: add complete Grammar, Listening, Reading and Writing sections with server-backed section timing and A/B/C parallel forms.
+- Business impact:
+  - each new international-school English attempt contains 25 grammar, 14 listening, 10 reading and 2 writing items;
+  - nine original AI-generated audio tracks support the three parallel forms and are disclosed as synthetic audio;
+  - the miniapp shows section instructions, countdown, reading passages, listening playback and four module results;
+  - speaking remains explicitly unmeasured;
+  - results remain an internal preliminary CEFR reference, not an official iTEP score or admissions prediction;
+  - existing sessions and reports are preserved, and no scheduling, package, finance, payroll, Ticket, login or notification workflow changes.
+- Verification before deploy:
+  - 26 focused assessment/request tests and all 546 repository tests passed;
+  - JavaScript syntax, 251-page TypeScript/Next production build, 69-page miniapp release audit and nine-track audio format validation passed;
+  - `git diff --check` passed; guarded release preflight remains the final server gate;
+  - WeChat development/experience upload only, without review submission or formal publication.
+- Task doc: `docs/tasks/TASK-20260818-school-guide-itep-aligned-assessment.md`
+
 - `2026-08-17-r377`: ready to make Midterm Report candidate timing student- and subject-specific, including shared packages.
 
 ## 2026-08-17-r377 Live

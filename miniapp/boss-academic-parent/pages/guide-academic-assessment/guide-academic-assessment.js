@@ -1,4 +1,5 @@
 const api = require("../../utils/api");
+const config = require("../../utils/config");
 
 const SESSION_KEY = "school_guide_academic_assessment_token";
 const REQUEST_KEY = "school_guide_academic_assessment_request_token";
@@ -43,6 +44,12 @@ Page({
     comparisonRows: [],
     unmeasuredText: "",
     scorecards: [],
+    moduleRows: [],
+    sectionTimerText: "",
+    sectionExpiring: false,
+    audioPlaying: false,
+    audioPlayedUrls: {},
+    currentAudioPlayed: false,
     questionStartedAt: 0,
     requestToken: "",
     request: null,
@@ -87,6 +94,60 @@ Page({
         this.setData({ requestToken: "", request: null, hasRequest: false, phase: "hub" });
       }).finally(() => this.setData({ loading: false }));
     }
+  },
+
+  onUnload() {
+    this.stopSectionTimer();
+    if (this.assessmentAudio) this.assessmentAudio.destroy();
+  },
+
+  stopSectionTimer() {
+    if (this.sectionTimer) clearInterval(this.sectionTimer);
+    this.sectionTimer = null;
+  },
+
+  startSectionTimer() {
+    this.stopSectionTimer();
+    if (!this.data.session || !this.data.session.section || this.data.phase !== "test") return;
+    const tick = () => {
+      const section = this.data.session && this.data.session.section;
+      if (!section) return;
+      const base = Number(section.remainingSeconds || 0);
+      const elapsed = Math.floor((Date.now() - this.sectionReceivedAt) / 1000);
+      const remaining = Math.max(0, base - elapsed);
+      const minutes = Math.floor(remaining / 60);
+      const seconds = String(remaining % 60).padStart(2, "0");
+      this.setData({ sectionTimerText: `${minutes}:${seconds}` });
+      if (remaining === 0 && !this.data.sectionExpiring) this.expireSection();
+    };
+    tick();
+    this.sectionTimer = setInterval(tick, 1000);
+  },
+
+  expireSection() {
+    if (!this.data.sessionToken || this.data.sectionExpiring) return;
+    this.setData({ sectionExpiring: true });
+    api.request("/api/public/school-guide/academic-assessment/session", {
+      method: "POST", data: { action: "expire_section", sessionToken: this.data.sessionToken }, timeout: 20000
+    }).then((data) => {
+      if (data.message) api.toast(data.message);
+      this.applySession(data.session);
+    }).catch((err) => api.toast(err.message)).finally(() => this.setData({ sectionExpiring: false }));
+  },
+
+  playListeningAudio() {
+    const question = this.data.session && this.data.session.question;
+    const audioUrl = question && question.audioUrl;
+    if (!audioUrl || this.data.audioPlaying || this.data.audioPlayedUrls[audioUrl]) return;
+    if (!this.assessmentAudio) {
+      this.assessmentAudio = wx.createInnerAudioContext();
+      this.assessmentAudio.onPlay(() => this.setData({ audioPlaying: true }));
+      this.assessmentAudio.onEnded(() => this.setData({ audioPlaying: false, currentAudioPlayed: true, audioPlayedUrls: { ...this.data.audioPlayedUrls, [this.currentAudioUrl]: true } }));
+      this.assessmentAudio.onError(() => { this.setData({ audioPlaying: false }); api.toast("听力音频加载失败，请检查网络后重试"); });
+    }
+    this.currentAudioUrl = audioUrl;
+    this.assessmentAudio.src = config.apiBaseUrl + audioUrl;
+    this.assessmentAudio.play();
   },
 
   openRequestForm() { this.setData({ phase: "requestForm" }); },
@@ -194,12 +255,15 @@ Page({
       ...item,
       scoreLabel: item.score == null ? "待老师复核" : `${item.score} / 100`
     }));
+    const moduleRows = Object.keys((session.report && session.report.moduleScores) || {}).map((name) => ({ name, score: session.report.moduleScores[name] }));
     const evidence = session.report && session.report.evidence ? session.report.evidence : null;
     const evidenceText = evidence
       ? `${evidence.totalItems}题（${evidence.objectiveItems}题客观题 + ${evidence.reviewedItems}题写作/复核）· ${evidence.skillCoverage.join("、")} · ${evidence.parallelForm}卷`
       : "";
     const retestDateText = formatDate(session.retestRecommendedAt);
-    this.setData({ session: { ...session, retestDateText, evidenceText }, phase, hasSession: true, answerInput: session.currentAnswer || "", domainRows, skillRows, comparisonRows, unmeasuredText, scorecards, questionStartedAt: Date.now() });
+    this.sectionReceivedAt = Date.now();
+    const currentAudioUrl = session.question && session.question.audioUrl;
+    this.setData({ session: { ...session, retestDateText, evidenceText }, phase, hasSession: true, answerInput: session.currentAnswer || "", domainRows, skillRows, moduleRows, comparisonRows, unmeasuredText, scorecards, currentAudioPlayed: Boolean(currentAudioUrl && this.data.audioPlayedUrls[currentAudioUrl]), questionStartedAt: Date.now() }, () => this.startSectionTimer());
     if (["AWAITING_REVIEW", "COMPLETED"].includes(session.status) && this.data.sessionToken) this.rememberSession(session, retestDateText);
   },
 
@@ -222,7 +286,8 @@ Page({
 
   resetForNewProduct() {
     wx.removeStorageSync(SESSION_KEY);
-    this.setData({ sessionToken: "", session: null, hasSession: false, phase: "setup", consent: false, answerInput: "", domainRows: [], skillRows: [], comparisonRows: [], scorecards: [] });
+    this.stopSectionTimer();
+    this.setData({ sessionToken: "", session: null, hasSession: false, phase: "setup", consent: false, answerInput: "", domainRows: [], skillRows: [], moduleRows: [], comparisonRows: [], scorecards: [], audioPlayedUrls: {} });
   },
 
   startParallelRetest() {
@@ -257,7 +322,8 @@ Page({
 
   startForAnotherChild() {
     wx.removeStorageSync(SESSION_KEY);
-    this.setData({ sessionToken: "", session: null, hasSession: false, phase: "setup", consent: false, studentNickname: "", currentGrade: "", languageBackground: "", answerInput: "", domainRows: [], skillRows: [], comparisonRows: [], scorecards: [] });
+    this.stopSectionTimer();
+    this.setData({ sessionToken: "", session: null, hasSession: false, phase: "setup", consent: false, studentNickname: "", currentGrade: "", languageBackground: "", answerInput: "", domainRows: [], skillRows: [], moduleRows: [], comparisonRows: [], scorecards: [], audioPlayedUrls: {} });
   },
 
   loadSession() {

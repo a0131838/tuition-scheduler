@@ -1,3 +1,5 @@
+import { itepAlignedQuestions, type ItepAlignedSection } from "@/lib/school-guide-itep-aligned-bank";
+
 export type ProductQuestion = {
   id: string;
   domain: string;
@@ -9,6 +11,14 @@ export type ProductQuestion = {
   maxScore: number;
   expectedMinutes: number;
   rubric?: string;
+  stimulus?: string;
+  section?: ItepAlignedSection;
+  sectionLabel?: string;
+  sectionPart?: number;
+  sectionDurationMinutes?: number;
+  sectionInstructions?: string;
+  audioUrl?: string;
+  audioTranscript?: string;
 };
 
 type Variant = "A" | "B" | "C";
@@ -267,7 +277,7 @@ function mathQuestions(product: string, ageBand: string, variant: Variant, count
 export function productQuestions(formId: string, targetPath: string, ageBand: string): ProductQuestion[] {
   const variant = (formId.slice(-1) as Variant) || "A";
   if (!(variant in READING) || !(ageBand in AGE_LEVEL)) return [];
-  if (targetPath === "INTERNATIONAL_ENGLISH") return englishQuestions("INT", ageBand, variant, 16, true);
+  if (targetPath === "INTERNATIONAL_ENGLISH") return itepAlignedQuestions(formId, ageBand);
   if (targetPath === "AEIS_PRIMARY") {
     return [
       ...englishQuestions("AEP", ageBand, variant, 12, true).map((item) => ({ ...item, domain: "CEQ英语准备" })),
@@ -294,5 +304,12 @@ export function productQuestionById(formId: string, questionId: string) {
   const targetPath = productCode === "INT" ? "INTERNATIONAL_ENGLISH"
     : productCode === "AEP" ? "AEIS_PRIMARY"
       : productCode === "AES" ? "AEIS_SECONDARY" : "";
-  return ageBand && targetPath ? findProductQuestion(formId, targetPath, ageBand, questionId) : null;
+  if (!ageBand || !targetPath) return null;
+  const current = findProductQuestion(formId, targetPath, ageBand, questionId);
+  if (current) return current;
+  // Old international-school sessions must remain readable and submittable after
+  // the iTEP-aligned bank is introduced. Their question ids use LU/RD/EV/WR.
+  return targetPath === "INTERNATIONAL_ENGLISH"
+    ? englishQuestions("INT", ageBand, (formId.slice(-1) as Variant) || "A", 16, true).find((item) => item.id === questionId) || null
+    : null;
 }
