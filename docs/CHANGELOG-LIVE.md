@@ -4,7 +4,7 @@
 
 - Release ID: 2026-08-18-r382
 - Date/Time (Asia/Singapore): 2026-08-18
-- Deployment status: READY FOR GUARDED DEPLOYMENT; server-only formal ticket workflow change, so no WeChat package is required.
+- Deployment status: LIVE; server-only formal ticket workflow change, so no WeChat package is required.
 - Scope: replace repeated per-action “无需执行” edits with one audited ticket-level result confirmation for work completed before a ticket was created.
 - Key files:
   - app/admin/tickets/[id]/page.tsx
@@ -12,7 +12,7 @@
   - tests/ticket-scheduling-actions.test.ts
   - docs/tasks/TASK-20260818-ticket-manual-resolution.md
 - Risk impact (if any): Low to medium and limited to explicit manual closure of scheduling tickets. Normal formal-schedule execution, conflicts, lesson deductions, packages, payroll and notifications are unchanged. A human must choose the real outcome, enter one shared note and verify the formal record; every result is audited.
-- Verification: focused ticket tests 13/13 and full repository tests 555/555 passed; TypeScript and the 251-page production build passed; git diff check passed. Guarded deployment and post-deploy read-only verification remain.
+- Verification: focused ticket tests 13/13 and full repository tests 555/555 passed; TypeScript and the 251-page production build passed; git diff check passed. Guarded deployment completed for feature commit 2da292f145383fcc7c8efb3509a4735f2373ffdb with all 129 migrations current, PM2 PID 3013801 online and /admin/login HTTP 200.
 - Rollback point: 89af34b6 before 2026-08-18-r382.
 
 ---

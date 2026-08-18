@@ -1,8 +1,8 @@
 # RELEASE BOARD
 
-- 2026-08-18-r382: ready to let academic staff close already-handled scheduling tickets with one truthful, audited confirmation instead of repeating action fields.
+- 2026-08-18-r382: live with one truthful, audited confirmation for scheduling work already completed before or outside the ticket workflow.
 
-## 2026-08-18-r382 Ready for guarded deployment
+## 2026-08-18-r382 Live
 
 - Scope: add one ticket-level resolution control for scheduling work completed before or outside the ticket workflow.
 - Business impact:
@@ -17,10 +17,11 @@
   - existing applied work blocks an entire-ticket “no action required” result;
   - normal scheduling execution continues through the formal schedule and its existing permission, conflict and duplicate guards;
   - no scheduling, attendance, package, payroll, finance or notification record is directly changed by this feature.
-- Verification before deploy:
+- Verification:
   - focused ticket tests 13/13 and full repository tests 555/555;
   - TypeScript, 251-page production build and git diff check passed;
-  - no database migration and no WeChat package change.
+  - no database migration and no WeChat package change;
+  - guarded deployment completed for feature commit 2da292f145383fcc7c8efb3509a4735f2373ffdb with all 129 migrations current, PM2 PID 3013801 online and /admin/login HTTP 200.
 - Task doc: docs/tasks/TASK-20260818-ticket-manual-resolution.md.
 
 - 2026-08-18-r381: live with course reminders following the session's actual student instead of reusable Class history.

@@ -39,6 +39,8 @@
 - `npx tsc --noEmit`：通过。
 - `npm run build`：通过，251 个页面生成成功。
 - `git diff --check`：通过。
+- 正式发布功能提交：`2da292f145383fcc7c8efb3509a4735f2373ffdb`。
+- 服务器 129 个迁移均为最新，PM2 进程 `3013801` 在线，`/admin/login` 返回 HTTP 200。
 
 ## 验收场景
 
