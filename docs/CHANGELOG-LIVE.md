@@ -4,7 +4,7 @@
 
 - Release ID: `2026-08-18-r378`
 - Date/Time (Asia/Singapore): `2026-08-18`
-- Deployment status: `READY FOR GUARDED DEPLOY`; WeChat development/experience upload only, with no review submission or formal publication.
+- Deployment status: `LIVE`; WeChat development version `1.0.58` uploaded, with no review submission or formal publication.
 - Scope: replace the short international-school English diagnostic with a 51-item, four-section, original iTEP-structure-aligned assessment while leaving speaking out of this round.
 - Key files:
   - `lib/school-guide-itep-aligned-bank.ts`
@@ -16,7 +16,7 @@
   - `tests/school-guide-academic-assessment.test.ts`
   - `docs/tasks/TASK-20260818-school-guide-itep-aligned-assessment.md`
 - Risk impact (if any): Medium and isolated to new international-school English assessment sessions. The structure matches published iTEP Academic section counts and timing, but the questions, audio, internal percentage and CEFR reference are GT originals and remain uncalibrated. Existing reports stay unchanged; no formal scheduling, package, finance, payroll, Ticket or message behavior changes.
-- Verification before deploy: 26/26 focused assessment/request tests and 546/546 full repository tests passed; Next.js production build generated 251 pages; the 69-page miniapp release audit passed with zero errors; all nine MP3 files passed format inspection; JavaScript syntax and `git diff --check` passed. Guarded release preflight, server health and physical-device listening remain release steps.
+- Verification: 26/26 focused assessment/request tests and 546/546 full repository tests passed; Next.js production build generated 251 pages; the 69-page miniapp release audit passed with zero errors; all nine MP3 files passed format inspection; JavaScript syntax and `git diff --check` passed. Guarded deployment completed for feature commit `b5078b9ba5a6f712cb735a22ae82a23c75f54a62`; PM2 was online, the login page, assessment page and a representative audio file returned HTTP 200. WeChat development version `1.0.58` uploaded at 790,998 bytes. Physical-device listening and timeout/resume checks remain before formal review.
 - Rollback point: `fc4f67252eb6b4f019e84c8a1d6412610f04d274` before `2026-08-18-r378`.
 
 ---

@@ -1,8 +1,8 @@
 # RELEASE BOARD
 
-- `2026-08-18-r378`: ready to replace the short international-school English diagnostic with a 51-item original iTEP-structure-aligned assessment, excluding speaking.
+- `2026-08-18-r378`: live with a 51-item original iTEP-structure-aligned international-school English assessment, excluding speaking.
 
-## 2026-08-18-r378 Ready
+## 2026-08-18-r378 Live
 
 - Scope: add complete Grammar, Listening, Reading and Writing sections with server-backed section timing and A/B/C parallel forms.
 - Business impact:
@@ -15,8 +15,12 @@
 - Verification before deploy:
   - 26 focused assessment/request tests and all 546 repository tests passed;
   - JavaScript syntax, 251-page TypeScript/Next production build, 69-page miniapp release audit and nine-track audio format validation passed;
-  - `git diff --check` passed; guarded release preflight remains the final server gate;
-  - WeChat development/experience upload only, without review submission or formal publication.
+  - `git diff --check` and guarded release preflight passed.
+- Post-deploy verification:
+  - feature commit `b5078b9ba5a6f712cb735a22ae82a23c75f54a62` deployed with PM2 online;
+  - login page, assessment page and a representative MP3 returned HTTP 200;
+  - WeChat development version `1.0.58` uploaded successfully at 790,998 bytes;
+  - WeChat review/formal publication remains intentionally unexecuted pending physical-device listening, timeout/resume and report checks.
 - Task doc: `docs/tasks/TASK-20260818-school-guide-itep-aligned-assessment.md`
 
 - `2026-08-17-r377`: ready to make Midterm Report candidate timing student- and subject-specific, including shared packages.
