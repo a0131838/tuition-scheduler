@@ -1,5 +1,22 @@
 # CHANGELOG LIVE
 
+## 2026-08-20-r397
+
+- Release ID: `2026-08-20-r397`
+- Date/Time (Asia/Singapore): `2026-08-20`
+- Deployment status: `READY` for the guarded server release.
+- Scope: make the Ticket Center AI preparation action visibly responsive and use the AI OS single-ticket fast-entry contract.
+- Key files:
+  - `app/admin/tickets/[id]/AiPlanSubmitButton.tsx`
+  - `app/admin/tickets/[id]/page.tsx`
+  - `tests/admin-ai-ticket-plan.test.ts`
+  - `docs/tasks/TASK-20260820-ticket-ai-entry-reliability.md`
+- Risk impact (if any): Low and limited to AI assistance loading feedback and diagnostics. Manual ticket processing remains available; scheduling, attendance, packages, payroll, finance and real messages are unchanged.
+- Verification: focused AI plan tests, TypeScript and production build are required before release; production verification must cover the target ticket's prepare and AI OS link paths.
+- Rollback point: production commit `7078cf41` before `2026-08-20-r397`.
+
+---
+
 ## 2026-08-20-r396
 
 - Release ID: `2026-08-20-r396`

@@ -1,5 +1,19 @@
 # RELEASE BOARD
 
+- 2026-08-20-r397: visible Ticket Center AI preparation and single-ticket AI OS entry are ready for guarded release.
+
+## 2026-08-20-r397 Ready
+
+- Scope: show an immediate pending state while the formal system prepares an AI plan and preserve clear success/failure feedback after the server action returns.
+- Business impact:
+  - employees can see that the first click has been accepted and cannot submit duplicates while it is running;
+  - the same ticket continues to open through the existing SSO bridge into the optimized single-ticket AI OS route;
+  - manual handling remains permanently available.
+- Safety boundary: no formal scheduling, attendance, package, payroll, finance or messaging rule changes.
+- Verification before deploy: focused tests, TypeScript, production build and AI OS contract checks.
+- Post-deploy verification: target ticket prepare action, SSO redirect, AI OS first render and formal-system health.
+- Task doc: `docs/tasks/TASK-20260820-ticket-ai-entry-reliability.md`.
+
 - 2026-08-20-r396: role-aware Admin and Teacher navigation simplification is ready for guarded release.
 
 ## 2026-08-20-r396 Ready

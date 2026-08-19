@@ -79,6 +79,7 @@ import {
   prepareAdminAiTicketPlan,
   readAdminAiTicketPlan,
 } from "@/lib/admin-ai-ticket-plan";
+import AiPlanSubmitButton from "./AiPlanSubmitButton";
 
 function trimValue(formData: FormData, key: string, max = 400) {
   const v = String(formData.get(key) ?? "").trim();
@@ -954,7 +955,11 @@ async function prepareAiTicketPlanAction(formData: FormData) {
   }
   try {
     await prepareAdminAiTicketPlan(user, ticketId);
-  } catch {
+  } catch (error) {
+    console.error("AI ticket plan preparation failed", {
+      ticketId,
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
     redirect(appendQuery(back, { err: "ai-plan-unavailable" }));
   }
   revalidatePath(`/admin/tickets/${ticketId}`);
@@ -1502,9 +1507,7 @@ export default async function AdminTicketDetailPage({
               <form action={prepareAiTicketPlanAction}>
                 <input type="hidden" name="id" value={row.id} />
                 <input type="hidden" name="back" value={`${selfHref}#ticket-decision`} />
-                <button type="submit" style={{ padding: "10px 15px", background: "#ea580c", color: "#fff", fontWeight: 850 }}>
-                  {aiPlanResult.status === "READY" ? "按最新数据重新生成AI建议" : "让AI读取并生成建议"}
-                </button>
+                <AiPlanSubmitButton isReady={aiPlanResult.status === "READY"} />
               </form>
               <a href={aiOsTicketHref} style={{ fontWeight: 800 }}>在AI OS查看完整方案 →</a>
             </div>
