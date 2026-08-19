@@ -73,6 +73,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   ]);
   const canSeeCare = user.role === "ADMIN" || showManagerConsole || user.operationsAdmin || user.workspaces.includes("CARE");
   const canSeeSharedDocs = showManagerConsole && user.role === "ADMIN";
+  const canSeeHr = (user.role === "ADMIN" || user.role === "TEACHER") && (showManagerConsole || user.workspaces.includes("HR"));
   const isFinance = user.role === "FINANCE";
   const isResourceOnly = isResourceOnlyRole(user.role);
   const isCareWorkspace = pathname.startsWith("/admin/care");
@@ -100,6 +101,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     pathname === "/admin/reports/audit-logs" ||
     pathname === "/admin/reports/package-balance-audit" ||
     pathname === "/admin/expense-claims" ||
+    pathname === "/admin/hr/payslips" ||
     pathname === "/admin/teacher-notices" ||
     pathname.startsWith("/admin/receipts-approvals") ||
     pathname === "/admin/recovery/uploads" ||
@@ -288,6 +290,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: "/admin/recovery/uploads", label: t(lang, "Attachment Health", "附件异常总览"), tone: "warning" as const },
       ],
     },
+    ...(canSeeHr
+      ? [{
+          title: t(lang, "HR & People", "人事与员工"),
+          summary: t(lang, "Employee records, leave approvals, private documents, and payslips.", "员工档案、假期审批、私密文件和工资单。"),
+          items: [
+            { href: "/admin/hr", label: t(lang, "HR Workspace", "人事工作台"), tone: "accent" as const },
+            { href: "/admin/hr/leave", label: t(lang, "Leave Approvals", "假期审批"), tone: "warning" as const },
+            { href: "/admin/hr/payslips", label: t(lang, "Employee Payslips", "员工工资单"), tone: "success" as const },
+            { href: "/admin/hr/my", label: t(lang, "My HR", "我的 HR"), tone: "neutral" as const },
+          ],
+        }]
+      : []),
     {
       title: t(lang, "Setup & Control", "配置与控制"),
       summary: t(lang, "Base data, system admin, and lower-frequency maintenance.", "基础数据、系统管理和低频维护入口。"),
@@ -400,6 +414,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: "/admin/receipts-approvals/repairs", label: t(lang, "Proof Repair", "凭证修复"), tone: "warning" as const },
         { href: "/admin/receipts-approvals/history", label: t(lang, "Receipt History", "收据历史"), tone: "neutral" as const },
         { href: "/admin/expense-claims", label: t(lang, "Expense Claims", "报销审批"), tone: "warning" as const },
+        { href: "/admin/hr/payslips", label: t(lang, "Employee Payslips", "员工工资单"), tone: "success" as const },
       ],
     },
     {

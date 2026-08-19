@@ -393,6 +393,7 @@ export default async function ManagerUsersPage({
                           sales: t(lang, "Sales", "销售"),
                           cs: t(lang, "CS", "客服"),
                           care: t(lang, "Full Care", "全托管"),
+                          hr: t(lang, "HR", "人事"),
                           save: t(lang, "Save", "保存"),
                           errorPrefix: t(lang, "Error", "错误"),
                         }}

@@ -33,6 +33,22 @@ export async function inspectTeacherSchedulingAvailability(
     return { error: "课程不能跨越两个自然日", source: null as "date" | "weekly" | null };
   }
 
+  const approvedLeave = await db.hrLeaveRequest.findFirst({
+    where: {
+      status: "APPROVED",
+      startAt: { lt: endAt },
+      endAt: { gt: startAt },
+      employee: { teacherId },
+    },
+    select: { leaveType: true, startAt: true, endAt: true },
+  });
+  if (approvedLeave) {
+    return {
+      error: `老师在该时段已有已批准假期（${approvedLeave.leaveType}），请更换老师或时间`,
+      source: null as "date" | "weekly" | null,
+    };
+  }
+
   const startMin = toMinFromDate(startAt);
   const endMin = toMinFromDate(endAt);
   const dayStart = new Date(startAt.getFullYear(), startAt.getMonth(), startAt.getDate(), 0, 0, 0, 0);

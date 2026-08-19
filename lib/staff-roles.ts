@@ -1,5 +1,5 @@
 export const SYSTEM_USER_ROLES = ["ADMIN", "FINANCE", "SALES", "CS", "TEACHER", "STUDENT"] as const;
-export const STAFF_WORKSPACES = ["SALES", "CS", "CARE"] as const;
+export const STAFF_WORKSPACES = ["SALES", "CS", "CARE", "HR"] as const;
 
 export type SystemUserRole = (typeof SYSTEM_USER_ROLES)[number];
 export type StaffWorkspace = (typeof STAFF_WORKSPACES)[number];

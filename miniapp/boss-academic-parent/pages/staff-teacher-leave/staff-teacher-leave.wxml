@@ -1,18 +1,18 @@
 <view class="page">
-  <view class="top">
-    <view class="eyebrow">教学事务</view>
-    <view class="title">请假与调课申请</view>
-    <view class="subtitle">选择课程并提交请假或调课申请。</view>
-  </view>
-  <view class="summary"><view class="summary-item"><view class="summary-number">{{upcomingCount}}</view><view class="label">未来30天课程</view></view></view>
-  <view class="section-title">选择课程</view>
-  <block wx:if="{{upcoming.length}}">
-    <view class="list-card" wx:for="{{upcoming}}" wx:key="id">
-      <view class="item-title">{{item.courseLabel}}</view>
-      <view class="item-meta">{{item.timeText}}</view>
-      <view class="item-meta">{{item.studentText}} · {{item.locationText}}</view>
-      <button class="primary" data-id="{{item.id}}" bindtap="openSession">填写申请</button>
+  <view class="top"><view class="eyebrow">员工自助</view><view class="title">请假与假期余额</view><view class="subtitle">提交后由审批人处理，已批准假期会同步检查课表冲突。</view></view>
+  <view class="empty" wx:if="{{!configured && !loading}}">HR 员工档案尚未建立，请联系 HR。</view>
+  <block wx:if="{{configured}}">
+    <view class="profile"><view class="profile-name">{{employee.name}}</view><view>{{employee.legalEntity}} · 审批人 {{employee.managerName}}</view></view>
+    <scroll-view scroll-x class="balance-strip"><view class="balance-card" wx:for="{{leaveTypes}}" wx:key="value"><view class="balance-name">{{item.label}}</view><view class="balance-number">{{item.balanceDays}} 天</view><view class="attachment" wx:if="{{item.requiresAttachment}}">需网页上传证明</view></view></scroll-view>
+    <view class="form-section"><view class="section-title">新申请</view>
+      <view class="field"><view class="label">假期类型</view><picker range="{{leaveTypes}}" range-key="label" value="{{leaveTypeIndex}}" bindchange="changeType"><view class="picker">{{leaveTypes[leaveTypeIndex].label || '请选择'}} ›</view></picker></view>
+      <view class="date-grid"><view class="field"><view class="label">开始日期</view><picker mode="date" value="{{startDate}}" bindchange="changeStart"><view class="picker">{{startDate}}</view></picker></view><view class="field"><view class="label">结束日期</view><picker mode="date" value="{{endDate}}" start="{{startDate}}" bindchange="changeEnd"><view class="picker">{{endDate}}</view></picker></view></view>
+      <view class="field"><view class="label">时段</view><picker range="{{portions}}" range-key="label" value="{{portionIndex}}" bindchange="changePortion"><view class="picker">{{portions[portionIndex].label}}</view></picker></view>
+      <view class="field" wx:if="{{portions[portionIndex].value === 'HOURLY'}}"><view class="label">小时数</view><input type="digit" value="{{hours}}" bindinput="changeHours"/></view>
+      <view class="field"><view class="label">原因</view><textarea value="{{reason}}" maxlength="500" placeholder="请简要说明，病假等需要证明的类型请用网页端提交" bindinput="changeReason"/></view>
+      <button class="primary" loading="{{loading}}" bindtap="submit">提交审批</button>
     </view>
+    <view class="section-title history-title">申请记录</view>
+    <view class="request" wx:for="{{requests}}" wx:key="id"><view class="request-head"><view class="request-type">{{item.leaveTypeLabel}}</view><view class="status status-{{item.status}}">{{item.status}}</view></view><view>{{item.startDate}} 至 {{item.endDate}} · {{item.durationDays}} 天</view><view class="meta">审批人 {{item.approverName}} · 课表冲突 {{item.scheduleConflictCount}}</view><view class="note" wx:if="{{item.decisionNote}}">{{item.decisionNote}}</view><button class="cancel" wx:if="{{item.cancellable}}" data-id="{{item.id}}" bindtap="cancelRequest">取消申请</button></view>
   </block>
-  <view class="empty" wx:else>未来30天没有需要处理的课程</view>
 </view>

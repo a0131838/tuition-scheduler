@@ -1,5 +1,27 @@
 # RELEASE BOARD
 
+- 2026-08-19-r391: guarded server release of the private employee HRIS, leave calendar and full-time payslip workflow.
+
+## 2026-08-19-r391 Live
+
+- Scope: provide Jasmine with an HR approval workspace and give eligible employees a self-service route for leave, OIL and approved payslips across web and staff miniapp.
+- Business impact:
+  - employee profiles and local/foreign lifecycle checklists keep inherited HR records in one controlled workspace;
+  - annual leave, medical leave, hospitalisation leave, OIL, unpaid leave and other leave follow one request, approval, balance and audit flow;
+  - approved leave is visible in the HR calendar and blocks conflicting new lessons through the existing central scheduling check;
+  - HR, finance and director actions are separated before a payslip is released to an employee;
+  - legacy employee documents can be imported idempotently into server-private storage without committing them to Git.
+- Safety boundary:
+  - additive database migration only;
+  - no rewrite of existing attendance, package balance, invoice, receipt, expense claim, teacher payroll or contract data;
+  - HR documents are never served from `public`, highly restricted identity and contract files are not visible through employee self-service, and every protected download is audited;
+  - leave policy entitlements default to zero until confirmed against signed employment terms.
+- Verification before deploy:
+  - Prisma format/generate and TypeScript passed;
+  - 6/6 HRIS regressions passed;
+  - 258-page production build and release diff checks passed.
+- Task doc: docs/tasks/TASK-20260819-employee-hris.md.
+
 - 2026-08-19-r390: concise parent assessment flow uploaded as WeChat development version `1.0.64`; not submitted for review or formally published, and the server is unchanged.
 
 ## 2026-08-19-r390 Development upload

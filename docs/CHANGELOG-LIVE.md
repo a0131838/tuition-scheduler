@@ -1,5 +1,23 @@
 # CHANGELOG LIVE
 
+## 2026-08-19-r391
+
+- Release ID: 2026-08-19-r391
+- Date/Time (Asia/Singapore): 2026-08-19
+- Deployment status: Released through the guarded server workflow; production initialization is included in the release runbook.
+- Scope: add a private HRIS workspace for employee lifecycle records, HR checklists, leave and off-in-lieu requests, approved-leave schedule protection, full-time payslips and employee self-service on web and staff miniapp.
+- Key files:
+  - prisma/migrations/20260819183000_add_hris_core/migration.sql
+  - app/admin/hr/**, app/teacher/hr/page.tsx, app/api/hr/**
+  - app/api/miniapp/staff/hr/leave/route.ts
+  - lib/hr-*.ts, scripts/{bootstrap-hris,import-legacy-hr-documents}.ts
+  - miniapp/boss-academic-parent/pages/staff-teacher-leave/*
+- Risk impact (if any): Medium because this adds additive HR tables and an approved-leave scheduling guard. Existing finance, attendance, package, contract, expense-claim and teacher-payroll records are not migrated or rewritten. Private HR files are stored outside `public` and downloads are permission checked and audited.
+- Verification: Prisma format/generate, TypeScript, 6/6 HRIS regressions, 258-page production build and `git diff --check` passed before release.
+- Rollback point: production commit immediately before 2026-08-19-r391; the additive HR tables can remain unused during a code rollback.
+
+---
+
 ## 2026-08-19-r390
 
 - Release ID: 2026-08-19-r390

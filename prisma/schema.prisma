@@ -22,6 +22,57 @@ enum StaffWorkspace {
   SALES
   CS
   CARE
+  HR
+}
+
+enum HrChecklistStatus {
+  NOT_STARTED
+  PENDING
+  RECEIVED
+  VERIFIED
+  NOT_APPLICABLE
+  EXPIRED
+}
+
+enum HrDocumentSensitivity {
+  STANDARD
+  RESTRICTED
+  HIGHLY_RESTRICTED
+}
+
+enum HrLeaveType {
+  ANNUAL
+  SICK_OUTPATIENT
+  HOSPITALISATION
+  OFF_IN_LIEU
+  UNPAID
+  OTHER
+}
+
+enum HrLeaveStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum HrLeaveLedgerEntryType {
+  OPENING
+  ACCRUAL
+  ADJUSTMENT
+  USED
+  RESTORED
+  EXPIRY
+}
+
+enum HrPayslipStatus {
+  DRAFT
+  HR_VERIFIED
+  FINANCE_CONFIRMED
+  DIRECTOR_APPROVED
+  PAID
+  VOID
 }
 
 enum TrainingPracticalStatus {
@@ -487,6 +538,7 @@ model Teacher {
   bookingRequestSlotLocks   StudentBookingRequestSlotLock[]
   courseRates               TeacherCourseRate[]
   employmentTerms           TeacherEmploymentTerm[]
+  employeeProfile           EmployeeProfile?
   payrollSessionOverrides   TeacherPayrollSessionOverride[]
   payrollNotes              TeacherPayrollNote[]
   midtermReports            MidtermReport[]
@@ -1295,6 +1347,21 @@ model User {
   staffMiniappInvitesCreated   StaffMiniappBindInvite[]   @relation("StaffMiniappBindInviteCreator")
   trainingProgresses           StaffTrainingProgress[]    @relation("TrainingProgressUser")
   trainingApprovals            StaffTrainingProgress[]    @relation("TrainingProgressApprover")
+  employeeProfile              EmployeeProfile?           @relation("EmployeeProfileUser")
+  managedEmployees             EmployeeProfile[]          @relation("EmployeeProfileManager")
+  employeeProfilesCreated      EmployeeProfile[]          @relation("EmployeeProfileCreatedBy")
+  employeeProfilesUpdated      EmployeeProfile[]          @relation("EmployeeProfileUpdatedBy")
+  hrChecklistItemsOwned        HrChecklistItem[]          @relation("HrChecklistOwner")
+  hrChecklistItemsVerified     HrChecklistItem[]          @relation("HrChecklistVerifier")
+  hrDocumentsUploaded          HrDocument[]               @relation("HrDocumentUploader")
+  hrDocumentsVerified          HrDocument[]               @relation("HrDocumentVerifier")
+  hrLeaveRequestsApproved      HrLeaveRequest[]           @relation("HrLeaveApprover")
+  hrLeaveLedgerEntriesCreated  HrLeaveLedgerEntry[]       @relation("HrLeaveLedgerCreator")
+  hrPayslipsPrepared           HrPayslip[]                @relation("HrPayslipPreparedBy")
+  hrPayslipsHrVerified         HrPayslip[]                @relation("HrPayslipHrVerifier")
+  hrPayslipsFinanceConfirmed   HrPayslip[]                @relation("HrPayslipFinanceConfirmer")
+  hrPayslipsDirectorApproved   HrPayslip[]                @relation("HrPayslipDirectorApprover")
+  hrPayslipsPaid               HrPayslip[]                @relation("HrPayslipPaidBy")
   trainingRoleAssignments      StaffTrainingRole[]
   careEngagementsOwned         CareEngagement[]           @relation("CareEngagementCaseOwner")
   careEngagementsCreated       CareEngagement[]           @relation("CareEngagementCreatedBy")
@@ -1329,6 +1396,262 @@ model User {
   careServiceReviewsPrepared   CareServiceReview[]        @relation("CareServiceReviewPreparedBy")
   careServiceReviewsSubmitted  CareServiceReview[]        @relation("CareServiceReviewSubmittedBy")
   careServiceReviewsApproved   CareServiceReview[]        @relation("CareServiceReviewApprovedBy")
+}
+
+model HrLegalEntity {
+  id                 String   @id @default(uuid())
+  name               String   @unique
+  registrationNumber String?
+  countryCode        String   @default("SG")
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  employees     EmployeeProfile[]
+  documents     HrDocument[]
+  leavePolicies HrLeavePolicy[]
+  payslips      HrPayslip[]
+}
+
+model EmployeeProfile {
+  id               String    @id @default(uuid())
+  userId           String    @unique
+  teacherId        String?   @unique
+  legalEntityId    String
+  employeeNo       String?   @unique
+  employmentType   String    @default("FULL_TIME")
+  employmentStatus String    @default("ACTIVE")
+  department       String?
+  jobTitle         String?
+  managerUserId    String?
+  startDate        DateTime
+  probationEndDate DateTime?
+  confirmedAt      DateTime?
+  endDate          DateTime?
+  workPattern      Json?
+  nationality      String?
+  workPassType     String?
+  workPassExpiry   DateTime?
+  passportExpiry   DateTime?
+  payrollEligible  Boolean   @default(true)
+  leaveEligible    Boolean   @default(true)
+  createdByUserId  String
+  updatedByUserId  String
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  user          User                 @relation("EmployeeProfileUser", fields: [userId], references: [id], onDelete: Cascade)
+  teacher       Teacher?             @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  legalEntity   HrLegalEntity        @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  manager       User?                @relation("EmployeeProfileManager", fields: [managerUserId], references: [id], onDelete: SetNull)
+  createdBy     User                 @relation("EmployeeProfileCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  updatedBy     User                 @relation("EmployeeProfileUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Restrict)
+  checklist     HrChecklistItem[]
+  documents     HrDocument[]
+  leaveRequests HrLeaveRequest[]
+  leaveLedger   HrLeaveLedgerEntry[]
+  payslips      HrPayslip[]
+
+  @@index([legalEntityId, employmentStatus])
+  @@index([managerUserId, employmentStatus])
+  @@index([workPassExpiry])
+  @@index([passportExpiry])
+}
+
+model HrChecklistItem {
+  id           String            @id @default(uuid())
+  employeeId   String
+  stage        String
+  code         String
+  labelEn      String
+  labelZh      String
+  status       HrChecklistStatus @default(NOT_STARTED)
+  ownerUserId  String?
+  dueDate      DateTime?
+  documentId   String?
+  verifiedById String?
+  verifiedAt   DateTime?
+  note         String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  employee   EmployeeProfile @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  owner      User?           @relation("HrChecklistOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  document   HrDocument?     @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  verifiedBy User?           @relation("HrChecklistVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
+
+  @@unique([employeeId, code])
+  @@index([status, dueDate])
+  @@index([ownerUserId, status])
+}
+
+model HrDocument {
+  id            String                @id @default(uuid())
+  employeeId    String?
+  legalEntityId String
+  category      String
+  sensitivity   HrDocumentSensitivity @default(RESTRICTED)
+  status        HrChecklistStatus     @default(RECEIVED)
+  originalName  String
+  privatePath   String
+  mimeType      String?
+  sizeBytes     Int
+  fileHash      String
+  source        String?
+  issuedAt      DateTime?
+  effectiveAt   DateTime?
+  signedAt      DateTime?
+  expiresAt     DateTime?
+  uploadedById  String
+  verifiedById  String?
+  verifiedAt    DateTime?
+  archivedAt    DateTime?
+  archiveReason String?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  employee    EmployeeProfile?  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  legalEntity HrLegalEntity     @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  uploadedBy  User              @relation("HrDocumentUploader", fields: [uploadedById], references: [id], onDelete: Restrict)
+  verifiedBy  User?             @relation("HrDocumentVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
+  checklist   HrChecklistItem[]
+
+  @@unique([employeeId, category, fileHash])
+  @@index([employeeId, category, status])
+  @@index([legalEntityId, category])
+  @@index([expiresAt, status])
+}
+
+model HrLeavePolicy {
+  id                       String      @id @default(uuid())
+  legalEntityId            String
+  leaveType                HrLeaveType
+  annualEntitlementMinutes Int         @default(0)
+  minimumServiceMonths     Int         @default(0)
+  carryForwardMinutes      Int         @default(0)
+  carryForwardExpiryMonths Int?
+  requiresAttachment       Boolean     @default(false)
+  allowHalfDay             Boolean     @default(true)
+  allowHourly              Boolean     @default(false)
+  isActive                 Boolean     @default(true)
+  note                     String?
+  createdAt                DateTime    @default(now())
+  updatedAt                DateTime    @updatedAt
+
+  legalEntity HrLegalEntity @relation(fields: [legalEntityId], references: [id], onDelete: Cascade)
+
+  @@unique([legalEntityId, leaveType])
+}
+
+model HrLeaveRequest {
+  id                     String        @id @default(uuid())
+  employeeId             String
+  leaveType              HrLeaveType
+  startAt                DateTime
+  endAt                  DateTime
+  durationMinutes        Int
+  reason                 String?
+  attachmentPrivatePath  String?
+  attachmentOriginalName String?
+  attachmentMimeType     String?
+  status                 HrLeaveStatus @default(DRAFT)
+  approverUserId         String?
+  submittedAt            DateTime?
+  decidedAt              DateTime?
+  decisionNote           String?
+  scheduleConflictCount  Int           @default(0)
+  cancelledAt            DateTime?
+  cancelReason           String?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  employee EmployeeProfile      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  approver User?                @relation("HrLeaveApprover", fields: [approverUserId], references: [id], onDelete: SetNull)
+  ledger   HrLeaveLedgerEntry[]
+
+  @@index([employeeId, status, startAt])
+  @@index([approverUserId, status, submittedAt])
+  @@index([startAt, endAt, status])
+}
+
+model HrLeaveLedgerEntry {
+  id             String                 @id @default(uuid())
+  employeeId     String
+  leaveType      HrLeaveType
+  entryType      HrLeaveLedgerEntryType
+  minutes        Int
+  leaveRequestId String?
+  source         String
+  note           String?
+  expiresAt      DateTime?
+  createdById    String
+  createdAt      DateTime               @default(now())
+
+  employee     EmployeeProfile @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveRequest HrLeaveRequest? @relation(fields: [leaveRequestId], references: [id], onDelete: SetNull)
+  createdBy    User            @relation("HrLeaveLedgerCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([employeeId, leaveType, createdAt])
+  @@index([expiresAt])
+}
+
+model HrPayslip {
+  id                   String          @id @default(uuid())
+  employeeId           String
+  legalEntityId        String
+  month                String
+  periodStart          DateTime
+  periodEnd            DateTime
+  currencyCode         String          @default("SGD")
+  basicSalaryCents     Int             @default(0)
+  allowanceCents       Int             @default(0)
+  deductionCents       Int             @default(0)
+  employeeCpfCents     Int             @default(0)
+  employerCpfCents     Int             @default(0)
+  reimbursementCents   Int             @default(0)
+  grossPayCents        Int             @default(0)
+  netPayCents          Int             @default(0)
+  status               HrPayslipStatus @default(DRAFT)
+  preparedById         String
+  hrVerifiedById       String?
+  hrVerifiedAt         DateTime?
+  financeConfirmedById String?
+  financeConfirmedAt   DateTime?
+  directorApprovedById String?
+  directorApprovedAt   DateTime?
+  paidById             String?
+  paidAt               DateTime?
+  paymentReference     String?
+  note                 String?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  employee           EmployeeProfile @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  legalEntity        HrLegalEntity   @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  preparedBy         User            @relation("HrPayslipPreparedBy", fields: [preparedById], references: [id], onDelete: Restrict)
+  hrVerifiedBy       User?           @relation("HrPayslipHrVerifier", fields: [hrVerifiedById], references: [id], onDelete: SetNull)
+  financeConfirmedBy User?           @relation("HrPayslipFinanceConfirmer", fields: [financeConfirmedById], references: [id], onDelete: SetNull)
+  directorApprovedBy User?           @relation("HrPayslipDirectorApprover", fields: [directorApprovedById], references: [id], onDelete: SetNull)
+  paidBy             User?           @relation("HrPayslipPaidBy", fields: [paidById], references: [id], onDelete: SetNull)
+  lines              HrPayslipLine[]
+
+  @@unique([employeeId, month])
+  @@index([legalEntityId, month, status])
+}
+
+model HrPayslipLine {
+  id          String   @id @default(uuid())
+  payslipId   String
+  category    String
+  code        String
+  label       String
+  amountCents Int
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  payslip HrPayslip @relation(fields: [payslipId], references: [id], onDelete: Cascade)
+
+  @@index([payslipId, sortOrder])
 }
 
 model StaffTrainingProgress {

@@ -16,6 +16,8 @@
         "communications:sync": "tsx scripts/sync-parent-communication-tasks.ts",
         "renewals:sync": "tsx scripts/sync-renewal-tasks.ts",
         "scheduling:monthly-sync": "tsx scripts/sync-monthly-scheduling.ts",
+    "hr:bootstrap": "tsx scripts/bootstrap-hris.ts",
+    "hr:import-legacy": "tsx scripts/import-legacy-hr-documents.ts",
         "miniapp:audit-release": "tsx scripts/audit-miniapp-release.ts",
         "cleanup:availability-integrity": "tsx scripts/clean-availability-integrity.ts",
         "test:auth": "tsx --test tests/route-guards.test.ts",
