@@ -56,9 +56,10 @@ test("assessment hub explains selection and readiness as different jobs", () => 
   const hub = read("pages/guide-assessments/guide-assessments.wxml");
   assert.match(hub, /智能选校/);
   assert.match(hub, /约2分钟/);
-  assert.match(hub, /英文水平测评/);
-  assert.match(hub, /约30–45分钟/);
-  assert.match(hub, /不是官方成绩或录取结果/);
+  assert.match(hub, /入学能力测评/);
+  assert.match(hub, /约30–75分钟/);
+  assert.match(hub, /查看能力结果和提升建议/);
+  assert.doesNotMatch(hub, /iTEP|平行卷|官方成绩|录取结果/);
 });
 
 test("guide metadata is visually secondary and long detail starts collapsed", () => {

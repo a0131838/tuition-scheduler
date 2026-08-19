@@ -236,7 +236,8 @@ test("pending review exposes a concise status and parallel-form retest without r
   const page = fs.readFileSync(path.join(process.cwd(), "miniapp/boss-academic-parent/pages/guide-academic-assessment/guide-academic-assessment.wxml"), "utf8");
   const controller = fs.readFileSync(path.join(process.cwd(), "miniapp/boss-academic-parent/pages/guide-academic-assessment/guide-academic-assessment.js"), "utf8");
   const startRoute = fs.readFileSync(path.join(process.cwd(), "app/api/public/school-guide/academic-assessment/start/route.ts"), "utf8");
-  assert.match(page, /结果正在复核[\s\S]*再测一套平行卷/);
+  assert.match(page, /正在生成结果[\s\S]*开始新一轮/);
+  assert.doesNotMatch(page, /平行卷/);
   assert.match(controller, /retestSessionToken:\s*this\.data\.sessionToken/);
   assert.match(startRoute, /sourceMode:\s*retestSource \? "PARALLEL_RETEST"/);
   assert.match(startRoute, /parallelRetestLimitReached/);

@@ -1,5 +1,21 @@
 # CHANGELOG LIVE
 
+## 2026-08-19-r390
+
+- Release ID: 2026-08-19-r390
+- Date/Time (Asia/Singapore): 2026-08-19 17:36
+- Deployment status: WeChat development version `1.0.64` uploaded successfully; no server deployment, review submission or formal publication.
+- Scope: simplify every parent-facing assessment state so each screen explains only the current action, result and next step; remove internal test-framework, AI-scoring and parallel-paper terminology from the consumer flow.
+- Key files:
+  - miniapp/boss-academic-parent/pages/guide-academic-assessment/guide-academic-assessment.{js,wxml}
+  - miniapp/boss-academic-parent/pages/guide-assessments/guide-assessments.wxml
+  - tests/{miniapp-consumer-entry,school-guide-academic-assessment,school-guide-assessment-request}.test.ts
+- Risk impact (if any): Low and presentation-only. Question banks, scoring, saved sessions, history, retesting, manual review, APIs and formal business data are unchanged.
+- Verification: miniapp release audit, native JavaScript syntax, 40/40 focused assessment regressions and `git diff --check` passed; WeChat Developer Tools uploaded version `1.0.64` successfully at 798,516 bytes.
+- Rollback point: WeChat development version `1.0.63`; no production rollback is required because this version was not submitted or published.
+
+---
+
 ## 2026-08-19-r389
 
 - Release ID: 2026-08-19-r389

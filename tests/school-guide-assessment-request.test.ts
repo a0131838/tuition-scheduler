@@ -59,13 +59,14 @@ test("native miniapp starts public assessment directly while preserving legacy s
   const startRoute = fs.readFileSync(path.join(process.cwd(), "app/api/public/school-guide/academic-assessment/start/route.ts"), "utf8");
   const staff = fs.readFileSync(path.join(process.cwd(), "miniapp/boss-academic-parent/pages/staff-assessment-request-detail/staff-assessment-request-detail.wxml"), "utf8");
   const appJson = JSON.parse(fs.readFileSync(path.join(process.cwd(), "miniapp/boss-academic-parent/app.json"), "utf8"));
-  assert.match(parent, /立即免费测评/);
-  assert.match(parent, /无需登录或评估码/);
+  assert.match(parent, /开始测评/);
+  assert.match(parent, /请由孩子本人作答/);
+  assert.doesNotMatch(parent, /iTEP|评估码/);
   assert.doesNotMatch(parent, /验证评估码并开始/);
   assert.match(parent, /评估已就绪，开始测评/);
   assert.match(parent, /测评结果/);
   assert.match(parent, /接下来怎么提高/);
-  assert.match(parent, /联系规划老师制定学习方案/);
+  assert.match(parent, /联系规划老师/);
   assert.match(parent, /查看详细分析/);
   assert.match(startRoute, /DIRECT_SELF_SERVE/);
   assert.match(startRoute, /公开自助测评内部凭证/);
@@ -84,7 +85,8 @@ test("completed assessment can start another round without a permanent retest lo
   assert.match(miniapp, /startNewRound/);
   assert.match(miniapp, /reportImprovementPlan/);
   assert.match(miniapp, /school_guide_academic_assessment_history/);
-  assert.match(view, /再测一套平行卷/);
+  assert.match(view, /再测一次/);
+  assert.doesNotMatch(view, /平行卷/);
   assert.match(view, /为另一个孩子测评/);
 });
 

@@ -9,10 +9,10 @@
       <view class="hub-main"><view class="hub-title">智能选校</view><view class="hub-meta">约2分钟</view><view class="hub-note">根据年龄、预算和课程生成候选学校</view></view><view class="guide-arrow">›</view>
     </view>
     <view class="hub-option" hover-class="guide-press" bindtap="goReadiness">
-      <view class="hub-main"><view class="hub-title">英文水平测评</view><view class="hub-meta">约30–45分钟</view><view class="hub-note">完成测评后查看系统报告</view><view class="hub-state" wx:if="{{hasRequest || hasSession}}">{{hasSession ? '继续测评或查看报告' : '查看原有申请'}}</view></view><view class="guide-arrow">›</view>
+      <view class="hub-main"><view class="hub-title">入学能力测评</view><view class="hub-meta">约30–75分钟</view><view class="hub-note">查看能力结果和提升建议</view><view class="hub-state" wx:if="{{hasRequest || hasSession}}">{{hasSession ? '继续上次测评' : '查看原有申请'}}</view></view><view class="guide-arrow">›</view>
     </view>
   </view>
 
-  <view class="guide-page-meta">测评结果用于学习准备参考，不是官方成绩或录取结果。</view>
+  <view class="guide-page-meta">请由孩子本人作答</view>
 </view>
 <guide-nav active="assessment" />

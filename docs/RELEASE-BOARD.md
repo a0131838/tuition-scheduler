@@ -1,5 +1,22 @@
 # RELEASE BOARD
 
+- 2026-08-19-r390: concise parent assessment flow uploaded as WeChat development version `1.0.64`; not submitted for review or formally published, and the server is unchanged.
+
+## 2026-08-19-r390 Development upload
+
+- Scope: make the assessment hub, setup, answering, scoring wait, result and history states read like a consumer app rather than an internal product specification.
+- Business impact:
+  - each screen presents one primary action;
+  - parents see the child's result, improvement plan and advisor contact without framework or scoring jargon;
+  - detailed analysis remains optional rather than blocking the main result.
+- Safety boundary:
+  - copy and presentation changes only;
+  - no question-bank, scoring, saved-session, history, retest, manual-review, API or formal-data behavior change;
+  - development upload only; do not submit review or publish formally.
+- Verification:
+  - release audit, native JavaScript syntax, 40/40 focused regressions and `git diff --check` passed;
+  - WeChat Developer Tools uploaded development version `1.0.64` successfully at 798,516 bytes on 2026-08-19 17:36 Asia/Singapore.
+
 - 2026-08-19-r389: parent home service-entry completion uploaded as WeChat development version `1.0.63`; not submitted for review or formally published, and the server is unchanged.
 
 ## 2026-08-19-r389 Development upload

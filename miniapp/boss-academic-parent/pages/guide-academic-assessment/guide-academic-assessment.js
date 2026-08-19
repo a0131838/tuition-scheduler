@@ -33,7 +33,7 @@ function reportImprovementPlan(report) {
   return [
     { stage: "第1–2周", title: `补稳${primary}`, detail: "由规划老师结合错题确认基础缺口，每周安排针对性讲解与练习。" },
     { stage: "第3–6周", title: `强化${secondary}`, detail: "按目标考试题型训练，并根据每周完成情况调整难度和训练量。" },
-    { stage: "第7–8周", title: "模拟与复测", detail: "完成一次计时模拟，再使用下一套平行卷复测并比较进步。" }
+    { stage: "第7–8周", title: "模拟与复测", detail: "完成一次计时练习，再次测评并比较进步。" }
   ];
 }
 
@@ -278,7 +278,7 @@ Page({
     const improvementPlan = reportImprovementPlan(session.report);
     const evidence = session.report && session.report.evidence ? session.report.evidence : null;
     const evidenceText = evidence
-      ? `${evidence.totalItems}题（${evidence.objectiveItems}题客观题 + ${evidence.reviewedItems}题写作/复核）· ${evidence.skillCoverage.join("、")} · ${evidence.parallelForm}卷`
+      ? `${evidence.totalItems}道题 · ${evidence.skillCoverage.join("、")}`
       : "";
     const retestDateText = formatDate(session.retestRecommendedAt);
     this.sectionReceivedAt = Date.now();
@@ -314,8 +314,8 @@ Page({
     const source = this.data.session;
     if (!source || !this.data.sessionToken) return api.toast("没有可复测的原记录");
     wx.showModal({
-      title: "开始平行卷复测",
-      content: "本轮记录会保留，新一轮将优先更换A/B/C平行卷。24小时内最多开始3轮，避免记忆题目影响结果。",
+      title: "开始新一轮测评",
+      content: "上一次结果会保留。建议间隔一段时间后再测，便于比较进步。",
       success: (result) => {
         if (!result.confirm) return;
         this.setData({ loading: true });
