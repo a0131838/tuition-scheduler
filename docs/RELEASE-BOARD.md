@@ -7537,3 +7537,11 @@
 - Gates: assessment 14/14, TypeScript, 251-page production build and 69-page miniapp audit passed; deployment pending.
 - Boundary: additive API and presentation only; no existing report recalculation, scheduling/package/finance mutation or formal miniapp release.
 - Task: `docs/tasks/TASK-20260817-school-guide-assessment-product-split.md`.
+
+# 2026-08-19-r384 Candidate
+
+- Scope: second-stage admin read-path performance work after the ticket/AI integration, limited to request memoization, shared-shell cost removal, deferred alert synchronization and parallel independent reads.
+- User impact: Ticket Center filters, ticket detail, Today/Todos, sign-in alerts and monthly schedule should return without waiting for unrelated approval, AI, sync or reporting work.
+- Safety: no database migration; no scheduling, ticket, package, attendance, payroll, finance or notification business rule changes; the formal approval page remains on its existing source of truth.
+- Validation: backend regression 180/180, performance regression 6/6, production build and `git diff --check` pass. Standard server preflight, deploy and signed-in production timing remain the release gates.
+- Task doc: `docs/tasks/TASK-20260819-admin-read-performance-phase2.md`.

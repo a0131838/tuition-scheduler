@@ -373,6 +373,78 @@ export default async function AdminTodosPage({
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0);
   const pastSince = new Date(dayStart);
   pastSince.setDate(dayStart.getDate() - pastDays);
+  const usageSince = new Date(Date.now() - FORECAST_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  const schedulingFollowupWindowEnd = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+
+  const operationsDataPromise = Promise.all([
+    getOrRunDailyConflictAudit(now),
+    getLatestAutoFixResult(),
+    prisma.coursePackage.findMany({
+      where: {
+        type: "HOURS",
+        status: "ACTIVE",
+        remainingMinutes: { gt: 0 },
+      },
+      include: { student: { include: { studentType: true, sourceChannel: true } }, course: true },
+      orderBy: { updatedAt: "desc" },
+      take: 500,
+    }),
+    getOverdueUnmarkedFollowupGroups({ now, thresholdHours: 3, lookbackDays: 7, perTeacherLimit: 4, totalLimit: 120 }),
+    prisma.appSetting.findUnique({ where: { key: LEDGER_INTEGRITY_ALERT_KEY }, select: { value: true } }),
+    prisma.ticket.findMany({
+      where: {
+        type: SCHEDULING_COORDINATION_TICKET_TYPE,
+        isArchived: false,
+        status: { notIn: ["Completed", "Cancelled"] },
+        nextActionDue: { lte: schedulingFollowupWindowEnd },
+      },
+      orderBy: [{ nextActionDue: "asc" }, { createdAt: "desc" }],
+      take: 8,
+      select: {
+        id: true,
+        ticketNo: true,
+        studentName: true,
+        owner: true,
+        status: true,
+        nextAction: true,
+        nextActionDue: true,
+        parentAvailability: true,
+        parentAvailabilityRequest: {
+          select: {
+            submittedAt: true,
+          },
+        },
+      },
+    }),
+    prisma.parentAvailabilityRequest.findMany({
+      where: {
+        isActive: true,
+        submittedAt: { not: null },
+        ticket: {
+          isArchived: false,
+          status: { notIn: ["Completed", "Cancelled"] },
+          type: SCHEDULING_COORDINATION_TICKET_TYPE,
+        },
+      },
+      orderBy: [{ submittedAt: "desc" }, { createdAt: "desc" }],
+      take: 8,
+      select: {
+        ticketId: true,
+        submittedAt: true,
+        courseLabel: true,
+        ticket: {
+          select: {
+            ticketNo: true,
+            studentName: true,
+            owner: true,
+            status: true,
+            nextAction: true,
+            parentAvailability: true,
+          },
+        },
+      },
+    }),
+  ]);
 
   const [sessionsHistoryWindow, sessionsTomorrow] = await Promise.all([
     prisma.session.findMany({
@@ -659,77 +731,7 @@ export default async function AdminTodosPage({
   const teacherRemindersConfirmed = teacherReminders.filter((r) => teacherConfirmed.has(r.id));
   const studentRemindersConfirmed = studentReminders.filter((r) => studentConfirmed.has(r.id));
 
-  const usageSince = new Date(Date.now() - FORECAST_WINDOW_DAYS * 24 * 60 * 60 * 1000);
-  const schedulingFollowupWindowEnd = new Date(now.getTime() + 48 * 60 * 60 * 1000);
-  const [dailyConflictAudit, lastAutoFix, packages, overdueUnmarkedGroups, ledgerAlertRow, schedulingCoordinationRows, submittedParentAvailabilityRows] = await Promise.all([
-    getOrRunDailyConflictAudit(now),
-    getLatestAutoFixResult(),
-    prisma.coursePackage.findMany({
-      where: {
-        type: "HOURS",
-        status: "ACTIVE",
-        remainingMinutes: { gt: 0 },
-      },
-      include: { student: { include: { studentType: true, sourceChannel: true } }, course: true },
-      orderBy: { updatedAt: "desc" },
-      take: 500,
-    }),
-    getOverdueUnmarkedFollowupGroups({ now, thresholdHours: 3, lookbackDays: 7, perTeacherLimit: 4, totalLimit: 120 }),
-    prisma.appSetting.findUnique({ where: { key: LEDGER_INTEGRITY_ALERT_KEY }, select: { value: true } }),
-    prisma.ticket.findMany({
-      where: {
-        type: SCHEDULING_COORDINATION_TICKET_TYPE,
-        isArchived: false,
-        status: { notIn: ["Completed", "Cancelled"] },
-        nextActionDue: { lte: schedulingFollowupWindowEnd },
-      },
-      orderBy: [{ nextActionDue: "asc" }, { createdAt: "desc" }],
-      take: 8,
-      select: {
-        id: true,
-        ticketNo: true,
-        studentName: true,
-        owner: true,
-        status: true,
-        nextAction: true,
-        nextActionDue: true,
-        parentAvailability: true,
-        parentAvailabilityRequest: {
-          select: {
-            submittedAt: true,
-          },
-        },
-      },
-    }),
-    prisma.parentAvailabilityRequest.findMany({
-      where: {
-        isActive: true,
-        submittedAt: { not: null },
-        ticket: {
-          isArchived: false,
-          status: { notIn: ["Completed", "Cancelled"] },
-          type: SCHEDULING_COORDINATION_TICKET_TYPE,
-        },
-      },
-      orderBy: [{ submittedAt: "desc" }, { createdAt: "desc" }],
-      take: 8,
-      select: {
-        ticketId: true,
-        submittedAt: true,
-        courseLabel: true,
-        ticket: {
-          select: {
-            ticketNo: true,
-            studentName: true,
-            owner: true,
-            status: true,
-            nextAction: true,
-            parentAvailability: true,
-          },
-        },
-      },
-    }),
-  ]);
+  const [dailyConflictAudit, lastAutoFix, packages, overdueUnmarkedGroups, ledgerAlertRow, schedulingCoordinationRows, submittedParentAvailabilityRows] = await operationsDataPromise;
   const ledgerAlert = parseLedgerIntegrityAlertState(ledgerAlertRow?.value);
   const academicPackages = packages;
   const activePackageStudentIds = Array.from(new Set(academicPackages.map((p) => p.studentId).filter(Boolean)));

@@ -1022,9 +1022,9 @@ export default async function AdminTicketDetailPage({
       : "后台或专用录入链接 / Admin or dedicated intake link";
 
   const isSchedulingTicket = isSchedulingTicketType(row.type);
-  const aiPlanResult = !row.isArchived && !["Completed", "Cancelled"].includes(row.status)
-    ? await readAdminAiTicketPlan(adminUser, row.id)
-    : null;
+  const aiPlanPromise = !row.isArchived && !["Completed", "Cancelled"].includes(row.status)
+    ? readAdminAiTicketPlan(adminUser, row.id)
+    : Promise.resolve(null);
   const sessionInclude = {
     teacher: { select: { name: true } },
     class: {
@@ -1038,8 +1038,8 @@ export default async function AdminTicketDetailPage({
   } as const;
   const existingResultStart = new Date();
   existingResultStart.setDate(existingResultStart.getDate() - 180);
-  const [upcomingSessions, existingResultSessions] = isSchedulingTicket && row.studentId
-    ? await Promise.all([
+  const sessionsPromise = isSchedulingTicket && row.studentId
+    ? Promise.all([
         prisma.session.findMany({
           where: { startAt: { gte: new Date() }, ...sessionBelongsToStudentWhere(row.studentId) },
           include: sessionInclude,
@@ -1053,7 +1053,11 @@ export default async function AdminTicketDetailPage({
           take: 80,
         }),
       ])
-    : [[], []];
+    : Promise.resolve([[], []] as const);
+  const [aiPlanResult, [upcomingSessions, existingResultSessions]] = await Promise.all([
+    aiPlanPromise,
+    sessionsPromise,
+  ]);
 
   const parsed = parseTicketSituationSummary(row.summary);
   const template = getTicketTypeTemplate(row.type);

@@ -5,6 +5,7 @@ import crypto from "crypto";
 import { canAccessResourceWorkspaceRole, StaffWorkspace, SystemUserRole } from "@/lib/staff-roles";
 import { observerSessionToken } from "@/lib/observer-mode";
 import { operationsAdminSessionToken } from "@/lib/operations-admin-mode";
+import { cache } from "next/dist/compiled/react";
 
 const SESSION_COOKIE = "ts_admin_session";
 const SESSION_DAYS = 30;
@@ -214,11 +215,7 @@ export async function clearSession() {
   c.delete(SESSION_COOKIE);
 }
 
-export async function getCurrentUser(): Promise<AuthUser | null> {
-  const c = await cookies();
-  const token = c.get(SESSION_COOKIE)?.value;
-  if (!token) return null;
-
+const getCurrentUserByToken = cache(async (token: string): Promise<AuthUser | null> => {
   const session = await prisma.authSession.findUnique({
     where: { token },
     include: {
@@ -256,6 +253,13 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     isObserver: u.isObserver,
     operationsAdmin: await isOperationsAdminUser({ role: u.role as AuthUser["role"], email: u.email }),
   };
+});
+
+export async function getCurrentUser(): Promise<AuthUser | null> {
+  const c = await cookies();
+  const token = c.get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+  return getCurrentUserByToken(token);
 }
 
 export async function requireAdmin() {

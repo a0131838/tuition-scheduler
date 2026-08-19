@@ -8,13 +8,35 @@ function read(path: string) {
 
 test("shared admin shell does not rebuild the full approval inbox on every navigation", () => {
   const layout = read("app/admin/layout.tsx");
-  const inbox = read("lib/approval-inbox.ts");
 
   assert.match(layout, /Promise\.all\(\[/);
-  assert.match(layout, /getApprovalInboxShellData/);
+  assert.doesNotMatch(layout, /getApprovalInboxShellData/);
   assert.doesNotMatch(layout, /getApprovalInboxData\(/);
-  assert.match(inbox, /approval-inbox-shell-v1/);
-  assert.match(inbox, /revalidate:\s*20/);
+  assert.match(layout, /const approvalInboxLabel = t\(lang, "Approval Inbox", "审批提醒"\)/);
+});
+
+test("request auth is memoized by session token", () => {
+  const auth = read("lib/auth.ts");
+
+  assert.match(auth, /const getCurrentUserByToken = cache\(async \(token: string\)/);
+  assert.match(auth, /return getCurrentUserByToken\(token\)/);
+});
+
+test("slow secondary work is parallelized or deferred", () => {
+  const alerts = read("app/admin/alerts/page.tsx");
+  const monthly = read("app/admin/reports/monthly-schedule/page.tsx");
+  const ticket = read("app/admin/tickets/[id]/page.tsx");
+  const todos = read("app/admin/todos/page.tsx");
+
+  assert.match(alerts, /after\(async \(\) =>/);
+  assert.doesNotMatch(alerts, /await syncSignInAlerts\(\)\)\.thresholdMin/);
+  assert.match(alerts, /const \[thresholdMin, alerts\] = await Promise\.all/);
+  assert.match(monthly, /const \[data, monthlySchedulingCampaign\] = await Promise\.all/);
+  assert.match(ticket, /const aiPlanPromise =/);
+  assert.match(ticket, /const sessionsPromise =/);
+  assert.match(ticket, /const \[aiPlanResult, \[upcomingSessions, existingResultSessions\]\] = await Promise\.all/);
+  assert.match(todos, /const operationsDataPromise = Promise\.all/);
+  assert.match(todos, /await operationsDataPromise/);
 });
 
 test("ticket filtering uses client navigation and bounded pagination", () => {

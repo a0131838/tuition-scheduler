@@ -15,6 +15,7 @@ import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 import { getVisibleSessionStudentNames, isSessionFullyCancelled } from "@/lib/session-students";
 import { getFeedbackOverdueMinutes } from "@/lib/feedback-timing";
+import { after } from "next/server";
 
 function fmtRange(startAt: Date, endAt: Date) {
   return `${formatBusinessDateTime(new Date(startAt))} - ${formatBusinessTimeOnly(new Date(endAt))}`;
@@ -116,11 +117,20 @@ export default async function AdminAlertsPage({
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
   const focus = (sp?.focus ?? "all") as AlertFocus;
 
-  const thresholdMin = user.isObserver
-    ? await getSignInAlertThresholdMin()
-    : (await syncSignInAlerts()).thresholdMin;
+  if (!user.isObserver) {
+    after(async () => {
+      try {
+        await syncSignInAlerts();
+      } catch (error) {
+        console.error("[sign-in-alerts] background sync failed", error);
+      }
+    });
+  }
 
-  const alerts = await getAdminOpenSignInAlerts(300);
+  const [thresholdMin, alerts] = await Promise.all([
+    getSignInAlertThresholdMin(),
+    getAdminOpenSignInAlerts(300),
+  ]);
 
   const grouped = new Map<string, { session: (typeof alerts)[number]["session"]; items: (typeof alerts)[number][] }>();
   for (const alert of alerts) {

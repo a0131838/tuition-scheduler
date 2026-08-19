@@ -38,8 +38,10 @@ export default async function MonthlyScheduleReportPage({
   const month = sp?.month ?? monthKey(new Date());
   const teacherId = sp?.teacherId ?? "";
   const campusId = sp?.campusId ?? "";
-  const data = await loadMonthlyScheduleData({ month, teacherId, campusId });
-  const monthlySchedulingCampaign = await getMonthlySchedulingCampaign(month);
+  const [data, monthlySchedulingCampaign] = await Promise.all([
+    loadMonthlyScheduleData({ month, teacherId, campusId }),
+    getMonthlySchedulingCampaign(month),
+  ]);
 
   if (!data) {
     return (
