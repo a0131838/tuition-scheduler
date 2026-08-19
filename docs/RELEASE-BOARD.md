@@ -1,8 +1,8 @@
 # RELEASE BOARD
 
-- 2026-08-19-r387: ready with a quieter, action-first parent miniapp home, progress and service-request experience.
+- 2026-08-19-r387: live on the server with a quieter, action-first parent miniapp home, progress and service-request experience; native development version `1.0.61` is uploaded but not submitted for review or formally published.
 
-## 2026-08-19-r387 Ready
+## 2026-08-19-r387 Live
 
 - Scope: make parent-facing actions and click targets obvious while moving statistics, long request text, attachments and historical progress behind optional disclosure.
 - Business impact:
@@ -14,8 +14,10 @@
   - parent miniapp presentation only; no API, database or permission change;
   - no schedule, ticket execution, package, attendance, payroll, finance or notification behavior changed;
   - upload development version only; do not submit review or publish formally.
-- Verification before deploy:
-  - 9/9 focused parent UX regressions, native JavaScript syntax, production build and `git diff --check`.
+- Verification:
+  - 9/9 focused parent UX regressions, native JavaScript syntax, production build and `git diff --check`;
+  - guarded server deploy at runtime commit `a5c21e570bd7501e73e9a43eaf9a49379e198aa5`, PM2 PID `3442283`, HTTP `200`;
+  - WeChat development version `1.0.61` uploaded successfully at 785.1 KB, with no review submission or formal publication.
 - Task doc: docs/tasks/TASK-20260819-parent-miniapp-clarity.md.
 
 - 2026-08-19-r386: live with a native Ticket Center GET filter that cannot remain stuck when the same criteria are submitted twice.
