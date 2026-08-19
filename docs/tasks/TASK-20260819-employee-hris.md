@@ -9,6 +9,7 @@ Create a controlled HR information system for GT Educational Institute Pte. Ltd.
 - Employee profiles linked to existing user and teacher accounts, legal entity, manager, employment dates and eligibility.
 - Local and foreign employee lifecycle checklists based on the supplied HR checklist and filing structure.
 - Private HR document upload/download with file hashing, duplicate prevention, sensitivity levels, audit logging and storage outside `public`.
+- Production HR files are stored in an owner-only persistent directory outside the application checkout so clean deployments cannot remove them.
 - Idempotent legacy HR document importer for inherited employee folders; source files are never added to Git.
 - Leave policies, annual entitlement grants, manual adjustments, balance ledger and request history.
 - Annual, outpatient sick, hospitalisation, OIL, unpaid and other leave applications with attachment rules and no self-approval.

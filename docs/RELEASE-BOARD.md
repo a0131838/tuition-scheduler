@@ -1,5 +1,21 @@
 # RELEASE BOARD
 
+- 2026-08-19-r392: private HR files now use an owner-only persistent server directory outside the deploy checkout.
+
+## 2026-08-19-r392 Live
+
+- Scope: complete the HRIS production hardening discovered during the first release verification.
+- Business impact:
+  - inherited and future HR files survive clean code deployments;
+  - HR bootstrap and legacy import commands load the production database environment consistently;
+  - local development can still use the existing project-local private storage fallback.
+- Safety boundary:
+  - no database schema or business workflow change;
+  - no existing application upload or shared-document path is moved;
+  - the production HR directory is outside the web root and has mode `700`.
+- Verification: 7/7 HRIS regressions, TypeScript, production build, guarded release and HTTP health check.
+- Task doc: docs/tasks/TASK-20260819-employee-hris.md.
+
 - 2026-08-19-r391: guarded server release of the private employee HRIS, leave calendar and full-time payslip workflow.
 
 ## 2026-08-19-r391 Live

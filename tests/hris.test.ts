@@ -59,3 +59,10 @@ test("payslip approval separates HR, finance, director and employee visibility",
   assert.match(pdf, /DIRECTOR_APPROVED/);
   assert.match(pdf, /row\.employee\.userId === actor\.id/);
 });
+
+test("production deploy keeps HR files outside the release checkout", () => {
+  const deploy = read("ops/server/scripts/deploy_app.sh");
+  assert.match(deploy, /HR_PRIVATE_STORAGE_DIR=.*\/home\/ubuntu\/private/);
+  assert.match(deploy, /chmod 700 \"\$HR_PRIVATE_STORAGE_DIR\"/);
+  assert.match(deploy, /HR_PRIVATE_STORAGE_DIR=\$HR_PRIVATE_STORAGE_DIR/);
+});

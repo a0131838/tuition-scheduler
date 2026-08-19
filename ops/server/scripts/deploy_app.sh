@@ -21,6 +21,7 @@ if [[ -z "${DATABASE_URL:-}" || -z "${DIRECT_DATABASE_URL:-}" ]]; then
 fi
 SGT_AI_MINIAPP_SHARED_SECRET="${SGT_AI_MINIAPP_SHARED_SECRET:-}"
 AI_TICKET_EXECUTION_SECRET="${AI_TICKET_EXECUTION_SECRET:-}"
+HR_PRIVATE_STORAGE_DIR="${HR_PRIVATE_STORAGE_DIR:-/home/ubuntu/private/${APP_NAME}/hr}"
 if [[ -z "${SGT_AI_BASE_URL:-}" ]] || (( ${#SGT_AI_MINIAPP_SHARED_SECRET} < 32 || ${#AI_TICKET_EXECUTION_SECRET} < 32 )); then
   echo "Missing or invalid SGT AI integration settings in $ENV_FILE"
   exit 1
@@ -39,6 +40,8 @@ if [[ "${ALLOW_LOCAL_DB_IN_PROD:-false}" != "true" ]]; then
 fi
 
 mkdir -p "$APP_DIR"
+mkdir -p "$HR_PRIVATE_STORAGE_DIR"
+chmod 700 "$HR_PRIVATE_STORAGE_DIR"
 if [[ ! -d "$APP_DIR/.git" ]]; then
   git clone "$REPO_URL" "$APP_DIR"
 fi
@@ -58,7 +61,8 @@ if [[ "${CLEAN_UNTRACKED:-true}" == "true" ]]; then
     -e .env.bak* \
     -e ops/server/.deploy.env \
     -e ops/server/.deploy.env.bak* \
-    -e public/uploads
+    -e public/uploads \
+    -e storage
 fi
 
 # Release process gate: require changelog/task/release-board updates in the deploy commit.
@@ -107,6 +111,7 @@ SHARED_DOC_S3_ENDPOINT=${SHARED_DOC_S3_ENDPOINT:-}
 SHARED_DOC_S3_FORCE_PATH_STYLE=${SHARED_DOC_S3_FORCE_PATH_STYLE:-false}
 SHARED_DOC_S3_ACCESS_KEY_ID=${SHARED_DOC_S3_ACCESS_KEY_ID:-}
 SHARED_DOC_S3_SECRET_ACCESS_KEY=${SHARED_DOC_S3_SECRET_ACCESS_KEY:-}
+HR_PRIVATE_STORAGE_DIR=$HR_PRIVATE_STORAGE_DIR
 SGT_AI_BASE_URL=$SGT_AI_BASE_URL
 SGT_AI_MINIAPP_SHARED_SECRET=$SGT_AI_MINIAPP_SHARED_SECRET
 AI_TICKET_EXECUTION_SECRET=$AI_TICKET_EXECUTION_SECRET

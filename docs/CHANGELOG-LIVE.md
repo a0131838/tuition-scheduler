@@ -1,5 +1,22 @@
 # CHANGELOG LIVE
 
+## 2026-08-19-r392
+
+- Release ID: 2026-08-19-r392
+- Date/Time (Asia/Singapore): 2026-08-19
+- Deployment status: Released through the guarded server workflow after the HRIS production initialization.
+- Scope: move private HR document storage outside the application checkout so future clean deployments cannot remove employee records, and make HR maintenance scripts load the production environment explicitly.
+- Key files:
+  - ops/server/scripts/deploy_app.sh
+  - ops/server/.deploy.env.example
+  - scripts/{bootstrap-hris,import-legacy-hr-documents}.ts
+  - tests/hris.test.ts
+- Risk impact (if any): Low and operational. No HR business data, finance, attendance, package, contract or scheduling rule changes. The directory is created with owner-only permissions.
+- Verification: TypeScript, 7/7 HRIS regressions, production build, guarded release checks and production HR bootstrap.
+- Rollback point: production commit 8419c894bf24a4a0847443f5f822f0c95c78353e.
+
+---
+
 ## 2026-08-19-r391
 
 - Release ID: 2026-08-19-r391
