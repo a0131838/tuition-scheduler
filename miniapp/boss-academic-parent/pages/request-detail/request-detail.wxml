@@ -1,25 +1,31 @@
 <view class="page">
   <view class="top">
-    <view class="eyebrow">{{request.ticketNoText}}</view>
+    <view class="eyebrow">服务请求</view>
     <view class="title">{{request.typeText}}</view>
     <view class="subtitle">{{request.statusLabelText}}</view>
   </view>
 
-  <view class="card">
-    <view class="label">请求内容</view>
-    <view class="value">{{request.contentText}}</view>
-    <view class="field" wx:if="{{request.completionResultText}}">
-      <view class="label">处理结果</view>
-      <view class="subtitle">{{request.completionResultText}}</view>
-    </view>
-    <view class="field">
-      <view class="label">当前跟进</view>
-      <view class="subtitle">博思服务团队</view>
-    </view>
+  <view class="action-card">
+    <view class="action-label">现在要做什么</view>
+    <view class="action-title">{{request.actionText}}</view>
   </view>
 
-  <view class="card" wx:if="{{request.attachmentUrls.length}}">
-    <view class="label">附件</view>
-    <view wx:for="{{request.attachmentUrls}}" wx:key="*this" class="subtitle">{{item}}</view>
+  <view class="detail-section">
+    <view class="section-label">您提交的内容</view>
+    <view class="request-content {{detailsExpanded ? '' : 'clamped'}}">{{request.contentText}}</view>
+    <view class="expand-link" bindtap="toggleDetails">{{detailsExpanded ? "收起内容" : "展开完整内容"}}</view>
   </view>
+
+  <view class="result-section" wx:if="{{request.completionResultText}}"><view class="section-label">最终处理结果</view><view class="result-value">{{request.completionResultText}}</view></view>
+
+  <view class="meta-section">
+    <view class="meta-row"><text>当前跟进</text><text>{{request.ownerText}}</text></view>
+    <view class="meta-row"><text>最近更新</text><text>{{request.updatedAtText}}</text></view>
+    <view class="meta-row"><text>请求编号</text><text>{{request.ticketNoText}}</text></view>
+  </view>
+
+  <view class="attachments-toggle" wx:if="{{request.attachmentUrls.length}}" bindtap="toggleAttachments"><text>附件 {{request.attachmentUrls.length}} 个</text><text>{{attachmentsExpanded ? "收起 ⌃" : "查看 ⌄"}}</text></view>
+  <view class="attachments" wx:if="{{attachmentsExpanded}}"><view wx:for="{{request.attachmentUrls}}" wx:key="*this" class="attachment-row">{{item}}</view></view>
+
+  <button class="back-button" bindtap="goBack">返回服务请求</button>
 </view>

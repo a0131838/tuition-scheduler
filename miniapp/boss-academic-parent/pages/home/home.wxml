@@ -64,24 +64,22 @@
       </view>
     </view>
 
-    <view class="week-strip">
-      <view class="week-item" wx:if="{{permissions.canViewSchedule}}" bindtap="goSchedule">
-        <view class="week-number">{{summary.completedLessons || 0}}</view><view class="week-label">本周完成课程</view>
-      </view>
-      <view class="week-item" wx:if="{{permissions.canViewFeedback}}" bindtap="goFeedbacks">
-        <view class="week-number">{{summary.feedbackCount || 0}}</view><view class="week-label">本周课后反馈</view>
-      </view>
-      <view class="week-item" wx:if="{{permissions.canViewFinance}}" bindtap="goFinance">
-        <view class="week-number balance">{{lessonBalanceText}}</view><view class="week-label">剩余课时</view>
-      </view>
+    <view class="section-heading quick-heading"><view class="section-title">常用服务</view></view>
+    <view class="quick-list">
+      <view class="quick-entry" wx:if="{{permissions.canCreateRequests}}" bindtap="goNewRequest"><view class="quick-copy"><view class="quick-title">联系服务团队</view><view class="quick-note">排课、请假或其他需要跟进的事项</view></view><view class="quick-arrow">›</view></view>
+      <view class="quick-entry" wx:if="{{permissions.canViewFeedback}}" bindtap="goFeedbacks"><view class="quick-copy"><view class="quick-title">课后反馈</view><view class="quick-note">查看课堂表现与老师建议</view></view><view class="quick-arrow">›</view></view>
+      <view class="quick-entry" wx:if="{{hasFormalReports}}" bindtap="goReports"><view class="quick-copy"><view class="quick-title">正式报告</view><view class="quick-note">查看经过审核的阶段结论</view></view><view class="quick-arrow">›</view></view>
+      <view class="quick-entry" wx:if="{{permissions.canViewFinance}}" bindtap="goFinance"><view class="quick-copy"><view class="quick-title">课包与文件</view><view class="quick-note">查看余额、发票和合同</view></view><view class="quick-arrow">›</view></view>
     </view>
 
-    <view class="section-heading quick-heading"><view class="section-title">常用服务</view></view>
-    <view class="quick-grid">
-      <view class="quick-entry" wx:if="{{hasFormalReports}}" bindtap="goReports"><view class="quick-title">正式报告</view><view class="quick-note">查看阶段结论</view></view>
-      <view class="quick-entry" wx:if="{{permissions.canViewFeedback}}" bindtap="goFeedbacks"><view class="quick-title">课后反馈</view><view class="quick-note">课堂表现与作业</view></view>
-      <view class="quick-entry" wx:if="{{permissions.canViewFinance}}" bindtap="goFinance"><view class="quick-title">课包与文件</view><view class="quick-note">余额、发票和合同</view></view>
-      <view class="quick-entry" wx:if="{{permissions.canCreateRequests}}" bindtap="goNewRequest"><view class="quick-title">联系团队</view><view class="quick-note">提交需要跟进的事项</view></view>
+    <view class="overview-toggle" bindtap="toggleOverview">
+      <view><view class="overview-title">本周数据</view><view class="overview-note">课程、反馈与剩余课时</view></view>
+      <view class="overview-action">{{overviewExpanded ? "收起" : "查看"}} {{overviewExpanded ? "⌃" : "⌄"}}</view>
+    </view>
+    <view class="week-strip" wx:if="{{overviewExpanded}}">
+      <view class="week-item" wx:if="{{permissions.canViewSchedule}}" bindtap="goSchedule"><view class="week-number">{{summary.completedLessons || 0}}</view><view class="week-label">完成课程</view></view>
+      <view class="week-item" wx:if="{{permissions.canViewFeedback}}" bindtap="goFeedbacks"><view class="week-number">{{summary.feedbackCount || 0}}</view><view class="week-label">课后反馈</view></view>
+      <view class="week-item" wx:if="{{permissions.canViewFinance}}" bindtap="goFinance"><view class="week-number balance">{{lessonBalanceText}}</view><view class="week-label">剩余课时</view></view>
     </view>
   </block>
 </view>

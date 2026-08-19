@@ -1,5 +1,21 @@
 # CHANGELOG LIVE
 
+## 2026-08-19-r387
+
+- Release ID: 2026-08-19-r387
+- Date/Time (Asia/Singapore): 2026-08-19
+- Deployment status: READY for guarded server release and WeChat development-version upload; no review submission or formal publication.
+- Scope: simplify the parent miniapp home, progress and service-request screens so the current action, next step and primary button appear before history, attachments and statistics.
+- Key files:
+  - miniapp/boss-academic-parent/pages/{home,progress,requests,request-detail}/*
+  - tests/miniapp-parent-information-architecture.test.ts
+  - docs/tasks/TASK-20260819-parent-miniapp-clarity.md
+- Risk impact (if any): Low and client-presentation-only. API calls, authentication, permissions, schedules, tickets, package balances, attendance, payroll, finance and notifications are unchanged. Long content and evidence remain available behind explicit disclosure controls.
+- Verification: 9/9 focused parent information-architecture tests, four native JavaScript syntax checks, production build and `git diff --check` passed before release.
+- Rollback point: current production commit before 2026-08-19-r387.
+
+---
+
 ## 2026-08-19-r386
 
 - Release ID: 2026-08-19-r386

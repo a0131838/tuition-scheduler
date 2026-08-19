@@ -44,7 +44,8 @@ Page({
     primaryAction: null,
     freshness: {},
     lessonBalanceText: "暂无剩余课时", hasFormalReports: false,
-    lastUpdatedText: "刚刚"
+    lastUpdatedText: "刚刚",
+    overviewExpanded: false
   },
 
   onShow() { this.load(); },
@@ -95,6 +96,7 @@ Page({
   goFinance() { wx.navigateTo({ url: "/pages/finance/finance" }); },
   goReports() { wx.navigateTo({ url: "/pages/care-reports/care-reports" }); },
   goNewRequest() { wx.navigateTo({ url: "/pages/request-new/request-new" }); },
+  toggleOverview() { this.setData({ overviewExpanded: !this.data.overviewExpanded }); },
   goPrimaryAction() {
     if (!this.data.primaryAction) return;
     if (this.data.primaryAction.type === "MONTHLY") wx.navigateTo({ url: "/pages/monthly-scheduling/monthly-scheduling" });

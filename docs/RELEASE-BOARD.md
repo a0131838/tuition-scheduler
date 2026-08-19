@@ -1,5 +1,23 @@
 # RELEASE BOARD
 
+- 2026-08-19-r387: ready with a quieter, action-first parent miniapp home, progress and service-request experience.
+
+## 2026-08-19-r387 Ready
+
+- Scope: make parent-facing actions and click targets obvious while moving statistics, long request text, attachments and historical progress behind optional disclosure.
+- Business impact:
+  - parents see one current action before secondary information;
+  - common services and request rows have consistent full-row click affordance;
+  - request details explain the next step and final result before showing long evidence;
+  - returning from a request detail preserves the request-list mental model.
+- Safety boundary:
+  - parent miniapp presentation only; no API, database or permission change;
+  - no schedule, ticket execution, package, attendance, payroll, finance or notification behavior changed;
+  - upload development version only; do not submit review or publish formally.
+- Verification before deploy:
+  - 9/9 focused parent UX regressions, native JavaScript syntax, production build and `git diff --check`.
+- Task doc: docs/tasks/TASK-20260819-parent-miniapp-clarity.md.
+
 - 2026-08-19-r386: live with a native Ticket Center GET filter that cannot remain stuck when the same criteria are submitted twice.
 
 ## 2026-08-19-r386 Live

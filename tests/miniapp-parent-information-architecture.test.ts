@@ -21,6 +21,9 @@ test("parent home uses one stable dashboard request and answers the four parent 
   assert.match(page, /需要您处理/);
   assert.match(page, /接下来/);
   assert.match(page, /最新进展/);
+  assert.match(page, /quick-arrow/);
+  assert.match(page, /本周数据/);
+  assert.match(script, /toggleOverview/);
   assert.match(script, /\/dashboard/);
   assert.doesNotMatch(script, /\/service-progress/);
   assert.doesNotMatch(script, /\/subscriptions\/intent/);
@@ -35,6 +38,20 @@ test("progress separates updates, reports and entitlements without leaking Full 
   assert.match(page, /服务权益/);
   assert.match(page, /wx:if="\{\{hasFormalReports\}\}"/);
   assert.match(script, /servicePlanType === "ACADEMIC_MANAGEMENT"/);
+});
+
+test("parent progress and requests prioritize one next action and hide detail on demand", () => {
+  const progress = readMiniapp("pages/progress/progress.wxml");
+  const progressScript = readMiniapp("pages/progress/progress.js");
+  const requests = readMiniapp("pages/requests/requests.wxml");
+  const requestDetail = readMiniapp("pages/request-detail/request-detail.wxml");
+  assert.match(progress, /现在需要您做/);
+  assert.match(progress, /更多服务记录/);
+  assert.match(progressScript, /toggleDetails/);
+  assert.match(requests, /request-arrow/);
+  assert.match(requestDetail, /现在要做什么/);
+  assert.match(requestDetail, /展开完整内容/);
+  assert.match(requestDetail, /最终处理结果/);
 });
 
 test("account centre contains low-frequency parent services and reminder settings", () => {

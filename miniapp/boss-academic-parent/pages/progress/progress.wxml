@@ -21,6 +21,12 @@
         <view class="status-copy">{{parentStatus.summary}}</view>
       </view>
 
+      <view class="parent-action" wx:if="{{parentAction}}">
+        <view class="parent-action-label">现在需要您做</view>
+        <view class="parent-action-title">{{parentAction.summary}}</view>
+        <view class="parent-action-meta" wx:if="{{parentAction.dueAtText}}">请于 {{parentAction.dueAtText}} 前完成</view>
+      </view>
+
       <view class="answer-list" wx:if="{{care.active}}">
         <view class="answer-row"><view class="answer-label">最近完成</view><view class="answer-value">{{reassurance.latest ? reassurance.latest.title : "等待首条正式服务动态"}}</view><view class="answer-note" wx:if="{{reassurance.latest}}">{{reassurance.latest.summary}}</view></view>
         <view class="answer-row"><view class="answer-label">接下来</view><view class="answer-value">{{nextStep.text || "当前服务按计划推进"}}</view><view class="answer-note" wx:if="{{nextStep.dueText}}">计划日期 {{nextStep.dueText}}</view></view>
@@ -33,23 +39,30 @@
         <view class="section-note">重大事项会主动联系，不会等待月报。</view>
       </view>
 
-      <view class="week-summary">
-        <view class="section-row"><view class="section-title">本周概览</view><view class="section-note">{{period.label}}</view></view>
-        <view class="summary-grid">
-          <view class="summary-item" wx:if="{{permissions.canViewSchedule}}" bindtap="goSchedule"><view class="summary-number">{{summary.completedLessons || 0}}</view><view class="summary-label">完成课程</view></view>
-          <view class="summary-item" wx:if="{{permissions.canViewFeedback}}" bindtap="goFeedbacks"><view class="summary-number">{{summary.feedbackCount || 0}}</view><view class="summary-label">课后反馈</view></view>
-          <view class="summary-item" wx:if="{{permissions.canCreateRequests}}" bindtap="goRequests"><view class="summary-number">{{summary.openRequestCount || 0}}</view><view class="summary-label">处理中请求</view></view>
-        </view>
+      <view class="detail-toggle" bindtap="toggleDetails">
+        <view><view class="detail-toggle-title">更多服务记录</view><view class="detail-toggle-note">本周数据与完整时间线</view></view>
+        <view class="detail-toggle-action">{{detailsExpanded ? "收起 ⌃" : "展开 ⌄"}}</view>
       </view>
 
-      <view class="timeline-head"><view class="section-title">最近进展</view><view class="section-note">按时间合并课程、反馈与服务记录</view></view>
-      <view class="timeline" wx:if="{{timeline.length}}">
-        <view class="timeline-row" wx:for="{{timeline}}" wx:key="id">
-          <view class="timeline-marker"><view class="timeline-dot kind-{{item.kind}}"></view><view class="timeline-line"></view></view>
-          <view class="timeline-body"><view class="timeline-meta"><text>{{item.kindLabel}}</text><text>{{item.occurredAtText}}</text></view><view class="timeline-title">{{item.title}}</view><view class="timeline-summary">{{item.summary}}</view></view>
+      <block wx:if="{{detailsExpanded}}">
+        <view class="week-summary">
+          <view class="section-row"><view class="section-title">本周概览</view><view class="section-note">{{period.label}}</view></view>
+          <view class="summary-grid">
+            <view class="summary-item" wx:if="{{permissions.canViewSchedule}}" bindtap="goSchedule"><view class="summary-number">{{summary.completedLessons || 0}}</view><view class="summary-label">完成课程</view></view>
+            <view class="summary-item" wx:if="{{permissions.canViewFeedback}}" bindtap="goFeedbacks"><view class="summary-number">{{summary.feedbackCount || 0}}</view><view class="summary-label">课后反馈</view></view>
+            <view class="summary-item" wx:if="{{permissions.canCreateRequests}}" bindtap="goRequests"><view class="summary-number">{{summary.openRequestCount || 0}}</view><view class="summary-label">处理中请求</view></view>
+          </view>
         </view>
-      </view>
-      <view class="empty-line" wx:else>课程完成或团队发布进展后会显示在这里。</view>
+
+        <view class="timeline-head"><view class="section-title">最近进展</view><view class="section-note">按时间合并课程、反馈与服务记录</view></view>
+        <view class="timeline" wx:if="{{timeline.length}}">
+          <view class="timeline-row" wx:for="{{timeline}}" wx:key="id">
+            <view class="timeline-marker"><view class="timeline-dot kind-{{item.kind}}"></view><view class="timeline-line"></view></view>
+            <view class="timeline-body"><view class="timeline-meta"><text>{{item.kindLabel}}</text><text>{{item.occurredAtText}}</text></view><view class="timeline-title">{{item.title}}</view><view class="timeline-summary">{{item.summary}}</view></view>
+          </view>
+        </view>
+        <view class="empty-line" wx:else>课程完成或团队发布进展后会显示在这里。</view>
+      </block>
     </view>
 
     <view wx:if="{{viewMode === 'reports'}}" class="view-section">

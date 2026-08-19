@@ -1,3 +1,15 @@
-.subtitle {
-  word-break: break-word;
-}
+.subtitle { word-break: break-word; }
+.action-card { margin-top: 12rpx; padding: 26rpx; border-left: 8rpx solid #ec5e0a; background: #fff4e9; }
+.action-label,.section-label { color: #9b3e08; font-size: 21rpx; font-weight: 780; }
+.action-title { margin-top: 8rpx; color: #252826; font-size: 30rpx; font-weight: 820; line-height: 1.48; }
+.detail-section,.result-section,.meta-section { margin-top: 28rpx; padding: 24rpx 0; border-top: 1rpx solid #dedbd6; }
+.request-content { margin-top: 11rpx; color: #3f4742; font-size: 25rpx; line-height: 1.65; white-space: pre-wrap; word-break: break-word; }
+.request-content.clamped { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 4; }
+.expand-link { margin-top: 14rpx; color: #9b3e08; font-size: 22rpx; font-weight: 750; }
+.result-section { padding: 25rpx; border-top: 0; border-left: 7rpx solid #287a62; background: #edf7f2; }
+.result-value { margin-top: 10rpx; color: #27332e; font-size: 26rpx; font-weight: 700; line-height: 1.6; white-space: pre-wrap; }
+.meta-row,.attachments-toggle { display: flex; align-items: flex-start; justify-content: space-between; gap: 24rpx; padding: 18rpx 0; border-bottom: 1rpx solid #e5e2dc; color: #6d746f; font-size: 22rpx; }
+.meta-row text:last-child { max-width: 66%; color: #303633; font-weight: 680; text-align: right; word-break: break-word; }
+.attachments-toggle { margin-top: 8rpx; color: #9b3e08; font-weight: 750; }
+.attachment-row { padding: 17rpx 0; border-bottom: 1rpx solid #e5e2dc; color: #555d59; font-size: 22rpx; word-break: break-word; }
+.back-button { min-height: 78rpx; margin: 34rpx 0 0; border: 1rpx solid #d1cec8; border-radius: 12rpx; background: #fff; color: #343936; font-size: 24rpx; font-weight: 760; line-height: 78rpx; }
