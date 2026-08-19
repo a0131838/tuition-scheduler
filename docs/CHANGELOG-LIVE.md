@@ -1,5 +1,23 @@
 # CHANGELOG LIVE
 
+## 2026-08-19-r386
+
+- Release ID: 2026-08-19-r386
+- Date/Time (Asia/Singapore): 2026-08-19
+- Deployment status: READY for guarded server release; server-only Ticket Center filter lifecycle correction, with no WeChat package change.
+- Scope: replace the Ticket Center's manually managed React navigation wait state with a native GET form so repeated identical filters cannot remain stuck on “正在筛选”.
+- Key files:
+  - app/admin/tickets/_components/TicketPrimaryFilterForm.tsx
+  - tests/admin-navigation-performance.test.ts
+  - docs/tasks/TASK-20260819-admin-read-performance-phase2.md
+  - docs/CHANGELOG-LIVE.md
+  - docs/RELEASE-BOARD.md
+- Risk impact (if any): Low and limited to how the main Ticket Center filter submits. Filter fields, 50-row pagination, remembered-filter rules, ticket data, AI advice, scheduling, packages, attendance, payroll, finance, notifications and permissions are unchanged.
+- Verification: focused regression, backend regression, production build, guarded deployment and authenticated production replay are required before handoff.
+- Rollback point: current production commit before 2026-08-19-r386.
+
+---
+
 ## 2026-08-18-r386
 
 - Release ID: 2026-08-18-r386

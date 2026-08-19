@@ -1,5 +1,25 @@
 # RELEASE BOARD
 
+- 2026-08-19-r386: ready with a native Ticket Center GET filter that cannot remain stuck when the same criteria are submitted twice.
+
+## 2026-08-19-r386 Ready
+
+- Scope: remove the unreliable React transition lifecycle from the Ticket Center's primary filter while preserving the existing query and remembered-filter marker.
+- Business impact:
+  - changing, clearing or repeating the same filter always performs a normal browser request;
+  - the filter button no longer enters a permanent “正在筛选” state when the resulting URL is unchanged.
+- Safety boundary:
+  - no database migration and no miniapp package change;
+  - no filter meaning, ticket content, AI plan, scheduling, package, attendance, payroll, finance, notification or permission behavior changed.
+- Files:
+  - app/admin/tickets/_components/TicketPrimaryFilterForm.tsx
+  - tests/admin-navigation-performance.test.ts
+  - docs/tasks/TASK-20260819-admin-read-performance-phase2.md
+- Verification before deploy:
+  - focused navigation regression, backend regression, production build and `git diff --check`.
+- Post-deploy verification:
+  - authenticated production replay of a changed filter, the same filter twice, an empty filter and clear-filter navigation.
+
 - 2026-08-18-r386: live with Ticket Center filtering submitting before its pending-state button is disabled.
 
 ## 2026-08-18-r386 Live
