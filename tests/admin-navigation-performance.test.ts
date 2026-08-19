@@ -41,16 +41,18 @@ test("slow secondary work is parallelized or deferred", () => {
 
 test("ticket filtering uses client navigation and bounded pagination", () => {
   const tickets = read("app/admin/tickets/page.tsx");
-  const submitButton = read("app/admin/tickets/_components/TicketFilterSubmitButton.tsx");
+  const filterForm = read("app/admin/tickets/_components/TicketPrimaryFilterForm.tsx");
 
-  assert.match(tickets, /<Form action="\/admin\/tickets" scroll=\{false\}/);
+  assert.match(tickets, /<TicketPrimaryFilterForm showClear=\{activeFilterCount > 0\}>/);
+  assert.match(tickets, /!clearDesk && !applyDesk/);
   assert.match(tickets, /take:\s*51/);
   assert.match(tickets, /skip:\s*\(page - 1\) \* 50/);
   assert.match(tickets, /aria-label="工单分页"/);
   assert.doesNotMatch(tickets, /take:\s*200/);
-  assert.match(submitButton, /window\.setTimeout\(\(\) => setPending\(true\), 0\)/);
-  assert.match(submitButton, /\[searchKey\]/);
-  assert.doesNotMatch(submitButton, /onClick=\{\(\) => setPending\(true\)\}/);
+  assert.match(filterForm, /const \[pending, startTransition\] = useTransition\(\)/);
+  assert.match(filterForm, /params\.set\("applyDesk", "1"\)/);
+  assert.match(filterForm, /router\.replace\(`\/admin\/tickets\?\$\{params\.toString\(\)\}`/);
+  assert.doesNotMatch(filterForm, /window\.setTimeout/);
 });
 
 test("todo attendance window is loaded once instead of once per day bucket", () => {

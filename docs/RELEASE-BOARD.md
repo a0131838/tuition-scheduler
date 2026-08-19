@@ -7538,10 +7538,18 @@
 - Boundary: additive API and presentation only; no existing report recalculation, scheduling/package/finance mutation or formal miniapp release.
 - Task: `docs/tasks/TASK-20260817-school-guide-assessment-product-split.md`.
 
-# 2026-08-19-r384 Candidate
+# 2026-08-19-r384 Live
 
 - Scope: second-stage admin read-path performance work after the ticket/AI integration, limited to request memoization, shared-shell cost removal, deferred alert synchronization and parallel independent reads.
 - User impact: Ticket Center filters, ticket detail, Today/Todos, sign-in alerts and monthly schedule should return without waiting for unrelated approval, AI, sync or reporting work.
 - Safety: no database migration; no scheduling, ticket, package, attendance, payroll, finance or notification business rule changes; the formal approval page remains on its existing source of truth.
-- Validation: backend regression 180/180, performance regression 6/6, production build and `git diff --check` pass. Standard server preflight, deploy and signed-in production timing remain the release gates.
+- Validation: backend regression 180/180, performance regression 6/6, production build and `git diff --check` pass. Standard server deploy and signed-in production timing passed: tickets 721ms, todos 1119ms, alerts 732ms, monthly schedule 760ms and ticket detail 810ms.
+- Task doc: `docs/tasks/TASK-20260819-admin-read-performance-phase2.md`.
+
+# 2026-08-19-r385 Candidate
+
+- Scope: make Ticket Center primary filtering use the real router transition as its pending state and explicitly distinguish an applied empty filter from the first remembered-filter visit.
+- User impact: the filter button no longer stays on “正在筛选” after a completed request, and selecting blank/open criteria no longer revives an older remembered completed/status filter.
+- Safety: UI navigation-state fix only; no database migration and no scheduling, ticket, AI, package, attendance, payroll, finance or notification rule changes.
+- Validation: backend regression 180/180, performance regression 6/6, 251-page production build and `git diff --check` pass. Standard server release and signed-in production replay remain the release gates.
 - Task doc: `docs/tasks/TASK-20260819-admin-read-performance-phase2.md`.

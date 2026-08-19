@@ -16,7 +16,6 @@ import {
 import { getOverdueTicketFollowupGroups } from "@/lib/ticket-followups";
 import { revalidatePath } from "next/cache";
 import Link from "next/link";
-import Form from "next/form";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { formatBusinessDateTime } from "@/lib/date-only";
@@ -32,7 +31,7 @@ import WorkbenchActionBanner from "../_components/WorkbenchActionBanner";
 import WorkbenchFormSection from "../_components/WorkbenchFormSection";
 import WorkbenchScrollMemoryClient from "../_components/WorkbenchScrollMemoryClient";
 import WorkbenchStatusChip from "../_components/WorkbenchStatusChip";
-import TicketFilterSubmitButton from "./_components/TicketFilterSubmitButton";
+import TicketPrimaryFilterForm from "./_components/TicketPrimaryFilterForm";
 import {
   workbenchFilterPanelStyle,
   workbenchHeroStyle,
@@ -279,12 +278,13 @@ async function deleteTokenAction(formData: FormData) {
 export default async function AdminTicketsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ q?: string; status?: string; owner?: string; type?: string; err?: string; tok?: string; focus?: string; ok?: string; fields?: string; clearDesk?: string; blockedTicket?: string; page?: string }>;
+  searchParams?: Promise<{ q?: string; status?: string; owner?: string; type?: string; err?: string; tok?: string; focus?: string; ok?: string; fields?: string; clearDesk?: string; applyDesk?: string; blockedTicket?: string; page?: string }>;
 }) {
   const adminUser = await requireAdmin();
   const lang = await getLang();
   const sp = await searchParams;
   const clearDesk = String(sp?.clearDesk ?? "").trim() === "1";
+  const applyDesk = String(sp?.applyDesk ?? "").trim() === "1";
   const hasQParam = typeof sp?.q === "string";
   const hasStatusParam = typeof sp?.status === "string";
   const hasOwnerParam = typeof sp?.owner === "string";
@@ -297,7 +297,7 @@ export default async function AdminTicketsPage({
   const tokenSaved = sp?.tok === "1";
   const cookieStore = await cookies();
   const canResumeRememberedDesk =
-    !clearDesk && !hasQParam && !hasStatusParam && !hasOwnerParam && !hasTypeParam && !hasFocusParam && !err && !ok && !tokenSaved;
+    !clearDesk && !applyDesk && !hasQParam && !hasStatusParam && !hasOwnerParam && !hasTypeParam && !hasFocusParam && !err && !ok && !tokenSaved;
   const rememberedDesk = canResumeRememberedDesk
     ? parseRememberedTicketDesk(cookieStore.get(TICKET_FILTER_COOKIE)?.value ?? "")
     : { q: "", status: "", owner: "", type: "", focus: "", value: "" };
@@ -485,7 +485,7 @@ export default async function AdminTicketsPage({
           </div>
         </div>
 
-        <Form action="/admin/tickets" scroll={false} style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", alignItems: "center" }}>
+        <TicketPrimaryFilterForm showClear={activeFilterCount > 0}>
           <input name="q" defaultValue={q ?? ""} placeholder={t(lang, "Search ticket or student", "搜索学生或工单号")} />
           <select name="owner" defaultValue={owner ?? ""}>
             <option value="">{t(lang, "All owners", "全部负责人")}</option>
@@ -499,11 +499,7 @@ export default async function AdminTicketsPage({
             <option value="">{t(lang, "Open work", "未结束工单")}</option>
             {TICKET_STATUS_OPTIONS.map((item) => <option key={item.value} value={item.value}>{t(lang, item.en, item.zh)}</option>)}
           </select>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <TicketFilterSubmitButton />
-            {activeFilterCount > 0 ? <Link scroll={false} href="/admin/tickets?clearDesk=1">清空</Link> : null}
-          </div>
-        </Form>
+        </TicketPrimaryFilterForm>
 
         {ticketErrorMessage ? (
           <div role="alert" style={{ borderLeft: "4px solid #dc2626", background: "#fff7f7", padding: "10px 12px", color: "#991b1b" }}>{ticketErrorMessage}</div>
