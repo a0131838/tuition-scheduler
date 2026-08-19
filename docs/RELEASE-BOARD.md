@@ -1,5 +1,22 @@
 # RELEASE BOARD
 
+- 2026-08-19-r388: ready for guarded server release and native parent miniapp development upload `1.0.62`; the parent home is reduced to one action, one optional next lesson and three compact routes.
+
+## 2026-08-19-r388 Ready
+
+- Scope: remove report-like content from the parent home so the first screen answers only whether action is required and where to go next.
+- Business impact:
+  - at most one parent action competes for attention;
+  - the next lesson appears only when a confirmed lesson exists;
+  - schedule, service progress and team contact/profile remain available as three compact routes;
+  - detailed progress, schedule history and profile information remain on their existing pages.
+- Safety boundary:
+  - parent native miniapp home presentation only; no API, database, permission or route change;
+  - no schedule, ticket execution, package, attendance, payroll, finance or notification behavior changed;
+  - upload development version only; do not submit review or publish formally.
+- Verification target: focused parent regressions, native JavaScript syntax, miniapp release audit, production build, guarded deploy health checks and WeChat development upload.
+- Task doc: docs/tasks/TASK-20260819-parent-home-simplification.md.
+
 - 2026-08-19-r387: live on the server with a quieter, action-first parent miniapp home, progress and service-request experience; native development version `1.0.61` is uploaded but not submitted for review or formally published.
 
 ## 2026-08-19-r387 Live

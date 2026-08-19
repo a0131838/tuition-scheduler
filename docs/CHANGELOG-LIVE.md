@@ -1,5 +1,21 @@
 # CHANGELOG LIVE
 
+## 2026-08-19-r388
+
+- Release ID: 2026-08-19-r388
+- Date/Time (Asia/Singapore): 2026-08-19
+- Deployment status: READY for guarded server release; WeChat development version target `1.0.62`, with no review submission or formal publication.
+- Scope: turn the parent miniapp home into a concise action entry with one pending decision, one optional next lesson and three compact routes.
+- Key files:
+  - miniapp/boss-academic-parent/pages/home/home.{wxml,wxss}
+  - tests/miniapp-parent-home-simplification.test.ts
+  - docs/tasks/TASK-20260819-parent-home-simplification.md
+- Risk impact (if any): Low and client-presentation-only. API calls, authentication, permissions, schedules, tickets, package balances, attendance, payroll, finance and notifications are unchanged. Removed home content remains available on its existing destination pages.
+- Verification target: focused parent regressions, native JavaScript syntax, miniapp release audit, production build, guarded deployment and native miniapp development upload.
+- Rollback point: production commit immediately before 2026-08-19-r388.
+
+---
+
 ## 2026-08-19-r387
 
 - Release ID: 2026-08-19-r387

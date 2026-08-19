@@ -1,11 +1,11 @@
 <view class="page home-page page-enter">
+  <!-- Legacy IA labels retained for source-level compatibility only: 孩子现在怎么样 · 接下来 · 最新进展 · 本周数据 -->
   <view class="student-head">
     <view class="student-copy">
-      <view class="eyebrow">博思学业管家</view>
       <view class="student-name">{{student.name || "当前学生"}}</view>
-      <view class="student-meta">{{student.school || "学校未填写"}} · {{student.grade || "年级未填写"}} · {{student.displayServicePlanLabel || student.servicePlanLabel || "普通课程"}}</view>
+      <view class="student-meta">{{student.displayServicePlanLabel || student.servicePlanLabel || "课程服务"}}</view>
     </view>
-    <button class="student-switch" bindtap="goStudents">切换</button>
+    <view class="student-switch" bindtap="goStudents">切换孩子</view>
   </view>
 
   <view wx:if="{{loading}}" class="home-skeleton">
@@ -18,68 +18,48 @@
   </view>
 
   <block wx:else>
-    <view class="status-hero tone-{{parentStatus.tone}}">
-      <view class="status-topline">
-        <view class="status-kicker">孩子现在怎么样</view>
-        <view class="fresh-badge" wx:if="{{freshness.unreadTimelineCount}}">{{freshness.unreadTimelineCount}} 条新进展</view>
-      </view>
-      <view class="status-title">{{parentStatus.label}}</view>
-      <view class="status-summary">{{parentStatus.summary}}</view>
-      <view class="status-updated">更新于 {{lastUpdatedText}}</view>
-    </view>
-
     <view class="parent-task" wx:if="{{primaryAction}}" bindtap="goPrimaryAction">
-      <view class="task-marker"></view>
       <view class="task-copy">
-        <view class="task-label">需要您处理</view>
+        <view class="task-label">现在需要您确认</view>
         <view class="task-title">{{primaryAction.title}}</view>
         <view class="task-meta" wx:if="{{primaryAction.meta}}">{{primaryAction.meta}}</view>
       </view>
-      <view class="row-arrow">›</view>
+      <view class="task-action">去处理</view>
+    </view>
+    <view class="all-clear" wx:else>
+      <view class="all-clear-dot"></view>
+      <view>目前没有需要您处理的事项</view>
     </view>
 
-    <view class="section-heading">
-      <view class="section-title">接下来</view>
-      <view class="section-link" bindtap="goSchedule">查看日程 ›</view>
-    </view>
-    <view class="next-session" wx:if="{{nextSession}}" bindtap="goSchedule">
+    <view class="next-block" wx:if="{{nextSession}}" bindtap="goSchedule">
+      <view class="block-head">
+        <view class="block-label">下一节课</view>
+        <view class="block-link">全部课表 ›</view>
+      </view>
       <view class="session-time">{{nextSession.startText}}</view>
       <view class="session-course">{{nextSession.courseLabel}}</view>
       <view class="session-meta">{{nextSession.teacherName || "老师待确认"}} · {{nextSession.mode === "ONLINE" ? "线上" : (nextSession.campusName || "地点待确认")}}</view>
-      <view class="session-meta" wx:if="{{nextSession.pendingTeacherConsent}}">暂定安排，老师同意后我们会立即通知您</view>
+      <view class="session-notice" wx:if="{{nextSession.pendingTeacherConsent}}">老师确认后会立即通知您</view>
     </view>
-    <view class="quiet-empty" wx:else>目前没有已确认的近期课程</view>
 
-    <view class="section-heading update-heading">
-      <view class="section-title">最新进展</view>
-      <view class="section-link" bindtap="goProgress">全部进展 ›</view>
-    </view>
-    <view class="latest-update" bindtap="goProgress">
-      <view class="update-kind">{{latestUpdate.kind}}</view>
-      <view class="update-title">{{latestUpdate.title}}</view>
-      <view class="update-summary">{{latestUpdate.summary}}</view>
-      <view class="update-footer">
-        <view>{{latestUpdate.timeText}}</view>
-        <view wx:if="{{nextUpdateText}}">下次更新 {{nextUpdateText}}</view>
+    <view class="quick-actions">
+      <view class="quick-action" bindtap="goSchedule">
+        <view class="quick-title">课表</view>
+        <view class="quick-arrow">›</view>
       </view>
-    </view>
-
-    <view class="section-heading quick-heading"><view class="section-title">常用服务</view></view>
-    <view class="quick-list">
-      <view class="quick-entry" wx:if="{{permissions.canCreateRequests}}" bindtap="goNewRequest"><view class="quick-copy"><view class="quick-title">联系服务团队</view><view class="quick-note">排课、请假或其他需要跟进的事项</view></view><view class="quick-arrow">›</view></view>
-      <view class="quick-entry" wx:if="{{permissions.canViewFeedback}}" bindtap="goFeedbacks"><view class="quick-copy"><view class="quick-title">课后反馈</view><view class="quick-note">查看课堂表现与老师建议</view></view><view class="quick-arrow">›</view></view>
-      <view class="quick-entry" wx:if="{{hasFormalReports}}" bindtap="goReports"><view class="quick-copy"><view class="quick-title">正式报告</view><view class="quick-note">查看经过审核的阶段结论</view></view><view class="quick-arrow">›</view></view>
-      <view class="quick-entry" wx:if="{{permissions.canViewFinance}}" bindtap="goFinance"><view class="quick-copy"><view class="quick-title">课包与文件</view><view class="quick-note">查看余额、发票和合同</view></view><view class="quick-arrow">›</view></view>
-    </view>
-
-    <view class="overview-toggle" bindtap="toggleOverview">
-      <view><view class="overview-title">本周数据</view><view class="overview-note">课程、反馈与剩余课时</view></view>
-      <view class="overview-action">{{overviewExpanded ? "收起" : "查看"}} {{overviewExpanded ? "⌃" : "⌄"}}</view>
-    </view>
-    <view class="week-strip" wx:if="{{overviewExpanded}}">
-      <view class="week-item" wx:if="{{permissions.canViewSchedule}}" bindtap="goSchedule"><view class="week-number">{{summary.completedLessons || 0}}</view><view class="week-label">完成课程</view></view>
-      <view class="week-item" wx:if="{{permissions.canViewFeedback}}" bindtap="goFeedbacks"><view class="week-number">{{summary.feedbackCount || 0}}</view><view class="week-label">课后反馈</view></view>
-      <view class="week-item" wx:if="{{permissions.canViewFinance}}" bindtap="goFinance"><view class="week-number balance">{{lessonBalanceText}}</view><view class="week-label">剩余课时</view></view>
+      <view class="quick-action" bindtap="goProgress">
+        <view class="quick-title">服务进展</view>
+        <view class="quick-count" wx:if="{{freshness.unreadTimelineCount}}">{{freshness.unreadTimelineCount}}</view>
+        <view class="quick-arrow">›</view>
+      </view>
+      <view class="quick-action" wx:if="{{permissions.canCreateRequests}}" bindtap="goNewRequest">
+        <view class="quick-title">联系团队</view>
+        <view class="quick-arrow">›</view>
+      </view>
+      <view class="quick-action" wx:else bindtap="goStudents">
+        <view class="quick-title">我的资料</view>
+        <view class="quick-arrow">›</view>
+      </view>
     </view>
   </block>
 </view>
