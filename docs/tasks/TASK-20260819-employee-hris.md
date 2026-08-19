@@ -22,6 +22,7 @@ Create a controlled HR information system for GT Educational Institute Pte. Ltd.
 ## Initial production data
 
 - Legal entity: GT Educational Institute Pte. Ltd., UEN 202303312G.
+- Zhao Hongwei: full-time from 2023-08-23, managing director, approver Jasmine.
 - Jessika: full-time from 2026-08-10, manager Jasmine.
 - Jasmine: full-time from 2026-06-01, director/HR approver.
 - Sharilyn: full-time from 2026-06-01, finance, manager Jasmine.

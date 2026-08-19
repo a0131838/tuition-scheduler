@@ -80,6 +80,7 @@ export function isOperationsAdminPathAllowed(pathnameRaw: string) {
   if (/^\/admin\/students\/[^/]+\/first-purchase(?:\/|$)/.test(pathname)) return false;
   if (/^\/api\/admin\/students\/[^/]+\/package-balance-preview(?:\/|$)/.test(pathname)) return false;
   if (pathname === "/admin" || pathname === "/admin/logout") return true;
+  if (pathname === "/staff/hr") return true;
   if (pathname.startsWith("/teacher") || pathname.startsWith("/training")) return true;
   if (pathname === "/api/admin/auth/login" || pathname === "/api/miniapp/staff/auth/logout") return true;
   if (pathname.startsWith("/api/teacher") || pathname.startsWith("/api/training")) return true;

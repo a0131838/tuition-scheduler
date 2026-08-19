@@ -5,6 +5,7 @@ import { requireCurrentEmployee } from "@/lib/hr-access";
 import { cancelLeaveRequest, getEmployeeLeaveBalances, hrLeaveTypeLabel, submitLeaveRequest } from "@/lib/hr-leave";
 import { storePrivateHrFile } from "@/lib/hr-private-files";
 import { prisma } from "@/lib/prisma";
+import Link from "next/link";
 
 const fieldStyle = { minHeight: 42, border: "1px solid #cbd5e1", borderRadius: 6, padding: "8px 10px", background: "#fff" } as const;
 const buttonStyle = { minHeight: 42, border: "1px solid #1d4ed8", borderRadius: 6, padding: "8px 14px", color: "#fff", background: "#2563eb", fontWeight: 800 } as const;
@@ -66,12 +67,17 @@ export default async function HrSelfService({ returnPath, searchParams }: { retu
     prisma.hrPayslip.findMany({ where: { employeeId: employee.id, status: { in: ["DIRECTOR_APPROVED", "PAID"] } }, orderBy: { month: "desc" }, take: 24 }),
   ]);
   const policyMap = new Map(policies.map(policy => [policy.leaveType, policy]));
+  const homePath = user.role === "TEACHER" ? "/teacher" : "/admin";
 
   return <main style={{ display: "grid", gap: 18 }}>
     <section style={{ padding: 20, border: "1px solid #bfdbfe", borderRadius: 8, background: "#f8fbff" }}>
       <div style={{ color: "#1d4ed8", fontWeight: 800 }}>Employee self-service / 员工自助</div>
       <h1 style={{ margin: "6px 0" }}>{user.name} · My HR / 我的 HR</h1>
       <div style={{ color: "#475569" }}>{employee.jobTitle || "-"} · {employee.legalEntity.name} · Approver {employee.manager?.name || "HR manager"}</div>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
+        <Link href={homePath} style={{ ...buttonStyle, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>Back to workspace / 返回工作台</Link>
+        <span style={{ alignSelf: "center", color: "#64748b" }}>One employee entry across admin, teacher and finance roles / 所有员工角色统一使用此入口</span>
+      </div>
     </section>
     {sp?.msg ? <div style={{ padding: 12, background: "#ecfdf5", color: "#166534" }}>{sp.msg}</div> : null}
     {sp?.err ? <div style={{ padding: 12, background: "#fff1f2", color: "#be123c" }}>{sp.err}</div> : null}

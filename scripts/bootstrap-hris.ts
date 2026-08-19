@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 type SeedEmployee = { key: string; email?: string; nameContains: string; startDate: string; jobTitle: string; department: string; managerKey: "JASMINE" | "OWNER" };
 
 const PEOPLE: SeedEmployee[] = [
+  { key: "OWNER", email: "zhaohongwei0880@gmail.com", nameContains: "zhao hongwei", startDate: "2023-08-23", jobTitle: "Managing Director", department: "Management", managerKey: "JASMINE" },
   { key: "JESSIKA", email: "sym.sweyeemon@gmail.com", nameContains: "Jessika", startDate: "2026-08-10", jobTitle: "Teacher & Academic Operations", department: "Academic", managerKey: "JASMINE" },
   { key: "JASMINE", nameContains: "Jasmine", startDate: "2026-06-01", jobTitle: "Director", department: "Management", managerKey: "OWNER" },
   { key: "SHARILYN", email: "sharilynang@123.com", nameContains: "Sharilyn", startDate: "2026-06-01", jobTitle: "Finance", department: "Finance", managerKey: "JASMINE" },

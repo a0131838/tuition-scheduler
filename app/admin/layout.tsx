@@ -61,7 +61,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (user.operationsAdmin && !isOperationsAdminPathAllowed(pathname)) {
     redirect("/admin");
   }
-  const [lang, showManagerConsole, ledgerAlertRow] = await Promise.all([
+  const [lang, showManagerConsole, ledgerAlertRow, employeeProfile] = await Promise.all([
     getLang(),
     isManagerUser(user),
     user.operationsAdmin
@@ -70,6 +70,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           where: { key: LEDGER_INTEGRITY_ALERT_KEY },
           select: { value: true },
         }),
+    prisma.employeeProfile.findUnique({ where: { userId: user.id }, select: { id: true } }),
   ]);
   const canSeeCare = user.role === "ADMIN" || showManagerConsole || user.operationsAdmin || user.workspaces.includes("CARE");
   const canSeeSharedDocs = showManagerConsole && user.role === "ADMIN";
@@ -140,6 +141,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           description: t(lang, "Open today's workbench and key shortcuts.", "打开今日工作台和关键快捷入口。"),
           tone: "accent" as const,
         },
+        ...(employeeProfile
+          ? [{
+              href: "/staff/hr",
+              label: t(lang, "My HR & Leave", "我的人事与请假"),
+              description: t(lang, "Use the same employee self-service entry for leave, balances and payslips.", "统一从员工自助入口申请假期、查看余额和工资单。"),
+              tone: "success" as const,
+            }]
+          : []),
         {
           href: "/admin/teacher-notices",
           label: t(lang, "Teacher Notices", "老师通知"),
@@ -298,7 +307,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             { href: "/admin/hr", label: t(lang, "HR Workspace", "人事工作台"), tone: "accent" as const },
             { href: "/admin/hr/leave", label: t(lang, "Leave Approvals", "假期审批"), tone: "warning" as const },
             { href: "/admin/hr/payslips", label: t(lang, "Employee Payslips", "员工工资单"), tone: "success" as const },
-            { href: "/admin/hr/my", label: t(lang, "My HR", "我的 HR"), tone: "neutral" as const },
           ],
         }]
       : []),

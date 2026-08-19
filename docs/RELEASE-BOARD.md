@@ -1,5 +1,26 @@
 # RELEASE BOARD
 
+- 2026-08-19-r395: unified employee HR self-service and Zhao Hongwei's full-time profile are ready for guarded release.
+
+## 2026-08-19-r395 Ready
+
+- Scope: use `/staff/hr` as the single employee web entry for admin, teacher and finance roles; retain redirects from legacy HR URLs; add Zhao Hongwei's confirmed 2023-08-23 full-time profile with Jasmine as approver.
+- Business impact:
+  - each employee uses the same leave, balance, request-history and released-payslip page regardless of system role;
+  - only users with employee profiles see the personal HR navigation entry;
+  - HR setup is collapsed by default and its controls resize instead of overlapping;
+  - no finance, attendance, package, contract, scheduling or teacher-payroll rule is changed.
+- Files:
+  - `app/staff/hr/page.tsx`
+  - `app/_components/HrSelfService.tsx`
+  - `app/{admin,teacher}/layout.tsx`
+  - `app/admin/hr/page.tsx`
+  - `scripts/bootstrap-hris.ts`
+  - `tests/hris.test.ts`
+- Verification before deploy: 21/21 focused tests, 259-page production build and `git diff --check` passed.
+- Post-deploy verification: guarded release, idempotent HR bootstrap, owner employee-profile readback and authenticated `/staff/hr` verification are required.
+- Task doc: `docs/tasks/TASK-20260819-unified-hr-self-service.md`.
+
 - 2026-08-19-r394: HRIS production setup, inherited employee-file migration and staff Mini Program development upload are complete.
 
 ## 2026-08-19-r394 Live

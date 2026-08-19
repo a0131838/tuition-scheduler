@@ -7,7 +7,7 @@ import { ensureEmployeeChecklist } from "@/lib/hr-checklist";
 import { logAudit } from "@/lib/audit-log";
 import { prisma } from "@/lib/prisma";
 
-const fieldStyle = { minHeight: 40, border: "1px solid #cbd5e1", borderRadius: 6, padding: "8px 10px", background: "#fff" } as const;
+const fieldStyle = { width: "100%", minWidth: 0, minHeight: 40, boxSizing: "border-box", border: "1px solid #cbd5e1", borderRadius: 6, padding: "8px 10px", background: "#fff" } as const;
 const buttonStyle = { minHeight: 40, border: "1px solid #1d4ed8", borderRadius: 6, padding: "8px 14px", background: "#2563eb", color: "#fff", fontWeight: 800 } as const;
 
 function minutesFromDays(value: FormDataEntryValue | null) {
@@ -141,7 +141,7 @@ export default async function HrDashboardPage({ searchParams }: { searchParams?:
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
         <Link href="/admin/hr/leave" style={buttonStyle}>Leave approvals / 假期审批</Link>
         <Link href="/admin/hr/payslips" style={{ ...buttonStyle, background: "#fff", color: "#1d4ed8" }}>Payslips / 工资单</Link>
-        <Link href="/admin/hr/my" style={{ ...buttonStyle, background: "#fff", color: "#1d4ed8" }}>My HR / 我的 HR</Link>
+        <Link href="/staff/hr" style={{ ...buttonStyle, background: "#fff", color: "#1d4ed8" }}>My HR / 我的 HR</Link>
       </div>
     </section>
     {sp?.msg ? <div style={{ padding: 12, background: "#ecfdf5", color: "#166534", border: "1px solid #86efac" }}>{sp.msg}</div> : null}
@@ -155,7 +155,9 @@ export default async function HrDashboardPage({ searchParams }: { searchParams?:
       <div style={{ overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse" }}><thead><tr>{["Employee / 员工", "Entity / 雇主", "Employment / 雇佣", "Manager / 审批人", "Checklist / 清单", "Action / 操作"].map(x => <th key={x} style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #cbd5e1" }}>{x}</th>)}</tr></thead><tbody>{employees.map(employee => <tr key={employee.id}><td style={{ padding: 10, borderBottom: "1px solid #e2e8f0" }}><b>{employee.user.name}</b><br/><span style={{ color: "#64748b" }}>{employee.user.email}</span></td><td style={{ padding: 10, borderBottom: "1px solid #e2e8f0" }}>{employee.legalEntity.name}</td><td style={{ padding: 10, borderBottom: "1px solid #e2e8f0" }}>{employee.employmentType}<br/>{employee.startDate.toLocaleDateString("en-SG")}</td><td style={{ padding: 10, borderBottom: "1px solid #e2e8f0" }}>{employee.manager?.name || "-"}</td><td style={{ padding: 10, borderBottom: "1px solid #e2e8f0" }}>{employee.checklist.filter(item => item.status === "VERIFIED" || item.status === "NOT_APPLICABLE").length}/{employee.checklist.length}</td><td style={{ padding: 10, borderBottom: "1px solid #e2e8f0" }}><Link href={`/admin/hr/employees/${employee.id}`}>Open / 打开</Link></td></tr>)}</tbody></table></div>
     </section>
 
-    <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))", gap: 18 }}>
+    <details style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: 16, background: "#f8fafc" }}>
+      <summary style={{ cursor: "pointer", fontSize: 18, fontWeight: 800 }}>HR setup / HR 配置（雇主、员工档案、假期政策）</summary>
+      <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,360px),1fr))", gap: 18, marginTop: 16 }}>
       <form action={createLegalEntity} style={{ display: "grid", gap: 10, border: "1px solid #dbe4f0", padding: 16, borderRadius: 8 }}>
         <h2 style={{ margin: 0 }}>1. Legal entity / 法律雇主</h2>
         <input name="name" required placeholder="GT Educational Institute Pte. Ltd." style={fieldStyle}/>
@@ -167,11 +169,11 @@ export default async function HrDashboardPage({ searchParams }: { searchParams?:
         <h2 style={{ margin: 0 }}>2. Employee profile / 员工档案</h2>
         <select name="userId" required style={fieldStyle}><option value="">Select system account / 选择账号</option>{accounts.map(account => <option key={account.id} value={account.id}>{account.name} · {account.email} · {account.role}</option>)}</select>
         <select name="legalEntityId" required style={fieldStyle}><option value="">Select legal entity / 选择雇主</option>{entities.map(entity => <option key={entity.id} value={entity.id}>{entity.name}</option>)}</select>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}><input name="employeeNo" placeholder="Employee No. / 员工号" style={fieldStyle}/><input name="startDate" type="date" required style={fieldStyle}/></div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}><select name="employmentType" style={fieldStyle}><option value="FULL_TIME">Full time / 全职</option><option value="PART_TIME">Part time / 兼职</option><option value="CONTRACT">Contract / 合同制</option></select><select name="employeeCategory" style={fieldStyle}><option value="LOCAL">Local / 本地员工</option><option value="FOREIGN">Foreign / 外籍员工</option></select></div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}><input name="department" placeholder="Department / 部门" style={fieldStyle}/><input name="jobTitle" placeholder="Job title / 职位" style={fieldStyle}/></div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 }}><input name="employeeNo" placeholder="Employee No. / 员工号" style={fieldStyle}/><input name="startDate" type="date" required style={fieldStyle}/></div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 }}><select name="employmentType" style={fieldStyle}><option value="FULL_TIME">Full time / 全职</option><option value="PART_TIME">Part time / 兼职</option><option value="CONTRACT">Contract / 合同制</option></select><select name="employeeCategory" style={fieldStyle}><option value="LOCAL">Local / 本地员工</option><option value="FOREIGN">Foreign / 外籍员工</option></select></div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 }}><input name="department" placeholder="Department / 部门" style={fieldStyle}/><input name="jobTitle" placeholder="Job title / 职位" style={fieldStyle}/></div>
         <select name="managerUserId" style={fieldStyle}><option value="">Select approver / 选择审批人</option>{accounts.filter(x => x.role === "ADMIN").map(account => <option key={account.id} value={account.id}>{account.name} · {account.email}</option>)}</select>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}><input name="nationality" placeholder="Nationality / 国籍" style={fieldStyle}/><input name="workPassType" placeholder="Work pass / 准证类型" style={fieldStyle}/></div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 }}><input name="nationality" placeholder="Nationality / 国籍" style={fieldStyle}/><input name="workPassType" placeholder="Work pass / 准证类型" style={fieldStyle}/></div>
         <label><input name="payrollEligible" type="checkbox" defaultChecked/> Payroll eligible / 纳入工资</label>
         <label><input name="leaveEligible" type="checkbox" defaultChecked/> Leave eligible / 可申请假期</label>
         <button style={buttonStyle} disabled={!entities.length}>Save and create checklist / 保存并生成清单</button>
@@ -180,13 +182,14 @@ export default async function HrDashboardPage({ searchParams }: { searchParams?:
         <h2 style={{ margin: 0 }}>3. Leave policy / 假期政策</h2>
         <select name="legalEntityId" required style={fieldStyle}><option value="">Select legal entity / 选择雇主</option>{entities.map(entity => <option key={entity.id} value={entity.id}>{entity.name}</option>)}</select>
         <select name="leaveType" style={fieldStyle}>{Object.values(HrLeaveType).map(type => <option key={type} value={type}>{type}</option>)}</select>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}><input name="annualDays" type="number" min="0" step="0.5" placeholder="Entitlement days / 年度天数" style={fieldStyle}/><input name="carryDays" type="number" min="0" step="0.5" placeholder="Carry forward days / 可结转天数" style={fieldStyle}/></div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 }}><input name="annualDays" type="number" min="0" step="0.5" placeholder="Entitlement days / 年度天数" style={fieldStyle}/><input name="carryDays" type="number" min="0" step="0.5" placeholder="Carry forward days / 可结转天数" style={fieldStyle}/></div>
         <label><input name="requiresAttachment" type="checkbox"/> Require attachment / 需要附件</label>
         <label><input name="allowHalfDay" type="checkbox" defaultChecked/> Allow half day / 允许半天</label>
         <label><input name="allowHourly" type="checkbox"/> Allow hourly / 允许按小时</label>
         <button style={buttonStyle} disabled={!entities.length}>Save policy / 保存政策</button>
       </form>
-    </section>
+      </section>
+    </details>
     <p style={{ color: "#64748b" }}>Configured entities: {entities.map(entity => `${entity.name} (${entity.leavePolicies.length} policies)`).join(" · ") || "None"}. Signed HR documents are retained in private storage with access logs.</p>
   </main>;
 }

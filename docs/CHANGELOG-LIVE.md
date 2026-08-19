@@ -1,5 +1,24 @@
 # CHANGELOG LIVE
 
+## 2026-08-19-r395
+
+- Release ID: `2026-08-19-r395`
+- Date/Time (Asia/Singapore): `2026-08-19`
+- Deployment status: `READY` for the guarded server release and idempotent HR bootstrap.
+- Scope: give every employee one role-independent web self-service route, add Zhao Hongwei as a full-time employee from 2023-08-23 with Jasmine as approver, and remove the crowded always-open HR setup surface.
+- Key files:
+  - `app/staff/hr/page.tsx`
+  - `app/{admin,teacher}/layout.tsx`
+  - `app/admin/hr/page.tsx`
+  - `scripts/bootstrap-hris.ts`
+  - `tests/hris.test.ts`
+  - `docs/tasks/TASK-20260819-unified-hr-self-service.md`
+- Risk impact (if any): Low to medium and limited to HR navigation, responsive HR setup presentation and one idempotent employee-profile upsert. Leave calculations, approval rules, payslip amounts, finance, attendance, packages, contracts and scheduling records are unchanged.
+- Verification: 21/21 focused HR, route and restricted-admin regressions passed; the 259-page production build and `git diff --check` passed.
+- Rollback point: production commit `251e2a3a` before `2026-08-19-r395`.
+
+---
+
 ## 2026-08-19-r394
 
 - Release ID: 2026-08-19-r394

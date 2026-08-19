@@ -45,8 +45,20 @@ test("HR permissions, self service, miniapp and scheduling guard are wired", () 
   assert.match(read("app/api/hr/documents/[id]/route.ts"), /HIGHLY_RESTRICTED/);
   assert.match(read("app/_components/HrSelfService.tsx"), /Apply for leave/);
   assert.match(read("app/api/miniapp/staff/hr/leave/route.ts"), /submitLeaveRequest/);
+  assert.match(read("app/staff/hr/page.tsx"), /returnPath="\/staff\/hr"/);
+  assert.match(read("app/admin/layout.tsx"), /href: "\/staff\/hr"/);
+  assert.match(read("app/teacher/layout.tsx"), /href: "\/staff\/hr"/);
+  assert.match(read("middleware.ts"), /"\/staff\/:path\*"/);
   assert.match(read("lib/teacher-scheduling-availability.ts"), /hrLeaveRequest\.findFirst/);
   assert.match(read("lib/teacher-scheduling-availability.ts"), /status: "APPROVED"/);
+});
+
+test("HR bootstrap includes the owner as a full-time employee from the confirmed start date", () => {
+  const bootstrap = read("scripts/bootstrap-hris.ts");
+  assert.match(bootstrap, /zhaohongwei0880@gmail\.com/);
+  assert.match(bootstrap, /startDate: "2023-08-23"/);
+  assert.match(bootstrap, /jobTitle: "Managing Director"/);
+  assert.match(bootstrap, /managerKey: "JASMINE"/);
 });
 
 test("payslip approval separates HR, finance, director and employee visibility", () => {
