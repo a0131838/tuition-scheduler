@@ -1,15 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useFormStatus } from "react-dom";
 
 export default function AiPlanSubmitButton({ isReady }: { isReady: boolean }) {
-  const [pending, setPending] = useState(false);
+  const { pending } = useFormStatus();
 
   return (
     <button
       type="submit"
       disabled={pending}
-      onClick={() => setPending(true)}
       aria-live="polite"
       style={{
         padding: "10px 15px",

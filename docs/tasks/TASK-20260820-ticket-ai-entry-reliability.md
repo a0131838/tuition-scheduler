@@ -6,7 +6,7 @@ The Ticket Center AI preparation action can take several seconds but previously 
 
 ## Change
 
-- Add a client submit control that immediately displays `AI正在读取，请稍候…`, disables duplicate clicks and restores the existing server-rendered success or failure result after navigation.
+- Add a client submit control based on React `useFormStatus` that displays `AI正在读取，请稍候…` after the Server Action starts, disables duplicate clicks while it is pending and restores the existing server-rendered success or failure result after navigation.
 - Log only the ticket ID and safe error message when AI preparation fails so operations can diagnose the bridge without exposing ticket content.
 - Keep the existing SSO destination, manual workflow and formal confirmation gate unchanged.
 
@@ -21,3 +21,4 @@ The Ticket Center AI preparation action can take several seconds but previously 
 - Focused source and plan-normalization tests.
 - TypeScript and production build.
 - Guarded release and authenticated production browser verification for both controls.
+- Production browser regression found that disabling the submit button directly inside `onClick` could cancel the native Server Action submission. The control now derives pending state from the enclosing form, and the regression test rejects the early-click pattern.

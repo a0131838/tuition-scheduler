@@ -1,5 +1,16 @@
 # RELEASE BOARD
 
+- 2026-08-20-r398: the Ticket Center AI submit control now uses the actual Server Action pending lifecycle.
+
+## 2026-08-20-r398 Ready
+
+- Scope: replace the early click-state disable with React form status so the POST starts first and duplicate prevention begins only after submission.
+- Business impact: staff still see `AI正在读取，请稍候…`, while the underlying AI preparation request is now guaranteed to leave the browser.
+- Safety boundary: no scheduling, attendance, package, payroll, finance, messaging or permission logic changes.
+- Verification before deploy: focused test, TypeScript and production build.
+- Post-deploy verification: the target ticket must show a POST request, return to the refreshed plan and complete the AI OS SSO path.
+- Task doc: `docs/tasks/TASK-20260820-ticket-ai-entry-reliability.md`.
+
 - 2026-08-20-r397: visible Ticket Center AI preparation and single-ticket AI OS entry are ready for guarded release.
 
 ## 2026-08-20-r397 Ready

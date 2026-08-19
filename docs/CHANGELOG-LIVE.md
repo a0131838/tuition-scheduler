@@ -1,5 +1,21 @@
 # CHANGELOG LIVE
 
+## 2026-08-20-r398
+
+- Release ID: `2026-08-20-r398`
+- Date/Time (Asia/Singapore): `2026-08-20`
+- Deployment status: `READY` for the guarded server release.
+- Scope: let the Ticket Center AI Server Action start before the submit control enters its pending state.
+- Key files:
+  - `app/admin/tickets/[id]/AiPlanSubmitButton.tsx`
+  - `tests/admin-ai-ticket-plan.test.ts`
+  - `docs/tasks/TASK-20260820-ticket-ai-entry-reliability.md`
+- Risk impact (if any): Low and limited to the AI preparation submit lifecycle. Manual handling and every formal business workflow remain unchanged.
+- Verification: focused test, TypeScript, production build and authenticated production click-through are required.
+- Rollback point: production commit `9974e98a` before `2026-08-20-r398`.
+
+---
+
 ## 2026-08-20-r397
 
 - Release ID: `2026-08-20-r397`

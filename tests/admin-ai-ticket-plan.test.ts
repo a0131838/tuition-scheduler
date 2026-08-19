@@ -61,8 +61,8 @@ test("web Ticket Center permanently keeps AI-guided and manual execution paths",
   assert.match(source, /AI只负责读取、核对和准备建议/);
   assert.match(source, /前期不会自动落课、扣课时、改考勤、算工资或发送真实消息/);
   assert.match(source, /AiPlanSubmitButton/);
-  assert.match(submitSource, /useState/);
-  assert.match(submitSource, /setPending\(true\)/);
+  assert.match(submitSource, /useFormStatus\(\)/);
+  assert.doesNotMatch(submitSource, /onClick=.*setPending/);
   assert.match(submitSource, /AI正在读取，请稍候/);
   assert.match(submitSource, /disabled=\{pending\}/);
 });
