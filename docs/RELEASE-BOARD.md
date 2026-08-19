@@ -1,8 +1,8 @@
 # RELEASE BOARD
 
-- 2026-08-19-r388: ready for guarded server release and native parent miniapp development upload `1.0.62`; the parent home is reduced to one action, one optional next lesson and three compact routes.
+- 2026-08-19-r388: live on the server with the parent home reduced to one action, one optional next lesson and three compact routes; native development version `1.0.62` is uploaded but not submitted for review or formally published.
 
-## 2026-08-19-r388 Ready
+## 2026-08-19-r388 Live
 
 - Scope: remove report-like content from the parent home so the first screen answers only whether action is required and where to go next.
 - Business impact:
@@ -14,7 +14,10 @@
   - parent native miniapp home presentation only; no API, database, permission or route change;
   - no schedule, ticket execution, package, attendance, payroll, finance or notification behavior changed;
   - upload development version only; do not submit review or publish formally.
-- Verification target: focused parent regressions, native JavaScript syntax, miniapp release audit, production build, guarded deploy health checks and WeChat development upload.
+- Verification:
+  - 13/13 focused parent regressions, native JavaScript syntax, miniapp release audit, 251-page production build and `git diff --check` passed;
+  - guarded server deploy at feature commit `4886bf4b551dd3978893e3fcce61e527a65081c3`, PM2 PID `3455329`, HTTP `200`;
+  - WeChat development version `1.0.62` uploaded successfully at 780.4 KB, with no review submission or formal publication.
 - Task doc: docs/tasks/TASK-20260819-parent-home-simplification.md.
 
 - 2026-08-19-r387: live on the server with a quieter, action-first parent miniapp home, progress and service-request experience; native development version `1.0.61` is uploaded but not submitted for review or formally published.
