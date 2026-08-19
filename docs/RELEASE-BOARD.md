@@ -7546,10 +7546,10 @@
 - Validation: backend regression 180/180, performance regression 6/6, production build and `git diff --check` pass. Standard server deploy and signed-in production timing passed: tickets 721ms, todos 1119ms, alerts 732ms, monthly schedule 760ms and ticket detail 810ms.
 - Task doc: `docs/tasks/TASK-20260819-admin-read-performance-phase2.md`.
 
-# 2026-08-19-r385 Candidate
+# 2026-08-19-r385 Live
 
 - Scope: make Ticket Center primary filtering use the real router transition as its pending state and explicitly distinguish an applied empty filter from the first remembered-filter visit.
 - User impact: the filter button no longer stays on “正在筛选” after a completed request, and selecting blank/open criteria no longer revives an older remembered completed/status filter.
 - Safety: UI navigation-state fix only; no database migration and no scheduling, ticket, AI, package, attendance, payroll, finance or notification rule changes.
-- Validation: backend regression 180/180, performance regression 6/6, 251-page production build and `git diff --check` pass. Standard server release and signed-in production replay remain the release gates.
+- Validation: backend regression 180/180, performance regression 6/6, 251-page production build and `git diff --check` pass. Standard server release and signed-in production replay passed; the Ticket Center completed in about 1.3–1.4 seconds and repeated same-filter submission returned to the normal button state.
 - Task doc: `docs/tasks/TASK-20260819-admin-read-performance-phase2.md`.
