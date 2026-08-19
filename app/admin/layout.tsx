@@ -129,159 +129,88 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const adminNavGroups = [
     {
-      title: t(lang, "Today", "今天"),
-      summary: t(lang, "Start with the next task that blocks operations.", "先处理会阻塞运营的下一件事。"),
+      title: t(lang, "Today", "今日工作"),
+      summary: t(lang, "Only the work that needs attention now.", "只保留现在需要处理的工作。"),
       items: [
-        ...((user.role === "ADMIN" || user.role === "CS" || user.operationsAdmin || user.workspaces.includes("CS"))
-          ? [{ href: "/admin/communications", label: t(lang, "Parent Communication", "家长沟通与通知"), description: t(lang, "Review feedback and complete manual WeChat follow-up.", "审核反馈并完成微信群人工通知。"), tone: "warning" as const }]
-          : []),
-        {
-          href: "/admin",
-          label: t(lang, "Dashboard", "总览"),
-          description: t(lang, "Open today's workbench and key shortcuts.", "打开今日工作台和关键快捷入口。"),
-          tone: "accent" as const,
-        },
+        { href: "/admin", label: t(lang, "Dashboard", "总览"), description: t(lang, "Open today's workbench and key shortcuts.", "打开今日工作台和关键快捷入口。"), tone: "accent" as const },
+        { href: "/admin/todos", label: t(lang, "Todo Center", "待办中心"), description: t(lang, "Attendance, follow-up, renewal, and repair queues.", "点名、跟进、续费和修复队列。"), tone: "warning" as const },
+        { href: "/admin/approvals", label: approvalInboxLabel, tone: "warning" as const },
         ...(employeeProfile
-          ? [{
-              href: "/staff/hr",
-              label: t(lang, "My HR & Leave", "我的人事与请假"),
-              description: t(lang, "Use the same employee self-service entry for leave, balances and payslips.", "统一从员工自助入口申请假期、查看余额和工资单。"),
-              tone: "success" as const,
-            }]
+          ? [{ href: "/staff/hr", label: t(lang, "My HR & Leave", "我的 HR 与请假"), description: t(lang, "Leave, balances and released payslips.", "申请假期、查看余额和已发布工资单。"), tone: "success" as const }]
           : []),
-        {
-          href: "/admin/teacher-notices",
-          label: t(lang, "Teacher Notices", "老师通知"),
-          description: t(lang, "Publish and track teacher announcements.", "发布并追踪老师通知。"),
-          tone: "accent" as const,
-        },
-        {
-          href: "/admin/todos",
-          label: t(lang, "Todo Center", "待办中心"),
-          description: t(lang, "Attendance, follow-up, renewal, and repair queues.", "点名、跟进、续费和修复队列。"),
-          tone: "warning" as const,
-        },
-        ...((user.role === "ADMIN" || user.role === "CS" || user.role === "FINANCE" || user.operationsAdmin || user.workspaces.includes("CS") || showManagerConsole)
-          ? [{
-              href: "/admin/renewals",
-              label: t(lang, "Renewal Follow-up", "续费跟进"),
-              description: t(lang, "Track low balances from parent contact through package activation.", "从低余额预警跟进到新课包生效。"),
-              tone: "warning" as const,
-            }]
+        { href: "/admin/alerts", label: t(lang, "Sign-in Alerts", "签到告警"), tone: "danger" as const },
+        ...(user.workspaces.includes("CS")
+          ? [{ href: "/admin?workspace=cs", label: t(lang, "CS Workspace", "客服工作台"), tone: "accent" as const }]
           : []),
-        {
-          href: "/admin/communication-reminders",
-          label: t(lang, "Communication Reminders", "AI 沟通提醒"),
-          description: t(lang, "Bilingual reminders for classes, feedback, reports, and requests.", "课程、反馈、报告和工单的中英提醒。"),
-          tone: "accent" as const,
-        },
-        {
-          href: "/admin/mobile",
-          label: t(lang, "Mobile Workbench", "员工移动端"),
-          description: t(lang, "Compact phone-first operations entry.", "手机优先的紧凑运营入口。"),
-          tone: "accent" as const,
-        },
-        {
-          href: "/admin/alerts",
-          label: t(lang, "Sign-in Alerts", "签到警告"),
-          description: t(lang, "Escalations and sign-in anomalies.", "签到异常和需要升级处理的事项。"),
-          tone: "danger" as const,
-        },
-        {
-          href: "/admin/schedule",
-          label: t(lang, "Weekly Schedule", "周课表"),
-          description: t(lang, "Open the live schedule and move quickly.", "打开当前课表并快速处理变更。"),
-          tone: "neutral" as const,
-        },
-        {
-          href: "/admin/tickets/scheduling",
-          label: t(lang, "Scheduling Work Orders", "排课执行工单"),
-          description: t(lang, "Turn parent requests into verified schedule actions.", "把家长需求转成可核验的课表动作。"),
-          tone: "warning" as const,
-        },
-        {
-          href: "/admin/reports/monthly-schedule",
-          label: t(lang, "Monthly Schedule", "月课表总览"),
-          description: t(lang, "Review the month view without leaving the day-first desk.", "在今天工作台附近直接查看整月课表。"),
-          tone: "neutral" as const,
-        },
-        ...((user.role === "ADMIN" || user.role === "CS" || user.role === "FINANCE" || user.operationsAdmin || user.workspaces.includes("CS") || showManagerConsole)
-          ? [{
-              href: "/admin/monthly-scheduling",
-              label: t(lang, "Next-month Scheduling", "下月排课确认"),
-              description: t(lang, "Collect family preferences and forecast tutor capacity before month end.", "月底前收集家长时间并预测师资缺口。"),
-              tone: "warning" as const,
-            }]
-          : []),
-        ...(showManagerConsole
-          ? [
-              {
-                href: "/admin/manager/quality",
-                label: t(lang, "Manager Quality Desk", "管理者质量工作台"),
-                description: t(lang, "Print Lead Desk and complete the daily manager reflection.", "打印 Lead Desk，并完成每日管理复盘。"),
-                tone: "accent" as const,
-              },
-            ]
+        ...(user.workspaces.includes("SALES")
+          ? [{ href: "/admin?workspace=sales", label: t(lang, "Sales Workspace", "销售工作台"), tone: "success" as const }]
           : []),
       ],
     },
-    ...(user.workspaces.length > 0
-      ? [
-          {
-            title: t(lang, "Extra Workspaces", "兼职工作台"),
-            summary: t(lang, "Use a focused view without changing admin permissions.", "用精简视角处理兼职工作，不改变管理员权限。"),
-            items: [
-              ...(user.workspaces.includes("CS")
-                ? [
-                    {
-                      href: "/admin?workspace=cs",
-                      label: t(lang, "CS Workspace", "客服工作台"),
-                      description: t(lang, "Focused resource intake and follow-up view.", "聚焦资源录入和客服跟进。"),
-                      tone: "accent" as const,
-                    },
-                  ]
-                : []),
-              ...(user.workspaces.includes("SALES")
-                ? [
-                    {
-                      href: "/admin?workspace=sales",
-                      label: t(lang, "Sales Workspace", "销售工作台"),
-                      description: t(lang, "Focused sales resource pipeline view.", "聚焦销售资源管道。"),
-                      tone: "success" as const,
-                    },
-                  ]
-                : []),
-            ],
-          },
-        ]
-      : []),
     {
-      title: t(lang, "Core Workflows", "核心流程"),
-      summary: t(lang, "Main student and teaching workflows.", "学生和教学的主流程入口。"),
+      title: t(lang, "Teaching Operations", "教学运营"),
+      summary: t(lang, "Schedules, students, teachers and teaching quality.", "课表、学生、老师和教学质量。"),
       items: [
+        { href: "/admin/schedule", label: t(lang, "Weekly Schedule", "周课表"), tone: "accent" as const },
+        { href: "/admin/reports/monthly-schedule", label: t(lang, "Monthly Schedule", "月课表总览"), tone: "neutral" as const },
+        { href: "/admin/tickets/scheduling", label: t(lang, "Scheduling Work Orders", "排课执行工单"), tone: "warning" as const },
         { href: "/admin/students", label: t(lang, "Students", "学生"), tone: "accent" as const },
+        { href: "/admin/teachers", label: t(lang, "Teachers", "老师"), tone: "neutral" as const },
+        { href: "/admin/classes", label: t(lang, "Classes", "班级"), tone: "neutral" as const },
+        { href: "/admin/tickets", label: t(lang, "Ticket Center", "工单中心"), tone: "warning" as const },
+        { href: "/admin/feedbacks", label: t(lang, "Teacher Quality & Feedback", "老师质量与课后反馈"), tone: "accent" as const },
+        { href: "/admin/booking-links", label: t(lang, "Booking Links", "学生选课链接"), tone: "neutral" as const },
+        ...(showManagerConsole
+          ? [{ href: "/admin/manager/quality", label: t(lang, "Manager Quality Desk", "管理者质量工作台"), tone: "accent" as const }]
+          : []),
+      ],
+    },
+    {
+      title: t(lang, "Parent & Student Service", "家长与学生服务"),
+      summary: t(lang, "Communication, scheduling preferences and student services.", "沟通、时间确认和学生服务。"),
+      items: [
+        ...((user.role === "ADMIN" || user.role === "CS" || user.operationsAdmin || user.workspaces.includes("CS"))
+          ? [{ href: "/admin/communications", label: t(lang, "Parent Communication", "家长沟通与通知"), tone: "warning" as const }]
+          : []),
+        ...((user.role === "ADMIN" || user.role === "CS" || user.role === "FINANCE" || user.operationsAdmin || user.workspaces.includes("CS") || showManagerConsole)
+          ? [{ href: "/admin/renewals", label: t(lang, "Renewal Follow-up", "续费跟进"), tone: "warning" as const }]
+          : []),
+        { href: "/admin/communication-reminders", label: t(lang, "Communication Reminders", "AI 沟通提醒"), tone: "accent" as const },
+        { href: "/admin/mobile", label: t(lang, "Mobile Workbench", "员工移动端"), tone: "accent" as const },
+        ...((user.role === "ADMIN" || user.role === "CS" || user.role === "FINANCE" || user.operationsAdmin || user.workspaces.includes("CS") || showManagerConsole)
+          ? [{ href: "/admin/monthly-scheduling", label: t(lang, "Next-month Scheduling", "下月排课确认"), tone: "warning" as const }]
+          : []),
         ...(canSeeCare ? [{ href: "/admin/care", label: t(lang, "Full Care", "全托管"), tone: "success" as const }] : []),
         { href: "/admin/leads", label: t(lang, "Resource Follow-up", "资源跟进"), tone: "accent" as const },
         { href: "/admin/school-applications", label: t(lang, "School Applications", "学校申请服务"), tone: "accent" as const },
         { href: "/admin/enrollments", label: t(lang, "Enrollments", "报名"), tone: "success" as const },
         { href: "/admin/packages", label: t(lang, "Packages", "课时包"), tone: "success" as const },
-        { href: "/admin/tickets", label: t(lang, "Ticket Center", "工单中心"), tone: "warning" as const },
-        { href: "/admin/teachers", label: t(lang, "Teachers", "老师"), tone: "neutral" as const },
-        { href: "/admin/classes", label: t(lang, "Classes", "班级"), tone: "neutral" as const },
-        { href: "/admin/booking-links", label: t(lang, "Booking Links", "学生选课链接"), tone: "neutral" as const },
-        { href: "/admin/feedbacks", label: t(lang, "Teacher Feedbacks", "老师课后反馈"), tone: "accent" as const },
-        { href: "/admin/miniapp-staff", label: t(lang, "Miniapp Staff", "员工小程序"), tone: "accent" as const },
         { href: "/admin/miniapp-notifications", label: t(lang, "Miniapp Notifications", "小程序通知"), tone: "accent" as const },
+      ],
+    },
+    {
+      title: t(lang, "People & Training", "人员与培训"),
+      summary: t(lang, "Teacher communication, training and HR administration.", "老师通知、培训和人事管理。"),
+      items: [
+        { href: "/admin/teacher-notices", label: t(lang, "Teacher Notices", "老师通知"), tone: "accent" as const },
+        { href: "/admin/miniapp-staff", label: t(lang, "Miniapp Staff", "员工小程序"), tone: "accent" as const },
         { href: "/admin/tickets/handover", label: t(lang, "Daily Handover", "每日交接"), tone: "warning" as const },
-        { href: "/admin/tickets/sop", label: t(lang, "SOP One Pager", "SOP一页纸"), tone: "neutral" as const },
+        { href: "/admin/tickets/sop", label: t(lang, "SOP One Pager", "SOP 一页纸"), tone: "neutral" as const },
         { href: "/training", label: t(lang, "Training Center", "员工培训中心"), tone: "success" as const },
+        ...(canSeeHr
+          ? [
+              { href: "/admin/hr", label: t(lang, "HR Workspace", "人事工作台"), tone: "accent" as const },
+              { href: "/admin/hr/leave", label: t(lang, "Leave Approvals", "假期审批"), tone: "warning" as const },
+              { href: "/admin/hr/payslips", label: t(lang, "Employee Payslips", "员工工资单"), tone: "success" as const },
+            ]
+          : []),
+        ...(canSeeSharedDocs ? [{ href: "/admin/shared-docs", label: t(lang, "Shared Docs", "共享文档库"), tone: "neutral" as const }] : []),
       ],
     },
     {
       title: t(lang, "Finance & Review", "财务与审核"),
       summary: t(lang, "Approval queues, settlement, and repair desks.", "审批队列、结算和修复工作台。"),
       items: [
-        { href: "/admin/approvals", label: approvalInboxLabel, tone: "warning" as const },
         { href: "/admin/finance/workbench", label: t(lang, "Finance Workbench", "财务工作台"), tone: "warning" as const },
         { href: "/admin/finance/transport-billing", label: t(lang, "Transport Billing", "交通费月结"), tone: "warning" as const },
         { href: "/admin/finance/business-accounts", label: t(lang, "Business Accounts", "企业账户"), tone: "accent" as const },
@@ -299,20 +228,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: "/admin/recovery/uploads", label: t(lang, "Attachment Health", "附件异常总览"), tone: "warning" as const },
       ],
     },
-    ...(canSeeHr
-      ? [{
-          title: t(lang, "HR & People", "人事与员工"),
-          summary: t(lang, "Employee records, leave approvals, private documents, and payslips.", "员工档案、假期审批、私密文件和工资单。"),
-          items: [
-            { href: "/admin/hr", label: t(lang, "HR Workspace", "人事工作台"), tone: "accent" as const },
-            { href: "/admin/hr/leave", label: t(lang, "Leave Approvals", "假期审批"), tone: "warning" as const },
-            { href: "/admin/hr/payslips", label: t(lang, "Employee Payslips", "员工工资单"), tone: "success" as const },
-          ],
-        }]
-      : []),
     {
-      title: t(lang, "Setup & Control", "配置与控制"),
-      summary: t(lang, "Base data, system admin, and lower-frequency maintenance.", "基础数据、系统管理和低频维护入口。"),
+      title: t(lang, "Setup & Reports", "设置与报表"),
+      summary: t(lang, "Lower-frequency configuration, audit and reporting.", "低频配置、审计和报表。"),
       items: [
         { href: "/admin/campuses", label: t(lang, "Campuses", "校区"), tone: "neutral" as const },
         { href: "/admin/rooms", label: t(lang, "Rooms", "教室"), tone: "neutral" as const },
@@ -328,15 +246,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         ...(showManagerConsole
           ? [{ href: "/admin/manager/users", label: t(lang, "System User Admin", "系统使用者管理"), tone: "accent" as const }]
           : []),
-        ...(canSeeSharedDocs
-          ? [{ href: "/admin/shared-docs", label: t(lang, "Shared Docs", "共享文档库"), tone: "neutral" as const }]
-          : []),
-      ],
-    },
-    {
-      title: t(lang, "Reports", "报表"),
-      summary: t(lang, "Audit, archive, and context pages.", "审计、归档和辅助查看页。"),
-      items: [
         { href: "/admin/reports/monthly-hours", label: t(lang, "Monthly Hours", "月度课时明细"), tone: "neutral" as const },
         { href: "/admin/reports/academic-management", label: t(lang, "Academic Management", "学业管理月报"), tone: "accent" as const },
         { href: "/admin/reports/cancelled-sessions", label: t(lang, "Cancelled Sessions", "已取消课次"), tone: "neutral" as const },
@@ -357,8 +266,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const financeNavGroups = [
     {
-      title: t(lang, "Today", "今天"),
-      summary: t(lang, "Keep finance work focused on the current queue.", "把财务处理重心放在当前队列。"),
+      title: t(lang, "Today", "今日工作"),
+      summary: t(lang, "Current approvals, receipts and finance exceptions.", "当前审批、收据和财务异常。"),
       items: [
         {
           href: "/admin",
@@ -366,79 +275,48 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           description: t(lang, "Open today's finance overview.", "打开今日财务总览。"),
           tone: "accent" as const,
         },
-        {
-          href: "/admin/teacher-notices",
-          label: t(lang, "Teacher Notices", "老师通知"),
-          description: t(lang, "Publish and track teacher announcements.", "发布并追踪老师通知。"),
-          tone: "accent" as const,
-        },
+        { href: "/admin/approvals", label: approvalInboxLabel, tone: "warning" as const },
         {
           href: "/admin/finance/workbench",
           label: t(lang, "Finance Workbench", "财务工作台"),
           description: t(lang, "Track parent and partner billing exceptions.", "跟进家长和合作方账单异常。"),
           tone: "warning" as const,
         },
-        {
-          href: "/admin/finance/tutor-cost-export",
-          label: t(lang, "Tutor Cost Export", "老师成本导出"),
-          description: t(lang, "Download completed tutor cost from the 15th to month-end.", "下载 15 号到月底已完成老师成本。"),
-          tone: "success" as const,
-        },
-        {
-          href: "/admin/finance/individual-student-utility",
-          label: t(lang, "Individual Student Utility", "个人学生课时使用"),
-          description: t(lang, "Download weekly or monthly usage for individual students.", "下载个人学生每周或每月课时使用。"),
-          tone: "success" as const,
-        },
-        {
-          href: "/admin/finance/student-package-utilization",
-          label: t(lang, "Student Package Utilization", "学生课包使用提取"),
-          description: t(lang, "Split one student's usage from a shared package.", "从共享课包中拆出单个学生使用量。"),
-          tone: "success" as const,
-        },
-        {
-          href: "/admin/finance/documents",
-          label: t(lang, "Invoices & Receipts", "完整发票与收据"),
-          description: t(lang, "Open the cross-workspace document center.", "打开跨工作台的单据总览。"),
-          tone: "success" as const,
-        },
-        {
-          href: "/admin/finance/deleted-invoices",
-          label: t(lang, "Deleted Draft History", "已删除草稿历史"),
-          description: t(lang, "Review deleted draft invoice numbers and who removed them.", "查看已删除草稿号及删除人。"),
-          tone: "neutral" as const,
-        },
+        { href: "/admin/receipts-approvals/queue", label: t(lang, "Receipt Queue", "收据审批队列"), tone: "warning" as const },
+        { href: "/admin/expense-claims", label: t(lang, "Expense Claims", "报销审批"), tone: "warning" as const },
+        ...(employeeProfile
+          ? [{ href: "/staff/hr", label: t(lang, "My HR & Leave", "我的 HR 与请假"), tone: "success" as const }]
+          : []),
       ],
     },
     {
-      title: t(lang, "Approval Queues", "审核队列"),
-      summary: t(lang, "Process one approval stream at a time.", "一次处理一条审批流。"),
+      title: t(lang, "Billing & Settlement", "账单与结算"),
+      summary: t(lang, "Invoices, settlements, payroll and package billing.", "发票、结算、工资和课包账单。"),
       items: [
-        { href: "/admin/approvals", label: approvalInboxLabel, tone: "warning" as const },
+        { href: "/admin/finance/documents", label: t(lang, "Invoices & Receipts", "完整发票与收据"), tone: "success" as const },
+        { href: "/admin/finance/student-package-invoices", label: t(lang, "Student Package Invoices", "学生课时包发票"), tone: "success" as const },
+        { href: "/admin/finance/business-accounts", label: t(lang, "Business Accounts", "企业账户"), tone: "accent" as const },
+        { href: "/admin/finance/transport-billing", label: t(lang, "Transport Billing", "交通费月结"), tone: "warning" as const },
         { href: "/admin/reports/teacher-payroll", label: t(lang, "Teacher Payroll", "老师工资单"), tone: "accent" as const },
         { href: "/admin/reports/partner-settlement", label: t(lang, "Partner Settlement", "合作方结算"), tone: "accent" as const },
-        { href: "/admin/receipts-approvals/queue", label: t(lang, "Receipt Queue", "收据审批队列"), tone: "warning" as const },
         { href: "/admin/receipts-approvals/package", label: t(lang, "Package Workspace", "课包财务工作区"), tone: "success" as const },
-        { href: "/admin/receipts-approvals/repairs", label: t(lang, "Proof Repair", "凭证修复"), tone: "warning" as const },
-        { href: "/admin/receipts-approvals/history", label: t(lang, "Receipt History", "收据历史"), tone: "neutral" as const },
-        { href: "/admin/expense-claims", label: t(lang, "Expense Claims", "报销审批"), tone: "warning" as const },
         { href: "/admin/hr/payslips", label: t(lang, "Employee Payslips", "员工工资单"), tone: "success" as const },
       ],
     },
     {
-      title: t(lang, "Billing & Audit", "账单与审计"),
-      summary: t(lang, "Invoice work and finance-only reference pages.", "发票处理和财务参考页。"),
+      title: t(lang, "Audit & Records", "审计与记录"),
+      summary: t(lang, "Usage reports, repairs and completed finance history.", "使用报表、修复工具和财务历史。"),
       items: [
-        { href: "/admin/finance/documents", label: t(lang, "Invoices & Receipts", "完整发票与收据"), tone: "success" as const },
         { href: "/admin/finance/deleted-invoices", label: t(lang, "Deleted Draft History", "已删除草稿历史"), tone: "neutral" as const },
-        { href: "/admin/finance/student-package-invoices", label: t(lang, "Student Package Invoices", "学生课时包发票"), tone: "success" as const },
-        { href: "/admin/finance/business-accounts", label: t(lang, "Business Accounts", "企业账户"), tone: "accent" as const },
-        { href: "/admin/finance/transport-billing", label: t(lang, "Transport Billing", "交通费月结"), tone: "warning" as const },
         { href: "/admin/finance/student-package-balances", label: t(lang, "Student Package Balances", "学生课时包余额报表"), tone: "success" as const },
         { href: "/admin/finance/student-package-utilization", label: t(lang, "Student Package Utilization", "学生课包使用提取"), tone: "success" as const },
         { href: "/admin/reports/package-balance-audit", label: t(lang, "Package Balance Audit", "课包余额复核"), tone: "warning" as const },
         { href: "/admin/finance/individual-student-utility", label: t(lang, "Individual Student Utility", "个人学生课时使用"), tone: "success" as const },
         { href: "/admin/finance/tutor-cost-export", label: t(lang, "Tutor Cost Export", "老师成本导出"), tone: "success" as const },
+        { href: "/admin/receipts-approvals/repairs", label: t(lang, "Proof Repair", "凭证修复"), tone: "warning" as const },
+        { href: "/admin/receipts-approvals/history", label: t(lang, "Receipt History", "收据历史"), tone: "neutral" as const },
+        { href: "/admin/recovery/uploads", label: t(lang, "Attachment Health", "附件异常总览"), tone: "warning" as const },
+        { href: "/admin/teacher-notices", label: t(lang, "Teacher Notices", "老师通知"), tone: "accent" as const },
         { href: "/admin/reports/audit-logs", label: t(lang, "Audit Logs", "审计日志"), tone: "neutral" as const },
       ],
     },
@@ -584,7 +462,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
       </div>
 
-      <AdminSidebarNavClient groups={isFinance ? financeNavGroups : isResourceOnly ? resourceNavGroups : user.operationsAdmin ? operationsAdminNavGroups : adminNavGroups} />
+      <AdminSidebarNavClient
+        groups={isFinance ? financeNavGroups : isResourceOnly ? resourceNavGroups : user.operationsAdmin ? operationsAdminNavGroups : adminNavGroups}
+        searchPlaceholder={t(lang, "Search menu", "搜索菜单")}
+        favoritesTitle={t(lang, "Favorites", "常用入口")}
+        pinLabel={t(lang, "Pin to favorites", "固定到常用入口")}
+        unpinLabel={t(lang, "Remove from favorites", "从常用入口移除")}
+        favoriteLimitLabel={t(lang, "Up to 4 favorites", "最多固定 4 个入口")}
+        noResultsLabel={t(lang, "No matching menu items", "没有匹配的菜单")}
+      />
 
       <div
         style={{

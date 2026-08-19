@@ -1,5 +1,24 @@
 # CHANGELOG LIVE
 
+## 2026-08-20-r396
+
+- Release ID: `2026-08-20-r396`
+- Date/Time (Asia/Singapore): `2026-08-20`
+- Deployment status: `READY` for the guarded server release.
+- Scope: simplify Admin and Teacher navigation with task-based groups, search, remembered expansion and Admin favourites while preserving every existing route and permission rule.
+- Key files:
+  - `app/admin/AdminSidebarNavClient.tsx`
+  - `app/admin/layout.tsx`
+  - `app/teacher/TeacherSidebarNavClient.tsx`
+  - `app/teacher/layout.tsx`
+  - `tests/navigation-information-architecture.test.ts`
+  - `docs/tasks/TASK-20260820-navigation-simplification.md`
+- Risk impact (if any): Low and limited to navigation presentation. Finance visibility, route authorization, HR access, attendance, packages, contracts, payroll and scheduling logic are unchanged.
+- Verification: TypeScript, 21/21 focused navigation/access/HR tests, the 259-page production build, owner and Jessika desktop checks, and a 390 x 844 mobile check passed without console errors.
+- Rollback point: production commit `c6360f04` before `2026-08-20-r396`.
+
+---
+
 ## 2026-08-19-r395
 
 - Release ID: `2026-08-19-r395`

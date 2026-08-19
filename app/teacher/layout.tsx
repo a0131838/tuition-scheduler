@@ -24,14 +24,12 @@ export default async function TeacherLayout({ children }: { children: React.Reac
           ? [
               { href: "/teacher/lead", label: t(lang, "Lead Desk", "主管工作台") },
               { href: "/teacher/lead/quality", label: t(lang, "Teacher Quality", "老师质量管理") },
-              { href: "/training/manage", label: t(lang, "Training Sign-off", "培训验收台") },
-              { href: "/training/materials", label: t(lang, "Training Materials", "培训材料") },
             ]
           : []),
       ],
     },
     {
-      title: t(lang, "My Work", "我的任务"),
+      title: t(lang, "My Teaching", "我的教学"),
       items: [
         { href: "/teacher/sessions", label: t(lang, "My Sessions", "我的课次") },
         { href: "/teacher/sessions/history", label: t(lang, "Historical Feedback", "历史待补反馈") },
@@ -39,25 +37,26 @@ export default async function TeacherLayout({ children }: { children: React.Reac
         { href: "/teacher/student-feedbacks", label: t(lang, "Student Feedbacks", "学生课后反馈") },
         { href: "/teacher/tickets", label: t(lang, "Ticket Board", "工单看板") },
         { href: "/teacher/scheduling-exceptions", label: t(lang, "Scheduling Exceptions", "排课例外确认") },
-      ],
-    },
-    {
-      title: t(lang, "Schedule", "课表安排"),
-      items: [
         { href: "/teacher/availability", label: t(lang, "My Availability", "我的可上课时间") },
         { href: "/teacher/midterm-reports", label: t(lang, "Midterm Reports", "中期报告") },
         { href: "/teacher/final-reports", label: t(lang, "Final Reports", "结课报告") },
       ],
     },
     {
-      title: t(lang, "Finance", "财务"),
+      title: t(lang, "My Employment", "我的员工事务"),
       items: [
+        ...(employeeProfile ? [{ href: "/staff/hr", label: t(lang, "My HR & Leave", "我的 HR 与请假") }] : []),
         { href: "/teacher/payroll", label: t(lang, "My Payroll", "我的工资单") },
         { href: "/teacher/expense-claims", label: t(lang, "My Expense Claims", "我的报销") },
-        ...(employeeProfile ? [{ href: "/staff/hr", label: t(lang, "My HR & Leave", "我的人事与请假") }] : []),
         { href: "/teacher/payment-details", label: t(lang, "Payment Details", "收款资料") },
         { href: "/teacher/card", label: t(lang, "My Teacher Card", "我的老师名片") },
         { href: "/training", label: t(lang, "Training Center", "员工培训中心") },
+        ...(isLead
+          ? [
+              { href: "/training/manage", label: t(lang, "Training Sign-off", "培训验收台") },
+              { href: "/training/materials", label: t(lang, "Training Materials", "培训材料") },
+            ]
+          : []),
       ],
     },
   ];
@@ -77,7 +76,11 @@ export default async function TeacherLayout({ children }: { children: React.Reac
         <div style={{ fontWeight: 700 }}>{t(lang, "Language", "语言")}</div>
         <TeacherLanguageSelectorClient initialLang={user?.language || lang} />
       </div>
-      <TeacherSidebarNavClient groups={navGroups} />
+      <TeacherSidebarNavClient
+        groups={navGroups}
+        searchPlaceholder={t(lang, "Search menu", "搜索菜单")}
+        noResultsLabel={t(lang, "No matching menu items", "没有匹配的菜单")}
+      />
       <hr style={{ margin: "16px 0" }} />
       <a href="/teacher/logout">
         <button type="button">{t(lang, "Logout", "退出登录")}</button>

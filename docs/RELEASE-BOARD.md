@@ -1,5 +1,25 @@
 # RELEASE BOARD
 
+- 2026-08-20-r396: role-aware Admin and Teacher navigation simplification is ready for guarded release.
+
+## 2026-08-20-r396 Ready
+
+- Scope: organise the Admin menu into six task groups and the Teacher menu into three task groups, with search, remembered expansion and up to four local Admin favourites.
+- Business impact:
+  - staff see a shorter task map and open only the group they are currently using;
+  - Jessika retains Renewal Follow-up and the unified My HR entry without receiving finance navigation;
+  - every prior Admin destination remains present and existing server-side role filtering remains authoritative;
+  - finance, attendance, packages, contracts, payroll, scheduling and database records are unchanged.
+- Files:
+  - `app/admin/AdminSidebarNavClient.tsx`
+  - `app/admin/layout.tsx`
+  - `app/teacher/TeacherSidebarNavClient.tsx`
+  - `app/teacher/layout.tsx`
+  - `tests/navigation-information-architecture.test.ts`
+- Verification before deploy: TypeScript, 21/21 focused tests, 259-page production build and desktop/mobile browser checks passed.
+- Post-deploy verification: guarded release, HTTP health, owner navigation and Jessika restricted-navigation checks are required.
+- Task doc: `docs/tasks/TASK-20260820-navigation-simplification.md`.
+
 - 2026-08-19-r395: unified employee HR self-service and Zhao Hongwei's full-time profile are ready for guarded release.
 
 ## 2026-08-19-r395 Ready
