@@ -1,5 +1,18 @@
 # CHANGELOG LIVE
 
+## 2026-08-19-r394
+
+- Release ID: 2026-08-19-r394
+- Date/Time (Asia/Singapore): 2026-08-19
+- Deployment status: HRIS production initialization and legacy-document migration completed; WeChat development version `1.0.65` uploaded successfully; no formal Mini Program review submission.
+- Scope: close the HRIS rollout with production data verification, persistent private-file verification, the inherited Sharilyn employee-file import and the matching staff Mini Program development build.
+- Key files: docs/{CHANGELOG-LIVE,RELEASE-BOARD}.md
+- Risk impact (if any): Low and operational. Eight inherited employee files were copied into owner-only private storage and recorded through the idempotent HR importer; finance, attendance, packages, contracts and existing payroll records were not rewritten.
+- Verification: production HR bootstrap completed; 1 legal entity, 3 employee profiles, 6 leave policies and 8 legacy HR documents were confirmed; private storage is mode `700`; HR web routes and `/admin/login` return HTTP 200; the 69-page Mini Program release audit and native JavaScript syntax checks passed; WeChat Developer Tools returned `代码上传成功` for version `1.0.65`.
+- Rollback point: production commit af5b869cc2becad11db416ff55bbf36c140d19a6; imported records remain auditable and the Mini Program upload was not submitted for formal review.
+
+---
+
 ## 2026-08-19-r393
 
 - Release ID: 2026-08-19-r393

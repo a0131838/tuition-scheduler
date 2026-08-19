@@ -1,5 +1,19 @@
 # RELEASE BOARD
 
+- 2026-08-19-r394: HRIS production setup, inherited employee-file migration and staff Mini Program development upload are complete.
+
+## 2026-08-19-r394 Live
+
+- Scope: complete the operational rollout of the employee HRIS introduced in r391-r393.
+- Production result:
+  - HR bootstrap is idempotent and confirmed Jessika, Jasmine and Sharilyn employee profiles;
+  - one legal entity, six zero-default leave policies and eight inherited Sharilyn HR documents are present;
+  - all eight private files are stored outside the deploy checkout in an owner-only mode-`700` directory;
+  - HR web entry points and the login health endpoint return HTTP 200.
+- Mini Program: development version `1.0.65` uploaded successfully after the 69-page release audit and native JavaScript checks; formal review submission was not performed.
+- Safety boundary: no finance, attendance, package, contract, expense-claim or historical teacher-payroll records were rewritten; contractual leave entitlements remain zero until confirmed against signed terms.
+- Task doc: docs/tasks/TASK-20260819-employee-hris.md.
+
 - 2026-08-19-r393: HR maintenance commands use only declared project dependencies; the stopped legacy import can be replayed safely.
 
 ## 2026-08-19-r393 Live
