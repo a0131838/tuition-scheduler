@@ -17,7 +17,7 @@ function latestUpdate(progress, home) {
   if (home.latestFeedback) return { kind: "课后反馈", title: `${home.latestFeedback.teacherName || "老师"}已发布反馈`, summary: home.latestFeedback.summary || "本次课程反馈已更新", timeText: singaporeTimeText(home.latestFeedback.sessionStartAt) };
   const item = (progress.timeline || [])[0];
   if (item) return { kind: item.kindLabel || "服务动态", title: item.title, summary: item.summary, timeText: item.occurredAtText || singaporeTimeText(item.occurredAt) };
-  return { kind: "服务动态", title: "当前服务按计划推进", summary: "有新的课程、反馈或服务进展后会在这里更新。", timeText: "等待更新" };
+  return null;
 }
 
 function primaryAction(progress, monthly) {
@@ -38,7 +38,7 @@ Page({
     summary: {},
     care: {},
     nextSession: null,
-    latestUpdate: {},
+    latestUpdate: null,
     nextUpdateText: "",
     parentStatus: presentation.parentStatus(null),
     primaryAction: null,
@@ -96,6 +96,13 @@ Page({
   goFinance() { wx.navigateTo({ url: "/pages/finance/finance" }); },
   goReports() { wx.navigateTo({ url: "/pages/care-reports/care-reports" }); },
   goNewRequest() { wx.navigateTo({ url: "/pages/request-new/request-new" }); },
+  goSchoolGuide() { wx.navigateTo({ url: "/pages/guide-home/guide-home" }); },
+  goAssessment() { wx.navigateTo({ url: "/pages/guide-academic-assessment/guide-academic-assessment" }); },
+  goConsult() { wx.navigateTo({ url: "/pages/guide-consult/guide-consult" }); },
+  goLatestUpdate() {
+    if (this.data.latestUpdate && this.data.latestUpdate.kind === "课后反馈") this.goFeedbacks();
+    else this.goProgress();
+  },
   toggleOverview() { this.setData({ overviewExpanded: !this.data.overviewExpanded }); },
   goPrimaryAction() {
     if (!this.data.primaryAction) return;

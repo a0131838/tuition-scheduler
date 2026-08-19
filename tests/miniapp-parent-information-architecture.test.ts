@@ -21,9 +21,10 @@ test("parent home uses one stable dashboard request and answers the four parent 
   assert.match(page, /需要您处理/);
   assert.match(page, /接下来/);
   assert.match(page, /最新进展/);
-  assert.match(page, /quick-arrow/);
+  assert.match(page, /常用服务/);
   assert.match(page, /本周数据/);
-  assert.match(script, /toggleOverview/);
+  assert.match(page, /wx:if="\{\{latestUpdate\}\}"/);
+  assert.match(script, /goLatestUpdate/);
   assert.match(script, /\/dashboard/);
   assert.doesNotMatch(script, /\/service-progress/);
   assert.doesNotMatch(script, /\/subscriptions\/intent/);

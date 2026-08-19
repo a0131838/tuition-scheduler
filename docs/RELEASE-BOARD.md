@@ -1,5 +1,23 @@
 # RELEASE BOARD
 
+- 2026-08-19-r389: parent home service-entry completion uploaded as WeChat development version `1.0.63`; not submitted for review or formally published, and the server is unchanged.
+
+## 2026-08-19-r389 Development upload
+
+- Scope: keep the action-first parent home while filling the useful space with real next-lesson/latest-update information and four compact service entries.
+- Business impact:
+  - at most one parent decision remains the primary action;
+  - next lesson and latest update appear only when backed by real data;
+  - Singapore school guide, assessment, request/profile and advisor contact are reachable without crowding the first screen.
+- Safety boundary:
+  - parent native miniapp home presentation and existing route calls only;
+  - no API, database, authentication, permission, schedule, ticket, package, attendance, payroll, finance or notification change;
+  - development upload only; do not submit review or publish formally.
+- Verification:
+  - release audit, native JavaScript syntax, 13/13 focused regressions and `git diff --check` passed;
+  - WeChat Developer Tools returned `代码上传成功` for development version `1.0.63` at 2026-08-19 16:40 Asia/Singapore.
+- Task doc: docs/tasks/TASK-20260819-parent-home-simplification.md.
+
 - 2026-08-19-r388: live on the server with the parent home reduced to one action, one optional next lesson and three compact routes; native development version `1.0.62` is uploaded but not submitted for review or formally published.
 
 ## 2026-08-19-r388 Live

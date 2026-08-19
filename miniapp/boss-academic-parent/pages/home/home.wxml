@@ -42,23 +42,40 @@
       <view class="session-notice" wx:if="{{nextSession.pendingTeacherConsent}}">老师确认后会立即通知您</view>
     </view>
 
-    <view class="quick-actions">
-      <view class="quick-action" bindtap="goSchedule">
-        <view class="quick-title">课表</view>
-        <view class="quick-arrow">›</view>
+    <view class="latest-block" wx:if="{{latestUpdate}}" bindtap="goLatestUpdate">
+      <view class="block-head">
+        <view class="block-label">最新进展</view>
+        <view class="block-link">查看全部 ›</view>
       </view>
-      <view class="quick-action" bindtap="goProgress">
-        <view class="quick-title">服务进展</view>
-        <view class="quick-count" wx:if="{{freshness.unreadTimelineCount}}">{{freshness.unreadTimelineCount}}</view>
-        <view class="quick-arrow">›</view>
-      </view>
-      <view class="quick-action" wx:if="{{permissions.canCreateRequests}}" bindtap="goNewRequest">
-        <view class="quick-title">联系团队</view>
-        <view class="quick-arrow">›</view>
-      </view>
-      <view class="quick-action" wx:else bindtap="goStudents">
-        <view class="quick-title">我的资料</view>
-        <view class="quick-arrow">›</view>
+      <view class="update-kind">{{latestUpdate.kind}}</view>
+      <view class="update-title">{{latestUpdate.title}}</view>
+      <view class="update-summary" wx:if="{{latestUpdate.summary}}">{{latestUpdate.summary}}</view>
+      <view class="update-time">{{latestUpdate.timeText}}</view>
+    </view>
+
+    <view class="service-section">
+      <view class="service-heading">常用服务</view>
+      <view class="service-grid">
+        <view class="service-entry" bindtap="goSchoolGuide">
+          <view class="service-title">新加坡学校</view>
+          <view class="service-copy">查学校与升学路径</view>
+        </view>
+        <view class="service-entry" bindtap="goAssessment">
+          <view class="service-title">入学测评</view>
+          <view class="service-copy">英语与 AEIS 准备</view>
+        </view>
+        <view class="service-entry" wx:if="{{permissions.canCreateRequests}}" bindtap="goNewRequest">
+          <view class="service-title">提交需求</view>
+          <view class="service-copy">排课、请假与跟进</view>
+        </view>
+        <view class="service-entry" wx:else bindtap="goStudents">
+          <view class="service-title">我的资料</view>
+          <view class="service-copy">查看孩子与账户</view>
+        </view>
+        <view class="service-entry" bindtap="goConsult">
+          <view class="service-title">联系顾问</view>
+          <view class="service-copy">规划与选校咨询</view>
+        </view>
       </view>
     </view>
   </block>

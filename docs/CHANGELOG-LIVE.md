@@ -1,5 +1,22 @@
 # CHANGELOG LIVE
 
+## 2026-08-19-r389
+
+- Release ID: 2026-08-19-r389
+- Date/Time (Asia/Singapore): 2026-08-19 16:40
+- Deployment status: WeChat development version `1.0.63` uploaded successfully; no server deployment, review submission or formal publication.
+- Scope: complete the parent miniapp home as a concise action entry with one pending decision, an optional next lesson, a real latest update and four compact service routes.
+- Key files:
+  - miniapp/boss-academic-parent/pages/home/home.{js,wxml,wxss}
+  - tests/miniapp-parent-home-simplification.test.ts
+  - tests/miniapp-parent-information-architecture.test.ts
+  - docs/tasks/TASK-20260819-parent-home-simplification.md
+- Risk impact (if any): Low and parent-home presentation only. APIs, authentication, permissions, schedules, tickets, package balances, attendance, payroll, finance, notifications and server runtime are unchanged.
+- Verification: miniapp release audit, native JavaScript syntax, 13/13 focused parent regressions and `git diff --check` passed; WeChat Developer Tools returned `代码上传成功` for version `1.0.63`.
+- Rollback point: WeChat development version `1.0.62`; no production rollback is required because this version was not submitted or published.
+
+---
+
 ## 2026-08-19-r388
 
 - Release ID: 2026-08-19-r388

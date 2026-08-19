@@ -20,11 +20,18 @@
 .session-course { margin-top: 7rpx; font-size: 25rpx; font-weight: 720; }
 .session-meta, .session-notice { margin-top: 7rpx; color: #6f7773; font-size: 21rpx; line-height: 1.45; }
 .session-notice { color: #9b3e08; }
-.quick-actions { margin-top: 28rpx; border-top: 1rpx solid #dedbd6; }
-.quick-action { display: flex; align-items: center; min-height: 84rpx; border-bottom: 1rpx solid #dedbd6; }
-.quick-title { min-width: 0; flex: 1; color: #242825; font-size: 25rpx; font-weight: 760; }
-.quick-count { min-width: 34rpx; margin-right: 8rpx; padding: 4rpx 9rpx; border-radius: 999rpx; background: #edf7f2; color: #17634d; font-size: 19rpx; font-weight: 780; text-align: center; }
-.quick-arrow { flex: 0 0 auto; color: #ec5e0a; font-size: 36rpx; }
+.latest-block { margin-top: 24rpx; padding: 22rpx 24rpx; border-left: 6rpx solid #287a62; border-radius: 0 14rpx 14rpx 0; background: #eff7f3; }
+.update-kind { margin-top: 16rpx; color: #287a62; font-size: 19rpx; font-weight: 760; }
+.update-title { display: -webkit-box; overflow: hidden; margin-top: 6rpx; color: #202421; font-size: 27rpx; font-weight: 810; line-height: 1.35; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.update-summary { display: -webkit-box; overflow: hidden; margin-top: 7rpx; color: #59635e; font-size: 21rpx; line-height: 1.5; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.update-time { margin-top: 9rpx; color: #818782; font-size: 19rpx; }
+.service-section { margin-top: 28rpx; padding-top: 24rpx; border-top: 1rpx solid #dedbd6; }
+.service-heading { color: #202421; font-size: 27rpx; font-weight: 820; }
+.service-grid { display: flex; flex-wrap: wrap; gap: 14rpx; margin-top: 18rpx; }
+.service-entry { box-sizing: border-box; width: calc(50% - 7rpx); min-height: 126rpx; padding: 20rpx; border: 1rpx solid #dedbd6; border-radius: 14rpx; background: #fff; }
+.service-entry:active { border-color: #ec5e0a; background: #fff7f0; }
+.service-title { color: #242825; font-size: 24rpx; font-weight: 790; }
+.service-copy { margin-top: 8rpx; color: #747a76; font-size: 19rpx; line-height: 1.4; }
 .home-skeleton, .home-error { padding: 30rpx 0; }
 .skeleton-line, .skeleton-block { background: #e9e6e1; animation: pulse 1.2s ease-in-out infinite; }
 .skeleton-line { height: 28rpx; margin-top: 16rpx; }
