@@ -51,3 +51,5 @@ Create a controlled HR information system for GT Educational Institute Pte. Ltd.
 3. Configure confirmed leave entitlements in `/admin/hr` before granting balances.
 4. Import inherited employee folders with `LEGACY_HR_SOURCE_DIR`, `LEGACY_HR_EMPLOYEE_EMAIL` and `npm run hr:import-legacy` from a private server staging location.
 5. Verify `/admin/hr`, `/admin/hr/leave`, `/admin/hr/payslips`, `/teacher/hr` and the staff miniapp leave page.
+
+The production import smoke test is intentionally fail-fast: unsupported runtime dependencies or file types must stop before a database record is created, and a corrected run can be replayed without duplicates.

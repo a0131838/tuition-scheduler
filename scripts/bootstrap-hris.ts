@@ -1,4 +1,3 @@
-import "dotenv/config";
 import { HrLeaveType, StaffWorkspace } from "@prisma/client";
 import { ensureEmployeeChecklist } from "@/lib/hr-checklist";
 import { prisma } from "@/lib/prisma";

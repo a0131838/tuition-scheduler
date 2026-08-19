@@ -1,5 +1,18 @@
 # CHANGELOG LIVE
 
+## 2026-08-19-r393
+
+- Release ID: 2026-08-19-r393
+- Date/Time (Asia/Singapore): 2026-08-19
+- Deployment status: Released through the guarded server workflow.
+- Scope: remove an undeclared runtime helper from HR maintenance scripts after the production legacy-import smoke test stopped before writing any files.
+- Key files: scripts/{bootstrap-hris,import-legacy-hr-documents}.ts
+- Risk impact (if any): Low and limited to command startup. HR web routes, data, leave, payslips, finance, attendance and scheduling logic are unchanged.
+- Verification: TypeScript, 7/7 HRIS regressions, production build and guarded release checks.
+- Rollback point: production commit 6478246adae8d25bb5b87c9d0dc2af2271925ecd.
+
+---
+
 ## 2026-08-19-r392
 
 - Release ID: 2026-08-19-r392

@@ -1,5 +1,14 @@
 # RELEASE BOARD
 
+- 2026-08-19-r393: HR maintenance commands use only declared project dependencies; the stopped legacy import can be replayed safely.
+
+## 2026-08-19-r393 Live
+
+- Scope: correct the command startup dependency found by the production legacy-document import smoke test.
+- Safety boundary: the failed run stopped before copying files into final HR storage or creating database records; the importer remains hash-idempotent.
+- Verification: TypeScript, 7/7 HRIS regressions, production build, guarded release and replay of the legacy import.
+- Task doc: docs/tasks/TASK-20260819-employee-hris.md.
+
 - 2026-08-19-r392: private HR files now use an owner-only persistent server directory outside the deploy checkout.
 
 ## 2026-08-19-r392 Live

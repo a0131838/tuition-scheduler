@@ -1,4 +1,3 @@
-import "dotenv/config";
 import path from "path";
 import { readdir, stat } from "fs/promises";
 import { HrDocumentSensitivity } from "@prisma/client";
