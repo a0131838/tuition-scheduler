@@ -102,6 +102,7 @@ const zhMap: Record<string, string> = {
   "Choose subject, campus, room and time to match teachers.": "\u9009\u62e9\u79d1\u76ee\u3001\u6821\u533a\u3001\u6559\u5ba4\u548c\u65f6\u95f4\u540e\u5339\u914d\u8001\u5e08",
   "Change Teacher": "\u6362\u8001\u5e08",
   "Change Course": "\u6362\u8bfe\u7a0b",
+  "Add Another Course": "\u65b0\u589e\u53e6\u4e00\u95e8\u8bfe",
   "Replace Teacher": "\u66ff\u6362\u8001\u5e08",
   "Reason (optional)": "\u539f\u56e0(\u53ef\u9009)",
   "Select teacher": "\u9009\u62e9\u8001\u5e08",
@@ -4765,7 +4766,7 @@ export default async function StudentDetailPage({
                       "#quick-schedule"
                     )}
                   >
-                    {tl(lang, "Change Course")}
+                    {tl(lang, "Add Another Course")}
                   </a>
                 </div>
                 <div style={{ marginTop: 6 }}>

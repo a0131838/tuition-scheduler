@@ -131,6 +131,15 @@ export function communicationReminderSessionStudents(session: any) {
   return [...byId.values()];
 }
 
+export function communicationReminderRelevantStudents(session: any) {
+  const attendanceByStudent = new Map(
+    (session.attendances ?? []).map((row: any) => [row.studentId, row.status])
+  );
+  return communicationReminderSessionStudents(session).filter(
+    (student) => attendanceByStudent.get(student.id) !== "EXCUSED"
+  );
+}
+
 function courseLabel(row: any) {
   return [row.class?.course?.name, row.class?.subject?.name, row.class?.level?.name].filter(Boolean).join(" / ") || "课程";
 }
@@ -206,7 +215,10 @@ export async function listCommunicationReminders(now = new Date(), limit = 300) 
     const label = courseLabel(session);
     const time = `${formatBusinessDateTime(session.startAt)}–${new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Singapore", hour: "2-digit", minute: "2-digit", hour12: false }).format(session.endAt)}`;
     const location = session.class.campus.isOnline ? "线上" : [session.class.campus.name, session.class.room?.name].filter(Boolean).join(" · ");
-    const students = communicationReminderSessionStudents(session);
+    // EXCUSED is the formal cancellation marker. Historical class membership
+    // must not revive a cancelled student's course or teaching reminders.
+    const students = communicationReminderRelevantStudents(session);
+    if (students.length === 0) continue;
 
     if (session.startAt > now && session.startAt.getTime() - now.getTime() <= 30 * 60 * 60 * 1000) {
       for (const student of students) {
@@ -232,12 +244,16 @@ export async function listCommunicationReminders(now = new Date(), limit = 300) 
         items.push(reminder({ key: `ATTENDANCE_MISSING:${session.id}`, category: "ATTENDANCE", categoryLabel: "考勤提醒", title: `${teacherName} · 未点名`, subject: `${studentText} · ${time}`, recipientType: "TEACHER", recipientName: teacherName, studentName: studentText, teacherName, dueAt, now, sourceHref: `/admin/sessions?focusSessionId=${session.id}`, sourceLabel: "考勤", copyZh: zh, copyEn: en }));
       }
       const finalFeedback = session.feedbacks.find((row) => !row.isProxyDraft && row.status !== "PROXY_DRAFT");
-      if (!finalFeedback) {
+      const feedbackRequired = students.some((student) => {
+        const attendance = session.attendances.find((row) => row.studentId === student.id);
+        return attendance?.status === "PRESENT" || attendance?.status === "LATE";
+      });
+      if (!finalFeedback && feedbackRequired) {
         const dueAt = new Date(session.endAt.getTime() + DAY);
         const zh = `${teacherName}老师您好，${studentText}于${time}的${label}课程尚未填写课后反馈，请尽快完成，便于家长及时了解学习情况。`;
         const en = `Hello ${teacherName}, the lesson feedback for ${studentText}'s ${label} lesson at ${time} is still missing. Please complete it so the parent can receive a timely update.`;
         items.push(reminder({ key: `FEEDBACK_MISSING:${session.id}`, category: "FEEDBACK", categoryLabel: "课后反馈", title: `${teacherName} · 待填反馈`, subject: `${studentText} · ${time}`, recipientType: "TEACHER", recipientName: teacherName, studentName: studentText, teacherName, dueAt, now, sourceHref: `/admin/feedbacks?focusSessionId=${session.id}`, sourceLabel: "课后反馈", copyZh: zh, copyEn: en }));
-      } else if (!finalFeedback.forwardedAt) {
+      } else if (finalFeedback && !finalFeedback.forwardedAt) {
         const primaryStudent = students[0];
         const primary = primaryStudent?.parentLinks?.find((row: any) => row.isPrimary) ?? primaryStudent?.parentLinks?.[0];
         const dueAt = new Date(finalFeedback.id ? session.endAt.getTime() + 30 * 60 * 60 * 1000 : session.endAt.getTime() + DAY);

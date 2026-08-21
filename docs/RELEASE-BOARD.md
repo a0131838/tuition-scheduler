@@ -1,5 +1,15 @@
 # RELEASE BOARD
 
+- 2026-08-21-r399: cancelled-session reminder filtering and safer course-action wording are ready for guarded release.
+
+## 2026-08-21-r399 Ready
+
+- Web and staff Mini Program reminders share the same server rule: `EXCUSED` students are excluded and feedback is requested only after actual attendance.
+- A cancelled member no longer hides active classmates in a group lesson.
+- The old “Change Course” link is identified honestly as adding another course; AI subject-conversion requests go to controlled record review instead of creating a duplicate lesson.
+- No Mini Program source package changes are required; the shared API behavior becomes effective after the server release.
+- Task doc: `docs/tasks/TASK-20260821-reminder-and-ai-scheduling-guards.md`.
+
 - 2026-08-20-r398: the Ticket Center AI submit control now uses the actual Server Action pending lifecycle.
 
 ## 2026-08-20-r398 Ready

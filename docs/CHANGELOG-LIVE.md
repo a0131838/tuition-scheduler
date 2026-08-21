@@ -1,5 +1,17 @@
 # CHANGELOG LIVE
 
+## 2026-08-21-r399
+
+- Release ID: `2026-08-21-r399`
+- Date/Time (Asia/Singapore): `2026-08-21`
+- Deployment status: `READY` for the guarded server release.
+- Scope: exclude formally cancelled students from shared web/miniapp communication reminders, require actual attendance before feedback reminders, and remove the misleading “Change Course” create-session label.
+- Risk impact (if any): Low. No attendance, package, payroll, finance or course records are rewritten.
+- Verification: focused reminder tests, TypeScript, production build and production reminder replay are required.
+- Rollback point: production commit `fe73edea` before `2026-08-21-r399`.
+
+---
+
 ## 2026-08-20-r398
 
 - Release ID: `2026-08-20-r398`

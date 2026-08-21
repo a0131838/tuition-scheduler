@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
+  communicationReminderRelevantStudents,
   communicationReminderSessionStudents,
   normalizeCommunicationReminderStatus,
 } from "../lib/communication-reminders";
@@ -83,4 +84,18 @@ test("a true group session uses the deduplicated class roster", () => {
     },
   });
   assert.deepEqual(students.map((student) => student.id), ["first", "second"]);
+});
+
+test("cancelled students are excluded without hiding active group classmates", () => {
+  const cancelled = { id: "cancelled", name: "Cancelled", parentLinks: [] };
+  const active = { id: "active", name: "Active", parentLinks: [] };
+  const students = communicationReminderRelevantStudents({
+    student: null,
+    attendances: [
+      { studentId: cancelled.id, status: "EXCUSED" },
+      { studentId: active.id, status: "PRESENT" },
+    ],
+    class: { oneOnOneStudent: null, enrollments: [{ student: cancelled }, { student: active }] },
+  });
+  assert.deepEqual(students.map((student) => student.id), ["active"]);
 });
