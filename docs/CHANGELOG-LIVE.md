@@ -1,5 +1,17 @@
 # CHANGELOG LIVE
 
+## 2026-08-29-r400
+
+- Release ID: `2026-08-29-r400`
+- Date/Time (Asia/Singapore): `2026-08-29`
+- Deployment status: `READY` for the guarded server release.
+- Scope: reconcile AI ticket feedback across the formal web and staff Mini Program: friendly network recovery, complete batch impact lists, one visible primary action, and verify-only handling after formal actions are already resolved.
+- Risk impact (if any): Low to medium and limited to Ticket Center/AI assistance presentation and Mini Program AI-work routing. Formal scheduling, package, attendance, payroll, finance, permissions and execution transactions are unchanged.
+- Verification: focused tests, TypeScript, production build, Mini Program audit and guarded production checks are required.
+- Rollback point: production commit `c9877f08` before `2026-08-29-r400`.
+
+---
+
 ## 2026-08-21-r399
 
 - Release ID: `2026-08-21-r399`

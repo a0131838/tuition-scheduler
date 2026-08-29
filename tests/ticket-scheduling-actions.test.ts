@@ -125,7 +125,7 @@ test("ticket workbench exposes blockers and audited existing-result recovery", (
   assert.match(webDetail, /existingResultVerified/);
   assert.match(webDetail, /关联已有结果并写入审计/);
   assert.match(webDetail, /ADMIN_RESOLVE_TICKET_SCHEDULING_ACTIONS/);
-  assert.match(webDetail, /方案二：实际工作已经处理过，只核验一次/);
+  assert.match(webDetail, /实际工作已经处理过：只核验一次/);
   assert.match(webDetail, /保存实际结果并自动更新工单/);
   assert.match(webDetail, /这张旧工单没有结构化动作/);
   assert.match(webDetail, /单项例外：补资料或修改等待状态/);
@@ -167,7 +167,7 @@ test("simplified ticket desk keeps one execution path and moves legacy controls 
   const detail = readFileSync("app/admin/tickets/[id]/page.tsx", "utf8");
   const list = readFileSync("app/admin/tickets/page.tsx", "utf8");
   assert.match(detail, /Request \/ 家长需求/);
-  assert.match(detail, /方案一：继续由系统完成正式课表操作/);
+  assert.match(detail, /当前主操作/);
   assert.match(detail, /完整资料与历史/);
   assert.match(detail, /ticketActionType/);
   assert.match(detail, /安排新课程 \/ Schedule lesson/);

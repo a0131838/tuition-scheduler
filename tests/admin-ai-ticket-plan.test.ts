@@ -52,12 +52,13 @@ test("AI blockers remain explicit and never become a ready-to-execute plan", () 
   assert.equal(plan.blockers[0]?.action, "请教务选择老师");
 });
 
-test("web Ticket Center permanently keeps AI-guided and manual execution paths", () => {
+test("web Ticket Center exposes one state-specific primary action and keeps manual recovery disclosed", () => {
   const source = readFileSync(new URL("../app/admin/tickets/[id]/page.tsx", import.meta.url), "utf8");
   const submitSource = readFileSync(new URL("../app/admin/tickets/[id]/AiPlanSubmitButton.tsx", import.meta.url), "utf8");
   assert.match(source, /AI处理建议 · 不直接修改正式数据/);
-  assert.match(source, /按AI建议，由员工正式执行/);
+  assert.match(source, /核对AI建议并进入正式执行/);
   assert.match(source, /人工手动处理（始终保留）/);
+  assert.match(source, /AI不适用、系统外已处理或需要人工例外/);
   assert.match(source, /AI只负责读取、核对和准备建议/);
   assert.match(source, /前期不会自动落课、扣课时、改考勤、算工资或发送真实消息/);
   assert.match(source, /AiPlanSubmitButton/);
@@ -65,4 +66,12 @@ test("web Ticket Center permanently keeps AI-guided and manual execution paths",
   assert.doesNotMatch(submitSource, /onClick=.*setPending/);
   assert.match(submitSource, /AI正在读取，请稍候/);
   assert.match(submitSource, /disabled=\{pending\}/);
+  assert.doesNotMatch(source, /operations\.slice\(0, 12\)/);
+  const integration = readFileSync(new URL("../lib/admin-ai-ticket-plan.ts", import.meta.url), "utf8");
+  assert.match(integration, /AI连接暂时不可用，请点击重新读取/);
+  assert.doesNotMatch(integration, /throw new Error\(message\).*Failed to fetch/);
+  const miniapp = readFileSync(new URL("../miniapp/boss-academic-parent/pages/staff-ai-work/staff-ai-work.js", import.meta.url), "utf8");
+  assert.match(miniapp, /formalActionResolution\?\.allResolved/);
+  assert.match(miniapp, /核验正式结果并关闭/);
+  assert.match(miniapp, /AI不会重复执行/);
 });

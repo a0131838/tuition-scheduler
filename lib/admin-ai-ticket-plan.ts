@@ -164,19 +164,31 @@ async function aiToken(user: FormalStaffUser) {
 async function callAi(user: FormalStaffUser, path: string, init?: RequestInit, timeoutMs = 8_000) {
   const { baseUrl } = integrationConfig();
   const token = await aiToken(user);
-  const response = await fetch(`${baseUrl}${path}`, {
-    ...init,
-    cache: "no-store",
-    signal: AbortSignal.timeout(timeoutMs),
-    headers: {
-      authorization: `Bearer ${token}`,
-      "content-type": "application/json",
-      ...(init?.headers || {}),
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}${path}`, {
+      ...init,
+      cache: "no-store",
+      signal: AbortSignal.timeout(timeoutMs),
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+        ...(init?.headers || {}),
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (/failed to fetch|networkerror|load failed|abort|timeout/i.test(message)) {
+      throw new Error("AI连接暂时不可用，请点击重新读取；系统不会保存不完整结果。");
+    }
+    throw new Error("AI工单服务暂时不可用，请稍后重新读取。");
+  }
   const result = await response.json().catch(() => ({}));
   if (!response.ok) {
     const message = asString(asRecord(result).error) || "AI工单服务暂时不可用。";
+    if (/failed to fetch|networkerror|load failed|abort|timeout/i.test(message)) {
+      throw new Error("AI连接暂时不可用，请点击重新读取；系统不会保存不完整结果。");
+    }
     throw new Error(message);
   }
   return asRecord(result);
@@ -184,7 +196,7 @@ async function callAi(user: FormalStaffUser, path: string, init?: RequestInit, t
 
 export async function readAdminAiTicketPlan(user: FormalStaffUser, ticketId: string): Promise<AdminAiTicketPlanResult> {
   try {
-    const result = await callAi(user, `/api/miniapp-ai/ticket-operations?id=${encodeURIComponent(ticketId)}`, undefined, 2_500);
+    const result = await callAi(user, `/api/miniapp-ai/ticket-operations?id=${encodeURIComponent(ticketId)}`, undefined, 5_000);
     const plan = asArray(result.items)
       .map(normalizeAdminAiTicketPlan)
       .find((item): item is AdminAiTicketPlan => Boolean(item && item.formalTicketId === ticketId));

@@ -1,6 +1,7 @@
 const api = require("../../utils/api");
 
 function actionFor(item) {
+  if (item.relatedFacts?.formalActionResolution?.allResolved) return { kind: "verify", label: "核验正式结果并关闭" };
   return { kind: "prepare", label: "查看完整处理方案" };
 }
 
@@ -13,6 +14,7 @@ function friendlyMessage(value, fallback = "处理失败，请稍后重试") {
   if (outsideDate) return `申请的${weekday[outsideDate[1]] || outsideDate[1]} ${outsideDate[2]}–${outsideDate[3]}不在老师可用时间内。老师当前可用：${outsideDate[4]}。请改选时间或老师。`;
   if (/MISSING_COMMAND_INPUT/i.test(text)) return "AI还缺少生成正式操作所需的资料，请查看下方列出的具体缺失项。";
   if (/NO_FEASIBLE_SCHEDULE/i.test(text)) return "现有老师、家长时间和课包条件暂时无法同时满足，请查看下方原因并调整一项条件。";
+  if (/failed to fetch|networkerror|load failed|timeout/i.test(text)) return "网络连接暂时不可用，请稍后重新读取；系统不会保存不完整结果。";
   return text ? text.replace(/availability/ig, "可用时间") : fallback;
 }
 
@@ -282,6 +284,9 @@ Page({
   run() {
     const item = this.data.selected;
     if (!item || this.data.working) return;
+    if (item.actionKind === "verify") {
+      return this.setData({ message: "正式系统已记录处理结果。请核对最终课表、课时和沟通记录，再在正式工单中关闭；AI不会重复执行。" });
+    }
     const decisionError = this.validateDecision(item);
     if (decisionError) return this.setData({ message: decisionError });
     this.setData({ working: true, message: "" });

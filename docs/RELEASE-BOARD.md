@@ -1,5 +1,15 @@
 # RELEASE BOARD
 
+- 2026-08-29-r400: unified Ticket Center and staff Mini Program feedback reconciliation is ready for guarded release.
+
+## 2026-08-29-r400 Ready
+
+- Ticket Center turns network failures into a safe retry instruction and never presents an incomplete response as ready.
+- Batch AI plans show every affected operation; the current state exposes one visible primary action while audited manual recovery remains available in disclosure.
+- Staff Mini Program detects formally resolved work and changes the next step to verification/closure instead of preparing a duplicate operation.
+- No schema, permission or formal execution transaction changes.
+- Task doc: `docs/tasks/TASK-20260829-ticket-feedback-reconciliation.md`.
+
 - 2026-08-21-r399: cancelled-session reminder filtering and safer course-action wording are ready for guarded release.
 
 ## 2026-08-21-r399 Ready

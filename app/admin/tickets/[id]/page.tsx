@@ -1184,6 +1184,9 @@ export default async function AdminTicketDetailPage({
     { key: "Cancelled", label: "已取消", caption: "Cancelled" },
   ];
   const unresolvedSchedulingActions = row.schedulingActions.filter((action) => !isTicketSchedulingActionResolved(action));
+  const aiPlanCanProceed = aiPlanResult?.status === "READY"
+    && aiPlanResult.plan.preparationStatus === "READY"
+    && aiPlanResult.plan.blockers.length === 0;
   const operationCard = buildTicketOperationCard({
     type: row.type,
     status: row.status,
@@ -1470,7 +1473,7 @@ export default async function AdminTicketDetailPage({
                 {aiPlanResult.plan.operations.length ? (
                   <div style={{ display: "grid", gap: 8 }}>
                     <div style={{ fontWeight: 900 }}>建议执行 {aiPlanResult.plan.operations.length} 项</div>
-                    {aiPlanResult.plan.operations.slice(0, 12).map((operation) => {
+                    {aiPlanResult.plan.operations.map((operation) => {
                       const time = formatAiPlanDateTime(operation.startAt);
                       return (
                         <div key={`${operation.sequence}-${operation.commandType}-${operation.targetId ?? "new"}`} style={{ background: "#fff", border: "1px solid #fed7aa", borderRadius: 9, padding: "9px 11px" }}>
@@ -1504,12 +1507,14 @@ export default async function AdminTicketDetailPage({
             )}
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <form action={prepareAiTicketPlanAction}>
-                <input type="hidden" name="id" value={row.id} />
-                <input type="hidden" name="back" value={`${selfHref}#ticket-decision`} />
-                <AiPlanSubmitButton isReady={aiPlanResult.status === "READY"} />
-              </form>
-              <a href={aiOsTicketHref} style={{ fontWeight: 800 }}>在AI OS查看完整方案 →</a>
+              {!aiPlanCanProceed ? (
+                <form action={prepareAiTicketPlanAction}>
+                  <input type="hidden" name="id" value={row.id} />
+                  <input type="hidden" name="back" value={`${selfHref}#ticket-decision`} />
+                  <AiPlanSubmitButton isReady={aiPlanResult.status === "READY"} />
+                </form>
+              ) : null}
+              <a href={aiOsTicketHref} style={{ color: "#57534e", fontSize: 13, fontWeight: 750 }}>查看AI识别依据与完整记录 →</a>
             </div>
             <div style={{ color: "#78716c", fontSize: 12 }}>
               AI只负责读取、核对和准备建议；前期不会自动落课、扣课时、改考勤、算工资或发送真实消息。
@@ -1519,29 +1524,35 @@ export default async function AdminTicketDetailPage({
 
         {isSchedulingTicket && !row.isArchived && !["Completed", "Cancelled"].includes(row.status) ? (
           <div style={{ display: "grid", gap: 16 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 12 }}>
+            {aiPlanCanProceed ? (
               <div style={{ borderLeft: "4px solid #ea580c", padding: "12px 14px", display: "grid", gap: 8, background: "#fff7ed" }}>
-                <div style={{ color: "#9a3412", fontSize: 12, fontWeight: 850 }}>方案一：继续由系统完成正式课表操作</div>
-                <div style={{ fontWeight: 900, fontSize: 18 }}>按AI建议，由员工正式执行</div>
+                <div style={{ color: "#9a3412", fontSize: 12, fontWeight: 850 }}>当前主操作</div>
+                <div style={{ fontWeight: 900, fontSize: 18 }}>核对AI建议并进入正式执行</div>
                 <div style={{ color: "#57534e", fontSize: 13 }}>先看上方AI整理的完整方案，再进入原系统完成最终核对，由系统继续正式执行。</div>
                 <a href={formalExecutionHref} style={{ justifySelf: "start", padding: "10px 15px", borderRadius: 8, background: "#ea580c", color: "#fff", fontWeight: 850, textDecoration: "none" }}>
-                  按AI建议进入人工确认 →
+                  核对并进入正式执行 →
                 </a>
               </div>
-              <div style={{ borderLeft: "4px solid #0f766e", padding: "12px 14px", display: "grid", gap: 8, background: "#f0fdfa" }}>
+            ) : (
+              <div style={{ color: "#57534e", fontSize: 13 }}>当前主操作是先完成上方的AI读取或阻断项；完成后这里会显示唯一的正式执行入口。</div>
+            )}
+
+            <details style={{ border: "1px solid #d6d3d1", borderRadius: 12, padding: 14, background: "#fafaf9" }}>
+              <summary style={{ cursor: "pointer", fontWeight: 850 }}>AI不适用、系统外已处理或需要人工例外？</summary>
+              <div style={{ borderLeft: "4px solid #0f766e", padding: "12px 14px", display: "grid", gap: 8, background: "#f0fdfa", marginTop: 14 }}>
                 <div style={{ fontWeight: 900, fontSize: 18 }}>人工手动处理（始终保留）</div>
                 <div style={{ color: "#475569", fontSize: 13 }}>AI不准确、暂时不可用或员工已有更可靠信息时，直接按原流程处理。</div>
-                <a href={manualExecutionHref} style={{ justifySelf: "start", padding: "10px 15px", borderRadius: 8, border: "1px solid #0f766e", color: "#0f766e", fontWeight: 850, textDecoration: "none", background: "#fff" }}>
-                  不采用AI，直接人工处理 →
+                <a href={manualExecutionHref} style={{ justifySelf: "start", color: "#0f766e", fontWeight: 850 }}>
+                  不采用AI，进入人工处理 →
                 </a>
               </div>
-            </div>
 
-            <form
+              <form
               action={resolveTicketSchedulingActionsAction}
               style={{
                 borderTop: "1px solid #d6d3d1",
                 paddingTop: 16,
+                marginTop: 16,
                 display: "grid",
                 gap: 13,
               }}
@@ -1549,7 +1560,7 @@ export default async function AdminTicketDetailPage({
               <input type="hidden" name="id" value={row.id} />
               <input type="hidden" name="back" value={`${selfHref}#ticket-decision`} />
               <div>
-                <div style={{ fontSize: 18, fontWeight: 900 }}>方案二：实际工作已经处理过，只核验一次</div>
+                <div style={{ fontSize: 18, fontWeight: 900 }}>实际工作已经处理过：只核验一次</div>
                 <div style={{ color: "#57534e", fontSize: 13, marginTop: 5 }}>
                   不需要再逐项填写。“已处理完成”和“无需处理”会写入不同审计结果，避免把未做的工作记成已执行。
                 </div>
@@ -1594,7 +1605,8 @@ export default async function AdminTicketDetailPage({
               <button type="submit" style={{ justifySelf: "start", padding: "11px 18px", fontWeight: 850, background: "#0f766e", color: "#fff" }}>
                 保存实际结果并自动更新工单
               </button>
-            </form>
+              </form>
+            </details>
           </div>
         ) : (
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
