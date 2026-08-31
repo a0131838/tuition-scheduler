@@ -1,5 +1,24 @@
 # CHANGELOG LIVE
 
+## 2026-08-31-r401
+
+- Release ID: `2026-08-31-r401`
+- Date/Time (Asia/Singapore): `2026-08-31`
+- Deployment status: `READY` for the guarded server release.
+- Scope: add an internal student learning-evidence workspace that exports verified class feedback as PDF, highlights evidence completeness and stores auditable personalised learning-plan drafts.
+- Key files:
+  - `app/admin/students/[id]/learning-evidence/page.tsx`
+  - `app/api/admin/students/[id]/learning-evidence/pdf/route.ts`
+  - `app/api/admin/students/[id]/learning-plans/route.ts`
+  - `lib/student-learning-evidence*.ts`
+  - `prisma/migrations/20260831120000_add_student_learning_evidence_plans/migration.sql`
+  - `docs/tasks/TASK-20260831-student-learning-evidence.md`
+- Risk impact (if any): Medium-low and limited to protected internal teaching records. The PDF includes only published, non-draft feedback attached to formal student sessions; scheduling, attendance deduction, package balance, payroll, finance, contracts, existing feedback approval and parent messaging remain unchanged.
+- Verification: Prisma validation/generation, focused learning-evidence tests, TypeScript, production build and diff check passed before guarded release. Post-deploy verification must cover the migration, protected workspace, PDF response, export audit and plan-draft audit.
+- Rollback point: production commit `7c684a31e2c3e0ae5aa45dd5bf308161a59a3b44` before `2026-08-31-r401`.
+
+---
+
 ## 2026-08-29-r400
 
 - Release ID: `2026-08-29-r400`

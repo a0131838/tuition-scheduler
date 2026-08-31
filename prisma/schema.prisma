@@ -1130,6 +1130,7 @@ model Student {
   sessions                   Session[]                     @relation("SessionStudent")
   midtermReports             MidtermReport[]
   finalReports               FinalReport[]
+  learningPlans              StudentLearningPlan[]
   sourceChannel              StudentSourceChannel?         @relation(fields: [sourceChannelId], references: [id])
   studentType                StudentType?                  @relation(fields: [studentTypeId], references: [id])
   bookingLinks               StudentBookingLink[]
@@ -1384,6 +1385,8 @@ model User {
   careReportsApproved          CareReport[]               @relation("CareReportApprovedBy")
   careReportsPublished         CareReport[]               @relation("CareReportPublishedBy")
   careReportsRevoked           CareReport[]               @relation("CareReportRevokedBy")
+  studentLearningPlansCreated  StudentLearningPlan[]       @relation("StudentLearningPlanCreatedBy")
+  studentLearningPlansApproved StudentLearningPlan[]       @relation("StudentLearningPlanApprovedBy")
   careParentQuestionsAssigned  CareParentQuestion[]       @relation("CareParentQuestionAssigned")
   careParentQuestionsResponded CareParentQuestion[]       @relation("CareParentQuestionResponded")
   careRiskCasesOwned           CareRiskCase[]             @relation("CareRiskCaseOwner")
@@ -2218,6 +2221,33 @@ model ExpenseClaim {
   @@index([paymentBatchMonth, status])
   @@index([archivedAt, status])
   @@index([expenseTypeCode, expenseDate])
+}
+
+model StudentLearningPlan {
+  id                   String   @id @default(uuid())
+  studentId            String
+  status               String   @default("DRAFT")
+  title                String
+  periodStart          DateTime
+  periodEnd            DateTime
+  evidenceSnapshotJson Json
+  goals                String
+  teacherActions       String?
+  studentActions       String?
+  parentActions        String?
+  reviewDueAt          DateTime?
+  createdByUserId      String
+  approvedByUserId     String?
+  approvedAt           DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  student    Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  createdBy  User    @relation("StudentLearningPlanCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  approvedBy User?   @relation("StudentLearningPlanApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([studentId, periodStart, periodEnd])
+  @@index([status, reviewDueAt])
 }
 
 model AuditLog {

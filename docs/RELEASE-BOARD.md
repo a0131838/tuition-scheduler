@@ -1,6 +1,14 @@
 # RELEASE BOARD
 
-- 2026-08-29-r400: unified Ticket Center and staff Mini Program feedback reconciliation is ready for guarded release.
+- 2026-08-31-r401: protected student learning-evidence PDFs, deterministic learning trends and auditable learning-plan drafts are ready for guarded release.
+
+## 2026-08-31-r401 Ready
+
+- Academic staff can open a student-specific internal workspace, select a date range/course, and download a PDF evidence pack without copying feedback manually.
+- The pack includes only published, non-draft feedback attached to formal student sessions. It makes missing feedback, unmarked attendance, homework-follow-through gaps, missing baseline evidence and missing learning goals explicit.
+- Staff can save an internal personalised learning-plan draft with its source snapshot, goals, actions and review date; a separate approval action records the reviewer before it is treated as approved. Exports, draft creation and approval are recorded in the audit log.
+- No parent sending, Mini Program exposure, automatic AI conclusion, attendance deduction, scheduling, package, payroll, finance or contract logic changes are included.
+- Task doc: `docs/tasks/TASK-20260831-student-learning-evidence.md`.
 
 ## 2026-08-29-r400 Ready
 

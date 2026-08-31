@@ -129,6 +129,7 @@ const zhMap: Record<string, string> = {
   "Level": "\u7ea7\u522b",
   "Level (optional)": "\u7ea7\u522b(\u53ef\u9009)",
   "Limit": "\u6761\u6570",
+  "Learning Evidence": "\u5b66\u4e60\u8bc1\u636e",
   "Name": "\u59d3\u540d",
   "Next Month": "\u4e0b\u6708",
   "No": "\u5426",
@@ -2764,6 +2765,12 @@ export default async function StudentDetailPage({
               style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
             >
               {tl(lang, "Export Student Report")}
+            </a>
+            <a
+              href={`/admin/students/${encodeURIComponent(studentId)}/learning-evidence`}
+              style={{ padding: "8px 12px", border: "1px solid #99f6e4", borderRadius: 10, background: "#f0fdfa", color: "#0f766e", fontWeight: 800, textDecoration: "none" }}
+            >
+              {tl(lang, "Learning Evidence")}
             </a>
             <a
               href="#calendar-tools"
