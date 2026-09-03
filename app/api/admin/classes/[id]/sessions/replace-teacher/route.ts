@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { pickTeacherSessionConflict } from "@/lib/session-conflict";
 import { checkTeacherSchedulingAvailability } from "@/lib/teacher-scheduling-availability";
+import { recordSchedulingChange } from "@/lib/scheduling-change-history";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -88,7 +89,7 @@ async function findTeacherConflict(opts: {
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  const actor = await requireAdmin();
   const { id: classId } = await params;
   if (!classId) return bad("Missing classId");
 
@@ -108,7 +109,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
-    include: { class: true },
+    include: { teacher: { select: { name: true } }, class: { include: { teacher: { select: { name: true } } } } },
   });
   if (!session || session.classId !== classId) return bad("Session not found", 404);
 
@@ -123,7 +124,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     scope === "future"
       ? await prisma.session.findMany({
           where: { classId, startAt: { gte: session.startAt } },
-          include: { class: true },
+          include: { teacher: { select: { name: true } }, class: { include: { teacher: { select: { name: true } } } } },
           orderBy: { startAt: "asc" },
         })
       : [session];
@@ -172,6 +173,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           toTeacherId,
           reason,
         },
+      });
+      await recordSchedulingChange(tx, {
+        actor,
+        action: "SESSION_TEACHER_REPLACED",
+        sessionId: s.id,
+        classId,
+        before: { teacherName: s.teacher?.name ?? s.class.teacher.name },
+        after: { teacherName: teacher.name },
+        reason,
+        scope: scope === "future" ? "future" : "single",
+        source: "WEB",
       });
     }
   });

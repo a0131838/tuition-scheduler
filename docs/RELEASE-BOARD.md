@@ -1,5 +1,16 @@
 # RELEASE BOARD
 
+- 2026-09-03-r402: Midterm PDF overflow protection and compact class schedule history are ready for guarded release.
+
+## 2026-09-03-r402 Ready
+
+- Midterm Reports keep the existing first-page layout when the recommendation section fits; when it does not, the full recommendation continues on a clean PDF page instead of clipping text.
+- The existing class sessions page gains one collapsed `Schedule change history / 排课变更记录` disclosure. It has no new sidebar item, workbench or separate configuration.
+- Recent records show the action, time, actor and available before/after details. Web create, reschedule, teacher replacement, student reassignment and removal are recorded; Mini Program cancellation and location changes are recorded as well.
+- No migration is required. The implementation reuses `AuditLog`; it does not change scheduling conflict checks, attendance/cancellation decisions, package deductions, payroll, finance or access rules.
+- Historical changes that were not previously audited cannot be reconstructed; older entries display honestly as legacy records when detail is unavailable.
+- Task doc: `docs/tasks/TASK-20260903-midterm-pdf-and-schedule-history.md`.
+
 - 2026-08-31-r401: protected student learning-evidence PDFs, deterministic learning trends and auditable learning-plan drafts are ready for guarded release.
 
 ## 2026-08-31-r401 Ready

@@ -172,6 +172,62 @@ function fieldBox(doc: PDFDoc, x: number, y: number, w: number, h: number, label
   });
 }
 
+function textFitsInField(doc: PDFDoc, text: string, width: number, height: number, preferredSize: number, minSize: number, lineGap = 0.8) {
+  const safeHeight = Math.max(8, height);
+  setPdfFont(doc);
+  for (let fontSize = preferredSize; fontSize >= minSize; fontSize -= 0.25) {
+    doc.fontSize(fontSize);
+    if (doc.heightOfString(normalizeText(text), { width, lineGap, align: "left" }) <= safeHeight) return true;
+  }
+  return false;
+}
+
+function drawRecommendationContinuation(doc: PDFDoc, title: string, fields: Array<{ label: string; value: string }>) {
+  const left = doc.page.margins.left;
+  const right = doc.page.margins.right;
+  const top = doc.page.margins.top;
+  const bottom = doc.page.margins.bottom;
+  const width = doc.page.width - left - right;
+  let y = top;
+
+  const drawHeading = () => {
+    setPdfBoldFont(doc);
+    doc.fillColor("#111827").fontSize(17).text(title, left, y, { width });
+    y += 30;
+  };
+
+  drawHeading();
+  for (const field of fields) {
+    setPdfBoldFont(doc);
+    doc.fontSize(11.2);
+    const labelHeight = doc.heightOfString(field.label, { width: width - 24 });
+    setPdfFont(doc);
+    doc.fontSize(10.2);
+    const bodyHeight = doc.heightOfString(normalizeText(field.value), { width: width - 24, lineGap: 2, align: "left" });
+    const boxHeight = labelHeight + bodyHeight + 26;
+
+    if (y + boxHeight > doc.page.height - bottom) {
+      doc.addPage();
+      y = top;
+      drawHeading();
+    }
+
+    doc.save();
+    doc.lineWidth(0.8);
+    doc.roundedRect(left, y, width, boxHeight, 6).fill("#FFFFFF").stroke("#E6ECF2");
+    doc.restore();
+    setPdfBoldFont(doc);
+    doc.fillColor("#334155").fontSize(11.2).text(field.label, left + 12, y + 9, { width: width - 24 });
+    setPdfFont(doc);
+    doc.fillColor("#111827").fontSize(10.2).text(normalizeText(field.value), left + 12, y + 13 + labelHeight, {
+      width: width - 24,
+      lineGap: 2,
+      align: "left",
+    });
+    y += boxHeight + 10;
+  }
+}
+
 function skillCard(
   doc: PDFDoc,
   x: number,
@@ -417,6 +473,18 @@ export async function buildMidtermReportPdfResponse(id: string) {
   const x3b = left + w3a + gap;
   const x3c = x3b + w3b + gap;
 
+  const recommendationFields = [
+    { label: ZH.key, value: draft.keyStrengths },
+    { label: ZH.bottleneck, value: draft.primaryBottlenecks },
+    { label: ZH.next, value: draft.nextPhaseFocus },
+    { label: ZH.load, value: draft.suggestedPracticeLoad },
+    { label: ZH.target, value: draft.targetLevelScore },
+  ];
+  const recommendationFieldHeight = (Math.max(0, h3 - 22 - 4) / recommendationFields.length) - 11;
+  const needsRecommendationContinuation = recommendationFields.some((field) =>
+    !textFitsInField(doc, field.value, w3b - 16, recommendationFieldHeight, 7.8, 7.4)
+  );
+
   panel(doc, left, y3, w3a, h3, ZH.learning, TONES.normal);
   stackedFields(doc, left + 8, y3 + 20, w3a - 16, h3 - 22, [
     { label: ZH.participation, value: draft.classParticipation },
@@ -426,18 +494,30 @@ export async function buildMidtermReportPdfResponse(id: string) {
   ], 1, 8.0);
 
   panel(doc, x3b, y3, w3b, h3, ZH.rec, TONES.normal);
-  stackedFields(doc, x3b + 8, y3 + 20, w3b - 16, h3 - 22, [
-    { label: ZH.key, value: draft.keyStrengths },
-    { label: ZH.bottleneck, value: draft.primaryBottlenecks },
-    { label: ZH.next, value: draft.nextPhaseFocus },
-    { label: ZH.load, value: draft.suggestedPracticeLoad },
-    { label: ZH.target, value: draft.targetLevelScore },
-  ], 1, 7.8);
+  if (needsRecommendationContinuation) {
+    fieldBox(
+      doc,
+      x3b + 8,
+      y3 + 20,
+      w3b - 16,
+      h3 - 22,
+      ZH.rec,
+      "完整学习建议请见下一页。\nFull learning recommendations continue on the next page.",
+      8.8,
+    );
+  } else {
+    stackedFields(doc, x3b + 8, y3 + 20, w3b - 16, h3 - 22, recommendationFields, 1, 7.8);
+  }
 
   if (hasExamBlock) {
     const examTitle = `${normalizeText(draft.examName || "考试")}${ZH.examSuffix}`;
     panel(doc, x3c, y3, w3c, h3, examTitle, TONES.normal);
     examCards(doc, x3c, y3, w3c, h3, examRows.slice(0, 7));
+  }
+
+  if (needsRecommendationContinuation) {
+    doc.addPage();
+    drawRecommendationContinuation(doc, `${ZH.title} - ${ZH.rec}`, recommendationFields);
   }
 
   const stream = streamPdf(doc);

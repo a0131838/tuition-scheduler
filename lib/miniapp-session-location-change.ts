@@ -4,6 +4,7 @@ import { campusRequiresRoom } from "@/lib/campus";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { prisma } from "@/lib/prisma";
 import { pickTeacherSessionConflict } from "@/lib/session-conflict";
+import { recordSchedulingChange } from "@/lib/scheduling-change-history";
 import { campusDeliveryMode, checkTeacherDeliveryMode, checkTeacherTravelBuffer } from "@/lib/teacher-delivery-mode";
 import { createTicketTeacherConfirmation, finishTicketAfterFormalExecution, urgentTeacherConsentRequired } from "@/lib/ai-ticket-communication";
 
@@ -168,25 +169,25 @@ export async function applyMiniappSessionLocationChange(input: MiniappLocationCh
       });
     }
     await tx.session.update({ where: { id: checked.session.id }, data: { classId: locationClass.id } });
-    await tx.auditLog.create({
-      data: {
-        actorEmail: actor.email.trim().toLowerCase(),
-        actorName: actor.name?.trim() || null,
-        actorRole: actor.role,
-        module: "SCHEDULING",
-        action: "MINIAPP_SESSION_CHANGE_LOCATION",
-        entityType: "Session",
-        entityId: checked.session.id,
-        meta: {
-          sourceClassId: source.id,
-          locationClassId: locationClass.id,
-          fromCampusId: source.campusId,
-          fromRoomId: source.roomId,
-          toCampusId: checked.campus.id,
-          toRoomId: checked.room?.id ?? null,
-          reason: input.reason,
-        },
+    await recordSchedulingChange(tx, {
+      actor,
+      action: "MINIAPP_SESSION_CHANGE_LOCATION",
+      sessionId: checked.session.id,
+      classId: source.id,
+      before: {
+        startAt: checked.session.startAt.toISOString(),
+        endAt: checked.session.endAt.toISOString(),
+        campusName: source.campus.name,
+        roomName: source.room?.name ?? null,
       },
+      after: {
+        startAt: checked.session.startAt.toISOString(),
+        endAt: checked.session.endAt.toISOString(),
+        campusName: checked.campus.name,
+        roomName: checked.room?.name ?? null,
+      },
+      reason: input.reason,
+      source: "MINIAPP",
     });
     const resultText = `已调整课程地点：${checked.preview.timeText}；${checked.preview.fromLocationText} → ${checked.preview.toLocationText}。`;
     const teacherId = checked.session.teacherId ?? checked.session.class.teacherId;

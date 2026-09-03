@@ -4,6 +4,7 @@ import { pickTeacherSessionConflict } from "@/lib/session-conflict";
 import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 import { checkTeacherSchedulingAvailability } from "@/lib/teacher-scheduling-availability";
 import { formatBusinessDateTime } from "@/lib/date-only";
+import { recordSchedulingChange } from "@/lib/scheduling-change-history";
 import {
   applyAdminLinkedTicketSchedulingAction,
   TicketSchedulingActionContextError,
@@ -225,6 +226,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         await tx.session.update({
           where: { id: item.session.id },
           data: { startAt: item.startAt, endAt: item.endAt },
+        });
+        await recordSchedulingChange(tx, {
+          actor: user,
+          action: "SESSION_RESCHEDULED",
+          sessionId: item.session.id,
+          classId,
+          before: { startAt: item.session.startAt.toISOString(), endAt: item.session.endAt.toISOString() },
+          after: { startAt: item.startAt.toISOString(), endAt: item.endAt.toISOString() },
+          scope,
+          source: "WEB",
         });
       }
       if (ticketId && ticketActionId) {

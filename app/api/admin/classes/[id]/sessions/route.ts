@@ -4,6 +4,7 @@ import { pickTeacherSessionConflict } from "@/lib/session-conflict";
 import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 import { isSessionDuplicateError } from "@/lib/session-unique";
 import { checkTeacherSchedulingAvailability } from "@/lib/teacher-scheduling-availability";
+import { recordSchedulingChange } from "@/lib/scheduling-change-history";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -173,7 +174,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  const actor = await requireAdmin();
   const { id: classId } = await params;
   if (!classId) return bad("Missing classId");
 
@@ -198,7 +199,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const cls = await prisma.class.findUnique({
     where: { id: classId },
-    include: { teacher: true, room: true, course: true, subject: true, level: true, enrollments: { select: { studentId: true } } },
+    include: { teacher: true, campus: true, room: true, course: true, subject: true, level: true, enrollments: { select: { studentId: true } } },
   });
   if (!cls) return bad("Class not found", 404);
 
@@ -251,6 +252,22 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     throw error;
   }
 
+  await recordSchedulingChange(prisma, {
+    actor,
+    action: "SESSION_CREATED",
+    sessionId: created.id,
+    classId,
+    after: {
+      startAt: created.startAt.toISOString(),
+      endAt: created.endAt.toISOString(),
+      teacherName: created.teacher?.name ?? cls.teacher.name,
+      studentName: created.student?.name ?? null,
+      campusName: cls.campus?.name ?? null,
+      roomName: cls.room?.name ?? null,
+    },
+    source: "WEB",
+  });
+
   return Response.json(
     {
       ok: true,
@@ -270,7 +287,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  const actor = await requireAdmin();
   const { id: classId } = await params;
   if (!classId) return bad("Missing classId");
 
@@ -284,9 +301,33 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   const sessionId = String(body?.sessionId ?? "");
   if (!sessionId) return bad("Missing sessionId");
 
-  const session = await prisma.session.findUnique({ where: { id: sessionId }, select: { id: true, classId: true } });
+  const session = await prisma.session.findUnique({
+    where: { id: sessionId },
+    include: {
+      student: { select: { name: true } },
+      teacher: { select: { name: true } },
+      class: { include: { teacher: { select: { name: true } }, campus: { select: { name: true } }, room: { select: { name: true } } } },
+    },
+  });
   if (!session || session.classId !== classId) return bad("Session not found", 404);
 
-  await prisma.session.delete({ where: { id: sessionId } });
+  await prisma.$transaction(async (tx) => {
+    await recordSchedulingChange(tx, {
+      actor,
+      action: "SESSION_DELETED",
+      sessionId: session.id,
+      classId,
+      before: {
+        startAt: session.startAt.toISOString(),
+        endAt: session.endAt.toISOString(),
+        teacherName: session.teacher?.name ?? session.class.teacher.name,
+        studentName: session.student?.name ?? null,
+        campusName: session.class.campus?.name ?? null,
+        roomName: session.class.room?.name ?? null,
+      },
+      source: "WEB",
+    });
+    await tx.session.delete({ where: { id: sessionId } });
+  });
   return Response.json({ ok: true });
 }

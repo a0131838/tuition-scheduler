@@ -6,6 +6,8 @@ import { getLang, t } from "@/lib/i18n";
 import { pickTeacherSessionConflict } from "@/lib/session-conflict";
 import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 import { checkTeacherSchedulingAvailability } from "@/lib/teacher-scheduling-availability";
+import { formatBusinessDateTime } from "@/lib/date-only";
+import { SCHEDULING_HISTORY_MODULE } from "@/lib/scheduling-change-history";
 import NoticeBanner from "../../../_components/NoticeBanner";
 import AdminClassSessionsClient from "./AdminClassSessionsClient";
 import {
@@ -111,6 +113,50 @@ function humanizeSessionsError(lang: Lang, message: string) {
     return t(lang, "No active package for this course. Please create a package before scheduling.", "该课程没有可用的有效课包，请先创建课包后再排课。");
   }
   return message;
+}
+
+function scheduleHistoryActionLabel(action: string, lang: Lang) {
+  const labels: Record<string, [string, string]> = {
+    SESSION_CREATED: ["Session created", "新建课次"],
+    SESSION_RESCHEDULED: ["Session rescheduled", "调整时间"],
+    SESSION_CANCELLED: ["Student cancellation recorded", "学生请假/取消"],
+    SESSION_DELETED: ["Session removed", "移除课次"],
+    SESSION_LOCATION_CHANGED: ["Location changed", "调整地点"],
+    SESSION_TEACHER_REPLACED: ["Teacher replaced", "更换老师"],
+    SESSION_STUDENT_CHANGED: ["Student changed", "更换学生"],
+    MINIAPP_SESSION_CREATE: ["Session created", "新建课次"],
+    MINIAPP_SESSION_RESCHEDULE: ["Session rescheduled", "调整时间"],
+    MINIAPP_SESSION_CHANGE_LOCATION: ["Location changed", "调整地点"],
+  };
+  const label = labels[action] ?? [action, action];
+  return t(lang, label[0], label[1]);
+}
+
+function scheduleHistoryMetaText(meta: unknown, lang: Lang) {
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) return t(lang, "Legacy entry - detailed before/after data was not recorded.", "历史记录 - 当时未保存完整前后内容。");
+  const value = meta as Record<string, unknown>;
+  const snapshot = (key: "before" | "after") => {
+    const raw = value[key];
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return "";
+    const item = raw as Record<string, unknown>;
+    const start = typeof item.startAt === "string" ? new Date(item.startAt) : null;
+    const end = typeof item.endAt === "string" ? new Date(item.endAt) : null;
+    const details = [
+      start && !Number.isNaN(start.getTime()) ? formatBusinessDateTime(start) : "",
+      end && !Number.isNaN(end.getTime()) ? formatBusinessDateTime(end) : "",
+      typeof item.teacherName === "string" ? item.teacherName : "",
+      typeof item.studentName === "string" ? item.studentName : "",
+      typeof item.campusName === "string" ? item.campusName : "",
+      typeof item.roomName === "string" ? item.roomName : "",
+      typeof item.status === "string" ? item.status : "",
+    ].filter(Boolean);
+    return details.join(" · ");
+  };
+  const before = snapshot("before");
+  const after = snapshot("after");
+  const reason = typeof value.reason === "string" && value.reason.trim() ? value.reason.trim() : "";
+  const parts = [before ? `${t(lang, "Before", "修改前")}: ${before}` : "", after ? `${t(lang, "After", "修改后")}: ${after}` : "", reason ? `${t(lang, "Reason", "原因")}: ${reason}` : ""].filter(Boolean);
+  return parts.join(" | ") || t(lang, "Legacy entry - detailed before/after data was not recorded.", "历史记录 - 当时未保存完整前后内容。");
 }
 
 async function findConflictForSession(opts: {
@@ -666,6 +712,19 @@ export default async function ClassSessionsPage({
     include: { teacher: true, student: true },
     orderBy: { startAt: "desc" },
   });
+  const sessionIds = sessions.map((session) => session.id);
+  const schedulingHistory = await prisma.auditLog.findMany({
+    where: {
+      module: SCHEDULING_HISTORY_MODULE,
+      entityType: "Session",
+      OR: [
+        ...(sessionIds.length ? [{ entityId: { in: sessionIds } }] : []),
+        { meta: { path: ["classId"], equals: classId } },
+      ],
+    },
+    orderBy: { createdAt: "desc" },
+    take: 30,
+  });
 
   const today = new Date();
   const defaultStartDate = ymd(today);
@@ -821,6 +880,28 @@ export default async function ClassSessionsPage({
         }}
       />
       </div>
+
+      <details style={{ marginTop: 14, border: "1px solid #dbe4f0", borderRadius: 10, background: "#fff", padding: "10px 12px" }}>
+        <summary style={{ cursor: "pointer", fontWeight: 800 }}>
+          {t(lang, "Schedule change history", "排课变更记录")} ({schedulingHistory.length})
+        </summary>
+        <div style={{ color: "#64748b", fontSize: 12, margin: "9px 0 6px" }}>
+          {t(lang, "Shows recent changes recorded for this class. It is closed by default so daily scheduling stays simple.", "仅显示本班最近已记录的变更，默认收起，不影响日常排课操作。")}
+        </div>
+        {!schedulingHistory.length ? (
+          <div style={{ color: "#64748b", fontSize: 13 }}>{t(lang, "No recorded changes yet.", "暂时没有已记录的变更。")}</div>
+        ) : (
+          <div style={{ display: "grid", gap: 8 }}>
+            {schedulingHistory.map((entry) => (
+              <div key={entry.id} style={{ borderTop: "1px solid #e2e8f0", paddingTop: 8, fontSize: 13 }}>
+                <strong>{scheduleHistoryActionLabel(entry.action, lang)}</strong>
+                <span style={{ color: "#64748b" }}> · {formatBusinessDateTime(entry.createdAt)} · {entry.actorName || entry.actorEmail}</span>
+                <div style={{ color: "#475569", marginTop: 3, lineHeight: 1.45 }}>{scheduleHistoryMetaText(entry.meta, lang)}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </details>
     </div>
   );
 }

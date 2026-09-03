@@ -1,12 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
+import { recordSchedulingChange } from "@/lib/scheduling-change-history";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  const actor = await requireAdmin();
   const { id: classId } = await params;
   if (!classId) return bad("Missing classId");
 
@@ -30,7 +31,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const enrolled = await prisma.enrollment.findFirst({
     where: { classId, studentId },
-    select: { id: true },
+    select: { id: true, student: { select: { name: true } } },
   });
   if (!enrolled) return bad("Student not enrolled in this class", 409);
 
@@ -40,6 +41,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     include: { student: { select: { id: true, name: true } } },
   });
 
+  await recordSchedulingChange(prisma, {
+    actor,
+    action: "SESSION_STUDENT_CHANGED",
+    sessionId,
+    classId,
+    before: { studentName: session.student?.name ?? null },
+    after: { studentName: updated.student?.name ?? enrolled.student.name },
+    source: "WEB",
+  });
+
   return Response.json({ ok: true, studentId: updated.studentId, studentName: updated.student?.name ?? null });
 }
-

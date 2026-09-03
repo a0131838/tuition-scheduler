@@ -1,5 +1,24 @@
 # CHANGELOG LIVE
 
+## 2026-09-03-r402
+
+- Release ID: `2026-09-03-r402`
+- Date/Time (Asia/Singapore): `2026-09-03`
+- Deployment status: `READY` for the guarded server release.
+- Scope: prevent Midterm Report recommendation text from being cut off by continuing only overflowing recommendations on a clean PDF continuation page; add a compact, collapsed schedule-change history to the existing class sessions page.
+- Key files:
+  - `lib/midterm-report-pdf.ts`
+  - `lib/scheduling-change-history.ts`
+  - `app/admin/classes/[id]/sessions/page.tsx`
+  - `app/api/admin/classes/[id]/sessions/{route,reschedule,replace-teacher,assign-student}/route.ts`
+  - `lib/miniapp-session-{cancellation,location-change}.ts`
+  - `tests/midterm-pdf-and-schedule-history.test.ts`
+- Risk impact (if any): Low. The PDF continuation changes no report data. Schedule records reuse the existing AuditLog table and record successful actions only; existing scheduling validation, attendance status, deduction, package, payroll, finance and permission rules remain unchanged.
+- Verification: focused test, TypeScript, production build and diff check passed before guarded release. Post-deploy verification must regenerate the reported Herman Midterm PDF and inspect the collapsed history on one class sessions page.
+- Rollback point: production commit `7bd1d7f0ce4d34356c1a8ee17857c4a47e8f1695` before `2026-09-03-r402`.
+
+---
+
 ## 2026-08-31-r401
 
 - Release ID: `2026-08-31-r401`

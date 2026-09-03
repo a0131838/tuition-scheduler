@@ -13,6 +13,7 @@ import { createTicketTeacherConfirmation, finishTicketAfterFormalExecution } fro
 import { prisma } from "@/lib/prisma";
 import { schedulingCoordinationCourseLabelsMatch } from "@/lib/scheduling-coordination";
 import { getSessionStudents } from "@/lib/session-students";
+import { recordSchedulingChange } from "@/lib/scheduling-change-history";
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
 
@@ -261,6 +262,24 @@ export async function applyMiniappSessionCancellation(
           waiveDeduction: !input.charge,
           waiveReason: input.charge ? null : "Staff miniapp cancellation without charge",
         },
+      });
+
+      await recordSchedulingChange(tx, {
+        actor,
+        action: "SESSION_CANCELLED",
+        sessionId: checked.session.id,
+        classId: checked.session.classId,
+        before: {
+          startAt: checked.session.startAt.toISOString(),
+          endAt: checked.session.endAt.toISOString(),
+          teacherName: checked.session.teacher?.name ?? checked.session.class.teacher.name,
+          studentName: getSessionStudents(checked.session).find((student) => student.id === input.studentId)?.name ?? null,
+          campusName: checked.session.class.campus.name,
+          roomName: checked.session.class.room?.name ?? null,
+        },
+        after: { status: input.charge ? "Cancelled - charged" : "Cancelled - no charge" },
+        reason: input.note,
+        source: "MINIAPP",
       });
 
       const now = new Date();
