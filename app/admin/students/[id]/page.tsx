@@ -8,7 +8,7 @@ import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/
 import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 import QuickScheduleModal from "../../_components/QuickScheduleModal";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
-import StudentAttendanceFilterForm from "../../_components/StudentAttendanceFilterForm";
+import StudentLessonRecords from "./_components/StudentLessonRecords";
 import NoticeBanner from "../../_components/NoticeBanner";
 import WorkflowSourceBanner from "../../_components/WorkflowSourceBanner";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
@@ -1229,72 +1229,6 @@ async function cancelStudentSession(studentId: string, formData: FormData) {
   redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
 }
 
-async function restoreStudentSession(studentId: string, formData: FormData) {
-  "use server";
-  const sessionId = String(formData.get("sessionId") ?? "");
-  const month = String(formData.get("month") ?? "").trim();
-  const returnHash = String(formData.get("returnHash") ?? "").trim();
-
-  if (!sessionId) {
-    const params = new URLSearchParams({ err: "Missing sessionId" });
-    if (month) params.set("month", month);
-    redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
-  }
-
-  const session = await prisma.session.findUnique({
-    where: { id: sessionId },
-    select: { id: true, startAt: true, endAt: true, classId: true, class: { select: { courseId: true } } },
-  });
-  if (!session) {
-    const params = new URLSearchParams({ err: "Session not found" });
-    if (month) params.set("month", month);
-    redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
-  }
-
-  const existing = await prisma.attendance.findUnique({
-    where: { sessionId_studentId: { sessionId, studentId } },
-    select: { status: true, deductedMinutes: true, packageId: true },
-  });
-
-  if (!existing || existing.status !== "EXCUSED") {
-    const params = new URLSearchParams({ msg: "Session restored" });
-    if (month) params.set("month", month);
-    redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
-  }
-
-  const refundMinutes = existing.deductedMinutes ?? 0;
-  const packageId = existing.packageId ?? null;
-
-  if (refundMinutes > 0 && packageId) {
-    await prisma.coursePackage.update({
-      where: { id: packageId },
-      data: { remainingMinutes: { increment: refundMinutes } },
-    });
-    await prisma.packageTxn.create({
-      data: {
-        packageId,
-        kind: "ROLLBACK",
-        deltaMinutes: refundMinutes,
-        sessionId,
-        note: `Restore cancel. studentId=${studentId}`,
-      },
-    });
-  }
-
-  await prisma.attendance.update({
-    where: { sessionId_studentId: { sessionId, studentId } },
-    data: {
-      status: "UNMARKED",
-      excusedCharge: false,
-      deductedMinutes: 0,
-      note: null,
-    },
-  });
-
-  const params = new URLSearchParams({ msg: "Session restored" });
-  if (month) params.set("month", month);
-  redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
-}
 
 async function createSchedulingCoordinationTicket(studentId: string, formData: FormData) {
   "use server";
@@ -2585,7 +2519,7 @@ export default async function StudentDetailPage({
     {
       key: "attendance",
       href: "#attendance",
-      label: tl(lang, "Attendance"),
+      label: t(lang, "Course records", "课程记录"),
       detail: t(lang, `${attendances.length} recent records`, `${attendances.length} 条近期记录`),
       shortDetail: t(lang, "Check recent sign-in and leave records", "查看近期点名和请假记录"),
       background: "#ffffff",
@@ -2656,6 +2590,7 @@ export default async function StudentDetailPage({
       : recommendedPrimaryKey === "packages"
       ? t(lang, "Billing or package follow-up is active, so clear this before more lesson changes.", "当前有账务或课包跟进，建议先处理这里，再继续改课。")
       : t(lang, "Scheduling tools are the most common teaching-ops entry point, so quick schedule stays first when nothing else is blocking the profile.", "排课工具是教务最常用入口，所以当前没有阻塞项时，快速排课保持第一优先级。");
+  const lessonRecordsContent = attendanceOpen ? await StudentLessonRecords({ studentId, params: sp ?? {}, lang }) : null;
   const firstPurchaseSetupCard = showFirstPurchaseSetup ? (
     <div
       id="first-purchase-setup"
@@ -2952,9 +2887,7 @@ export default async function StudentDetailPage({
               id="student-workbench-bar"
               style={{
                 ...workbenchInfoBarStyle,
-                position: "sticky",
-                top: 12,
-                zIndex: 5,
+                position: "static",
                 boxShadow: "0 8px 20px rgba(15, 23, 42, 0.06)",
               }}
             >
@@ -3173,7 +3106,7 @@ export default async function StudentDetailPage({
                     href="#attendance"
                     style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
                   >
-                    {tl(lang, "Attendance")}
+                    {t(lang, "Course records", "课程记录")}
                   </a>
                   <a
                     href="#edit-student"
@@ -4206,6 +4139,11 @@ export default async function StudentDetailPage({
                               sessionId={s.id}
                               initialCancelled={cancelled}
                               initialCharge={Boolean(att?.excusedCharge)}
+                              transferLesson={s.class.capacity === 1 && s.class.subjectId && s.startAt > now && !ticketExecutionContext ? {
+                                id: s.id, studentId, subjectId: s.class.subjectId, levelId: s.class.levelId ?? "",
+                                teacherId: s.teacherId ?? s.class.teacherId, campusId: s.class.campusId, roomId: s.class.roomId ?? "",
+                                startAt: fmtDatetimeLocal(s.startAt), durationMin: Math.round((s.endAt.getTime() - s.startAt.getTime()) / 60000),
+                              } : undefined}
                               variant="compact"
                               labels={{
                                 cancel: tl(lang, "Cancel"),
@@ -4310,7 +4248,7 @@ export default async function StudentDetailPage({
       {sectionReturnBar(lang, {
         hint: t(lang, "Package balance and payment status usually decide whether the next step should be billing follow-up or schedule work.", "课包余额和付款状态通常决定下一步该先走账务跟进还是排课处理。"),
         links: [
-          { href: "#attendance", label: tl(lang, "Attendance") },
+          { href: "#attendance", label: t(lang, "Course records", "课程记录") },
           { href: "#quick-schedule", label: tl(lang, "Quick Schedule") },
         ],
       })}
@@ -4515,130 +4453,9 @@ export default async function StudentDetailPage({
       )}
       </details>
 
-      <details id="attendance" open={attendanceOpen} style={{ marginBottom: 14 }}>
-        <summary style={{ fontWeight: 700 }}>{tl(lang, "Attendance")} ({attendances.length})</summary>
-      {sectionReturnBar(lang, {
-        hint: t(lang, "After checking recent attendance, jump straight into upcoming sessions or planning if you need to fix the next lesson.", "看完近期点名后，如果要调整下一节课，可直接跳到即将上课或排课工具。"),
-        links: [
-          { href: "#upcoming-sessions", label: tl(lang, "Upcoming Sessions") },
-          { href: "#quick-schedule", label: tl(lang, "Quick Schedule") },
-        ],
-      })}
-      <StudentAttendanceFilterForm
-        studentId={studentId}
-        courses={courses.map((c) => ({ id: c.id, name: c.name }))}
-        subjects={subjects.map((s) => ({ id: s.id, name: s.name, courseId: s.courseId, courseName: s.course.name }))}
-        levels={levels.map((l) => ({
-          id: l.id,
-          name: l.name,
-          subjectId: l.subjectId,
-          subjectName: l.subject.name,
-          courseName: l.subject.course.name,
-        }))}
-        teachers={teachers.map((t) => ({ id: t.id, name: t.name }))}
-        initial={{
-          courseId,
-          subjectId,
-          levelId: levelIdFilter,
-          teacherId,
-          status,
-          days: days ? String(days) : "",
-          limit: String(limit),
-        }}
-        returnHash="#attendance"
-        labels={{
-          course: tl(lang, "Course"),
-          subject: tl(lang, "Subject"),
-          level: tl(lang, "Level (optional)"),
-          courseAll: tl(lang, "All"),
-          subjectAll: tl(lang, "All"),
-          levelAll: tl(lang, "All"),
-          teacher: tl(lang, "Teacher"),
-          teacherAll: tl(lang, "All"),
-          status: tl(lang, "Status"),
-          statusAll: tl(lang, "All"),
-          recentDays: tl(lang, "Recent days"),
-          limit: tl(lang, "Limit"),
-          apply: tl(lang, "Apply"),
-          clear: tl(lang, "Clear"),
-        }}
-      />
-
-      {attendances.length === 0 ? (
-        <div style={{ color: "#999" }}>{tl(lang, "No attendance records.")}</div>
-      ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 10, marginTop: 8 }}>
-          {attendances.map((a) => (
-            <div key={a.id} style={{ border: "1px solid #eee", borderRadius: 8, padding: 10, background: "#fff" }}>
-              <div style={{ fontWeight: 700 }}>
-                <a href={`/admin/sessions/${a.sessionId}/attendance`}>
-                  {formatBusinessDateTime(new Date(a.session.startAt))} - {formatBusinessTimeOnly(new Date(a.session.endAt))}
-                </a>
-              </div>
-              <div style={{ marginTop: 6 }}>
-                <span
-                  style={{
-                    display: "inline-block",
-                    padding: "2px 8px",
-                    borderRadius: 999,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    background:
-                      a.status === "PRESENT"
-                        ? "#ecfdf3"
-                        : a.status === "ABSENT"
-                        ? "#fef2f2"
-                        : a.status === "LATE"
-                        ? "#fff7ed"
-                        : a.status === "EXCUSED"
-                        ? "#f3f4f6"
-                        : "#eef2ff",
-                    color:
-                      a.status === "PRESENT"
-                        ? "#027a48"
-                        : a.status === "ABSENT"
-                        ? "#b42318"
-                        : a.status === "LATE"
-                        ? "#b45309"
-                        : a.status === "EXCUSED"
-                        ? "#6b7280"
-                        : "#1d4ed8",
-                  }}
-                >
-                  {a.status}
-                </span>
-              </div>
-              <div style={{ color: "#666", fontSize: 12, marginTop: 4 }}>
-                <span style={{ display: "inline-flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                  <ClassTypeBadge capacity={a.session.class.capacity} compact />
-                  <span>
-                    {a.session.class.course.name}
-                    {a.session.class.subject ? ` / ${a.session.class.subject.name}` : ""}{" "}
-                    {a.session.class.level ? ` / ${a.session.class.level.name}` : ""} |{" "}
-                    {a.session.teacher?.name ?? a.session.class.teacher.name}
-                  </span>
-                </span>
-              </div>
-              <div style={{ marginTop: 6 }}>
-                {tl(lang, "Status")}: {a.status}
-              </div>
-              <div style={{ marginTop: 4 }}>
-                {tl(lang, "Deduct")}: {a.deductedCount} / {a.deductedMinutes} min
-              </div>
-              <div style={{ marginTop: 4 }}>
-                {tl(lang, "Note")}: {a.note ?? "-"}
-              </div>
-              <div style={{ marginTop: 4, color: a.status === "EXCUSED" ? "#64748b" : a.session.feedbacks.length > 0 ? "#027a48" : "#b45309", fontWeight: 700 }}>
-                {tl(lang, "Feedback")}: {a.status === "EXCUSED"
-                  ? tl(lang, "Not required - cancelled")
-                  : a.session.feedbacks.length > 0
-                    ? tl(lang, "Submitted")
-                    : tl(lang, "Missing")}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <details id="attendance" open={attendanceOpen} style={{ marginBottom: 14, scrollMarginTop: 110 }}>
+        <summary style={{ fontWeight: 700 }}>{t(lang, "Course records", "课程记录")}</summary>
+        {lessonRecordsContent ?? <a href={`/admin/students/${studentId}?focus=attendance#attendance`}>{t(lang, "Open course records", "查看课程记录")}</a>}
       </details>
 
       <details id="upcoming-sessions" open style={{ marginBottom: 14 }}>
@@ -4782,6 +4599,11 @@ export default async function StudentDetailPage({
                     sessionId={s.id}
                     initialCancelled={cancelled}
                     initialCharge={Boolean(att?.excusedCharge)}
+                    transferLesson={s.class.capacity === 1 && s.class.subjectId && s.startAt > now && !ticketExecutionContext ? {
+                      id: s.id, studentId, subjectId: s.class.subjectId, levelId: s.class.levelId ?? "",
+                      teacherId: s.teacherId ?? s.class.teacherId, campusId: s.class.campusId, roomId: s.class.roomId ?? "",
+                      startAt: fmtDatetimeLocal(s.startAt), durationMin: Math.round((s.endAt.getTime() - s.startAt.getTime()) / 60000),
+                    } : undefined}
                     variant="full"
                     labels={{
                       cancel: tl(lang, "Cancel"),
@@ -4822,6 +4644,8 @@ export default async function StudentDetailPage({
           quickCampusId={quickCampusId}
           quickRoomId={quickRoomId}
           quickTeacherId={quickTeacherId}
+          transferSourceSessionId={sp?.transferSourceSessionId}
+          studentName={student.name}
           openOnLoad={quickOpen || focus === "quick-schedule"}
           subjects={quickSubjects.map((s) => ({
             id: s.id,
@@ -4902,7 +4726,7 @@ export default async function StudentDetailPage({
           hint: t(lang, "Use student editing after you finish queue work, then jump back to packages or attendance if needed.", "建议在队列型工作处理完后再编辑学生资料，改完可直接回课包或点名。"),
           links: [
             { href: "#packages", label: tl(lang, "Packages") },
-            { href: "#attendance", label: tl(lang, "Attendance") },
+            { href: "#attendance", label: t(lang, "Course records", "课程记录") },
           ],
         })}
         <StudentEditClient

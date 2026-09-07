@@ -5,6 +5,15 @@ function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
 }
 
+export async function GET(req: Request) {
+  await requireAdmin();
+  const q = new URL(req.url).searchParams.get("q")?.trim() ?? "";
+  if (!q) return Response.json({ students: [] });
+  const students = await prisma.student.findMany({ where: { name: { contains: q, mode: "insensitive" } },
+    select: { id: true, name: true, grade: true }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 30 });
+  return Response.json({ students });
+}
+
 function parseDateOnly(value: string) {
   if (!value) return null;
   const [Y, M, D] = value.split("-").map(Number);

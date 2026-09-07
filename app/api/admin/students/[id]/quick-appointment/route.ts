@@ -16,6 +16,8 @@ import { isSessionDuplicateError } from "@/lib/session-unique";
 import { checkTeacherSchedulingAvailability } from "@/lib/teacher-scheduling-availability";
 import { formatStudentQuickScheduleConflictReason } from "@/lib/quick-schedule-messages";
 import { formatBusinessDateTime } from "@/lib/date-only";
+import { canReuseCancelledSlot, createInReleasedSlot, findSlotCollision } from "@/lib/cancelled-schedule-slot";
+import { recordSchedulingChange } from "@/lib/scheduling-change-history";
 import {
   applyAdminLinkedTicketSchedulingAction,
   TicketSchedulingActionContextError,
@@ -68,6 +70,12 @@ class QuickScheduleConflictError extends Error {
   status = 409;
 }
 
+class CancelledLessonError extends Error {
+  constructor(public sessionId: string) {
+    super("This lesson was cancelled. Restore it instead of creating a duplicate / 这节课已取消，请确认是否恢复原课");
+  }
+}
+
 async function checkTeacherAvailability(db: DbClient, teacherId: string, startAt: Date, endAt: Date) {
   return checkTeacherSchedulingAvailability(db, teacherId, startAt, endAt);
 }
@@ -93,10 +101,25 @@ async function validateQuickScheduleRow(
     endAt: Date;
     durationMin: number;
     bypassAvailabilityCheck: boolean;
+    subjectId: string;
+    campusId: string;
   }
 ) {
   const { classId, teacherId, studentId, courseId, roomId, startAt, endAt, durationMin, bypassAvailabilityCheck } = opts;
   let reason = "";
+
+  const cancelled = await db.session.findFirst({
+    where: {
+      startAt, endAt, class: { capacity: 1, subjectId: opts.subjectId, campusId: opts.campusId, roomId },
+      AND: [
+        { OR: [{ studentId }, { studentId: null, class: { oneOnOneStudentId: studentId } }] },
+        { OR: [{ teacherId }, { teacherId: null, class: { teacherId } }] },
+      ],
+      attendances: { some: { studentId, status: "EXCUSED" } },
+    },
+    select: { id: true },
+  });
+  if (cancelled) throw new CancelledLessonError(cancelled.id);
 
   if (!reason) {
     const studentSessionConflicts = await db.session.findMany({
@@ -231,17 +254,18 @@ async function validateQuickScheduleRow(
   }
 
   if (!reason) {
-    const dupSession = await db.session.findFirst({
-      where: { classId, startAt, endAt },
-      select: { id: true },
-    });
-    if (dupSession) reason = "Session already exists at this time";
+    const dupSession = await findSlotCollision(db, classId, startAt, endAt);
+    if (dupSession && canReuseCancelledSlot(dupSession)
+      && (dupSession.studentId ?? dupSession.class.oneOnOneStudentId) === studentId) {
+      throw new CancelledLessonError(dupSession.id);
+    }
+    if (dupSession && !canReuseCancelledSlot(dupSession)) reason = "Session already exists at this time";
   }
 
   return reason;
 }
 
-export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+async function schedule(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await requireAdmin();
   const { id: studentId } = await params;
   if (!studentId) return bad("Missing studentId");
@@ -267,6 +291,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const onConflict = String(body?.onConflict ?? "reject");
   const ticketId = String(body?.ticketId ?? "").trim();
   const ticketActionId = String(body?.ticketActionId ?? "").trim();
+  const transferSourceSessionId = String(body?.transferSourceSessionId ?? "").trim();
+  if (transferSourceSessionId && (repeatWeeks !== 1 || onConflict !== "reject" || ticketId)) {
+    return bad("Transfer one lesson at a time / 转课仅限一节，请使用遇到冲突即拒绝", 409);
+  }
 
   if (!teacherId || !subjectId || !campusId || !startAtStr || !Number.isFinite(durationMin) || durationMin < 15) {
     return bad("Invalid input");
@@ -311,6 +339,31 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const courseId = subject.courseId;
+  const targetStudent = await prisma.student.findUnique({ where: { id: studentId }, select: { name: true } });
+  if (!targetStudent) return bad("Student not found", 404);
+  async function checkTransferSource(db: DbClient) {
+    if (!transferSourceSessionId) return;
+    const source = await db.session.findUnique({ where: { id: transferSourceSessionId }, include: { class: true, attendances: true } });
+    if (!source || !canReuseCancelledSlot(source) || (source.studentId ?? source.class.oneOnOneStudentId) === studentId
+      || source.startAt <= new Date() || source.startAt.getTime() !== startAt.getTime()
+      || source.endAt.getTime() !== startAt.getTime() + durationMin * 60000
+      || (source.teacherId ?? source.class.teacherId) !== teacherId
+      || source.class.campusId !== campusId || source.class.roomId !== roomId) {
+      throw new QuickScheduleConflictError("Original lesson must remain cancelled without charges; keep its time, teacher and room / 原课须为未扣费的已取消课程，且时间、老师、教室须与原课一致");
+    }
+  }
+  await checkTransferSource(prisma);
+  async function createLesson(tx: Prisma.TransactionClient, input: Parameters<typeof createInReleasedSlot>[1]) {
+    await checkTransferSource(tx);
+    const createdSession = await createInReleasedSlot(tx, input);
+    await recordSchedulingChange(tx, {
+      actor: user, action: "SESSION_CREATED", sessionId: createdSession.id, classId: createdSession.classId,
+      after: { startAt: input.startAt.toISOString(), endAt: input.endAt.toISOString(), studentName: targetStudent!.name, teacherName: teacher!.name, status: "SCHEDULED" },
+      reason: transferSourceSessionId ? `Transferred from cancelled session ${transferSourceSessionId}; original retained` : "Quick schedule",
+      source: "WEB",
+    });
+    return createdSession;
+  }
   let cls: Awaited<ReturnType<typeof getOrCreateOneOnOneClassForStudent>>;
   try {
     cls = await getOrCreateOneOnOneClassForStudent({
@@ -355,6 +408,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       endAt: currentEnd,
       durationMin,
       bypassAvailabilityCheck,
+      subjectId,
+      campusId,
     });
 
     if (reason) {
@@ -391,16 +446,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
                 endAt: txEnd,
                 durationMin,
                 bypassAvailabilityCheck,
+                subjectId,
+                campusId,
               });
               if (txReason) return { reason: txReason, created: null as never };
-              const createdSession = await tx.session.create({
-                data: {
+              const createdSession = await createLesson(tx, {
                   classId: cls.id,
                   startAt: txStart,
                   endAt: txEnd,
                   studentId,
-                  teacherId: teacherId === cls.teacherId ? null : teacherId,
-                },
+                  teacherId,
               });
               return {
                 created: {
@@ -461,16 +516,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
               endAt: currentEnd,
               durationMin,
               bypassAvailabilityCheck,
+              subjectId,
+              campusId,
             });
             if (txReason) return { ok: false as const, reason: txReason };
-            await tx.session.create({
-              data: {
+            await createLesson(tx, {
                 classId: cls.id,
                 startAt: currentStart,
                 endAt: currentEnd,
                 studentId,
-                teacherId: teacherId === cls.teacherId ? null : teacherId,
-              },
+                teacherId,
             });
             return { ok: true as const, created: true };
           },
@@ -519,4 +574,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     rows,
     ticketActionApplied: mode === "create" && Boolean(ticketId && ticketActionId),
   });
+}
+
+export async function POST(req: Request, context: { params: Promise<{ id: string }> }) {
+  try {
+    return await schedule(req, context);
+  } catch (error) {
+    if (error instanceof QuickScheduleConflictError) return bad(error.message, 409);
+    if (error instanceof CancelledLessonError) return bad(error.message, 409, {
+      code: "CANCELLED_SESSION", sessionId: error.sessionId,
+    });
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034") {
+      return bad("The schedule changed. Refresh and retry / 课表已变化，请刷新后重试", 409);
+    }
+    throw error;
+  }
 }

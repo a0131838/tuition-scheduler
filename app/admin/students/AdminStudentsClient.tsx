@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import SimpleModal from "../_components/SimpleModal";
 import NoticeBanner from "../_components/NoticeBanner";
-import { formatBusinessDateOnly } from "@/lib/date-only";
+import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
+import type { StudentScheduleSummary } from "@/lib/student-scheduling-overview";
 
 type SourceOption = { id: string; name: string };
 type TypeOption = { id: string; name: string };
@@ -23,6 +24,7 @@ type StudentRow = {
   currentMajor: string | null;
   coachingContent: string | null;
   unpaidCount: number;
+  schedule?: StudentScheduleSummary;
 };
 
 function sortStudents(rows: StudentRow[]) {
@@ -77,6 +79,7 @@ export default function AdminStudentsClient({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [students, setStudents] = useState<StudentRow[]>(initialStudents);
+  const [tableView, setTableView] = useState("schedule");
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
   const [creating, startCreating] = useTransition();
@@ -98,9 +101,10 @@ export default function AdminStudentsClient({
       const params = new URLSearchParams();
       params.set("source", "students");
       params.set("studentsBack", currentListHref);
-      return `/admin/students/${studentId}?${params.toString()}`;
+      if (tableView === "schedule") params.set("focus", "attendance");
+      return `/admin/students/${studentId}?${params.toString()}${tableView === "schedule" ? "#attendance" : ""}`;
     },
-    [currentListHref]
+    [currentListHref, tableView]
   );
 
   async function createStudent(close: () => void, payload: any) {
@@ -258,13 +262,17 @@ export default function AdminStudentsClient({
 
       <div style={{ border: "1px solid #e2e8f0", borderRadius: 14, background: "#fff", overflow: "hidden" }}>
         <div style={{ padding: "10px 12px", borderBottom: "1px solid #e2e8f0", background: "#fcfcfd", color: "#64748b", fontSize: 12 }}>
-          {students.length === 0 ? labels.noStudents : labels.listHint}
+          <select aria-label="Student list view / 学生列表视图" value={tableView} onChange={(e) => setTableView(e.target.value)}>
+            <option value="schedule">Course follow-up / 课程跟进</option>
+            <option value="details">Student details / 学生资料</option>
+          </select>
         </div>
         <div style={{ overflowX: "auto" }}>
-          <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: 1080 }}>
+          <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: tableView === "details" ? 1080 : 700 }}>
             <thead>
               <tr style={{ background: "#f8fafc" }}>
                 <th align="left">{labels.name}</th>
+                {tableView === "details" ? <>
                 <th align="left">{labels.school}</th>
                 <th align="left">{labels.birth}</th>
                 <th align="left">{labels.grade}</th>
@@ -276,6 +284,12 @@ export default function AdminStudentsClient({
                 <th align="left">{labels.coachingContent}</th>
                 <th align="left">{labels.notes}</th>
                 <th align="left">{labels.id}</th>
+                </> : <>
+                  <th align="left">{labels.source}</th>
+                  <th align="left">Last attended / 最近上课</th>
+                  <th align="left">Next lesson / 下一节课</th>
+                  <th align="left">To check / 待核对科目</th>
+                </>}
                 <th align="left">{labels.action}</th>
               </tr>
             </thead>
@@ -290,6 +304,7 @@ export default function AdminStudentsClient({
                       </div>
                     </div>
                   </td>
+                  {tableView === "details" ? <>
                   <td>{s.school ?? "-"}</td>
                   <td>{s.birthDate ? formatBusinessDateOnly(new Date(s.birthDate)) : "-"}</td>
                   <td>{s.grade ?? "-"}</td>
@@ -312,12 +327,20 @@ export default function AdminStudentsClient({
                   >
                     {formatId("STU", s.id)}
                   </td>
+                  </> : <>
+                    <td>{s.sourceName ?? "-"}</td>
+                    <td>{s.schedule?.lastAttended ? formatBusinessDateTime(new Date(s.schedule.lastAttended)) : "-"}</td>
+                    <td>{s.schedule?.nextLesson ? formatBusinessDateTime(new Date(s.schedule.nextLesson)) : "-"}</td>
+                    <td style={{ color: s.schedule?.needsScheduling ? "#b45309" : "#64748b", maxWidth: 250, overflowWrap: "anywhere" }}>
+                      {s.schedule?.missingSubjects.join(" / ") || "-"}
+                    </td>
+                  </>}
                   <td>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <a href={buildStudentWorkflowHref(s.id)}>{labels.edit}</a>
-                      <button type="button" onClick={() => deleteStudent(s.id)}>
+                      <a href={buildStudentWorkflowHref(s.id)}>{tableView === "details" ? labels.edit : "Open / 打开"}</a>
+                      {tableView === "details" ? <button type="button" onClick={() => deleteStudent(s.id)}>
                         {labels.delete}
-                      </button>
+                      </button> : null}
                     </div>
                   </td>
                 </tr>

@@ -9,7 +9,6 @@ import AdminStudentsClient from "./AdminStudentsClient";
 import CopyTextButton from "../_components/CopyTextButton";
 import {
   workbenchFilterPanelStyle,
-  workbenchHeroStyle,
   workbenchInfoBarStyle,
 } from "../_components/workbenchStyles";
 import {
@@ -20,6 +19,7 @@ import {
   listRecentStudentParentIntakes,
 } from "@/lib/student-parent-intake";
 import { listActivePartners } from "@/lib/partners";
+import { studentSchedulingOverview, type StudentScheduleSummary } from "@/lib/student-scheduling-overview";
 
 const PARTNER_TYPE_NAME = "合作方学生";
 const STUDENT_VIEW_COOKIE = "adminStudentsPreferredView";
@@ -55,7 +55,7 @@ function first(v?: string | string[]) {
 }
 
 function normalizeStudentView(value: string): StudentView {
-  return value === "all" || value === "today_partner" ? value : "today";
+  return value === "today" || value === "today_partner" ? value : "all";
 }
 
 function normalizeStudentPageSize(value: string) {
@@ -127,6 +127,7 @@ export default async function StudentsPage({
     page?: string | string[];
     pageSize?: string | string[];
     view?: string | string[];
+    scheduling?: string | string[];
     msg?: string | string[];
     err?: string | string[];
   }>;
@@ -136,6 +137,7 @@ export default async function StudentsPage({
   const msg = first(sp?.msg).trim();
   const err = first(sp?.err).trim();
   const clearDesk = first(sp?.clearDesk).trim() === "1";
+  const schedulingFilter = ["never", "no_next"].includes(first(sp?.scheduling)) ? first(sp?.scheduling) : "";
   const hasSourceChannelParam = typeof sp?.sourceChannelId !== "undefined";
   const hasStudentTypeParam = typeof sp?.studentTypeId !== "undefined";
   const hasQParam = typeof sp?.q !== "undefined";
@@ -154,7 +156,7 @@ export default async function StudentsPage({
   const rememberedDesk = canResumeRememberedDesk
     ? parseRememberedStudentDesk(cookieStore.get(STUDENT_VIEW_COOKIE)?.value ?? "")
     : {
-        view: "today" as StudentView,
+        view: "all" as StudentView,
         sourceChannelId: "",
         studentTypeId: "",
         q: "",
@@ -164,8 +166,7 @@ export default async function StudentsPage({
   const q = hasQParam ? qParam : rememberedDesk.q;
   const resolvedSourceChannelId = hasSourceChannelParam ? sourceChannelId : rememberedDesk.sourceChannelId;
   const resolvedStudentTypeId = hasStudentTypeParam ? studentTypeId : rememberedDesk.studentTypeId;
-  const view = hasExplicitView ? normalizeStudentView(requestedView) : rememberedDesk.view;
-  const resumedRememberedDesk = canResumeRememberedDesk && Boolean(rememberedDesk.value);
+  const view = schedulingFilter ? "all" : hasExplicitView ? normalizeStudentView(requestedView) : "all";
   const rememberedDeskValue = (() => {
     const params = new URLSearchParams();
     if (view !== "today") params.set("view", view);
@@ -257,18 +258,17 @@ export default async function StudentsPage({
     ];
   }
 
-  const [filteredCount, allStudentsCount, todayCount, todayPartnerCount, missingSourceCount] = await Promise.all([
+  let scheduleSummaries = new Map<string, StudentScheduleSummary>();
+  if (schedulingFilter) {
+    const matching = await prisma.student.findMany({ where, select: { id: true } });
+    scheduleSummaries = await studentSchedulingOverview(matching.map((s) => s.id));
+    where.id = { in: matching.filter((s) => schedulingFilter === "never"
+      ? scheduleSummaries.get(s.id)?.neverScheduled : scheduleSummaries.get(s.id)?.needsScheduling).map((s) => s.id) };
+  }
+
+  const [filteredCount, allStudentsCount] = await Promise.all([
     prisma.student.count({ where }),
     prisma.student.count(),
-    prisma.student.count({ where: { createdAt: { gte: todayStart, lt: todayEnd } } }),
-    prisma.student.count({
-      where: {
-        createdAt: { gte: todayStart, lt: todayEnd },
-        ...(partnerSourceIds.length > 0 ? { sourceChannelId: { in: partnerSourceIds } } : {}),
-        ...(partnerTypeId ? { studentTypeId: partnerTypeId } : {}),
-      },
-    }),
-    prisma.student.count({ where: { sourceChannelId: null } }),
   ]);
   const totalPages = Math.max(1, Math.ceil(filteredCount / pageSize));
   const page = Math.min(requestedPage, totalPages);
@@ -280,6 +280,7 @@ export default async function StudentsPage({
     skip: (page - 1) * pageSize,
     take: pageSize,
   });
+  if (!schedulingFilter) scheduleSummaries = await studentSchedulingOverview(students.map((s) => s.id));
 
   const unpaidCounts = students.length
     ? await prisma.coursePackage.groupBy({
@@ -293,6 +294,7 @@ export default async function StudentsPage({
 
   const buildPageHref = (targetPage: number, nextView = view) => {
     const params = new URLSearchParams();
+    if (schedulingFilter) params.set("scheduling", schedulingFilter);
     if (resolvedSourceChannelId) params.set("sourceChannelId", resolvedSourceChannelId);
     if (resolvedStudentTypeId) params.set("studentTypeId", resolvedStudentTypeId);
     if (q) params.set("q", q);
@@ -309,12 +311,6 @@ export default async function StudentsPage({
       : view === "all"
         ? t(lang, "All Students", "全部学生")
         : t(lang, "Today New Students", "今日新增");
-  const rememberedViewLabel =
-    rememberedDesk.view === "today_partner"
-      ? t(lang, "Today Partner Intake", "今日合作方新增")
-      : rememberedDesk.view === "all"
-        ? t(lang, "All Students", "全部学生")
-        : t(lang, "Today New Students", "今日新增");
 
   const noStudentsLabel =
     view === "today_partner"
@@ -322,16 +318,10 @@ export default async function StudentsPage({
       : view === "all"
         ? t(lang, "No students yet.", "暂无学生")
         : t(lang, "No students added today.", "今天暂无新增学生");
-  const activeFilterCount = [q, resolvedSourceChannelId, resolvedStudentTypeId].filter(Boolean).length;
+  const activeFilterCount = [q, resolvedSourceChannelId, resolvedStudentTypeId, schedulingFilter].filter(Boolean).length;
   const filtersOpen = activeFilterCount > 0 || view !== "today";
   const showEmptyQueueCta = filteredCount === 0 && !q && !resolvedSourceChannelId && !resolvedStudentTypeId && view !== "all";
   const hasNarrowScope = view !== "all" || activeFilterCount > 0;
-  const scopeSummary =
-    view === "all"
-      ? t(lang, "Showing the full student list.", "当前显示的是完整学生列表。")
-      : view === "today_partner"
-        ? t(lang, "Showing only today's partner-intake students.", "当前只显示今天的合作方录入学生。")
-        : t(lang, "Showing only today's newly added students.", "当前只显示今天新增的学生。");
   const emptyQueueMessage =
     view === "today_partner"
       ? t(
@@ -353,26 +343,16 @@ export default async function StudentsPage({
         value={rememberedDeskValue}
       />
       <WorkbenchScrollMemoryClient storageKey="adminStudentsScroll" />
-      <div style={workbenchHeroStyle("blue")}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
         <div style={{ display: "grid", gap: 6 }}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "#3730a3", letterSpacing: 0.4 }}>
-            {t(lang, "Student Intake Desk", "学生录入工作台")}
-          </div>
           <h2 style={{ margin: 0 }}>{t(lang, "Students", "学生")}</h2>
-          <div style={{ color: "#475569", lineHeight: 1.5 }}>
-            {t(
-              lang,
-              "Use the top cards to choose today's intake view first, then use the list below for search, follow-up, and profile edits.",
-              "先用上方卡片切换今天的录入视图，再在下方列表里做搜索、跟进和资料编辑。"
-            )}
-          </div>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <span style={{ padding: "4px 10px", borderRadius: 999, background: "#fff", border: "1px solid #cbd5e1", color: "#334155", fontSize: 12 }}>
             {t(lang, "Current view", "当前视图")}: <b>{activeViewLabel}</b>
           </span>
           <span style={{ padding: "4px 10px", borderRadius: 999, background: "#fff", border: "1px solid #cbd5e1", color: "#334155", fontSize: 12 }}>
-            {t(lang, "Filtered students", "筛选后学生")}: <b>{filteredCount}</b>
+            {t(lang, "Students", "学生")}: <b>{filteredCount} / {allStudentsCount}</b>
           </span>
           <span style={{ padding: "4px 10px", borderRadius: 999, background: "#fff", border: "1px solid #cbd5e1", color: "#334155", fontSize: 12 }}>
             {t(lang, "Active filters", "生效筛选")}: <b>{activeFilterCount}</b>
@@ -408,17 +388,8 @@ export default async function StudentsPage({
         </div>
       ) : null}
 
-      <div
-        style={{
-          marginBottom: 12,
-          padding: 14,
-          borderRadius: 14,
-          border: "1px solid #dbeafe",
-          background: "#f8fbff",
-          display: "grid",
-          gap: 12,
-        }}
-      >
+      <details open={view !== "all"} style={{ marginBottom: 12 }}>
+        <summary style={{ fontWeight: 700, cursor: "pointer" }}>{t(lang, "Parent intake links", "家长资料链接")} ({activeParentIntakes.length})</summary>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <div style={{ display: "grid", gap: 4 }}>
             <div style={{ fontWeight: 800, color: "#1d4ed8" }}>{t(lang, "Parent intake links", "家长资料链接")}</div>
@@ -650,138 +621,23 @@ export default async function StudentsPage({
                     </div>
                   </div>
                 );
-              })}
+        })}
             </div>
           </details>
         ) : null}
-      </div>
+      </details>
 
-      <div
-        style={{
-          ...workbenchInfoBarStyle,
-          marginTop: 10,
-          marginBottom: 12,
-          borderColor: resumedRememberedDesk ? "#f59e0b" : "#bfdbfe",
-          background: resumedRememberedDesk ? "#fffbeb" : "#eff6ff",
-          color: resumedRememberedDesk ? "#92400e" : "#1e3a8a",
-        }}
-      >
-        <div style={{ display: "grid", gap: 4 }}>
-          <div style={{ fontWeight: 700 }}>
-            {resumedRememberedDesk
-              ? t(lang, "Restored your last student desk", "已恢复你上次使用的学生工作台")
-              : t(lang, "Current dataset scope", "当前数据范围")}
-          </div>
-          <div style={{ fontSize: 13, lineHeight: 1.45 }}>
-            {resumedRememberedDesk
-              ? t(
-                  lang,
-                  `You returned without explicit filters, so the desk reopened ${rememberedViewLabel} with your last search context. Double-check the scope before assuming this is the full list.`,
-                  `你这次没有显式指定筛选，所以系统恢复到了 ${rememberedViewLabel} 和你上次的搜索范围。请先确认当前范围，再判断这是不是完整列表。`
-                )
-              : scopeSummary}
-          </div>
-          <div style={{ fontSize: 13 }}>
-            {t(lang, "Showing", "显示")} <b>{filteredCount}</b> / <b>{allStudentsCount}</b>{" "}
-            {t(lang, "students in the system", "名系统内学生")}
-            {activeFilterCount > 0
-              ? ` · ${t(lang, "Search filters are active", "当前仍有搜索筛选生效")}`
-              : ""}
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {hasNarrowScope ? (
-            <a href="/admin/students?view=all&clearDesk=1" style={{ fontWeight: 700 }}>
-              {t(lang, "Open full student list", "打开完整学生列表")}
-            </a>
-          ) : null}
-          {resumedRememberedDesk || activeFilterCount > 0 ? (
-            <a href="/admin/students?clearDesk=1" style={{ fontWeight: 700 }}>
-              {t(lang, "Clear restored filters", "清除恢复筛选")}
-            </a>
-          ) : null}
-        </div>
-      </div>
-
-      <div style={{ display: "grid", gap: 10, marginBottom: 14, gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))" }}>
-        <a
-          href={buildPageHref(1, "today")}
-          style={{
-            display: "block",
-            padding: 12,
-            borderRadius: 10,
-            border: view === "today" ? "1px solid #0f766e" : "1px solid #d1d5db",
-            background: view === "today" ? "#ecfeff" : "#fff",
-            color: "#111827",
-            textDecoration: "none",
-          }}
-        >
-          <div style={{ fontSize: 12, color: "#4b5563" }}>{t(lang, "Default View", "默认视图")}</div>
-          <div style={{ fontWeight: 700, marginTop: 4 }}>{t(lang, "Today New Students", "今日新增")}</div>
-          <div style={{ marginTop: 6, fontSize: 22, fontWeight: 700 }}>{todayCount}</div>
-        </a>
-        <a
-          href={buildPageHref(1, "today_partner")}
-          style={{
-            display: "block",
-            padding: 12,
-            borderRadius: 10,
-            border: view === "today_partner" ? "1px solid #7c3aed" : "1px solid #d1d5db",
-            background: view === "today_partner" ? "#f5f3ff" : "#fff",
-            color: "#111827",
-            textDecoration: "none",
-          }}
-        >
-          <div style={{ fontSize: 12, color: "#4b5563" }}>{t(lang, "Partner Intake", "合作方录入")}</div>
-          <div style={{ fontWeight: 700, marginTop: 4 }}>{t(lang, "Today Partner Students", "今日合作方新增")}</div>
-          <div style={{ marginTop: 6, fontSize: 22, fontWeight: 700 }}>{todayPartnerCount}</div>
-        </a>
-        <a
-          href={buildPageHref(1, "all")}
-          style={{
-            display: "block",
-            padding: 12,
-            borderRadius: 10,
-            border: view === "all" ? "1px solid #1d4ed8" : "1px solid #d1d5db",
-            background: view === "all" ? "#eff6ff" : "#fff",
-            color: "#111827",
-            textDecoration: "none",
-          }}
-        >
-          <div style={{ fontSize: 12, color: "#4b5563" }}>{t(lang, "Full List", "完整列表")}</div>
-          <div style={{ fontWeight: 700, marginTop: 4 }}>{t(lang, "All Students", "全部学生")}</div>
-          <div style={{ marginTop: 6, fontSize: 22, fontWeight: 700 }}>{allStudentsCount}</div>
-        </a>
-        <a
-          href={`/admin/students?view=all&sourceChannelId=${encodeURIComponent(MISSING_SOURCE_FILTER)}&clearDesk=1`}
-          style={{
-            display: "block",
-            padding: 12,
-            borderRadius: 10,
-            border: resolvedSourceChannelId === MISSING_SOURCE_FILTER ? "1px solid #dc2626" : "1px solid #fecaca",
-            background: resolvedSourceChannelId === MISSING_SOURCE_FILTER ? "#fef2f2" : "#fff",
-            color: "#111827",
-            textDecoration: "none",
-          }}
-        >
-          <div style={{ fontSize: 12, color: "#991b1b" }}>{t(lang, "Data check", "资料核对")}</div>
-          <div style={{ fontWeight: 700, marginTop: 4 }}>{t(lang, "Student Source Not Set", "学生来源未设置")}</div>
-          <div style={{ marginTop: 6, fontSize: 22, fontWeight: 700 }}>{missingSourceCount}</div>
-        </a>
-      </div>
 
       <details open={filtersOpen} style={{ ...workbenchFilterPanelStyle, marginBottom: 12 }}>
         <summary style={{ cursor: "pointer", fontWeight: 700 }}>
           {t(lang, "Search & filters", "搜索与筛选")} ({activeFilterCount})
         </summary>
-        <div style={{ marginTop: 10, color: "#64748b", fontSize: 12 }}>
-          {t(
-            lang,
-            "Keep this folded when you are processing one intake queue. Open it only when you need a broader search.",
-            "专注处理单一录入队列时可先收起；只有需要跨范围搜索时再展开。"
-          )}
-        </div>
         <form method="GET" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+          <select name="scheduling" defaultValue={schedulingFilter} aria-label="Scheduling / 排课筛选">
+            <option value="">{t(lang, "All schedules", "全部排课情况")}</option>
+            <option value="never">{t(lang, "Never scheduled (active courses)", "从未排课（有效课程）")}</option>
+            <option value="no_next">{t(lang, "Subject without next lesson", "有科目暂无后续课程")}</option>
+          </select>
           <input
             type="text"
             name="q"
@@ -882,6 +738,7 @@ export default async function StudentsPage({
           currentMajor: s.currentMajor ?? null,
           coachingContent: s.coachingContent ?? null,
           unpaidCount: unpaidMap.get(s.id) ?? 0,
+          schedule: scheduleSummaries.get(s.id),
         }))}
         sources={sources.map((s) => ({ id: s.id, name: s.name }))}
         types={types.map((x) => ({ id: x.id, name: x.name }))}

@@ -1,5 +1,18 @@
 # CHANGELOG LIVE
 
+## 2026-09-07-r403
+
+- Release ID: `2026-09-07-r403`
+- Date/Time (Asia/Singapore): `2026-09-07`
+- Deployment status: `READY` for guarded release.
+- Scope: fix cancelled one-to-one slots blocking another student; validate explicit restoration; consolidate course follow-up and complete session history into the existing Students entry.
+- Key files: `lib/cancelled-schedule-slot.ts`, `lib/session-restore-conflict.ts`, `lib/student-scheduling-overview.ts`, student quick-appointment/restore APIs, existing Students pages/components, and `docs/tasks/TASK-20260907-student-scheduling.md`.
+- Risk impact: Medium, limited to student quick scheduling/restoration. No schema migration, sidebar additions, production-data corrections, package pricing, payroll or AI execution changes. Uncharged cancellations keep their original session/attendance; a separate target-owned one-to-one class is used only when the legacy class/time unique key collides. Charged/ambiguous cancellations remain protected.
+- Verification: 15 focused tests and TypeScript passed; isolated PostgreSQL/HTTP UAT passed creation, duplicate/skip, restoration conflicts, legacy ownership, shared-package unchanged balance, history pagination, per-subject follow-up and observer/operations access checks. Desktop/mobile browser inspection, the 259-page production build and diff check passed.
+- Rollback point: production commit `767dfbe2` before r403. Rollback code does not remove sessions subsequently created by authorised staff.
+
+---
+
 ## 2026-09-03-r402
 
 - Release ID: `2026-09-03-r402`

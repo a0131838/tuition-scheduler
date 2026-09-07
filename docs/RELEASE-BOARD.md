@@ -1,5 +1,16 @@
 # RELEASE BOARD
 
+- Current release line on this branch: `2026-09-07-r403`, ready for guarded release.
+
+## 2026-09-07-r403 Ready
+
+- Existing Students is the only main entry: all students by creation time, compact course-follow-up table, source/search/scheduling filters, and the existing student detail/calendar/PDF destinations. No sidebar additions.
+- Cancelled uncharged one-to-one lessons no longer block another student at the same slot. The original cancellation is retained. Same-student rebooking offers explicit restoration with student/teacher/room conflict revalidation.
+- A cancelled lesson offers a student-name lookup and opens the selected student's existing scheduling dialog for final review. Transfer remains one lesson at a time; original time, teacher and room are server-validated.
+- History includes formal sessions with no attendance yet, clearly labelled as pending rather than attended. Missing-next-lesson checks run per active course/subject and respect current-month paused/excluded scheduling items.
+- Verification: 15 focused tests, isolated database/HTTP UAT, TypeScript, desktop/mobile checks and the 259-page production build passed. Guarded commit/PM2/HTTP checks are required before declaring live.
+- Task: `docs/tasks/TASK-20260907-student-scheduling.md`.
+
 - 2026-09-03-r402: Midterm PDF overflow protection and compact class schedule history are ready for guarded release.
 
 ## 2026-09-03-r402 Ready
@@ -2295,6 +2306,8 @@
   - Production verification left the training-progress table unchanged at zero rows; no employee was automatically marked complete.
 
 ## Open Risks
+
+- `2026-09-07-r403`: "To check" is based on existing active packages, subject enrolments and pause records, not a claim that every flagged subject was promised a new lesson. No historical deletion can be reconstructed. Charged/ambiguous cancellations need existing review; Sep 11 live leave records must not be restored for testing.
 
 - `2026-08-12-r360`: current formal `TicketSchedulingAction` tracking is preserved and teacher acknowledgement is added as the final completion gate. Additive schema columns are already present; runtime and a new WeChat development upload still require guarded deployment and physical Eva/teacher acceptance.
 

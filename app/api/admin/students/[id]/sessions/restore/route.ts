@@ -1,12 +1,14 @@
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
+import { Prisma } from "@prisma/client";
+import { assertSessionCanRestore } from "@/lib/session-restore-conflict";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  const user = await requireAdmin();
   const { id: studentId } = await params;
   if (!studentId) return bad("Missing studentId");
 
@@ -20,21 +22,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const sessionId = String(body?.sessionId ?? "");
   if (!sessionId) return bad("Missing sessionId");
 
-  const existing = await prisma.attendance.findUnique({
-    where: { sessionId_studentId: { sessionId, studentId } },
-    select: { status: true, deductedMinutes: true, packageId: true },
-  });
-
-  // Nothing to restore, treat as ok.
-  if (!existing || existing.status !== "EXCUSED") {
-    return Response.json({ ok: true, status: "UNMARKED", refundedMinutes: 0 });
-  }
-
-  const refundMinutes = existing.deductedMinutes ?? 0;
-  const packageId = existing.packageId ?? null;
-
+  let refundMinutes = 0;
   try {
     await prisma.$transaction(async (tx) => {
+      const existing = await tx.attendance.findUnique({ where: { sessionId_studentId: { sessionId, studentId } } });
+      if (!existing || existing.status !== "EXCUSED") throw new Error("Lesson is no longer cancelled / 课程已不处于取消状态，请刷新");
+      await assertSessionCanRestore(tx, sessionId, studentId, isStrictSuperAdmin(user));
+      if (existing.deductedCount > 0) throw new Error("Count-based cancellation requires package review / 次数课包取消请先核对课包记录");
+      refundMinutes = existing.deductedMinutes;
+      const packageId = existing.packageId;
       if (refundMinutes > 0 && packageId) {
         await tx.coursePackage.update({
           where: { id: packageId },
@@ -57,14 +53,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           status: "UNMARKED",
           excusedCharge: false,
           deductedMinutes: 0,
-          note: null,
+          note: existing.note,
         },
       });
-    });
+      await tx.auditLog.create({ data: {
+        actorEmail: user.email, actorName: user.name, actorRole: user.role,
+        module: "SCHEDULE", action: "SESSION_RESTORED", entityType: "Session", entityId: sessionId,
+        meta: { studentId, previousStatus: existing.status, previousNote: existing.note, refundedMinutes: refundMinutes },
+      } });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   } catch (e: any) {
-    return bad(e?.message ?? "Restore failed", 500);
+    return bad(e?.code === "P2034" ? "Schedule changed; refresh and retry / 课表已变化，请刷新后重试" : e?.message ?? "Restore failed", 409);
   }
 
   return Response.json({ ok: true, status: "UNMARKED", refundedMinutes: refundMinutes });
 }
-

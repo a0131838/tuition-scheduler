@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { restoreStudentDetailHashAfterRefresh } from "./studentDetailHash";
+import TransferCancelledLesson, { type TransferLesson } from "./TransferCancelledLesson";
 
 async function jsonOrNull(res: Response) {
   try {
@@ -66,6 +67,7 @@ export default function SessionCancelRestoreClient(props: {
     note: string;
   };
   returnHash?: string;
+  transferLesson?: TransferLesson;
   ticketExecutionContext?: {
     ticketId: string;
     actionId: string;
@@ -170,6 +172,7 @@ export default function SessionCancelRestoreClient(props: {
         <button type="button" onClick={doRestore} disabled={loading}>
           {loading ? "..." : labels.restore}
         </button>
+        {!charge && props.transferLesson ? <TransferCancelledLesson lesson={props.transferLesson} /> : null}
         <button
           type="button"
           onClick={doDelete}

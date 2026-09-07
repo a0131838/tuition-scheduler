@@ -117,6 +117,8 @@ export default function QuickScheduleModal({
   quickMode,
   quickSessionId,
   ticketExecutionContext,
+  transferSourceSessionId,
+  studentName,
 }: {
   studentId: string;
   month: string;
@@ -141,6 +143,8 @@ export default function QuickScheduleModal({
   quickMode?: "create" | "reschedule";
   quickSessionId?: string;
   ticketExecutionContext?: TicketExecutionContext | null;
+  transferSourceSessionId?: string;
+  studentName?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -149,6 +153,7 @@ export default function QuickScheduleModal({
   const [isScheduling, setIsScheduling] = useState(false);
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   const [scheduleErr, setScheduleErr] = useState("");
+  const [cancelledSessionId, setCancelledSessionId] = useState("");
   const [scheduleMsg, setScheduleMsg] = useState("");
   const [formWarn, setFormWarn] = useState("");
   const sectionHash = useMemo(() => normalizeStudentDetailHash(returnHash, "#quick-schedule"), [returnHash]);
@@ -212,7 +217,8 @@ export default function QuickScheduleModal({
   };
 
   function scheduleWithTeacher(teacherId: string) {
-    if (!canSchedule) return;
+    if (!canSchedule || isScheduling) return;
+    setCancelledSessionId("");
     setScheduleErr("");
     setScheduleMsg("");
     setPreviewRows([]);
@@ -235,6 +241,7 @@ export default function QuickScheduleModal({
             onConflict,
             ticketId: ticketExecutionContext?.ticketId,
             ticketActionId: ticketExecutionContext?.actionId,
+            transferSourceSessionId,
           }),
         });
         const raw = await res.text();
@@ -245,12 +252,19 @@ export default function QuickScheduleModal({
           data = null;
         }
         if (!res.ok || !data?.ok) {
+          if (data?.code === "CANCELLED_SESSION") setCancelledSessionId(String(data.sessionId));
           const detail = String(data?.detail ?? "").trim();
           const message =
             String(data?.message ?? "").trim() ||
             (raw ? raw.slice(0, 240) : "") ||
             `Schedule failed (HTTP ${res.status})`;
           setScheduleErr(detail ? `${message}: ${detail}` : message);
+          return;
+        }
+        if (Number(data.created) === 0 || Number(data.skipped) > 0) {
+          setPreviewRows(Array.isArray(data.rows) ? data.rows : []);
+          setScheduleErr(`Created ${data.created ?? 0}, skipped ${data.skipped ?? 0} / 已排 ${data.created ?? 0} 节，跳过 ${data.skipped ?? 0} 节`);
+          router.refresh();
           return;
         }
         setScheduleMsg(`OK (${data?.created ?? 0}/${data?.total ?? Number(repeatWeeks)})`);
@@ -270,6 +284,7 @@ export default function QuickScheduleModal({
         params.delete("quickRoomId");
         params.delete("quickStartAt");
         params.delete("quickDurationMin");
+        params.delete("transferSourceSessionId");
         params.set("msg", "Scheduled");
         const target = `${params.toString() ? `${pathname}?${params.toString()}` : pathname}${sectionHash}`;
         router.replace(target, { scroll: false });
@@ -285,6 +300,7 @@ export default function QuickScheduleModal({
 
   function previewWithTeacher(teacherId: string) {
     if (!canSchedule) return;
+    setCancelledSessionId("");
     setScheduleErr("");
     setScheduleMsg("");
     setPreviewRows([]);
@@ -307,10 +323,12 @@ export default function QuickScheduleModal({
             onConflict,
             ticketId: ticketExecutionContext?.ticketId,
             ticketActionId: ticketExecutionContext?.actionId,
+            transferSourceSessionId,
           }),
         });
         const data = (await res.json().catch(() => null)) as any;
         if (!res.ok || !data?.ok) {
+          if (data?.code === "CANCELLED_SESSION") setCancelledSessionId(String(data.sessionId));
           setScheduleErr(String(data?.message ?? `Preview failed (HTTP ${res.status})`));
           return;
         }
@@ -391,6 +409,7 @@ export default function QuickScheduleModal({
     return rooms.filter((r) => r.campusId === campusId);
   }, [rooms, campusId]);
   const orderedCandidates = useMemo(() => {
+    if (transferSourceSessionId) return candidates.filter((c) => c.id === quickTeacherId);
     if (!quickTeacherId) return candidates;
     return [...candidates].sort((a, b) => {
       const aPriority = a.id === quickTeacherId ? 0 : 1;
@@ -399,13 +418,15 @@ export default function QuickScheduleModal({
       if (a.ok !== b.ok) return a.ok ? -1 : 1;
       return a.name.localeCompare(b.name);
     });
-  }, [candidates, quickTeacherId]);
+  }, [candidates, quickTeacherId, transferSourceSessionId]);
 
   useEffect(() => {
     if (openOnLoad) {
       dialogRef.current?.showModal();
     }
   }, [openOnLoad]);
+
+  useEffect(() => { setCancelledSessionId(""); }, [subjectId, levelId, campusId, roomId, startAt, durationMin, mode]);
 
   useEffect(() => {
     if (sessionOptions.length === 0) {
@@ -466,6 +487,7 @@ export default function QuickScheduleModal({
     const params = new URLSearchParams();
     params.set("month", month);
     params.set("quickOpen", "1");
+    if (transferSourceSessionId) params.set("transferSourceSessionId", transferSourceSessionId);
     if (quickTeacherId) params.set("quickTeacherId", quickTeacherId);
     if (courseId) params.set("quickCourseId", courseId);
     if (subjectId) params.set("quickSubjectId", subjectId);
@@ -498,20 +520,31 @@ export default function QuickScheduleModal({
       </button>
       <dialog
         ref={dialogRef}
-        style={{ padding: 16, borderRadius: 8, border: "1px solid #ddd" }}
+        className="student-quick-schedule-dialog"
+        style={{ padding: 16, borderRadius: 8, border: "1px solid #ddd", maxWidth: "calc(100vw - 32px)", maxHeight: "90vh", overflow: "auto" }}
         onClose={() => {
           setScheduleErr("");
           setScheduleMsg("");
           setFormWarn("");
+          setCancelledSessionId("");
           resetFormState();
         }}
       >
+        <style>{`
+          @media (max-width: 640px) {
+            .student-quick-schedule-dialog { box-sizing: border-box; width: calc(100vw - 32px); }
+            .student-quick-schedule-dialog form > label { min-width: 0; }
+            .student-quick-schedule-dialog select { min-width: 0 !important; max-width: 100%; width: 100%; margin-left: 0 !important; }
+          }
+        `}</style>
         <h3 style={{ marginTop: 0 }}>{labels.title}</h3>
+        {studentName ? <p style={{ fontWeight: 700 }}>{studentName}{transferSourceSessionId ? " · Transfer / 接课" : ""}</p> : null}
         <form onSubmit={submitFind} style={{ display: "grid", gap: 10 }}>
           <label>
             {labels.mode}:
             <select
               value={mode}
+              disabled={Boolean(transferSourceSessionId)}
               onChange={(e) => {
                 setMode(e.target.value === "reschedule" ? "reschedule" : "create");
                 setScheduleErr("");
@@ -672,11 +705,11 @@ export default function QuickScheduleModal({
             <>
               <label>
                 {labels.repeatWeeks}:
-                <input type="number" min={1} max={16} value={repeatWeeks} onChange={(e) => setRepeatWeeks(e.target.value)} style={{ marginLeft: 6, width: 120 }} />
+                <input type="number" min={1} max={16} value={repeatWeeks} disabled={Boolean(transferSourceSessionId)} onChange={(e) => setRepeatWeeks(e.target.value)} style={{ marginLeft: 6, width: 120 }} />
               </label>
               <label>
                 {labels.onConflict}:
-                <select value={onConflict} onChange={(e) => setOnConflict(e.target.value === "skip" ? "skip" : "reject")} style={{ marginLeft: 6, minWidth: 220 }}>
+                <select value={onConflict} disabled={Boolean(transferSourceSessionId)} onChange={(e) => setOnConflict(e.target.value === "skip" ? "skip" : "reject")} style={{ marginLeft: 6, minWidth: 220 }}>
                   <option value="reject">{labels.rejectImmediately}</option>
                   {!ticketExecutionContext ? <option value="skip">{labels.skipConflicts}</option> : null}
                 </select>
@@ -691,7 +724,7 @@ export default function QuickScheduleModal({
               </select>
             </label>
           )}
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "flex-end" }}>
             <button
               type="button"
               onClick={() => {
@@ -715,6 +748,23 @@ export default function QuickScheduleModal({
           {warning ? <NoticeBanner type="warn" title={labels.status} message={warning} /> : null}
           {!warning && formWarn ? <NoticeBanner type="warn" title={labels.status} message={formWarn} /> : null}
           {!warning && !formWarn && scheduleErr ? <NoticeBanner type="error" title={labels.status} message={scheduleErr} /> : null}
+          {cancelledSessionId ? <button type="button" disabled={isScheduling} onClick={async () => {
+            if (!window.confirm("Restore the original cancelled lesson? / 确认恢复原来已取消的课程？")) return;
+            setIsScheduling(true);
+            try {
+              const res = await fetch(`/api/admin/students/${encodeURIComponent(studentId)}/sessions/restore`, {
+                method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: cancelledSessionId }),
+              });
+              const data = await res.json();
+              if (!res.ok || !data.ok) { setScheduleErr(data.message || "Restore failed / 恢复失败"); return; }
+              setCancelledSessionId("");
+              dialogRef.current?.close();
+              const restoredParams = new URLSearchParams({ month, focus: "calendar-tools", msg: "Lesson restored / 已恢复原课" });
+              router.replace(`/admin/students/${studentId}?${restoredParams}#calendar-tools`);
+              router.refresh();
+            } catch { setScheduleErr("Restore failed / 恢复失败"); }
+            finally { setIsScheduling(false); }
+          }}>Restore original lesson / 恢复原课</button> : null}
           {!warning && !formWarn && !scheduleErr && scheduleMsg ? (
             <NoticeBanner type="success" title={labels.status} message={scheduleMsg} />
           ) : null}
