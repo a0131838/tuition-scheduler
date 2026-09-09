@@ -1,4 +1,5 @@
 import { bad, ok } from "@/app/api/miniapp/_lib";
+import { ticketCommandScopeError } from "@/lib/ticket-command-scope";
 import { requireMiniappStaff } from "@/app/api/miniapp/staff/_lib";
 import {
   createAiTicketExecutionToken,
@@ -113,6 +114,9 @@ async function assertAiTicketReady(value: AiTicketExecutionRequest) {
       if (!current || current.updatedAt.toISOString() !== member.formalUpdatedAt || ["Completed", "Cancelled"].includes(current.status)) throw new Error("关联工单组已有变化，请重新读取后处理。");
     }
   }
+  const actions = await prisma.ticketSchedulingAction.findMany({ where: { ticketId: { in: [...groupedIds] } } });
+  const scopeError = ticketCommandScopeError(actions, value.commands);
+  if (scopeError) throw new Error(scopeError);
   const targetSessionIds = value.commands.map((command) => command.sessionId).filter((id): id is string => Boolean(id));
   const competing = ticket.studentId ? await prisma.ticket.findFirst({
     where: {

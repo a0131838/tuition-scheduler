@@ -48,6 +48,7 @@ function createSchedulingWriteFixture(input?: {
   const parentAvailabilityUpdates: Array<Record<string, any>> = [];
 
   const tx = {
+    $queryRaw: async () => [],
     ticketSchedulingAction: {
       findFirst: async ({ where }: any) =>
         actions
@@ -168,6 +169,7 @@ test("applying one of several actions keeps the ticket open and records the exac
     sourceSessionId: null,
     resultSessionId: "session-new",
     allResolved: false,
+    resultSessionIds: ["session-new"],
     unresolved: 1,
   });
 });

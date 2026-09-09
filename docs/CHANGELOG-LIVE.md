@@ -1,5 +1,19 @@
 # CHANGELOG LIVE
 
+## 2026-09-09-r404
+
+- Release ID: `2026-09-09-r404`
+- Date/Time (Asia/Singapore): `2026-09-09`
+- Deployment status: `READY` for guarded server release; Mini Program development upload is blocked by expired WeChat DevTools login (code 10). No review or public release authorised.
+- Scope: first ticket-feedback remediation batch. Historical/cancelled lesson lookup, multi-result verification, action-specific evidence, cancellation return context, partial/makeup follow-up, and formal-side AI scope checks. Existing navigation and manual scheduling remain.
+- Key files: `lib/ticket-existing-results.ts`, `lib/ticket-result-evidence.ts`, `lib/ticket-command-scope.ts`, `lib/ticket-scheduling-action-write.ts`, ticket/student workbenches, protected result APIs, staff coordination/session Mini Program pages, and `prisma/migrations/20260909010000_ticket_result_evidence/migration.sql`.
+- Risk impact: Medium. Adds an empty-default result ID array and tightens future ticket completion. No bulk historical ticket corrections, attendance edits, package deductions, finance/payroll changes or real messages. Published Mini Program clients retain existing endpoints; shared backend changes still affect production clients.
+- Verification: 46 focused tests passed; isolated local PostgreSQL/HTTP UAT passed cancellation, cross-student rejection, multiple results, variance audit, makeup, concurrency, historical pagination and observer denial. Desktop/mobile browser selection and submission passed; Mini Program release audit passed for 69 pages. Production build and diff check passed. Broader backend suite: 180/181; the existing unclassified `/staff/hr` training-coverage test also fails at unchanged r403.
+- Remaining boundary: AI OS semantic parser and broad raw-message extraction are not changed in this release. Formal-side guard rejects out-of-scope proposals rather than claiming the upstream proposal was repaired. Historical disputed arrangements require staff confirmation. WeChat compilation/experience-device UAT/upload remain pending login.
+- Rollback point: `976978a1a151b08eb868729baafb7c626482ed9b`. Retain the additive column and new audit/result records when rolling code back.
+
+---
+
 ## 2026-09-07-r403
 
 - Release ID: `2026-09-07-r403`

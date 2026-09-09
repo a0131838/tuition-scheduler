@@ -1,6 +1,16 @@
 # RELEASE BOARD
 
-- Current release line on this branch: `2026-09-07-r403`, ready for guarded release.
+- Current release line on this branch: `2026-09-09-r404`, ready for guarded server release; Mini Program upload pending WeChat login.
+
+## 2026-09-09-r404 Ready
+
+- Existing ticket action area now offers dated/paginated historical course lookup and shared web/Mini Program existing-result verification. No new sidebar entry.
+- Actual cancellation/charge state, student, date, teacher, course and duration are checked before linking. Multiple lessons accumulate without closing incomplete explicit quantities. Confirmed discrepancies require an auditable note.
+- Cancel/makeup and ambiguous total-package-hour requests retain a follow-up. Scoped calendar cancellation carries its originating ticket/action; a selected historical target remains reachable on the student page.
+- Formal AI commands cannot mutate unconfirmed source sessions or expand explicit lesson counts. AI OS parser remediation remains a separate uncompleted item, not an implicit deployment here.
+- Verification: 46 focused tests, isolated PostgreSQL/HTTP UAT, desktop/mobile browser check, production build and Mini Program static release audit. Broader tests retain one pre-existing `/staff/hr` coverage failure reproduced at r403.
+- Mini Program: source client version `1.0.13`; preview/upload stopped at expired WeChat login, code 10. No uploaded development version, experience designation, review submission or public publication is claimed.
+- Task and staff instructions: `docs/tasks/TASK-20260909-ticket-result-evidence.md`.
 
 ## 2026-09-07-r403 Ready
 

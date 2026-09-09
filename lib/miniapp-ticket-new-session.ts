@@ -494,6 +494,7 @@ export async function applyTicketNewSession(input: TicketNewSessionInput, actor:
           ticketId: checked.ticket.id,
           actionType: "CREATE_SESSION",
           resultSessionId: sessions[0]?.id ?? null,
+          resultSessionIds: sessions.map((session) => session.id),
           appliedByUserId: actor.userId,
         });
         ticketAllResolved = actionState.allResolved;
@@ -526,7 +527,7 @@ export async function applyTicketNewSession(input: TicketNewSessionInput, actor:
         });
         if (!groupedTicket) throw new TicketNewSessionError("关联工单组已变化，请重新预检。", 409, "TICKET_PREVIEW_STALE");
         const groupedAction = await applyLinkedTicketSchedulingAction(tx, {
-          ticketId: groupedTicket.id, actionType: "CREATE_SESSION", resultSessionId: sessions[0]?.id ?? null, appliedByUserId: actor.userId,
+          ticketId: groupedTicket.id, actionType: "CREATE_SESSION", resultSessionId: sessions[0]?.id ?? null, resultSessionIds: sessions.map((session) => session.id), appliedByUserId: actor.userId,
         });
         const earliestByTeacher = new Map<string, (typeof checkedRows)[number]>();
         for (const row of checkedRows) {

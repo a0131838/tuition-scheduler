@@ -1942,7 +1942,13 @@ export default async function StudentDetailPage({
         orderBy: { startAt: "asc" },
       })
     : [];
-  const upcomingSessionIds = upcomingSessions.map((s) => s.id);
+  const ticketTargetSession = ticketExecutionContext?.sourceSessionId && !upcomingSessions.some((session) => session.id === ticketExecutionContext.sourceSessionId)
+    ? await prisma.session.findFirst({ where: { id: ticketExecutionContext.sourceSessionId,
+        OR: [{ studentId }, { studentId: null, attendances: { some: { studentId } } }, { studentId: null, class: { enrollments: { some: { studentId } } } }],
+      }, include: { teacher: true, class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } } } })
+    : null;
+  const executionSessions = ticketTargetSession ? [ticketTargetSession, ...upcomingSessions] : upcomingSessions;
+  const upcomingSessionIds = executionSessions.map((s) => s.id);
   const upcomingAttendance = upcomingSessionIds.length
     ? await prisma.attendance.findMany({
         where: { studentId, sessionId: { in: upcomingSessionIds } },
@@ -1950,7 +1956,7 @@ export default async function StudentDetailPage({
       })
     : [];
   const upcomingAttendanceMap = new Map(upcomingAttendance.map((a) => [a.sessionId, a]));
-  const quickRescheduleSessionOptions = upcomingSessions
+  const quickRescheduleSessionOptions = executionSessions
     .filter((s) => {
       const att = upcomingAttendanceMap.get(s.id);
       return att?.status !== "EXCUSED";
@@ -4155,6 +4161,7 @@ export default async function StudentDetailPage({
                                 note: tl(lang, "Note"),
                               }}
                               returnHash="#calendar-tools"
+                              ticketExecutionContext={ticketExecutionContext?.actionType === "CANCEL_SESSION" && ticketExecutionContext.sourceSessionId === s.id ? ticketExecutionContext : null}
                             />
                           </div>
                         </div>
@@ -4459,7 +4466,7 @@ export default async function StudentDetailPage({
       </details>
 
       <details id="upcoming-sessions" open style={{ marginBottom: 14 }}>
-        <summary style={{ fontWeight: 700 }}>{tl(lang, "Upcoming Sessions")} ({upcomingSessions.length})</summary>
+        <summary style={{ fontWeight: 700 }}>{ticketTargetSession ? t(lang, "Ticket lesson and upcoming sessions", "工单原课程及后续课程") : tl(lang, "Upcoming Sessions")} ({executionSessions.length})</summary>
       {ticketExecutionContext && ["CANCEL_SESSION", "REPLACE_TEACHER"].includes(ticketExecutionContext.actionType) ? (
         <div style={{ margin: "10px 0", padding: 10, border: "1px solid #fdba74", background: "#fff7ed", color: "#9a3412", fontWeight: 750 }}>
           正在处理工单中的指定课程。完成下面高亮课程的正式操作后，系统会自动更新工单并返回。 / Complete the highlighted lesson action to update the ticket automatically.
@@ -4472,11 +4479,11 @@ export default async function StudentDetailPage({
           { href: "#edit-student", label: tl(lang, "Edit Student") },
         ],
       })}
-      {upcomingSessions.length === 0 ? (
+      {executionSessions.length === 0 ? (
         <div style={{ color: "#999" }}>{tl(lang, "No upcoming sessions.")}</div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 10, marginTop: 8 }}>
-          {upcomingSessions.map((s) => {
+          {executionSessions.map((s) => {
             const att = upcomingAttendanceMap.get(s.id);
             const teacherChange = latestTeacherChangeMap.get(s.id);
             const cancelled = att?.status === "EXCUSED";

@@ -172,6 +172,7 @@ export function schedulingActionDto(action: TicketSchedulingAction & {
     statusLabel: schedulingActionStatusLabel(action.status),
     sourceSession: sessionDto(action.sourceSession),
     resultSession: sessionDto(action.resultSession),
+    resultSessionIds: action.resultSessionIds ?? [],
     requestedStartAt: action.requestedStartAt?.toISOString() ?? null,
     requestedEndAt: action.requestedEndAt?.toISOString() ?? null,
     requestedTeacher: action.requestedTeacher,
@@ -185,7 +186,7 @@ export function schedulingActionDto(action: TicketSchedulingAction & {
 }
 
 export const schedulingActionInclude = {
-  sourceSession: { include: { teacher: { select: { name: true } }, class: { include: { course: { select: { name: true } }, teacher: { select: { name: true } } } } } },
+  sourceSession: { include: { attendances: { select: { studentId: true, status: true } }, teacher: { select: { name: true } }, class: { include: { course: { select: { name: true } }, teacher: { select: { name: true } } } } } },
   resultSession: { include: { teacher: { select: { name: true } }, class: { include: { course: { select: { name: true } }, teacher: { select: { name: true } } } } } },
   requestedTeacher: { select: { id: true, name: true } },
 } as const;

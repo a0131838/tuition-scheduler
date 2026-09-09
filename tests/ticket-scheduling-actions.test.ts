@@ -121,9 +121,9 @@ test("ticket workbench exposes blockers and audited existing-result recovery", (
   assert.match(webList, /个排课动作待执行/);
   assert.match(webList, /前往处理排课动作/);
   assert.match(webList, /blockedTicket/);
-  assert.match(webDetail, /ADMIN_LINK_EXISTING_SCHEDULING_RESULT/);
+  assert.match(readFileSync("lib/ticket-existing-results.ts", "utf8"), /ADMIN_LINK_EXISTING_SCHEDULING_RESULT/);
   assert.match(webDetail, /existingResultVerified/);
-  assert.match(webDetail, /关联已有结果并写入审计/);
+  assert.match(readFileSync("app/admin/tickets/[id]/ResultSubmitButton.tsx", "utf8"), /核验并更新工单/);
   assert.match(webDetail, /ADMIN_RESOLVE_TICKET_SCHEDULING_ACTIONS/);
   assert.match(webDetail, /实际工作已经处理过：只核验一次/);
   assert.match(webDetail, /保存实际结果并自动更新工单/);

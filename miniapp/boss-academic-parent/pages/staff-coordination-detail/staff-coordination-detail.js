@@ -39,6 +39,17 @@ Page({
     schedulingActions: [],
     hasSchedulingActions: false,
     actionSaving: false,
+    resultActionId: "",
+    resultMode: "result",
+    resultRows: [],
+    resultIds: [],
+    resultDate: "",
+    resultPage: 0,
+    resultMore: false,
+    resultBusy: false,
+    resultNote: "",
+    resultChanged: false,
+    resultError: "",
     communicationResult: "",
     nextAction: "",
     nextActionDue: tomorrow(),
@@ -86,6 +97,7 @@ Page({
     this.setData(values);
     this.load();
   },
+  onShow() { if (this.data.ticket) this.load(); },
 
   load() {
     if (!this.data.id) return Promise.resolve();
@@ -154,6 +166,53 @@ Page({
       })
       .catch((err) => api.toast(err.message))
       .finally(() => this.setData({ newScheduleLoading: false }));
+  },
+
+  openResultPicker(e) {
+    this.setData({ resultActionId: e.currentTarget.dataset.id, resultMode: e.currentTarget.dataset.mode || "result", resultIds: [], resultRows: [], resultNote: "", resultChanged: false });
+    this.loadResultLessons("", 0);
+  },
+
+  loadResultLessons(date, page) {
+    const requestId = (this.resultRequestId || 0) + 1;
+    this.resultRequestId = requestId;
+    this.setData({ resultBusy: true, resultError: "" });
+    const path = "/api/miniapp/staff/scheduling-coordination/" + encodeURIComponent(this.data.id) + "/results?actionId=" + encodeURIComponent(this.data.resultActionId) + "&date=" + encodeURIComponent(date) + "&page=" + page;
+    return api.requestStaff(path).then((data) => {
+      if (this.resultRequestId !== requestId) return;
+      this.setData({ resultRows: (data.lessons || []).map((row) => Object.assign({}, row, { checked: this.data.resultIds.indexOf(row.id) >= 0 })), resultDate: data.date, resultPage: data.page, resultMore: data.hasMore });
+    }).catch((err) => { if (this.resultRequestId === requestId) this.setData({ resultError: err.message }); })
+      .finally(() => { if (this.resultRequestId === requestId) this.setData({ resultBusy: false }); });
+  },
+
+  changeResultDate(e) { this.loadResultLessons(e.detail.value, 0); },
+  previousResults() { this.loadResultLessons(this.data.resultDate, Math.max(0, this.data.resultPage - 1)); },
+  nextResults() { this.loadResultLessons(this.data.resultDate, this.data.resultPage + 1); },
+  changeResultSelection(e) {
+    const visible = this.data.resultRows.map((row) => row.id);
+    const kept = this.data.resultIds.filter((id) => visible.indexOf(id) < 0);
+    const ids = kept.concat(e.detail.value || []);
+    this.setData({ resultIds: ids, resultRows: this.data.resultRows.map((row) => Object.assign({}, row, { checked: ids.indexOf(row.id) >= 0 })) });
+  },
+  inputResultNote(e) { this.setData({ resultNote: e.detail.value }); },
+  changeResultConfirmed(e) { this.setData({ resultChanged: Boolean(e.detail.value) }); },
+  async saveResultEvidence() {
+    if (this.data.resultBusy) return;
+    if (this.data.resultMode === "source" && this.data.resultIds.length !== 1) { api.toast("请选择一节原课程"); return; }
+    const confirmation = await new Promise((resolve) => wx.showModal({ title: "核对课程", content: this.data.resultMode === "source" ? "确认关联这节原课程？" : "确认所选课程是本次需求的实际处理结果？", success: resolve }));
+    if (!confirmation.confirm) return;
+    this.setData({ resultBusy: true, resultError: "" });
+    const base = "/api/miniapp/staff/scheduling-coordination/" + encodeURIComponent(this.data.id);
+    const source = this.data.resultMode === "source";
+    try {
+      await api.requestStaff(base + (source ? "/actions" : "/results"), { method: source ? "PATCH" : "POST", data: source
+        ? { actionId: this.data.resultActionId, sourceSessionId: this.data.resultIds[0], status: "READY" }
+        : { actionId: this.data.resultActionId, resultSessionIds: this.data.resultIds, verified: true, note: this.data.resultNote, confirmedChange: this.data.resultChanged } });
+      this.setData({ resultActionId: "" });
+      wx.showToast({ title: "已更新工单", icon: "success" });
+      await this.load();
+    } catch (err) { this.setData({ resultError: err.message }); }
+    finally { this.setData({ resultBusy: false }); }
   },
 
   applyNewScheduleSubject(index) {
@@ -354,7 +413,7 @@ Page({
   openActionSession(e) {
     const id = e.currentTarget.dataset.id;
     if (!id) return;
-    wx.navigateTo({ url: "/pages/staff-session-detail/staff-session-detail?id=" + encodeURIComponent(id) });
+    wx.navigateTo({ url: "/pages/staff-session-detail/staff-session-detail?id=" + encodeURIComponent(id) + "&ticketId=" + encodeURIComponent(this.data.id) });
   },
 
   changeActionSource(e) {

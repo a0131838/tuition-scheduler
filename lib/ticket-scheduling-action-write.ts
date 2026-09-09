@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { explicitLessonCount, needsMakeupFollowup } from "./ticket-result-evidence";
 
 export async function applyLinkedTicketSchedulingAction(
   tx: Prisma.TransactionClient,
@@ -8,11 +9,13 @@ export async function applyLinkedTicketSchedulingAction(
     actionType: string;
     sourceSessionId?: string | null;
     resultSessionId?: string | null;
+    resultSessionIds?: string[];
     appliedByUserId: string;
     requestedTeacherId?: string | null;
     chargePolicy?: string | null;
   }
 ) {
+  await tx.$queryRaw`SELECT id FROM "Ticket" WHERE id = ${input.ticketId} FOR UPDATE`;
   const action = await tx.ticketSchedulingAction.findFirst({
     where: {
       ticketId: input.ticketId,
@@ -24,18 +27,34 @@ export async function applyLinkedTicketSchedulingAction(
     orderBy: { sequence: "asc" },
   });
   if (action) {
+    const resultIds = [...new Set([...(action.resultSessionIds ?? []), ...(action.resultSessionId ? [action.resultSessionId] : []), ...(input.resultSessionIds ?? []), ...(input.resultSessionId ? [input.resultSessionId] : [])])];
+    const complete = action.actionType !== "CREATE_SESSION" || resultIds.length >= explicitLessonCount(action.notes);
     await tx.ticketSchedulingAction.update({
       where: { id: action.id },
       data: {
-        status: "APPLIED",
+        status: complete ? "APPLIED" : "READY",
         sourceSessionId: input.sourceSessionId ?? action.sourceSessionId,
         resultSessionId: input.resultSessionId ?? action.resultSessionId,
+        resultSessionIds: resultIds,
         requestedTeacherId: input.requestedTeacherId ?? action.requestedTeacherId,
         chargePolicy: input.chargePolicy ?? action.chargePolicy,
         appliedAt: new Date(),
         appliedByUserId: input.appliedByUserId,
       },
     });
+    const needsScopeConfirmation = action.actionType === "CREATE_SESSION" && explicitLessonCount(action.notes) === 1 && /(?:一共|共|总计)\s*\d+(?:\.\d+)?\s*课时/.test(action.notes ?? "");
+    if (needsMakeupFollowup(action) || needsScopeConfirmation) {
+      const followupMarker = `[Follow-up:${action.id}]`;
+      const followup = await tx.ticketSchedulingAction.findFirst({ where: { ticketId: input.ticketId, actionType: "COORDINATE_ONLY", notes: { contains: followupMarker } } });
+      if (!followup) {
+        const last = await tx.ticketSchedulingAction.findFirst({ where: { ticketId: input.ticketId }, orderBy: { sequence: "desc" } });
+        await tx.ticketSchedulingAction.create({ data: {
+          ticketId: input.ticketId, sequence: (last?.sequence ?? 0) + 1,
+          actionType: "COORDINATE_ONLY", status: "NEED_INFO", courseLabel: action.courseLabel,
+          notes: `${followupMarker}\n${needsScopeConfirmation ? "需求含总课时，但未明确本次排课节数。请确认本次是阶段安排还是全部安排，再结束工单。" : "原课已取消，仍需核对补课安排。关联补课结果或记录家长撤回补课后，再结束工单。"}`,
+        } });
+      }
+    }
   }
   const [total, unresolved] = await Promise.all([
     tx.ticketSchedulingAction.count({ where: { ticketId: input.ticketId } }),
@@ -59,6 +78,7 @@ export async function applyAdminLinkedTicketSchedulingAction(
     actionType: string;
     sourceSessionId?: string | null;
     resultSessionId?: string | null;
+    resultSessionIds?: string[];
     requestedTeacherId?: string | null;
     chargePolicy?: string | null;
     resultText: string;
@@ -67,6 +87,7 @@ export async function applyAdminLinkedTicketSchedulingAction(
     actorName?: string | null;
     actorRole?: string | null;
     auditAction: string;
+    verification?: { confirmedChange: boolean; note: string; differences: string[] };
   }
 ) {
   const ticket = await tx.ticket.findUnique({
@@ -88,6 +109,7 @@ export async function applyAdminLinkedTicketSchedulingAction(
     actionType: input.actionType,
     sourceSessionId: input.sourceSessionId,
     resultSessionId: input.resultSessionId,
+    resultSessionIds: input.resultSessionIds,
     requestedTeacherId: input.requestedTeacherId,
     chargePolicy: input.chargePolicy,
     appliedByUserId: input.appliedByUserId,
@@ -136,6 +158,8 @@ export async function applyAdminLinkedTicketSchedulingAction(
         actionType: input.actionType,
         sourceSessionId: input.sourceSessionId ?? null,
         resultSessionId: input.resultSessionId ?? null,
+        resultSessionIds: input.resultSessionIds ?? (input.resultSessionId ? [input.resultSessionId] : []),
+        ...(input.verification ? { verification: input.verification } : {}),
         allResolved: actionState.allResolved,
         unresolved: actionState.unresolved,
       },

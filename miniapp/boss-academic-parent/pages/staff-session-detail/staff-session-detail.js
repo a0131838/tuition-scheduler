@@ -214,7 +214,7 @@ Page({
   },
 
   onLoad(query) {
-    this.setData({ sessionId: query.id || "" });
+    this.setData({ sessionId: query.id || "", originTicketId: query.ticketId || "" });
     this.load();
   },
 
@@ -603,7 +603,8 @@ Page({
   },
 
   changeCancellationTickets(e) {
-    this.setData({ cancellationTicketIds: e.detail.value || [] });
+    const ids = e.detail.value || [];
+    this.setData({ cancellationTicketIds: ids, cancellationTickets: this.data.cancellationTickets.map((ticket) => Object.assign({}, ticket, { checked: ids.indexOf(ticket.id) >= 0 })) });
   },
 
   cancellationPayload(mode) {
@@ -641,8 +642,8 @@ Page({
           cancellationPreviewToken: data.previewToken || "",
           cancellationPreviewTimeText: preview.timeText || "-",
           cancellationPreviewChargeText: preview.chargeLabel || "-",
-          cancellationTickets: tickets,
-          cancellationTicketIds: [],
+          cancellationTickets: tickets.map((ticket) => Object.assign({}, ticket, { checked: ticket.id === this.data.originTicketId })),
+          cancellationTicketIds: tickets.filter((ticket) => ticket.id === this.data.originTicketId).map((ticket) => ticket.id),
           hasCancellationPreview: Boolean(data.previewToken),
           hasCancellationTickets: tickets.length > 0
         });
@@ -666,6 +667,10 @@ Page({
         api.requestStaff(path, { method: "POST", data: this.cancellationPayload("apply"), timeout: 30000 })
           .then((data) => {
             wx.showToast({ title: data.message || "已处理", icon: "success" });
+            if (this.data.originTicketId && this.data.cancellationTicketIds.indexOf(this.data.originTicketId) >= 0) {
+              wx.navigateBack();
+              return;
+            }
             return this.load();
           })
           .catch((err) => this.showSchedulingError(err))

@@ -145,7 +145,7 @@
         <view class="label">同步完成请假工单（可选）</view>
         <checkbox-group bindchange="changeCancellationTickets">
           <label class="ticket-choice" wx:for="{{cancellationTickets}}" wx:key="id">
-            <checkbox value="{{item.id}}" color="#b42318" />
+            <checkbox value="{{item.id}}" checked="{{item.checked}}" color="#b42318" />
             <view>{{item.label}}</view>
           </label>
         </checkbox-group>

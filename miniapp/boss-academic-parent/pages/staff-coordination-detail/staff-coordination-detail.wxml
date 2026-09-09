@@ -19,16 +19,31 @@
     <view class="hint tool-hint">每个动作都要关联真实课程并执行；全部完成后工单才会关闭。</view>
     <view class="action-row" wx:for="{{schedulingActions}}" wx:key="id">
       <view class="action-row-head"><view><view class="action-seq">动作 {{index + 1}}</view><view class="label">{{item.actionLabel}}</view></view><view class="action-state state-{{item.status}}">{{item.statusLabel}}</view></view>
-      <view class="linked-session" wx:if="{{item.sourceSession}}" bindtap="openActionSession" data-id="{{item.sourceSession.id}}">
+      <view class="linked-session" wx:if="{{item.sourceSession}}" bindtap="openActionSession" data-id="{{item.sourceSession.id}}" data-action-id="{{item.id}}">
         <view>{{item.sourceSession.courseLabel}} · {{item.sourceSession.teacherName}}</view><view class="hint">点击打开原课程并执行 ›</view>
       </view>
       <view wx:elif="{{item.needsSource && item.status !== 'APPLIED' && item.status !== 'CANCELLED'}}">
-        <picker mode="selector" range="{{upcomingSessions}}" range-key="startText" value="{{item.sourceIndex}}" data-id="{{item.id}}" bindchange="changeActionSource">
-          <view class="action-source-picker">还缺原课程，点这里选择 ›</view>
-        </picker>
+        <button size="mini" data-id="{{item.id}}" data-mode="source" bindtap="openResultPicker">选择原课程</button>
       </view>
       <view class="hint" wx:if="{{item.notes}}">{{item.notes}}</view>
       <view class="result-session" wx:if="{{item.resultSession}}">已执行：{{item.resultSession.courseLabel}} · {{item.resultSession.teacherName}}</view>
+      <view class="hint" wx:if="{{item.resultSessionIds.length}}">已关联 {{item.resultSessionIds.length}} 节课程</view>
+      <button wx:if="{{item.status !== 'APPLIED' && item.status !== 'CANCELLED' && (item.actionType === 'CREATE_SESSION' || item.sourceSession)}}" size="mini" data-id="{{item.id}}" bindtap="openResultPicker">核验已有结果</button>
+      <view wx:if="{{resultActionId === item.id}}" class="result-evidence">
+        <picker mode="date" value="{{resultDate}}" bindchange="changeResultDate"><view>课程起始日：{{resultDate}} ›</view></picker>
+        <view class="hint" wx:if="{{resultBusy}}">正在读取…</view>
+        <checkbox-group bindchange="changeResultSelection" wx:if="{{resultMode === 'source' || item.actionType === 'CREATE_SESSION'}}">
+          <label class="result-choice" wx:for="{{resultRows}}" wx:for-item="lesson" wx:key="id"><checkbox value="{{lesson.id}}" checked="{{lesson.checked}}" disabled="{{resultBusy}}"/><text>{{lesson.label}}</text></label>
+        </checkbox-group>
+        <view wx:if="{{resultIds.length}}">本次选择 {{resultIds.length}} 节课程</view>
+        <view class="result-pages"><button size="mini" disabled="{{resultBusy || resultPage === 0}}" bindtap="previousResults">上一页</button><button size="mini" disabled="{{resultBusy || !resultMore}}" bindtap="nextResults">下一页</button></view>
+        <view wx:if="{{resultMode !== 'source'}}">
+          <view>需求已有确认的变更 <switch checked="{{resultChanged}}" bindchange="changeResultConfirmed" /></view>
+          <textarea wx:if="{{resultChanged}}" value="{{resultNote}}" maxlength="1000" placeholder="确认人及变更依据" bindinput="inputResultNote" />
+        </view>
+        <view class="missing-source" wx:if="{{resultError}}">{{resultError}}</view>
+        <button loading="{{resultBusy}}" disabled="{{resultBusy}}" bindtap="saveResultEvidence">确认并更新</button>
+      </view>
     </view>
   </view>
 
