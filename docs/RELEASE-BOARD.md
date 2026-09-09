@@ -1,6 +1,6 @@
 # RELEASE BOARD
 
-- Formal web/backend: `2026-09-09-r404`, live at `2849f552`. Client-only correction: `1.1.01`, verified against the 1.0.66 source baseline; development upload pending. Do not submit review or publish.
+- Formal web/backend: `2026-09-09-r404`, live at `2849f552`. Client-only correction: `1.1.01`, verified against the 1.0.66 source baseline and uploaded as development at 2026-09-09 11:55 SGT from `48b1e481`. Do not submit review or publish.
 
 ## Mini Program 1.1.01
 
@@ -8,6 +8,7 @@
 - Incorrectly numbered 1.0.13 was uploaded only as a development build and must not be promoted. Numbering now follows 1.1.01, 1.1.02, etc.; changing from development to experience/review/production does not itself require another increment.
 - Use `npm run miniapp:upload-test` so upload version and clientVersion come from one configuration. Upload artifacts record source commit, hashes, and success receipt.
 - No server redeployment for this client-only change. See `docs/tasks/TASK-20260909-miniapp-1101-baseline.md`.
+- Acceptance: 47 focused tests, 74 client-JavaScript syntax checks, TypeScript, release audit and native preview passed. Developer Tools confirmed upload of 818037 bytes. Experience designation and real-device staff acceptance remain pending.
 
 ## 2026-09-09-r404 Live
 

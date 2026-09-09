@@ -27,3 +27,10 @@ Numbering: use 1.1.01 for this release candidate. The same accepted package keep
 Run release audit, syntax-check client JavaScript and upload wrapper, targeted AI/ticket regressions, native preview compilation, and development upload. Do not mark real-device employee acceptance complete from compilation alone. The experience build uses the production API, so real schedules, attendance, fees and messages must not be used as mutation tests.
 
 No backend deployment is required for this version-only client correction. Retain r404 server commit and the existing production Mini Program; keep 1.0.13 out of review/publication.
+
+## Actual upload
+
+- 2026-09-09T03:55:03.374Z (11:55 SGT): development upload 1.1.01 confirmed, source commit `48b1e481500b0c1e3c9bb44cb9550e8a1b84ebee`, 818037 bytes.
+- 47 targeted tests, 74 client-JavaScript syntax checks, TypeScript, release audit and native preview passed.
+- Local receipt: `output/miniapp/1.1.01-1788926098357-receipt.json`; same-prefix manifest records SHA-256 hashes for all 293 tracked client files.
+- No review, public release, experience designation or real-device acceptance performed. The next release must retain this client branch or integrate its commits before uploading; do not rebuild the older r404 client's 1.0.13 config by mistake.

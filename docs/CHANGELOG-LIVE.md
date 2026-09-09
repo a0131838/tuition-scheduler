@@ -2,10 +2,11 @@
 
 ## 2026-09-09 Mini Program 1.1.01 (Client Only)
 
-- Status: baseline verified; development upload pending. Web/backend stay at r404 / `2849f552`; no server deployment, review submission or public publication in this client-only correction.
+- Status: development upload confirmed on 2026-09-09 11:55 SGT, source commit `48b1e481`, 818037 bytes. Web/backend stay at r404 / `2849f552`; no server deployment, review submission or public publication in this client-only correction.
 - Located 1.0.66 upload history and source commit `7c684a31`; zero application-file deletions, all 69 pages retained, 287/293 tracked client files identical. Six changed files are the intended r404 result-verification pages and config. The AI-work source and backend AI-plan helper are unchanged from 66.
 - Correct the mistakenly uploaded 1.0.13 number to the user's 1.1.01 scheme. One config supplies the runtime and upload version; the upload wrapper requires committed client source, audits it and retains a SHA-256 manifest and confirmed receipt.
 - Evidence and limits: `docs/tasks/TASK-20260909-miniapp-1101-baseline.md`. Historical binary equivalence and employee real-device acceptance are not claimed.
+- Verification: 47 focused tests, 74 client-JavaScript syntax checks, TypeScript, 69-page release audit, native preview and guarded development upload passed.
 
 ## 2026-09-09-r404
 
