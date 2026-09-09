@@ -1,15 +1,22 @@
 # RELEASE BOARD
 
-- Current release line on this branch: `2026-09-09-r404`, ready for guarded server release; Mini Program upload pending WeChat login.
+- Formal web/backend: `2026-09-09-r404`, live at `2849f552`. Client-only correction: `1.1.01`, verified against the 1.0.66 source baseline; development upload pending. Do not submit review or publish.
 
-## 2026-09-09-r404 Ready
+## Mini Program 1.1.01
+
+- 1.0.66 upload source located in Developer Tools history and matched to commit `7c684a31`. Current source retains all 293 tracked files and 69 pages; only six intended r404 files differ. The 66 AI work page and backend AI-plan helper are byte-identical to the baseline.
+- Incorrectly numbered 1.0.13 was uploaded only as a development build and must not be promoted. Numbering now follows 1.1.01, 1.1.02, etc.; changing from development to experience/review/production does not itself require another increment.
+- Use `npm run miniapp:upload-test` so upload version and clientVersion come from one configuration. Upload artifacts record source commit, hashes, and success receipt.
+- No server redeployment for this client-only change. See `docs/tasks/TASK-20260909-miniapp-1101-baseline.md`.
+
+## 2026-09-09-r404 Live
 
 - Existing ticket action area now offers dated/paginated historical course lookup and shared web/Mini Program existing-result verification. No new sidebar entry.
 - Actual cancellation/charge state, student, date, teacher, course and duration are checked before linking. Multiple lessons accumulate without closing incomplete explicit quantities. Confirmed discrepancies require an auditable note.
 - Cancel/makeup and ambiguous total-package-hour requests retain a follow-up. Scoped calendar cancellation carries its originating ticket/action; a selected historical target remains reachable on the student page.
 - Formal AI commands cannot mutate unconfirmed source sessions or expand explicit lesson counts. AI OS parser remediation remains a separate uncompleted item, not an implicit deployment here.
 - Verification: 46 focused tests, isolated PostgreSQL/HTTP UAT, desktop/mobile browser check, production build and Mini Program static release audit. Broader tests retain one pre-existing `/staff/hr` coverage failure reproduced at r403.
-- Mini Program: source client version `1.0.13`; preview/upload stopped at expired WeChat login, code 10. No uploaded development version, experience designation, review submission or public publication is claimed.
+- Server release verified: local/GitHub/server `2849f552`, PM2 PID 194212, HTTP200; historical-result API and ticket page read-only verification passed. Mini Program 1.0.13 subsequently previewed/uploaded successfully but its numbering is incorrect; supersede with the verified 1.1.01 candidate. No review or public publication performed.
 - Task and staff instructions: `docs/tasks/TASK-20260909-ticket-result-evidence.md`.
 
 ## 2026-09-07-r403 Ready

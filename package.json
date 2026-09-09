@@ -19,6 +19,7 @@
     "hr:bootstrap": "tsx scripts/bootstrap-hris.ts",
     "hr:import-legacy": "tsx scripts/import-legacy-hr-documents.ts",
         "miniapp:audit-release": "tsx scripts/audit-miniapp-release.ts",
+        "miniapp:upload-test": "node scripts/upload-miniapp-test.cjs",
         "cleanup:availability-integrity": "tsx scripts/clean-availability-integrity.ts",
         "test:auth": "tsx --test tests/route-guards.test.ts",
         "test:report-delivery": "tsx --test tests/learning-report-delivery.test.ts tests/communication-reminders.test.ts",

@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { createRequire } from "node:module";
 
 const ROOT = path.join(process.cwd(), "miniapp", "boss-academic-parent");
 const errors: string[] = [];
@@ -33,6 +34,8 @@ const project = json<{
   setting?: { urlCheck?: boolean; uploadWithSourceMap?: boolean };
 }>("project.config.json");
 const config = read(path.join("utils", "config.js"));
+const releaseConfig = createRequire(import.meta.url)(path.join(ROOT, "utils", "config.js"));
+assert(/^\d+\.\d+\.\d{2}$/.test(releaseConfig.clientVersion), "utils/config.js: use the agreed version format, e.g. 1.1.01");
 
 assert(project.appid === "wxe7017f8545e8ad49", "project.config.json: unexpected AppID");
 assert(project.setting?.urlCheck === true, "project.config.json: legal-domain checking must be enabled");
@@ -144,6 +147,7 @@ json("sitemap.json");
 const result = {
   ok: errors.length === 0,
   appId: project.appid ?? null,
+  clientVersion: releaseConfig.clientVersion,
   libVersion: project.libVersion ?? null,
   pageCount: pages.length,
   apiBaseUrl: "https://sgtmanage.com",

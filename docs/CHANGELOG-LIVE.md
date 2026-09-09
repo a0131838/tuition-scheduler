@@ -1,15 +1,22 @@
 # CHANGELOG LIVE
 
+## 2026-09-09 Mini Program 1.1.01 (Client Only)
+
+- Status: baseline verified; development upload pending. Web/backend stay at r404 / `2849f552`; no server deployment, review submission or public publication in this client-only correction.
+- Located 1.0.66 upload history and source commit `7c684a31`; zero application-file deletions, all 69 pages retained, 287/293 tracked client files identical. Six changed files are the intended r404 result-verification pages and config. The AI-work source and backend AI-plan helper are unchanged from 66.
+- Correct the mistakenly uploaded 1.0.13 number to the user's 1.1.01 scheme. One config supplies the runtime and upload version; the upload wrapper requires committed client source, audits it and retains a SHA-256 manifest and confirmed receipt.
+- Evidence and limits: `docs/tasks/TASK-20260909-miniapp-1101-baseline.md`. Historical binary equivalence and employee real-device acceptance are not claimed.
+
 ## 2026-09-09-r404
 
 - Release ID: `2026-09-09-r404`
 - Date/Time (Asia/Singapore): `2026-09-09`
-- Deployment status: `READY` for guarded server release; Mini Program development upload is blocked by expired WeChat DevTools login (code 10). No review or public release authorised.
+- Deployment status: `LIVE`, guarded release verified commit `2849f552` on local/GitHub/server, PM2 PID 194212 and HTTP200. Mini Program 1.0.13 later compiled/uploaded as development only; that incorrect numbering is superseded by the 1.1.01 correction above. No review or public release authorised.
 - Scope: first ticket-feedback remediation batch. Historical/cancelled lesson lookup, multi-result verification, action-specific evidence, cancellation return context, partial/makeup follow-up, and formal-side AI scope checks. Existing navigation and manual scheduling remain.
 - Key files: `lib/ticket-existing-results.ts`, `lib/ticket-result-evidence.ts`, `lib/ticket-command-scope.ts`, `lib/ticket-scheduling-action-write.ts`, ticket/student workbenches, protected result APIs, staff coordination/session Mini Program pages, and `prisma/migrations/20260909010000_ticket_result_evidence/migration.sql`.
 - Risk impact: Medium. Adds an empty-default result ID array and tightens future ticket completion. No bulk historical ticket corrections, attendance edits, package deductions, finance/payroll changes or real messages. Published Mini Program clients retain existing endpoints; shared backend changes still affect production clients.
 - Verification: 46 focused tests passed; isolated local PostgreSQL/HTTP UAT passed cancellation, cross-student rejection, multiple results, variance audit, makeup, concurrency, historical pagination and observer denial. Desktop/mobile browser selection and submission passed; Mini Program release audit passed for 69 pages. Production build and diff check passed. Broader backend suite: 180/181; the existing unclassified `/staff/hr` training-coverage test also fails at unchanged r403.
-- Remaining boundary: AI OS semantic parser and broad raw-message extraction are not changed in this release. Formal-side guard rejects out-of-scope proposals rather than claiming the upstream proposal was repaired. Historical disputed arrangements require staff confirmation. WeChat compilation/experience-device UAT/upload remain pending login.
+- Remaining boundary: AI OS semantic parser and broad raw-message extraction are not changed in this release. Formal-side guard rejects out-of-scope proposals rather than claiming the upstream proposal was repaired. Historical disputed arrangements require staff confirmation. Experience designation and real-device UAT remain pending.
 - Rollback point: `976978a1a151b08eb868729baafb7c626482ed9b`. Retain the additive column and new audit/result records when rolling code back.
 
 ---
