@@ -1,4 +1,14 @@
 # CHANGELOG LIVE
+## 2026-09-12-r405
+
+- Release ID: `2026-09-12-r405`
+- Scope: move the AI OS login callback and default AI planning upstream to `https://ai.gtaisg.com`, reserving `gtaisg.com` for the public company website.
+- Risk impact: URL routing only. Existing staff authentication, role mapping, token lifetime and business permissions remain unchanged. No schema migrations, scheduling writes or messages.
+- Verification: local 259-page production build passed; guarded release pending. The AI subdomain certificate and authenticated upstream are already configured.
+- Rollback point: `2849f552d957cf0a68cd69821d05db367167e1b6`; retain the original main-domain AI route until cutover verification.
+
+---
+
 
 ## 2026-09-09-r404
 

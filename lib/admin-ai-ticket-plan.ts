@@ -150,7 +150,7 @@ export async function aiRoleForAdminAi(user: FormalStaffUser) {
 }
 
 function integrationConfig() {
-  const baseUrl = String(process.env.SGT_AI_BASE_URL || "https://gtaisg.com").trim().replace(/\/$/, "");
+  const baseUrl = String(process.env.SGT_AI_BASE_URL || "https://ai.gtaisg.com").trim().replace(/\/$/, "");
   const secret = String(process.env.SGT_AI_MINIAPP_SHARED_SECRET || "").trim();
   if (!baseUrl || secret.length < 32) throw new Error("AI工单服务尚未配置。");
   return { baseUrl, secret };

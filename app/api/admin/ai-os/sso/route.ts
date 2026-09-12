@@ -2,7 +2,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { issueAiMiniappDelegation } from "@/lib/ai-miniapp-delegation";
 import { aiRoleForAdminAi } from "@/lib/admin-ai-ticket-plan";
 
-const AI_ORIGIN = "https://gtaisg.com";
+const AI_ORIGIN = "https://ai.gtaisg.com";
 
 function safeAiPath(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return "/";
