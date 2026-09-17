@@ -1,4 +1,16 @@
 # CHANGELOG LIVE
+## 2026-09-17-r406
+
+- Release ID: `2026-09-17-r406`
+- Scope: distinguish uncharged leave, recorded deductions and configured leave charges in cancellation prompts; show current attendance beside explicitly historical intake notes.
+- Business boundary: presentation/read-selection only. Existing cancellation locks, automatic-execution eligibility, permissions, attendance, package deductions, scheduling and payroll logic are unchanged. No migration or Mini Program client release.
+- Verification: 30 focused cancellation/result/scheduling tests passed, including unchanged permission gates; production build and diff check passed.
+- Related authorized operation: ticket `20260916-001` completed through the existing `linkTicketResults` service. Original session, attendance, all student package balances and ledger rows compared unchanged; backup and verification audit retained. No messages sent.
+- Deployment: ready for guarded release; verify local/GitHub/server commit equality, PM2 and HTTP health after release.
+- Rollback point: `066e8982b4ab64840febd9fd988c0e2f6e1cca18`. Code rollback does not undo the separately authorized ticket verification.
+
+---
+
 ## 2026-09-12-r405
 
 - Release ID: `2026-09-12-r405`

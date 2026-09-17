@@ -325,6 +325,7 @@ export async function POST(
         startAt: session.startAt,
         endAt: session.endAt,
         attendanceLocked: attendanceLocksCancellation(session.attendances[0]),
+          attendance: session.attendances[0],
       }),
     }]));
     const actionRows = schedulingActions.map((action) => {

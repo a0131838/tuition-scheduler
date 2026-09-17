@@ -151,6 +151,7 @@ export async function POST(req: Request) {
           startAt: session.startAt,
           endAt: session.endAt,
           attendanceLocked: attendanceLocksCancellation(session.attendances[0]),
+          attendance: session.attendances[0],
         }),
       }));
     }

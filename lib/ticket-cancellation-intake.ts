@@ -7,17 +7,36 @@ export const CANCELLATION_LOOKAHEAD_DAYS = 90;
 
 export type CancellationSourceStatus = "UPCOMING" | "IN_PROGRESS" | "ENDED" | "ATTENDANCE_LOCKED";
 
-export function attendanceLocksCancellation(attendance: {
+export type CancellationAttendance = {
   status?: string | null;
   deductedMinutes?: number | null;
   deductedCount?: number | null;
   packageId?: string | null;
   excusedCharge?: boolean | null;
-} | null | undefined) {
+};
+
+export function attendanceLocksCancellation(attendance: CancellationAttendance | null | undefined) {
   return Boolean(
     attendance &&
     (attendance.status !== "UNMARKED" || Number(attendance.deductedMinutes) > 0 || Number(attendance.deductedCount) > 0 || attendance.packageId || attendance.excusedCharge)
   );
+}
+
+// Presentation only: do not use these labels to grant cancellation permission.
+export function cancellationAttendanceLabel(attendance: CancellationAttendance | null | undefined) {
+  if (!attendance) return "已有出勤或课包记录，需管理员核实";
+  if (Number(attendance.deductedMinutes) > 0 || Number(attendance.deductedCount) > 0) {
+    return "已有扣课记录，需管理员处理";
+  }
+  if (attendance.excusedCharge) return "已设置请假收费，需管理员核实扣课结果";
+  if (attendance.status === "EXCUSED" && attendance.deductedMinutes === 0 && attendance.deductedCount === 0) {
+    return "已登记请假，未扣课";
+  }
+  return "已有出勤或课包记录，需管理员核实";
+}
+
+export function cancellationNotesForDisplay(notes: string) {
+  return notes.replace(/^系统状态：/gm, "提交时状态（非实时）：");
 }
 
 export function cancellationSourceDateWindow(dateText: string | null | undefined, now = new Date()) {
@@ -43,9 +62,10 @@ export function cancellationSourceStatus(input: {
   startAt: Date;
   endAt: Date;
   attendanceLocked?: boolean;
+  attendance?: CancellationAttendance | null;
 }, now = new Date()): { status: CancellationSourceStatus; label: string; canAutoExecute: boolean } {
   if (input.attendanceLocked) {
-    return { status: "ATTENDANCE_LOCKED", label: "已有点名或扣课，需管理员处理", canAutoExecute: false };
+    return { status: "ATTENDANCE_LOCKED", label: cancellationAttendanceLabel(input.attendance), canAutoExecute: false };
   }
   if (input.startAt > now) {
     return { status: "UPCOMING", label: "未开始，可处理", canAutoExecute: true };

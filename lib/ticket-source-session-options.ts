@@ -44,7 +44,7 @@ export async function getTicketSourceSessionOptions(studentId: string, dateText?
     sessions: sessions.map((session) => {
       const attendance = session.attendances[0] ?? null;
       const attendanceLocked = attendanceLocksCancellation(attendance);
-      const state = cancellationSourceStatus({ startAt: session.startAt, endAt: session.endAt, attendanceLocked }, now);
+      const state = cancellationSourceStatus({ startAt: session.startAt, endAt: session.endAt, attendanceLocked, attendance }, now);
       return {
         id: session.id,
         startAt: session.startAt.toISOString(),

@@ -83,6 +83,7 @@ import TicketLessonPicker from "./TicketLessonPicker";
 import ResultSubmitButton from "./ResultSubmitButton";
 import { explicitLessonCount } from "@/lib/ticket-result-evidence";
 import { ticketCommandScopeError } from "@/lib/ticket-command-scope";
+import { cancellationAttendanceLabel, cancellationNotesForDisplay } from "@/lib/ticket-cancellation-intake";
 import AiPlanSubmitButton from "./AiPlanSubmitButton";
 
 function trimValue(formData: FormData, key: string, max = 400) {
@@ -1580,6 +1581,8 @@ export default async function AdminTicketDetailPage({
             <div style={{ display: "grid", gap: 12 }}>
               {row.schedulingActions.map((action, index) => {
                 const definition = schedulingActionDefinition(action.actionType);
+                const cancellationAttendance = action.sourceSession?.attendances.find((attendance) => attendance.studentId === row.studentId);
+                const actionNotes = action.actionType === "CANCEL_SESSION" ? cancellationNotesForDisplay(action.notes ?? "") : action.notes;
                 const alreadyCancelled = action.actionType === "CANCEL_SESSION" && action.sourceSession?.attendances.some((attendance) => attendance.studentId === row.studentId && attendance.status === "EXCUSED");
                 const locked = ["APPLIED", "CANCELLED"].includes(action.status) || row.isArchived || ["Completed", "Cancelled"].includes(row.status);
                 const executionParams = new URLSearchParams({
@@ -1634,7 +1637,13 @@ export default async function AdminTicketDetailPage({
                       <div style={{ display: "grid", gap: 4, color: "#57534e", fontSize: 13 }}>
                         {action.requestedStartAt ? <div><b>希望时间：</b>{formatBusinessDateTime(action.requestedStartAt)}</div> : null}
                         {action.courseLabel ? <div><b>课程：</b>{action.courseLabel}</div> : null}
-                        {action.notes ? <div style={{ whiteSpace: "pre-wrap" }}><b>补充说明：</b>{action.notes}</div> : null}
+                        {action.notes ? <div style={{ whiteSpace: "pre-wrap" }}><b>补充说明：</b>{actionNotes}</div> : null}
+                      </div>
+                    ) : null}
+                    {action.actionType === "CANCEL_SESSION" && cancellationAttendance ? (
+                      <div style={{ color: "#334155", fontWeight: 750 }}>
+                        当前出勤记录：{cancellationAttendanceLabel(cancellationAttendance)}
+                        {alreadyCancelled ? (action.status === "APPLIED" ? "；工单结果已核验" : "；工单结果待核验") : ""}
                       </div>
                     ) : null}
                     {!locked ? (
@@ -1675,7 +1684,7 @@ export default async function AdminTicketDetailPage({
                             </label>
                             {action.actionType === "RESCHEDULE_SESSION" ? <label>目标上课时间<input type="datetime-local" name="requestedStartAt" defaultValue={action.requestedStartAt ? formatBusinessDateTime(action.requestedStartAt).replace(" ", "T") : ""} style={{ width: "100%", boxSizing: "border-box" }} /></label> : null}
                             {action.actionType === "REPLACE_TEACHER" ? <label>目标老师<select name="requestedTeacherId" defaultValue={action.requestedTeacherId ?? ""} style={{ width: "100%" }}><option value="">请选择老师</option>{resultTeacherOptions.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}</select></label> : null}
-                            <label style={{ gridColumn: "1 / -1" }}>动作说明<textarea name="notes" rows={2} defaultValue={action.notes ?? ""} style={{ width: "100%", boxSizing: "border-box" }} /></label>
+                            <label style={{ gridColumn: "1 / -1" }}>{action.actionType === "CANCEL_SESSION" ? "动作说明（系统状态为提交时记录，当前情况见上方）" : "动作说明"}<textarea name="notes" rows={2} defaultValue={action.notes ?? ""} style={{ width: "100%", boxSizing: "border-box" }} /></label>
                             <button type="submit" formNoValidate>保存补充资料 / Save details</button>
                           </div>
                         </details>

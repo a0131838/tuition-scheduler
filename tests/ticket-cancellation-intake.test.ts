@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
+  attendanceLocksCancellation,
+  cancellationAttendanceLabel,
+  cancellationNotesForDisplay,
   cancellationSourceDateWindow,
   cancellationSourceStatus,
   isManualCancellationTarget,
@@ -54,4 +57,38 @@ test("web and miniapp intake expose date lookup, manual fallback and review-only
   assert.match(miniappRoute, /isManualCancellationTarget/);
   assert.match(webRoute, /status: reviewReason \? "NEED_INFO"/);
   assert.match(miniappRoute, /status: reviewReason \? "NEED_INFO"/);
+});
+
+
+test("uncharged leave is described accurately without enabling automatic cancellation", () => {
+  const attendance = { status: "EXCUSED", deductedMinutes: 0, deductedCount: 0, packageId: null, excusedCharge: false };
+  const state = cancellationSourceStatus({ startAt: new Date("2026-08-16T09:00:00Z"), endAt: new Date("2026-08-16T10:00:00Z"), attendanceLocked: attendanceLocksCancellation(attendance), attendance }, now);
+  assert.equal(state.label, "已登记请假，未扣课");
+  assert.equal(state.status, "ATTENDANCE_LOCKED");
+  assert.equal(state.canAutoExecute, false);
+});
+
+test("deductions take precedence over leave and configured charges are not called actual deductions", () => {
+  for (const deduction of [{ deductedMinutes: 90, deductedCount: 0 }, { deductedMinutes: 0, deductedCount: 1 }]) {
+    assert.equal(cancellationAttendanceLabel({ status: "EXCUSED", excusedCharge: false, ...deduction }), "已有扣课记录，需管理员处理");
+  }
+  assert.equal(cancellationAttendanceLabel({ status: "EXCUSED", deductedMinutes: 0, deductedCount: 0, excusedCharge: true }), "已设置请假收费，需管理员核实扣课结果");
+  assert.doesNotMatch(cancellationAttendanceLabel({ status: "EXCUSED" }), /未扣课/);
+});
+
+test("presentation details leave all attendance cancellation guards unchanged", () => {
+  for (const attendance of [null, { status: "UNMARKED", deductedMinutes: 0, deductedCount: 0, packageId: null, excusedCharge: false }, { status: "UNMARKED", packageId: "pkg" }, { status: "PRESENT" }, { status: "EXCUSED", deductedMinutes: 0, deductedCount: 0 }, { status: "EXCUSED", deductedMinutes: 90, deductedCount: 0 }]) {
+    const input = { startAt: new Date("2026-08-16T09:00:00Z"), endAt: new Date("2026-08-16T10:00:00Z"), attendanceLocked: attendanceLocksCancellation(attendance) };
+    const before = cancellationSourceStatus(input, now);
+    const after = cancellationSourceStatus({ ...input, attendance }, now);
+    assert.equal(after.status, before.status);
+    assert.equal(after.canAutoExecute, before.canAutoExecute);
+  }
+});
+
+test("historical system notes are explicitly historical while staff content is preserved", () => {
+  const notes = "请假方：学生/家长\n通知时间：2026-09-16 12:32\n去学校提交论文\n系统状态：已有点名或扣课，需管理员处理";
+  const display = cancellationNotesForDisplay(notes);
+  assert.equal(display, notes.replace("系统状态：", "提交时状态（非实时）："));
+  assert.equal(cancellationNotesForDisplay(display), display);
 });
