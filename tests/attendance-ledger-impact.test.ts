@@ -4,7 +4,7 @@ import {attendanceLedgerImpact} from '../lib/attendance-ledger-impact';
 const sid='11111111-1111-4111-8111-111111111111', other='22222222-2222-4222-8222-222222222222';
 const row={id:'33333333-3333-4333-8333-333333333333',studentId:sid,status:'PRESENT',packageId:'p',deductedMinutes:60,deductedCount:0,waiveDeduction:false,excusedCharge:false,package:{type:'HOURS',note:null as string|null}};
 const txn={packageId:'p',kind:'DEDUCT',deltaMinutes:-60,note:`studentId=${sid}`};
-const impact=(r=row,transactions=[txn],exclusiveStudentId:string|null=sid)=>attendanceLedgerImpact({studentId:sid,exclusiveStudentId,rows:[r],transactions});
+const impact=(r:Parameters<typeof attendanceLedgerImpact>[0]["rows"][number]=row,transactions=[txn],exclusiveStudentId:string|null=sid)=>attendanceLedgerImpact({studentId:sid,exclusiveStudentId,rows:[r],transactions});
 test('actual matched debit, charged leave and count units can be verified',()=>{
  assert.equal(impact().needsReview,false);assert.equal(impact({...row,status:'EXCUSED',excusedCharge:true}).needsReview,false);
  assert.equal(impact({...row,deductedMinutes:0,deductedCount:1,package:{type:'HOURS',note:'[GROUP_PACK]'}},[{...txn,deltaMinutes:-1}]).needsReview,false);

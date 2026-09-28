@@ -1,4 +1,20 @@
 # RELEASE BOARD
+## 2026-09-28-r418
+
+- Release ID: `2026-09-28-r418`
+- Date/Time (Asia/Singapore): `2026-09-28`
+- Deployment status: `READY`; guarded-release proof is recorded externally.
+- Problem: single and bulk admin attendance paths duplicated deduction logic, read old attendance before their transactions, compared ledger totals across packages and wrote audits after commit. A restored UNMARKED lesson could attempt a second debit; historical unbound debits could be ignored; simultaneous lessons could overspend a shared balance.
+- Change: both existing endpoints use one shared financial attendance transaction. Recheck session/roster and existing financial metadata inside a serializable transaction; verify actual ledger attribution per student and package before and after mutation. Stored debits are verified independently of attendance status, so factual corrections reuse the existing debit and free leave refunds it exactly once. Missing/ambiguous historical ownership is blocked for review. Conditional balance updates cannot overspend; audit and all affected records commit or roll back together.
+- Compatibility: existing routes, requireAdmin guards, package selection/mode rules and fourth-leave charging rule remain. Bulk group-minute saves now use actual duration. Monthly packages are explicitly rejected by this existing minute/count deduction path, never converted to minutes. Monthly workflow review remains within phase4. No real historical records are repaired automatically.
+- Validation: 12 focused evidence/cancellation tests,181 backend tests,full TypeScript and259-page build. Isolated PostgreSQL service and actual authenticated Web HTTP cover restored attendance without duplicate debit, concurrent/repeated free-leave refund once, shared count/minute classes, waived teaching, exact package transfer, monthly rejection without writes, charged fourth leave, orphan shared ownership rejection, transaction/audit rollback and simultaneous lessons competing for one balance. Expected serializable conflict logs are rejected competitors; UAT overall passed.
+- Risk: ambiguous historical data now stops for reconciliation instead of silently proceeding. This deliberately cannot infer who owns an old shared debit. Existing non-financial teacher save remains r417. No production mutation acceptance or messages sent.
+- Remaining: broader correction preview/teaching interfaces and programme phases2–10. This checkpoint is not overall completion.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `b354d25c6dd4b7475eadfcb83a0a6b4f473a5855` (r417). No schema migration.
+
+---
+
 ## 2026-09-28-r417
 
 - Release ID: `2026-09-28-r417`
