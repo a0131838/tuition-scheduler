@@ -1,4 +1,22 @@
 # RELEASE BOARD
+## 2026-09-28-r412
+
+- Release ID: `2026-09-28-r412`
+- Date/Time (Asia/Singapore): `2026-09-28`
+- Deployment status: `READY` after local verification; exact guarded deployment evidence is recorded in the external execution ledger.
+- Problem: manual renewal progress could claim payment without an invoice or approved receipts, and direct-customer PACKAGE_ACTIVE could bypass payment confirmation.
+- Change: the common web/Mini Program writer checks exact student/package/invoice scope and fully approved, non-rejected receipts. Partial, pending, invalid, duplicate or unrelated evidence cannot confirm payment. A signed contract, paid flag or safe balance alone is insufficient. Direct activation also checks payment; partner postpaid activation preserves existing terms and does not assert receipt of cash.
+- Partner evidence requires a matching live settlement in both invoice header and lines; only issued credit reduces the amount due, and credit alone is not payment. A consolidated partner invoice may cover separate packages, but cannot be reused for another cycle of the same package.
+- Historical scope: real-data aggregate review found all four linked open invoices predate their renewal tasks. Earlier invoices remain available with an explicit staff review note, recorded in the audit; they are not guessed to be new purchases. Missing/duplicate invoice creation metadata remains unverified. Previous verified use survives later task-link edits through the audit record.
+- UI: a collapsed Chinese/English/bilingual evidence preview shows current invoice amounts, approved receipts and blockers; selecting a historical invoice requests scope-review evidence. Existing operations-only permissions remain. Legacy Mini Program clients receive the shared check and a clear web-review instruction when required.
+- Atomicity: task status, payment timestamp and evidence audit commit together with serializable isolation and version checking. Historical note edits preserve closure timestamps. Existing billing readers accept an optional transaction context; default callers retain their behavior.
+- Validation: 17 focused tests, 181 backend tests, isolated PostgreSQL UAT for rejection paths, concurrency, audit-failure rollback, older-invoice review, partner postpaid settlement, reused evidence and unchanged package/ledger snapshots. Full build and authenticated browser/HTTP results are recorded in the task and external ledger before release.
+- Boundary: no schema migration, production financial/attendance/ledger writes, approval actions or messages. This release verifies payment only; new entitlement evidence and remaining phase-1 work are not yet complete.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `8a88a5e2169b8dfa7e8c7bca8a2617e82fa5a9fd` (r411). No migration rollback.
+
+---
+
 ## 2026-09-28-r411 Ready
 
 - Release ID: `2026-09-28-r411`

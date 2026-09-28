@@ -1,4 +1,5 @@
-﻿import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit-log";
 import crypto from "crypto";
 import { formatDateOnly, monthKeyFromDateOnly, normalizeDateOnly, normalizeNullableDateOnly } from "@/lib/date-only";
@@ -281,9 +282,9 @@ function sanitizeStore(input: unknown): PartnerBillingStore {
   return out;
 }
 
-async function loadStore(): Promise<PartnerBillingStore> {
+async function loadStore(db: Prisma.TransactionClient = prisma): Promise<PartnerBillingStore> {
   const { store } = await loadJsonAppSettingForDb(
-    prisma as any,
+    db as any,
     PARTNER_BILLING_KEY,
     EMPTY_PARTNER_BILLING_STORE,
     sanitizeStore,
@@ -374,8 +375,8 @@ export async function getNextPartnerInvoiceNo(issueDate?: string | Date | null) 
   return nextInvoiceNoFromStore(store, monthKeyFromDate(issueDate));
 }
 
-export async function listPartnerBilling(partnerId?: string | null) {
-  const store = await loadStore();
+export async function listPartnerBilling(partnerId?: string | null, db: Prisma.TransactionClient = prisma) {
+  const store = await loadStore(db);
   return {
     invoices: byNewest(store.invoices.filter((x) => partnerMatches(x.partnerId, partnerId)), (x) => x.createdAt),
     paymentRecords: byNewest(store.paymentRecords.filter((x) => partnerMatches(x.partnerId, partnerId)), (x) => x.uploadedAt),

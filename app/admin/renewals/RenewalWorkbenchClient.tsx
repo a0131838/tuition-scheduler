@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { RenewalPaymentEvidence } from "./RenewalPaymentEvidence";
 import styles from "./renewals.module.css";
 import type { Lang } from "@/lib/i18n";
 import { renewalRiskResolutionLabel, RISK_RESOLVED } from "@/lib/renewal-auto-resolution";
@@ -9,6 +10,8 @@ type HistoryRow = { action: string; actorName: string; createdAt: string; meta: 
 type RenewalTask = {
   id: string;
   packageId: string;
+  invoiceId: string | null;
+  paymentReviewNote?: string;
   packageType: string;
   studentId: string;
   studentName: string;
@@ -173,6 +176,8 @@ export default function RenewalWorkbenchClient({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           status,
+          invoiceId: draft.invoiceId,
+          paymentReviewNote: draft.paymentReviewNote,
           ownerName: draft.ownerName,
           parentWechatGroupName: draft.parentWechatGroupName,
           parentResponse: draft.parentResponse,
@@ -295,6 +300,7 @@ export default function RenewalWorkbenchClient({
                           {selectableStatuses(row, operationsOnly, lang).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                         </select>
                       </label>
+                      {!operationsOnly && !riskResolved ? <RenewalPaymentEvidence taskId={row.id} invoiceId={draft.invoiceId || null} lang={lang} reviewNote={draft.paymentReviewNote || ""} onReviewNote={note => setDraft(row.id, "paymentReviewNote", note)} onSelect={id => setDraft(row.id, "invoiceId", id)} /> : null}
                       <label>负责人
                         <input value={String(draft.ownerName || "")} onChange={(event) => setDraft(row.id, "ownerName", event.target.value)} placeholder="Emily / Eva / Jasmine" />
                       </label>

@@ -1,4 +1,5 @@
-﻿import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit-log";
 import { loadJsonAppSettingForDb, mutateJsonAppSetting } from "@/lib/app-setting-lock";
 
@@ -57,9 +58,9 @@ function parseItems(input: unknown): PartnerReceiptApprovalItem[] {
   }
 }
 
-async function loadItems() {
+async function loadItems(db: Prisma.TransactionClient = prisma) {
   const { store } = await loadJsonAppSettingForDb(
-    prisma as any,
+    db as any,
     PARTNER_RECEIPT_APPROVAL_KEY,
     [],
     parseItems,
@@ -85,9 +86,9 @@ function ensureItem(items: PartnerReceiptApprovalItem[], receiptId: string) {
   return created;
 }
 
-export async function getPartnerReceiptApprovalMap(receiptIds: string[]) {
+export async function getPartnerReceiptApprovalMap(receiptIds: string[], db: Prisma.TransactionClient = prisma) {
   const idSet = new Set(receiptIds);
-  const items = await loadItems();
+  const items = await loadItems(db);
   const out = new Map<string, PartnerReceiptApprovalItem>();
   for (const item of items) {
     if (idSet.has(item.receiptId)) out.set(item.receiptId, item);

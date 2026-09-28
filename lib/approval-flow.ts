@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 const MANAGER_APPROVER_KEY = "approval_manager_emails_v1";
@@ -33,11 +34,11 @@ export function areAllApproversConfirmed(approvedBy: string[] | null | undefined
   return approverEmails.every((x) => set.has(normalizeEmail(x)));
 }
 
-export async function getApprovalRoleConfig(): Promise<ApprovalRoleConfig> {
+export async function getApprovalRoleConfig(db: Prisma.TransactionClient = prisma): Promise<ApprovalRoleConfig> {
   const [managerRow, financeRow, managerAclRows] = await Promise.all([
-    prisma.appSetting.findUnique({ where: { key: MANAGER_APPROVER_KEY }, select: { value: true } }),
-    prisma.appSetting.findUnique({ where: { key: FINANCE_APPROVER_KEY }, select: { value: true } }),
-    prisma.managerAcl.findMany({ where: { isActive: true }, select: { email: true } }).catch(() => []),
+    db.appSetting.findUnique({ where: { key: MANAGER_APPROVER_KEY }, select: { value: true } }),
+    db.appSetting.findUnique({ where: { key: FINANCE_APPROVER_KEY }, select: { value: true } }),
+    db.managerAcl.findMany({ where: { isActive: true }, select: { email: true } }).catch(() => []),
   ]);
 
   const managerFromSetting = parseEmailList(managerRow?.value ?? null);

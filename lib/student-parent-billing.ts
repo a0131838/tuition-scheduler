@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit-log";
 import crypto from "crypto";
@@ -273,9 +274,9 @@ function sanitizeStore(input: unknown): ParentBillingStore {
   return out;
 }
 
-async function loadStore(): Promise<ParentBillingStore> {
+async function loadStore(db: Prisma.TransactionClient = prisma): Promise<ParentBillingStore> {
   const { store } = await loadJsonAppSettingForDb(
-    prisma as any,
+    db as any,
     PARENT_BILLING_KEY,
     EMPTY_PARENT_BILLING_STORE,
     sanitizeStore,
@@ -358,8 +359,8 @@ export async function getNextParentInvoiceNo(issueDate?: string | Date | null) {
   return nextInvoiceNoFromStore(store, monthKeyFromDate(issueDate));
 }
 
-export async function listParentBillingForPackage(packageId: string) {
-  const store = await loadStore();
+export async function listParentBillingForPackage(packageId: string, db: Prisma.TransactionClient = prisma) {
+  const store = await loadStore(db);
   return {
     invoices: byNewest<ParentInvoiceItem>(
       store.invoices.filter((x) => x.packageId === packageId),

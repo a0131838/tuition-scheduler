@@ -1,3 +1,5 @@
+import { requiresRenewalPaymentVerification } from "./renewal-payment-policy";
+import { verifyRenewalPayment } from "./renewal-payment-evidence";
 import { Prisma } from "@prisma/client";
 import { logAudit } from "@/lib/audit-log";
 import { formatBusinessDateOnly } from "@/lib/date-only";
@@ -579,75 +581,91 @@ export async function updateRenewalTask(input: {
   contractId?: string;
   invoiceId?: string;
   activatedPackageId?: string;
+  paymentReviewNote?: string;
 }, options?: { legacyMiniapp?: boolean }) {
-  const task = await prisma.renewalTask.findUnique({
-    where: { id: input.id },
-    include: { student: { select: { sourceChannel: { select: { name: true } } } } },
-  });
-  if (!task) throw new Error("Renewal task not found");
-  const cohort = renewalCohortForSourceName(task.student.sourceChannel?.name);
-  const status = canonicalRenewalStatus(task.status, String(input.status ?? task.status), options?.legacyMiniapp);
-  if (!RENEWAL_STATUS_LABELS[status]) throw new Error("Invalid renewal status");
-  assertRiskResolutionTransition(task.status, status);
-  if (input.actor.operationsAdmin && !canOperationsAdminSetRenewalStatus(task.status, status)) {
-    throw new Error("财务续费阶段只能由财务或管理人员更新");
-  }
-  if (status === "PARENT_NOTIFIED" && !task.evidenceUrl) {
-    throw new Error(cohort === "XDF" ? "请先上传对接群发送截图，再确认已通知新东方" : "请先上传微信群发送截图，再确认已提醒家长");
-  }
-  const completed = ["PACKAGE_ACTIVE", "NOT_RENEWING", "PAUSED_SPECIAL", RISK_RESOLVED].includes(status);
-  const nextFollowUpAt = input.nextFollowUpAt ? new Date(input.nextFollowUpAt) : null;
-  if (input.nextFollowUpAt && Number.isNaN(nextFollowUpAt?.getTime())) throw new Error("Invalid follow-up time");
-  const ownerName = String(input.ownerName ?? task.ownerName ?? "").trim().slice(0, 100);
-  const owner = ownerName
-    ? await prisma.user.findFirst({ where: { name: { equals: ownerName, mode: "insensitive" } }, select: { id: true, name: true } })
-    : null;
-  const updated = await prisma.renewalTask.update({
-    where: { id: task.id, updatedAt: task.updatedAt },
-    data: {
-      status,
-      ownerUserId: owner?.id ?? task.ownerUserId,
-      ownerName: owner?.name ?? (ownerName || task.ownerName),
-      parentResponse: input.parentResponse == null ? task.parentResponse : input.parentResponse.trim().slice(0, 3000) || null,
-      parentWechatGroupName: input.parentWechatGroupName == null ? task.parentWechatGroupName : input.parentWechatGroupName.trim().slice(0, 160) || null,
-      note: input.note == null ? task.note : input.note.trim().slice(0, 3000) || null,
-      nextFollowUpAt: completed ? null : nextFollowUpAt ?? task.nextFollowUpAt,
-      contactAt: status === "PARENT_NOTIFIED" && !task.contactAt ? new Date() : task.contactAt,
-      contractId: input.contractId?.trim().slice(0, 100) || task.contractId,
-      invoiceId: input.invoiceId?.trim().slice(0, 100) || task.invoiceId,
-      paymentConfirmedAt: status === "PAYMENT_CONFIRMED" && !task.paymentConfirmedAt ? new Date() : task.paymentConfirmedAt,
-      activatedPackageId: input.activatedPackageId?.trim().slice(0, 100) || task.activatedPackageId,
-      completedAt: status === RISK_RESOLVED ? task.completedAt : completed ? new Date() : null,
-      completedByUserId: status === RISK_RESOLVED ? task.completedByUserId : completed ? input.actor.id ?? null : null,
-      completedByName: status === RISK_RESOLVED ? task.completedByName : completed ? input.actor.name || input.actor.email || null : null,
-      snoozedUntil: status === RISK_RESOLVED ? null : completed
-        ? task.packageValidTo && task.packageValidTo > new Date()
-          ? task.packageValidTo
-          : endOfDayFromNow(status === "PACKAGE_ACTIVE" ? 30 : 90)
-        : null,
-    },
-  }).catch((error: unknown) => {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
-      throw new Error("This renewal task changed. Refresh and review before saving. / 续费任务已变化，请刷新核对后再保存。");
+  return prisma.$transaction(async (tx) => {
+    const task = await tx.renewalTask.findUnique({
+      where: { id: input.id },
+      include: { package: { select: { settlementMode: true } }, student: { select: { sourceChannel: { select: { name: true } } } } },
+    });
+    if (!task) throw new Error("Renewal task not found");
+    const cohort = renewalCohortForSourceName(task.student.sourceChannel?.name);
+    const status = canonicalRenewalStatus(task.status, String(input.status ?? task.status), options?.legacyMiniapp);
+    if (!RENEWAL_STATUS_LABELS[status]) throw new Error("Invalid renewal status");
+    assertRiskResolutionTransition(task.status, status);
+    if (input.actor.operationsAdmin && !canOperationsAdminSetRenewalStatus(task.status, status)) {
+      throw new Error("财务续费阶段只能由财务或管理人员更新");
+    }
+    if (status === "PARENT_NOTIFIED" && !task.evidenceUrl) {
+      throw new Error(cohort === "XDF" ? "请先上传对接群发送截图，再确认已通知新东方" : "请先上传微信群发送截图，再确认已提醒家长");
+    }
+    const contractId = input.contractId?.trim().slice(0, 100) || task.contractId;
+    let invoiceId = input.invoiceId?.trim().slice(0, 100) || task.invoiceId;
+    const activatedPackageId = input.activatedPackageId?.trim().slice(0, 100) || task.activatedPackageId;
+    const evidenceChanged = contractId !== task.contractId || invoiceId !== task.invoiceId || activatedPackageId !== task.activatedPackageId;
+    if (input.actor.operationsAdmin && evidenceChanged) throw new Error("Finance evidence must be reviewed by finance or management. / 财务凭据须由财务或管理人员核对。");
+    const postpaid = ["ONLINE_PACKAGE_END", "OFFLINE_MONTHLY"].includes(task.package.settlementMode || "");
+    const paymentEvidence = requiresRenewalPaymentVerification({ previousStatus: task.status, status, evidenceChanged, postpaid })
+      ? await verifyRenewalPayment(task, { contractId, invoiceId, activatedPackageId, paymentReviewNote: input.paymentReviewNote }, tx) : null;
+    if (paymentEvidence) invoiceId = paymentEvidence.id;
+    const completed = ["PACKAGE_ACTIVE", "NOT_RENEWING", "PAUSED_SPECIAL", RISK_RESOLVED].includes(status);
+    const preserveCompletion = status === task.status && Boolean(task.completedAt);
+    const nextFollowUpAt = input.nextFollowUpAt ? new Date(input.nextFollowUpAt) : null;
+    if (input.nextFollowUpAt && Number.isNaN(nextFollowUpAt?.getTime())) throw new Error("Invalid follow-up time");
+    const ownerName = String(input.ownerName ?? task.ownerName ?? "").trim().slice(0, 100);
+    const owner = ownerName
+      ? await tx.user.findFirst({ where: { name: { equals: ownerName, mode: "insensitive" } }, select: { id: true, name: true } })
+      : null;
+    const updated = await tx.renewalTask.update({
+      where: { id: task.id, updatedAt: task.updatedAt },
+      data: {
+        status,
+        ownerUserId: owner?.id ?? task.ownerUserId,
+        ownerName: owner?.name ?? (ownerName || task.ownerName),
+        parentResponse: input.parentResponse == null ? task.parentResponse : input.parentResponse.trim().slice(0, 3000) || null,
+        parentWechatGroupName: input.parentWechatGroupName == null ? task.parentWechatGroupName : input.parentWechatGroupName.trim().slice(0, 160) || null,
+        note: input.note == null ? task.note : input.note.trim().slice(0, 3000) || null,
+        nextFollowUpAt: completed ? null : nextFollowUpAt ?? task.nextFollowUpAt,
+        contactAt: status === "PARENT_NOTIFIED" && !task.contactAt ? new Date() : task.contactAt,
+        contractId,
+        invoiceId,
+        paymentConfirmedAt: paymentEvidence ? new Date() : task.paymentConfirmedAt,
+        activatedPackageId,
+        completedAt: status === RISK_RESOLVED || preserveCompletion ? task.completedAt : completed ? new Date() : null,
+        completedByUserId: status === RISK_RESOLVED || preserveCompletion ? task.completedByUserId : completed ? input.actor.id ?? null : null,
+        completedByName: status === RISK_RESOLVED || preserveCompletion ? task.completedByName : completed ? input.actor.name || input.actor.email || null : null,
+        snoozedUntil: status === RISK_RESOLVED ? null : preserveCompletion ? task.snoozedUntil : completed
+          ? task.packageValidTo && task.packageValidTo > new Date()
+            ? task.packageValidTo
+            : endOfDayFromNow(status === "PACKAGE_ACTIVE" ? 30 : 90)
+          : null,
+      },
+    }).catch((error: unknown) => {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+        throw new Error("This renewal task changed. Refresh and review before saving. / 续费任务已变化，请刷新核对后再保存。");
+      }
+      throw error;
+    });
+    await tx.auditLog.create({ data: {
+      actorEmail: String(input.actor.email || "").trim().toLowerCase(),
+      actorName: input.actor.name || null,
+      actorRole: input.actor.role || null,
+      module: "RENEWAL", action: "UPDATE_RENEWAL_TASK", entityType: "RenewalTask", entityId: task.id,
+      meta: {
+        previousStatus: task.status, status, sourcePackageId: task.packageId, ownerName: updated.ownerName,
+        nextFollowUpAt: updated.nextFollowUpAt?.toISOString() ?? null,
+        hasParentResponse: Boolean(updated.parentResponse), hasEvidence: Boolean(updated.evidenceUrl),
+        paymentEvidence: paymentEvidence ? { ...paymentEvidence, checkedAt: new Date().toISOString() } : null,
+        settlementBasis: postpaid ? "PARTNER_POSTPAID" : "DIRECT",
+      },
+    } });
+    return updated;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 }).catch((error: unknown) => {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && ["P2034", "P2025"].includes(error.code)) {
+      throw new Error("Renewal or payment evidence changed. Refresh and review before saving. / 续费或收款凭据已变化，请刷新核对后再保存。");
     }
     throw error;
   });
-  await logAudit({
-    actor: input.actor,
-    module: "RENEWAL",
-    action: "UPDATE_RENEWAL_TASK",
-    entityType: "RenewalTask",
-    entityId: task.id,
-    meta: {
-      previousStatus: task.status,
-      status,
-      ownerName: updated.ownerName,
-      nextFollowUpAt: updated.nextFollowUpAt?.toISOString() ?? null,
-      hasParentResponse: Boolean(updated.parentResponse),
-      hasEvidence: Boolean(updated.evidenceUrl),
-    },
-  });
-  return updated;
 }
 
 export function renewalTaskDto(row: Awaited<ReturnType<typeof listRenewalTasks>>[number]) {
@@ -680,6 +698,7 @@ export function renewalTaskDto(row: Awaited<ReturnType<typeof listRenewalTasks>>
     contactAt: row.contactAt?.toISOString() ?? null,
     contractId: row.contractId,
     invoiceId: row.invoiceId,
+    activatedPackageId: row.activatedPackageId,
     evidenceUrl: row.evidenceUrl,
     note: row.note,
     completedAt: row.completedAt?.toISOString() ?? null,
