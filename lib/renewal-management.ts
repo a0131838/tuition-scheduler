@@ -1,6 +1,8 @@
+import { readRenewalForecastSnapshot } from "./renewal-forecast-display";
+import { renewalScheduledDemand } from "./renewal-scheduled-demand";
 import { renewalRecentConsumption } from "./renewal-consumption";
 import { verifyRenewalEntitlement } from "./renewal-entitlement-evidence";
-import { renewalEvidenceReference } from "./renewal-entitlement-policy";
+import { renewalEntitlementUnit, renewalEvidenceReference } from "./renewal-entitlement-policy";
 import { requiresRenewalPaymentVerification } from "./renewal-payment-policy";
 import { verifyRenewalPayment } from "./renewal-payment-evidence";
 import { Prisma } from "@prisma/client";
@@ -92,24 +94,11 @@ function dateDiffDays(target: Date | null, now: Date) {
   return Math.ceil((target.getTime() - now.getTime()) / 86_400_000);
 }
 
-function studentIdsForSession(row: {
-  studentId: string | null;
-  class: {
-    oneOnOneStudentId: string | null;
-    enrollments: Array<{ studentId: string }>;
-  };
-}) {
-  const values = new Set<string>();
-  if (row.studentId) values.add(row.studentId);
-  if (row.class.oneOnOneStudentId) values.add(row.class.oneOnOneStudentId);
-  for (const item of row.class.enrollments) values.add(item.studentId);
-  return values;
-}
-
 function buildParentMessage(input: {
   studentName: string;
   courseName: string;
   riskLevel: RenewalRiskLevel;
+  unit?: "MINUTES" | "COUNT" | "PERIOD";
   remainingMinutes: number | null;
   lessonsRemaining: number | null;
   expectedDepletionAt: Date | null;
@@ -118,6 +107,7 @@ function buildParentMessage(input: {
   const balance =
     input.remainingMinutes == null
       ? `当前课包有效期至 ${input.validTo ? formatBusinessDateOnly(input.validTo) : "待确认"}`
+      : input.unit === "COUNT" ? `当前剩余 ${input.remainingMinutes} 次`
       : `当前剩余约 ${(input.remainingMinutes / 60).toFixed(input.remainingMinutes % 60 === 0 ? 0 : 1)} 小时${input.lessonsRemaining == null ? "" : `（约 ${input.lessonsRemaining} 节）`}`;
   const forecast = input.expectedDepletionAt
     ? `，按目前课程安排预计在 ${formatBusinessDateOnly(input.expectedDepletionAt)} 前后用完`
@@ -129,6 +119,7 @@ function buildParentMessage(input: {
 function buildXdfMessage(input: {
   studentName: string;
   courseName: string;
+  unit?: "MINUTES" | "COUNT" | "PERIOD";
   remainingMinutes: number | null;
   lessonsRemaining: number | null;
   expectedDepletionAt: Date | null;
@@ -137,6 +128,7 @@ function buildXdfMessage(input: {
   const balance =
     input.remainingMinutes == null
       ? `当前课包有效期至 ${input.validTo ? formatBusinessDateOnly(input.validTo) : "待确认"}`
+      : input.unit === "COUNT" ? `当前剩余 ${input.remainingMinutes} 次`
       : `当前剩余约 ${(input.remainingMinutes / 60).toFixed(input.remainingMinutes % 60 === 0 ? 0 : 1)} 小时${input.lessonsRemaining == null ? "" : `（约 ${input.lessonsRemaining} 节）`}`;
   const forecast = input.expectedDepletionAt
     ? `，按当前排课预计在 ${formatBusinessDateOnly(input.expectedDepletionAt)} 前后用完`
@@ -179,7 +171,6 @@ export async function getRenewalForecasts(now = new Date(), includeSafe = false)
   const packages = await prisma.coursePackage.findMany({
     where: {
       status: "ACTIVE",
-      OR: [{ type: "HOURS" }, { validTo: { not: null } }],
     },
     include: {
       student: {
@@ -232,52 +223,49 @@ export async function getRenewalForecasts(now = new Date(), includeSafe = false)
       ],
     },
     include: {
-      attendances: { select: { studentId: true, status: true } },
+      attendances: { select: { studentId: true, status: true, packageId: true, deductedMinutes: true, deductedCount: true, waiveDeduction: true, excusedCharge: true } },
       class: {
         select: {
           courseId: true,
+          capacity: true,
           oneOnOneStudentId: true,
           enrollments: { select: { studentId: true } },
         },
       },
     },
     orderBy: { startAt: "asc" },
-    take: 5000,
+    take: 5001,
   });
+  const demands = renewalScheduledDemand(packages, sessions);
 
   return packages
     .map((pkg) => {
-      const eligibleStudents = new Set([pkg.studentId, ...pkg.sharedStudents.map((row) => row.studentId)]);
-      const eligibleCourses = new Set([pkg.courseId, ...pkg.sharedCourses.map((row) => row.courseId)]);
-      const scheduled = sessions.filter((session) => {
-        if (!eligibleCourses.has(session.class.courseId)) return false;
-        const sessionStudents = studentIdsForSession(session);
-        const matchingStudents = Array.from(eligibleStudents).filter((studentId) => sessionStudents.has(studentId));
-        if (!matchingStudents.length) return false;
-        return matchingStudents.some(
-          (studentId) =>
-            !session.attendances.some(
-              (attendance) => attendance.studentId === studentId && attendance.status === "EXCUSED"
-            )
-        );
-      });
-      const durations = scheduled.map((row) => Math.max(0, Math.round((row.endAt.getTime() - row.startAt.getTime()) / 60_000)));
-      const scheduledMinutes = durations.reduce((sum, value) => sum + value, 0);
+      const unit = renewalEntitlementUnit(pkg);
+      const demand = demands.get(pkg.id)!;
       const consumption = renewalRecentConsumption({ transactions: pkg.txns, sessionStarts, from: lookback, now });
-      const recentWeeklyMinutes = consumption.weeklyUnits;
-      const defaultLessonMinutes = durations.length
-        ? Math.max(30, Math.round(durations.reduce((sum, value) => sum + value, 0) / durations.length))
-        : 90;
-      const remainingMinutes = pkg.remainingMinutes;
-      const lessonsRemaining =
-        remainingMinutes == null ? null : Math.max(0, Math.floor(remainingMinutes / defaultLessonMinutes));
-      const consumptionBasis = recentWeeklyMinutes > 0 ? recentWeeklyMinutes : scheduledMinutes > 0 ? Math.max(1, Math.round(scheduledMinutes / 8)) : 0;
-      const daysToDepletion =
-        remainingMinutes != null && consumptionBasis > 0 ? Math.max(0, Math.ceil((remainingMinutes / consumptionBasis) * 7)) : null;
-      const expectedDepletionAt =
-        consumption.needsReview || daysToDepletion == null ? null : new Date(now.getTime() + daysToDepletion * 86_400_000);
+      const futureLedgerMismatch = sessions.some(session => {
+        const rows = pkg.txns.filter(t => t.sessionId === session.id);
+        const attendances = session.attendances.filter(a => a.packageId === pkg.id);
+        if (!rows.length && !attendances.length) return false;
+        const declared = attendances.reduce((sum,a) => sum + (unit === "COUNT" ? a.deductedCount : unit === "MINUTES" ? a.deductedMinutes : 0), 0);
+        const wrongUnit = attendances.some(a => unit === "COUNT" ? a.deductedMinutes !== 0 : unit === "MINUTES" ? a.deductedCount !== 0 : a.deductedMinutes !== 0 || a.deductedCount !== 0);
+        const malformed = rows.some(t => (t.kind === "ADJUST" && t.deltaMinutes !== 0) || (t.kind === "DEDUCT" && t.deltaMinutes > 0) || (t.kind === "ROLLBACK" && t.deltaMinutes < 0));
+        return wrongUnit || malformed || rows.reduce((sum,t) => sum + t.deltaMinutes, 0) !== -declared;
+      });
+      const scheduledMinutes = demand.units;
+      const weeklyUnits = unit === "PERIOD" ? 0 : consumption.totalUnits / 4;
+      const recentWeeklyMinutes = Math.round(weeklyUnits); // legacy integer projection
+      const defaultLessonUnits = unit === "COUNT" ? 1 : demand.lessonUnits.length
+        ? Math.max(1, Math.round(demand.lessonUnits.reduce((sum,v) => sum + v,0) / demand.lessonUnits.length)) : 90;
+      const remainingMinutes = unit === "PERIOD" ? null : pkg.remainingMinutes;
+      const lessonsRemaining = remainingMinutes == null ? null : Math.max(0, Math.floor(remainingMinutes / defaultLessonUnits));
+      const needsReview = consumption.needsReview || demand.needsReview || futureLedgerMismatch || sessions.length > 5000 || (unit !== "PERIOD" && remainingMinutes == null);
+      const consumptionBasis = weeklyUnits > 0 ? weeklyUnits : scheduledMinutes > 0 ? scheduledMinutes / (60 / 7) : 0;
+      const daysToDepletion = remainingMinutes != null && consumptionBasis > 0
+        ? Math.max(0,Math.ceil((remainingMinutes / consumptionBasis) * 7)) : null;
+      const expectedDepletionAt = needsReview || daysToDepletion == null ? null : new Date(now.getTime()+daysToDepletion*86400000);
       const expiryDays = dateDiffDays(pkg.validTo, now);
-      const riskLevel = consumption.needsReview ? "REVIEW" : classifyRenewalRisk({
+      const riskLevel = needsReview ? "REVIEW" : classifyRenewalRisk({
         remainingMinutes,
         scheduledMinutes,
         daysToDepletion,
@@ -310,15 +298,18 @@ export async function getRenewalForecasts(now = new Date(), includeSafe = false)
         lessonsRemaining,
         expectedDepletionAt,
         validTo: pkg.validTo,
-        nextLessonAt: scheduled[0]?.startAt ?? null,
+        nextLessonAt: demand.nextLessonAt,
+        forecastSnapshot: { version: 1, unit, remainingUnits: remainingMinutes, scheduledUnits: scheduledMinutes,
+          weeklyUnits: needsReview ? null : weeklyUnits, needsReview, checkedAt: now.toISOString() },
         ownerName: primaryLink?.communicationOwner?.trim() || "Emily",
         parentWechatGroupName: primaryLink?.wechatGroupName?.trim() || null,
         parentName: cohort === "XDF" ? "新东方项目负责人" : primaryLink?.parent?.name || "家长",
         parentMessage:
-          consumption.needsReview ? "Consumption records need reconciliation before preparing a renewal reminder. / 消耗流水需先对账，核对后再准备续费提醒。" : cohort === "XDF"
+          needsReview ? "Forecast evidence needs review before preparing a renewal reminder. / 预测依据需先核对，确认后再准备续费提醒。" : cohort === "XDF"
             ? buildXdfMessage({
                 studentName: pkg.student.name,
                 courseName: pkg.course.name,
+                unit,
                 remainingMinutes,
                 lessonsRemaining,
                 expectedDepletionAt,
@@ -328,6 +319,7 @@ export async function getRenewalForecasts(now = new Date(), includeSafe = false)
                 studentName: pkg.student.name,
                 courseName: pkg.course.name,
                 riskLevel: riskLevel ?? "RESOLVED",
+                unit,
                 remainingMinutes,
                 lessonsRemaining,
                 expectedDepletionAt,
@@ -381,6 +373,7 @@ export async function syncRenewalTasks(actor?: RenewalActor) {
     const current = openByPackage.get(forecast.packageId);
     const data = {
       riskLevel: forecast.riskLevel,
+      forecastSnapshot: forecast.forecastSnapshot,
       remainingMinutes: forecast.remainingMinutes,
       scheduledMinutes: forecast.scheduledMinutes,
       recentWeeklyMinutes: forecast.recentWeeklyMinutes,
@@ -448,7 +441,7 @@ export async function syncRenewalTasks(actor?: RenewalActor) {
     const hasCurrentRenewalContract = Boolean(snapshot?.contractId &&
       (snapshot.contractId === task.contractId || (snapshot.contractCreatedAt && snapshot.contractCreatedAt >= task.createdAt)));
     const currentRiskData = snapshot ? {
-      riskLevel: snapshot.riskLevel, remainingMinutes: snapshot.remainingMinutes,
+      riskLevel: snapshot.riskLevel, forecastSnapshot: snapshot.forecastSnapshot, remainingMinutes: snapshot.remainingMinutes,
       scheduledMinutes: snapshot.scheduledMinutes, recentWeeklyMinutes: snapshot.recentWeeklyMinutes,
       lessonsRemaining: snapshot.lessonsRemaining, expectedDepletionAt: snapshot.expectedDepletionAt,
       packageValidTo: snapshot.validTo,
@@ -687,6 +680,7 @@ export function renewalTaskDto(row: Awaited<ReturnType<typeof listRenewalTasks>>
     id: row.id,
     packageId: row.packageId,
     packageType: row.package.type,
+    forecastSnapshot: readRenewalForecastSnapshot(row.forecastSnapshot),
     studentId: row.studentId,
     studentName: row.student.name,
     cohort,

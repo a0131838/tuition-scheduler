@@ -29,7 +29,7 @@ async function main() {
   const pending = await prisma.renewalTask.findUniqueOrThrow({where:{id:task.id}});
   assert.equal(pending.completedAt,null); assert.equal(pending.riskLevel,"REVIEW"); assert.equal(pending.status,"PENDING_CONTACT");
   assert.equal(pending.paymentConfirmedAt,null); assert.equal(pending.activatedPackageId,null);
-  assert.match(pending.parentMessage!,/需先对账/);
+  assert.match(pending.parentMessage!,/需先核对/);
   assert.deepEqual(await prisma.coursePackage.findUniqueOrThrow({where:{id:pkg.id}}),beforePkg);
   assert.deepEqual(await prisma.packageTxn.findMany({where:{packageId:pkg.id},orderBy:{id:"asc"}}),beforeLedger);
   if(process.env.UAT_HTTP === "1") {

@@ -1,5 +1,6 @@
 "use client";
 
+import { formatRenewalUnits, type RenewalForecastSnapshot } from "@/lib/renewal-forecast-display";
 import { useMemo, useState } from "react";
 import { RenewalEntitlementEvidence } from "./RenewalEntitlementEvidence";
 import { RenewalPaymentEvidence } from "./RenewalPaymentEvidence";
@@ -18,6 +19,7 @@ type RenewalTask = {
   entitlementEvidenceIds?: string[];
   entitlementReviewNote?: string;
   packageType: string;
+  forecastSnapshot: RenewalForecastSnapshot | null;
   studentId: string;
   studentName: string;
   cohort: "BOSS_OTHER" | "XDF";
@@ -86,12 +88,6 @@ const riskLabels: Record<string, string> = {
   EXHAUSTED: "已不足·立即处理",
 };
 
-function fmtMinutes(value: number) {
-  if (value <= 0) return "0 小时";
-  const hours = Math.floor(value / 60);
-  const minutes = value % 60;
-  return `${hours ? `${hours}小时` : ""}${minutes ? `${minutes}分钟` : ""}`;
-}
 
 function fmtDate(value: string | null) {
   if (!value) return "未计算";
@@ -272,6 +268,7 @@ export default function RenewalWorkbenchClient({
         {tasks.length === 0 ? <div className={styles.empty}>当前筛选下没有续费任务。</div> : null}
         {tasks.map((row) => {
           const draft = draftFor(row);
+          const forecast = row.forecastSnapshot;
           const open = expanded === row.id;
           const riskResolved = row.status === RISK_RESOLVED;
           const financialStage = riskResolved || (operationsOnly && !operationsStatuses.some(([value]) => value === row.status));
@@ -285,20 +282,21 @@ export default function RenewalWorkbenchClient({
                   <p>{riskResolved ? renewalRiskResolutionLabel(lang) : row.statusLabel} · 负责人：{row.ownerName || "未分配"} · 下次跟进：{fmtDate(row.nextFollowUpAt)}</p>
                 </div>
                 <div className={styles.balance}>
-                  <strong>{row.packageType === "MONTHLY" ? "有效期预警" : fmtMinutes(row.remainingMinutes)}</strong>
-                  <span>约 {row.lessonsRemaining ?? "-"} 节</span>
+                  <strong>{forecast ? formatRenewalUnits(forecast.remainingUnits, forecast.unit, lang) : label("Historical units unverified", "历史单位未核验")}</strong>
+                  <span>{forecast?.unit === "PERIOD" ? fmtDate(row.packageValidTo) : forecast ? `${label("Estimated lessons", "预计可上课次")}: ${row.lessonsRemaining ?? "-"}` : "—"}</span>
                 </div>
               </button>
               {open ? (
                 <div className={styles.detail}>
-                  {row.riskLevel === "REVIEW" && <div role="note">{label("A deduction has no traceable lesson or a lesson correction needs reconciliation. Consumption and depletion estimates are withheld; this follow-up stays open. Review the package ledger before contacting the parent.", "扣课缺少可追溯课程，或课程冲正需对账；暂不展示消耗与用完日期，跟进继续保留。请先核对课包流水，再联系家长。")}</div>}
+                  {row.riskLevel === "REVIEW" && <div role="note">{label("Lesson ledger or future package allocation needs review. Forecast values are withheld; this follow-up stays open. Check the ledger and schedule before contacting the parent.", "课程流水或未来课包分配需核对；暂不展示预测数值，跟进继续保留。请先核对流水和课表，再联系家长。")}</div>}
                   {row.riskLevel === "INACTIVE" ? <div role="note">{label("The source package is inactive. Review the package before arranging further lessons; renewal follow-up is still pending.", "原课包已停用。继续排课前请核对课包；续费手续仍待跟进。")}</div> : <div className={styles.forecast}>
-                    <div><span>未来已排</span><strong>{fmtMinutes(row.scheduledMinutes)}</strong></div>
-                    <div><span>{label("Weekly net consumption (last 28 days)", "近28天周均净消耗")}</span><strong>{row.riskLevel === "REVIEW" ? label("Pending review", "待核对") : fmtMinutes(row.recentWeeklyMinutes)}</strong></div>
+                    <div><span>{label("Scheduled demand", "未来课程需求")}</span><strong>{!forecast || forecast.needsReview ? label("Pending review", "待核对") : formatRenewalUnits(forecast.scheduledUnits, forecast.unit, lang)}</strong></div>
+                    <div><span>{label("Weekly net consumption (last 28 days)", "近28天周均净消耗")}</span><strong>{!forecast || forecast.needsReview ? label("Pending review", "待核对") : formatRenewalUnits(forecast.weeklyUnits, forecast.unit, lang)}</strong></div>
                     <div><span>预计用完</span><strong>{fmtDate(row.expectedDepletionAt)}</strong></div>
                     <div><span>课包有效期</span><strong>{fmtDate(row.packageValidTo)}</strong></div>
                   </div>}
 
+                  {!forecast && <details><summary>{label("Original snapshot (units unverified)", "原始快照（单位未核验）")}</summary><p>{label("Balance / scheduled / weekly values", "余额／已排／周均原始值")}: {row.remainingMinutes} / {row.scheduledMinutes} / {row.recentWeeklyMinutes}</p></details>}
                   <div className={styles.columns}>
                     <div className={styles.workflow}>
                       <label>当前状态

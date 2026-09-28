@@ -2926,6 +2926,7 @@ model CoursePackage {
 }
 
 model RenewalTask {
+  forecastSnapshot      Json?
   id                    String    @id @default(uuid())
   packageId             String
   studentId             String

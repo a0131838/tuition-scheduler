@@ -1,3 +1,4 @@
+import { readRenewalForecastSnapshot, formatRenewalUnits } from "./renewal-forecast-display";
 import type { Lang } from "./i18n";
 
 export const RISK_RESOLVED = "RISK_RESOLVED";
@@ -33,8 +34,12 @@ export function assertRiskResolutionTransition(currentStatus: string, nextStatus
 
 // Published Mini Program clients have a fixed status picker. Preserve the canonical
 // outcome and display label while using their existing "special handling" bucket.
-export function renewalForLegacyMiniapp<T extends { status: string; riskLevel?: string }>(row: T) {
+export function renewalForLegacyMiniapp<T extends { status: string; riskLevel?: string; forecastSnapshot?: unknown }>(row: T) {
   const result = row.status === RISK_RESOLVED ? { ...row, canonicalStatus: RISK_RESOLVED, status: "PAUSED_SPECIAL" } : row;
+  const forecast = readRenewalForecastSnapshot(row.forecastSnapshot);
+  if (forecast?.unit === "COUNT") return { ...result, canonicalRiskLevel: row.riskLevel,
+    riskLevel: `Count package: ${formatRenewalUnits(forecast.remainingUnits, "COUNT", "BILINGUAL")}. Review on web; hour fields are not applicable / 按次课包请用网页核对，小时栏不适用`,
+  };
   if (row.riskLevel === "REVIEW") return { ...result, canonicalRiskLevel: "REVIEW", riskLevel: "Consumption needs review / 消耗待核对" };
   return row.riskLevel === "RESOLVED" || row.riskLevel === "INACTIVE"
     ? { ...result, canonicalRiskLevel: row.riskLevel, riskLevel: row.riskLevel === "RESOLVED" ? "Risk resolved / 风险已解除" : "Package inactive / 原课包已停用" }

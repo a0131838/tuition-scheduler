@@ -1,4 +1,21 @@
 # RELEASE BOARD
+## 2026-09-28-r416
+
+- Release ID: `2026-09-28-r416`
+- Date/Time (Asia/Singapore): `2026-09-28`
+- Deployment status: `READY`; guarded-release proof is recorded in the external execution ledger.
+- Problem: renewal forecasts compared count entitlements to lesson minutes, treated monthly zero-minute fields as depleted, and counted free leave, waived or already charged future lessons. Multiple eligible packages could each be assigned the same lesson.
+- Change: persist a versioned, unit-aware forecast snapshot (MINUTES / COUNT / PERIOD). Count shared group demand per student; monthly packages use expiry. Exact session student overrides class membership. Free leave and waivers consume no forecast units; already charged lessons require matching actual ledger evidence. Missing/ambiguous/invalid package bindings remain REVIEW rather than being guessed. Fractional weekly count usage is retained.
+- History/UI: existing completion snapshots are not backfilled or reinterpreted; original raw values remain in a collapsed unit-unverified view. New display is ZH/EN/BILINGUAL. Published Mini Program API preserves numeric shape and adds an explicit count-package warning directing staff to web; this is not a WeChat client release.
+- Schema: one nullable JSONB column, RenewalTask.forecastSnapshot, no historical data rewrite. Applied to isolated PostgreSQL and generated client before testing.
+- Validation: 27 initial focused tests plus 21 final targeted checks including invalid binding, 181 backend tests, 259-page final build; isolated shared-count/charged-leave/waiver/precharge mismatch/monthly/multiple-package UAT and actual Mini Program HTTP; count display 10 / 2 / 0.25 in ZH/EN/BILINGUAL, historical unit-unverified display, browser console clean. Scans leave package/ledger snapshots unchanged.
+- Production read-only aggregate: 50 active packages, 0 monthly, 0 count packages, 261 upcoming lessons. All mutation scenarios use isolated fake data.
+- Remaining: attendance-change impact and phases2–10; legacy global language refresh, older untranslated controls and Mini Program formatting remain tracked. Not overall completion.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `ec3ca4e746c0132596c054abb396a036f485d32b` (r415). Keep the additive nullable column on application rollback; do not drop preserved snapshots.
+
+---
+
 ## 2026-09-28-r415
 
 - Release ID: `2026-09-28-r415`
