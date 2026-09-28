@@ -1,3 +1,4 @@
+import {hasContractExecutionHistory} from '@/lib/student-contract-history';
 import { getCurrentUser, requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
@@ -248,20 +249,8 @@ function contractIsTerminal(status: string) {
   return status === "SIGNED" || status === "INVOICE_CREATED" || status === "VOID";
 }
 
-function contractCanDeleteVoidDraft(contract: {
-  status: string;
-  signedAt: Date | null;
-  invoiceId: string | null;
-  invoiceNo: string | null;
-  invoiceCreatedAt: Date | null;
-}) {
-  return (
-    contract.status === "VOID" &&
-    !contract.signedAt &&
-    !contract.invoiceId &&
-    !contract.invoiceNo &&
-    !contract.invoiceCreatedAt
-  );
+function contractCanDeleteVoidDraft(contract: Parameters<typeof hasContractExecutionHistory>[0] & {status:string}) {
+  return contract.status === "VOID" && !hasContractExecutionHistory(contract);
 }
 
 function packageReceiptApprovalStateLabel(
@@ -544,6 +533,7 @@ async function prepareContractSignAction(formData: FormData) {
 async function voidContractAction(formData: FormData) {
   "use server";
   const admin = await requireAdmin();
+  const lang = await getLang();
   const packageId = String(formData.get("packageId") ?? "").trim();
   const contractId = String(formData.get("contractId") ?? "").trim();
   const reason = String(formData.get("reason") ?? "").trim();
@@ -555,15 +545,18 @@ async function voidContractAction(formData: FormData) {
   try {
     await voidStudentContract({
       contractId,
+      packageId,
+      expectedUpdatedAt: String(formData.get("expectedUpdatedAt") ?? ""),
       actorUserId: admin.id,
       actorLabel: admin.email,
       reason,
     });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : "Void contract failed";
+    const raw = error instanceof Error ? error.message.split(" / ") : [];
+    const msg = raw.length === 2 ? t(lang,raw[0],raw[1]) : t(lang,"Unable to void this contract. Reload and review its current state.","未能作废合同，请刷新并核对当前状态。");
     redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: msg }));
   }
-  redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, msg: "Contract marked as void" }));
+  redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, msg: t(lang,"Contract voided; invoice, receipts and purchased entitlement remain unchanged. Review them separately.","合同已作废；发票、收据及购入权益保持不变，请分别核对处理。") }));
 }
 
 async function deleteVoidContractDraftAction(formData: FormData) {
@@ -1045,7 +1038,7 @@ export default async function PackageBillingPage({
                 />
               </div>
             ) : (
-              <WorkbenchStatusChip label={t(lang, "No contract yet / 尚无合同", "No contract yet / 尚无合同")} tone="neutral" />
+              <WorkbenchStatusChip label={packageContracts.length ? t(lang,"No active contract; history retained","暂无有效合同，历史已保留") : t(lang,"No contract yet","尚无合同")} tone="neutral" />
             )
           ) : (
             <WorkbenchStatusChip label={t(lang, "Not used / 不使用", "Not used / 不使用")} tone="neutral" />
@@ -1067,7 +1060,7 @@ export default async function PackageBillingPage({
                     : contractNeedsParentInfo(latestContract.status)
                       ? t(lang, "Parent-facing intake or sign steps are still pending.", "家长资料或签字步骤仍在进行中。")
                       : t(lang, "Commercial details or sign-link work is still in progress.", "课时费用或签字链接步骤仍在处理中。")
-                  : likelyLegacyNoContract
+                  : likelyLegacyNoContract && packageContracts.length === 0
                     ? t(lang, "Legacy direct-billing package without contract history. The next renewal should start from the contract workspace.", "这是历史存量直客课包，目前没有合同历史。下一次续费应从合同工作台开始。")
                     : t(lang, "Start from the contract workspace when you need parent intake, renewal contracts, or signed history.", "如果要发家长资料链接、创建续费合同或查看已签历史，请进入合同工作台。")}
               </div>

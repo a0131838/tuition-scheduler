@@ -307,3 +307,21 @@ Logs: `/tmp/sgt-r423-focused.log`, `/tmp/sgt-r423-backend.log`, `/tmp/sgt-r423-u
 ---
 
 Logs: `/tmp/sgt-r424-focused.log`, `/tmp/sgt-r424-backend.log`, `/tmp/sgt-r424-uat.log`, `/tmp/sgt-r424-http.log`, `/tmp/sgt-r424-workflow.log`, `/tmp/sgt-r424-build.log`, `/tmp/sgt-r424-tsc-final.log`. First build exposed a QA-script inference error; explicit metric/return types fixed it and final checks passed. Expected serialization/cross-profile failures in workflow log are rejection tests.
+
+## 2026-09-28-r425
+
+- Release ID: `2026-09-28-r425`
+- Date/Time (Asia/Singapore): `2026-09-28`
+- Deployment status: `READY`; guarded release evidence is maintained in the execution ledger.
+- Problem: contract voiding updated status separately from its event, accepted a contract ID from another package and lacked source-version/retry protection. The page could remain stale after a successful action, and void-only history incorrectly appeared to be a package with no contract history.
+- Change: exact package scope, locked serializable transaction, optimistic source version, bounded reason required for signed/executed contracts, atomic VOID status/event and idempotent retries. Retained signatures, PDFs and invoice references also protect legacy signed history with missing timestamps from draft deletion. The client opens the saved result and distinguishes no active contract from no history.
+- Business truth: the action explicitly says “Void contract only” in ZH/EN/BILINGUAL. Invoice, receipts, purchased entitlement and lesson ledger remain unchanged and require separate review. This does not claim a financial reversal or refund. Existing role boundaries, full-care context and old URLs remain.
+- Validation:19 focused tests,181 backend tests,full TypeScript and260-page production build. Isolated service UAT covers cross-package IDs, stale versions, reason validation, forced rollback, concurrency/retries with one event, legacy signature evidence and unchanged shared package/ledger/billing/approval snapshots. Five-role HTTP checks admin read/form version, FINANCE/SALES/CS route restrictions and observer mutation denial. Actual browser English void navigates to its saved result; Chinese and bilingual history/empty states retain signed documents, with only a genuinely unsigned draft deletable. Persisted browser result has one VOIDED event; total6000,remaining2130,shared membership and ledger unchanged; console clean.
+- Migration: none. No production business writes or external communications used for acceptance.
+- Remaining: phase3 transaction correction preview and append-only entitlement correction, signing/invoice race hardening, and phases4–10. This release is not phase3 or programme completion.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `c73a5a39464840056a70c4448af37bcc23234710` (r424).
+
+---
+
+Logs: `/tmp/sgt-r425-focused.log`, `/tmp/sgt-r425-backend.log`, `/tmp/sgt-r425-uat.log`, `/tmp/sgt-r425-http.log`, `/tmp/sgt-r425-build.log`, `/tmp/sgt-r425-tsc-final.log`, `/tmp/sgt-r425-browser-post.log`. Both database URLs are guarded before isolated fixture writes. Expected concurrent serialization failure rejects the competing attempt. Browser-discovered stale result and false no-history empty state were corrected and rechecked before release.

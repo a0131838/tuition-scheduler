@@ -1,3 +1,5 @@
+import ContractVoidForm from '@/app/admin/_components/ContractVoidForm';
+import {hasContractExecutionHistory} from '@/lib/student-contract-history';
 import { StudentContractMode } from "@prisma/client";
 import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
@@ -170,20 +172,8 @@ function contractIsTerminal(status: string) {
   return status === "SIGNED" || status === "INVOICE_CREATED" || status === "VOID";
 }
 
-function contractCanDeleteVoidDraft(contract: {
-  status: string;
-  signedAt: Date | null;
-  invoiceId: string | null;
-  invoiceNo: string | null;
-  invoiceCreatedAt: Date | null;
-}) {
-  return (
-    contract.status === "VOID" &&
-    !contract.signedAt &&
-    !contract.invoiceId &&
-    !contract.invoiceNo &&
-    !contract.invoiceCreatedAt
-  );
+function contractCanDeleteVoidDraft(contract: Parameters<typeof hasContractExecutionHistory>[0] & {status:string}) {
+  return contract.status === "VOID" && !hasContractExecutionHistory(contract);
 }
 
 async function deleteInvoiceAction(formData: FormData) {
@@ -454,6 +444,7 @@ async function prepareContractSignAction(formData: FormData) {
 async function voidContractAction(formData: FormData) {
   "use server";
   const admin = await requireAdmin();
+  const lang = await getLang();
   const packageId = String(formData.get("packageId") ?? "").trim();
   const contractId = String(formData.get("contractId") ?? "").trim();
   const reason = String(formData.get("reason") ?? "").trim();
@@ -461,20 +452,23 @@ async function voidContractAction(formData: FormData) {
   const receiptsBack = sanitizeReceiptsBack(String(formData.get("receiptsBack") ?? ""));
   const workspace = normalizeContractWorkspace(String(formData.get("workspace") ?? ""));
   if (!packageId || !contractId) {
-    redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, workspace, err: "Missing contract id" }));
+    return buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, workspace, err: "Missing contract id" });
   }
   try {
     await voidStudentContract({
       contractId,
+      packageId,
+      expectedUpdatedAt: String(formData.get("expectedUpdatedAt") ?? ""),
       actorUserId: admin.id,
       actorLabel: admin.email,
       reason,
     });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : "Void contract failed";
-    redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, workspace, err: msg }));
+    const raw = error instanceof Error ? error.message.split(" / ") : [];
+    const msg = raw.length === 2 ? t(lang,raw[0],raw[1]) : t(lang,"Unable to void this contract. Reload and review its current state.","未能作废合同，请刷新并核对当前状态。");
+    return buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, workspace, err: msg });
   }
-  redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, workspace, msg: "Contract marked as void" }));
+  return buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, workspace, msg: t(lang,"Contract voided; invoice, receipts and purchased entitlement remain unchanged. Review them separately.","合同已作废；发票、收据及购入权益保持不变，请分别核对处理。") });
 }
 
 async function deleteVoidContractDraftAction(formData: FormData) {
@@ -707,7 +701,7 @@ export default async function PackageContractPage({
                   />
                 </div>
               ) : (
-                <WorkbenchStatusChip label={t(lang, "No contract yet / 尚无合同", "No contract yet / 尚无合同")} tone="neutral" />
+                <WorkbenchStatusChip label={workspaceContracts.length ? t(lang,"No active contract; history retained","暂无有效合同，历史已保留") : t(lang,"No contract yet","尚无合同")} tone="neutral" />
               )}
             </div>
 
@@ -1151,17 +1145,18 @@ export default async function PackageContractPage({
                     </form>
                   ) : null}
                   {!contractIsTerminal(latestContract.status) ? (
-                    <form action={voidContractAction} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                    <ContractVoidForm action={voidContractAction} lang={lang} packageId={packageId} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                       <input type="hidden" name="packageId" value={packageId} />
                       <input type="hidden" name="contractId" value={latestContract.id} />
+                      <input type="hidden" name="expectedUpdatedAt" value={latestContract.updatedAt.toISOString()} />
                       <input type="hidden" name="source" value={sourceWorkflow} />
                       <input type="hidden" name="receiptsBack" value={receiptsBack} />
                       <input type="hidden" name="workspace" value={contractWorkspace} />
                       <input name="reason" placeholder={t(lang, "Void reason", "作废原因")} style={{ minWidth: 220, padding: "8px 10px", borderRadius: 10, border: "1px solid #fca5a5" }} />
                       <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #dc2626", background: "#fff1f2", color: "#b91c1c", fontWeight: 700 }}>
-                        {t(lang, "Void contract", "作废合同")}
+                        {t(lang, "Void contract only", "仅作废合同")}
                       </button>
-                    </form>
+                    </ContractVoidForm>
                   ) : null}
                 </div>
 
@@ -1169,7 +1164,7 @@ export default async function PackageContractPage({
                   <div style={{ border: "1px solid #fecaca", borderRadius: 12, background: "#fff7f7", padding: 14, display: "grid", gap: 10 }}>
                     <div style={{ fontWeight: 800, color: "#991b1b" }}>{t(lang, "Need a corrected contract version?", "需要更正这份合同吗？")}</div>
                     <div style={{ color: "#7f1d1d", fontSize: 13, lineHeight: 1.6 }}>
-                      {t(lang, "Signed or invoiced contracts stay in history. If the signed contract is wrong, mark it void with a reason; invoices with receipts stay for finance handling and are not deleted automatically.", "已经签过或开过票的合同会保留在历史中。如果已签合同有误，请填写原因并作废；已有收据的发票会继续保留给财务处理，不会自动删除。")}
+                      {t(lang, "Signed or invoiced contracts stay in history. If the signed contract is wrong, mark it void with a reason; invoices, receipts and purchased entitlement remain unchanged and require separate review.", "已经签过或开过票的合同会保留在历史中。如果已签合同有误，请填写原因并作废；发票、收据及购入权益保持不变，须分别核对处理。")}
                     </div>
                     {latestContract.invoiceId ? (
                       <div style={{ border: "1px solid #fecaca", borderRadius: 10, background: "#fff", padding: 10, color: "#7f1d1d", fontSize: 13, lineHeight: 1.5 }}>
@@ -1184,17 +1179,18 @@ export default async function PackageContractPage({
                       <a href={buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack }) + "#invoices"}>
                         {t(lang, "Open old invoice lane first", "先打开旧发票区")}
                       </a>
-                      <form action={voidContractAction} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                      <ContractVoidForm action={voidContractAction} lang={lang} packageId={packageId} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                         <input type="hidden" name="packageId" value={packageId} />
                         <input type="hidden" name="contractId" value={latestContract.id} />
+                      <input type="hidden" name="expectedUpdatedAt" value={latestContract.updatedAt.toISOString()} />
                         <input type="hidden" name="source" value={sourceWorkflow} />
                         <input type="hidden" name="receiptsBack" value={receiptsBack} />
                         <input type="hidden" name="workspace" value={contractWorkspace} />
                         <input required name="reason" placeholder={t(lang, "Required void reason", "必填作废原因")} style={{ minWidth: 220, padding: "8px 10px", borderRadius: 10, border: "1px solid #fca5a5" }} />
                         <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #dc2626", background: "#fff1f2", color: "#b91c1c", fontWeight: 700 }}>
-                          {t(lang, "Void signed contract", "作废已签合同")}
+                          {t(lang, "Void signed contract only", "仅作废已签合同")}
                         </button>
-                      </form>
+                      </ContractVoidForm>
                       {hasRenewalContractParentInfo && latestContract.flowType === "NEW_PURCHASE" ? (
                         <form action={createContractDraftAction}>
                           <input type="hidden" name="packageId" value={packageId} />
@@ -1237,7 +1233,7 @@ export default async function PackageContractPage({
                     ? t(lang, "This is an existing direct-billing package, so new sales should start as renewal even if parent details need to be collected first.", "这是已有直客课包，所以新的销售应走续费流程；即使还需要先收集家长资料，也不要再走首购。")
                     : t(lang, "Use first-purchase flow only for a genuinely new package. Existing packages and top-ups should use renewal.", "只有真正新课包才走首购；已有课包和增购续费应走续费。")}
                 </div>
-                {!fullCareWorkspace && likelyLegacyNoContract ? (
+                {!fullCareWorkspace && likelyLegacyNoContract && packageContracts.length === 0 ? (
                   <div style={{ border: "1px solid #fed7aa", borderRadius: 12, background: "#fff7ed", padding: 12, color: "#9a3412", fontSize: 13, lineHeight: 1.6 }}>
                     {t(lang, "Legacy direct-billing package without contract history detected. The current package can continue, but the next renewal should use the renewal contract flow instead of manual top-up.", "系统识别到这像是一条历史存量直客课包，目前还没有合同历史。当前课包可继续使用，但下一次续费应改走续费合同流程，而不是手工 top-up。")}
                   </div>

@@ -1,3 +1,4 @@
+import {hasContractExecutionHistory} from './student-contract-history';
 import crypto from "crypto";
 import {
   Prisma,
@@ -1842,47 +1843,46 @@ export async function signStudentContract(input: {
   return summarize(next);
 }
 
-export async function voidStudentContract(input: {
+export type VoidStudentContractInput = {
   contractId: string;
+  packageId: string;
+  expectedUpdatedAt: string;
   actorUserId?: string | null;
   actorLabel?: string | null;
   reason?: string | null;
-}) {
-  const row = await getContractRow({ id: input.contractId });
-  if (!row) throw new Error("Contract not found");
+};
+
+// Caller retains the existing requireAdmin route gate. Scope and source version are checked again under lock.
+export async function voidStudentContractInTransaction(tx: Prisma.TransactionClient, input: VoidStudentContractInput) {
+  await tx.$queryRaw`SELECT id FROM "StudentContract" WHERE id=${input.contractId} FOR UPDATE`;
+  const row = await tx.studentContract.findUnique({where:{id:input.contractId},include:studentContractInclude});
+  if (!row || row.packageId !== input.packageId) throw new Error("Contract does not belong to this package / 合同不属于当前课包");
   const canonical = canonicalStudentContractStatus(row.status);
-  if (canonical === StudentContractStatus.VOID) {
-    throw new Error("Contract is already voided");
-  }
+  if (canonical === StudentContractStatus.VOID) return summarize(row);
+  if (row.updatedAt.toISOString() !== input.expectedUpdatedAt) throw new Error("Contract changed; reload and review before voiding / 合同已更新，请刷新并核对后作废");
   const reason = trimOrNull(input.reason);
-  if (
-    (canonical === StudentContractStatus.SIGNED || canonical === StudentContractStatus.INVOICE_CREATED) &&
-    !reason
-  ) {
-    throw new Error("Voiding a signed or invoiced contract requires a reason");
+  if (reason && reason.length > 2000) throw new Error("Void reason must be at most 2000 characters / 作废原因最多2000字");
+  if ((hasContractExecutionHistory(row) || canonical === StudentContractStatus.SIGNED || canonical === StudentContractStatus.INVOICE_CREATED) && !reason) {
+    throw new Error("Voiding a signed or invoiced contract requires a reason / 作废已签或已开票合同必须填写原因");
   }
-  const next = await prisma.studentContract.update({
-    where: { id: row.id },
-    data: {
-      status: StudentContractStatus.VOID,
-      voidedAt: new Date(),
-    },
-    include: studentContractInclude,
-  });
-  await appendStudentContractEvent({
-    contractId: row.id,
-    eventType: StudentContractEventType.VOIDED,
-    actorType: input.actorUserId ? "ADMIN" : "SYSTEM",
-    actorUserId: input.actorUserId ?? null,
-    actorLabel: input.actorLabel ?? "Voided contract",
-    payloadJson: {
-      reason,
-      invoiceId: row.invoiceId,
-      invoiceNo: row.invoiceNo,
-      hadSignedPdf: Boolean(row.signedPdfPath),
-    } as Prisma.JsonValue,
-  });
+  const next = await tx.studentContract.update({where:{id:row.id},data:{status:StudentContractStatus.VOID,voidedAt:new Date()},include:studentContractInclude});
+  await tx.studentContractEvent.create({data:{
+    contractId:row.id,eventType:StudentContractEventType.VOIDED,
+    actorType:input.actorUserId?'ADMIN':'SYSTEM',actorUserId:input.actorUserId??null,actorLabel:input.actorLabel??'Voided contract',
+    payloadJson:{reason,packageId:row.packageId,beforeStatus:row.status,invoiceId:row.invoiceId,invoiceNo:row.invoiceNo,hadSignedPdf:Boolean(row.signedPdfPath),billingAndEntitlementsUnchanged:true},
+  }});
   return summarize(next);
+}
+
+export async function voidStudentContract(input: VoidStudentContractInput) {
+  try {
+    return await prisma.$transaction(tx=>voidStudentContractInTransaction(tx,input),{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
+  } catch(error) {
+    if(error instanceof Prisma.PrismaClientKnownRequestError && (error.code==='P2034'||(error.code==='P2010'&&error.meta?.code==='40001'))) {
+      throw new Error("Concurrent contract update; reload before retrying / 合同同时被更新，请刷新后重试");
+    }
+    throw error;
+  }
 }
 
 export async function detachDeletedInvoiceFromStudentContract(input: {
@@ -1966,7 +1966,7 @@ export async function deleteVoidStudentContractDraft(input: {
   if (canonical !== StudentContractStatus.VOID) {
     throw new Error("Only void contracts can be deleted");
   }
-  if (row.signedAt || row.invoiceId || row.invoiceNo || row.invoiceCreatedAt) {
+  if (hasContractExecutionHistory(row)) {
     throw new Error("Signed or invoiced void contracts must stay in history");
   }
   await prisma.studentContract.delete({
