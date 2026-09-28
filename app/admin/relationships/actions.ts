@@ -1,5 +1,6 @@
 'use server';
-import {requireResourceUser} from '@/lib/auth';
+import {requireResourceUser,requireResourceAdmin} from '@/lib/auth';
+import {linkLeadStudent} from '@/lib/lead-student-link';
 import {mutateSalesRelationship,type RelationshipMutation} from '@/lib/sales-relationships';
 import {revalidatePath} from 'next/cache';
 import {Prisma} from '@prisma/client';
@@ -17,3 +18,16 @@ export async function updateRelationshipAction(formData:FormData){return run(for
 export async function addRelationshipFollowUpAction(formData:FormData){return run(formData,'FOLLOW_UP');}
 export async function linkRelationshipLeadAction(formData:FormData){return run(formData,'LINK_LEAD');}
 export async function saveRelationshipOpportunityAction(formData:FormData){return run(formData,'OPPORTUNITY');}
+export async function linkLeadStudentAction(formData:FormData){
+ const actor=await requireResourceAdmin(),lang=await getLang(),leadId=String(formData.get('leadId')??'');
+ try{
+  const mode=String(formData.get('mode')??'');if(mode!=='CREATE'&&mode!=='LINK')throw new Error('Invalid student link mode / 学生关联方式无效');
+  const studentId=await linkLeadStudent(actor,{leadId,mode,expectedUpdatedAt:String(formData.get('expectedUpdatedAt')??''),studentId:String(formData.get('studentId')??''),reviewNote:String(formData.get('reviewNote')??'')});
+  revalidatePath(`/admin/leads/${leadId}`);revalidatePath('/admin/leads');revalidatePath('/admin/relationships');revalidatePath('/admin/students');
+  return `/admin/students/${studentId}`;
+ }catch(error){
+  const safe=error instanceof Error&&!(error instanceof Prisma.PrismaClientKnownRequestError)&&error.message.includes(' / ')?error.message.split(' / '):null;
+  const message=safe?t(lang,safe[0],safe.slice(1).join(' / ')):t(lang,'Unable to link this student. Reload and review the record.','未能关联学生，请刷新并核对记录。');
+  return `/admin/leads/${encodeURIComponent(leadId)}?err=${encodeURIComponent(message)}`;
+ }
+}

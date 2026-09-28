@@ -64,17 +64,22 @@ async function main(){
  assert.equal(await prisma.student.count(),studentsBefore);assert.equal(await prisma.packageTxn.count(),ledgerBefore);
  if(process.env.UAT_HTTP==='1'){
   const password='LocalUAT-Relationship-20260928',salt=randomBytes(16).toString('hex');
-  for(const role of ['SALES','CS','FINANCE','TEACHER','OBSERVER'] as const){
-   const user=await prisma.user.create({data:{email:`relation-${randomUUID()}@example.invalid`,name:`Relationship UAT ${role}`,role:role==='OBSERVER'?'ADMIN':role,isObserver:role==='OBSERVER',passwordSalt:salt,passwordHash:pbkdf2Sync(password,salt,100000,32,'sha256').toString('hex')}});
+  for(const role of ['SALES','CS','FINANCE','TEACHER','OBSERVER','OPS'] as const){
+   const user=await prisma.user.create({data:{email:`relation-${randomUUID()}@example.invalid`,name:`Relationship UAT ${role}`,role:role==='OBSERVER'?'ADMIN':role==='OPS'?'TEACHER':role,isObserver:role==='OBSERVER',passwordSalt:salt,passwordHash:pbkdf2Sync(password,salt,100000,32,'sha256').toString('hex')}});
+   if(role==='OPS')await prisma.operationsAdminAcl.create({data:{email:user.email,note:'Isolated relationship acceptance only'}});
    const login=await fetch('http://127.0.0.1:3149/api/admin/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:user.email,password,portal:'admin'})});
    // A teacher is also rejected at the admin sign-in boundary.
    if(role==='TEACHER'&&login.status!==200){assert.equal(login.status,403);continue;}
    assert.equal(login.status,200);
    const Cookie=login.headers.getSetCookie().map(c=>c.split(';')[0]).join('; ');
    const response=await fetch(`http://127.0.0.1:3149/admin/relationships/${id}`,{headers:{Cookie},redirect:'manual'});
-   if(['SALES','CS','OBSERVER'].includes(role)){assert.equal(response.status,200);assert.ok((await response.text()).includes(tag));}
+   if(['SALES','CS','OBSERVER','OPS'].includes(role)){assert.equal(response.status,200);assert.ok((await response.text()).includes(tag));}
    else {assert.ok([303,307,308].includes(response.status));}
    if(role==='OBSERVER'){const denied=await fetch('http://127.0.0.1:3149/admin/relationships',{method:'POST',headers:{Cookie},body:'test=1',redirect:'manual'});assert.equal(denied.status,403);}
+   if(role==='OPS'){
+    const denied=await fetch('http://127.0.0.1:3149/api/admin/packages/missing/top-up',{method:'POST',headers:{Cookie},body:'{}',redirect:'manual'});assert.equal(denied.status,403);
+    const finance=await fetch('http://127.0.0.1:3149/admin/finance/workbench',{headers:{Cookie},redirect:'manual'});assert.equal(finance.status,307);
+   }
   }
  }
  console.log(JSON.stringify({passed:true,relationshipId:id,otherRelationshipId:otherId,leadIds:leads.map(l=>l.id),independentStudents:3,concurrentFollowUpOnce:true,auditRollback:true,permissionGuard:true,noStudentOrLedgerWrites:true}));

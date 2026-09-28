@@ -40,6 +40,8 @@ test("operations route policy allows teaching operations and denies company fina
   for (const allowed of [
     "/admin",
     "/admin/students",
+    "/admin/relationships",
+    "/admin/relationships/profile-1",
     "/admin/teachers/teacher-1/availability",
     "/admin/schedule",
     "/admin/tickets/abc",
@@ -57,6 +59,7 @@ test("operations route policy allows teaching operations and denies company fina
 
   for (const blocked of [
     "/admin/finance/workbench",
+    "/admin/relationships-private",
     "/admin/approvals",
     "/admin/expense-claims",
     "/admin/packages",

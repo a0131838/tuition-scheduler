@@ -1,4 +1,21 @@
 # RELEASE BOARD
+## 2026-09-28-r420
+
+- Release ID: `2026-09-28-r420`
+- Date/Time (Asia/Singapore): `2026-09-28`
+- Deployment status: `READY`; guarded-release proof is recorded in the execution ledger.
+- Problem: a referred student who already exists could only be created again through lead handoff. Names alone are not reliable identity evidence. The new relationship path also needed registration in the restricted operations-admin route whitelist.
+- Change: administrator handoff now offers exact existing-student selection or explicit new creation. Search returns separate profiles with full IDs, grade and school; linking requires a written identity check. A serializable lead lock protects creation/linking, checks classification/version/archive state, rejects a conflicting previously linked student and commits the audit atomically. Repeated completed requests reuse the same exact student.
+- Preservation: linking does not edit the existing student's profile, source, notes, packages or history. Lead pipeline status and latest follow-up summary remain unchanged; no automatic Won/payment confirmation. No name-based merge or historical relinking.
+- Access/UI: existing resource-admin/operations-admin handoff permissions, observer denial and ZH/EN/BILINGUAL controls. Relationship routes are available to restricted operations administrators; company finance and package top-up remain blocked. Saved results open the exact student profile; original lead URLs remain.
+- Verification: 12 focused relationship/operations-access tests,181 backend tests,full TypeScript and260-page final build. Isolated service UAT covers same-name distinct profiles, exact ID, required review, stale state, different-student rejection, two leads reusing one student, archived/unreviewed rejection, role denial, concurrent new creation once, audit rollback and unchanged package/ledger counts. Six-role authenticated HTTP verifies resource and operations access plus finance/teacher/observer boundaries. Browser checks all three languages, searches three same-name fixtures, links grade1 by exact ID, returns to the existing student and confirms only one audit with Contacted status and original summary/profile retained. Console errors empty.
+- Remaining: phase2 financial document attribution and verified contract/receipt metrics remain in progress. This checkpoint does not complete the programme.
+- Risk: uncertain identity requires staff review; this feature does not migrate or merge existing records. No schema migration and no production business acceptance writes.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `f373f1894ef0eb7eda479edb93d8cd1bcd5bf479` (r419).
+
+---
+
 ## 2026-09-28-r419
 
 - Release ID: `2026-09-28-r419`
@@ -243,7 +260,7 @@
 ---
 
 
-- Current release line on this branch: `2026-09-28-r419`, ready for guarded release of relationship/referral foundation. Phase2 financial attribution and existing-student reuse remain in progress; no Mini Program client release.
+- Current release line on this branch: `2026-09-28-r420`, ready for guarded release of exact student reuse. Phase2 financial attribution remains in progress; no Mini Program client release.
 
 ## 2026-09-09-r404 Ready
 

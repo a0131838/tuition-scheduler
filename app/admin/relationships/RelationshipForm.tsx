@@ -9,7 +9,7 @@ export default function RelationshipForm({action,lang,children,style}:{action:(f
  return <form action={async formData=>{
   if(pending)return;
   setPending(true);setFailed(false);
-  try {const result=await action(formData);if(!/^\/admin\/(relationships|leads)(\/|\?)/.test(result)&&result!=='/admin/relationships')throw new Error('Invalid result location');window.location.assign(result);}
+  try {const result=await action(formData);if(!/^\/admin\/(relationships|leads|students)(\/|\?)/.test(result)&&result!=='/admin/relationships')throw new Error('Invalid result location');window.location.assign(result);}
   catch {setFailed(true);setPending(false);}
  }}>
   <fieldset disabled={pending} style={{border:0,padding:0,margin:0,minWidth:0,...style}}>{children}</fieldset>

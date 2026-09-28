@@ -12,6 +12,7 @@ const OPERATIONS_ADMIN_WEB_PREFIXES = [
   "/admin/enrollments",
   "/admin/feedbacks",
   "/admin/leads",
+  "/admin/relationships",
   "/admin/miniapp-notifications",
   "/admin/miniapp-staff",
   "/admin/mobile",
