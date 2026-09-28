@@ -1,4 +1,22 @@
 # CHANGELOG LIVE
+## 2026-09-28-r423
+
+- Release ID: `2026-09-28-r423`
+- Date/Time (Asia/Singapore): `2026-09-28`
+- Deployment status: `READY`; guarded release proof is maintained in the execution ledger.
+- Problem: referral reporting lacked partner invoices, current approved receipts and issued credits. Partner billing contains unit-price lines and monthly summary lines; treating these as ordinary full line amounts or allocating consolidated invoices by name would misstate business.
+- Change: explicit exact-student/partner settlement evidence attribution with invoice fingerprints, serializable uniqueness, optimistic lead checks, atomic review audits and reversible attribution history. Existing monthly summary invoices are supported only when all actual settlements belong to the exact student, partner and month and sum to the recorded line base. Unknown partners, manual/unbound lines, mixed students, reverted/missing settlements or inconsistent amounts remain REVIEW without guessed allocation.
+- Financial truth: original invoice, issued credit and adjusted invoice totals are separate. Approved receipt amounts use actual recorded amounts and current approval rules; credits are not subtracted from receipts a second time and do not establish a cash refund. Voided/draft credits are excluded. Attribution/revocation changes no invoice, receipt, credit, settlement, ledger, package, pipeline status or approval.
+- UI/access: reuse collapsed invoice panels on lead and relationship pages in ZH/EN/BILINGUAL, with exact partner invoice selection and original billing links. Unassigned partner invoice count is explicitly company-wide, not attributed to the viewed relationship. Existing full ADMIN financial permissions and observer read-only behavior retained; no financial payload for SALES/CS/operations admins.
+- Validation:16 focused policy tests,181 backend tests,full TypeScript and260-page production build. Isolated partner service UAT covers competing ownership/idempotence, atomic rollback, stale lead/hash, source reversal and credit changes, revocation/reactivation, disabled mixed/unresolved candidates and unchanged source snapshots. Parent-invoice service regression passes after shared receipt evaluation extraction. Seven-role HTTP passed. Actual browser EN attach and ZH revoke each audited exactly once; bilingual relationship shows original109, issued credit21.80, adjusted87.20, approved receipts50 and retained revoked history. Browser console clean; no production write fixtures.
+- Investigation: production read-only aggregate found13 partner invoices. Ten have no partner ID; three monthly invoices cover4/4/6 students. One issued credit exists. Historical attribution remains reviewable in Finance; no history is automatically repaired, merged or split.
+- Migration: none. Existing generic evidence table and source fingerprints reused.
+- Remaining: relationship comparisons and phase2 full acceptance; phases3–10 continue. Not overall completion.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `92a0077255b193115d85a124803e7eeadaf0a3c2` (r422).
+
+---
+
 ## 2026-09-28-r422
 
 - Release ID: `2026-09-28-r422`

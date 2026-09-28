@@ -37,28 +37,35 @@ export function evaluateParentInvoice(link:EvidenceLink&{sourceFingerprint?:stri
  if(!link.sourceFingerprint||salesInvoiceFingerprint(invoice)!==link.sourceFingerprint)return result('REVIEW','Invoice changed; review attribution again','发票内容已变化，请重新核对归属');
  const total=salesMoneyCents(invoice.totalAmount),amount=salesMoneyCents(invoice.amount),gst=salesMoneyCents(invoice.gstAmount);
  if(total===null||amount===null||gst===null||amount+gst!==total)return result('REVIEW','Invoice amount is invalid or inconsistent','发票金额无效或不一致');
- const receipts=context.billing.receipts.filter(r=>r.invoiceId===link.documentId);
+ const receipts=evaluateSalesReceipts(link.documentId,context,r=>r.studentId===link.studentId&&r.packageId===invoice.packageId);
+ if('error' in receipts)return receipts.error;
+ return {state:'VERIFIED',en:'Invoice attribution verified',zh:'发票归属已核实',invoiceCents:total,...receipts};
+}
+
+export function summarizeInvoiceEvidence(rows:Array<InvoiceResult&{documentId:string}>) {
+ const distinct=new Map(rows.filter(r=>r.state==='VERIFIED').map(r=>[r.documentId,r]));const verified=[...distinct.values()];
+ return {verifiedInvoices:verified.length,invoiceCents:verified.reduce((n,r)=>n+r.invoiceCents!,0),approvedCents:verified.reduce((n,r)=>n+r.approvedCents!,0),review:rows.filter(r=>r.state==='REVIEW').length,pendingReceipts:verified.reduce((n,r)=>n+r.pendingReceipts,0),rejectedReceipts:verified.reduce((n,r)=>n+r.rejectedReceipts,0)};
+}
+
+export function evaluateSalesReceipts(invoiceId:string,context:Pick<ParentInvoiceContext,'billing'|'approvals'|'financeApproverEmails'>,belongs:(receipt:RawRecord)=>boolean):{error:InvoiceResult}|{approvedCents:number;pendingReceipts:number;rejectedReceipts:number}{
+ const receipts=context.billing.receipts.filter(r=>r.invoiceId===invoiceId);
  let approved=0,pending=0,rejected=0;
  for(const receipt of receipts){
-  if(typeof receipt.id!=='string'||!receipt.id.trim()||context.billing.receipts.filter(r=>r.id===receipt.id).length!==1)return result('REVIEW','Receipt ID is missing or duplicated','收据编号缺失或重复');
-  if(receipt.studentId!==link.studentId||receipt.packageId!==invoice.packageId)return result('REVIEW','A receipt belongs to a different student or package','收据属于其他学生或课包');
-  const cents=salesMoneyCents(receipt.amountReceived);if(cents===null||cents<=0)return result('REVIEW','Receipt amount could not be verified','收据金额无法核实');
+  if(typeof receipt.id!=='string'||!receipt.id.trim()||context.billing.receipts.filter(r=>r.id===receipt.id).length!==1)return {error:result('REVIEW','Receipt ID is missing or duplicated','收据编号缺失或重复')};
+  if(!belongs(receipt))return {error:result('REVIEW','Receipt ownership does not match this invoice','收据归属与此发票不一致')};
+  const cents=salesMoneyCents(receipt.amountReceived);if(cents===null||cents<=0)return {error:result('REVIEW','Receipt amount could not be verified','收据金额无法核实')};
   const approvals=context.approvals.items.filter(a=>a.receiptId===receipt.id);
-  if(approvals.length>1)return result('REVIEW','Duplicate receipt approval records','收据审批记录重复');
+  if(approvals.length>1)return {error:result('REVIEW','Duplicate receipt approval records','收据审批记录重复')};
   const approval=approvals[0];
   if(approval){
-   if(!Array.isArray(approval.financeApprovedBy)||!approval.financeApprovedBy.every(x=>typeof x==='string')||!Array.isArray(approval.managerApprovedBy)||!approval.managerApprovedBy.every(x=>typeof x==='string'))return result('REVIEW','Receipt approver evidence is malformed','收据审批人凭据格式异常');
-   for(const key of ['managerRejectReason','financeRejectReason','managerRejectedAt','financeRejectedAt'])if(approval[key]!=null&&typeof approval[key]!=='string')return result('REVIEW','Receipt rejection evidence is malformed','收据驳回凭据格式异常');
+   if(!Array.isArray(approval.financeApprovedBy)||!approval.financeApprovedBy.every(x=>typeof x==='string')||!Array.isArray(approval.managerApprovedBy)||!approval.managerApprovedBy.every(x=>typeof x==='string'))return {error:result('REVIEW','Receipt approver evidence is malformed','收据审批人凭据格式异常')};
+   for(const key of ['managerRejectReason','financeRejectReason','managerRejectedAt','financeRejectedAt'])if(approval[key]!=null&&typeof approval[key]!=='string')return {error:result('REVIEW','Receipt rejection evidence is malformed','收据驳回凭据格式异常')};
   }
   // A recorded rejection date also blocks approval even if a legacy record lacks its reason.
   const rejectedAt=approval&&(approval.managerRejectedAt||approval.financeRejectedAt);
   const status=rejectedAt?'REJECTED':getReceiptApprovalStatus(approval as {financeApprovedBy:string[];managerRejectReason?:string;financeRejectReason?:string}|undefined,context);
   if(status==='COMPLETED')approved+=cents;else if(status==='REJECTED')rejected++;else pending++;
-  if(!Number.isSafeInteger(approved))return result('REVIEW','Receipt total exceeds the supported amount','收据合计超出可核验范围');
+  if(!Number.isSafeInteger(approved))return {error:result('REVIEW','Receipt total exceeds the supported amount','收据合计超出可核验范围')};
  }
- return {state:'VERIFIED',en:'Invoice attribution verified',zh:'发票归属已核实',invoiceCents:total,approvedCents:approved,pendingReceipts:pending,rejectedReceipts:rejected};
-}
-export function summarizeInvoiceEvidence(rows:Array<InvoiceResult&{documentId:string}>) {
- const distinct=new Map(rows.filter(r=>r.state==='VERIFIED').map(r=>[r.documentId,r]));const verified=[...distinct.values()];
- return {verifiedInvoices:verified.length,invoiceCents:verified.reduce((n,r)=>n+r.invoiceCents!,0),approvedCents:verified.reduce((n,r)=>n+r.approvedCents!,0),review:rows.filter(r=>r.state==='REVIEW').length,pendingReceipts:verified.reduce((n,r)=>n+r.pendingReceipts,0),rejectedReceipts:verified.reduce((n,r)=>n+r.rejectedReceipts,0)};
+ return {approvedCents:approved,pendingReceipts:pending,rejectedReceipts:rejected};
 }

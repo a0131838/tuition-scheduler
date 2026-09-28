@@ -370,6 +370,7 @@ export default async function LeadDetailPage({
       <LeadRelationshipPanel lead={lead} lang={lang}/>
       <SalesContractEvidencePanel actor={adminUser} lang={lang} scope={{leadId:lead.id}} lead={lead}/>
       <SalesInvoiceEvidencePanel actor={adminUser} lang={lang} scope={{leadId:lead.id}} lead={lead}/>
+      <SalesInvoiceEvidencePanel channel="PARTNER" actor={adminUser} lang={lang} scope={{leadId:lead.id}} lead={lead}/>
 
       <section style={{ border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 12, padding: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
