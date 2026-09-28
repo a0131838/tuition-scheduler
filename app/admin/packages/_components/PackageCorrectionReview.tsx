@@ -1,0 +1,51 @@
+import {formatBusinessDateOnly} from '@/lib/date-only';
+import {notFound} from 'next/navigation';
+import {type Lang,t} from '@/lib/i18n';
+import {readPackageCorrection} from '@/lib/package-correction-evidence';
+import {previewPackageCorrection} from '@/lib/package-correction-policy';
+import {studentContractStatusLabel,studentContractStatusLabelZh} from '@/lib/student-contract';
+
+export default async function PackageCorrectionReview({packageId,lang,target,backHref}:{packageId:string;lang:Lang;target?:string;backHref:string}){
+ const data=await readPackageCorrection(packageId);if(!data)notFound();
+ const {pkg,facts,invoices,contracts}=data,preview=previewPackageCorrection(facts,target);
+ const quantity=(value:number|null)=>value===null?'—':facts.unit==='MINUTES'?`${Number((value/60).toFixed(4))} ${t(lang,'hours','小时')}`:facts.unit==='COUNT'?`${value} ${t(lang,'lessons','次')}`:t(lang,'By validity dates','按有效期');
+ const money=(value:number|null)=>value===null?t(lang,'Needs review','待核对'):`SGD ${(value/100).toFixed(2)}`;
+ const box={border:'1px solid #dbe4f0',borderRadius:14,padding:18,background:'#fff'};
+ const cell={padding:'10px 12px',textAlign:'left' as const,borderBottom:'1px solid #e2e8f0',verticalAlign:'top' as const};
+ const returnParams=new URL(backHref,'http://local.invalid').searchParams;
+ const partner=['ONLINE_PACKAGE_END','OFFLINE_MONTHLY'].includes(pkg.settlementMode||'');
+ return <div style={{display:'grid',gap:18,maxWidth:1280}}>
+  <header><a href={backHref}>← {t(lang,'Back to billing','返回账单')}</a><h2>{t(lang,'Transaction correction review','交易纠错核对')}</h2><p>{pkg.student.name} · {pkg.course.name}</p>
+   <p>{t(lang,'Review the original documents and package movements, then preview cancelled entitlement. This page saves no changes.','先核对原始单据和课包流水，再预览取消权益的影响。本页不会保存任何变更。')}</p>
+  </header>
+  <section style={box}><h3>{t(lang,'Package facts','课包事实')}</h3>
+   <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:14}}>
+    {[[t(lang,'Recorded total','登记总量'),quantity(facts.recordedTotal)],[t(lang,'Purchase entries','购入流水合计'),quantity(facts.purchase)],[t(lang,'Gift entries','赠送流水合计'),quantity(facts.gift)],[t(lang,'Net recorded deductions','已记净扣减'),quantity(facts.netDeducted)],[t(lang,'Ledger balance','流水余额'),quantity(facts.balance)],[t(lang,'Stored remaining','系统余额'),quantity(facts.storedRemaining)]].map(([label,value])=><div key={label}><div style={{color:'#64748b',fontSize:13}}>{label}</div><strong style={{fontSize:21}}>{value}</strong></div>)}
+   </div>
+   <p>{t(lang,'Net recorded deductions are deductions minus rollbacks across the whole package; they do not independently prove teaching, payment or a shared student’s usage.','已记净扣减为整个课包的扣减减去退课流水，不能单独证明实际授课、收款或某个共享学生的用量。')}</p>
+   {facts.unit==='PERIOD'?<p>{t(lang,'Validity','有效期')}: {formatBusinessDateOnly(pkg.validFrom)} → {pkg.validTo?formatBusinessDateOnly(pkg.validTo):'—'}</p>:null}
+   {pkg.sharedStudents.length?<p>{t(lang,'Shared members','共享成员')}: {pkg.sharedStudents.map(s=>s.student.name).join(' · ')} · {t(lang,'Do not assign the whole balance to one student.','不能将全部余额归属一个学生。')}</p>:null}
+   {facts.issues.length?<ul style={{color:'#9a3412'}}>{facts.issues.map((x,i)=><li key={i}>{t(lang,x.en,x.zh)}</li>)}</ul>:null}
+  </section>
+  <section style={box}><h3>{t(lang,'Invoices and approved receipts','发票与已审批收据')}</h3>
+   <p>{t(lang,'Recorded approved parent receipts','已记直客审批收款')}: <strong>{money(data.approvedCents)}</strong></p>
+   <p>{t(lang,'Receipt amounts are not net revenue after refunds. A contract signature, invoice or purchased quantity does not prove payment; money is never converted into hours here.','收据金额不代表退款后净收入。签约、开票或登记购入量都不等于付款，本页不会从金额换算课时。')}</p>
+   {partner?<p style={{color:'#9a3412'}}>{t(lang,'This package uses partner settlement. Parent receipt totals do not cover partner invoices or credits; review Finance before correction.','此课包使用合作方结算。直客收据合计不包含合作方发票或贷项，更正前需到财务核对。')} <a href="/admin/finance/documents">{t(lang,'Finance documents','财务单据')}</a></p>:null}
+   {data.financialReview?<p role="status" style={{color:'#9a3412'}}>{t(lang,'Financial evidence needs review; no verified aggregate is shown.','财务凭据需要核对，暂不显示已核实合计。')} {data.orphanReceipts?t(lang,`${data.orphanReceipts} receipts have no matching invoice.`,`${data.orphanReceipts}张收据缺少对应发票。`):''}</p>:null}
+   <div style={{overflowX:'auto'}}><table style={{borderCollapse:'collapse',width:'100%'}}><thead><tr>{[t(lang,'Invoice','发票'),t(lang,'Invoice amount','发票金额'),t(lang,'Approved receipts','已审批收款'),t(lang,'Pending / rejected receipts','待审批 / 已驳回收据'),t(lang,'Evidence','凭据')].map(x=><th style={cell} key={x}>{x}</th>)}</tr></thead><tbody>
+    {invoices.map((i,index)=><tr key={`${i.id}-${index}`}><td style={cell}>{i.invoiceNo}</td><td style={cell}>{money(i.totalCents)}</td><td style={cell}>{money(i.approvedCents)}</td><td style={cell}>{i.pending??'—'} / {i.rejected??'—'}</td><td style={cell}>{i.error?t(lang,i.error,i.errorZh!):t(lang,'Recorded evidence verified','记录凭据已核实')}</td></tr>)}
+   </tbody></table></div>{!invoices.length?<p>{t(lang,'No parent invoices recorded for this package. This does not prove that no money was received elsewhere.','本课包没有直客发票记录，不代表其他渠道未曾收款。')}</p>:null}
+   {data.unresolvedContractInvoices?<p style={{color:'#9a3412'}}>{t(lang,`${data.unresolvedContractInvoices} contract invoice links could not be verified.`,`${data.unresolvedContractInvoices}处合同发票关联无法核实。`)}</p>:null}
+   <a href={`/admin/finance/documents?channel=PARENT&packageId=${encodeURIComponent(packageId)}`}>{t(lang,'Open source invoices and receipts','打开原始发票与收据')}</a>
+  </section>
+  <details style={box}><summary>{t(lang,`Contract history (${contracts.length})`,`合同历史（${contracts.length}）`)}</summary><p>{t(lang,'Voiding a contract does not cancel its invoice or entitlement. All package contracts are shown, including void history.','作废合同不会自动撤销发票或权益。此处展示本课包全部合同，含作废历史。')}</p>
+   <div style={{overflowX:'auto'}}><table style={{borderCollapse:'collapse',width:'100%'}}><thead><tr>{[t(lang,'Contract ID','合同编号'),t(lang,'Status','状态'),t(lang,'Signed date','签署日期'),t(lang,'Linked invoice','关联发票')].map(x=><th style={cell} key={x}>{x}</th>)}</tr></thead><tbody>{contracts.map(c=><tr key={c.id}><td style={cell}>{c.id}</td><td style={cell}>{t(lang,studentContractStatusLabel(c.status),studentContractStatusLabelZh(c.status))}</td><td style={cell}>{c.signedAt?formatBusinessDateOnly(c.signedAt):'—'}</td><td style={cell}>{c.invoiceNo||'—'}</td></tr>)}</tbody></table></div>{!contracts.length?<p>{t(lang,'No contract records','暂无合同记录')}</p>:null}
+  </details>
+  <section style={box}><h3>{t(lang,'Preview cancelled entitlement','取消权益影响预览')}</h3>
+   <p>{t(lang,'Enter the total purchased entitlement that should remain, based on confirmed business evidence. This is the total purchase, not the remaining balance. Gifts remain separate.','按已确认的业务凭据，填写应保留的累计购入权益。这是购入总量，不是剩余余额；赠送另计。')}</p>
+   {facts.unit!=='PERIOD'?<form method="get" action={`/admin/packages/${encodeURIComponent(packageId)}/billing`} style={{display:'flex',gap:12,alignItems:'end',flexWrap:'wrap'}}><input type="hidden" name="view" value="correction"/>{["source","receiptsBack"].map(key=>returnParams.has(key)?<input key={key} type="hidden" name={key} value={returnParams.get(key)!}/>:null)}<label>{t(lang,'Confirmed purchased total','已确认购入总量')} ({t(lang,facts.unit==='COUNT'?'lessons':'hours',facts.unit==='COUNT'?'次':'小时')})<br/><input name="target" inputMode="decimal" defaultValue={target||''} required style={{padding:10,maxWidth:240}}/></label><button type="submit" style={{padding:10}}>{t(lang,'Preview only','仅预览')}</button></form>:<p>{t(lang,'Review monthly validity with the original agreement; hour cancellation is not applicable.','请依据原协议核对月包有效期，不适用课时取消。')}</p>}
+   {preview?<div role="status" style={{marginTop:14,padding:14,background:preview.ready?'#f0fdf4':'#fff7ed',borderRadius:10}}>{preview.ready?<><strong>{t(lang,'Projected package result','课包预计结果')}</strong><p>{t(lang,'Purchased total','购入总量')}: {quantity(facts.recordedTotal)} → {quantity(preview.target)}<br/>{t(lang,'Entitlement to cancel','拟取消权益')}: {quantity(-(preview.delta??0))}<br/>{t(lang,'Projected balance','预计余额')}: {quantity(preview.remaining)}</p><p>{t(lang,'No refund, deduction, invoice change or contract void has been performed. An authorized correction still needs its source evidence and audit.','尚未退款、扣课、更改发票或作废合同。正式更正仍须有原始凭据和审计。')}</p></>:<><strong>{t(lang,'Review required before calculating a correction','须先核对，暂不提供更正结果')}</strong><ul>{preview.issues.map((i,index)=><li key={index}>{t(lang,i.en,i.zh)}</li>)}</ul></>}</div>:null}
+  </section>
+  <details style={box}><summary>{t(lang,`Original ledger movements (${data.txns.length})`,`原始课时流水（${data.txns.length}条）`)}</summary><p>{t(lang,'Read-only history. Originals are preserved.','只读历史，保留原始记录。')}</p><div style={{overflowX:'auto'}}><table style={{borderCollapse:'collapse',width:'100%'}}><tbody>{data.txns.map(tx=><tr key={tx.id}><td style={cell}>{formatBusinessDateOnly(tx.createdAt)}</td><td style={cell}>{t(lang,({PURCHASE:'Purchase',DEDUCT:'Deduction',ROLLBACK:'Rollback',ADJUST:'Adjustment',GIFT:'Gift'} as Record<string,string>)[tx.kind]||tx.kind,({PURCHASE:'购入',DEDUCT:'扣减',ROLLBACK:'退课',ADJUST:'调整',GIFT:'赠送'} as Record<string,string>)[tx.kind]||tx.kind)}</td><td style={cell}>{facts.unit==='PERIOD'?tx.deltaMinutes:quantity(tx.deltaMinutes)}</td><td style={cell}>{tx.note||'—'}</td><td style={cell}>{tx.id}</td></tr>)}</tbody></table></div></details>
+ </div>;
+}

@@ -325,3 +325,23 @@ Logs: `/tmp/sgt-r424-focused.log`, `/tmp/sgt-r424-backend.log`, `/tmp/sgt-r424-u
 ---
 
 Logs: `/tmp/sgt-r425-focused.log`, `/tmp/sgt-r425-backend.log`, `/tmp/sgt-r425-uat.log`, `/tmp/sgt-r425-http.log`, `/tmp/sgt-r425-build.log`, `/tmp/sgt-r425-tsc-final.log`, `/tmp/sgt-r425-browser-post.log`. Both database URLs are guarded before isolated fixture writes. Expected concurrent serialization failure rejects the competing attempt. Browser-discovered stale result and false no-history empty state were corrected and rechecked before release.
+
+## 2026-09-28-r426
+
+- Release ID: `2026-09-28-r426`
+- Date/Time (Asia/Singapore): `2026-09-28`
+- Deployment status: `READY`; guarded release proof is maintained in the execution ledger.
+- Problem: billing, contract history and package ledger were separate views, making a cancelled-entitlement review easy to confuse with invoice deletion, refunds or student attendance. The package total and approved receipt amount cannot be substituted for each other.
+- Change: an optional read-only correction view on the existing package billing URL brings together recorded total, purchase/gift movements, net recorded deductions, reconciled balance, strict parent invoice/approved receipt evidence and all contract history. Low-frequency contract/ledger tables are collapsed. Confirmed purchased total is entered explicitly; a100-hour package with64.5 recorded deductions previews cancelling35.5 hours and retaining zero balance, without inferring entitlement from money or writing anything.
+- Safeguards: mismatched balances/purchase totals, missing purchases, historical adjustments, malformed financial records, orphan receipts and unresolved contract-invoice links require review. Shared allocation, partner settlement and monthly validity are identified explicitly rather than treated as ordinary individual hour cancellation. Group-count uses lessons; cancellation cannot increase purchases or create negative balances. Pending/rejected receipts are separate; approved receipt totals are not net revenue after refunds. No actual correction, refund, contract void, approval or lesson operation is executed from this view.
+- Access/UI: same billing URL and existing ADMIN/FINANCE boundary, observers read only; no new access for resource-only, operations or teachers. ZH/EN/BILINGUAL; Singapore business dates; original billing and receipt-queue return context retained. Repeated malformed target query values yield review rather than an error page.
+- Validation:13 focused tests,181 backend tests,full TypeScript and260-page build. Isolated service UAT covers full/partial/pending/rejected receipts, stale fingerprint, wrong scope, malformed billing, orphan receipts, shared membership and33-contract history including unresolved references; before/after business snapshots unchanged. Seven-role HTTP validates permissions, three languages, source return context, original billing, over-cancellation and malformed targets. Real browser EN previews100→64.5 with35.5 cancelled/zero remaining; ZH blocks50 below consumed entitlement; bilingual view and source-return links verified, console clean.
+- Production investigation: read-only aggregates show87 packages,6 shared,56 partner,12 with adjustments,0 monthly/count packages and0 hour-balance mismatches. Historical branches remain for explicit review, not automatic repair. Initial read query used an incorrect relation name; corrected to the schema's txns field before collecting these results.
+- Migration: none. No production business test writes or external communications.
+- Remaining: phase3 authorized append-only correction, partner/shared/monthly handling and contract-signing/invoice concurrency hardening; phases4–10. This is a read-only foundation, not phase3 or programme completion.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `3932aa6c7b9b22077e3fe25d4f144a6962ee0724` (r425).
+
+---
+
+Logs: `/tmp/sgt-r426-focused.log`, `/tmp/sgt-r426-backend.log`, `/tmp/sgt-r426-uat.log`, `/tmp/sgt-r426-http.log`, `/tmp/sgt-r426-build.log`, `/tmp/sgt-r426-tsc-final.log`, `/tmp/sgt-r426-production-readonly.log`. Initial QA fixture used the wrong shared-member model name; corrected and rerun successfully. Streaming not-found is checked by its404 body and absence of financial data rather than assuming HTTP404. Existing shared language selector needs saved preference followed by page reload; global language/loading behavior remains phase8/9 work.

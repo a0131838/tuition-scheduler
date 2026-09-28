@@ -1,3 +1,4 @@
+import PackageCorrectionReview from '../../_components/PackageCorrectionReview';
 import {hasContractExecutionHistory} from '@/lib/student-contract-history';
 import { getCurrentUser, requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -587,7 +588,7 @@ export default async function PackageBillingPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ msg?: string; err?: string; source?: string; receiptsBack?: string }>;
+  searchParams?: Promise<{ msg?: string; err?: string; source?: string; receiptsBack?: string; view?: string; target?: string | string[] }>;
 }) {
   await requireAdmin();
   const { id: packageId } = await params;
@@ -598,6 +599,12 @@ export default async function PackageBillingPage({
   const receiptsBack = sanitizeReceiptsBack(sp?.receiptsBack);
   const lang = await getLang();
   const currentUser = await getCurrentUser();
+  const canReviewCorrection = currentUser?.role === "FINANCE" || (currentUser?.role === "ADMIN" && !currentUser.operationsAdmin);
+  if (sp?.view === "correction") {
+    if (!canReviewCorrection) redirect(buildPackageBillingHref(packageId));
+    return <PackageCorrectionReview packageId={packageId} lang={lang} target={typeof sp.target === "string" ? sp.target : sp.target === undefined ? undefined : "invalid"} backHref={buildPackageBillingHref(packageId,{sourceWorkflow,receiptsBack})} />;
+  }
+
 
   const [pkg, data, roleCfg, latestInvoiceApproval, packageContracts, hasRenewalContractParentInfo, latestParentIntakeForPackage, deletedInvoiceHistory] = await Promise.all([
     prisma.coursePackage.findUnique({
@@ -903,6 +910,7 @@ export default async function PackageBillingPage({
   return (
     <div>
       <h2>{t(lang, "Package Billing", "课包账单")}</h2>
+      {canReviewCorrection ? <p><a href={`${buildPackageBillingHref(packageId,{sourceWorkflow,receiptsBack})}${sourceWorkflow ? "&" : "?"}view=correction`}>{t(lang,"Review a transaction correction","核对交易纠错")}</a></p> : null}
       <div style={{ marginBottom: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <a href="/admin/packages">← {t(lang, "Back to Packages", "返回课包列表")}</a>
         <span style={{ color: "#94a3b8" }}>·</span>
