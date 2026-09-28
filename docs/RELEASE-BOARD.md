@@ -1,4 +1,21 @@
 # RELEASE BOARD
+## 2026-09-28-r409 Ready
+
+- Release ID: `2026-09-28-r409`
+- Date/Time (Asia/Singapore): `2026-09-28`
+- Deployment status: `READY` after local verification; guarded release required.
+- Scope: risk scans record `RISK_RESOLVED` instead of claiming a new package is active. Confirmed renewals and financial follow-ups stay open when hours become safe, and a current newly signed renewal stays payment-pending.
+- Financial tasks retain their workflow while balances and risk snapshots refresh. Inactive source packages are identified separately. A new shortage creates a new task immediately after risk resolution; resolved history is preserved.
+- Concurrency: optimistic updates prevent a scan from overwriting a concurrent task edit; automatic closure and its audit are atomic. Repeated/concurrent scans create one closure audit.
+- Language/compatibility: new explanation, risk labels and filter support Chinese, English and bilingual preferences. Published Mini Program clients use the existing special-handling picker value plus the accurate risk-resolution display label and canonical status; their metadata edits preserve canonical history. No Mini Program client publication.
+- Business boundary: no schema migration, historic completion rewrite, payment/receipt/package-balance changes or messages. Read-only evidence tests use isolated fixtures only.
+- Verification: 12 focused renewal tests, isolated PostgreSQL service/HTTP UAT, production build (259 pages), and local browser checks. Exact deployment commit/PM2/HTTP evidence is kept in the external execution ledger.
+- Remaining: manual payment/package-active status transitions still need receipt and entitlement evidence checks in phase 1. Existing old Chinese-only renewal fields remain for the full language pass. This is not completion of phase 1 or the overall project.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `18a32ca3d64f19f83fd90b2086ef439c7b429050` (r408). No migration rollback.
+
+---
+
 ## 2026-09-28-r408 Ready
 
 - Release ID: `2026-09-28-r408`
@@ -56,7 +73,7 @@
 ---
 
 
-- Current release line on this branch: `2026-09-28-r408`, ready for guarded release of cancellation ledger verification. This release does not publish a Mini Program client.
+- Current release line on this branch: `2026-09-28-r409`, ready for guarded release of renewal risk resolution semantics. This release does not publish a Mini Program client.
 
 ## 2026-09-09-r404 Ready
 

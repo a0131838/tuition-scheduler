@@ -27,6 +27,7 @@ export default async function RenewalWorkbenchPage() {
         </h1>
       </section>
       <RenewalWorkbenchClient
+        lang={lang}
         initialTasks={rows.map(renewalTaskDto)}
         initialCohortCounts={cohortCounts}
         operationsOnly={user.operationsAdmin}

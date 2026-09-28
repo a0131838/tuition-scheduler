@@ -1,6 +1,7 @@
 import { bad, ok } from "@/app/api/miniapp/_lib";
 import { requireMiniappStaff } from "@/app/api/miniapp/staff/_lib";
 import { canUseMiniappRenewalDesk } from "@/lib/miniapp-staff-action-center";
+import { renewalForLegacyMiniapp } from "@/lib/renewal-auto-resolution";
 import {
   getRenewalCohortCounts,
   listRenewalTasks,
@@ -26,7 +27,7 @@ export async function GET(req: Request) {
     limit: Number(url.searchParams.get("limit") ?? 300),
   });
   return ok({
-    tasks: rows.map(renewalTaskDto),
+    tasks: rows.map(row => renewalForLegacyMiniapp(renewalTaskDto(row))),
     cohortCounts: await getRenewalCohortCounts(status),
     operationsOnly: Boolean(auth.user.operationsAdmin),
   });

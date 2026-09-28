@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import styles from "./renewals.module.css";
+import type { Lang } from "@/lib/i18n";
+import { renewalRiskResolutionLabel, RISK_RESOLVED } from "@/lib/renewal-auto-resolution";
 
 type HistoryRow = { action: string; actorName: string; createdAt: string; meta: unknown };
 type RenewalTask = {
@@ -50,7 +52,8 @@ const operationsStatuses = statuses.filter(([value]) =>
   ["PENDING_CONTACT", "PARENT_NOTIFIED", "PARENT_CONSIDERING", "RENEWAL_CONFIRMED", "NOT_RENEWING", "PAUSED_SPECIAL"].includes(value)
 );
 
-function selectableStatuses(row: RenewalTask, operationsOnly: boolean) {
+function selectableStatuses(row: RenewalTask, operationsOnly: boolean, lang: Lang) {
+  if (row.status === RISK_RESOLVED) return [[RISK_RESOLVED, renewalRiskResolutionLabel(lang)]];
   const allStatuses = row.cohort === "XDF" ? xdfStatuses : statuses;
   if (!operationsOnly) return allStatuses;
   const allowed = allStatuses.filter(([value]) => operationsStatuses.some(([operationsValue]) => operationsValue === value));
@@ -91,11 +94,14 @@ export default function RenewalWorkbenchClient({
   initialTasks,
   initialCohortCounts,
   operationsOnly,
+  lang = "BILINGUAL",
 }: {
   initialTasks: RenewalTask[];
   initialCohortCounts: { BOSS_OTHER: number; XDF: number };
   operationsOnly: boolean;
+  lang?: Lang;
 }) {
+  const label = (en: string, zh: string) => lang === "EN" ? en : lang === "ZH" ? zh : `${en} / ${zh}`;
   const [tasks, setTasks] = useState(initialTasks);
   const [cohort, setCohort] = useState<"BOSS_OTHER" | "XDF">("BOSS_OTHER");
   const [cohortCounts, setCohortCounts] = useState(initialCohortCounts);
@@ -217,8 +223,11 @@ export default function RenewalWorkbenchClient({
 
   return (
     <>
+      <div className={styles.message} role="note">
+        {label("A resolved hours risk does not confirm a renewal or payment. Confirmed renewals and financial follow-ups stay open until reviewed. A new risk creates a new follow-up without rewriting the resolved history.", "课时风险解除不代表已续费或已收款。已确认续费和财务跟进会继续保留，等待核对完成；风险再次出现时生成新的跟进任务，保留原历史。")}
+      </div>
       <section className={styles.metrics}>
-        <div><span>开放任务</span><strong>{summary.total}</strong></div>
+        <div><span>{label("Tasks in this view", "当前筛选任务")}</span><strong>{summary.total}</strong></div>
         <div data-tone="danger"><span>红色/已不足</span><strong>{summary.urgent}</strong></div>
         <div data-tone="warning"><span>已到跟进时间</span><strong>{summary.due}</strong></div>
         <div data-tone="success"><span>已进入续费流程</span><strong>{summary.confirmed}</strong></div>
@@ -235,7 +244,7 @@ export default function RenewalWorkbenchClient({
 
       <section className={styles.toolbar}>
         <div className={styles.filters}>
-          {[["OPEN", "待跟进"], ["COMPLETED", "已结束"], ...statuses.slice(0, 7)].map(([value, label]) => (
+          {[["OPEN", "待跟进"], ["COMPLETED", "已结束"], [RISK_RESOLVED, renewalRiskResolutionLabel(lang)], ...statuses.slice(0, 7)].map(([value, label]) => (
             <button key={value} data-active={filter === value} onClick={() => load(value).catch((error) => setMessage(error.message))}>{label}</button>
           ))}
         </div>
@@ -250,15 +259,16 @@ export default function RenewalWorkbenchClient({
         {tasks.map((row) => {
           const draft = draftFor(row);
           const open = expanded === row.id;
-          const financialStage = operationsOnly && !operationsStatuses.some(([value]) => value === row.status);
+          const riskResolved = row.status === RISK_RESOLVED;
+          const financialStage = riskResolved || (operationsOnly && !operationsStatuses.some(([value]) => value === row.status));
           return (
             <article key={row.id} className={styles.task} data-risk={row.riskLevel}>
               <button className={styles.taskHeader} onClick={() => setExpanded(open ? "" : row.id)}>
                 <div>
-                  <span className={styles.risk}>{riskLabels[row.riskLevel] || row.riskLevel}</span>
+                  <span className={styles.risk}>{row.riskLevel === "RESOLVED" ? label("Risk resolved", "风险已解除") : row.riskLevel === "INACTIVE" ? label("Package inactive", "原课包已停用") : riskLabels[row.riskLevel] || row.riskLevel}</span>
                   <span className={styles.source}>{row.cohort === "XDF" ? "新东方" : row.sourceLabel}</span>
                   <h2>{row.studentName} · {row.courseName}</h2>
-                  <p>{row.statusLabel} · 负责人：{row.ownerName || "未分配"} · 下次跟进：{fmtDate(row.nextFollowUpAt)}</p>
+                  <p>{riskResolved ? renewalRiskResolutionLabel(lang) : row.statusLabel} · 负责人：{row.ownerName || "未分配"} · 下次跟进：{fmtDate(row.nextFollowUpAt)}</p>
                 </div>
                 <div className={styles.balance}>
                   <strong>{row.packageType === "MONTHLY" ? "有效期预警" : fmtMinutes(row.remainingMinutes)}</strong>
@@ -267,12 +277,12 @@ export default function RenewalWorkbenchClient({
               </button>
               {open ? (
                 <div className={styles.detail}>
-                  <div className={styles.forecast}>
+                  {row.riskLevel === "INACTIVE" ? <div role="note">{label("The source package is inactive. Review the package before arranging further lessons; renewal follow-up is still pending.", "原课包已停用。继续排课前请核对课包；续费手续仍待跟进。")}</div> : <div className={styles.forecast}>
                     <div><span>未来已排</span><strong>{fmtMinutes(row.scheduledMinutes)}</strong></div>
                     <div><span>近四周周均消耗</span><strong>{fmtMinutes(row.recentWeeklyMinutes)}</strong></div>
                     <div><span>预计用完</span><strong>{fmtDate(row.expectedDepletionAt)}</strong></div>
                     <div><span>课包有效期</span><strong>{fmtDate(row.packageValidTo)}</strong></div>
-                  </div>
+                  </div>}
 
                   <div className={styles.columns}>
                     <div className={styles.workflow}>
@@ -282,7 +292,7 @@ export default function RenewalWorkbenchClient({
                           disabled={financialStage}
                           onChange={(event) => setDraft(row.id, "status", event.target.value)}
                         >
-                          {selectableStatuses(row, operationsOnly).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                          {selectableStatuses(row, operationsOnly, lang).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                         </select>
                       </label>
                       <label>负责人
@@ -301,7 +311,7 @@ export default function RenewalWorkbenchClient({
                         <textarea value={String(draft.note || "")} onChange={(event) => setDraft(row.id, "note", event.target.value)} placeholder="折扣、停课、共享课包等特殊情况" />
                       </label>
                       <button className={styles.primary} disabled={busyId === row.id || financialStage} onClick={() => save(row)}>
-                        {financialStage ? "已交财务继续处理" : busyId === row.id ? "保存中…" : "保存进度"}
+                        {riskResolved ? label("Risk scan history", "风险扫描历史记录") : financialStage ? "已交财务继续处理" : busyId === row.id ? "保存中…" : "保存进度"}
                       </button>
                     </div>
 

@@ -3,6 +3,7 @@ import { logAudit } from "@/lib/audit-log";
 import { formatBusinessDateOnly } from "@/lib/date-only";
 import { LEGACY_XDF_SOURCE_CHANNEL_NAME } from "@/lib/partners";
 import { prisma } from "@/lib/prisma";
+import { automaticRenewalResolution, assertRiskResolutionTransition, canonicalRenewalStatus, renewalRiskResolutionLabel, RISK_RESOLVED } from "./renewal-auto-resolution";
 
 export const RENEWAL_OPEN_STATUSES = [
   "PENDING_CONTACT",
@@ -23,11 +24,12 @@ export const RENEWAL_STATUS_LABELS: Record<string, string> = {
   PAYMENT_PENDING: "待确认付款",
   PAYMENT_CONFIRMED: "已付款·待开通课包",
   PACKAGE_ACTIVE: "新课包已生效",
+  RISK_RESOLVED: renewalRiskResolutionLabel(),
   NOT_RENEWING: "暂不续费",
   PAUSED_SPECIAL: "停课/特殊处理",
 };
 
-export type RenewalRiskLevel = "YELLOW" | "ORANGE" | "RED" | "EXHAUSTED";
+export type RenewalRiskLevel = "YELLOW" | "ORANGE" | "RED" | "EXHAUSTED" | "RESOLVED";
 export type RenewalCohort = "BOSS_OTHER" | "XDF";
 
 type RenewalActor = {
@@ -63,7 +65,7 @@ function endOfDayFromNow(days: number) {
 }
 
 function riskRank(level: RenewalRiskLevel) {
-  return { YELLOW: 1, ORANGE: 2, RED: 3, EXHAUSTED: 4 }[level];
+  return { RESOLVED: 0, YELLOW: 1, ORANGE: 2, RED: 3, EXHAUSTED: 4 }[level];
 }
 
 export function renewalCohortForSourceName(sourceName: string | null | undefined): RenewalCohort {
@@ -166,7 +168,7 @@ export function classifyRenewalRisk(input: {
   return null;
 }
 
-export async function getRenewalForecasts(now = new Date()) {
+export async function getRenewalForecasts(now = new Date(), includeSafe = false) {
   const lookback = new Date(now.getTime() - 28 * 86_400_000);
   const lookahead = new Date(now.getTime() + 60 * 86_400_000);
   const packages = await prisma.coursePackage.findMany({
@@ -192,10 +194,10 @@ export async function getRenewalForecasts(now = new Date()) {
         select: { deltaMinutes: true },
       },
       contracts: {
-        where: { flowType: "RENEWAL" },
+        where: { flowType: "RENEWAL", status: { notIn: ["VOID", "EXPIRED"] } },
         orderBy: { createdAt: "desc" },
         take: 1,
-        select: { id: true, status: true, invoiceId: true, signedAt: true },
+        select: { id: true, status: true, invoiceId: true, signedAt: true, createdAt: true },
       },
     },
     orderBy: { updatedAt: "desc" },
@@ -272,7 +274,7 @@ export async function getRenewalForecasts(now = new Date()) {
         lessonsRemaining,
         expiryDays,
       });
-      if (!riskLevel) return null;
+      if (!riskLevel && !includeSafe) return null;
 
       const primaryLink = pkg.student.parentLinks[0] ?? null;
       const cohort = renewalCohortForSourceName(pkg.student.sourceChannel?.name);
@@ -291,7 +293,7 @@ export async function getRenewalForecasts(now = new Date()) {
         sourceLabel: pkg.student.sourceChannel?.name || "未设置来源",
         courseName: pkg.course.name,
         type: pkg.type,
-        riskLevel,
+        riskLevel: riskLevel ?? "RESOLVED" as RenewalRiskLevel,
         remainingMinutes: remainingMinutes ?? 0,
         scheduledMinutes,
         recentWeeklyMinutes,
@@ -315,7 +317,7 @@ export async function getRenewalForecasts(now = new Date()) {
             : buildParentMessage({
                 studentName: pkg.student.name,
                 courseName: pkg.course.name,
-                riskLevel,
+                riskLevel: riskLevel ?? "RESOLVED",
                 remainingMinutes,
                 lessonsRemaining,
                 expectedDepletionAt,
@@ -323,6 +325,7 @@ export async function getRenewalForecasts(now = new Date()) {
               }),
         workflowStatus,
         contractId: latestRenewalContract?.id ?? null,
+        contractCreatedAt: latestRenewalContract?.createdAt ?? null,
         invoiceId: latestRenewalContract?.invoiceId ?? null,
       };
     })
@@ -332,11 +335,13 @@ export async function getRenewalForecasts(now = new Date()) {
 
 export async function syncRenewalTasks(actor?: RenewalActor) {
   const now = new Date();
-  const forecasts = await getRenewalForecasts(now);
+  const snapshots = await getRenewalForecasts(now, true);
+  const snapshotByPackage = new Map(snapshots.map(row => [row.packageId, row]));
+  const forecasts = snapshots.filter(row => row.riskLevel !== "RESOLVED");
   const forecastByPackage = new Map(forecasts.map((row) => [row.packageId, row]));
   const openTasks = await prisma.renewalTask.findMany({
     where: { completedAt: null },
-    select: { id: true, packageId: true, status: true, remainingMinutes: true },
+    select: { id: true, packageId: true, status: true, remainingMinutes: true, updatedAt: true, createdAt: true, contractId: true, note: true },
   });
   const recentCompletedTasks = await prisma.renewalTask.findMany({
     where: {
@@ -387,14 +392,14 @@ export async function syncRenewalTasks(actor?: RenewalActor) {
       const canAdvanceFromSigned =
         forecast.workflowStatus === "PAYMENT_PENDING" &&
         !["PAYMENT_CONFIRMED", "PACKAGE_ACTIVE", "NOT_RENEWING", "PAUSED_SPECIAL"].includes(current.status);
-      await prisma.renewalTask.update({
-        where: { id: current.id },
+      const changed = await prisma.renewalTask.updateMany({
+        where: { id: current.id, completedAt: null, updatedAt: current.updatedAt },
         data: {
           ...data,
           status: canAdvanceFromSigned ? "PAYMENT_PENDING" : canAdvanceFromContract ? "CONTRACT_BILLING" : undefined,
         },
       });
-      updated += 1;
+      updated += changed.count;
       continue;
     }
     try {
@@ -423,35 +428,69 @@ export async function syncRenewalTasks(actor?: RenewalActor) {
   const sourcePackages = openTasks.length
     ? await prisma.coursePackage.findMany({
         where: { id: { in: openTasks.map((task) => task.packageId) } },
-        select: { id: true, status: true },
+        select: { id: true, status: true, remainingMinutes: true, validTo: true },
       })
     : [];
-  const sourcePackageStatus = new Map(sourcePackages.map((row) => [row.id, row.status]));
+  const sourcePackageById = new Map(sourcePackages.map((row) => [row.id, row]));
   for (const task of openTasks) {
     if (forecastByPackage.has(task.packageId)) continue;
-    const packageStillActive = sourcePackageStatus.get(task.packageId) === "ACTIVE";
-    await prisma.renewalTask.update({
-      where: { id: task.id },
-      data: {
-        status: packageStillActive ? "PACKAGE_ACTIVE" : "PAUSED_SPECIAL",
-        completedAt: now,
-        completedByUserId: actor?.id ?? null,
-        completedByName: actor?.name || "System renewal scan",
-        note: packageStillActive
-          ? "系统检测到课包已补充或风险已解除，自动完成。"
-          : "系统检测到原课包已暂停、过期或停用，结束本轮续费提醒。",
-        snoozedUntil: packageStillActive ? endOfDayFromNow(30) : endOfDayFromNow(90),
-      },
+    const sourcePackage = sourcePackageById.get(task.packageId);
+    const snapshot = snapshotByPackage.get(task.packageId);
+    const hasCurrentRenewalContract = Boolean(snapshot?.contractId &&
+      (snapshot.contractId === task.contractId || (snapshot.contractCreatedAt && snapshot.contractCreatedAt >= task.createdAt)));
+    const currentRiskData = snapshot ? {
+      riskLevel: snapshot.riskLevel, remainingMinutes: snapshot.remainingMinutes,
+      scheduledMinutes: snapshot.scheduledMinutes, recentWeeklyMinutes: snapshot.recentWeeklyMinutes,
+      lessonsRemaining: snapshot.lessonsRemaining, expectedDepletionAt: snapshot.expectedDepletionAt,
+      packageValidTo: snapshot.validTo,
+    } : sourcePackage ? {
+      riskLevel: sourcePackage.status === "ACTIVE" ? "RESOLVED" : "INACTIVE",
+      remainingMinutes: sourcePackage.remainingMinutes ?? 0, packageValidTo: sourcePackage.validTo,
+      lessonsRemaining: null, expectedDepletionAt: null,
+    } : null;
+    const resolution = automaticRenewalResolution(task.status, sourcePackage?.status, hasCurrentRenewalContract);
+    if (!resolution) {
+      if (currentRiskData) {
+        const changed = await prisma.renewalTask.updateMany({
+          where: { id: task.id, completedAt: null, updatedAt: task.updatedAt },
+          data: { ...currentRiskData, ...(hasCurrentRenewalContract && snapshot &&
+            ["PENDING_CONTACT", "PARENT_NOTIFIED", "PARENT_CONSIDERING", "RENEWAL_CONFIRMED"].includes(task.status) ? {
+              status: snapshot.workflowStatus, contractId: snapshot.contractId, invoiceId: snapshot.invoiceId,
+            } : {}) },
+        });
+        updated += changed.count;
+      }
+      continue;
+    }
+    const changed = await prisma.$transaction(async tx => {
+      const changed = await tx.renewalTask.updateMany({
+        where: { id: task.id, completedAt: null, updatedAt: task.updatedAt },
+        data: {
+          ...currentRiskData,
+          status: resolution.status,
+          completedAt: now,
+          completedByUserId: actor?.id ?? null,
+          completedByName: actor?.name || "System renewal scan",
+          note: [task.note, resolution.note].filter(Boolean).join("\n"),
+          nextFollowUpAt: null,
+          snoozedUntil: resolution.snoozeDays == null ? null : endOfDayFromNow(resolution.snoozeDays),
+        },
+      });
+      if (!changed.count) return 0;
+      await tx.auditLog.create({ data: {
+        actorEmail: actor?.email || "system@bosseducation.sg",
+        actorName: actor?.name || "System renewal scan",
+        actorRole: actor?.role || "SYSTEM",
+        module: "RENEWAL",
+        action: "AUTO_RESOLVE_RENEWAL_TASK",
+        entityType: "RenewalTask",
+        entityId: task.id,
+        meta: { packageId: task.packageId, previousStatus: task.status, status: resolution.status,
+          previousRemainingMinutes: task.remainingMinutes, renewalVerified: false },
+      } });
+      return changed.count;
     });
-    resolved += 1;
-    await logAudit({
-      actor: actor?.email ? actor : { email: "system@bosseducation.sg", name: "System renewal scan", role: "SYSTEM" },
-      module: "RENEWAL",
-      action: "AUTO_RESOLVE_RENEWAL_TASK",
-      entityType: "RenewalTask",
-      entityId: task.id,
-      meta: { packageId: task.packageId, previousRemainingMinutes: task.remainingMinutes },
-    });
+    resolved += changed;
   }
   return { forecasts, created, updated, resolved };
 }
@@ -540,22 +579,23 @@ export async function updateRenewalTask(input: {
   contractId?: string;
   invoiceId?: string;
   activatedPackageId?: string;
-}) {
+}, options?: { legacyMiniapp?: boolean }) {
   const task = await prisma.renewalTask.findUnique({
     where: { id: input.id },
     include: { student: { select: { sourceChannel: { select: { name: true } } } } },
   });
   if (!task) throw new Error("Renewal task not found");
   const cohort = renewalCohortForSourceName(task.student.sourceChannel?.name);
-  const status = String(input.status ?? task.status);
+  const status = canonicalRenewalStatus(task.status, String(input.status ?? task.status), options?.legacyMiniapp);
   if (!RENEWAL_STATUS_LABELS[status]) throw new Error("Invalid renewal status");
+  assertRiskResolutionTransition(task.status, status);
   if (input.actor.operationsAdmin && !canOperationsAdminSetRenewalStatus(task.status, status)) {
     throw new Error("财务续费阶段只能由财务或管理人员更新");
   }
   if (status === "PARENT_NOTIFIED" && !task.evidenceUrl) {
     throw new Error(cohort === "XDF" ? "请先上传对接群发送截图，再确认已通知新东方" : "请先上传微信群发送截图，再确认已提醒家长");
   }
-  const completed = ["PACKAGE_ACTIVE", "NOT_RENEWING", "PAUSED_SPECIAL"].includes(status);
+  const completed = ["PACKAGE_ACTIVE", "NOT_RENEWING", "PAUSED_SPECIAL", RISK_RESOLVED].includes(status);
   const nextFollowUpAt = input.nextFollowUpAt ? new Date(input.nextFollowUpAt) : null;
   if (input.nextFollowUpAt && Number.isNaN(nextFollowUpAt?.getTime())) throw new Error("Invalid follow-up time");
   const ownerName = String(input.ownerName ?? task.ownerName ?? "").trim().slice(0, 100);
@@ -563,7 +603,7 @@ export async function updateRenewalTask(input: {
     ? await prisma.user.findFirst({ where: { name: { equals: ownerName, mode: "insensitive" } }, select: { id: true, name: true } })
     : null;
   const updated = await prisma.renewalTask.update({
-    where: { id: task.id },
+    where: { id: task.id, updatedAt: task.updatedAt },
     data: {
       status,
       ownerUserId: owner?.id ?? task.ownerUserId,
@@ -577,15 +617,20 @@ export async function updateRenewalTask(input: {
       invoiceId: input.invoiceId?.trim().slice(0, 100) || task.invoiceId,
       paymentConfirmedAt: status === "PAYMENT_CONFIRMED" && !task.paymentConfirmedAt ? new Date() : task.paymentConfirmedAt,
       activatedPackageId: input.activatedPackageId?.trim().slice(0, 100) || task.activatedPackageId,
-      completedAt: completed ? new Date() : null,
-      completedByUserId: completed ? input.actor.id ?? null : null,
-      completedByName: completed ? input.actor.name || input.actor.email || null : null,
-      snoozedUntil: completed
+      completedAt: status === RISK_RESOLVED ? task.completedAt : completed ? new Date() : null,
+      completedByUserId: status === RISK_RESOLVED ? task.completedByUserId : completed ? input.actor.id ?? null : null,
+      completedByName: status === RISK_RESOLVED ? task.completedByName : completed ? input.actor.name || input.actor.email || null : null,
+      snoozedUntil: status === RISK_RESOLVED ? null : completed
         ? task.packageValidTo && task.packageValidTo > new Date()
           ? task.packageValidTo
           : endOfDayFromNow(status === "PACKAGE_ACTIVE" ? 30 : 90)
         : null,
     },
+  }).catch((error: unknown) => {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      throw new Error("This renewal task changed. Refresh and review before saving. / 续费任务已变化，请刷新核对后再保存。");
+    }
+    throw error;
   });
   await logAudit({
     actor: input.actor,
