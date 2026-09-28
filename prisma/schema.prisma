@@ -3769,6 +3769,7 @@ model SalesEvidenceAssignment {
   id             String   @id @default(uuid())
   kind           String
   documentId     String
+  sourceFingerprint String?
   leadId         String
   relationshipId String
   studentId      String

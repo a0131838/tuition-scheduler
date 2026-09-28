@@ -2,7 +2,7 @@ import {Prisma} from '@prisma/client';
 import {prisma} from './prisma';
 import type {RelationshipActor} from './sales-relationship-policy';
 import {assertSalesEvidenceAccess,evaluateContractEvidence,summarizeContractEvidence} from './sales-evidence-policy';
-const contractSelect={id:true,studentId:true,packageId:true,status:true,signedAt:true,voidedAt:true,createdAt:true,updatedAt:true,invoiceNo:true} satisfies Prisma.StudentContractSelect;
+const contractSelect={id:true,studentId:true,packageId:true,status:true,signedAt:true,voidedAt:true,createdAt:true,updatedAt:true,invoiceNo:true,invoiceId:true} satisfies Prisma.StudentContractSelect;
 const leadSelect={id:true,relationshipId:true,convertedStudentId:true,recordKind:true,relationshipLinkedAt:true,leadNo:true,studentName:true} satisfies Prisma.LeadSelect;
 export type SalesEvidenceInput={action:'ATTACH'|'REVOKE';leadId:string;documentId?:string;assignmentId?:string;expectedUpdatedAt:string;sourceUpdatedAt?:string;reviewNote:string};
 export async function mutateSalesEvidenceInTransaction(tx:Prisma.TransactionClient,actor:RelationshipActor,input:SalesEvidenceInput) {
@@ -28,6 +28,7 @@ export async function mutateSalesEvidenceInTransaction(tx:Prisma.TransactionClie
     const source=await tx.studentContract.findUnique({where:{id:documentId},select:contractSelect});
     if(!source||source.studentId!==lead.convertedStudentId)throw new Error('Contract does not belong to this student / 合同不属于该学生');
     if(source.updatedAt.toISOString()!==input.sourceUpdatedAt)throw new Error('Contract changed; reload and review its current state / 合同已更新，请刷新并核对当前状态');
+    if(source.invoiceId){const invoiceOwner=await tx.salesEvidenceAssignment.findUnique({where:{kind_documentId:{kind:'PARENT_INVOICE',documentId:source.invoiceId}}});if(invoiceOwner?.status==='ACTIVE'&&invoiceOwner.leadId!==lead.id)throw new Error('Linked invoice is attributed to another lead; review that attribution first / 关联发票已归属其他商机，请先核对原归属');}
     const data={kind:'CONTRACT',documentId,leadId:lead.id,relationshipId:lead.relationshipId,studentId:lead.convertedStudentId,leadRelationshipLinkedAt:lead.relationshipLinkedAt,status:'ACTIVE',reviewNote:note,reviewedBy:actor.email};
     const result=evaluateContractEvidence(data,lead,source);
     if(result.state==='REVIEW'||result.state==='INACTIVE')throw new Error(`${result.en} / ${result.zh}`);
@@ -50,7 +51,8 @@ export async function readSalesContractEvidence(actor:RelationshipActor,scope:{l
   const assignments=await prisma.salesEvidenceAssignment.findMany({where:{...scope,kind:'CONTRACT'},include:{lead:{select:leadSelect}},orderBy:{updatedAt:'desc'}});
   const sources=await prisma.studentContract.findMany({where:{id:{in:assignments.map(a=>a.documentId)}},select:contractSelect});
   const byId=new Map(sources.map(s=>[s.id,s]));
-  const rows=assignments.map(a=>({...a,source:byId.get(a.documentId)??null,...evaluateContractEvidence(a,a.lead,byId.get(a.documentId)??null)}));
+  const invoiceOwners=await prisma.salesEvidenceAssignment.findMany({where:{kind:'PARENT_INVOICE',status:'ACTIVE',documentId:{in:sources.flatMap(s=>s.invoiceId?[s.invoiceId]:[])}},select:{documentId:true,leadId:true}});
+  const rows=assignments.map(a=>{const source=byId.get(a.documentId)??null;const evaluated=evaluateContractEvidence(a,a.lead,source);return {...a,source,...(a.status==='ACTIVE'&&source?.invoiceId&&invoiceOwners.some(i=>i.documentId===source.invoiceId&&i.leadId!==a.leadId)?{state:'REVIEW' as const,en:'Linked invoice is attributed to another lead',zh:'关联发票已归属其他商机'}:evaluated)};});
   return {rows,summary:summarizeContractEvidence(rows)};
 }
 export async function listSalesContractCandidates(actor:RelationshipActor,leadId:string) {
@@ -59,5 +61,6 @@ export async function listSalesContractCandidates(actor:RelationshipActor,leadId
   if(!lead.convertedStudentId||!lead.relationshipId||lead.recordKind!=='STUDENT')return [];
   const sources=await prisma.studentContract.findMany({where:{studentId:lead.convertedStudentId},select:contractSelect,orderBy:{createdAt:'desc'},take:100});
   const existing=await prisma.salesEvidenceAssignment.findMany({where:{kind:'CONTRACT',documentId:{in:sources.map(s=>s.id)},status:'ACTIVE'},select:{documentId:true,leadId:true}});
-  return sources.map(source=>({...source,assignedElsewhere:existing.some(a=>a.documentId===source.id&&a.leadId!==lead.id),...evaluateContractEvidence({kind:'CONTRACT',documentId:source.id,leadId,relationshipId:lead.relationshipId!,studentId:lead.convertedStudentId!,status:'ACTIVE',leadRelationshipLinkedAt:lead.relationshipLinkedAt},lead,source)}));
+  const invoiceOwners=await prisma.salesEvidenceAssignment.findMany({where:{kind:'PARENT_INVOICE',status:'ACTIVE',documentId:{in:sources.flatMap(s=>s.invoiceId?[s.invoiceId]:[])}},select:{documentId:true,leadId:true}});
+  return sources.map(source=>({...source,assignedElsewhere:existing.some(a=>a.documentId===source.id&&a.leadId!==lead.id)||invoiceOwners.some(i=>i.documentId===source.invoiceId&&i.leadId!==lead.id),...evaluateContractEvidence({kind:'CONTRACT',documentId:source.id,leadId,relationshipId:lead.relationshipId!,studentId:lead.convertedStudentId!,status:'ACTIVE',leadRelationshipLinkedAt:lead.relationshipLinkedAt},lead,source)}));
 }

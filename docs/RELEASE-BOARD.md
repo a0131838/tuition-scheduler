@@ -1,4 +1,22 @@
 # RELEASE BOARD
+## 2026-09-28-r422
+
+- Release ID: `2026-09-28-r422`
+- Date/Time (Asia/Singapore): `2026-09-28`
+- Deployment status: `READY`; guarded release proof is maintained in the execution ledger.
+- Problem: a signed contract or a Won deal cannot prove collected money. Parent invoices and approved receipts were not explicitly attributed to referral relationships; legacy readers silently replace malformed amounts, and a contract and its invoice could otherwise be attributed to different leads.
+- Change: exact parent-invoice attribution requires the linked student, verified package ownership, current invoice fingerprint and written referral evidence. Unique document ownership, serializable lead/billing locks, current source checks and atomic audits protect retries, conflicts and reversals. A changed invoice or lead relationship returns to REVIEW; deleted/revoked evidence is excluded. Contract and invoice attribution reject competing lead ownership in both directions, including simultaneous attempts and current read-time contradictions.
+- Financial truth: strict raw billing/approval parsing, finite integer-cent amounts, duplicate IDs, exact receipt student/package scope and existing finance approver rules. Only currently approved, non-rejected receipt amounts count; pending/rejected receipts are separately counted. Missing or malformed evidence yields REVIEW, not an invented zero. These are approved receipt amounts, not net revenue after refunds. No invoice, receipt, approval, package, ledger or source contract is changed by attribution/revocation.
+- UI/access: collapsed parent invoice/receipt sections on lead and relationship pages, exact invoice selection and original billing links, ZH/EN/BILINGUAL review/revocation/result messages. Existing unrestricted ADMIN financial scope; no financial IDs, notes or totals serialized to SALES/CS/operations administrators. Observers read only; finance/teacher resource restrictions preserved.
+- Validation:10 focused policy tests,181 backend tests,full TypeScript and260-page production build. Isolated service tests cover partial/pending/rejected receipts, malformed/duplicate financial evidence, changed-invoice rereview, shared ownership, unique/concurrent attribution, cross-contract/invoice races, audit rollback, source preservation and live conflict detection. Seven-role authenticated HTTP checks visibility and observer boundaries. Browser EN attributed SGD109 invoice with SGD50 approved receipts, ZH revoked attribution only, BILINGUAL relationship view retained revocation history and excluded its totals. Exactly one browser attach/one revoke audit; source invoice, receipt and Contacted pipeline unchanged; console clean.
+- Investigation: read-only production check found62 parent invoices,valid receipt amounts and approver arrays,zero existing attributions. One historical invoice RGT-202605-0003 has amount163.20, GST0 and total4896; the current workflow defaults total to amount+GST, so this historical amount basis remains REVIEW rather than guessing or rewriting it. No production business test records.
+- Migration: nullable sourceFingerprint on SalesEvidenceAssignment, one additive migration (137 isolated migrations total). Existing contract evidence remains compatible; retain schema/data on application rollback.
+- Remaining: partner invoice/credit-note attribution (including manual/consolidated records that require review), relationship comparisons and remaining phase2 acceptance; phases3–10 continue. This release is not overall completion.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `85b2ec34f9308b55bc021bb11251f62b4ef914b9` (r421).
+
+---
+
 ## 2026-09-28-r421
 
 - Release ID: `2026-09-28-r421`
@@ -278,7 +296,7 @@
 ---
 
 
-- Current release line on this branch: `2026-09-28-r421`, ready for guarded release of reviewed contract attribution. Phase2 invoice/receipt attribution remains in progress; no Mini Program client release.
+- Current release line on this branch: `2026-09-28-r422`, ready for guarded release of reviewed parent invoice/receipt attribution. Phase2 partner attribution and comparison acceptance remain in progress; no Mini Program client release.
 
 ## 2026-09-09-r404 Ready
 

@@ -1,3 +1,4 @@
+import SalesInvoiceEvidencePanel from '@/app/admin/relationships/SalesInvoiceEvidencePanel';
 import SalesContractEvidencePanel from '@/app/admin/relationships/SalesContractEvidencePanel';
 import { isOwnerManager, requireResourceAdmin, requireResourceUser } from "@/lib/auth";
 import LeadRelationshipPanel from "@/app/admin/relationships/LeadRelationshipPanel";
@@ -348,7 +349,7 @@ export default async function LeadDetailPage({
   const canManageResource = canManageResourceWorkspaceRole(adminUser.role);
   const canUseOpsHandoff = canUseResourceOpsHandoffRole(adminUser.role) || adminUser.operationsAdmin;
   const banner =
-    sp?.ok === "evidence-saved" ? t(lang,"Contract attribution reviewed and saved.","合同归属已核对保存。")
+    sp?.ok === "evidence-saved" ? t(lang,"Evidence attribution reviewed and saved.","凭据归属已核对保存。")
     : sp?.ok === "relationship-linked" ? t(lang,"Relationship link reviewed and saved.","关系关联已核对保存。")
     : sp?.ok === "created" ? t(lang, "Resource created.", "资源已创建。")
     : sp?.ok === "followup" ? t(lang, "Follow-up saved.", "跟进已保存。")
@@ -368,6 +369,7 @@ export default async function LeadDetailPage({
       {error ? <div style={{ color: "#991b1b", background: "#fee2e2", border: "1px solid #fecaca", borderRadius: 8, padding: 10 }}>{error}</div> : null}
       <LeadRelationshipPanel lead={lead} lang={lang}/>
       <SalesContractEvidencePanel actor={adminUser} lang={lang} scope={{leadId:lead.id}} lead={lead}/>
+      <SalesInvoiceEvidencePanel actor={adminUser} lang={lang} scope={{leadId:lead.id}} lead={lead}/>
 
       <section style={{ border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 12, padding: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
