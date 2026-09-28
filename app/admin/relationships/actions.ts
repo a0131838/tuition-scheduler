@@ -31,3 +31,19 @@ export async function linkLeadStudentAction(formData:FormData){
   return `/admin/leads/${encodeURIComponent(leadId)}?err=${encodeURIComponent(message)}`;
  }
 }
+
+export async function saveSalesEvidenceAction(formData:FormData){
+ const actor=await requireResourceAdmin(),lang=await getLang(),leadId=String(formData.get('leadId')??'');
+ try{
+  const {mutateSalesEvidence}=await import('@/lib/sales-evidence');
+  const action=String(formData.get('action')??'');if(action!=='ATTACH'&&action!=='REVOKE')throw new Error('Invalid attribution action / 归属操作无效');
+  const selection=String(formData.get('contract')??'').split('|');
+  await mutateSalesEvidence(actor,{action,leadId,documentId:selection[0],sourceUpdatedAt:selection[1],assignmentId:String(formData.get('assignmentId')??''),expectedUpdatedAt:String(formData.get('expectedUpdatedAt')??''),reviewNote:String(formData.get('reviewNote')??'')});
+  revalidatePath('/admin/relationships','layout');revalidatePath(`/admin/leads/${leadId}`);
+  return `/admin/leads/${encodeURIComponent(leadId)}?ok=evidence-saved`;
+ }catch(error){
+  const safe=error instanceof Error&&!(error instanceof Prisma.PrismaClientKnownRequestError)&&error.message.includes(' / ')?error.message.split(' / '):null;
+  const message=safe?t(lang,safe[0],safe.slice(1).join(' / ')):t(lang,'Unable to save attribution. Reload and review the record.','未能保存归属，请刷新并核对记录。');
+  return `/admin/leads/${encodeURIComponent(leadId)}?err=${encodeURIComponent(message)}`;
+ }
+}

@@ -3576,6 +3576,7 @@ model LeadDailyCounter {
 }
 
 model Lead {
+  salesEvidence            SalesEvidenceAssignment[]
   id                       String    @id @default(uuid())
   relationshipId           String?
   recordKind               String    @default("UNREVIEWED")
@@ -3705,6 +3706,7 @@ model LeadAssessmentRequest {
 
 
 model SalesRelationship {
+  salesEvidence SalesEvidenceAssignment[]
   id            String   @id @default(uuid())
   name          String
   kind          String
@@ -3761,4 +3763,25 @@ model SalesRelationshipOpportunity {
 
   @@index([relationshipId, status])
   @@index([nextActionDue])
+}
+
+model SalesEvidenceAssignment {
+  id             String   @id @default(uuid())
+  kind           String
+  documentId     String
+  leadId         String
+  relationshipId String
+  studentId      String
+  leadRelationshipLinkedAt DateTime?
+  status         String   @default("ACTIVE")
+  reviewNote     String
+  reviewedBy     String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  lead           Lead @relation(fields: [leadId], references: [id], onDelete: Restrict)
+  relationship   SalesRelationship @relation(fields: [relationshipId], references: [id], onDelete: Restrict)
+
+  @@unique([kind, documentId])
+  @@index([relationshipId, status])
+  @@index([leadId, status])
 }

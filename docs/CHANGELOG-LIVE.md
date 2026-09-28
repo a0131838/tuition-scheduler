@@ -1,4 +1,22 @@
 # CHANGELOG LIVE
+## 2026-09-28-r421
+
+- Release ID: `2026-09-28-r421`
+- Date/Time (Asia/Singapore): `2026-09-28`
+- Deployment status: `READY`; guarded release evidence is recorded in the execution ledger.
+- Problem: linked students and Won deals do not prove which relationship generated a signed contract. Automatically counting all contracts for a student would attribute unrelated or historical business and could count the same contract twice.
+- Change: full administrators can explicitly attribute an exact student contract to a student opportunity with a written review basis, or revoke attribution without changing the contract. Unique document ownership, serializable source/lead locks, optimistic source/version checks and atomic before/after audits prevent conflicting or duplicate attribution. The reviewed relationship-link revision is preserved; relinking a lead makes its prior evidence pending review instead of silently moving it.
+- Evidence truth: signed count requires current SIGNED/INVOICE_CREATED status plus a signature date, excludes void/expired documents, and leaves conflicting/missing evidence pending review. Revocation retains history. Student handoff and sales status never constitute payment. Receipt attribution remains a separate pending phase2 item and is explicitly identified as unavailable in this panel.
+- UI/access: collapsed lead and relationship panels in ZH/EN/BILINGUAL, exact contract IDs and original contract-history links, manual review and soft revocation. Queries and writes are restricted to existing unrestricted ADMIN scope; SALES/CS/operations admins receive no contract evidence payload, FINANCE/teachers retain existing resource restrictions, observers read only.
+- Validation:16 focused tests,181 backend tests,full TypeScript and260-page build; isolated PostgreSQL tests cover exact student rejection, stale source/lead, concurrent document uniqueness, idempotence, forced transaction rollback, relationship moves and explicit rereview, revoke/reactivation, current void exclusion and unchanged contract/package/ledger/billing/approval snapshots during attribution. Seven-role authenticated HTTP verifies data visibility and read-only observer boundaries. Actual browser saved one attribution in English, revoked only attribution in Chinese, verified bilingual relationship history and unchanged signed source contract; one attach/one revoke audit, no console errors.
+- Production investigation: read-only aggregates show38 contracts (27 INVOICE_CREATED,1 SIGNED,7 VOID,2 CONTRACT_DRAFT,1 INTAKE_PENDING),zero signed statuses without signature dates,zero relationship profiles. No automatic history backfill or production business fixtures.
+- Migration: additive SalesEvidenceAssignment table and nullable relationship-link revision, two additive migrations (136 isolated migrations total). No business documents, permissions, money, lessons or balances are changed by migration. Keep additive schema/data if application code is rolled back.
+- Remaining: approved receipt/invoice attribution, relationship comparisons, remaining phase2 acceptance and phases3–10; not programme completion.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `011d685f7dc93ef040d2016d250afaec11dfb41e` (r420).
+
+---
+
 ## 2026-09-28-r420
 
 - Release ID: `2026-09-28-r420`
