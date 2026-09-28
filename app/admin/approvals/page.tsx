@@ -3,6 +3,7 @@ import { requireAdmin, getCurrentUser } from "@/lib/auth";
 import { getLang, t, type Lang } from "@/lib/i18n";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { getApprovalInboxData, type ApprovalInboxItem } from "@/lib/approval-inbox";
+import ApprovalCoverage from "./ApprovalCoverage";
 import { cookies } from "next/headers";
 import RememberedWorkbenchQueryClient from "../_components/RememberedWorkbenchQueryClient";
 import WorkbenchActionBanner from "../_components/WorkbenchActionBanner";
@@ -151,7 +152,7 @@ export default async function AdminApprovalsPage({
           ? t(lang, "Expense approvals only", "仅报销审批")
           : focus === "OVERDUE"
             ? t(lang, "Overdue items only", "仅超时项目")
-            : t(lang, "All open approvals", "全部待处理审批");
+            : t(lang, "All visible items in this inbox", "本中心全部可见待处理项");
   const approvalFocusTitle =
     overdueCount > 0 && focus === "ALL"
       ? t(lang, "Start with overdue items", "先处理超时项")
@@ -169,7 +170,7 @@ export default async function AdminApprovalsPage({
       ? t(lang, "Finance queue is the next likely stop", "下一步大概率先看财务审批")
       : expenseCount > 0
       ? t(lang, "Expense queue is the next likely stop", "下一步大概率先看报销审批")
-      : t(lang, "Approval desk is clear", "审批桌面当前很干净");
+      : t(lang, "No visible pending items in this inbox", "本中心暂无可见待处理项");
   const approvalFocusDetail =
     overdueCount > 0 && focus === "ALL"
       ? t(lang, "There are overdue items mixed into the full inbox, so clear those first before working normal waiting items.", "全部队列里已经混入超时项，建议先把超时的清掉，再处理普通等待项。")
@@ -278,14 +279,14 @@ export default async function AdminApprovalsPage({
         }}
       >
         <div style={{ fontSize: 12, fontWeight: 800, color: "#1d4ed8", letterSpacing: 0.3 }}>
-          {t(lang, "Unified Approval Desk", "统一审批工作台")}
+          {t(lang, "Approval work queues", "审批工作队列")}
         </div>
         <h1 style={{ margin: "6px 0 0" }}>{t(lang, "Approval Inbox", "审批提醒中心")}</h1>
         <div style={{ marginTop: 8, color: "#475569", maxWidth: 880, lineHeight: 1.5 }}>
           {t(
             lang,
-            "Use this as the triage desk: pick the next item here, then jump into the matching workflow only after you know why it matters.",
-            "把这里当成审批分诊台：先在这里决定下一条最该处理的项目，再跳进对应工作流。"
+            "Review pending items from the workflows listed below, then open their source page to act. Counts reflect this account’s visible queues; an empty inbox does not mean all business approvals are complete.",
+            "这里汇总下方已接入流程的待处理项，办理时进入原业务页面。数量只代表当前账号可见的队列；本中心为空不代表所有业务审批均已完成。"
           )}
         </div>
         <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -323,6 +324,8 @@ export default async function AdminApprovalsPage({
         </div>
       </section>
 
+      <ApprovalCoverage lang={lang} visibility={inbox.visibility} />
+
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
         {approvalSummaryCards.map((card) => (
           <div key={card.title} style={approvalSummaryCardStyle(card.background, card.border)}>
@@ -338,7 +341,7 @@ export default async function AdminApprovalsPage({
           tone="info"
           title={t(lang, "Resumed your last approval lane.", "已恢复你上次查看的审批道。")}
           description={t(lang, "Use the action on the right to return to the full inbox.", "如果要回到全部收件箱，可直接用右侧入口。")}
-          actions={[{ href: "/admin/approvals", label: t(lang, "Back to full inbox", "回到全部审批") }]}
+          actions={[{ href: "/admin/approvals?focus=all", nativeNavigation: true, label: t(lang, "Back to full inbox", "回到全部审批") }]}
         />
       ) : null}
 
@@ -357,27 +360,27 @@ export default async function AdminApprovalsPage({
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Link href="/admin/approvals" scroll={false} style={filterChip(focus === "ALL")}>
+          <a href="/admin/approvals?focus=all" style={filterChip(focus === "ALL")}>
             {t(lang, "All", "全部")} ({allCount})
-          </Link>
+          </a>
           {inbox.visibility.manager ? (
-            <Link href="/admin/approvals?focus=manager" scroll={false} style={filterChip(focus === "MANAGER")}>
+            <a href="/admin/approvals?focus=manager" style={filterChip(focus === "MANAGER")}>
               {t(lang, "Needs manager", "待管理审批")} ({managerCount})
-            </Link>
+            </a>
           ) : null}
           {inbox.visibility.finance ? (
-            <Link href="/admin/approvals?focus=finance" scroll={false} style={filterChip(focus === "FINANCE")}>
+            <a href="/admin/approvals?focus=finance" style={filterChip(focus === "FINANCE")}>
               {t(lang, "Needs finance", "待财务审批")} ({financeCount})
-            </Link>
+            </a>
           ) : null}
           {inbox.visibility.expense ? (
-            <Link href="/admin/approvals?focus=expense" scroll={false} style={filterChip(focus === "EXPENSE")}>
+            <a href="/admin/approvals?focus=expense" style={filterChip(focus === "EXPENSE")}>
               {t(lang, "Expense", "报销")} ({expenseCount})
-            </Link>
+            </a>
           ) : null}
-          <Link href="/admin/approvals?focus=overdue" scroll={false} style={filterChip(focus === "OVERDUE")}>
+          <a href="/admin/approvals?focus=overdue" style={filterChip(focus === "OVERDUE")}>
             {t(lang, "Overdue", "超时")} ({overdueCount})
-          </Link>
+          </a>
         </div>
       </section>
 
@@ -386,9 +389,9 @@ export default async function AdminApprovalsPage({
           <WorkbenchActionBanner
             tone="info"
             title={t(lang, "No approval items match the current filter.", "当前筛选下没有待审批项目。")}
-            description={t(lang, "Widen the inbox first, then jump back into the matching workflow only after you pick the next real blocking item.", "建议先放宽收件箱范围，再从真正阻塞的那一项跳回对应工作流。")}
+            description={t(lang, "Check the filter and coverage above. Drafts, rejected receipts and workflows outside this inbox must be reviewed on their source pages. Visibility here does not grant approval permission.", "请核对筛选条件和上方覆盖范围。草稿、已驳回收据及未接入本中心的流程，仍需在原业务页面查看；队列可见不等于具备审批权限。")}
             actions={[
-              { href: "/admin/approvals", label: t(lang, "Show all approvals", "查看全部审批"), emphasis: "primary" },
+              { href: "/admin/approvals?focus=all", nativeNavigation: true, label: t(lang, "Show this inbox", "查看本中心全部项目"), emphasis: "primary" },
               { href: "/admin", label: t(lang, "Back to dashboard", "返回总览") },
             ]}
           />
@@ -454,7 +457,7 @@ export default async function AdminApprovalsPage({
                 {item.riskText ? (
                   <WorkbenchStatusChip label={item.riskText} tone="error" />
                 ) : (
-                  <WorkbenchStatusChip label={t(lang, "No risk", "无风险")} tone="success" />
+                  <WorkbenchStatusChip label={t(lang, "No listed warning", "无已列警示")} tone="success" />
                 )}
               </div>
               <div style={{ fontWeight: 800, color: "#0f172a", whiteSpace: "nowrap" }}>

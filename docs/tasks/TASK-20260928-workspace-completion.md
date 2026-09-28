@@ -50,3 +50,14 @@ Published Mini Program clients have a fixed picker: their GET response uses PAUS
 Validation: 12 focused tests; isolated database UAT for concurrent scans, one audit, retained finance stages, newly signed/unpaid renewal, unchanged business packages/history, new shortage task, and legacy metadata updates; isolated HTTP Mini Program GET/PATCH and observer rejection. Build and browser language checks are recorded before release. Production verification remains a guarded release check only; no production scan is invoked as a test.
 
 Remaining phase 1: manual PAYMENT_CONFIRMED/PACKAGE_ACTIVE transitions still require actual receipt/entitlement evidence. Actual direct-customer invoices/receipts live in parent_billing_v1; approval status lives in parent_receipt_approval_v1 and uses getReceiptApprovalStatus. Signed renewal hours use PURCHASE ledger notes with student-contract-renewal-topup:<contractId>; signing itself can add hours before payment, so an active balance alone is not payment evidence. Preserve partner settlement terms rather than assuming every partner must prepay. The older date-time-local input also slices UTC text directly and needs correction with the language/UI pass.
+
+## r410 — Approval inbox coverage
+
+- Verified `lib/approval-inbox.ts`: only pending package invoice approvals, non-rejected pending parent/partner receipts, confirmed teacher payroll awaiting approval/finance/payout, and submitted expense claims are integrated. HR leave/payslips and partner settlement approval use separate sources.
+- Added a collapsed three-language coverage guide with current account visibility using existing server flags. No visibility or approval policy changes. Empty-state guidance explains missing drafts/rejections/out-of-scope workflows; “No risk” becomes “No listed warning”.
+- Fixed explicit all-inbox navigation (`focus=all`) so the saved focus cookie cannot silently keep the user in a previous lane after clicking All.
+- Local production build and browser verification are recorded in the external execution ledger. No production approval action is used for testing.
+- Overall phase 1 remains open: manual renewal payment/entitlement evidence, attendance-impact guidance, and cross-role regression are still required.
+
+- Final verification: complete 259-page production build passed (`/tmp/sgt-r410-build-final.log`); authenticated isolated browser passed ZH/EN/BILINGUAL coverage/empty-state display, collapsed guide, native manager→all navigation and remembered-manager→return-to-full-inbox navigation. No console errors observed. Language preference persistence was verified after reload; the existing client refresh inconsistency is retained for the broader UI pass.
+- Native navigation is opt-in for the two approval banners; every other shared banner retains its existing default. No new business records or approvals were created for this UI check.

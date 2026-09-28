@@ -7,6 +7,7 @@ export type WorkbenchActionLink = {
   href: string;
   label: string;
   emphasis?: "primary" | "secondary";
+  nativeNavigation?: boolean;
 };
 
 const toneStyles: Record<
@@ -75,7 +76,7 @@ function renderAction(link: WorkbenchActionLink, colors: (typeof toneStyles)[Wor
         color: colors.title,
       };
 
-  if (link.href.startsWith("/")) {
+  if (link.href.startsWith("/") && !link.nativeNavigation) {
     return (
       <Link key={`${link.href}:${link.label}`} href={link.href} scroll={false} style={style}>
         {link.label}

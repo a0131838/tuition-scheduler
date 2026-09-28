@@ -1,4 +1,21 @@
 # RELEASE BOARD
+## 2026-09-28-r410 Ready
+
+- Release ID: `2026-09-28-r410`
+- Date/Time (Asia/Singapore): `2026-09-28`
+- Deployment status: `READY` only after local verification and guarded release preflight.
+- Scope: approval inbox describes its five integrated sources and the current account’s existing queue visibility. HR leave, employee payroll and partner settlement approvals remain on their original pages and are explicitly outside the totals.
+- Correct meaning: an empty queue is not proof that all business approvals are complete; rejected receipts and unconfirmed drafts are not represented as approved. A row without a listed warning is no longer labelled “No risk”.
+- Navigation: “All” and return-to-full-inbox links explicitly use `focus=all`, so remembered lane filters no longer prevent returning to the full visible inbox. These filter links use native navigation after local browser testing reproduced a client-navigation stall; shared banner behavior changes only for this explicit opt-in.
+- Language: all new or revised text follows Chinese, English and bilingual preference. Coverage is collapsed by default to keep daily work focused.
+- Business boundary: no approval queries, permissions, counters, financial records, approval actions, database schema or Mini Program client changes. Coverage visibility reuses the existing server result and does not grant approval authority.
+- Verification evidence: see external execution ledger and task document for build/browser results and final local/GitHub/server commit, PM2 and HTTP verification.
+- Remaining: this closes the phase-1 coverage explanation item, not the overall remediation. Renewal manual financial evidence and attendance impact remain in progress.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `b4f72e17820817a1048be397e49ff54bdea0394b` (r409). No migration rollback.
+
+---
+
 ## 2026-09-28-r409 Ready
 
 - Release ID: `2026-09-28-r409`
