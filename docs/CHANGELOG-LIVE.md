@@ -1,4 +1,19 @@
 # CHANGELOG LIVE
+## 2026-09-28-r413
+
+- Release ID: `2026-09-28-r413`
+- Date/Time (Asia/Singapore): `2026-09-28`
+- Deployment status: `READY` after local verification; guarded release evidence is external.
+- Problem: a subsequent renewal risk scan could overwrite staff-selected invoice/contract links with a later forecast contract, disconnecting a payment confirmation from the evidence actually reviewed.
+- Change: scans retain explicit invoice links and verified-payment links. A linked contract can acquire its own newly issued invoice, but cannot acquire an invoice from a different contract. Both the shortage and safe-hours scan paths share this rule. Unlinked tasks still discover new renewal contracts as before.
+- Validation: two new link-policy tests, existing risk/payment regression and isolated concurrent-scan UAT including selected manual invoices in shortage and safe-hours states. Full build evidence is recorded before deployment.
+- Boundary: no schema, interface, permission, receipt, contract or package-ledger changes. No production scans or business writes used as tests. Existing language modes and Mini Program compatibility are unchanged.
+- Remaining: phase1 entitlement activation evidence and attendance impact, then later programme phases. This is not overall completion.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `4099f94cb0a52b2ad768bfdbaec824d03a5e6ef1` (r412). No migration rollback.
+
+---
+
 ## 2026-09-28-r412
 
 - Release ID: `2026-09-28-r412`

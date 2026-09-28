@@ -30,6 +30,14 @@ async function main() {
   const template = await prisma.contractTemplate.create({ data: { name: "UAT only", slug: `renewal-risk-${suffix}`, version: 1, bodyHtml: "UAT only" } });
   await prisma.studentContract.create({ data: { studentId: student.id, packageId: signedDuringRisk.pkg.id, templateId: template.id,
     flowType: "RENEWAL", status: "SIGNED", signedAt: new Date(), intakeToken: `uat-renewal-${suffix}` } });
+  const selectedInvoice = "uat-manual-invoice-" + suffix;
+  await prisma.renewalTask.update({ where: { id: committed[2].task.id }, data: { invoiceId: selectedInvoice } });
+  // The low-balance forecast branch must preserve an explicit invoice too.
+  const linkedRisk = await fixture("PAYMENT_PENDING");
+  await prisma.coursePackage.update({ where: { id: linkedRisk.pkg.id }, data: { remainingMinutes: 60 } });
+  await prisma.renewalTask.update({ where: { id: linkedRisk.task.id }, data: { invoiceId: selectedInvoice + "-risk" } });
+  await prisma.studentContract.create({ data: { studentId: student.id, packageId: linkedRisk.pkg.id, templateId: template.id,
+    flowType: "RENEWAL", status: "SIGNED", signedAt: new Date(), invoiceId: selectedInvoice + "-other", intakeToken: `uat-renewal-link-${suffix}` } });
   await prisma.renewalTask.update({ where: { id: historical.task.id }, data: { completedAt: new Date("2026-08-01") } });
   const historicalBefore = await prisma.renewalTask.findUniqueOrThrow({ where: { id: historical.task.id } });
   const businessBefore = await prisma.coursePackage.findMany({ where: { studentId: student.id }, orderBy: { id: "asc" } });
@@ -57,6 +65,10 @@ async function main() {
     assert.equal(after.remainingMinutes, 6000);
     assert.equal(after.riskLevel, "RESOLVED");
   }
+  assert.equal((await prisma.renewalTask.findUniqueOrThrow({ where: { id: committed[2].task.id } })).invoiceId, selectedInvoice);
+  const linkedRiskAfter = await prisma.renewalTask.findUniqueOrThrow({ where: { id: linkedRisk.task.id } });
+  assert.equal(linkedRiskAfter.invoiceId, selectedInvoice + "-risk");
+  assert.equal(linkedRiskAfter.contractId, null);
   assert.deepEqual(await prisma.coursePackage.findMany({ where: { studentId: student.id }, orderBy: { id: "asc" } }), businessBefore);
   assert.deepEqual(await prisma.renewalTask.findUniqueOrThrow({ where: { id: historical.task.id } }), historicalBefore);
   await assert.rejects(updateRenewalTask({ id: resolved.id, actor: user, status: "PENDING_CONTACT" }), /保留历史/);

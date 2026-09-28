@@ -5,7 +5,7 @@ import { logAudit } from "@/lib/audit-log";
 import { formatBusinessDateOnly } from "@/lib/date-only";
 import { LEGACY_XDF_SOURCE_CHANNEL_NAME } from "@/lib/partners";
 import { prisma } from "@/lib/prisma";
-import { automaticRenewalResolution, assertRiskResolutionTransition, canonicalRenewalStatus, renewalRiskResolutionLabel, RISK_RESOLVED } from "./renewal-auto-resolution";
+import { renewalLinksForScan, automaticRenewalResolution, assertRiskResolutionTransition, canonicalRenewalStatus, renewalRiskResolutionLabel, RISK_RESOLVED } from "./renewal-auto-resolution";
 
 export const RENEWAL_OPEN_STATUSES = [
   "PENDING_CONTACT",
@@ -343,7 +343,7 @@ export async function syncRenewalTasks(actor?: RenewalActor) {
   const forecastByPackage = new Map(forecasts.map((row) => [row.packageId, row]));
   const openTasks = await prisma.renewalTask.findMany({
     where: { completedAt: null },
-    select: { id: true, packageId: true, status: true, remainingMinutes: true, updatedAt: true, createdAt: true, contractId: true, note: true },
+    select: { id: true, packageId: true, status: true, remainingMinutes: true, updatedAt: true, createdAt: true, contractId: true, invoiceId: true, paymentConfirmedAt: true, note: true },
   });
   const recentCompletedTasks = await prisma.renewalTask.findMany({
     where: {
@@ -383,8 +383,7 @@ export async function syncRenewalTasks(actor?: RenewalActor) {
       ownerName: current ? undefined : owner?.name ?? forecast.ownerName,
       parentWechatGroupName: forecast.parentWechatGroupName,
       parentMessage: forecast.parentMessage,
-      contractId: forecast.contractId,
-      invoiceId: forecast.invoiceId,
+      ...renewalLinksForScan(current, forecast),
       nextFollowUpAt: current ? undefined : endOfDayFromNow(forecast.riskLevel === "YELLOW" ? 3 : forecast.riskLevel === "ORANGE" ? 2 : 1),
     };
     if (current) {
@@ -457,7 +456,7 @@ export async function syncRenewalTasks(actor?: RenewalActor) {
           where: { id: task.id, completedAt: null, updatedAt: task.updatedAt },
           data: { ...currentRiskData, ...(hasCurrentRenewalContract && snapshot &&
             ["PENDING_CONTACT", "PARENT_NOTIFIED", "PARENT_CONSIDERING", "RENEWAL_CONFIRMED"].includes(task.status) ? {
-              status: snapshot.workflowStatus, contractId: snapshot.contractId, invoiceId: snapshot.invoiceId,
+              status: snapshot.workflowStatus, ...renewalLinksForScan(task, snapshot),
             } : {}) },
         });
         updated += changed.count;

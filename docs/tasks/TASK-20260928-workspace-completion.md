@@ -84,3 +84,11 @@ Validation: 17 focused policy/renewal tests and 181 backend tests passed. Guarde
 Remaining: actual new-purchase/renewal entitlement evidence (hours vs monthly validity), attendance impact and all later programme phases. This payment checkpoint must not be described as verified entitlement activation or overall completion.
 
 Final r412 local verification: 259-page build passed (`/tmp/sgt-r412-build-final.log`); focused 17/17 and backend 181/181 pass. Isolated payment HTTP UAT (`/tmp/sgt-r412-http.log`) and renewal risk/observer Mini Program regression (`/tmp/sgt-r412-risk-http.log`) pass. Authenticated browser checked EN/ZH/BILINGUAL collapsed/expanded payment evidence, invoice selection, approved totals and historical review field. Web save rejected an older invoice without review; after explicit review it saved PAYMENT_CONFIRMED with an audit. Browser error log empty; bilingual layout inspected. Existing language selector still needs a native reload to consistently refresh all server-rendered content; that pre-existing UI issue remains on the programme ledger.
+
+## r413 — Keep the reviewed invoice through later risk scans
+
+Inspection of the next entitlement checkpoint found that the forecast refresh still assigned latest contract/invoice IDs over existing task selections. Scans now preserve an explicit invoice or verified-payment link, including a manual invoice without a contract. A currently linked contract may gain its subsequently issued invoice only when the forecast contract ID matches. Unlinked tasks still discover contracts. The same policy applies to shortage and safe-hours scan paths.
+
+Validation includes pure linkage cases and isolated PostgreSQL concurrent scans proving that manual selections survive both paths. The test also proves discovery still works for a newly signed contract on an unlinked task. No production scan is triggered during acceptance. Entitlement activation evidence remains the next phase1 item.
+
+Final r413 local validation: 19 focused tests, isolated concurrent risk-scan UAT, complete payment evidence UAT, 259-page build and existing legacy Mini Program/observer HTTP regression passed. Logs: `/tmp/sgt-r413-focused.log`, `/tmp/sgt-r413-uat.log`, `/tmp/sgt-r413-payment-uat.log`, `/tmp/sgt-r413-build.log`, `/tmp/sgt-r413-http.log`. No UI changes in this checkpoint.

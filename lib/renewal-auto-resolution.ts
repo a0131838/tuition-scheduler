@@ -44,3 +44,18 @@ export function canonicalRenewalStatus(currentStatus: string, requestedStatus: s
   return legacyMiniapp && currentStatus === RISK_RESOLVED && requestedStatus === "PAUSED_SPECIAL"
     ? RISK_RESOLVED : requestedStatus;
 }
+
+// A forecast may discover a later contract, but cannot reassign an invoice that
+// staff already selected or attach a different invoice to a verified payment.
+export function renewalLinksForScan(
+  current: { contractId: string | null; invoiceId: string | null; paymentConfirmedAt?: Date | null } | null | undefined,
+  forecast: { contractId: string | null; invoiceId: string | null },
+) {
+  if (!current) return { contractId: forecast.contractId, invoiceId: forecast.invoiceId };
+  if (current.invoiceId || current.paymentConfirmedAt) return { contractId: current.contractId, invoiceId: current.invoiceId };
+  if (current.contractId) return {
+    contractId: current.contractId,
+    invoiceId: current.contractId === forecast.contractId ? forecast.invoiceId : null,
+  };
+  return { contractId: forecast.contractId, invoiceId: forecast.invoiceId };
+}

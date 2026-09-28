@@ -46,3 +46,18 @@ test("risk outcome label supports Chinese, English and bilingual preferences", (
   assert.equal(renewalRiskResolutionLabel("EN"), "Risk resolved (renewal not verified)");
   assert.match(renewalRiskResolutionLabel("BILINGUAL"), /Risk resolved.*风险已解除/);
 });
+
+import { renewalLinksForScan } from "../lib/renewal-auto-resolution";
+test("risk scans preserve manually selected and verified billing links", () => {
+  const later = { contractId: "later-contract", invoiceId: "later-invoice" };
+  assert.deepEqual(renewalLinksForScan({ contractId: "selected-contract", invoiceId: "selected-invoice" }, later), { contractId: "selected-contract", invoiceId: "selected-invoice" });
+  assert.deepEqual(renewalLinksForScan({ contractId: null, invoiceId: "manual-invoice" }, later), { contractId: null, invoiceId: "manual-invoice" });
+  assert.deepEqual(renewalLinksForScan({ contractId: "old-contract", invoiceId: null, paymentConfirmedAt: new Date() }, later), { contractId: "old-contract", invoiceId: null });
+  assert.deepEqual(renewalLinksForScan({ contractId: "old-contract", invoiceId: null }, later), { contractId: "old-contract", invoiceId: null });
+});
+test("a scan can discover an unlinked contract and its subsequently created invoice", () => {
+  const latest = { contractId: "current", invoiceId: "new-invoice" };
+  assert.deepEqual(renewalLinksForScan(null, latest), latest);
+  assert.deepEqual(renewalLinksForScan({ contractId: null, invoiceId: null }, latest), latest);
+  assert.deepEqual(renewalLinksForScan({ contractId: "current", invoiceId: null }, latest), latest);
+});
