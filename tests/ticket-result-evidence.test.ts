@@ -3,7 +3,8 @@ import test from "node:test";
 import { checkResultEvidence, explicitLessonCount, needsMakeupFollowup } from "../lib/ticket-result-evidence";
 import { ticketCommandScopeError } from "../lib/ticket-command-scope";
 
-const lesson = { id: "s1", startAt: new Date("2026-09-06T05:00:00Z"), endAt: new Date("2026-09-06T06:30:00Z"), teacherId: "t1", courseLabel: "大学 / 计算机", cancelled: false, charge: false };
+const lesson = { id: "s1", startAt: new Date("2026-09-06T05:00:00Z"), endAt: new Date("2026-09-06T06:30:00Z"), teacherId: "t1", courseLabel: "大学 / 计算机", cancelled: false, charge: false,
+  ledgerEvidence: { status: "VERIFIED" as const, message: "Verified", packageNets: [], transactionIds: [] } };
 test("explicit single request never expands into four cancellations", () => {
   const actions = [{ actionType: "CANCEL_SESSION", status: "READY", sourceSessionId: "s1" }];
   assert.equal(ticketCommandScopeError(actions, [{ commandType: "CANCEL_SESSION", sessionId: "s1" }]), null);
@@ -47,6 +48,8 @@ test("cancellation must actually exist and cannot be overridden by a note", () =
   assert.deepEqual(checkResultEvidence(action, [{ ...lesson, cancelled: true }]).errors, []);
   assert.ok(checkResultEvidence(action, [{ ...lesson, cancelled: true, charge: true }], true).errors.length);
   assert.ok(checkResultEvidence(action, [{ ...lesson, id: "s2", cancelled: true }]).errors.length);
+  assert.ok(checkResultEvidence(action, [{ ...lesson, cancelled: true, ledgerEvidence: undefined }], true).errors.length);
+  assert.ok(checkResultEvidence(action, [{ ...lesson, cancelled: true, ledgerEvidence: { ...lesson.ledgerEvidence, status: "MISMATCH", message: "Ledger mismatch" } }], true).errors.includes("Ledger mismatch"));
 });
 test("cancelled lessons cannot prove new scheduling, rescheduling or replacement", () => {
   for (const actionType of ["CREATE_SESSION", "RESCHEDULE_SESSION", "REPLACE_TEACHER"]) {

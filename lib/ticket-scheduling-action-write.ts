@@ -87,7 +87,7 @@ export async function applyAdminLinkedTicketSchedulingAction(
     actorName?: string | null;
     actorRole?: string | null;
     auditAction: string;
-    verification?: { confirmedChange: boolean; note: string; differences: string[] };
+    verification?: { confirmedChange: boolean; note: string; differences: string[]; ledgerEvidence?: Array<{ sessionId: string; status: string; message: string; packageNets: Array<{ packageId: string; netUnits: number }>; transactionIds: string[] }> };
   }
 ) {
   const ticket = await tx.ticket.findUnique({

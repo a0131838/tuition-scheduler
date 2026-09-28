@@ -1,13 +1,15 @@
 import { prisma } from "./prisma";
+import { Prisma } from "@prisma/client";
 import { sessionBelongsToStudentWhere } from "./session-students";
 import { formatBusinessDateTime, formatBusinessTimeOnly } from "./date-only";
 import { checkResultEvidence } from "./ticket-result-evidence";
 import { applyAdminLinkedTicketSchedulingAction } from "./ticket-scheduling-action-write";
+import { cancellationLedgerEvidence } from "./cancellation-ledger-evidence";
 
 const include = {
   teacher: { select: { id: true, name: true } },
   class: { include: { teacher: { select: { id: true, name: true } }, course: true, subject: true, level: true } },
-  attendances: true,
+  attendances: { include: { package: { select: { id: true, type: true, note: true } } } },
 } as const;
 
 function lessonDto(row: any, studentId: string) {
@@ -59,7 +61,18 @@ export async function linkTicketResults(input: {
     if (!ids.length || ids.length > 100) throw new Error("请选择对应课程，最多100节。");
     const rows = await tx.session.findMany({ where: { id: { in: ids }, ...sessionBelongsToStudentWhere(studentId) }, include, orderBy: { startAt: "asc" } });
     if (rows.length !== ids.length) throw new Error("所选课程已删除或不属于该学生，请重新核对。");
-    const lessons = rows.map((row) => lessonDto(row, studentId));
+    const cancellationTransactions = action.actionType === "CANCEL_SESSION"
+      ? await tx.packageTxn.findMany({ where: { sessionId: { in: ids } }, select: { id: true, sessionId: true, packageId: true, kind: true, deltaMinutes: true, note: true } })
+      : [];
+    const lessons = rows.map((row) => ({
+      ...lessonDto(row, studentId),
+      ...(action.actionType === "CANCEL_SESSION" ? { ledgerEvidence: cancellationLedgerEvidence({
+        studentId, exclusiveStudentId: row.studentId,
+        durationMinutes: Math.max(1, Math.round((row.endAt.getTime() - row.startAt.getTime()) / 60000)),
+        attendances: row.attendances,
+        transactions: cancellationTransactions.filter(txn => txn.sessionId === row.id),
+      }) } : {}),
+    }));
     const evidence = checkResultEvidence(action, lessons, input.confirmedChange);
     if (evidence.errors.length) throw new Error(evidence.errors.join(" "));
     const resultText = `已核验${action.actionType === "CANCEL_SESSION" ? "取消" : "课程"}：${lessons.map((row) => row.label).join("；")}。`;
@@ -68,7 +81,9 @@ export async function linkTicketResults(input: {
       sourceSessionId: action.sourceSessionId, resultSessionId: ids[0], resultSessionIds: ids,
       appliedByUserId: input.user.id, actorEmail: input.user.email, actorName: input.user.name, actorRole: input.user.role,
       auditAction: "ADMIN_LINK_EXISTING_SCHEDULING_RESULT", resultText,
-      verification: { confirmedChange: input.confirmedChange, note: input.note.trim(), differences: evidence.differences },
+      verification: { confirmedChange: input.confirmedChange, note: input.note.trim(), differences: evidence.differences,
+        ledgerEvidence: lessons.flatMap(row => row.ledgerEvidence ? [{ sessionId: row.id, ...row.ledgerEvidence }] : []),
+      },
     });
     if (input.note.trim() || evidence.differences.length) {
       await tx.ticketSchedulingAction.update({ where: { id: action.id }, data: {
@@ -76,5 +91,11 @@ export async function linkTicketResults(input: {
       } });
     }
     return { ...state, resultText, totalMinutes: evidence.totalMinutes, expectedCount: evidence.expectedCount };
+  }, { isolationLevel: "Serializable" }).catch((error: unknown) => {
+    if (error instanceof Prisma.PrismaClientKnownRequestError &&
+      (error.code === "P2034" || (error.code === "P2010" && error.meta?.code === "40001"))) {
+      throw new Error("Records changed during verification. Refresh and retry / 核验时记录已变化，请刷新后重新核对。");
+    }
+    throw error;
   });
 }

@@ -1,3 +1,5 @@
+import type { CancellationLedgerEvidence } from "./cancellation-ledger-evidence";
+
 export type ResultAction = {
   actionType: string;
   sourceSessionId?: string | null;
@@ -17,6 +19,7 @@ export type ResultLesson = {
   courseLabel: string;
   cancelled: boolean;
   charge: boolean;
+  ledgerEvidence?: CancellationLedgerEvidence;
 };
 
 function numberValue(text: string) {
@@ -55,6 +58,8 @@ export function checkResultEvidence(action: ResultAction, lessons: ResultLesson[
       if (!lesson.cancelled) errors.push("原课程尚未取消，不能标记为取消完成。");
       if (action.chargePolicy === "CHARGE" && !lesson.charge) errors.push("实际扣课状态与工单不一致。");
       if (action.chargePolicy === "NO_CHARGE" && lesson.charge) errors.push("实际扣课状态与工单不一致。");
+      if (!lesson.ledgerEvidence) errors.push("Net ledger evidence is required / 缺少实际课时流水核验，不能标记取消完成。");
+      else if (lesson.ledgerEvidence.status !== "VERIFIED") errors.push(lesson.ledgerEvidence.message);
       continue;
     }
     if (lesson.cancelled) errors.push("已取消课程不能作为排课或改课的完成结果。");

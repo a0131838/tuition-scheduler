@@ -7,7 +7,7 @@ async function main() {
   const db = new URL(process.env.DATABASE_URL || "");
   assert.equal(db.hostname, "127.0.0.1");
   assert.equal(db.port, "55439");
-  assert.equal(db.pathname, "/sgt_schedule_test");
+  assert.ok(["/sgt_schedule_test", "/sgt_workspace_completion_test"].includes(db.pathname));
   const base = "http://127.0.0.1:3149";
   const suffix = Date.now();
   const user = await prisma.user.upsert({ where: { email: "zhaohongwei0880@gmail.com" }, update: {}, create: {
@@ -82,6 +82,29 @@ async function main() {
   assert.ok(page1.lessons.length > 0); assert.ok(page0.lessons.some((row) => row.cancelled));
   assert.equal(page0.lessons.some((row) => row.id === foreign.id), false);
   assert.deepEqual(await prisma.attendance.findMany({ where: { sessionId: { in: [cancelled.id, first.id, second.id] } } }), before);
+  // A no-charge flag cannot close an unrefunded lesson, even with an override note.
+  const ledgerLesson = await lesson(true, student.id, 6);
+  const ledgerPackage = await prisma.coursePackage.create({ data: {
+    studentId: student.id, courseId: course.id, type: "HOURS", validFrom: new Date("2026-01-01"),
+    totalMinutes: 600, remainingMinutes: 510,
+  } });
+  await prisma.packageTxn.create({ data: { packageId: ledgerPackage.id, sessionId: ledgerLesson.id, kind: "DEDUCT", deltaMinutes: -90, note: `studentId=${student.id}` } });
+  const ledgerTicket = await ticket("CANCEL_SESSION", "取消，不收费，不需要补课", ledgerLesson.id, { chargePolicy: "NO_CHARGE" });
+  await assert.rejects(link(ledgerTicket, [], { confirmedChange: true, note: "测试备注不能跳过流水" }), /实际净扣课/);
+  assert.equal((await prisma.ticketSchedulingAction.findUniqueOrThrow({ where: { id: ledgerTicket.schedulingActions[0].id } })).status, "READY");
+  await prisma.packageTxn.create({ data: { packageId: ledgerPackage.id, sessionId: ledgerLesson.id, kind: "ROLLBACK", deltaMinutes: 90, note: `studentId=${student.id}` } });
+  await prisma.coursePackage.update({ where: { id: ledgerPackage.id }, data: { remainingMinutes: 600 } });
+  const snapshot = async () => ({
+    package: await prisma.coursePackage.findUnique({ where: { id: ledgerPackage.id } }),
+    transactions: await prisma.packageTxn.findMany({ where: { sessionId: ledgerLesson.id }, orderBy: { id: "asc" } }),
+    attendance: await prisma.attendance.findMany({ where: { sessionId: ledgerLesson.id } }),
+  });
+  const ledgerBefore = await snapshot();
+  assert.equal((await link(ledgerTicket, [])).allResolved, true);
+  assert.deepEqual(await snapshot(), ledgerBefore);
+  const ledgerAudit = await prisma.auditLog.findFirstOrThrow({ where: { entityId: ledgerTicket.schedulingActions[0].id } });
+  assert.ok(JSON.stringify(ledgerAudit.meta).includes('"ledgerEvidence"'));
+  assert.ok(JSON.stringify(ledgerAudit.meta).includes('"VERIFIED"'));
   const uiTicket = await ticket("CREATE_SESSION", "安排2节课，共180分钟", undefined, { requestedStartAt: first.startAt, courseLabel: course.name });
   if (process.env.UAT_HTTP === "1") {
     const web = await fetch(`${base}/api/admin/tickets/${uiTicket.id}/results?date=2026-06-01`, { headers: { Cookie: `ts_admin_session=${token}` } });
