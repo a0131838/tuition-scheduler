@@ -21,6 +21,7 @@ async function main() {
   const receipt = { id: `uat-receipt-${suffix}`, receiptNo: "UAT-PAYMENT-RC", packageId: pkg.id, studentId: student.id, invoiceId: invoice.id, amountReceived: 100, createdAt: "2026-09-02T00:00:00Z" };
   const approved = { receiptId: receipt.id, financeApprovedBy: ["finance@uat.invalid"] };
   const attempt = (status = "PAYMENT_CONFIRMED", invoiceId = invoice.id) => updateRenewalTask({ id: task.id, actor, status, invoiceId });
+  const purchase = await prisma.packageTxn.create({ data: { packageId: pkg.id, kind: "PURCHASE", deltaMinutes: 6000 } });
   const balancesBefore = await prisma.coursePackage.findUnique({ where: { id: pkg.id } });
   const txnBefore = await prisma.packageTxn.count({ where: { packageId: pkg.id } });
   try {
@@ -65,7 +66,7 @@ async function main() {
     assert.equal(await prisma.auditLog.count({ where: { entityId: task.id, meta: { path: ["paymentEvidence", "id"], equals: invoice.id } } }), 1);
     const paid = await prisma.renewalTask.findUniqueOrThrow({ where: { id: task.id } });
     assert.ok(paid.paymentConfirmedAt); assert.equal(paid.status, "PAYMENT_CONFIRMED");
-    const activation = await attempt("PACKAGE_ACTIVE"); assert.ok(activation.completedAt);
+    const activation = await updateRenewalTask({ id: task.id, actor, status: "PACKAGE_ACTIVE", invoiceId: invoice.id, entitlementEvidenceIds: [purchase.id], entitlementReviewNote: "UAT verified genuine paid purchase" }); assert.ok(activation.completedAt);
     await set("parent_receipt_approval_v1", []);
     await updateRenewalTask({ id: task.id, actor, note: "Historical note only" });
     await assert.rejects(updateRenewalTask({ id: task.id, actor, status: "PACKAGE_ACTIVE", invoiceId: "unrelated" }), /本次续费发票/);
@@ -87,14 +88,16 @@ async function main() {
     await assert.rejects(updateRenewalTask({ id: oldTask.id, actor, status: "PAYMENT_CONFIRMED", invoiceId: oldInvoice.id }), /核对依据/);
     await updateRenewalTask({ id: oldTask.id, actor, status: "PAYMENT_CONFIRMED", invoiceId: oldInvoice.id, paymentReviewNote: "UAT reviewed current renewal contract and invoice" });
     // The later activation can reuse this task's audited review, while rechecking cash.
-    await updateRenewalTask({ id: oldTask.id, actor, status: "PACKAGE_ACTIVE" });
+    const oldPurchase = await prisma.packageTxn.create({ data: { packageId: oldPkg.id, kind: "PURCHASE", deltaMinutes: 600 } });
+    await updateRenewalTask({ id: oldTask.id, actor, status: "PACKAGE_ACTIVE", entitlementEvidenceIds: [oldPurchase.id], entitlementReviewNote: "UAT verified earlier renewal purchase" });
     await set("parent_billing_v1", { invoices: [invoice], receipts: [receipt] });
     await set("parent_receipt_approval_v1", [approved]);
 
     // Existing monthly settlement remains postpaid and never claims cash on activation.
     const pp = await prisma.coursePackage.create({ data: { studentId: student.id, courseId: course.id, type: "HOURS", validFrom: new Date("2026-01-01"), settlementMode: "OFFLINE_MONTHLY", totalMinutes: 600 } });
     const pt = await prisma.renewalTask.create({ data: { studentId: student.id, packageId: pp.id, status: "PAYMENT_PENDING", riskLevel: "YELLOW", remainingMinutes: 60, createdAt: new Date("2026-09-01") } });
-    const active = await updateRenewalTask({ id: pt.id, actor, status: "PACKAGE_ACTIVE" });
+    const ppPurchase = await prisma.packageTxn.create({ data: { packageId: pp.id, kind: "PURCHASE", deltaMinutes: 600 } });
+    const active = await updateRenewalTask({ id: pt.id, actor, status: "PACKAGE_ACTIVE", entitlementEvidenceIds: [ppPurchase.id], entitlementReviewNote: "UAT verified postpaid renewal rights" });
     assert.equal(active.paymentConfirmedAt, null);
     await assert.rejects(updateRenewalTask({ id: pt.id, actor, status: "PAYMENT_CONFIRMED" }), /本次续费发票/);
     const settlement = await prisma.partnerSettlement.create({ data: { studentId: student.id, packageId: pp.id, mode: "OFFLINE_MONTHLY", monthKey: `uat-${suffix}` } });

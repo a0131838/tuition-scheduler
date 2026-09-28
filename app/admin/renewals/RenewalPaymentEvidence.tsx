@@ -4,8 +4,8 @@ import type { Lang } from "@/lib/i18n";
 import type { RenewalPaymentCandidate } from "@/lib/renewal-payment-evidence";
 
 type Evidence = { postpaid: boolean; contractInvoiceId: string | null; candidates: RenewalPaymentCandidate[] };
-export function RenewalPaymentEvidence({ taskId, invoiceId, lang, onSelect, reviewNote, onReviewNote }: {
-  taskId: string; invoiceId: string | null; lang: Lang; onSelect: (id: string) => void; reviewNote: string; onReviewNote: (note: string) => void;
+export function RenewalPaymentEvidence({ taskId, invoiceId, packageId, contractId, lang, onSelect, reviewNote, onReviewNote }: {
+  packageId: string; contractId: string | null; taskId: string; invoiceId: string | null; lang: Lang; onSelect: (id: string) => void; reviewNote: string; onReviewNote: (note: string) => void;
 }) {
   const t = (en: string, zh: string) => lang === "EN" ? en : lang === "ZH" ? zh : `${en} / ${zh}`;
   const [data, setData] = useState<Evidence | null>(null);
@@ -14,11 +14,11 @@ export function RenewalPaymentEvidence({ taskId, invoiceId, lang, onSelect, revi
   useEffect(() => {
     const controller = new AbortController();
     setData(null); setError("");
-    fetch(`/api/admin/renewals/${taskId}`, { cache: "no-store", signal: controller.signal })
-      .then(async r => { const result = await r.json(); if (!r.ok) throw new Error(result.message || "Unable to load evidence / 无法读取凭据"); return result.evidence; })
+    fetch(`/api/admin/renewals/${taskId}?${new URLSearchParams({ packageId, contractId: contractId || "" })}`, { cache: "no-store", signal: controller.signal })
+      .then(async r => { const result = await r.json(); if (!r.ok || result.paymentError) throw new Error(result.paymentError || result.message || "Unable to load evidence / 无法读取凭据"); return result.evidence; })
       .then(setData).catch(e => { if (!controller.signal.aborted) setError(e.message); });
     return () => controller.abort();
-  }, [taskId, revision]);
+  }, [taskId, packageId, contractId, revision]);
   const selectedId = invoiceId || data?.contractInvoiceId || "";
   const selected = data?.candidates.find(c => c.id === selectedId);
   const stateLabel = (state: string) => ({

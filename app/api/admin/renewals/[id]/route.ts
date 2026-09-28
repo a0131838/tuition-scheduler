@@ -1,3 +1,4 @@
+import { getRenewalEntitlementEvidence } from "@/lib/renewal-entitlement-evidence";
 import { requireRenewalCenterUser } from "@/lib/renewal-access";
 import { prisma } from "@/lib/prisma";
 import { getRenewalPaymentEvidence } from "@/lib/renewal-payment-evidence";
@@ -18,15 +19,23 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 }
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await requireRenewalCenterUser();
   if (user.operationsAdmin) return Response.json({ ok: false }, { status: 403 });
   const { id } = await params;
   const task = await prisma.renewalTask.findUnique({ where: { id } });
   if (!task) return Response.json({ ok: false }, { status: 404 });
   try {
-    const evidence = await getRenewalPaymentEvidence(task, { activatedPackageId: task.activatedPackageId });
-    return Response.json({ ok: true, evidence });
+    const query = new URL(req.url).searchParams;
+    const input = { activatedPackageId: query.has("packageId") ? query.get("packageId") : task.activatedPackageId,
+      contractId: query.has("contractId") ? query.get("contractId") : task.contractId };
+    const entitlement = await getRenewalEntitlementEvidence(task, input);
+    // Keep selectors available when a stale contract link needs explicit correction.
+    let evidence = null;
+    let paymentError = "";
+    try { evidence = await getRenewalPaymentEvidence(task, input); }
+    catch (error) { paymentError = error instanceof Error ? error.message : "Unable to load payment / 无法读取收款"; }
+    return Response.json({ ok: true, evidence, entitlement, paymentError });
   } catch (error) {
     return Response.json({ ok: false, message: error instanceof Error ? error.message : "Unable to load evidence / 无法读取凭据" }, { status: 400 });
   }

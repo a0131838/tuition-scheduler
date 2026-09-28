@@ -92,3 +92,24 @@ Inspection of the next entitlement checkpoint found that the forecast refresh st
 Validation includes pure linkage cases and isolated PostgreSQL concurrent scans proving that manual selections survive both paths. The test also proves discovery still works for a newly signed contract on an unlinked task. No production scan is triggered during acceptance. Entitlement activation evidence remains the next phase1 item.
 
 Final r413 local validation: 19 focused tests, isolated concurrent risk-scan UAT, complete payment evidence UAT, 259-page build and existing legacy Mini Program/observer HTTP regression passed. Logs: `/tmp/sgt-r413-focused.log`, `/tmp/sgt-r413-uat.log`, `/tmp/sgt-r413-payment-uat.log`, `/tmp/sgt-r413-build.log`, `/tmp/sgt-r413-http.log`. No UI changes in this checkpoint.
+
+## r414 — Verify actual renewal entitlements
+
+- Release ID: `2026-09-28-r414`
+- Date/Time (Asia/Singapore): `2026-09-28`
+- Deployment status: `READY`; exact guarded-release evidence is recorded in the external execution ledger.
+- Problem: renewal follow-up could claim PACKAGE_ACTIVE after payment verification without proving an actual purchase or period extension.
+- Change: activation verifies exact student, course, package type, units, settlement terms, active validity and finance gate. It requires actual PURCHASE rows or an audited monthly extension. Contract top-up markers must reference a live signed renewal with matching quantity and invoice. Manual/earlier purchases and extensions require explicit scope-review evidence; uncertain shared ownership is not inferred.
+- Reuse/correction: previously verified evidence is retained in immutable audit history and cannot complete another task. Later negative non-deduction corrections block automatic attribution. Serializable status/evidence/audit writes are atomic; no package balances or ledger rows are changed by verification. Partner postpaid activation still does not assert cash received.
+- Monthly packages: the existing package edit transaction now records date changes under a row lock. Only actual extensions matching current dates qualify. Historical edits without structured evidence remain pending review. New monthly packages use their zero-minute initial purchase; counts never become hours.
+- UI: collapsed ZH/EN/BILINGUAL entitlement review, exact target-package/contract selection, coordinated invoice preview, selectable purchase records and review basis. Explicitly clearing a stale reference differs from omitting it; historical note-only updates preserve old closure records. Existing web/Mini Program access remains.
+- Validation: 26 focused tests, 181 backend tests, isolated PostgreSQL payment/risk/entitlement UAT, audit failure rollback, concurrent duplicate prevention, invalid contract/quantity/invoice/ownership, count and monthly scenarios, unchanged ledger/balance snapshots, Mini Program HTTP rejection/success, authenticated browser in three language modes, 259-page final build. Browser rejected missing review then accepted reviewed purchase; console errors empty.
+- Live read-only aggregate: 16 open tasks, 0 monthly packages, 2 shared packages; associated packages have 6 contract-marked and 31 manual PURCHASE records. No production business writes or scans used for testing.
+- Remaining: attendance-change impact, unit-aware forecast truth and phases2–10. This is not overall completion.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `94f687fc3914033fdcaa378b0dfcfcde9441aeb8` (r413). No schema migration.
+
+---
+
+
+Evidence logs: `/tmp/sgt-r414-focused.log`, `/tmp/sgt-r414-backend.log`, `/tmp/sgt-r414-build-final.log`, `/tmp/sgt-r414-entitlement-uat.log`, `/tmp/sgt-r414-entitlement-http.log`, `/tmp/sgt-r414-payment-uat.log`, `/tmp/sgt-r414-http.log`, `/tmp/sgt-r414-risk.log`. All intentional failure fixtures run only against 127.0.0.1:55439/sgt_workspace_completion_test. Monthly date auditing is within the existing package-edit transaction; no backfill is invented. The pre-existing language-selector refresh issue and incomplete legacy page translations remain for phase8.

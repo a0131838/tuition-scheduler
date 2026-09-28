@@ -1,3 +1,5 @@
+import { verifyRenewalEntitlement } from "./renewal-entitlement-evidence";
+import { renewalEvidenceReference } from "./renewal-entitlement-policy";
 import { requiresRenewalPaymentVerification } from "./renewal-payment-policy";
 import { verifyRenewalPayment } from "./renewal-payment-evidence";
 import { Prisma } from "@prisma/client";
@@ -577,9 +579,11 @@ export async function updateRenewalTask(input: {
   nextFollowUpAt?: string | null;
   parentWechatGroupName?: string;
   note?: string;
-  contractId?: string;
-  invoiceId?: string;
-  activatedPackageId?: string;
+  contractId?: string | null;
+  invoiceId?: string | null;
+  activatedPackageId?: string | null;
+  entitlementEvidenceIds?: string[];
+  entitlementReviewNote?: string;
   paymentReviewNote?: string;
 }, options?: { legacyMiniapp?: boolean }) {
   return prisma.$transaction(async (tx) => {
@@ -598,15 +602,18 @@ export async function updateRenewalTask(input: {
     if (status === "PARENT_NOTIFIED" && !task.evidenceUrl) {
       throw new Error(cohort === "XDF" ? "请先上传对接群发送截图，再确认已通知新东方" : "请先上传微信群发送截图，再确认已提醒家长");
     }
-    const contractId = input.contractId?.trim().slice(0, 100) || task.contractId;
-    let invoiceId = input.invoiceId?.trim().slice(0, 100) || task.invoiceId;
-    const activatedPackageId = input.activatedPackageId?.trim().slice(0, 100) || task.activatedPackageId;
+    const contractId = renewalEvidenceReference(input.contractId, task.contractId);
+    let invoiceId = renewalEvidenceReference(input.invoiceId, task.invoiceId);
+    let activatedPackageId = renewalEvidenceReference(input.activatedPackageId, task.activatedPackageId);
     const evidenceChanged = contractId !== task.contractId || invoiceId !== task.invoiceId || activatedPackageId !== task.activatedPackageId;
-    if (input.actor.operationsAdmin && evidenceChanged) throw new Error("Finance evidence must be reviewed by finance or management. / 财务凭据须由财务或管理人员核对。");
+    if (input.actor.operationsAdmin && (evidenceChanged || input.entitlementEvidenceIds !== undefined || input.entitlementReviewNote !== undefined)) throw new Error("Finance evidence must be reviewed by finance or management. / 财务凭据须由财务或管理人员核对。");
     const postpaid = ["ONLINE_PACKAGE_END", "OFFLINE_MONTHLY"].includes(task.package.settlementMode || "");
-    const paymentEvidence = requiresRenewalPaymentVerification({ previousStatus: task.status, status, evidenceChanged, postpaid })
+    const paymentEvidence = requiresRenewalPaymentVerification({ previousStatus: task.status, status, evidenceChanged: evidenceChanged || input.entitlementEvidenceIds !== undefined, postpaid })
       ? await verifyRenewalPayment(task, { contractId, invoiceId, activatedPackageId, paymentReviewNote: input.paymentReviewNote }, tx) : null;
     if (paymentEvidence) invoiceId = paymentEvidence.id;
+    const entitlementEvidence = status === "PACKAGE_ACTIVE" && (task.status !== status || evidenceChanged || input.entitlementEvidenceIds !== undefined)
+      ? await verifyRenewalEntitlement(task, { contractId, invoiceId, activatedPackageId, entitlementEvidenceIds: input.entitlementEvidenceIds, entitlementReviewNote: input.entitlementReviewNote }, tx) : null;
+    if (entitlementEvidence) activatedPackageId = entitlementEvidence.packageId;
     const completed = ["PACKAGE_ACTIVE", "NOT_RENEWING", "PAUSED_SPECIAL", RISK_RESOLVED].includes(status);
     const preserveCompletion = status === task.status && Boolean(task.completedAt);
     const nextFollowUpAt = input.nextFollowUpAt ? new Date(input.nextFollowUpAt) : null;
@@ -655,6 +662,7 @@ export async function updateRenewalTask(input: {
         nextFollowUpAt: updated.nextFollowUpAt?.toISOString() ?? null,
         hasParentResponse: Boolean(updated.parentResponse), hasEvidence: Boolean(updated.evidenceUrl),
         paymentEvidence: paymentEvidence ? { ...paymentEvidence, checkedAt: new Date().toISOString() } : null,
+        entitlementEvidence,
         settlementBasis: postpaid ? "PARTNER_POSTPAID" : "DIRECT",
       },
     } });

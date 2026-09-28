@@ -42,9 +42,9 @@ export async function getRenewalPaymentEvidence(task: EvidenceTask, input: {
     throw new Error("Package ownership needs review. / 课包归属或结算方式不一致，请先核对。");
   }
   const postpaid = pkg.settlementMode === "ONLINE_PACKAGE_END" || pkg.settlementMode === "OFFLINE_MONTHLY";
-  const contractId = input.contractId || task.contractId;
+  const contractId = input.contractId === undefined ? task.contractId : input.contractId;
   const contract = contractId ? await db.studentContract.findUnique({ where: { id: contractId } }) : null;
-  if (contractId && (!contract || contract.studentId !== task.studentId || contract.packageId !== targetId || contract.flowType !== "RENEWAL" || ["VOID", "EXPIRED"].includes(contract.status))) {
+  if (contractId && (!contract || contract.studentId !== task.studentId || contract.packageId !== targetId || (contract.flowType !== "RENEWAL" && targetId === pkg.id) || ["VOID", "EXPIRED"].includes(contract.status))) {
     throw new Error("Renewal contract is unavailable or belongs to another package. / 续费合同不可用或不属于本课包。");
   }
   const roleCfg = await getApprovalRoleConfig(db);

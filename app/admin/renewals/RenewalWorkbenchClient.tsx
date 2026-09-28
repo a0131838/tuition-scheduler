@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { RenewalEntitlementEvidence } from "./RenewalEntitlementEvidence";
 import { RenewalPaymentEvidence } from "./RenewalPaymentEvidence";
 import styles from "./renewals.module.css";
 import type { Lang } from "@/lib/i18n";
@@ -12,6 +13,10 @@ type RenewalTask = {
   packageId: string;
   invoiceId: string | null;
   paymentReviewNote?: string;
+  activatedPackageId: string | null;
+  contractId: string | null;
+  entitlementEvidenceIds?: string[];
+  entitlementReviewNote?: string;
   packageType: string;
   studentId: string;
   studentName: string;
@@ -157,7 +162,7 @@ export default function RenewalWorkbenchClient({
     return { ...row, ...(drafts[row.id] || {}) };
   }
 
-  function setDraft(id: string, key: keyof RenewalTask, value: string) {
+  function setDraft(id: string, key: keyof RenewalTask, value: string | string[]) {
     setDrafts((current) => ({ ...current, [id]: { ...(current[id] || {}), [key]: value } }));
   }
 
@@ -178,6 +183,10 @@ export default function RenewalWorkbenchClient({
           status,
           invoiceId: draft.invoiceId,
           paymentReviewNote: draft.paymentReviewNote,
+          activatedPackageId: draft.activatedPackageId,
+          contractId: draft.contractId,
+          entitlementEvidenceIds: draft.entitlementEvidenceIds,
+          entitlementReviewNote: draft.entitlementReviewNote,
           ownerName: draft.ownerName,
           parentWechatGroupName: draft.parentWechatGroupName,
           parentResponse: draft.parentResponse,
@@ -300,7 +309,10 @@ export default function RenewalWorkbenchClient({
                           {selectableStatuses(row, operationsOnly, lang).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                         </select>
                       </label>
-                      {!operationsOnly && !riskResolved ? <RenewalPaymentEvidence taskId={row.id} invoiceId={draft.invoiceId || null} lang={lang} reviewNote={draft.paymentReviewNote || ""} onReviewNote={note => setDraft(row.id, "paymentReviewNote", note)} onSelect={id => setDraft(row.id, "invoiceId", id)} /> : null}
+                      {!operationsOnly && !riskResolved ? <RenewalEntitlementEvidence taskId={row.id} packageId={draft.activatedPackageId || row.packageId} contractId={draft.contractId} ids={draft.entitlementEvidenceIds} note={draft.entitlementReviewNote || ""} lang={lang}
+                        onIds={ids => setDraft(row.id, "entitlementEvidenceIds", ids)} onNote={note => setDraft(row.id, "entitlementReviewNote", note)}
+                        onScope={(packageId, contractId) => setDrafts(current => ({ ...current, [row.id]: { ...(current[row.id] || {}), activatedPackageId: packageId, contractId, invoiceId: "", paymentReviewNote: "", entitlementEvidenceIds: undefined, entitlementReviewNote: "" } }))} /> : null}
+                      {!operationsOnly && !riskResolved ? <RenewalPaymentEvidence packageId={draft.activatedPackageId || row.packageId} contractId={draft.contractId} taskId={row.id} invoiceId={draft.invoiceId || null} lang={lang} reviewNote={draft.paymentReviewNote || ""} onReviewNote={note => setDraft(row.id, "paymentReviewNote", note)} onSelect={id => setDraft(row.id, "invoiceId", id)} /> : null}
                       <label>负责人
                         <input value={String(draft.ownerName || "")} onChange={(event) => setDraft(row.id, "ownerName", event.target.value)} placeholder="Emily / Eva / Jasmine" />
                       </label>

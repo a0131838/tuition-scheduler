@@ -1,3 +1,4 @@
+import { recordPackageValidityChange } from "@/lib/package-validity-audit";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { composePackageNote, GROUP_PACK_MINUTES_TAG, GROUP_PACK_TAG, packageModeFromNote } from "@/lib/package-mode";
@@ -298,6 +299,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   try {
     transitionResult = await prisma.$transaction(
       async (tx) => {
+        await tx.$queryRaw`SELECT "id" FROM "CoursePackage" WHERE "id" = ${id} FOR UPDATE`;
+        const beforeValidity = await tx.coursePackage.findUniqueOrThrow({ where: { id } });
         let completedTransition: PackageCourseTransitionResult | null = null;
         if (courseChanged) {
           completedTransition = await transitionPackageCourse(tx, {
@@ -340,6 +343,11 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
             },
           },
         });
+
+        if (beforeValidity.type === "MONTHLY" && beforeValidity.courseId === resultingPrimaryCourseId) {
+          await recordPackageValidityChange(tx, { packageId: id, studentId: beforeValidity.studentId, courseId: resultingPrimaryCourseId,
+            actor: admin, before: beforeValidity, after: { validFrom, validTo } });
+        }
 
         // If this package still has a single purchase record, keep its financial basis aligned
         // with the edited paid amount so future month-end reports can use ledger-based history.

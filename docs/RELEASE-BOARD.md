@@ -1,4 +1,22 @@
 # RELEASE BOARD
+## 2026-09-28-r414
+
+- Release ID: `2026-09-28-r414`
+- Date/Time (Asia/Singapore): `2026-09-28`
+- Deployment status: `READY`; exact guarded-release evidence is recorded in the external execution ledger.
+- Problem: renewal follow-up could claim PACKAGE_ACTIVE after payment verification without proving an actual purchase or period extension.
+- Change: activation verifies exact student, course, package type, units, settlement terms, active validity and finance gate. It requires actual PURCHASE rows or an audited monthly extension. Contract top-up markers must reference a live signed renewal with matching quantity and invoice. Manual/earlier purchases and extensions require explicit scope-review evidence; uncertain shared ownership is not inferred.
+- Reuse/correction: previously verified evidence is retained in immutable audit history and cannot complete another task. Later negative non-deduction corrections block automatic attribution. Serializable status/evidence/audit writes are atomic; no package balances or ledger rows are changed by verification. Partner postpaid activation still does not assert cash received.
+- Monthly packages: the existing package edit transaction now records date changes under a row lock. Only actual extensions matching current dates qualify. Historical edits without structured evidence remain pending review. New monthly packages use their zero-minute initial purchase; counts never become hours.
+- UI: collapsed ZH/EN/BILINGUAL entitlement review, exact target-package/contract selection, coordinated invoice preview, selectable purchase records and review basis. Explicitly clearing a stale reference differs from omitting it; historical note-only updates preserve old closure records. Existing web/Mini Program access remains.
+- Validation: 26 focused tests, 181 backend tests, isolated PostgreSQL payment/risk/entitlement UAT, audit failure rollback, concurrent duplicate prevention, invalid contract/quantity/invoice/ownership, count and monthly scenarios, unchanged ledger/balance snapshots, Mini Program HTTP rejection/success, authenticated browser in three language modes, 259-page final build. Browser rejected missing review then accepted reviewed purchase; console errors empty.
+- Live read-only aggregate: 16 open tasks, 0 monthly packages, 2 shared packages; associated packages have 6 contract-marked and 31 manual PURCHASE records. No production business writes or scans used for testing.
+- Remaining: attendance-change impact, unit-aware forecast truth and phases2–10. This is not overall completion.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `94f687fc3914033fdcaa378b0dfcfcde9441aeb8` (r413). No schema migration.
+
+---
+
 ## 2026-09-28-r413
 
 - Release ID: `2026-09-28-r413`
