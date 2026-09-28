@@ -279,7 +279,7 @@ export default function RenewalWorkbenchClient({
             <article key={row.id} className={styles.task} data-risk={row.riskLevel}>
               <button className={styles.taskHeader} onClick={() => setExpanded(open ? "" : row.id)}>
                 <div>
-                  <span className={styles.risk}>{row.riskLevel === "RESOLVED" ? label("Risk resolved", "风险已解除") : row.riskLevel === "INACTIVE" ? label("Package inactive", "原课包已停用") : riskLabels[row.riskLevel] || row.riskLevel}</span>
+                  <span className={styles.risk}>{row.riskLevel === "REVIEW" ? label("Consumption needs review", "消耗待核对") : row.riskLevel === "RESOLVED" ? label("Risk resolved", "风险已解除") : row.riskLevel === "INACTIVE" ? label("Package inactive", "原课包已停用") : riskLabels[row.riskLevel] || row.riskLevel}</span>
                   <span className={styles.source}>{row.cohort === "XDF" ? "新东方" : row.sourceLabel}</span>
                   <h2>{row.studentName} · {row.courseName}</h2>
                   <p>{riskResolved ? renewalRiskResolutionLabel(lang) : row.statusLabel} · 负责人：{row.ownerName || "未分配"} · 下次跟进：{fmtDate(row.nextFollowUpAt)}</p>
@@ -291,9 +291,10 @@ export default function RenewalWorkbenchClient({
               </button>
               {open ? (
                 <div className={styles.detail}>
+                  {row.riskLevel === "REVIEW" && <div role="note">{label("A deduction has no traceable lesson or a lesson correction needs reconciliation. Consumption and depletion estimates are withheld; this follow-up stays open. Review the package ledger before contacting the parent.", "扣课缺少可追溯课程，或课程冲正需对账；暂不展示消耗与用完日期，跟进继续保留。请先核对课包流水，再联系家长。")}</div>}
                   {row.riskLevel === "INACTIVE" ? <div role="note">{label("The source package is inactive. Review the package before arranging further lessons; renewal follow-up is still pending.", "原课包已停用。继续排课前请核对课包；续费手续仍待跟进。")}</div> : <div className={styles.forecast}>
                     <div><span>未来已排</span><strong>{fmtMinutes(row.scheduledMinutes)}</strong></div>
-                    <div><span>近四周周均消耗</span><strong>{fmtMinutes(row.recentWeeklyMinutes)}</strong></div>
+                    <div><span>{label("Weekly net consumption (last 28 days)", "近28天周均净消耗")}</span><strong>{row.riskLevel === "REVIEW" ? label("Pending review", "待核对") : fmtMinutes(row.recentWeeklyMinutes)}</strong></div>
                     <div><span>预计用完</span><strong>{fmtDate(row.expectedDepletionAt)}</strong></div>
                     <div><span>课包有效期</span><strong>{fmtDate(row.packageValidTo)}</strong></div>
                   </div>}

@@ -35,6 +35,7 @@ export function assertRiskResolutionTransition(currentStatus: string, nextStatus
 // outcome and display label while using their existing "special handling" bucket.
 export function renewalForLegacyMiniapp<T extends { status: string; riskLevel?: string }>(row: T) {
   const result = row.status === RISK_RESOLVED ? { ...row, canonicalStatus: RISK_RESOLVED, status: "PAUSED_SPECIAL" } : row;
+  if (row.riskLevel === "REVIEW") return { ...result, canonicalRiskLevel: "REVIEW", riskLevel: "Consumption needs review / 消耗待核对" };
   return row.riskLevel === "RESOLVED" || row.riskLevel === "INACTIVE"
     ? { ...result, canonicalRiskLevel: row.riskLevel, riskLevel: row.riskLevel === "RESOLVED" ? "Risk resolved / 风险已解除" : "Package inactive / 原课包已停用" }
     : result;

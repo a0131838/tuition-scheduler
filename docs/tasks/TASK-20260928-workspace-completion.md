@@ -113,3 +113,23 @@ Final r413 local validation: 19 focused tests, isolated concurrent risk-scan UAT
 
 
 Evidence logs: `/tmp/sgt-r414-focused.log`, `/tmp/sgt-r414-backend.log`, `/tmp/sgt-r414-build-final.log`, `/tmp/sgt-r414-entitlement-uat.log`, `/tmp/sgt-r414-entitlement-http.log`, `/tmp/sgt-r414-payment-uat.log`, `/tmp/sgt-r414-http.log`, `/tmp/sgt-r414-risk.log`. All intentional failure fixtures run only against 127.0.0.1:55439/sgt_workspace_completion_test. Monthly date auditing is within the existing package-edit transaction; no backfill is invented. The pre-existing language-selector refresh issue and incomplete legacy page translations remain for phase8.
+
+## r415 — Net teaching consumption for renewal forecasts
+
+- Release ID: `2026-09-28-r415`
+- Date/Time (Asia/Singapore): `2026-09-28`
+- Deployment status: `READY`; guarded-release verification is recorded externally.
+- Problem: renewal forecasts summed every recent negative transaction, treating entitlement corrections as teaching consumption and ignoring refunds. A refund posted now for an older lesson could distort the current consumption window.
+- Change: pair DEDUCT/ROLLBACK by exact package and lesson using the full ledger, then apply the last-28-day lesson-date window. Unlinked rights ADJUST and PURCHASE are excluded. Paired historical deleted lessons with zero net usage do not inflate consumption; unresolved missing lessons, invalid signs, over-refunds and lesson-linked ADJUST remain REVIEW.
+- Workflow: uncertain usage cannot automatically close a renewal risk or produce a depletion date. REVIEW remains open and can create a separate task despite an old completion's snooze; old completion history is preserved. No payment or new-rights claim is made. Renewal message preparation displays a reconciliation instruction instead of a consumption claim.
+- UI/API: ZH/EN/BILINGUAL review badge, explanation and withheld web consumption. Published Mini Program clients receive a readable risk warning and canonical REVIEW field; no WeChat client package is released. Older client numeric formatting remains a separately tracked limitation, so web is the review surface.
+- Production read-only scope: 50 active forecast packages; 1,571 DEDUCT/ROLLBACK/ADJUST rows; 1,518 referenced lessons; 7 rows reference missing lessons; 0 recent unlinked deduction/rollback and 0 recent lesson adjustments. No production business writes or scans were used as tests.
+- Validation: 20 focused tests, 181 backend tests, isolated PostgreSQL exact-net/cross-window/orphan/snooze regression, no package/ledger writes during scanning, legacy Mini Program HTTP, three-language authenticated browser and empty browser error log. Full 259-page build recorded before release.
+- Remaining: future schedule allocation, charged leave/waivers, count-versus-minute/monthly forecasts, attendance-change impact and programme phases2–10. Not overall completion.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `144001238633ef35c0ef2de62be289b674fec3d4` (r414). No schema migration.
+
+---
+
+
+Logs: `/tmp/sgt-r415-focused.log`, `/tmp/sgt-r415-backend.log`, `/tmp/sgt-r415-uat-final.log`, `/tmp/sgt-r415-risk-uat.log`, `/tmp/sgt-r415-http.log`, `/tmp/sgt-r415-build-final.log`. Isolated UAT asserts a verified 45-unit weekly net from two recent lessons, ignores an old-lesson refund and a 3,000-unit rights correction, keeps an orphan debit pending, resolves only after pairing, and does not rewrite an old completed task when a new review is needed.

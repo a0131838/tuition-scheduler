@@ -1,3 +1,4 @@
+import { renewalRecentConsumption } from "./renewal-consumption";
 import { verifyRenewalEntitlement } from "./renewal-entitlement-evidence";
 import { renewalEvidenceReference } from "./renewal-entitlement-policy";
 import { requiresRenewalPaymentVerification } from "./renewal-payment-policy";
@@ -33,7 +34,7 @@ export const RENEWAL_STATUS_LABELS: Record<string, string> = {
   PAUSED_SPECIAL: "停课/特殊处理",
 };
 
-export type RenewalRiskLevel = "YELLOW" | "ORANGE" | "RED" | "EXHAUSTED" | "RESOLVED";
+export type RenewalRiskLevel = "YELLOW" | "ORANGE" | "RED" | "EXHAUSTED" | "RESOLVED" | "REVIEW";
 export type RenewalCohort = "BOSS_OTHER" | "XDF";
 
 type RenewalActor = {
@@ -69,7 +70,7 @@ function endOfDayFromNow(days: number) {
 }
 
 function riskRank(level: RenewalRiskLevel) {
-  return { RESOLVED: 0, YELLOW: 1, ORANGE: 2, RED: 3, EXHAUSTED: 4 }[level];
+  return { RESOLVED: 0, YELLOW: 1, ORANGE: 2, RED: 3, EXHAUSTED: 4, REVIEW: 5 }[level];
 }
 
 export function renewalCohortForSourceName(sourceName: string | null | undefined): RenewalCohort {
@@ -194,8 +195,8 @@ export async function getRenewalForecasts(now = new Date(), includeSafe = false)
       sharedStudents: { select: { studentId: true } },
       sharedCourses: { select: { courseId: true } },
       txns: {
-        where: { createdAt: { gte: lookback }, deltaMinutes: { lt: 0 } },
-        select: { deltaMinutes: true },
+        where: { createdAt: { lte: now }, kind: { in: ["DEDUCT", "ROLLBACK", "ADJUST"] } },
+        select: { kind: true, deltaMinutes: true, sessionId: true, createdAt: true },
       },
       contracts: {
         where: { flowType: "RENEWAL", status: { notIn: ["VOID", "EXPIRED"] } },
@@ -207,6 +208,12 @@ export async function getRenewalForecasts(now = new Date(), includeSafe = false)
     orderBy: { updatedAt: "desc" },
   });
   if (!packages.length) return [];
+
+  const ledgerSessionIds = [...new Set(packages.flatMap(p => p.txns.flatMap(t => t.sessionId ? [t.sessionId] : [])))];
+  const ledgerSessions = ledgerSessionIds.length ? await prisma.session.findMany({
+    where: { id: { in: ledgerSessionIds } }, select: { id: true, startAt: true },
+  }) : [];
+  const sessionStarts = new Map(ledgerSessions.map(s => [s.id, s.startAt]));
 
   const studentIds = Array.from(
     new Set(packages.flatMap((row) => [row.studentId, ...row.sharedStudents.map((item) => item.studentId)]))
@@ -256,9 +263,8 @@ export async function getRenewalForecasts(now = new Date(), includeSafe = false)
       });
       const durations = scheduled.map((row) => Math.max(0, Math.round((row.endAt.getTime() - row.startAt.getTime()) / 60_000)));
       const scheduledMinutes = durations.reduce((sum, value) => sum + value, 0);
-      const recentWeeklyMinutes = Math.round(
-        pkg.txns.reduce((sum, row) => sum + Math.abs(row.deltaMinutes), 0) / 4
-      );
+      const consumption = renewalRecentConsumption({ transactions: pkg.txns, sessionStarts, from: lookback, now });
+      const recentWeeklyMinutes = consumption.weeklyUnits;
       const defaultLessonMinutes = durations.length
         ? Math.max(30, Math.round(durations.reduce((sum, value) => sum + value, 0) / durations.length))
         : 90;
@@ -269,9 +275,9 @@ export async function getRenewalForecasts(now = new Date(), includeSafe = false)
       const daysToDepletion =
         remainingMinutes != null && consumptionBasis > 0 ? Math.max(0, Math.ceil((remainingMinutes / consumptionBasis) * 7)) : null;
       const expectedDepletionAt =
-        daysToDepletion == null ? null : new Date(now.getTime() + daysToDepletion * 86_400_000);
+        consumption.needsReview || daysToDepletion == null ? null : new Date(now.getTime() + daysToDepletion * 86_400_000);
       const expiryDays = dateDiffDays(pkg.validTo, now);
-      const riskLevel = classifyRenewalRisk({
+      const riskLevel = consumption.needsReview ? "REVIEW" : classifyRenewalRisk({
         remainingMinutes,
         scheduledMinutes,
         daysToDepletion,
@@ -309,7 +315,7 @@ export async function getRenewalForecasts(now = new Date(), includeSafe = false)
         parentWechatGroupName: primaryLink?.wechatGroupName?.trim() || null,
         parentName: cohort === "XDF" ? "新东方项目负责人" : primaryLink?.parent?.name || "家长",
         parentMessage:
-          cohort === "XDF"
+          consumption.needsReview ? "Consumption records need reconciliation before preparing a renewal reminder. / 消耗流水需先对账，核对后再准备续费提醒。" : cohort === "XDF"
             ? buildXdfMessage({
                 studentName: pkg.student.name,
                 courseName: pkg.course.name,
@@ -370,7 +376,7 @@ export async function syncRenewalTasks(actor?: RenewalActor) {
   let resolved = 0;
 
   for (const forecast of forecasts) {
-    if (suppressedPackageIds.has(forecast.packageId)) continue;
+    if (suppressedPackageIds.has(forecast.packageId) && forecast.riskLevel !== "REVIEW") continue;
     const owner = ownerByName.get(forecast.ownerName.toLowerCase()) ?? null;
     const current = openByPackage.get(forecast.packageId);
     const data = {
