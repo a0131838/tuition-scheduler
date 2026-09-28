@@ -324,7 +324,7 @@ export async function applyMiniappSessionCancellation(
             action: actionState.allResolved ? "MINIAPP_LEAVE_TICKET_COMPLETED_TEACHER_NOTIFIED" : "MINIAPP_LEAVE_ACTION_APPLIED",
             entityType: "Ticket",
             entityId: ticket.id,
-            meta: { sessionId: checked.session.id, studentId: input.studentId, charge: input.charge },
+            meta: { sessionId: checked.session.id, studentId: input.studentId, charge: input.charge, ...(actionState.cancellationEvidence ? { cancellationEvidence: actionState.cancellationEvidence } : {}) },
           },
         });
       }

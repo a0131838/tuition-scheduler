@@ -1,3 +1,4 @@
+import type { Lang } from "./i18n";
 import { formatBusinessDateOnly, parseBusinessDateEnd, parseBusinessDateStart } from "@/lib/date-only";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -23,16 +24,17 @@ export function attendanceLocksCancellation(attendance: CancellationAttendance |
 }
 
 // Presentation only: do not use these labels to grant cancellation permission.
-export function cancellationAttendanceLabel(attendance: CancellationAttendance | null | undefined) {
-  if (!attendance) return "已有出勤或课包记录，需管理员核实";
+export function cancellationAttendanceLabel(attendance: CancellationAttendance | null | undefined, lang: Lang = "ZH") {
+  const label = (en: string, zh: string) => lang === "EN" ? en : lang === "ZH" ? zh : `${en} / ${zh}`;
+  if (!attendance) return label("Attendance or package records need administrator review", "已有出勤或课包记录，需管理员核实");
   if (Number(attendance.deductedMinutes) > 0 || Number(attendance.deductedCount) > 0) {
-    return "已有扣课记录，需管理员处理";
+    return label("Recorded deductions need administrator review", "已有扣课记录，需管理员处理");
   }
-  if (attendance.excusedCharge) return "已设置请假收费，需管理员核实扣课结果";
+  if (attendance.excusedCharge) return label("Charged leave is recorded; verify the actual deduction", "已设置请假收费，需管理员核实扣课结果");
   if (attendance.status === "EXCUSED" && attendance.deductedMinutes === 0 && attendance.deductedCount === 0) {
-    return "已登记请假，未扣课";
+    return label("Uncharged leave is recorded; ledger verification is still required", "已登记请假免扣，实际流水仍需核验");
   }
-  return "已有出勤或课包记录，需管理员核实";
+  return label("Attendance or package records need administrator review", "已有出勤或课包记录，需管理员核实");
 }
 
 export function cancellationNotesForDisplay(notes: string) {

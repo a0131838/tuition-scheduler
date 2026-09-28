@@ -1,5 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { explicitLessonCount, needsMakeupFollowup } from "./ticket-result-evidence";
+import { cancellationLedgerEvidence, type CancellationLedgerEvidence } from "./cancellation-ledger-evidence";
+import { sessionBelongsToStudentWhere } from "./session-students";
 
 export async function applyLinkedTicketSchedulingAction(
   tx: Prisma.TransactionClient,
@@ -26,6 +28,28 @@ export async function applyLinkedTicketSchedulingAction(
     },
     orderBy: { sequence: "asc" },
   });
+  let cancellationEvidence: CancellationLedgerEvidence | undefined;
+  if (input.actionType === "CANCEL_SESSION") {
+    const ticket = await tx.ticket.findUnique({ where: { id: input.ticketId }, select: { studentId: true } });
+    const sessionId = input.sourceSessionId ?? action?.sourceSessionId;
+    const session = ticket?.studentId && sessionId ? await tx.session.findFirst({
+      where: { id: sessionId, ...sessionBelongsToStudentWhere(ticket.studentId) },
+      include: { attendances: { include: { package: { select: { id: true, type: true, note: true } } } } },
+    }) : null;
+    const attendance = session?.attendances.find(row => row.studentId === ticket?.studentId);
+    const policy = input.chargePolicy ?? action?.chargePolicy;
+    if (!session || !ticket?.studentId || attendance?.status !== "EXCUSED" ||
+      (policy === "CHARGE" && !attendance.excusedCharge) || (policy === "NO_CHARGE" && attendance.excusedCharge)) {
+      throw new TicketSchedulingActionContextError("Cancellation and charge decision must match the original lesson / 原课程请假状态与收费决定尚未核对一致");
+    }
+    cancellationEvidence = cancellationLedgerEvidence({
+      studentId: ticket.studentId, exclusiveStudentId: session.studentId,
+      durationMinutes: Math.max(1, Math.round((session.endAt.getTime() - session.startAt.getTime()) / 60000)),
+      attendances: session.attendances,
+      transactions: await tx.packageTxn.findMany({ where: { sessionId: session.id } }),
+    });
+    if (cancellationEvidence.status !== "VERIFIED") throw new TicketSchedulingActionContextError(cancellationEvidence.message);
+  }
   if (action) {
     const resultIds = [...new Set([...(action.resultSessionIds ?? []), ...(action.resultSessionId ? [action.resultSessionId] : []), ...(input.resultSessionIds ?? []), ...(input.resultSessionId ? [input.resultSessionId] : [])])];
     const complete = action.actionType !== "CREATE_SESSION" || resultIds.length >= explicitLessonCount(action.notes);
@@ -60,7 +84,7 @@ export async function applyLinkedTicketSchedulingAction(
     tx.ticketSchedulingAction.count({ where: { ticketId: input.ticketId } }),
     tx.ticketSchedulingAction.count({ where: { ticketId: input.ticketId, status: { notIn: ["APPLIED", "CANCELLED"] } } }),
   ]);
-  return { matchedActionId: action?.id ?? null, hasActions: total > 0, allResolved: total === 0 || unresolved === 0, unresolved };
+  return { matchedActionId: action?.id ?? null, hasActions: total > 0, allResolved: total === 0 || unresolved === 0, unresolved, cancellationEvidence };
 }
 
 export class TicketSchedulingActionContextError extends Error {
@@ -160,6 +184,7 @@ export async function applyAdminLinkedTicketSchedulingAction(
         resultSessionId: input.resultSessionId ?? null,
         resultSessionIds: input.resultSessionIds ?? (input.resultSessionId ? [input.resultSessionId] : []),
         ...(input.verification ? { verification: input.verification } : {}),
+        ...(actionState.cancellationEvidence ? { cancellationEvidence: actionState.cancellationEvidence } : {}),
         allResolved: actionState.allResolved,
         unresolved: actionState.unresolved,
       },

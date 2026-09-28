@@ -1,3 +1,6 @@
+import { Prisma } from "@prisma/client";
+import { sessionBelongsToStudentWhere } from "@/lib/session-students";
+import { cancellationLedgerEvidence } from "@/lib/cancellation-ledger-evidence";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/lib/package-sharing";
@@ -32,26 +35,27 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!sessionId) return bad("Missing sessionId");
   if (Boolean(ticketId) !== Boolean(ticketActionId)) return bad("Invalid ticket action context", 409);
 
-  const session = await prisma.session.findUnique({
-    where: { id: sessionId },
-    select: { id: true, startAt: true, endAt: true, classId: true, class: { select: { courseId: true } } },
-  });
-  if (!session) return bad("Session not found", 404);
-
-  const durationMin = Math.max(0, Math.round((session.endAt.getTime() - session.startAt.getTime()) / 60000));
-  const desiredDeductedMinutes = charge ? durationMin : 0;
-
-  const existing = await prisma.attendance.findUnique({
-    where: { sessionId_studentId: { sessionId, studentId } },
-    select: { deductedMinutes: true, packageId: true, deductedCount: true },
-  });
-  const prevDeductedMinutes = existing?.deductedMinutes ?? 0;
-  const delta = desiredDeductedMinutes - prevDeductedMinutes;
-
-  let packageId: string | null = existing?.packageId ?? null;
-
+  let desiredDeductedMinutes = 0;
   try {
     await prisma.$transaction(async (tx) => {
+      if (ticketId) {
+        await tx.$queryRaw`SELECT id FROM "Ticket" WHERE id = ${ticketId} FOR UPDATE`;
+        const ticket = await tx.ticket.findUnique({ where: { id: ticketId }, select: { studentId: true } });
+        if (ticket?.studentId !== studentId) throw new TicketSchedulingActionContextError("Ticket belongs to another student / 工单与学生不一致");
+      }
+      const session = await tx.session.findFirst({
+        where: { id: sessionId, ...sessionBelongsToStudentWhere(studentId) },
+        select: { id: true, studentId: true, startAt: true, endAt: true, classId: true, class: { select: { courseId: true } } },
+      });
+      if (!session) throw new TicketSchedulingActionContextError("Lesson not found for this student / 未找到属于该学生的课程");
+      const durationMin = Math.max(0, Math.round((session.endAt.getTime() - session.startAt.getTime()) / 60000));
+      desiredDeductedMinutes = charge ? durationMin : 0;
+      const existing = await tx.attendance.findUnique({
+        where: { sessionId_studentId: { sessionId, studentId } },
+        select: { deductedMinutes: true, packageId: true, deductedCount: true },
+      });
+      const delta = desiredDeductedMinutes - (existing?.deductedMinutes ?? 0);
+      let packageId = existing?.packageId ?? null;
       if (delta !== 0) {
         if (!packageId && delta > 0) {
           const pkg = await tx.coursePackage.findFirst({
@@ -150,6 +154,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           excusedCharge: charge,
         },
       });
+      // Even without a ticket, a counter change must reconcile with actual ledger entries.
+      const evidence = cancellationLedgerEvidence({
+        studentId, exclusiveStudentId: session.studentId, durationMinutes: durationMin,
+        attendances: await tx.attendance.findMany({ where: { sessionId }, include: { package: { select: { id: true, type: true, note: true } } } }),
+        transactions: await tx.packageTxn.findMany({ where: { sessionId } }),
+      });
+      if (evidence.status !== "VERIFIED") throw new TicketSchedulingActionContextError(evidence.message);
       if (ticketId && ticketActionId) {
         await applyAdminLinkedTicketSchedulingAction(tx, {
           ticketId,
@@ -166,8 +177,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           auditAction: "ADMIN_TICKET_SESSION_CANCEL_APPLIED",
         });
       }
-    });
+    }, { isolationLevel: "Serializable" });
   } catch (e: any) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && (e.code === "P2034" || (e.code === "P2010" && e.meta?.code === "40001"))) {
+      return bad("Records changed. Refresh and retry / 记录已变化，请刷新后重新核对", 409, { code: "CANCELLATION_RETRY" });
+    }
     if (e instanceof TicketSchedulingActionContextError) return bad(e.message, 409, { code: "TICKET_ACTION_CONTEXT" });
     const code = String(e?.code ?? "");
     if (code === "NO_ACTIVE_HOURS_PACKAGE") return bad("No active HOURS package", 409, { code });

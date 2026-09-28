@@ -63,7 +63,7 @@ test("web and miniapp intake expose date lookup, manual fallback and review-only
 test("uncharged leave is described accurately without enabling automatic cancellation", () => {
   const attendance = { status: "EXCUSED", deductedMinutes: 0, deductedCount: 0, packageId: null, excusedCharge: false };
   const state = cancellationSourceStatus({ startAt: new Date("2026-08-16T09:00:00Z"), endAt: new Date("2026-08-16T10:00:00Z"), attendanceLocked: attendanceLocksCancellation(attendance), attendance }, now);
-  assert.equal(state.label, "已登记请假，未扣课");
+  assert.equal(state.label, "已登记请假免扣，实际流水仍需核验");
   assert.equal(state.status, "ATTENDANCE_LOCKED");
   assert.equal(state.canAutoExecute, false);
 });
@@ -91,4 +91,13 @@ test("historical system notes are explicitly historical while staff content is p
   const display = cancellationNotesForDisplay(notes);
   assert.equal(display, notes.replace("系统状态：", "提交时状态（非实时）："));
   assert.equal(cancellationNotesForDisplay(display), display);
+});
+
+// An attendance counter is not proof that a historical debit was reversed.
+test("uncharged leave labels distinguish the recorded decision from ledger evidence in each language", () => {
+  const attendance = { status: "EXCUSED", deductedMinutes: 0, deductedCount: 0, excusedCharge: false };
+  assert.match(cancellationAttendanceLabel(attendance, "EN"), /ledger verification is still required/);
+  assert.doesNotMatch(cancellationAttendanceLabel(attendance, "EN"), /[\u4e00-\u9fff]/);
+  assert.match(cancellationAttendanceLabel(attendance, "ZH"), /实际流水仍需核验/);
+  assert.match(cancellationAttendanceLabel(attendance, "BILINGUAL"), /ledger verification.*实际流水仍需核验/);
 });

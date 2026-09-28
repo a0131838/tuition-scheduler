@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { prisma } from "../../lib/prisma";
 import { linkTicketResults, ticketResultCandidates } from "../../lib/ticket-existing-results";
 import { createStaffMiniappSession } from "../../lib/miniapp-staff";
+import { applyAdminLinkedTicketSchedulingAction } from "../../lib/ticket-scheduling-action-write";
 
 async function main() {
   const db = new URL(process.env.DATABASE_URL || "");
@@ -90,6 +91,14 @@ async function main() {
   } });
   await prisma.packageTxn.create({ data: { packageId: ledgerPackage.id, sessionId: ledgerLesson.id, kind: "DEDUCT", deltaMinutes: -90, note: `studentId=${student.id}` } });
   const ledgerTicket = await ticket("CANCEL_SESSION", "取消，不收费，不需要补课", ledgerLesson.id, { chargePolicy: "NO_CHARGE" });
+  const directLink = () => prisma.$transaction(tx => applyAdminLinkedTicketSchedulingAction(tx, {
+    ticketId: ledgerTicket.id, actionId: ledgerTicket.schedulingActions[0].id, actionType: "CANCEL_SESSION",
+    sourceSessionId: ledgerLesson.id, resultSessionId: ledgerLesson.id, appliedByUserId: user.id,
+    actorEmail: user.email, actorName: user.name, actorRole: user.role, resultText: "UAT direct execution",
+    auditAction: "UAT_DIRECT_EXECUTION", chargePolicy: "NO_CHARGE",
+  }), { isolationLevel: "Serializable" });
+  await assert.rejects(directLink(), /实际净扣课/);
+  assert.equal(await prisma.auditLog.count({ where: { entityId: ledgerTicket.schedulingActions[0].id } }), 0);
   await assert.rejects(link(ledgerTicket, [], { confirmedChange: true, note: "测试备注不能跳过流水" }), /实际净扣课/);
   assert.equal((await prisma.ticketSchedulingAction.findUniqueOrThrow({ where: { id: ledgerTicket.schedulingActions[0].id } })).status, "READY");
   await prisma.packageTxn.create({ data: { packageId: ledgerPackage.id, sessionId: ledgerLesson.id, kind: "ROLLBACK", deltaMinutes: 90, note: `studentId=${student.id}` } });
@@ -107,6 +116,32 @@ async function main() {
   assert.ok(JSON.stringify(ledgerAudit.meta).includes('"VERIFIED"'));
   const uiTicket = await ticket("CREATE_SESSION", "安排2节课，共180分钟", undefined, { requestedStartAt: first.startAt, courseLabel: course.name });
   if (process.env.UAT_HTTP === "1") {
+    const cancel = (sid: string, extra: Record<string, unknown> = {}, targetStudent = student.id) => fetch(`${base}/api/admin/students/${targetStudent}/sessions/cancel`, {
+      method: "POST", headers: { Cookie: `ts_admin_session=${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId: sid, charge: false, note: "Isolated cancellation UAT", ...extra }),
+    });
+    // A session outside the student's scope cannot acquire an attendance row.
+    assert.equal((await cancel(foreign.id)).status, 409);
+    assert.equal(await prisma.attendance.count({ where: { sessionId: foreign.id, studentId: student.id } }), 0);
+    // A stale counter with an outstanding debit must not be silently marked complete.
+    const staleLesson = await lesson(false, student.id, 7);
+    await prisma.packageTxn.create({ data: { packageId: ledgerPackage.id, sessionId: staleLesson.id, kind: "DEDUCT", deltaMinutes: -90, note: `studentId=${student.id}` } });
+    const staleAttendance = await prisma.attendance.findMany({ where: { sessionId: staleLesson.id } });
+    const staleTicket = await ticket("CANCEL_SESSION", "取消不收费", staleLesson.id, { chargePolicy: "NO_CHARGE" });
+    assert.equal((await cancel(staleLesson.id, { ticketId: staleTicket.id, ticketActionId: staleTicket.schedulingActions[0].id })).status, 409);
+    assert.deepEqual(await prisma.attendance.findMany({ where: { sessionId: staleLesson.id } }), staleAttendance);
+    assert.equal((await prisma.ticketSchedulingAction.findUniqueOrThrow({ where: { id: staleTicket.schedulingActions[0].id } })).status, "READY");
+    // A valid refund is atomic and retrying the same cancellation cannot credit twice.
+    const refundLesson = await lesson(false, student.id, 8);
+    await prisma.attendance.update({ where: { sessionId_studentId: { sessionId: refundLesson.id, studentId: student.id } }, data: { packageId: ledgerPackage.id, deductedMinutes: 90 } });
+    await prisma.packageTxn.create({ data: { packageId: ledgerPackage.id, sessionId: refundLesson.id, kind: "DEDUCT", deltaMinutes: -90, note: `studentId=${student.id}` } });
+    const balanceBefore = (await prisma.coursePackage.findUniqueOrThrow({ where: { id: ledgerPackage.id } })).remainingMinutes!;
+    const concurrentCancels = await Promise.all([cancel(refundLesson.id), cancel(refundLesson.id)]);
+    assert.ok(concurrentCancels.some(r => r.status === 200));
+    assert.ok(concurrentCancels.every(r => [200, 409].includes(r.status)));
+    assert.equal((await cancel(refundLesson.id)).status, 200);
+    assert.equal((await prisma.coursePackage.findUniqueOrThrow({ where: { id: ledgerPackage.id } })).remainingMinutes, balanceBefore + 90);
+    assert.equal(await prisma.packageTxn.count({ where: { sessionId: refundLesson.id, kind: "ROLLBACK" } }), 1);
     const web = await fetch(`${base}/api/admin/tickets/${uiTicket.id}/results?date=2026-06-01`, { headers: { Cookie: `ts_admin_session=${token}` } });
     assert.equal(web.status, 200);
     const staff = await createStaffMiniappSession(user.id);

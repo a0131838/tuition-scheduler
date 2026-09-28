@@ -85,6 +85,7 @@ import { explicitLessonCount } from "@/lib/ticket-result-evidence";
 import { ticketCommandScopeError } from "@/lib/ticket-command-scope";
 import { cancellationAttendanceLabel, cancellationNotesForDisplay } from "@/lib/ticket-cancellation-intake";
 import AiPlanSubmitButton from "./AiPlanSubmitButton";
+import { t, type Lang } from "@/lib/i18n";
 
 function trimValue(formData: FormData, key: string, max = 400) {
   const v = String(formData.get(key) ?? "").trim();
@@ -859,6 +860,7 @@ export default async function AdminTicketDetailPage({
   searchParams?: Promise<{ back?: string; err?: string; resultError?: string; ok?: string; fields?: string; source?: string; todoBack?: string; work?: string; guide?: string }>;
 }) {
   const adminUser = await requireAdmin();
+  const lang = (adminUser.language as Lang) || "BILINGUAL";
   const route = await params;
   const sp = await searchParams;
   const id = String(route.id ?? "").trim();
@@ -1642,13 +1644,13 @@ export default async function AdminTicketDetailPage({
                     ) : null}
                     {action.actionType === "CANCEL_SESSION" && cancellationAttendance ? (
                       <div style={{ color: "#334155", fontWeight: 750 }}>
-                        当前出勤记录：{cancellationAttendanceLabel(cancellationAttendance)}
-                        {alreadyCancelled ? (action.status === "APPLIED" ? "；工单结果已核验" : "；工单结果待核验") : ""}
+                        {t(lang, "Attendance record: ", "当前出勤记录：")}{cancellationAttendanceLabel(cancellationAttendance, lang)}
+                        {alreadyCancelled ? (action.status === "APPLIED" ? t(lang, "; Work order verified", "；工单结果已核验") : t(lang, "; Work order awaiting verification", "；工单结果待核验")) : ""}
                       </div>
                     ) : null}
                     {!locked ? (
                       <div style={{ display: "grid", gap: 10 }}>
-                        {alreadyCancelled ? <div style={{ color: "#047857", fontWeight: 750 }}>原课程已取消，待核验关联</div> : executionHref ? (
+                        {alreadyCancelled ? <div style={{ color: "#047857", fontWeight: 750 }}>{t(lang, "The original lesson is cancelled; result verification is pending", "原课程已取消，待核验关联")}</div> : executionHref ? (
                           <a
                             href={executionHref}
                             style={{
@@ -1691,12 +1693,19 @@ export default async function AdminTicketDetailPage({
                         {["CREATE_SESSION", "RESCHEDULE_SESSION", "CANCEL_SESSION", "REPLACE_TEACHER"].includes(action.actionType) ? (
                           <details open={alreadyCancelled || action.actionType === "CREATE_SESSION"} style={{ borderTop: "1px solid #fdba74", paddingTop: 10 }}>
                             <summary style={{ cursor: "pointer", color: "#9a3412", fontWeight: 800 }}>
-                              已在其他页面处理？关联已有结果
+                              {t(lang, "Already processed elsewhere? Link the result", "已在其他页面处理？关联已有结果")}
                             </summary>
                             <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
                               <div style={{ color: "#7c2d12", fontSize: 12 }}>
-                                仅当正式课表已经完成对应操作时使用。系统会记录操作者、课程和核验备注；不要用它跳过尚未执行的改课或取消。
+                                {t(lang, "Use this after the formal schedule has been updated. The system records the operator, lesson and verification notes. Unfinished changes cannot be marked complete.", "仅当正式课表已经完成对应操作时使用。系统会记录操作者、课程和核验备注；尚未执行的改课或取消不能标记完成。")}
                               </div>
+                              {action.actionType === "CANCEL_SESSION" ? (
+                                <div role="note" style={{ background: "#eff6ff", color: "#1e3a8a", border: "1px solid #bfdbfe", borderRadius: 8, padding: 12, fontSize: 13, display: "grid", gap: 8 }}>
+                                  <strong>{t(lang, "Cancellation requires ledger verification", "取消结果需核对实际课时流水")}</strong>
+                                  <span>{t(lang, "Attendance shows the recorded decision. Verification also checks deductions and reversals for this student and lesson. Notes cannot override a mismatch or unclear ownership. Verification itself does not deduct or return hours.", "出勤显示的是已登记的处理决定；核验还会检查该学生、本节课的实际扣退流水。备注不能跳过流水不一致或归属不明。核验本身不会扣课或退课时。")}</span>
+                                  {row.studentId ? <a href={`/admin/students/${row.studentId}#session-${action.sourceSessionId ?? ""}`}>{t(lang, "Review the lesson and its package records", "查看本节课程及关联课包记录")} →</a> : null}
+                                </div>
+                              ) : null}
                               {action.actionType === "CREATE_SESSION" ? (
                                 <div>
                                   实际新增课程
@@ -1705,24 +1714,24 @@ export default async function AdminTicketDetailPage({
                                 </div>
                               ) : (
                                 <div style={{ color: "#57534e", fontSize: 13 }}>
-                                  核验对象固定为上方原课程，系统不会允许改选该学生的其他课程。
+                                  {t(lang, "Verification uses the original lesson above. Other lessons cannot be substituted.", "核验对象固定为上方原课程，不能改选该学生的其他课程。")}
                                 </div>
                               )}
                               <label>
-                                备注（仅异常或需求变更时填写）
+                                {t(lang, "Notes (exceptions or confirmed changes only)", "备注（仅异常或需求变更时填写）")}
                                 <textarea
                                   name="existingResultNote"
                                   rows={3}
-                                  placeholder="实际安排与原需求不同时，填写确认人及变更依据"
+                                  placeholder={t(lang, "If arrangements changed, record who confirmed them and the supporting evidence", "实际安排与原需求不同时，填写确认人及变更依据")}
                                   style={{ width: "100%", boxSizing: "border-box" }}
                                 />
                               </label>
-                              <label><input type="checkbox" name="existingResultChanged" value="1" /> 需求已有确认的变更（需填写依据）</label>
+                              <label><input type="checkbox" name="existingResultChanged" value="1" /> {t(lang, "The request has a confirmed change (evidence required)", "需求已有确认的变更（需填写依据）")}</label>
                               <label style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
                                 <input name="existingResultVerified" type="checkbox" value="1" style={{ marginTop: 3 }} />
-                                <span>我已核对正式课表，确认该动作已经实际完成，不会造成重复排课、重复取消或重复改课。</span>
+                                <span>{t(lang, "I have checked the formal schedule and confirmed the action is complete, without duplicating a booking, cancellation or change.", "我已核对正式课表，确认该动作已经实际完成，不会造成重复排课、重复取消或重复改课。")}</span>
                               </label>
-                              <ResultSubmitButton action={linkExistingSchedulingResultAction} />
+                              <ResultSubmitButton action={linkExistingSchedulingResultAction} lang={lang} />
                             </div>
                           </details>
                         ) : null}

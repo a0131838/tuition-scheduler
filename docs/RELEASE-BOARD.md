@@ -1,4 +1,21 @@
 # RELEASE BOARD
+## 2026-09-28-r408 Ready
+
+- Release ID: `2026-09-28-r408`
+- Date/Time (Asia/Singapore): `2026-09-28`
+- Deployment status: `READY` for guarded release after local verification.
+- Scope: require actual cancellation ledger evidence before completing a work order, including existing-result links and direct web/Mini Program execution. Reconcile minute, monthly and count packages separately; ambiguous shared history remains for review.
+- Direct cancellation reads attendance inside a serializable transaction, verifies student/ticket scope and rolls the operation back on mismatch. Concurrent/repeated requests cannot refund the same recorded deduction twice.
+- UI: attendance is explicitly a recorded decision, not proof of a returned balance. Verification instructions and controls support Chinese, English and bilingual preferences; existing unrelated ticket text remains for the planned language audit.
+- Business boundary: no data migration, historical repair, production test records, messages, role expansion or Mini Program client publication. Verification only reads business records and writes its work-order result/audit after evidence passes.
+- Risk: medium. Inconsistent or unattributable historical ledger entries now block completion and require reconciliation. This release does not introduce a minute-based workaround for monthly/count package corrections.
+- Verification: 41 focused tests; complete 259-page production build; isolated PostgreSQL service/HTTP UAT for stale counters, foreign students, rollback, concurrent cancellation, repeat submission, observer denial and audit evidence; authenticated local browser rejection of an unrefunded cancellation.
+- Key files: `lib/cancellation-ledger-evidence.ts`, `lib/ticket-existing-results.ts`, `lib/ticket-scheduling-action-write.ts`, `lib/ticket-cancellation-intake.ts`, `app/api/admin/students/[id]/sessions/cancel/route.ts`, `app/admin/tickets/[id]/page.tsx`, `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `dda2e4c99366af45f721b237052b9419b09119d3` (r407). No migration rollback required.
+- Overall programme remains in phase 1; this release is not completion of the full remediation plan.
+
+---
+
 ## 2026-09-28-r407
 
 - Release ID: `2026-09-28-r407`
@@ -39,7 +56,7 @@
 ---
 
 
-- Current release line on this branch: `2026-09-28-r407`, ready for guarded release of workspace navigation and presentation. This release does not publish a Mini Program client.
+- Current release line on this branch: `2026-09-28-r408`, ready for guarded release of cancellation ledger verification. This release does not publish a Mini Program client.
 
 ## 2026-09-09-r404 Ready
 
