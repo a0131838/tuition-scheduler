@@ -46,7 +46,7 @@ export async function mutateSalesEvidence(actor:RelationshipActor,input:SalesEvi
   try{return await prisma.$transaction(tx=>mutateSalesEvidenceInTransaction(tx,actor,input),{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});}
   catch(error){if(error instanceof Prisma.PrismaClientKnownRequestError&&['P2034','P2002'].includes(error.code))throw new Error('Concurrent update; reload before retrying / 同时有人更新了记录，请刷新后重试');throw error;}
 }
-export async function readSalesContractEvidence(actor:RelationshipActor,scope:{leadId:string}|{relationshipId:string}) {
+export async function readSalesContractEvidence(actor:RelationshipActor,scope:{leadId:string}|{relationshipId:string|{in:string[]}}) {
   assertSalesEvidenceAccess(actor);
   const assignments=await prisma.salesEvidenceAssignment.findMany({where:{...scope,kind:'CONTRACT'},include:{lead:{select:leadSelect}},orderBy:{updatedAt:'desc'}});
   const sources=await prisma.studentContract.findMany({where:{id:{in:assignments.map(a=>a.documentId)}},select:contractSelect});

@@ -287,3 +287,23 @@ Logs: `/tmp/sgt-r422-focused.log`, `/tmp/sgt-r422-backend.log`, `/tmp/sgt-r422-u
 ---
 
 Logs: `/tmp/sgt-r423-focused.log`, `/tmp/sgt-r423-backend.log`, `/tmp/sgt-r423-uat.log`, `/tmp/sgt-r423-parent-regression.log`, `/tmp/sgt-r423-http.log`, `/tmp/sgt-r423-build.log`, `/tmp/sgt-r423-tsc-final.log`. Isolated database guard checks both connection URLs. Expected competing transaction rejection in parent regression is intentional. Browser initially waited for a nonexistent separate revoke banner; actual shared success banner plus persisted revoked history and audit verified the operation.
+
+## 2026-09-28-r424
+
+- Release ID: `2026-09-28-r424`
+- Date/Time (Asia/Singapore): `2026-09-28`
+- Deployment status: `READY`; guarded release evidence is maintained in the execution ledger.
+- Problem: relationship cards counted all linked records as a single number and the due filter only considered the relationship's own date, hiding overdue student and project work. Managers had no side-by-side comparison of reviewed business evidence.
+- Change: optional comparison view separates student opportunities, exact-ID distinct linked students, open student deals, independent cooperation projects, verified signed contracts and currently approved parent/partner receipts. Shared existing evidence readers batch the displayed relationship IDs; comparison and detail values follow identical current-source rules. Missing verified receipt evidence is shown as unverified, not zero business; parent/partner channels remain separate and neither is labeled net revenue.
+- Follow-up: due filtering includes the relationship, active student deals and active cooperation projects independently. Won/lost/archived student records, unreviewed contact records and closed/paused projects do not create child deadlines. A won student never clears relationship follow-up. Cards and comparison show due task counts by scope; optional sorting applies to displayed results, with an explicit 200-result coverage limit.
+- Access/UI: ZH/EN/BILINGUAL, card view remains default, comparison is opt-in, old URLs and workflow actions remain. Financial queries/payloads are absent for SALES/CS/operations-admin users; observers retain read-only access and FINANCE/teacher resource restrictions remain.
+- Validation:22 focused policy tests,181 backend tests,full TypeScript and260-page build. Isolated comparison UAT matches every relationship detail, guards both DB URLs, checks financial role boundaries and unchanged billing/approval/assignment/ledger snapshots. Seven-role HTTP confirms due child/project inclusion, won-only exclusion and no financial payload leak. Existing three-student relationship workflow UAT passes independent deals, persistent relationship, follow-up concurrency, atomic audit rollback, project separation, archive/restore, explicit relink and role guards. Browser verifies bilingual due comparison, English card/sort switching, Chinese partner approved receipts50 with two opportunities/one distinct student, and empty financial evidence labeled unverified; console clean.
+- Risk/coverage: historical identities and document ownership remain subject to explicit business review; no CSV backfill, guessed allocation, production business test writes or messages. All financial metrics are reviewed evidence coverage, not a claim that every historical document is attributed.
+- Migration: none. No contract, billing, receipt, ledger or scheduling behavior changed.
+- Remaining: phase2 implementation acceptance closes after release verification; phase3 correction workspace and phases4–10 remain. This is not programme completion.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `c571101bb2b42ae0f778e3f267b51c6cffd548a9` (r423).
+
+---
+
+Logs: `/tmp/sgt-r424-focused.log`, `/tmp/sgt-r424-backend.log`, `/tmp/sgt-r424-uat.log`, `/tmp/sgt-r424-http.log`, `/tmp/sgt-r424-workflow.log`, `/tmp/sgt-r424-build.log`, `/tmp/sgt-r424-tsc-final.log`. First build exposed a QA-script inference error; explicit metric/return types fixed it and final checks passed. Expected serialization/cross-profile failures in workflow log are rejection tests.

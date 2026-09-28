@@ -39,7 +39,7 @@ export async function attributeParentInvoice(actor:RelationshipActor,input:Paren
  try{return await prisma.$transaction(tx=>attributeParentInvoiceInTransaction(tx,actor,input),{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});}
  catch(error){if(error instanceof Prisma.PrismaClientKnownRequestError&&['P2034','P2002'].includes(error.code))throw new Error('Concurrent update; reload before retrying / 同时有人更新了记录，请刷新后重试');throw error;}
 }
-export async function readParentInvoiceEvidence(actor:RelationshipActor,scope:{leadId:string}|{relationshipId:string}){
+export async function readParentInvoiceEvidence(actor:RelationshipActor,scope:{leadId:string}|{relationshipId:string|{in:string[]}}){
  assertSalesEvidenceAccess(actor);
  return prisma.$transaction(async tx=>{
  const assignments=await tx.salesEvidenceAssignment.findMany({where:{...scope,kind:'PARENT_INVOICE'},include:{lead:{select:leadSelect}},orderBy:{updatedAt:'desc'}});

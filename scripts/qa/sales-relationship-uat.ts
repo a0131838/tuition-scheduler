@@ -5,8 +5,7 @@ import {mutateSalesRelationship,mutateSalesRelationshipInTransaction} from '../.
 import {summarizeRelationshipLeads} from '../../lib/sales-relationship-policy';
 
 async function main(){
- const url=new URL(process.env.DATABASE_URL||'');
- assert.equal(url.hostname,'127.0.0.1');assert.equal(url.port,'55439');assert.equal(url.pathname,'/sgt_workspace_completion_test');
+ for(const key of ['DATABASE_URL','DIRECT_DATABASE_URL']){const url=new URL(process.env[key]||'');assert.equal(url.hostname,'127.0.0.1');assert.equal(url.port,'55439');assert.equal(url.pathname,'/sgt_workspace_completion_test');}
  const actor=await prisma.user.findUniqueOrThrow({where:{email:'zhaohongwei0880@gmail.com'}});
  const tag=`Relationship UAT ${randomUUID()}`;
  const profile={name:tag,kind:'AGENT',status:'ACTIVE',ownerName:actor.name,nextAction:'Review three referrals',nextActionDue:'2026-10-01T10:30'};
