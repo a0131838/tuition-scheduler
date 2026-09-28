@@ -61,3 +61,14 @@ Remaining phase 1: manual PAYMENT_CONFIRMED/PACKAGE_ACTIVE transitions still req
 
 - Final verification: complete 259-page production build passed (`/tmp/sgt-r410-build-final.log`); authenticated isolated browser passed ZH/EN/BILINGUAL coverage/empty-state display, collapsed guide, native manager→all navigation and remembered-manager→return-to-full-inbox navigation. No console errors observed. Language preference persistence was verified after reload; the existing client refresh inconsistency is retained for the broader UI pass.
 - Native navigation is opt-in for the two approval banners; every other shared banner retains its existing default. No new business records or approvals were created for this UI check.
+
+## r411 — Dependency security patches and self-service route coverage
+
+- Audit found Next.js/sharp/nanoid advisory ranges. Patched to Next 15.5.26, sharp 0.35.4 and nanoid 3.3.18, keeping Next's sharp deduplicated on the patched version and retaining the existing PostCSS override. Official AVIF and nanoid advisories were checked; no exploitation claim is made.
+- Installed independent dependencies in this worktree after removing only its verified symlink. Shared ai-subdomain dependencies remain untouched.
+- Backend suite originally had 180/181 passing due to `/staff/hr` missing from the operation-flow registry. Added the exact existing self-service route to the existing SYSTEM_GUIDE staff workbench area, then reran: 181/181 pass. No test assertion was removed and no dedicated HR training completion is claimed.
+- 12 focused cancellation/renewal tests, isolated renewal service UAT and normal PNG/JPEG/WebP/AVIF decoding/resizing pass. Audit is zero. Logs: `/tmp/sgt-r411-backend-final.log`, `/tmp/sgt-r411-remediation.log`, `/tmp/sgt-r411-renewal-uat.log`, `/tmp/sgt-r411-audit.json`.
+- The separate navigation-performance source test remains a known pre-existing failure: ticket AI work is currently awaited before secondary queries. Investigated in `/tmp/sgt-navigation-baseline.log`; fix the actual parallelism later rather than relaxing the assertion.
+- Full programme remains in progress; dependency remediation is an early phase-9 subtask while phase-1 financial evidence and attendance-impact work continue next.
+
+- Final local validation: 259-page Next 15.5.26 production build passed (`/tmp/sgt-r411-build-final.log`); isolated renewal HTTP UAT passed (`/tmp/sgt-r411-renewal-http.log`); actual Next Image endpoint returned HTTP 200 image/webp and decoded at width 256; authenticated approval page rendered without console errors. Existing language preference/router.refresh stale-display behavior remains reproducible; native reload displays the persisted language and this pre-existing issue remains on the UI ledger.

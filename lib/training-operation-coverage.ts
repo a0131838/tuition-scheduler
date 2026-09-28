@@ -264,6 +264,7 @@ export const OPERATION_AREAS: OperationArea[] = [
     routePrefixes: [
       "/admin",
       "/admin/mobile",
+      "/staff/hr",
       "/miniapp/pages/staff-home",
       "/miniapp/pages/staff-action-center",
       "/miniapp/pages/staff-operations",

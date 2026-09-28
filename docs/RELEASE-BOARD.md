@@ -1,4 +1,22 @@
 # RELEASE BOARD
+## 2026-09-28-r411 Ready
+
+- Release ID: `2026-09-28-r411`
+- Date/Time (Asia/Singapore): `2026-09-28`
+- Deployment status: `READY` after verification; final guarded deployment evidence is recorded externally.
+- Problem: dependency audit reported one critical and two high findings in Next.js, sharp and nanoid. The contract signing page uses Next Image; dependency findings were reviewed against official advisories, not treated as proof of exploitation.
+- Change: Next.js `15.5.22 → 15.5.26`, sharp `0.35.3 → 0.35.4`, and nanoid `3.3.17 → 3.3.18`. Next’s optional sharp dependency is pinned to the same patched direct version so an older nested image decoder is not retained. Existing PostCSS override remains. No framework major upgrade.
+- Isolation: replaced only this worktree’s dependency symlink with an independent installation. The old worktree’s dependencies were not modified.
+- Regression correction: registered the existing `/staff/hr` self-service entry under the existing staff workbench SYSTEM_GUIDE area. This fixes the missing route in the operation-coverage check; it does not claim a dedicated HR SOP is complete or grant HR permissions.
+- Validation: npm audit reports zero known vulnerabilities; 181 backend tests pass; 12 cancellation/renewal evidence tests and isolated renewal service UAT pass; normal PNG/JPEG/WebP/AVIF buffers decode, resize and re-encode. Final build, local HTTP/browser and deployment evidence are in the execution ledger.
+- Known remaining issue: the separate pre-existing navigation-performance source check still fails because ticket AI work is awaited before independent secondary queries. It was investigated and retained for a real performance fix; the assertion was not weakened.
+- Business boundary: no production test transactions, schema changes, financial/attendance/scheduling policy changes, outbound messages or Mini Program client publication.
+- Sources: https://github.com/advisories/GHSA-2xp9-vwfh-vxw4 ; https://github.com/advisories/GHSA-rgj7-g3m4-5g8c ; https://github.com/advisories/GHSA-2v37-7h3g-55p8 .
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `a4dfd58460283193f97b55df14bfb7ee19f25248` (r410). Rollback restores the older vulnerable dependency versions; prefer a forward fix unless recovery requires it.
+
+---
+
 ## 2026-09-28-r410 Ready
 
 - Release ID: `2026-09-28-r410`
