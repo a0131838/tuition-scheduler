@@ -30,7 +30,7 @@ function pillStyle(tone: "green" | "amber" | "red" | "blue" | "slate") {
 export default async function AdminLeadsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ q?: string; status?: string; sourceType?: string; owner?: string; intent?: string; focus?: string; archived?: string; ok?: string }>;
+  searchParams?: Promise<{ q?: string; status?: string; sourceType?: string; owner?: string; intent?: string; focus?: string; archived?: string; recordKind?: string; ok?: string }>;
 }) {
   const user = await requireResourceUser();
   const canManageResource = canManageResourceWorkspaceRole(user.role);
@@ -43,6 +43,7 @@ export default async function AdminLeadsPage({
   const intent = first(sp?.intent).trim();
   const focus = first(sp?.focus).trim();
   const archived = first(sp?.archived).trim() === "1";
+  const recordKind = ["UNREVIEWED","STUDENT","RELATIONSHIP"].includes(first(sp?.recordKind)) ? first(sp?.recordKind) : "";
   const ok = first(sp?.ok).trim();
   const now = new Date();
   const focusWhere = buildLeadFocusWhere(focus, user.name, now);
@@ -66,6 +67,7 @@ export default async function AdminLeadsPage({
         ...(owner && focus !== "mine" ? { ownerName: owner } : {}),
         ...(intent ? { intentLevel: intent } : {}),
         isArchived: archived,
+        ...(recordKind ? {recordKind} : {}),
         ...focusWhere,
       },
       include: { assessmentRequests: { select: { status: true, dueAt: true } } },
@@ -89,10 +91,13 @@ export default async function AdminLeadsPage({
   if (intent) params.set("intent", intent);
   if (focus) params.set("focus", focus);
   if (archived) params.set("archived", "1");
+  if (recordKind) params.set("recordKind", recordKind);
   const exportHref = `/admin/leads/export${params.toString() ? `?${params.toString()}` : ""}`;
 
   return (
     <main style={{ display: "grid", gap: 14 }}>
+      <a href="/admin/relationships">{t(lang,"Relationships & referrals","关系与转介")}</a>
+      {recordKind === "UNREVIEWED" ? <p>{t(lang,"Review each original record before identifying it as a student opportunity or a relationship. Names and historical Won status do not establish payment.","请逐条核对原记录属于学生商机还是关系档案；名称及历史成交状态不能证明收款。")}</p> : null}
       <section style={{ border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 12, padding: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
           <div>
@@ -172,6 +177,7 @@ export default async function AdminLeadsPage({
 
       <section style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 10, padding: 12 }}>
         <form style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <select name="recordKind" defaultValue={recordKind} aria-label={t(lang,"Record classification","记录分类")}><option value="">{t(lang,"All records","全部记录")}</option><option value="UNREVIEWED">{t(lang,"Needs classification","待分类核对")}</option><option value="STUDENT">{t(lang,"Student opportunities","学生商机")}</option><option value="RELATIONSHIP">{t(lang,"Original relationship records","原始关系记录")}</option></select>
           <input name="q" defaultValue={q} placeholder={t(lang, "Search name, WeChat, phone", "搜索姓名、微信、电话")} style={{ minHeight: 38, minWidth: 220 }} />
           <select name="status" defaultValue={status} style={{ minHeight: 38 }}>
             <option value="">{t(lang, "All statuses", "全部状态")}</option>

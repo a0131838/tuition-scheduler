@@ -29,7 +29,7 @@ function sectionFor(href: string) {
   if (href.includes("workspace=sales")) return "sales";
   if (href.includes("workspace=cs")) return "service";
   if (["/admin", "/admin/todos", "/admin/approvals", "/admin/alerts"].includes(path)) return "work";
-  if (path.startsWith("/admin/leads")) return "sales";
+  if (path.startsWith("/admin/leads") || path.startsWith("/admin/relationships")) return "sales";
   if (["/admin/schedule", "/admin/reports/monthly-schedule", "/admin/monthly-scheduling", "/admin/students", "/admin/teachers", "/admin/classes", "/admin/enrollments", "/admin/booking-links", "/admin/packages", "/admin/feedbacks", "/admin/manager/quality"].includes(path)) return "teaching";
   if (path === "/admin/tickets/sop") return "team";
   if (path.startsWith("/admin/tickets") || ["/admin/care", "/admin/school-applications", "/admin/communications", "/admin/communication-reminders", "/admin/renewals", "/admin/mobile", "/admin/miniapp-notifications"].includes(path)) return "service";

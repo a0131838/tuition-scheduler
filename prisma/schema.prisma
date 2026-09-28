@@ -3577,6 +3577,11 @@ model LeadDailyCounter {
 
 model Lead {
   id                       String    @id @default(uuid())
+  relationshipId           String?
+  recordKind               String    @default("UNREVIEWED")
+  relationshipReviewNote   String?
+  relationshipLinkedAt     DateTime?
+  relationship             SalesRelationship? @relation(fields: [relationshipId], references: [id], onDelete: SetNull)
   leadNo                   String    @unique
   sourceType               String
   sourcePlatform           String?
@@ -3620,6 +3625,7 @@ model Lead {
   assessmentRequests            LeadAssessmentRequest[]
   schoolGuideAssessmentRequests SchoolGuideAssessmentRequest[]
 
+  @@index([relationshipId, recordKind])
   @@index([status, createdAt])
   @@index([isArchived, createdAt])
   @@index([sourceType, createdAt])
@@ -3695,4 +3701,64 @@ model LeadAssessmentRequest {
   @@index([leadId, createdAt])
   @@index([teacherId, status, dueAt])
   @@index([status, dueAt])
+}
+
+
+model SalesRelationship {
+  id            String   @id @default(uuid())
+  name          String
+  kind          String
+  status        String   @default("ACTIVE")
+  ownerName     String?
+  contactName   String?
+  contactEmail  String?
+  contactPhone  String?
+  contactWechat String?
+  nextAction    String?
+  nextActionDue DateTime?
+  note          String?
+  createdById   String?
+  createdByName String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  leads         Lead[]
+  followUps     SalesRelationshipFollowUp[]
+  opportunities SalesRelationshipOpportunity[]
+
+  @@index([status, nextActionDue])
+  @@index([ownerName, updatedAt])
+}
+
+model SalesRelationshipFollowUp {
+  id             String   @id @default(uuid())
+  relationshipId String
+  actorUserId    String?
+  actorName      String
+  channel        String
+  content        String
+  nextAction     String?
+  nextActionDue  DateTime?
+  createdAt      DateTime @default(now())
+  relationship   SalesRelationship @relation(fields: [relationshipId], references: [id], onDelete: Restrict)
+
+  @@index([relationshipId, createdAt])
+}
+
+model SalesRelationshipOpportunity {
+  id             String   @id @default(uuid())
+  relationshipId String
+  title          String
+  status         String   @default("OPEN")
+  ownerName      String?
+  nextAction     String?
+  nextActionDue  DateTime?
+  estimatedAmount Decimal? @db.Decimal(12, 2)
+  currency       String   @default("SGD")
+  note           String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  relationship   SalesRelationship @relation(fields: [relationshipId], references: [id], onDelete: Restrict)
+
+  @@index([relationshipId, status])
+  @@index([nextActionDue])
 }

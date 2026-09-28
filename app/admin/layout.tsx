@@ -110,6 +110,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const resourceAllowedPath =
     pathname === "/admin" ||
+    (pathname === "/admin/relationships" || pathname.startsWith("/admin/relationships/")) ||
     pathname === "/admin/leads" ||
     pathname === "/admin/leads/new" ||
     pathname === "/admin/leads/dashboard" ||
@@ -177,6 +178,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           ? [{ href: "/admin/monthly-scheduling", label: t(lang, "Next-month Scheduling", "下月排课确认"), tone: "warning" as const }]
           : []),
         ...(canSeeCare ? [{ href: "/admin/care", label: t(lang, "Full Care", "全托管"), tone: "success" as const }] : []),
+        ...((user.role === "ADMIN" || user.role === "SALES" || user.role === "CS" || user.operationsAdmin) ? [{ href: "/admin/relationships", label: t(lang,"Relationships & Referrals","关系与转介"), tone: "accent" as const }] : []),
         { href: "/admin/leads", label: t(lang, "Resource Follow-up", "资源跟进"), tone: "accent" as const },
         { href: "/admin/school-applications", label: t(lang, "School Applications", "学校申请服务"), tone: "accent" as const },
         { href: "/admin/enrollments", label: t(lang, "Enrollments", "报名"), tone: "success" as const },
@@ -327,6 +329,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           href: "/admin",
           label: user.role === "CS" ? t(lang, "CS Dashboard", "客服首页") : t(lang, "Sales Dashboard", "销售首页"),
           description: t(lang, "Open the resource workspace shortcuts.", "打开资源工作台快捷入口。"),
+          tone: "accent" as const,
+        },
+        {
+          href: "/admin/relationships",
+          label: t(lang,"Relationships & Referrals","关系与转介"),
+          description: t(lang,"Maintain contacts and their separate student deals.","维护联系人及各自的学生商机。"),
           tone: "accent" as const,
         },
         {

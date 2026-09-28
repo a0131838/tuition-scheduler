@@ -1,4 +1,5 @@
 import { isOwnerManager, requireResourceAdmin, requireResourceUser } from "@/lib/auth";
+import LeadRelationshipPanel from "@/app/admin/relationships/LeadRelationshipPanel";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { getLang, t } from "@/lib/i18n";
 import {
@@ -273,14 +274,19 @@ async function cancelAssessmentAction(formData: FormData) {
 
 async function convertToStudentAction(formData: FormData) {
   "use server";
-  await requireResourceAdmin();
+  const actor = await requireResourceAdmin();
   const id = read(formData, "id", 80);
   if (!id) redirect("/admin/leads");
   const lead = await prisma.lead.findUnique({ where: { id } });
   if (!lead) redirect("/admin/leads");
   if (lead.convertedStudentId) redirect(`/admin/students/${lead.convertedStudentId}`);
-  const sourceName = buildLeadSourceChannelName(lead);
+  if (lead.recordKind !== "STUDENT") redirect(`/admin/leads/${id}?err=${encodeURIComponent("Confirm this is a student opportunity before conversion / 请先核对并分类为学生商机，再建档")}`);
   const created = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "Lead" WHERE id=${id} FOR UPDATE`;
+    const lead = await tx.lead.findUniqueOrThrow({where:{id}});
+    if (lead.convertedStudentId) return {id:lead.convertedStudentId};
+    if (lead.recordKind !== "STUDENT") throw new Error("Confirm student classification / 请先核对学生分类");
+    const sourceName = buildLeadSourceChannelName(lead);
     const source = await tx.studentSourceChannel.upsert({
       where: { name: sourceName },
       update: { isActive: true },
@@ -307,10 +313,10 @@ async function convertToStudentAction(formData: FormData) {
       data: {
         convertedStudentId: student.id,
         convertedSourceChannelId: source.id,
-        status: "Won",
         latestSummary: `Converted to student / 已转为学生`,
       },
     });
+    await tx.auditLog.create({data:{actorEmail:actor.email,actorName:actor.name,actorRole:actor.role,module:"SALES_RELATIONSHIP",action:"CREATE_STUDENT",entityType:"Lead",entityId:id,meta:{studentId:student.id,relationshipId:lead.relationshipId,pipelineStatusUnchanged:lead.status}}});
     return student;
   });
   revalidatePath("/admin/leads");
@@ -394,7 +400,8 @@ export default async function LeadDetailPage({
   const canManageResource = canManageResourceWorkspaceRole(adminUser.role);
   const canUseOpsHandoff = canUseResourceOpsHandoffRole(adminUser.role);
   const banner =
-    sp?.ok === "created" ? t(lang, "Resource created.", "资源已创建。")
+    sp?.ok === "relationship-linked" ? t(lang,"Relationship link reviewed and saved.","关系关联已核对保存。")
+    : sp?.ok === "created" ? t(lang, "Resource created.", "资源已创建。")
     : sp?.ok === "followup" ? t(lang, "Follow-up saved.", "跟进已保存。")
     : sp?.ok === "assessment" ? t(lang, "Assessment request created.", "老师评估已派发。")
     : sp?.ok === "reopened" ? t(lang, "Assessment revision approved.", "已批准老师重新修改评估。")
@@ -403,13 +410,14 @@ export default async function LeadDetailPage({
     : sp?.ok === "archived" ? t(lang, "Resource archived.", "资源已归档。")
     : sp?.ok === "restored" ? t(lang, "Resource restored.", "资源已恢复。")
     : "";
-  const error = sp?.err === "convert-first" ? t(lang, "Convert this resource to a student before creating a scheduling ticket.", "请先把资源转为学生，再创建排课协调工单。") : "";
+  const error = sp?.err === "convert-first" ? t(lang, "Convert this resource to a student before creating a scheduling ticket.", "请先把资源转为学生，再创建排课协调工单。") : String(sp?.err ?? "");
 
   return (
     <main style={{ display: "grid", gap: 14 }}>
       <p><Link href="/admin/leads">{t(lang, "Back to resources", "返回资源列表")}</Link></p>
       {banner ? <div style={{ color: "#166534", background: "#dcfce7", border: "1px solid #86efac", borderRadius: 8, padding: 10 }}>{banner}</div> : null}
       {error ? <div style={{ color: "#991b1b", background: "#fee2e2", border: "1px solid #fecaca", borderRadius: 8, padding: 10 }}>{error}</div> : null}
+      <LeadRelationshipPanel lead={lead} lang={lang}/>
 
       <section style={{ border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 12, padding: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
@@ -533,7 +541,8 @@ export default async function LeadDetailPage({
                 ) : (
                   <form action={convertToStudentAction}>
                     <input type="hidden" name="id" value={lead.id} />
-                    <button type="submit">{t(lang, "Convert to Student", "转为学生")}</button>
+                    <button type="submit" disabled={lead.recordKind !== "STUDENT"}>{t(lang, "Create student record", "建立学生档案")}</button>
+                    <p>{lead.recordKind !== "STUDENT" ? t(lang,"Classify this record as a student opportunity above before creating a student.","请先在上方核对并分类为学生商机，再建立学生档案。") : t(lang,"Creating a student does not mark this deal Won or verify payment.","学生建档不会自动标记成交，也不代表已收款。")}</p>
                   </form>
                 )}
                 <form action={createSchedulingTicketAction}>

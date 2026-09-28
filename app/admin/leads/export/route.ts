@@ -16,6 +16,7 @@ export async function GET(req: Request) {
   const intent = valid(url.searchParams.get("intent"), LEAD_INTENT_LEVELS);
   const focus = String(url.searchParams.get("focus") ?? "").trim();
   const archived = String(url.searchParams.get("archived") ?? "").trim() === "1";
+  const recordKind = valid(url.searchParams.get("recordKind"), ["UNREVIEWED","STUDENT","RELATIONSHIP"]);
   const now = new Date();
   const focusWhere = buildLeadFocusWhere(focus, user.name, now);
   const rows = await prisma.lead.findMany({
@@ -36,6 +37,7 @@ export async function GET(req: Request) {
       ...(owner && focus !== "mine" ? { ownerName: owner } : {}),
       ...(intent ? { intentLevel: intent } : {}),
       isArchived: archived,
+      ...(recordKind ? {recordKind} : {}),
       ...focusWhere,
     },
     orderBy: [{ updatedAt: "desc" }],
@@ -67,6 +69,9 @@ export async function GET(req: Request) {
     "Archived By",
     "Created At",
     "Updated At",
+    "Record classification / 记录分类",
+    "Relationship ID / 关系编号",
+    "Relationship review / 关系核对依据",
   ];
   const lines = [
     headers.map(csvEscape).join(","),
@@ -97,6 +102,9 @@ export async function GET(req: Request) {
         row.archivedByName,
         row.createdAt.toISOString(),
         row.updatedAt.toISOString(),
+        row.recordKind,
+        row.relationshipId,
+        row.relationshipReviewNote,
       ].map(csvEscape).join(",")
     ),
   ];

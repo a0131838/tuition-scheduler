@@ -188,3 +188,23 @@ Logs: `/tmp/sgt-r417-focused-final.log`, `/tmp/sgt-r417-backend.log`, `/tmp/sgt-
 ---
 
 Logs: `/tmp/sgt-r418-focused.log`, `/tmp/sgt-r418-backend.log`, `/tmp/sgt-r418-tsc.log`, `/tmp/sgt-r418-uat-final.log`, `/tmp/sgt-r418-http.log`, `/tmp/sgt-r418-build.log`. This also fixes an isolated evidence-test type annotation discovered by full tsc; runtime policy is unchanged. Phase1 safety checkpoint is ready for review; no claim that all downstream workflows or pages are complete.
+
+## 2026-09-28-r419
+
+- Release ID: `2026-09-28-r419`
+- Date/Time (Asia/Singapore): `2026-09-28`
+- Deployment status: `READY`; guarded release evidence is maintained in the execution ledger.
+- Problem: original lead records mix contacts, institutions and individual students. One referral source has no persistent profile or independent cooperation-project history; student creation automatically marked a lead Won and could create duplicate students on simultaneous requests.
+- Change: add relationship profiles, relationship follow-ups and separate cooperation projects, with owner, status, next action and Singapore follow-up dates. Link original leads only after explicit classification and recorded evidence; existing records default to UNREVIEWED and are never grouped by name. New student opportunities can be created within an exact relationship. Relationship status stays independent of each student's deal. Student creation locks/rechecks the lead, requires student classification, audits atomically and preserves deal status.
+- UI: ZH/EN/BILINGUAL relationship list/detail, overdue/archive filters, profile/history sections, independent student rows, explicit legacy-link review and appended classification/link export columns. Original URLs and historical notes remain. Saved-result forms disable pending submissions and open the actual result instead of leaving stale client content.
+- Access: use existing ADMIN/SALES/CS/operations-admin resource scope and deny observer writes. Actual HTTP testing exposed that the existing admin login excluded SALES/CS despite their authorized resource workspace; login now uses the existing resource-role predicate. Teacher and finance relationship access remains rejected.
+- Evidence: 3 policy tests,181 backend tests,full TypeScript and260-page build; isolated PostgreSQL service/HTTP tests cover three independent referrals, stale/concurrent updates, one follow-up under concurrency, atomic audit rollback, archive/restore/history, wrong-profile project rejection, negative estimate rejection, role guards and unchanged student/ledger during relationship-only operations. Authenticated browser tested Chinese creation/follow-up/project, English linkage, bilingual rendering, exact relationship new lead and one student creation with status still New Lead; console errors empty.
+- Migration: additive Lead classification/link columns plus three relationship tables, indexes and foreign keys.134 isolated migrations applied. No real relationships, contracts, receipts or ledger records created by acceptance tests; no inferred historical attribution.
+- Remaining: exact existing-student reuse and verified contract/receipt attribution metrics remain in phase2. Existing global language refresh behavior remains in phase8. This is a foundation checkpoint, not overall or phase2 completion.
+- Risk: nullable relationship links leave historical records pending review. Estimated project amounts and Won statuses never constitute received money. Rolling application code back can retain the additive schema and new data; do not drop the tables.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `5d78de4ca59a262491b6d7695d8571de0b8d00f7` (r418).
+
+---
+
+Logs: `/tmp/sgt-r419-policy.log`, `/tmp/sgt-r419-backend-final.log`, `/tmp/sgt-r419-uat.log`, `/tmp/sgt-r419-http-final.log`, `/tmp/sgt-r419-build-final.log`. Initial HTTP UAT correctly found the existing SALES/CS login mismatch; final five-role HTTP acceptance passed after the targeted fix. Initial build type issue in the UAT role fixture was fixed; final build passed.

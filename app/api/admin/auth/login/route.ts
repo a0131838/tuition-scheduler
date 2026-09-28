@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { createSession, isManagerUser, isOperationsAdminUser, verifyPassword } from "@/lib/auth";
 import { sanitizeNextPath } from "@/lib/route-guards";
+import { canAccessResourceWorkspaceRole } from "@/lib/staff-roles";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
   if (!ok) return bad("Invalid credentials", 401);
 
   const canEnterAdmin =
-    user.role === "ADMIN" ||
+    canAccessResourceWorkspaceRole(user.role) ||
     user.role === "FINANCE" ||
     (await isManagerUser({ role: user.role as any, email: user.email })) ||
     (await isOperationsAdminUser({ role: user.role as any, email: user.email }));

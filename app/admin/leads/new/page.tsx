@@ -12,6 +12,8 @@ import {
   parseLeadDateTime,
 } from "@/lib/leads";
 import { prisma } from "@/lib/prisma";
+import { assertRelationshipWrite } from "@/lib/sales-relationship-policy";
+import { Prisma } from "@prisma/client";
 import { canManageResourceWorkspaceRole } from "@/lib/staff-roles";
 import { revalidatePath } from "next/cache";
 import Link from "next/link";
@@ -24,6 +26,10 @@ function read(formData: FormData, key: string, max = 500) {
 async function createLeadAction(formData: FormData) {
   "use server";
   const user = await requireResourceUser();
+  assertRelationshipWrite(user);
+  const relationshipId = read(formData, "relationshipId", 100);
+  const relationshipQuery = relationshipId ? `&relationshipId=${encodeURIComponent(relationshipId)}` : "";
+  if (relationshipId && !(await prisma.salesRelationship.findFirst({where:{id:relationshipId,status:{not:"ARCHIVED"}},select:{id:true}}))) redirect("/admin/leads/new?err=relationship");
   const studentName = read(formData, "studentName", 120);
   const sourceType = normalizeLeadOption(formData.get("sourceType"), LEAD_SOURCE_TYPES, "");
   const sourcePlatform = normalizeLeadFlexibleOption(formData.get("sourcePlatform"), LEAD_SOURCE_PLATFORMS, "");
@@ -32,7 +38,7 @@ async function createLeadAction(formData: FormData) {
   const initialContent = read(formData, "initialContent", 2000);
   const forceDuplicate = read(formData, "forceDuplicate", 5) === "1";
   if (!studentName || !sourceType || !initialContent) {
-    redirect("/admin/leads/new?err=required");
+    redirect(`/admin/leads/new?err=required${relationshipQuery}`);
   }
   const owner = ownerNameInput
     ? await prisma.user.findFirst({ where: { name: ownerNameInput }, select: { id: true, name: true, role: true } })
@@ -51,16 +57,24 @@ async function createLeadAction(formData: FormData) {
       select: { leadNo: true },
       orderBy: { createdAt: "desc" },
     });
-    if (duplicate) redirect(`/admin/leads/new?err=duplicate&leadNo=${encodeURIComponent(duplicate.leadNo)}`);
+    if (duplicate) redirect(`/admin/leads/new?err=duplicate&leadNo=${encodeURIComponent(duplicate.leadNo)}${relationshipQuery}`);
   }
 
   const nextAction = read(formData, "nextAction", 500);
   const nextActionDue = parseLeadDateTime(formData.get("nextActionDue"));
   const created = await prisma.$transaction(async (tx) => {
+    if (relationshipId) {
+      await tx.$queryRaw`SELECT id FROM "SalesRelationship" WHERE id=${relationshipId} FOR UPDATE`;
+      await tx.salesRelationship.findFirstOrThrow({where:{id:relationshipId,status:{not:"ARCHIVED"}}});
+    }
     const leadNo = await allocateLeadNo(tx);
     const lead = await tx.lead.create({
       data: {
         leadNo,
+        recordKind: "STUDENT",
+        relationshipId: relationshipId || null,
+        relationshipLinkedAt: relationshipId ? new Date() : null,
+        relationshipReviewNote: relationshipId ? "Created explicitly under this relationship / 在本关系下明确新建学生商机" : null,
         sourceType,
         sourcePlatform: sourcePlatform || null,
         sourceDetail: read(formData, "sourceDetail", 1000) || null,
@@ -103,16 +117,18 @@ async function createLeadAction(formData: FormData) {
         intentLevelAfter: intentLevel,
       },
     });
+    if (relationshipId) await tx.auditLog.create({data:{actorEmail:user.email,actorName:user.name,actorRole:user.role,module:"SALES_RELATIONSHIP",action:"CREATE_STUDENT_OPPORTUNITY",entityType:"SalesRelationship",entityId:relationshipId,meta:{leadId:lead.id}}});
     return lead;
-  });
+  }, {isolationLevel: Prisma.TransactionIsolationLevel.Serializable});
   revalidatePath("/admin/leads");
+  if (relationshipId) revalidatePath(`/admin/relationships/${relationshipId}`);
   redirect(`/admin/leads/${created.id}?ok=created`);
 }
 
 export default async function NewLeadPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ err?: string; leadNo?: string }>;
+  searchParams?: Promise<{ err?: string; leadNo?: string; relationshipId?: string }>;
 }) {
   const user = await requireResourceUser();
   const canManageResource = canManageResourceWorkspaceRole(user.role);
@@ -120,6 +136,7 @@ export default async function NewLeadPage({
   const sp = await searchParams;
   const err = String(sp?.err ?? "");
   const leadNo = String(sp?.leadNo ?? "");
+  const relationship = sp?.relationshipId ? await prisma.salesRelationship.findFirst({where:{id:sp.relationshipId,status:{not:"ARCHIVED"}}}) : null;
   const owners = await prisma.leadResourceOwner.findMany({
     where: { isActive: true },
     select: { name: true, email: true },
@@ -150,7 +167,10 @@ export default async function NewLeadPage({
           {t(lang, `Possible duplicate resource: ${leadNo}. Tick force create if this is a new inquiry.`, `可能已有重复资源：${leadNo}。如确认是新咨询，请勾选强制创建。`)}
         </div>
       ) : null}
+      {err === "relationship" ? <p role="alert">{t(lang,"Relationship unavailable or archived; review its profile first.","关系不存在或已归档，请先核对档案。")}</p> : null}
+      {relationship ? <p>{t(lang,"Referring relationship","转介关系")}: <a href={`/admin/relationships/${relationship.id}`}>{relationship.name}</a></p> : null}
       <form action={createLeadAction} style={{ display: "grid", gap: 14 }}>
+        <input type="hidden" name="relationshipId" value={relationship?.id ?? ""}/>
         <section style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gap: 12 }}>
           <h3 style={{ margin: 0 }}>{t(lang, "Source & Owner", "来源与负责人")}</h3>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
