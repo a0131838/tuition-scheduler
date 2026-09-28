@@ -11,6 +11,7 @@ export default function LanguageSelectorClient({
   const router = useRouter();
   const [lang, setLang] = useState(String(initialLang || "BILINGUAL"));
   const [saving, setSaving] = useState(false);
+  const label = (en: string, zh: string) => lang === "ZH" ? zh : lang === "EN" ? en : `${en} / ${zh}`;
 
   const getMainScrollTop = () => {
     if (typeof document === "undefined") return 0;
@@ -50,11 +51,11 @@ export default function LanguageSelectorClient({
         body: JSON.stringify({ lang }),
       });
       const data = (await res.json()) as any;
-      if (!res.ok || !data?.ok) throw new Error(String(data?.message ?? "Apply failed"));
+      if (!res.ok || !data?.ok) throw new Error(String(data?.message ?? label("Unable to save language preference", "无法保存语言设置")));
       router.refresh();
       restoreMainScrollTop(y);
-    } catch (e: any) {
-      alert(e?.message ?? "Apply failed");
+    } catch {
+      alert(label("Unable to save language preference. Please try again.", "无法保存语言设置，请重试。"));
     } finally {
       setSaving(false);
     }
@@ -64,6 +65,7 @@ export default function LanguageSelectorClient({
     <div className="language-selector" style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
       <select
         name="lang"
+        aria-label={label("Language", "语言")}
         value={lang}
         onChange={(e) => setLang(e.target.value)}
         style={{ minWidth: 140, padding: "4px 6px", borderRadius: 6, fontSize: 12 }}
@@ -78,7 +80,7 @@ export default function LanguageSelectorClient({
         disabled={saving}
         style={{ minWidth: 58, whiteSpace: "nowrap", overflowWrap: "normal", flex: "0 0 auto" }}
       >
-        {saving ? "..." : "Apply"}
+        {saving ? label("Saving…", "保存中…") : label("Apply", "应用")}
       </button>
     </div>
   );

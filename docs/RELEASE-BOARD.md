@@ -1,4 +1,21 @@
 # RELEASE BOARD
+## 2026-09-28-r407
+
+- Release ID: `2026-09-28-r407`
+- Date/Time (Asia/Singapore): `2026-09-28`
+- Deployment status: `READY` for guarded release.
+- Scope: first workspace simplification batch. Regroup existing permission-filtered navigation, retain low-frequency links under searchable disclosures, compress the shared header, and collapse finance exports and guidance.
+- Language: all new labels use the existing Chinese, English and bilingual preference; route labels, descriptions and favorites retain their existing translations and URLs. The separate local prototype now has Chinese and English editions.
+- Retained: Full Care, School Applications and Next-month Scheduling remain primary destinations for their existing authorised roles. No pages are removed.
+- Business boundary: presentation only; no changes to role guards, queries, financial/receipt logic, attendance, package hours, payroll, contracts, scheduling, database schema or Mini Program clients.
+- Verification: production build passed (259 pages); 47 focused navigation/context/Full Care checks passed, including 30 role/language/permission combinations. Actual sidebar component browser checks passed for language switching, favorites, secondary disclosures, search and empty states. English prototype: seven modules, 27 tabs and detail drawers checked; no console errors.
+- Existing test issue: the performance suite has one unchanged `sessionsPromise` source assertion failure in the ticket detail page; reproduced at production base `5e305289`. Its other five checks pass. No ticket code is changed in this batch.
+- Verification limit: authenticated finance-page UI was not exercised against a local database; rendering was checked through the production build and source review. Deployment requires commit equality, PM2 and HTTP health checks.
+- Task: `docs/tasks/TASK-20260928-workspace-navigation.md`.
+- Rollback point: `5e305289277475e1b0c72a811ee97abf05fd6035`.
+
+---
+
 ## 2026-09-17-r406
 
 - Release ID: `2026-09-17-r406`
@@ -22,7 +39,7 @@
 ---
 
 
-- Current release line on this branch: `2026-09-09-r404`, ready for guarded server release; Mini Program upload pending WeChat login.
+- Current release line on this branch: `2026-09-28-r407`, ready for guarded release of workspace navigation and presentation. This release does not publish a Mini Program client.
 
 ## 2026-09-09-r404 Ready
 
@@ -2338,6 +2355,8 @@
   - Production verification left the training-progress table unchanged at zero rows; no employee was automatically marked complete.
 
 ## Open Risks
+
+- r407: menu locations change while links and permissions remain; shared search and favorites remain available. The pre-existing ticket performance assertion is tracked separately. Authenticated finance-page visual UAT remains unverified locally.
 
 - `2026-09-07-r403`: "To check" is based on existing active packages, subject enrolments and pause records, not a claim that every flagged subject was promised a new lesson. No historical deletion can be reconstructed. Charged/ambiguous cancellations need existing review; Sep 11 live leave records must not be restored for testing.
 

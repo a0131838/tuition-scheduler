@@ -4,85 +4,45 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-type NavTone = "neutral" | "accent" | "success" | "warning" | "danger";
-
-export type AdminNavItem = {
-  href: string;
-  label: string;
-  description?: string;
-  tone?: NavTone;
-};
-
-export type AdminNavGroup = {
-  title: string;
-  summary?: string;
-  items: AdminNavItem[];
-};
+import { activeAdminNavHref, type AdminNavGroup, type AdminNavItem } from "@/lib/admin-navigation";
+export type { AdminNavGroup, AdminNavItem } from "@/lib/admin-navigation";
 
 const OPEN_GROUP_KEY = "sgt-admin-nav-open-group-v1";
 const FAVORITES_KEY = "sgt-admin-nav-favorites-v1";
 const FAVORITES_LIMIT = 4;
 
-function navPath(href: string) {
-  return href.split("?")[0] || href;
+function groupStyles(_title: string, isActiveGroup: boolean) {
+  return { background: "#ffffff", borderColor: "#e2e8e3", accent: isActiveGroup ? "#25664c" : "#53635a" };
 }
 
-function isNavItemActive(pathname: string, href: string) {
-  const target = navPath(href);
-  if (target === "/admin") return pathname === target;
-  return pathname === target || pathname.startsWith(`${target}/`);
-}
-
-function groupStyles(title: string, isActiveGroup: boolean) {
-  if (title.includes("Today") || title.includes("今日")) {
-    return { background: "#f7fbff", borderColor: isActiveGroup ? "#93c5fd" : "#dbeafe", accent: "#1d4ed8" };
-  }
-  if (title.includes("Teaching") || title.includes("教学")) {
-    return { background: "#f3fdf8", borderColor: isActiveGroup ? "#6ee7b7" : "#d1fae5", accent: "#0f766e" };
-  }
-  if (title.includes("Parent") || title.includes("家长")) {
-    return { background: "#fffaf2", borderColor: isActiveGroup ? "#fdba74" : "#ffedd5", accent: "#9a3412" };
-  }
-  if (title.includes("People") || title.includes("人员")) {
-    return { background: "#f8f7ff", borderColor: isActiveGroup ? "#c4b5fd" : "#ede9fe", accent: "#6d28d9" };
-  }
-  if (title.includes("Finance") || title.includes("财务")) {
-    return { background: "#fff8f1", borderColor: isActiveGroup ? "#fb923c" : "#fed7aa", accent: "#9a3412" };
-  }
-  return { background: "#f8fafc", borderColor: isActiveGroup ? "#94a3b8" : "#e2e8f0", accent: "#475569" };
-}
-
-function toneStyles(tone: NavTone, isActive: boolean) {
-  if (tone === "danger") return { background: isActive ? "#fff1f2" : "#ffffff", borderColor: "#fecdd3", color: "#9f1239" };
-  if (tone === "warning") return { background: isActive ? "#fff7ed" : "#ffffff", borderColor: "#fed7aa", color: "#9a3412" };
-  if (tone === "success") return { background: isActive ? "#ecfdf5" : "#ffffff", borderColor: "#bbf7d0", color: "#166534" };
-  if (tone === "accent") return { background: isActive ? "#eef2ff" : "#ffffff", borderColor: "#c7d2fe", color: "#3730a3" };
-  return { background: isActive ? "#eff6ff" : "#ffffff", borderColor: isActive ? "#93c5fd" : "#e2e8f0", color: isActive ? "#1d4ed8" : "#0f172a" };
+function toneStyles(isActive: boolean) {
+  return { background: isActive ? "#edf4ef" : "transparent", borderColor: "transparent", color: isActive ? "#25664c" : "#33443b" };
 }
 
 function NavRow({
   item,
-  pathname,
+  activeHref,
   isFavorite,
   onToggleFavorite,
   pinLabel,
   unpinLabel,
 }: {
   item: AdminNavItem;
-  pathname: string;
+  activeHref?: string;
   isFavorite: boolean;
   onToggleFavorite: (href: string) => void;
   pinLabel: string;
   unpinLabel: string;
 }) {
-  const isActive = isNavItemActive(pathname, item.href);
-  const tone = toneStyles(item.tone ?? "neutral", isActive);
+  const isActive = activeHref === item.href;
+  const tone = toneStyles(isActive);
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 30px", gap: 5, minHeight: 36 }}>
       <Link
         scroll={false}
         href={item.href}
+        aria-current={isActive ? "page" : undefined}
         title={item.description || item.label}
         style={{
           display: "flex",
@@ -94,9 +54,9 @@ function NavRow({
           border: `1px solid ${tone.borderColor}`,
           background: tone.background,
           color: tone.color,
-          fontWeight: isActive ? 800 : 650,
+          fontWeight: isActive ? 700 : 500,
           lineHeight: 1.25,
-          boxShadow: isActive ? "inset 3px 0 0 currentColor" : "none",
+          boxShadow: "none",
         }}
       >
         <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{item.label}</span>
@@ -111,9 +71,9 @@ function NavRow({
           height: 36,
           padding: 0,
           borderRadius: 7,
-          border: `1px solid ${isFavorite ? "#fbbf24" : "#e2e8f0"}`,
-          background: isFavorite ? "#fffbeb" : "#ffffff",
-          color: isFavorite ? "#a16207" : "#64748b",
+          border: "1px solid transparent",
+          background: isFavorite ? "#edf4ef" : "transparent",
+          color: isFavorite ? "#25664c" : "#819087",
           cursor: "pointer",
           fontSize: 17,
           lineHeight: 1,
@@ -133,6 +93,8 @@ export default function AdminSidebarNavClient({
   unpinLabel = "Remove from favorites / 从常用移除",
   favoriteLimitLabel = "Up to 4 favorites / 最多固定 4 个入口",
   noResultsLabel = "No matching menu items / 没有匹配的菜单",
+  moreLabel = "More tools & records / 更多工具与记录",
+  navigationLabel = "Workspace navigation / 工作区导航",
 }: {
   groups: AdminNavGroup[];
   searchPlaceholder?: string;
@@ -141,9 +103,12 @@ export default function AdminSidebarNavClient({
   unpinLabel?: string;
   favoriteLimitLabel?: string;
   noResultsLabel?: string;
+  moreLabel?: string;
+  navigationLabel?: string;
 }) {
   const pathname = usePathname();
-  const activeGroup = groups.find((group) => group.items.some((item) => isNavItemActive(pathname, item.href)))?.title;
+  const activeHref = activeAdminNavHref(groups, pathname);
+  const activeGroup = groups.find((group) => group.items.some((item) => item.href === activeHref))?.title;
   const [query, setQuery] = useState("");
   const [openGroup, setOpenGroup] = useState(activeGroup || groups[0]?.title || "");
   const [favoriteHrefs, setFavoriteHrefs] = useState<string[]>([]);
@@ -202,7 +167,7 @@ export default function AdminSidebarNavClient({
   }
 
   return (
-    <nav aria-label="Admin navigation" style={{ display: "grid", gap: 9 }}>
+    <nav aria-label={navigationLabel} style={{ display: "grid", gap: 9 }}>
       <input
         type="search"
         value={query}
@@ -222,14 +187,14 @@ export default function AdminSidebarNavClient({
       />
 
       {!normalizedQuery && favoriteItems.length > 0 ? (
-        <section style={{ padding: 9, borderRadius: 8, border: "1px solid #fde68a", background: "#fffbeb" }}>
-          <div style={{ marginBottom: 7, fontWeight: 800, color: "#92400e" }}>{favoritesTitle}</div>
+        <section style={{ padding: "4px 0 12px", borderBottom: "1px solid #e2e8e3" }}>
+          <div style={{ marginBottom: 7, fontWeight: 800, color: "#53635a" }}>{favoritesTitle}</div>
           <div style={{ display: "grid", gap: 5 }}>
             {favoriteItems.map((item) => (
               <NavRow
                 key={`favorite-${item.href}`}
                 item={item}
-                pathname={pathname}
+                activeHref={activeHref}
                 isFavorite
                 onToggleFavorite={toggleFavorite}
                 pinLabel={pinLabel}
@@ -248,7 +213,9 @@ export default function AdminSidebarNavClient({
       ) : null}
 
       {visibleGroups.map((group) => {
-        const isActiveGroup = group.items.some((item) => isNavItemActive(pathname, item.href));
+        const isActiveGroup = group.items.some((item) => item.href === activeHref);
+        const primaryItems = group.items.filter((item) => normalizedQuery || !item.secondary);
+        const secondaryItems = normalizedQuery ? [] : group.items.filter((item) => item.secondary);
         const isOpen = Boolean(normalizedQuery) || openGroup === group.title;
         const groupTone = groupStyles(group.title, isActiveGroup);
 
@@ -258,7 +225,7 @@ export default function AdminSidebarNavClient({
             style={{
               borderRadius: 8,
               background: groupTone.background,
-              border: `1px solid ${groupTone.borderColor}`,
+              border: "none",
               overflow: "hidden",
             }}
           >
@@ -280,7 +247,7 @@ export default function AdminSidebarNavClient({
                 color: groupTone.accent,
                 cursor: "pointer",
                 textAlign: "left",
-                fontWeight: 800,
+                fontWeight: 650,
               }}
             >
               <span aria-hidden="true" style={{ fontSize: 13 }}>{isOpen ? "▾" : "▸"}</span>
@@ -289,17 +256,27 @@ export default function AdminSidebarNavClient({
             </button>
             {isOpen ? (
               <div style={{ display: "grid", gap: 5, padding: "0 8px 8px" }}>
-                {group.items.map((item) => (
+                {primaryItems.map((item) => (
                   <NavRow
                     key={item.href}
                     item={item}
-                    pathname={pathname}
+                    activeHref={activeHref}
                     isFavorite={favoriteHrefs.includes(item.href)}
                     onToggleFavorite={toggleFavorite}
                     pinLabel={pinLabel}
                     unpinLabel={unpinLabel}
                   />
                 ))}
+                {secondaryItems.length > 0 ? (
+                  <details key={`${group.title}-${activeHref ?? ""}`} open={secondaryItems.some((item) => item.href === activeHref)}>
+                    <summary style={{ padding: "8px 9px", cursor: "pointer", color: "#64748b", fontSize: 11.5 }}>{moreLabel} ({secondaryItems.length})</summary>
+                    <div style={{ display: "grid", gap: 5 }}>
+                      {secondaryItems.map((item) => (
+                        <NavRow key={item.href} item={item} activeHref={activeHref} isFavorite={favoriteHrefs.includes(item.href)} onToggleFavorite={toggleFavorite} pinLabel={pinLabel} unpinLabel={unpinLabel} />
+                      ))}
+                    </div>
+                  </details>
+                ) : null}
               </div>
             ) : null}
           </section>

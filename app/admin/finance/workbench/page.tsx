@@ -803,15 +803,12 @@ export default async function FinanceWorkbenchPage({
     <div style={{ display: "grid", gap: 16 }}>
       <section style={workbenchHeroStyle("blue")}>
         <div style={{ display: "grid", gap: 6 }}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "#1d4ed8", letterSpacing: 0.4 }}>
-            {t(lang, "Finance Workbench", "财务工作台")}
-          </div>
-          <h1 style={{ margin: 0 }}>{t(lang, "Finance Workbench (Read-only MVP)", "财务工作台（只读MVP）")}</h1>
+          <h1 style={{ margin: 0 }}>{t(lang, "Finance Workbench", "财务工作台")}</h1>
           <div style={{ color: "#475569", lineHeight: 1.5 }}>
             {t(
               lang,
-              "This desk stays read-only and helps you scan invoice receipt progress, exception items, reminder candidates, and month-end readiness without writing data here.",
-              "这个工作台保持只读，用来统一查看发票收据进度、异常项、催收对象和月结状态，本页本身不直接写入数据。",
+              "Review billing and approvals. Open a record to process it.",
+              "查看账单和审批进度，进入具体记录处理。",
             )}
           </div>
         </div>
@@ -837,16 +834,6 @@ export default async function FinanceWorkbenchPage({
         </div>
       </section>
 
-      <section style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
-        {financeWorkbenchSummaryCards.map((card) => (
-          <div key={card.title} style={financeWorkbenchSummaryCardStyle(card.background, card.border)}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b" }}>{card.title}</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>{card.value}</div>
-            <div style={{ color: "#475569", fontSize: 13, lineHeight: 1.45 }}>{card.detail}</div>
-          </div>
-        ))}
-      </section>
-
       {pendingPackageApprovals.length ? (
         <section style={{ border: "1px solid #fdba74", borderRadius: 14, background: "#fffaf0", padding: 14, display: "grid", gap: 8 }}>
           <div style={{ fontWeight: 800, color: "#92400e" }}>{t(lang, "Pending direct-billing package approvals", "等待中的直客课包审批")}</div>
@@ -863,18 +850,9 @@ export default async function FinanceWorkbenchPage({
         </section>
       ) : null}
 
-      <section
-        style={{
-          ...workbenchFilterPanelStyle,
-          position: "sticky",
-          top: 12,
-          zIndex: 5,
-          display: "grid",
-          gap: 12,
-          background: "#ffffffee",
-          backdropFilter: "blur(12px)",
-        }}
-      >
+      <details style={{ border: "1px solid #e2e8e3", borderRadius: 6, padding: "10px 12px" }}>
+        <summary style={{ cursor: "pointer", fontWeight: 600 }}>{t(lang, "Exports & finance tools", "导出与财务工具")}</summary>
+        <div style={{ display: "grid", gap: 12, paddingTop: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <div style={{ display: "grid", gap: 4 }}>
             <div style={{ fontWeight: 800, color: "#0f172a" }}>{t(lang, "Finance work map", "财务工作地图")}</div>
@@ -900,7 +878,8 @@ export default async function FinanceWorkbenchPage({
             </a>
           ))}
         </div>
-      </section>
+        </div>
+      </details>
 
       <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
         <div style={{ ...workbenchMetricCardStyle("blue"), background: "#f8fbff" }}>
@@ -1306,6 +1285,19 @@ export default async function FinanceWorkbenchPage({
           </table>
         </div>
       )}
+      <details style={{ borderTop: "1px solid #e2e8e3", paddingTop: 12 }}>
+        <summary style={{ cursor: "pointer", fontWeight: 600 }}>{t(lang, "Scope & work guidance", "范围与处理说明")}</summary>
+      <section style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+        {financeWorkbenchSummaryCards.map((card) => (
+          <div key={card.title} style={financeWorkbenchSummaryCardStyle(card.background, card.border)}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b" }}>{card.title}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>{card.value}</div>
+            <div style={{ color: "#475569", fontSize: 13, lineHeight: 1.45 }}>{card.detail}</div>
+          </div>
+        ))}
+      </section>
+
+      </details>
     </div>
   );
 }

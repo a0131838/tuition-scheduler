@@ -11,13 +11,9 @@ import { formatBusinessDateTime } from "@/lib/date-only";
 import LanguageSelectorClient from "./_components/LanguageSelectorClient";
 import AdminWorkspaceContextClient from "./_components/AdminWorkspaceContextClient";
 import AdminSidebarNavClient from "./AdminSidebarNavClient";
+import { reorganizeAdminNavigation } from "@/lib/admin-navigation";
 import SidebarScrollMemoryClient from "./_components/SidebarScrollMemoryClient";
 import WorkbenchStickyGuardClient from "./_components/WorkbenchStickyGuardClient";
-import {
-  workbenchFilterPanelStyle,
-  workbenchHeroStyle,
-  workbenchMetricCardStyle,
-} from "./_components/workbenchStyles";
 
 async function resolvePathnameFromHeaders() {
   const h = await headers();
@@ -387,135 +383,29 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     },
   ];
 
+  // Regroup only links already selected by the existing role/workspace checks.
+  const workspaceNavGroups = reorganizeAdminNavigation(
+    isFinance ? financeNavGroups : isResourceOnly ? resourceNavGroups : user.operationsAdmin ? operationsAdminNavGroups : adminNavGroups,
+    lang,
+  );
   const sidebarNavContent = (
     <>
-      <div
-        style={{
-          ...workbenchHeroStyle("indigo"),
-          padding: 14,
-          marginBottom: 14,
-        }}
-      >
-        <div style={{ display: "grid", gap: 4 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: "#312e81" }}>
-            {isFinance
-              ? t(lang, "Finance Workspace", "财务工作台")
-              : isResourceOnly
-                ? user.role === "CS"
-                  ? t(lang, "CS Workspace", "客服工作台")
-                  : t(lang, "Sales Workspace", "销售工作台")
-                : t(lang, "Admin Workspace", "管理工作台")}
-          </div>
-          {!isCareWorkspace ? (
-            <div style={{ fontSize: 11.5, lineHeight: 1.4, color: "#475569" }}>
-              <AdminWorkspaceContextClient
-                initialPathname={pathname}
-                lang={lang}
-                isFinance={isFinance}
-                isResourceOnly={isResourceOnly}
-                field="hint"
-              />
-            </div>
-          ) : null}
-        </div>
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            flexWrap: "wrap",
-          }}
-        >
-          <span
-            style={{
-              padding: "4px 8px",
-              borderRadius: 999,
-              background: "#ffffff",
-              border: "1px solid #cbd5e1",
-              fontSize: 11,
-              fontWeight: 700,
-              color: "#334155",
-            }}
-          >
-            <AdminWorkspaceContextClient
-              initialPathname={pathname}
-              lang={lang}
-              isFinance={isFinance}
-              isResourceOnly={isResourceOnly}
-              field="title"
-            />
-          </span>
-          {ledgerAlert && ledgerAlert.totalIssueCount > 0 ? (
-            <span
-              style={{
-                padding: "4px 8px",
-                borderRadius: 999,
-                background: "#fff1f2",
-                border: "1px solid #fda4af",
-                fontSize: 11,
-                fontWeight: 700,
-                color: "#9f1239",
-              }}
-            >
-              {t(lang, "Ledger alert active", "对账告警中")}
-            </span>
-          ) : null}
-        </div>
-      </div>
-
       <AdminSidebarNavClient
-        groups={isFinance ? financeNavGroups : isResourceOnly ? resourceNavGroups : user.operationsAdmin ? operationsAdminNavGroups : adminNavGroups}
+        groups={workspaceNavGroups}
         searchPlaceholder={t(lang, "Search menu", "搜索菜单")}
         favoritesTitle={t(lang, "Favorites", "常用入口")}
         pinLabel={t(lang, "Pin to favorites", "固定到常用入口")}
         unpinLabel={t(lang, "Remove from favorites", "从常用入口移除")}
         favoriteLimitLabel={t(lang, "Up to 4 favorites", "最多固定 4 个入口")}
         noResultsLabel={t(lang, "No matching menu items", "没有匹配的菜单")}
+        moreLabel={t(lang, "More tools & records", "更多工具与记录")}
+        navigationLabel={t(lang, "Workspace navigation", "工作区导航")}
       />
 
-      <div
-        style={{
-          ...workbenchFilterPanelStyle,
-          marginTop: 14,
-          padding: 12,
-          background: "#ffffff",
-          display: "grid",
-          gap: 10,
-        }}
-      >
-        <div style={{ fontSize: 12, fontWeight: 700, color: "#334155" }}>{t(lang, "Quick Tools", "快捷工具")}</div>
-        <div style={{ display: "grid", gap: 8 }}>
-          <Link
-            scroll={false}
-            href="/"
-            style={{
-              padding: "10px 12px",
-              borderRadius: 12,
-              textAlign: "center",
-              textDecoration: "none",
-              background: "#f8fafc",
-              border: "1px solid #dbeafe",
-              color: "#0f172a",
-              fontWeight: 700,
-            }}
-          >
-            {t(lang, "Back Home", "返回首页")}
-          </Link>
-          <a
-            href="/admin/logout"
-            style={{
-              padding: "10px 12px",
-              borderRadius: 12,
-              textAlign: "center",
-              textDecoration: "none",
-              background: "#fff7ed",
-              border: "1px solid #fdba74",
-              color: "#9a3412",
-              fontWeight: 700,
-            }}
-          >
-            {t(lang, "Logout", "退出登录")}
-          </a>
-        </div>
+      <div style={{ marginTop: 20, padding: "12px 9px", borderTop: "1px solid #e2e8e3" }}>
+        <Link scroll={false} href="/" style={{ color: "#53635a", fontSize: 12 }}>
+          {t(lang, "Back Home", "返回首页")}
+        </Link>
       </div>
     </>
   );
@@ -528,11 +418,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <div
             className="app-admin-brand"
             style={{
-              ...workbenchFilterPanelStyle,
-              padding: 12,
+              padding: "10px 9px 16px",
               background: "#ffffff",
-              boxShadow: "0 6px 18px rgba(15, 23, 42, 0.06)",
-              marginBottom: 12,
+              marginBottom: 4,
             }}
           >
             <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>
@@ -544,7 +432,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                     : t(lang, "Sales", "销售")
                   : t(lang, "Admin", "管理后台")}
             </div>
-            <div style={{ fontSize: 11.5, color: "#64748b", marginTop: 4 }}>Tuition Scheduler</div>
+            <div style={{ fontSize: 11.5, color: "#64748b", marginTop: 4 }}>SGT Manage</div>
           </div>
 
           <div className="app-nav-desktop">{sidebarNavContent}</div>
@@ -559,25 +447,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <div
             className="app-main-head"
             style={{
-              ...(isCareWorkspace
-                ? {
-                    padding: "9px 12px",
-                    marginBottom: 18,
-                    borderRadius: 8,
-                    border: "1px solid #e2e8f0",
-                    background: "#ffffff",
-                    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
-                  }
-                : workbenchHeroStyle("indigo")),
+              padding: "10px 0 14px",
+              marginBottom: 18,
+              borderBottom: "1px solid #e2e8e3",
               display: "flex",
               justifyContent: "space-between",
-              alignItems: isCareWorkspace ? "center" : "flex-start",
+              alignItems: "center",
               gap: 12,
               flexWrap: "wrap",
             }}
           >
-            <div style={{ display: "grid", gap: isCareWorkspace ? 2 : 6 }}>
-              <div style={{ fontSize: isCareWorkspace ? 13 : 16, fontWeight: 800, color: "#0f172a" }}>
+            <div style={{ display: "grid", gap: 2 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>
                 <AdminWorkspaceContextClient
                   initialPathname={pathname}
                   lang={lang}
@@ -586,19 +467,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                   field="title"
                 />
               </div>
-              {!isCareWorkspace ? (
-                <div style={{ color: "#64748b", lineHeight: 1.45 }}>
-                  <AdminWorkspaceContextClient
-                    initialPathname={pathname}
-                    lang={lang}
-                    isFinance={isFinance}
-                    isResourceOnly={isResourceOnly}
-                    field="hint"
-                  />
-                </div>
-              ) : null}
-              <div style={{ color: "#64748b", fontSize: isCareWorkspace ? 11.5 : 12 }}>
-                {isCareWorkspace ? user.name : <>{t(lang, "Logged in", "已登录")}: <b>{user.name}</b> ({user.email})</>}
+              <div style={{ color: "#64748b", fontSize: 11.5 }}>
+                {t(lang, "Logged in", "已登录")}: <b title={user.email}>{user.name}</b>
               </div>
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -626,35 +496,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           ) : null}
 
           {ledgerAlert && ledgerAlert.totalIssueCount > 0 ? (
-            <div
-              style={{
-                ...workbenchMetricCardStyle("rose"),
-                margin: "0 0 14px",
-                background: "linear-gradient(180deg, #fff1f2 0%, #ffffff 100%)",
-                color: "#881337",
-              }}
-            >
-              <div style={{ fontWeight: 800, marginBottom: 4 }}>
-                {t(lang, "Ledger Integrity Alert", "课包对账告警")}:
-                {" "}
-                {ledgerAlert.totalIssueCount}
-                {" "}
-                {t(lang, "issues detected", "条异常")}
+            <details style={{ marginBottom: 14, padding: "10px 12px", border: "1px solid #fecdd3", borderRadius: 6, background: "#fff7f8", color: "#881337" }}>
+              <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+                {t(lang, "Package reconciliation", "课包对账")}: {ledgerAlert.totalIssueCount} {t(lang, "issues · view details", "条异常 · 查看详情")}
+              </summary>
+              <div style={{ fontSize: 12, margin: "8px 0" }}>
+                {t(lang, "Mismatch", "流水不匹配")}: {ledgerAlert.mismatchCount} · {t(lang, "No package binding", "无课包绑定扣减")}: {ledgerAlert.noPackageDeductCount} · {t(lang, "Updated", "更新时间")}: {formatBusinessDateTime(new Date(ledgerAlert.generatedAt))}
               </div>
-              <div style={{ fontSize: 12, marginBottom: 8 }}>
-                {t(lang, "Mismatch", "流水不匹配")}: {ledgerAlert.mismatchCount} ·{" "}
-                {t(lang, "No package binding", "无课包绑定扣减")}: {ledgerAlert.noPackageDeductCount} ·{" "}
-                {t(lang, "Updated", "更新时间")}: {formatBusinessDateTime(new Date(ledgerAlert.generatedAt))}
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                <Link scroll={false} href="/admin/todos">{t(lang, "Open Todo Center", "打开待办中心")}</Link>
+                <Link scroll={false} href="/admin/reports/undeducted-completed">{t(lang, "Completed but undeducted report", "已完成未扣课报表")}</Link>
               </div>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <Link scroll={false} href="/admin/todos">
-                  {t(lang, "Open Todo Center", "打开待办中心")}
-                </Link>
-                <Link scroll={false} href="/admin/reports/undeducted-completed">
-                  {t(lang, "Open Repair Report", "打开减扣修复报表")}
-                </Link>
-              </div>
-            </div>
+            </details>
           ) : null}
           {children}
         </main>
