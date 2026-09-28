@@ -1,7 +1,6 @@
-import { AttendanceStatus } from "@prisma/client";
 import { bad, ok } from "@/app/api/miniapp/_lib";
 import { requireMiniappStaff } from "@/app/api/miniapp/staff/_lib";
-import { logAudit } from "@/lib/audit-log";
+import { AttendanceSaveError, saveTeacherAttendance } from "@/lib/teacher-attendance-save";
 import { prisma } from "@/lib/prisma";
 import { getCancelledSessionStudentIds } from "@/lib/session-students";
 
@@ -77,56 +76,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ sessionId: str
     return bad("Invalid JSON body");
   }
 
-  const session = await getAllowedSession(sessionId, auth.user.teacherId);
-  if (!session) return bad("Session not found or no permission", 404);
-
-  const expected = new Set(attendanceRows(session).map((row) => row.studentId));
-  const items = Array.isArray(body?.items) ? body.items : [];
-  if (items.length === 0) return bad("No items", 409);
-
-  for (const item of items) {
-    const studentId = String(item?.studentId ?? "");
-    if (!studentId || !expected.has(studentId)) continue;
-
-    const statusRaw = String(item?.status ?? "UNMARKED");
-    const status = Object.values(AttendanceStatus).includes(statusRaw as AttendanceStatus)
-      ? (statusRaw as AttendanceStatus)
-      : AttendanceStatus.UNMARKED;
-    const note = String(item?.note ?? "").trim() || null;
-    const existing = session.attendances.find((a) => a.studentId === studentId);
-
-    await prisma.attendance.upsert({
-      where: { sessionId_studentId: { sessionId, studentId } },
-      update: {
-        status,
-        note,
-        deductedCount: existing?.deductedCount ?? 0,
-        deductedMinutes: existing?.deductedMinutes ?? 0,
-        packageId: existing?.packageId ?? null,
-      },
-      create: {
-        sessionId,
-        studentId,
-        status,
-        note,
-        deductedCount: 0,
-        deductedMinutes: 0,
-      },
-    });
+  try {
+    const result=await saveTeacherAttendance({sessionId,teacherId:auth.user.teacherId,actor:auth.user,action:"MINIAPP_TEACHER_SAVE",items:Array.isArray(body?.items)?body.items:[]});
+    const refreshed=await getAllowedSession(sessionId,auth.user.teacherId);
+    return ok({...result,rows:refreshed?attendanceRows(refreshed):[]});
+  } catch(error) {
+    return bad(error instanceof AttendanceSaveError ? error.message : "Attendance was not saved; retry or contact an administrator / 点名未保存，请重试或联系管理员",error instanceof AttendanceSaveError?error.status:500);
   }
-
-  await logAudit({
-    actor: { email: auth.user.email, name: auth.user.name, role: auth.user.role },
-    module: "ATTENDANCE",
-    action: "MINIAPP_TEACHER_SAVE",
-    entityType: "Session",
-    entityId: sessionId,
-    meta: { submittedItemCount: items.length, expectedStudentCount: expected.size },
-  });
-
-  const refreshed = await getAllowedSession(sessionId, auth.user.teacherId);
-  return ok({
-    savedAt: new Date().toISOString(),
-    rows: refreshed ? attendanceRows(refreshed) : [],
-  });
 }

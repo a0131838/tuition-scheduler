@@ -20,6 +20,8 @@ export default function TeacherAttendanceClient({
   labels: {
     save: string;
     saved: string;
+    factsOnly: string;
+    reviewNeeded: string;
     errorPrefix: string;
     colStudent: string;
     colStatus: string;
@@ -35,6 +37,7 @@ export default function TeacherAttendanceClient({
   const [rows, setRows] = useState<Row[]>(initialRows);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
+  const [needsReview, setNeedsReview] = useState(false);
   const [err, setErr] = useState("");
 
   useEffect(() => {
@@ -52,6 +55,7 @@ export default function TeacherAttendanceClient({
     setSaving(true);
     setMsg("");
     setErr("");
+    setNeedsReview(false);
     try {
       const res = await fetch(`/api/teacher/sessions/${encodeURIComponent(sessionId)}/attendance`, {
         method: "POST",
@@ -66,6 +70,7 @@ export default function TeacherAttendanceClient({
       });
       const data = (await res.json()) as any;
       if (!res.ok || !data?.ok) throw new Error(String(data?.message ?? "Save failed"));
+      setNeedsReview(Number(data.reviewCount)>0);
       setMsg(labels.saved);
     } catch (e: any) {
       setErr(String(e?.message ?? "Save failed"));
@@ -91,6 +96,8 @@ export default function TeacherAttendanceClient({
           }}
         >
           <div>{msg}</div>
+          <div>{labels.factsOnly}</div>
+          {needsReview ? <div role="status" style={{color:"#92400e",fontWeight:700}}>{labels.reviewNeeded}</div> : null}
           {completionGuide ? (
             <>
               <div style={{ fontWeight: 700 }}>{completionGuide.title}</div>

@@ -152,3 +152,21 @@ Logs: `/tmp/sgt-r415-focused.log`, `/tmp/sgt-r415-backend.log`, `/tmp/sgt-r415-u
 ---
 
 Logs: `/tmp/sgt-r416-focused.log`, `/tmp/sgt-r416-focused-final.log`, `/tmp/sgt-r416-backend.log`, `/tmp/sgt-r416-build-final.log`, `/tmp/sgt-r416-units-http.log`, `/tmp/sgt-r416-consumption.log`, `/tmp/sgt-r416-risk.log`. A final review added a regression for invalid explicit bindings: no matching package now marks the relevant available scope REVIEW, instead of making it silently safe.
+
+## 2026-09-28-r417
+
+- Release ID: `2026-09-28-r417`
+- Date/Time (Asia/Singapore): `2026-09-28`
+- Deployment status: `READY`; exact guarded-release evidence is recorded externally.
+- Problem: both teacher attendance endpoints copied previously read package/deduction fields back into an update. A concurrent academic correction could be overwritten. A multi-student save or later audit failure could also leave a partial result.
+- Change: Web and staff Mini Program now use one transactional factual attendance save. It rechecks teacher ownership/current permitted roster under a session lock, writes only status/note, and commits before/after facts plus a read-only financial impact assessment in the same serializable transaction. Unknown/duplicate/invalid roster submissions fail atomically; a conflicting save asks staff to reload.
+- Truth: saving a teacher's observation does not deduct, refund, approve or resolve a ledger discrepancy. Net evidence is compared per exact student and package; ambiguous shared ownership, cross-package refunds, corrections, wrong units, free leave with deductions and unverified teaching remain pending academic review. Counts and monthly packages keep separate semantics. No financial fields, package balance or ledger are written by this path.
+- UI/API: Web ZH/EN/BILINGUAL save result distinguishes factual attendance from deduction/refund and shows an academic-review warning when needed. Mini Program keeps its existing rows/savedAt response with additional impact fields; no client package was published, and the existing client toast remains attendance-only.
+- Validation: 5 new impact tests plus cancellation evidence regressions, 181 backend tests, isolated PostgreSQL service/HTTP scenarios for facts-only writes, concurrency, invalid/duplicate/foreign roster, authorization, observer denial, transaction/audit rollback and unchanged package/ledger snapshots. Authenticated teacher browser saves in all three language modes show the correct warning with no console errors. 259-page build passed after correcting a missing passwordSalt in an isolated test fixture.
+- Remaining: admin financial attendance mutation paths still require review (stale reads, exact package attribution, atomic audit); broader phase4 feedback guidance and phases2–10 remain. This is not overall completion.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `d937ccf159a655bd403f431235de3171687edf7f` (r416). No schema migration.
+
+---
+
+Logs: `/tmp/sgt-r417-focused-final.log`, `/tmp/sgt-r417-backend.log`, `/tmp/sgt-r417-uat.log`, `/tmp/sgt-r417-http.log`, `/tmp/sgt-r417-build-final.log`. All mutations were run only on 127.0.0.1:55439/sgt_workspace_completion_test. Existing teacher cancellation visibility and roster eligibility are preserved. Existing feedback completion guidance still needs its phase4 semantic review; no teacher observation automatically completes finance.

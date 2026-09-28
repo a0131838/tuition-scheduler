@@ -406,6 +406,8 @@ export default async function TeacherSessionDetailPage({
         labels={{
           save: t(lang, "Save Attendance", "保存点名"),
           saved: t(lang, "Saved", "已保存"),
+          factsOnly: t(lang, "Attendance facts saved. This action does not deduct or refund package units.", "出勤事实已保存；本操作不会扣除或退还课包权益。"),
+          reviewNeeded: t(lang, "The charge decision or ledger still needs academic/admin review. Attendance saving does not complete financial reconciliation.", "收费决定或课时账仍需教务／管理员核对；保存点名不代表扣退课已处理完成。"),
           errorPrefix: t(lang, "Error", "错误"),
           colStudent: t(lang, "Student", "学生"),
           colStatus: t(lang, "Status", "状态"),
