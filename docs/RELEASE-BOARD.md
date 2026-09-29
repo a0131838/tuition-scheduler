@@ -1,4 +1,20 @@
 # RELEASE BOARD
+## 2026-09-29-r434
+
+- Release ID: `2026-09-29-r434`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; guarded release proof is maintained in the execution ledger.
+- Problem: a one-to-one lesson could explicitly name a student while its Enrollment row was absent. The admin page, teacher page and Mini Program attendance filtered Enrollment and showed0 students, but admin deduction accepted the explicit lesson student. Ambiguous legacy one-to-one classes could instead expose multiple candidates.
+- Change: shared attendance roster prioritizes exact Session.studentId, then explicit class student, then only a single unambiguous enrollment. Group lessons retain distinct enrolled students. Admin/teacher attendance pages, both save services and Mini Program attendance use this rule. Missing/ambiguous ownership requires review, with no arbitrary first student or automatic Enrollment insertion. Teacher feedback save also rejects unresolved ownership; current feedback is retained. New backend rosterNeedsReview flags are additive; no WeChat client deployment.
+- UI: exact students remain visible without Enrollment. Ambiguous rosters show review instructions instead of claiming all0 students were marked or labelling the student cancelled; saving attendance/new feedback waits for review. New labels support ZH/EN/BILINGUAL.
+- Validation:5 roster tests,181 backend tests,full production build. Isolated service UAT covers explicit session and class-default students without Enrollment, foreign enrolled student rejection, ambiguous one-to-one denial, exactly one admin debit and unchanged teacher ledger. Existing admin/teacher attendance rollback, concurrency, shared-count/minute and no-overspend suites pass; feedback exemption/submission race regression passes. Web/Mini HTTP checks consistent rosters, both factual saves, wrong-student/ambiguous rejection and unchanged package/ledger snapshots. Browser checks exact student and three-language review state.
+- Migration: none. No production attendance, deductions, refunds, Enrollment or feedback were changed for acceptance. This is an exact-identity fix, not historical attribution inference.
+- Remaining: phase4 acceptance review and phases5–10. Existing global language/loading cleanup remains planned separately.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `d0d4d4a30261046dbac6f5f94134556cf8f035b8` (r433).
+
+---
+
 ## 2026-09-29-r433
 
 - Release ID: `2026-09-29-r433`
@@ -483,7 +499,7 @@
 ---
 
 
-- Current release line on this branch: `2026-09-29-r433`, ready for guarded release of exact-ID lesson traceability and retained original URLs. Phase4 in progress; no Mini Program client release.
+- Current release line on this branch: `2026-09-29-r434`, ready for guarded release of exact attendance roster alignment. Phase4 acceptance pending; no Mini Program client release.
 
 ## 2026-09-09-r404 Ready
 

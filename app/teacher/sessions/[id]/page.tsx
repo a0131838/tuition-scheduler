@@ -1,10 +1,11 @@
+import {resolveAttendanceRoster} from '@/lib/session-attendance-roster';
 import {sessionFeedbackState} from "@/lib/session-feedback-state";
 import {feedbackPolicyState} from "@/lib/session-feedback-policy";
 import { prisma } from "@/lib/prisma";
 import { requireTeacherProfile } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
-import { getCancelledSessionStudentIds, getVisibleSessionStudentNames } from "@/lib/session-students";
+import { getCancelledSessionStudentIds } from "@/lib/session-students";
 import TeacherAttendanceClient from "./TeacherAttendanceClient";
 import TeacherFeedbackClient from "./TeacherFeedbackClient";
 import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
@@ -72,22 +73,10 @@ export default async function TeacherSessionDetailPage({
     orderBy: { student: { name: "asc" } },
   });
   const cancelledSet = getCancelledSessionStudentIds(session);
-  const attendanceEnrollments =
-    session.class.capacity === 1 && session.studentId
-      ? enrollments.filter((e) => e.studentId === session.studentId)
-      : enrollments;
-  const visibleAttendanceEnrollments = attendanceEnrollments.filter((e) => !cancelledSet.has(e.studentId));
-  const visibleStudentNames = getVisibleSessionStudentNames({
-    studentId: session.studentId,
-    student: session.student,
-    attendances: session.attendances,
-    class: {
-      capacity: session.class.capacity,
-      oneOnOneStudentId: session.class.oneOnOneStudentId,
-      oneOnOneStudent: session.class.oneOnOneStudent,
-      enrollments,
-    },
-  });
+  const roster=resolveAttendanceRoster({...session,class:{...session.class,enrollments}});
+  const attendanceEnrollments=roster.students.map(s=>({studentId:s.id,student:{name:s.name??s.id}}));
+  const visibleAttendanceEnrollments=attendanceEnrollments.filter(e=>!cancelledSet.has(e.studentId));
+  const visibleStudentNames=visibleAttendanceEnrollments.map(e=>e.student.name);
 
   const attMap = new Map(session.attendances.map((a) => [a.studentId, a]));
   const feedback = session.feedbacks[0] ?? null;
@@ -120,13 +109,14 @@ export default async function TeacherSessionDetailPage({
     session.attendances.length > 0
       ? new Date(Math.max(...session.attendances.map((a) => new Date(a.updatedAt).getTime())))
       : null;
+  const sessionRosterReviewLabel=t(lang,"Student assignment needs review","\u5b66\u751f\u5f52\u5c5e\u5f85\u6838\u5bf9");
   const feedbackStateLabel = state==='EXEMPT'?t(lang,'Reviewed non-teaching activity; no lesson feedback required','已核对非教学活动，无需课后反馈'):state==='NOT_DUE'?t(lang,'Feedback is due after the session ends','课程结束后填写反馈'):draftFeedback?t(lang,'Admin draft waiting for your completion','教务代填草稿，待老师正式提交'):finalFeedback?(feedback?.status==='LATE'?t(lang,'Feedback submitted late','反馈已提交，状态为迟交'):t(lang,'Feedback submitted','反馈已提交')):feedbackOverdue?t(lang,'Feedback overdue','反馈已超时'):t(lang,'Feedback pending','反馈待提交');
-  const nextActionTitle=pendingAttendanceCount>0?t(lang,'Finish attendance','完成点名'):noFeedbackTask?feedbackStateLabel:finalFeedback?t(lang,'Review submitted feedback if needed','按需复核已提交反馈'):t(lang,'Complete and submit teacher feedback','补全并正式提交老师反馈');
-  const nextActionDetail=state==='EXEMPT'?policy.reason:state==='NOT_DUE'?t(lang,'This scheduled session stays visible. Submit teaching feedback after it ends.','此课次仍保留在课表中，请在课程结束后提交教学反馈。'):draftFeedback?t(lang,'A proxy draft is not a completed teacher submission. Review and submit it yourself.','代填草稿不代表老师已提交，请核对并由老师正式提交。'):t(lang,'Attendance and feedback are separate records. Check both before finishing.','点名和反馈是两项独立记录，请分别核对。');
-  const sessionCompletionTitle=pendingAttendanceCount>0?t(lang,'Attendance still pending','点名仍待完成'):finalFeedback?t(lang,'Attendance and feedback recorded','点名和反馈已记录'):noFeedbackTask?feedbackStateLabel:t(lang,'Attendance recorded; teacher feedback pending','点名已记录，老师反馈待提交');
+  const nextActionTitle=roster.needsReview?sessionRosterReviewLabel:pendingAttendanceCount>0?t(lang,'Finish attendance','完成点名'):noFeedbackTask?feedbackStateLabel:finalFeedback?t(lang,'Review submitted feedback if needed','按需复核已提交反馈'):t(lang,'Complete and submit teacher feedback','补全并正式提交老师反馈');
+  const nextActionDetail=roster.needsReview?sessionRosterReviewLabel:state==='EXEMPT'?policy.reason:state==='NOT_DUE'?t(lang,'This scheduled session stays visible. Submit teaching feedback after it ends.','此课次仍保留在课表中，请在课程结束后提交教学反馈。'):draftFeedback?t(lang,'A proxy draft is not a completed teacher submission. Review and submit it yourself.','代填草稿不代表老师已提交，请核对并由老师正式提交。'):t(lang,'Attendance and feedback are separate records. Check both before finishing.','点名和反馈是两项独立记录，请分别核对。');
+  const sessionCompletionTitle=roster.needsReview?t(lang,'Student assignment needs review','学生归属待核对'):pendingAttendanceCount>0?t(lang,'Attendance still pending','点名仍待完成'):finalFeedback?t(lang,'Attendance and feedback recorded','点名和反馈已记录'):noFeedbackTask?feedbackStateLabel:t(lang,'Attendance recorded; teacher feedback pending','点名已记录，老师反馈待提交');
   const sessionCompletionDetail=nextActionDetail;
-  const sessionCompletionHref=pendingAttendanceCount>0?'#attendance':finalFeedback||noFeedbackTask?returnTo:'#feedback';
-  const sessionCompletionAction=pendingAttendanceCount>0?t(lang,'Go finish attendance','去完成点名'):finalFeedback||noFeedbackTask?t(lang,'Back to sessions','返回课次'):t(lang,'Complete teacher feedback','补全老师反馈');
+  const sessionCompletionHref=roster.needsReview||pendingAttendanceCount>0?'#attendance':finalFeedback||noFeedbackTask?returnTo:'#feedback';
+  const sessionCompletionAction=roster.needsReview?sessionRosterReviewLabel:pendingAttendanceCount>0?t(lang,'Go finish attendance','去完成点名'):finalFeedback||noFeedbackTask?t(lang,'Back to sessions','返回课次'):t(lang,'Complete teacher feedback','补全老师反馈');
 
   const msg = decode(sp?.msg);
   const err = decode(sp?.err);
@@ -193,7 +183,7 @@ export default async function TeacherSessionDetailPage({
         {session.class.capacity === 1 && (
           <div>
             {t(lang, "Student", "学生")}:{" "}
-            {visibleStudentNames[0] ?? t(lang, "Cancelled / hidden", "已取消 / 已隐藏")}
+            {visibleStudentNames[0] ?? (roster.needsReview ? sessionRosterReviewLabel : t(lang, "Cancelled / hidden", "已取消 / 已隐藏"))}
           </div>
         )}
         <div>
@@ -224,7 +214,7 @@ export default async function TeacherSessionDetailPage({
             {t(lang, "Attendance status", "点名状态")}
           </div>
           <div style={{ fontWeight: 700 }}>
-            {pendingAttendanceCount > 0
+            {roster.needsReview ? t(lang, "Student assignment needs review", "学生归属待核对") : attendanceRows.length === 0 ? t(lang, "No active students to mark", "没有需点名的在课学生") : pendingAttendanceCount > 0
               ? t(lang, `${attendanceDoneCount}/${attendanceRows.length} students marked`, `已点名 ${attendanceDoneCount}/${attendanceRows.length} 位学生`)
               : t(lang, `All ${attendanceDoneCount} students marked`, `已完成全部 ${attendanceDoneCount} 位学生点名`)}
           </div>
@@ -300,7 +290,7 @@ export default async function TeacherSessionDetailPage({
           </div>
           <div style={{ fontWeight: 700 }}>{t(lang, "Finish attendance first", "先完成点名")}</div>
           <div style={{ color: "#0f172a", fontSize: 13 }}>
-            {pendingAttendanceCount > 0
+            {roster.needsReview ? t(lang, "Confirm the exact student before attendance.", "点名前请先核对准确学生。") : attendanceRows.length === 0 ? t(lang, "No active students to mark.", "没有需点名的在课学生。") : pendingAttendanceCount > 0
               ? t(
                   lang,
                   `${pendingAttendanceCount} students still need a status before you move on to feedback.`,
@@ -338,7 +328,7 @@ export default async function TeacherSessionDetailPage({
       </div>
 
       <h3 id="attendance">{t(lang, "Attendance", "点名")}</h3>
-      <TeacherAttendanceClient
+      {roster.needsReview ? <p style={{color:"#b45309"}}>{t(lang,"Ask teaching management to confirm the exact student before attendance. No student was selected automatically.","请教务先确认此课次准确学生，再点名；系统没有自动选择学生。")}</p> : <TeacherAttendanceClient
         sessionId={session.id}
         initialRows={attendanceRows}
         completionGuide={{
@@ -361,11 +351,11 @@ export default async function TeacherSessionDetailPage({
           colStatus: t(lang, "Status", "状态"),
           colNote: t(lang, "Note", "备注"),
         }}
-      />
+      />}
 
       <h3 id="feedback" style={{ marginTop: 20 }}>{t(lang, "After-class Feedback", "课后反馈")}</h3>
       {policy.stale?<p role="status">{t(lang,'Earlier exemption no longer matches this session. Ask teaching management to review it.','旧豁免与当前课次不符，请教务重新核对。')}</p>:null}
-      {state==='EXEMPT'?<p>{policy.reason} · {t(lang,'If teaching actually took place, ask teaching management to restore the feedback requirement.','若实际开展了教学，请教务恢复反馈要求。')}</p>:<>
+      {roster.needsReview?<p>{sessionRosterReviewLabel}</p>:state==='EXEMPT'?<p>{policy.reason} · {t(lang,'If teaching actually took place, ask teaching management to restore the feedback requirement.','若实际开展了教学，请教务恢复反馈要求。')}</p>:<>
       {pendingAttendanceCount > 0 ? (
         <div
           style={{

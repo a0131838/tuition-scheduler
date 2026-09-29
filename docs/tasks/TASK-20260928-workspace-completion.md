@@ -476,3 +476,23 @@ Logs: `/tmp/sgt-r432-uat-final.log`, `/tmp/sgt-r432-linked-uat-final.log`, `/tmp
 ---
 
 Logs: `/tmp/sgt-r433-focused.log`, `/tmp/sgt-r433-uat-final.log`, `/tmp/sgt-r433-http.log`, `/tmp/sgt-r433-backend.log`, `/tmp/sgt-r433-tsc-final.log`, `/tmp/sgt-r433-build-delivery.log`. Screenshot: external `r433-isolated-source-history.png`. Browser review clarified that no current work-order link does not mean no historical audit reference.
+
+## 2026-09-29-r434
+
+- Release ID: `2026-09-29-r434`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; guarded release proof is maintained in the execution ledger.
+- Problem: a one-to-one lesson could explicitly name a student while its Enrollment row was absent. The admin page, teacher page and Mini Program attendance filtered Enrollment and showed0 students, but admin deduction accepted the explicit lesson student. Ambiguous legacy one-to-one classes could instead expose multiple candidates.
+- Change: shared attendance roster prioritizes exact Session.studentId, then explicit class student, then only a single unambiguous enrollment. Group lessons retain distinct enrolled students. Admin/teacher attendance pages, both save services and Mini Program attendance use this rule. Missing/ambiguous ownership requires review, with no arbitrary first student or automatic Enrollment insertion. Teacher feedback save also rejects unresolved ownership; current feedback is retained. New backend rosterNeedsReview flags are additive; no WeChat client deployment.
+- UI: exact students remain visible without Enrollment. Ambiguous rosters show review instructions instead of claiming all0 students were marked or labelling the student cancelled; saving attendance/new feedback waits for review. New labels support ZH/EN/BILINGUAL.
+- Validation:5 roster tests,181 backend tests,full production build. Isolated service UAT covers explicit session and class-default students without Enrollment, foreign enrolled student rejection, ambiguous one-to-one denial, exactly one admin debit and unchanged teacher ledger. Existing admin/teacher attendance rollback, concurrency, shared-count/minute and no-overspend suites pass; feedback exemption/submission race regression passes. Web/Mini HTTP checks consistent rosters, both factual saves, wrong-student/ambiguous rejection and unchanged package/ledger snapshots. Browser checks exact student and three-language review state.
+- Migration: none. No production attendance, deductions, refunds, Enrollment or feedback were changed for acceptance. This is an exact-identity fix, not historical attribution inference.
+- Remaining: phase4 acceptance review and phases5–10. Existing global language/loading cleanup remains planned separately.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `d0d4d4a30261046dbac6f5f94134556cf8f035b8` (r433).
+
+---
+
+Logs: `/tmp/sgt-r434-focused.log`, `/tmp/sgt-r434-uat-final.log`, `/tmp/sgt-r434-http-final.log`, `/tmp/sgt-r434-admin-regression.log`, `/tmp/sgt-r434-teacher-regression.log`, `/tmp/sgt-r434-feedback-regression.log`, `/tmp/sgt-r434-backend.log`, `/tmp/sgt-r434-build-delivery.log`. Expected serialization conflicts assert safe rejection. Browser found and fixed misleading zero-student completion/cancelled labels. Screenshot: external `r434-isolated-roster-review.png`.
+
+Browser evidence note: one earlier React hydration #418 at03:18:32UTC was captured during local runtime rebuild acceptance. Final-build reload/language checks added no new error entries; underlying cause remains a phase9 stable-runtime investigation, not a claim of a completely clean console history. Final backend log: /tmp/sgt-r434-backend-final.log.

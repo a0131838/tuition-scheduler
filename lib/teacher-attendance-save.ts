@@ -1,3 +1,4 @@
+import {resolveAttendanceRoster} from './session-attendance-roster';
 import { AttendanceStatus, Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
 import { getCancelledSessionStudentIds } from "./session-students";
@@ -12,7 +13,9 @@ export async function saveTeacherAttendanceInTransaction(tx: Prisma.TransactionC
   const session = await tx.session.findUnique({where:{id:input.sessionId},include:{attendances:true,class:{include:{enrollments:true}}}});
   if(!session || !(session.teacherId===input.teacherId || (!session.teacherId && session.class.teacherId===input.teacherId))) throw new AttendanceSaveError("Session unavailable or no permission / 课程不存在或无权限",403);
   const cancelled = getCancelledSessionStudentIds(session);
-  const students = session.class.capacity===1 && session.studentId ? session.class.enrollments.filter(e=>e.studentId===session.studentId) : session.class.enrollments;
+  const roster=resolveAttendanceRoster(session);
+  if(roster.needsReview)throw new AttendanceSaveError("Student assignment needs review / 请先核对课次学生归属");
+  const students=roster.students.map(s=>({studentId:s.id}));
   const expected = new Set(students.filter(e=>!cancelled.has(e.studentId)).map(e=>e.studentId));
   if(!input.items.length) throw new AttendanceSaveError("No attendance items / 没有点名记录");
   const seen = new Set<string>();

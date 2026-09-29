@@ -1,3 +1,4 @@
+import {resolveAttendanceRoster} from '@/lib/session-attendance-roster';
 import SessionTraceabilityPanel from '@/app/admin/_components/SessionTraceabilityPanel';
 import {getCurrentUser,isManagerUser} from '@/lib/auth';
 import {feedbackPolicyState} from '@/lib/session-feedback-policy';
@@ -113,10 +114,8 @@ export default async function AttendancePage({
   const map = new Map(existing.map((a) => [a.studentId, a]));
   const sessionDuration = durationMinutes(session.startAt, session.endAt);
 
-  const attendanceEnrollments =
-    session.class.capacity === 1 && session.studentId
-      ? enrollments.filter((e) => e.studentId === session.studentId)
-      : enrollments;
+  const roster=resolveAttendanceRoster({...session,class:{...session.class,enrollments}});
+  const attendanceEnrollments=roster.students.map(s=>({studentId:s.id,student:{name:s.name??s.id}}));
   const studentIds = attendanceEnrollments.map((e) => e.studentId);
   const classIsGroup = session.class.capacity !== 1;
   const packages = await prisma.coursePackage.findMany({
@@ -280,16 +279,16 @@ export default async function AttendancePage({
           </div>
         </div>
         <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 8, background: "#fff" }}>
-          <div style={{ color: "#666", fontSize: 12 }}>{t(lang, "Enrolled Students", "报名人数")}</div>
+          <div style={{ color: "#666", fontSize: 12 }}>{t(lang, "Session students", "本课次学生")}</div>
           <div style={{ fontWeight: 700 }}>{attendanceEnrollments.length}</div>
         </div>
       </div>
-      {session.class.capacity === 1 && !session.studentId && (
+      {roster.needsReview && (
         <div style={{ padding: 10, border: "1px solid #fde68a", background: "#fffbeb", borderRadius: 8 }}>
           {t(
             lang,
-            "This is a 1-on-1 session without a student assigned. Please assign the student in class sessions page.",
-            "这是一个未选择学生的一对一课次，请先在班级课次页面选择学生。"
+            "The session student assignment is missing or ambiguous. Review the exact student before marking attendance.",
+            "此课次学生归属缺失或不明确，请先核对准确学生，再进行点名。"
           )}
         </div>
       )}
@@ -300,7 +299,7 @@ export default async function AttendancePage({
       <div id="attendance-editor" style={{ padding: 12, border: "1px solid #eee", borderRadius: 8, background: "#fff" }}>
         {attendanceEnrollments.length === 0 ? (
           <div style={{ color: "#999" }}>
-            {t(lang, "No enrolled students in this class yet.", "本班暂无报名学生。")}{" "}
+            {t(lang, "No verified student roster for this session.", "此课次尚无可核对的学生名单。")}{" "}
             {t(lang, "Please add students in class detail.", "请先在班级详情页添加学生。")}
           </div>
         ) : (

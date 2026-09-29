@@ -1,3 +1,4 @@
+import {resolveAttendanceRoster} from '@/lib/session-attendance-roster';
 import { bad, ok } from "@/app/api/miniapp/_lib";
 import { requireMiniappStaff } from "@/app/api/miniapp/staff/_lib";
 import { AttendanceSaveError, saveTeacherAttendance } from "@/lib/teacher-attendance-save";
@@ -12,6 +13,7 @@ async function getAllowedSession(sessionId: string, teacherId: string) {
       attendances: true,
       class: {
         include: {
+          oneOnOneStudent: true,
           course: true,
           subject: true,
           enrollments: { include: { student: true }, orderBy: { student: { name: "asc" } } },
@@ -26,10 +28,7 @@ async function getAllowedSession(sessionId: string, teacherId: string) {
 
 function attendanceRows(session: NonNullable<Awaited<ReturnType<typeof getAllowedSession>>>) {
   const cancelledSet = getCancelledSessionStudentIds(session);
-  const enrollments =
-    session.class.capacity === 1 && session.studentId
-      ? session.class.enrollments.filter((e) => e.studentId === session.studentId)
-      : session.class.enrollments;
+  const enrollments=resolveAttendanceRoster(session).students.map(s=>({studentId:s.id,student:{name:s.name??s.id}}));
   const attMap = new Map(session.attendances.map((a) => [a.studentId, a]));
 
   return enrollments
@@ -60,6 +59,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ sessionId: stri
       courseLabel: [session.class.course?.name, session.class.subject?.name].filter(Boolean).join(" / "),
     },
     rows: attendanceRows(session),
+    rosterNeedsReview:resolveAttendanceRoster(session).needsReview,
   });
 }
 

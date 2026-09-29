@@ -1,3 +1,4 @@
+import {resolveAttendanceRoster} from './session-attendance-roster';
 import { prisma } from "@/lib/prisma";
 import { AttendanceStatus, PackageStatus, PackageType, Prisma } from "@prisma/client";
 import { packageModeFromNote, type PackageMode } from "@/lib/package-mode";
@@ -417,7 +418,9 @@ export async function saveAdminAttendanceInTransaction(tx: Prisma.TransactionCli
   await tx.$queryRaw`SELECT id FROM "Session" WHERE id = ${input.sessionId} FOR UPDATE`;
   const session=await tx.session.findUnique({where:{id:input.sessionId},include:{class:{include:{enrollments:true}},attendances:true}});
   if(!session) throw new Error('Session not found / 课程不存在');
-  const studentIds=session.class.capacity===1 && session.studentId ? [session.studentId] : session.class.enrollments.map(e=>e.studentId);
+  const roster=resolveAttendanceRoster(session);
+  if(roster.needsReview)throw new Error("Student assignment needs review / 请先核对课次学生归属");
+  const studentIds=roster.students.map(s=>s.id);
   const isGroupClass=session.class.capacity!==1, duration=durationMinutes(session.startAt,session.endAt);
   const items: NonNullable<AdminAttendanceInput["items"]> = input.markAll ? studentIds.map(studentId=>({studentId,status:'PRESENT',deductedMinutes:isGroupClass?0:duration,deductedCount:isGroupClass?1:0,waiveDeduction:input.markAll!.waiveDeduction,waiveReason:input.markAll!.waiveReason})) : input.items??[];
   if(!items.length) throw new Error('No items / 没有点名记录');

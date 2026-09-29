@@ -1,0 +1,8 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {resolveAttendanceRoster as roster} from '../lib/session-attendance-roster';
+test('explicit lesson student remains present without enrollment',()=>{assert.deepEqual(roster({studentId:'A',student:{id:'A',name:'Actual'},class:{capacity:1,enrollments:[]}}),{students:[{id:'A',name:'Actual'}],needsReview:false});});
+test('explicit student takes priority over class default and unrelated enrollment',()=>{assert.deepEqual(roster({studentId:'A',class:{capacity:1,oneOnOneStudentId:'B',oneOnOneStudent:{id:'B',name:'Other'},enrollments:[{studentId:'B',student:{name:'Other'}}]}}),{students:[{id:'A',name:null}],needsReview:false});});
+test('explicit class student works without enrollment',()=>{assert.deepEqual(roster({class:{capacity:1,oneOnOneStudentId:'A',oneOnOneStudent:{id:'A',name:'Class student'},enrollments:[]}}),{students:[{id:'A',name:'Class student'}],needsReview:false});});
+test('single unambiguous enrollment is usable; multiple legacy students require review',()=>{assert.equal(roster({class:{capacity:1,enrollments:[{studentId:'A'}]}}).students[0].id,'A');assert.deepEqual(roster({class:{capacity:1,enrollments:[{studentId:'A'},{studentId:'B'}]}}),{students:[],needsReview:true});});
+test('group roster retains all distinct enrollments and ignores single-session student override',()=>{assert.deepEqual(roster({studentId:'C',class:{capacity:3,enrollments:[{studentId:'A'},{studentId:'B'},{studentId:'A'}]}}).students.map(s=>s.id),['A','B']);assert.equal(roster({class:{capacity:3,enrollments:[]}}).needsReview,true);});

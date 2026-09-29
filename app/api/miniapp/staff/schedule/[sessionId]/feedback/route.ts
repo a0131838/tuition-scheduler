@@ -1,3 +1,4 @@
+import {resolveAttendanceRoster} from '@/lib/session-attendance-roster';
 import {feedbackPolicyState} from "@/lib/session-feedback-policy";
 import {saveTeacherFeedbackReviewed} from "@/lib/teacher-feedback-save";
 import { FeedbackStatus } from "@prisma/client";
@@ -46,6 +47,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ sessionId: stri
   const feedback = session.feedbacks[0] ?? null;
   return ok({
     feedbackRequirement:feedbackPolicyState(session),
+    rosterNeedsReview:resolveAttendanceRoster(session).needsReview,
     session: {
       id: session.id,
       courseLabel: [session.class.course?.name, session.class.subject?.name].filter(Boolean).join(" / "),
