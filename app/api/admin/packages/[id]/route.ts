@@ -448,8 +448,14 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }
   const { id } = await ctx.params;
   if (!id) return bad("Missing id", 409);
 
-  await prisma.packageTxn.deleteMany({ where: { packageId: id } });
-  await prisma.attendance.updateMany({ where: { packageId: id }, data: { packageId: null } });
-  await prisma.coursePackage.delete({ where: { id } });
+  const removed = await prisma.$transaction(async tx => {
+    await tx.$queryRaw`SELECT id FROM "CoursePackage" WHERE id=${id} FOR UPDATE`;
+    if (await tx.packageEntitlementCorrection.count({where:{packageId:id}})) return false;
+    await tx.packageTxn.deleteMany({ where: { packageId: id } });
+    await tx.attendance.updateMany({ where: { packageId: id }, data: { packageId: null } });
+    await tx.coursePackage.delete({ where: { id } });
+    return true;
+  });
+  if (!removed) return bad("A package with recorded corrections must retain its history / 已登记更正的课包须保留历史，不能删除",409);
   return Response.json({ ok: true });
 }

@@ -345,3 +345,22 @@ Logs: `/tmp/sgt-r425-focused.log`, `/tmp/sgt-r425-backend.log`, `/tmp/sgt-r425-u
 ---
 
 Logs: `/tmp/sgt-r426-focused.log`, `/tmp/sgt-r426-backend.log`, `/tmp/sgt-r426-uat.log`, `/tmp/sgt-r426-http.log`, `/tmp/sgt-r426-build.log`, `/tmp/sgt-r426-tsc-final.log`, `/tmp/sgt-r426-production-readonly.log`. Initial QA fixture used the wrong shared-member model name; corrected and rerun successfully. Streaming not-found is checked by its404 body and absence of financial data rather than assuming HTTP404. Existing shared language selector needs saved preference followed by page reload; global language/loading behavior remains phase8/9 work.
+
+## 2026-09-29-r427
+
+- Release ID: `2026-09-29-r427`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; guarded release proof is maintained in the execution ledger.
+- Problem: reviewed excess purchased entitlement had no append-only correction action. Legacy gift writes could overwrite a concurrent balance update, and package deletion could remove ledger rows before a later failure.
+- Change: owner-only cancellation after a fresh evidence preview. One original purchase is selected explicitly; reason, source evidence and scope acknowledgment are mandatory. The serializable transaction retains the original purchase, appends a negative adjustment, updates total/balance and writes a linked correction proof plus audit atomically. Request keys prevent duplicate execution; changed evidence or concurrent writes require a fresh preview. Verified corrections reconcile separately from historical unexplained adjustments.
+- Compatibility: existing gift writes lock the package and increment the current balance; legacy ledger edit/delete/restore verifies its snapshot and cannot alter correction sources or adjustments. Package deletion is atomic and refuses packages with correction history. Existing renewal evidence rules reject corrected purchase evidence; isolated acceptance proves it cannot verify a renewal using the original quantity. This does not reprice historical utilization or change invoice, receipt, refund, contract, attendance or payroll records.
+- Scope/UI: ordinary individual minute/count packages only; shared allocations, monthly periods, partner settlements, unresolved finance evidence and historical adjustments remain pending explicit review. ADMIN owner only can execute; FINANCE and other authorized readers retain review access, observers stay read-only. ZH/EN/BILINGUAL result and expandable history on the existing billing URL; all old routes remain.
+- Validation:13 focused and181 backend tests; full TypeScript and260-page production build. Isolated service tests prove forced audit rollback, source retention, exact scope, stale rejection, concurrent/idempotent execution, sequential corrections, count units, protected history and unchanged financial sources. HTTP acceptance covers seven non-owner role denials, simultaneous correction/two gifts with no lost balance, protected purchase/adjustment/package deletion, and retry idempotence. Real browser completes100→64.5 hours/zero balance, preserves purchase100 and displays correction-35.5, Chinese audit basis and bilingual preview; console clean. Browser result independently verified in isolated DB.
+- Migration: two additive migrations introduce PackageEntitlementCorrection with source/adjustment/package RESTRICT foreign keys, request uniqueness and quantity/unit constraints. No historical backfill. Production acceptance uses schema/read-only checks only; no real business fixtures or external communications.
+- Remaining: phase3 contract-signing/invoice concurrency, correction reversal, explicit shared/partner/monthly paths and broader financial utilization regression; phases4–10. This is not programme completion.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `418643f3a5bbc288215c3d0dbd19e372c91326e9` (r426). Retain additive schema and correction proof on rollback; old readers may require review for the new ADJUST records. Never delete history to roll back.
+
+---
+
+Logs: `/tmp/sgt-r427-focused.log`, `/tmp/sgt-r427-backend.log`, `/tmp/sgt-r427-uat-final.log`, `/tmp/sgt-r427-http.log`, `/tmp/sgt-r427-build.log`, `/tmp/sgt-r427-tsc-final.log`, `/tmp/sgt-r427-browser-post.log`. Expected serialization/FK failures are rejection assertions. Screenshot stored with external execution ledger as `r427-isolated-correction.png`.

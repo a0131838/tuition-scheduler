@@ -1,3 +1,4 @@
+import {lockLegacyLedgerSnapshot,ProtectedLedgerConflict} from '@/lib/package-ledger-correction-guard';
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit-log";
@@ -27,7 +28,7 @@ async function getPackageLedgerRemaining(packageId: string) {
   return txns.reduce((sum, txn) => sum + (txn.deltaMinutes ?? 0), 0);
 }
 
-export async function PATCH(req: Request, ctx: { params: Promise<{ id: string; txnId: string }> }) {
+async function patch(req: Request, ctx: { params: Promise<{ id: string; txnId: string }> }) {
   const admin = await requireAdmin();
   const actor = admin.email.trim().toLowerCase();
   if (actor !== "zhaohongwei0880@gmail.com") {
@@ -118,6 +119,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string; t
   }
 
   await prisma.$transaction(async (tx) => {
+    await lockLegacyLedgerSnapshot(tx,{packageId,totalMinutes:pkg.totalMinutes,remainingMinutes:pkg.remainingMinutes,ledgerRemaining,txnId});
     if (settlementIdsToDelete.length > 0) {
       await tx.partnerSettlement.deleteMany({ where: { id: { in: settlementIdsToDelete } } });
     }
@@ -161,7 +163,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string; t
   return Response.json({ ok: true, remainingMinutes: nextRemaining });
 }
 
-export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string; txnId: string }> }) {
+async function remove(_req: Request, ctx: { params: Promise<{ id: string; txnId: string }> }) {
   const admin = await requireAdmin();
   const actor = admin.email.trim().toLowerCase();
   if (actor !== "zhaohongwei0880@gmail.com") {
@@ -226,6 +228,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string;
   }
 
   await prisma.$transaction(async (tx) => {
+    await lockLegacyLedgerSnapshot(tx,{packageId,totalMinutes:pkg.totalMinutes,remainingMinutes:pkg.remainingMinutes,ledgerRemaining,txnId});
     if (settlementIdsToDelete.length > 0) {
       await tx.partnerSettlement.deleteMany({ where: { id: { in: settlementIdsToDelete } } });
     }
@@ -265,7 +268,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string;
   });
 }
 
-export async function POST(req: Request, ctx: { params: Promise<{ id: string; txnId: string }> }) {
+async function restore(req: Request, ctx: { params: Promise<{ id: string; txnId: string }> }) {
   const admin = await requireAdmin();
   const actor = admin.email.trim().toLowerCase();
   if (actor !== "zhaohongwei0880@gmail.com") {
@@ -311,6 +314,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; tx
   if (isPurchase && nextTotal < 0) return bad("Total minutes cannot be negative", 409);
 
   await prisma.$transaction(async (tx) => {
+    await lockLegacyLedgerSnapshot(tx,{packageId,totalMinutes:pkg.totalMinutes,remainingMinutes:pkg.remainingMinutes,ledgerRemaining,txnId});
     await tx.packageTxn.create({
       data: {
         id: txnId,
@@ -345,3 +349,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; tx
 
   return Response.json({ ok: true, remainingMinutes: nextRemaining });
 }
+
+type Context={params:Promise<{id:string;txnId:string}>};
+async function guarded(action:()=>Promise<Response>){try{return await action();}catch(error){if(error instanceof ProtectedLedgerConflict)return bad("Ledger changed or this entry preserves a recorded correction; reload and review / 流水已变更或此记录属于已登记更正，请刷新核对",409);throw error;}}
+export async function PATCH(req:Request,ctx:Context){return guarded(()=>patch(req,ctx));}
+export async function DELETE(req:Request,ctx:Context){return guarded(()=>remove(req,ctx));}
+export async function POST(req:Request,ctx:Context){return guarded(()=>restore(req,ctx));}

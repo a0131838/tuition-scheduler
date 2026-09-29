@@ -18,7 +18,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
   const units = Number(String(body?.minutes ?? "").trim());
   const note = String(body?.note ?? "").trim();
-  if (!Number.isFinite(units) || units <= 0) return bad("Invalid value", 409);
+  if (!Number.isSafeInteger(units) || units <= 0) return bad("Invalid value", 409);
 
   const pkg = await prisma.coursePackage.findUnique({
     where: { id: packageId },
@@ -27,19 +27,23 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (!pkg) return bad("Package not found", 404);
   if (pkg.type !== "HOURS") return bad("Only HOURS package is supported", 409);
 
-  const nextRemaining = (pkg.remainingMinutes ?? 0) + units;
-  await prisma.$transaction([
-    prisma.coursePackage.update({ where: { id: packageId }, data: { remainingMinutes: nextRemaining } }),
-    prisma.packageTxn.create({
+  const updated = await prisma.$transaction(async tx=>{
+    await tx.$queryRaw`SELECT id FROM "CoursePackage" WHERE id=${packageId} FOR UPDATE`;
+    const current=await tx.coursePackage.findUniqueOrThrow({where:{id:packageId},select:{remainingMinutes:true,type:true}});
+    if(current.type!=="HOURS")return null;
+    const updated=await tx.coursePackage.update({where:{id:packageId},data:{remainingMinutes:current.remainingMinutes===null?units:{increment:units}}});
+    await tx.packageTxn.create({
       data: {
         packageId,
         kind: "GIFT",
         deltaMinutes: units,
         note: note || null,
       },
-    }),
-  ]);
+    });
+    return updated;
+  });
 
-  return Response.json({ ok: true, remainingMinutes: nextRemaining });
+  if(!updated)return bad("Package type changed; reload / 课包类型已变化，请刷新",409);
+  return Response.json({ ok: true, remainingMinutes: updated.remainingMinutes });
 }
 

@@ -2903,6 +2903,7 @@ model CoursePackage {
 
   student                Student                       @relation(fields: [studentId], references: [id])
   course                 Course                        @relation(fields: [courseId], references: [id])
+  entitlementCorrections PackageEntitlementCorrection[]
   txns                   PackageTxn[]
   attendances            Attendance[]
   sharedStudents         CoursePackageSharedStudent[]
@@ -3233,6 +3234,8 @@ model PackageTxn {
 
   package            CoursePackage       @relation(fields: [packageId], references: [id])
   partnerSettlements PartnerSettlement[]
+  correctionSources PackageEntitlementCorrection[] @relation("CorrectionSource")
+  correctionEntry PackageEntitlementCorrection? @relation("CorrectionAdjustment")
 
   @@index([packageId, createdAt])
   @@index([kind, createdAt])
@@ -3785,4 +3788,31 @@ model SalesEvidenceAssignment {
   @@unique([kind, documentId])
   @@index([relationshipId, status])
   @@index([leadId, status])
+}
+
+model PackageEntitlementCorrection {
+  id String @id @default(uuid())
+  packageId String
+  sourceTxnId String
+  adjustmentTxnId String @unique
+  requestKey String @unique
+  requestHash String
+  sourceFingerprint String
+  sourceUnits Int
+  unit String @default("MINUTES")
+  beforeTotal Int
+  afterTotal Int
+  beforeBalance Int
+  afterBalance Int
+  deltaUnits Int
+  reason String
+  evidence String
+  actorUserId String
+  actorEmail String
+  createdAt DateTime @default(now())
+  package CoursePackage @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  sourceTxn PackageTxn @relation("CorrectionSource", fields: [sourceTxnId], references: [id], onDelete: Restrict)
+  adjustmentTxn PackageTxn @relation("CorrectionAdjustment", fields: [adjustmentTxnId], references: [id], onDelete: Restrict)
+  @@index([packageId, createdAt])
+  @@index([sourceTxnId])
 }

@@ -11,3 +11,12 @@ test('ledger mismatch, missing purchase and legacy adjustment block confident pr
 test('shared and partner packages require allocation or settlement review',()=>{for(const p of [{...pkg,sharedStudentIds:['shared']},{...pkg,settlementMode:'ONLINE_PACKAGE_END'},{...pkg,settlementMode:'OFFLINE_MONTHLY'}])assert.equal(previewPackageCorrection(packageCorrectionFacts(p,rows),'64.5')?.ready,false);});
 test('monthly does not calculate hours and group packs use count rather than60minutes',()=>{assert.equal(previewPackageCorrection(packageCorrectionFacts({...pkg,type:'MONTHLY'},rows),'50')?.ready,false);const f=packageCorrectionFacts({...pkg,note:'[GROUP_PACK]',totalMinutes:10,remainingMinutes:4},[txn('PURCHASE',10),txn('DEDUCT',-6)]);assert.equal(f.unit,'COUNT');assert.equal(previewPackageCorrection(f,'6')?.remaining,0);assert.equal(previewPackageCorrection(f,'6.5')?.ready,false);});
 test('invalid targets, fractional minutes, ledger direction and unknown movements are rejected',()=>{const f=packageCorrectionFacts(pkg,rows);for(const v of ['-1','abc','1e2','Infinity','1.0001'])assert.equal(previewPackageCorrection(f,v)?.ready,false);assert.equal(previewPackageCorrection(f,''),null);for(const entry of [txn('constructor',1),txn('DEDUCT',10),txn('ROLLBACK',-5),txn('ROLLBACK',5000)])assert.equal(previewPackageCorrection(packageCorrectionFacts(pkg,[...rows,entry]),'64.5')?.ready,false);});
+
+test('only audited matching correction entries reconcile purchase totals; unknown adjustments remain blocked',()=>{
+ const source=txn('PURCHASE',6000),adjust={...txn('ADJUST',-2130),id:'correction-adjustment'},deduct=txn('DEDUCT',-3870);
+ const proof={id:'correction',sourceTxnId:source.id,adjustmentTxnId:adjust.id,sourceUnits:6000,unit:'MINUTES',deltaUnits:-2130,beforeTotal:6000,afterTotal:3870,beforeBalance:2130,afterBalance:0,audited:true};
+ const changed={...pkg,totalMinutes:3870,remainingMinutes:0};
+ assert.equal(packageCorrectionFacts(changed,[source,deduct,adjust],[proof]).issues.length,0);
+ for(const bad of [{...proof,audited:false},{...proof,unit:'COUNT'},{...proof,sourceUnits:5000},{...proof,afterBalance:60}])assert.ok(packageCorrectionFacts(changed,[source,deduct,adjust],[bad]).issues.length>0);
+ assert.ok(packageCorrectionFacts(changed,[source,deduct,adjust,txn('ADJUST',0)],[proof]).issues.length>0);
+});

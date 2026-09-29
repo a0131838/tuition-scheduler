@@ -1,3 +1,4 @@
+import {canApplyEntitlementCorrection} from '@/lib/package-entitlement-correction';
 import PackageCorrectionReview from '../../_components/PackageCorrectionReview';
 import {hasContractExecutionHistory} from '@/lib/student-contract-history';
 import { getCurrentUser, requireAdmin } from "@/lib/auth";
@@ -588,7 +589,7 @@ export default async function PackageBillingPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ msg?: string; err?: string; source?: string; receiptsBack?: string; view?: string; target?: string | string[] }>;
+  searchParams?: Promise<{ msg?: string; err?: string; source?: string; receiptsBack?: string; view?: string; correction?: string; target?: string | string[] }>;
 }) {
   await requireAdmin();
   const { id: packageId } = await params;
@@ -602,7 +603,7 @@ export default async function PackageBillingPage({
   const canReviewCorrection = currentUser?.role === "FINANCE" || (currentUser?.role === "ADMIN" && !currentUser.operationsAdmin);
   if (sp?.view === "correction") {
     if (!canReviewCorrection) redirect(buildPackageBillingHref(packageId));
-    return <PackageCorrectionReview packageId={packageId} lang={lang} target={typeof sp.target === "string" ? sp.target : sp.target === undefined ? undefined : "invalid"} backHref={buildPackageBillingHref(packageId,{sourceWorkflow,receiptsBack})} />;
+    return <PackageCorrectionReview canExecute={canApplyEntitlementCorrection(currentUser)} completedId={typeof sp.correction === "string" ? sp.correction : undefined} packageId={packageId} lang={lang} target={typeof sp.target === "string" ? sp.target : sp.target === undefined ? undefined : "invalid"} backHref={buildPackageBillingHref(packageId,{sourceWorkflow,receiptsBack})} />;
   }
 
 
