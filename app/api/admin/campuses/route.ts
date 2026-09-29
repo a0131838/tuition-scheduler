@@ -1,3 +1,5 @@
+import {deleteUnusedSchedulingContainer} from '@/lib/scheduling-container-deletion';
+import {requireSessionDeletionActor} from '@/lib/session-deletion-auth';
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { campusRequiresRoom } from "@/lib/campus";
@@ -67,32 +69,8 @@ export async function PATCH(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  await requireAdmin();
-
-  let body: any;
-  try {
-    body = await req.json();
-  } catch {
-    return bad("Invalid JSON body");
-  }
-
-  const campusId = String(body?.id ?? "");
-  if (!campusId) return bad("Missing id", 409);
-
-  const classes = await prisma.class.findMany({
-    where: { campusId },
-    select: { id: true },
-  });
-  const classIds = classes.map((c) => c.id);
-
-  if (classIds.length > 0) {
-    await prisma.enrollment.deleteMany({ where: { classId: { in: classIds } } });
-    await prisma.session.deleteMany({ where: { classId: { in: classIds } } });
-  }
-
-  await prisma.class.deleteMany({ where: { campusId } });
-  await prisma.room.deleteMany({ where: { campusId } });
-  await prisma.campus.delete({ where: { id: campusId } });
-
-  return Response.json({ ok: true });
+  let actor;try{actor=await requireSessionDeletionActor();}catch{return bad('Teaching management permission required / 需要教学管理权限',403);}
+  let body;try{body=await req.json();}catch{return bad('Invalid JSON / 请求格式无效');}const id=String(body?.id??'');
+  try{return Response.json(await deleteUnusedSchedulingContainer('Campus',id,actor));}
+  catch(e){return bad(e instanceof Error?e.message:'Delete failed / 删除失败',409);}
 }

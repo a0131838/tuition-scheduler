@@ -1,4 +1,6 @@
-﻿import { prisma } from "@/lib/prisma";
+import {deleteEmptySession} from '@/lib/session-deletion';
+import {requireSessionDeletionActor} from '@/lib/session-deletion-auth';
+import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import type { Lang } from "@/lib/i18n";
@@ -521,7 +523,9 @@ async function deleteSession(classId: string, formData: FormData) {
   const sessionId = String(formData.get("sessionId") ?? "");
   if (!sessionId) redirect(buildRedirect(classId, { err: "Missing sessionId" }));
 
-  await prisma.session.delete({ where: { id: sessionId } });
+  const actor=await requireSessionDeletionActor();
+  try{await deleteEmptySession({sessionId,classId,actor});}
+  catch(e){redirect(buildRedirect(classId,{err:e instanceof Error?e.message:'Delete failed / 删除失败'}));}
   redirect(buildRedirect(classId, { msg: "Deleted" }));
 }
 

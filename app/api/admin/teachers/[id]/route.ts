@@ -1,3 +1,5 @@
+import {deleteUnusedSchedulingContainer} from '@/lib/scheduling-container-deletion';
+import {requireSessionDeletionActor} from '@/lib/session-deletion-auth';
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { TeachingLanguage } from "@prisma/client";
@@ -93,28 +95,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
 }
 
 export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
-  const { id } = await ctx.params;
-  if (!id) return bad("Missing teacher id", 409);
-
-  await prisma.teacherAvailability.deleteMany({ where: { teacherId: id } });
-  await prisma.teacherAvailabilityDate.deleteMany({ where: { teacherId: id } });
-  await prisma.teacherOneOnOneTemplate.deleteMany({ where: { teacherId: id } });
-  await prisma.appointment.deleteMany({ where: { teacherId: id } });
-  const classes = await prisma.class.findMany({
-    where: { teacherId: id },
-    select: { id: true },
-  });
-  const classIds = classes.map((c) => c.id);
-  if (classIds.length > 0) {
-    await prisma.enrollment.deleteMany({ where: { classId: { in: classIds } } });
-    await prisma.attendance.deleteMany({ where: { session: { classId: { in: classIds } } } });
-    await prisma.session.deleteMany({ where: { classId: { in: classIds } } });
-  }
-  await prisma.class.deleteMany({ where: { teacherId: id } });
-  await prisma.oneOnOneGroup.deleteMany({ where: { teacherId: id } });
-  await prisma.user.updateMany({ where: { teacherId: id }, data: { teacherId: null } });
-  await prisma.teacher.delete({ where: { id } });
-
-  return Response.json({ ok: true });
+  let actor;try{actor=await requireSessionDeletionActor();}catch{return bad('Teaching management permission required / 需要教学管理权限',403);}
+  const {id}=await ctx.params;
+  try{return Response.json(await deleteUnusedSchedulingContainer('Teacher',id,actor));}
+  catch(e){return bad(e instanceof Error?e.message:'Delete failed / 删除失败',409);}
 }

@@ -1,3 +1,5 @@
+import {deleteUnusedSchedulingContainer} from '@/lib/scheduling-container-deletion';
+import {requireSessionDeletionActor} from '@/lib/session-deletion-auth';
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import type { NextRequest } from "next/server";
@@ -78,14 +80,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
-  const { id: classId } = await params;
-  if (!classId) return bad("Missing classId");
-
-  await prisma.enrollment.deleteMany({ where: { classId } });
-  await prisma.session.deleteMany({ where: { classId } });
-  await prisma.class.delete({ where: { id: classId } });
-
-  return Response.json({ ok: true });
+  let actor;try{actor=await requireSessionDeletionActor();}catch{return bad('Teaching management permission required / 需要教学管理权限',403);}
+  const {id}=await params;
+  try{return Response.json(await deleteUnusedSchedulingContainer('Class',id,actor));}
+  catch(e){return bad(e instanceof Error?e.message:'Delete failed / 删除失败',409);}
 }
-

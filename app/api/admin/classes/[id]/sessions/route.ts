@@ -1,3 +1,5 @@
+import {deleteEmptySession} from '@/lib/session-deletion';
+import {requireSessionDeletionActor} from '@/lib/session-deletion-auth';
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { pickTeacherSessionConflict } from "@/lib/session-conflict";
@@ -286,48 +288,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   );
 }
 
-export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const actor = await requireAdmin();
-  const { id: classId } = await params;
-  if (!classId) return bad("Missing classId");
-
-  let body: any;
-  try {
-    body = await req.json();
-  } catch {
-    body = null;
-  }
-
-  const sessionId = String(body?.sessionId ?? "");
-  if (!sessionId) return bad("Missing sessionId");
-
-  const session = await prisma.session.findUnique({
-    where: { id: sessionId },
-    include: {
-      student: { select: { name: true } },
-      teacher: { select: { name: true } },
-      class: { include: { teacher: { select: { name: true } }, campus: { select: { name: true } }, room: { select: { name: true } } } },
-    },
-  });
-  if (!session || session.classId !== classId) return bad("Session not found", 404);
-
-  await prisma.$transaction(async (tx) => {
-    await recordSchedulingChange(tx, {
-      actor,
-      action: "SESSION_DELETED",
-      sessionId: session.id,
-      classId,
-      before: {
-        startAt: session.startAt.toISOString(),
-        endAt: session.endAt.toISOString(),
-        teacherName: session.teacher?.name ?? session.class.teacher.name,
-        studentName: session.student?.name ?? null,
-        campusName: session.class.campus?.name ?? null,
-        roomName: session.class.room?.name ?? null,
-      },
-      source: "WEB",
-    });
-    await tx.session.delete({ where: { id: sessionId } });
-  });
-  return Response.json({ ok: true });
+export async function DELETE(req:Request,{params}:{params:Promise<{id:string}>}){
+ let actor;try{actor=await requireSessionDeletionActor();}catch{return bad('Teaching management permission required / 需要教学管理权限',403);}
+ const {id:classId}=await params;
+ let body;try{body=await req.json();}catch{return bad('Invalid JSON / 请求格式无效');}
+ const sessionId=String(body?.sessionId??'');if(!sessionId)return bad('Missing sessionId / 缺少课次编号');
+ try{return Response.json(await deleteEmptySession({sessionId,classId,actor}));}
+ catch(e){return bad(e instanceof Error?e.message:'Delete failed / 删除失败',409,{code:'SESSION_DELETE_BLOCKED'});}
 }

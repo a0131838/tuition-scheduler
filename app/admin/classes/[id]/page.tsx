@@ -1,4 +1,6 @@
-﻿import { prisma } from "@/lib/prisma";
+import {deleteUnusedSchedulingContainer} from '@/lib/scheduling-container-deletion';
+import {requireSessionDeletionActor} from '@/lib/session-deletion-auth';
+import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { getLang, t } from "@/lib/i18n";
 import NoticeBanner from "../../_components/NoticeBanner";
@@ -97,9 +99,9 @@ async function updateClass(classId: string, formData: FormData) {
 async function deleteClass(classId: string) {
   "use server";
 
-  await prisma.enrollment.deleteMany({ where: { classId } });
-  await prisma.session.deleteMany({ where: { classId } });
-  await prisma.class.delete({ where: { id: classId } });
+  const actor=await requireSessionDeletionActor();
+  try{await deleteUnusedSchedulingContainer('Class',classId,actor);}
+  catch(e){redirect(`/admin/classes/${classId}?err=${encodeURIComponent(e instanceof Error?e.message:'Delete failed / 删除失败')}`);}
 
   redirect("/admin/classes");
 }

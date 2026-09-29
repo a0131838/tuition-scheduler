@@ -1,4 +1,21 @@
 # RELEASE BOARD
+## 2026-09-29-r432
+
+- Release ID: `2026-09-29-r432`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; guarded release proof is maintained in the execution ledger.
+- Problem: legacy class-session deletion bypassed the schedule's linked-record check, the schedule check raced deletion, parent class/teacher/campus deletion could cascade through history, and appointment deletion guessed a lesson from teacher/time alone.
+- Change: one serializable service locks and freshly checks the exact session/class. Only unused future sessions can be deleted. Attendance facts/notes/waivers, package transactions, feedback, feedback review, teacher changes, alerts, booking/ticket references (including result arrays), manager feedback and payroll overrides block deletion. Complete source and participant/course snapshots commit with deletion and audit, or all roll back. Repeated concurrent deletion cannot duplicate history. Existing class and schedule routes and legacy server action use the same service.
+- Parent and appointment protection: classes, campuses and teachers with any dependent records cannot be cascade-deleted; employee profile references are also retained. Truly unused parents are audited and deleted atomically. Appointment deletion retains matching lessons and asks for separate review instead of guessing ownership; unused unlinked future appointments retain snapshots. Deletion requires teaching management and rejects observers. No source data is automatically relinked or refunded.
+- Validation:181 backend tests,TypeScript and260-page production build. Isolated UAT verifies class scope, forced audit rollback, concurrent deletion, full snapshots, feedback-versus-delete race, payroll/attendance/history retention, ledger/ticket arrays/employee profile protection and parent bypass denial. HTTP tests cover five denied roles, both session deletion paths, wrong-class rejection, protected parent records, appointment time collision and independent unused appointment deletion. Actual browser displays retained lessons and removal history with teacher/student/time/actor; console clean.
+- Language: bilingual action errors and preserved ZH/EN/BILINGUAL history renderer and existing controls. No new independent navigation or miniapp client release.
+- Migration: none. Production business records were not deleted or changed for acceptance. Deleting a populated class/teacher/campus is intentionally rejected; its individual business records must be reviewed.
+- Remaining: explicit original/recreated lesson linkage and phases5–10; this safety checkpoint does not recover previously destroyed feedback or infer historical ownership.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `c6c9fbce4840adab6274e3c156c0ff524aa7cb01` (r431); retain all audit snapshots.
+
+---
+
 ## 2026-09-29-r431
 
 - Release ID: `2026-09-29-r431`
@@ -450,7 +467,7 @@
 ---
 
 
-- Current release line on this branch: `2026-09-29-r431`, ready for guarded release of exact-session non-teaching feedback reviews. Phase4 in progress; no Mini Program client release.
+- Current release line on this branch: `2026-09-29-r432`, ready for guarded release of history-preserving deletion checks and atomic snapshots. Phase4 in progress; no Mini Program client release.
 
 ## 2026-09-09-r404 Ready
 
