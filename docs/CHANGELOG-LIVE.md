@@ -1,4 +1,19 @@
 # CHANGELOG LIVE
+## 2026-09-29-r453
+
+- Release ID: `2026-09-29-r453`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; live proof belongs in the execution ledger.
+- Problem: the Care task action authorized the opened project but accepted a task ID without checking that task belonged to it. Completion edits also replaced the original completion operator/time; reopening lacked an audit snapshot of that evidence.
+- Change: task creation/update recheck current actor, observer flag and active scoped Care access in serializable transactions. The update requires the page engagement ID and matches it in both read and versioned write. Creation locks and checks the active assignee membership. Completion refinements retain the original completion time/operator; reopening preserves before/after evidence, actor, timestamp, follow-up and version in the same atomic audit.
+- Validation: isolated service UAT covers foreign project/task rejection, current observer and removed membership, stale version/concurrent updates, membership revocation race, forced create/update audit rollback, completion evidence retention and unchanged tuition ledger/outbox. Actual HTTP form rejects a foreign task and accepts its own project task. 759/759 tests, final 260-page production build and TypeScript passed.
+- Languages/compatibility: new errors are EN/ZH; existing language modes, task forms, roles and URLs remain. No schema migration or production business test writes; no notification sender or WeChat package publication.
+- Remaining: parent question/view/ack lifecycle and other Care operations still need their scoped acceptance; the overall programme is not complete.
+- Rollback point: `4593687edf679ef2fab326be9915b6e578dc2c71` (r452).
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
 ## 2026-09-29-r452
 
 - Release ID: `2026-09-29-r452`

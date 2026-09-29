@@ -29,6 +29,6 @@ export async function requireCareReportWriteAccess(tx:Prisma.TransactionClient, 
     manager:managerEmailsFromEnv().includes(email)||managers.some(row=>row.email.trim().toLowerCase()===email),
     operationsAdmin:operationsAdminEmailsFromEnv().includes(email)||operations.some(row=>row.email.trim().toLowerCase()===email),
     careWorkspace:Boolean(workspace),memberRoles:members.map(row=>row.role)});
-  if(!access.canWrite)throw new Error('You no longer have permission to change this care report / 你已无权限修改此托管报告');
+  if(!access.canWrite)throw new Error('You no longer have permission to change this care record / 你已无权限修改此托管记录');
   return {...access,actor};
 }

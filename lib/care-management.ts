@@ -8,6 +8,7 @@ import {
   Prisma,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { requireCareReportWriteAccess } from "@/lib/care-report-access";
 import {
   assertCareActivation,
   assertCareLaunchReadiness,
@@ -802,6 +803,8 @@ export async function addCareTask(input: {
   if (!dueAt) throw new Error("Task due time is required");
   if (parentActionRequired && !parentVisibleSummary) throw new Error("Parent action summary is required");
   return prisma.$transaction(async (tx) => {
+    const { actor } = await requireCareReportWriteAccess(tx, input.actor.id, input.engagementId);
+    await tx.$queryRaw`SELECT id FROM "CareEngagementMember" WHERE "engagementId"=${input.engagementId} AND "userId"=${assignedToUserId} AND "isActive"=true FOR SHARE`;
     const [engagement, assignee] = await Promise.all([
       tx.careEngagement.findUnique({ where: { id: input.engagementId }, select: { id: true, studentId: true, status: true } }),
       tx.careEngagementMember.findFirst({
@@ -823,16 +826,17 @@ export async function addCareTask(input: {
         dueAt,
         parentActionRequired,
         parentVisibleSummary: parentActionRequired ? parentVisibleSummary : null,
-        createdByUserId: input.actor.id,
+        createdByUserId: actor.id,
       },
     });
-    await tx.auditLog.create({ data: auditData(input.actor, "CREATE_TASK", "CareTask", task.id, { engagementId: engagement.id, priority, parentActionRequired }) });
+    await tx.auditLog.create({ data: auditData(actor, "CREATE_TASK", "CareTask", task.id, { engagementId: engagement.id, priority, parentActionRequired }) });
     return task;
-  });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 });
 }
 
 export async function updateCareTask(input: {
   actor: CareActor;
+  engagementId: string;
   taskId: string;
   version: number;
   status: unknown;
@@ -844,22 +848,32 @@ export async function updateCareTask(input: {
   const nextFollowUpAt = parseCareDateTime(input.nextFollowUpAt);
   assertCareTaskUpdate({ status, completionEvidence, nextFollowUpAt });
   return prisma.$transaction(async (tx) => {
-    const current = await tx.careTask.findUnique({ where: { id: input.taskId }, select: { id: true, status: true } });
-    if (!current) throw new Error("Task not found");
+    const { actor } = await requireCareReportWriteAccess(tx, input.actor.id, input.engagementId);
+    const current = await tx.careTask.findUnique({ where: { id: input.taskId, engagementId: input.engagementId } });
+    if (!current) throw new Error("Task not found in this care project / 此托管项目中未找到该任务");
     const result = await tx.careTask.updateMany({
-      where: { id: input.taskId, version: input.version },
+      where: { id: input.taskId, engagementId: input.engagementId, version: input.version },
       data: {
         status,
         completionEvidence: completionEvidence || undefined,
         nextFollowUpAt,
-        completedAt: status === "DONE" ? new Date() : null,
-        completedByUserId: status === "DONE" ? input.actor.id : null,
+        completedAt: status === "DONE" ? (current.status === "DONE" ? current.completedAt : new Date()) : null,
+        completedByUserId: status === "DONE" ? (current.status === "DONE" ? current.completedByUserId : actor.id) : null,
         version: { increment: 1 },
       },
     });
-    if (result.count !== 1) throw new Error("This task was updated by another user. Refresh and try again");
-    await tx.auditLog.create({ data: auditData(input.actor, "UPDATE_TASK", "CareTask", input.taskId, { from: current.status, to: status }) });
-  });
+    if (result.count !== 1) throw new Error("This task was updated by another user. Refresh and try again / 任务已被更新，请刷新后重试");
+    const updated = await tx.careTask.findUniqueOrThrow({ where: { id: input.taskId } });
+    const evidence = (task: typeof current) => ({
+      status: task.status, version: task.version, completionEvidence: task.completionEvidence,
+      completedAt: task.completedAt?.toISOString() ?? null, completedByUserId: task.completedByUserId,
+      nextFollowUpAt: task.nextFollowUpAt?.toISOString() ?? null,
+    });
+    await tx.auditLog.create({ data: auditData(actor, "UPDATE_TASK", "CareTask", input.taskId, {
+      engagementId: input.engagementId, from: current.status, to: status,
+      before: evidence(current), after: evidence(updated),
+    }) });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 });
 }
 
 export function jsonSummary(value: Prisma.JsonValue | null | undefined) {

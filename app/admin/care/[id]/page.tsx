@@ -284,6 +284,7 @@ export default async function CareDetailPage({
     await runCareAction(id, "Task updated",
       updateCareTask({
         actor: current,
+        engagementId: id,
         taskId: String(formData.get("taskId") ?? ""),
         version: Number(formData.get("version")),
         status: formData.get("status"),
