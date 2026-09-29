@@ -1,3 +1,4 @@
+import {communicationDeliveryEvidence} from "./communication-delivery-evidence";
 import {requireCommunicationWriteAccess} from "./communication-write-access";
 import crypto from "crypto";
 import { Prisma } from "@prisma/client";
@@ -773,20 +774,13 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
   const feedbackIds = Array.from(new Set(rows.map((row) => row.feedbackId).filter((id): id is string => Boolean(id))));
   const sessionIds = Array.from(new Set(rows.map((row) => row.sessionId).filter((id): id is string => Boolean(id))));
   const correctionSourceIds = Array.from(new Set(rows.map((row) => row.correctionOfTaskId).filter((id): id is string => Boolean(id))));
-  const [students, teachers, sessions, feedbacks, auditRows, notificationRows] = await Promise.all([
+  const [students, teachers, sessions, feedbacks, auditRows, deliveryEvidence] = await Promise.all([
     prisma.student.findMany({ where: { id: { in: studentIds } }, select: { id: true, name: true, school: true, grade: true } }),
     prisma.teacher.findMany({ where: { id: { in: teacherIds } }, select: { id: true, name: true } }),
     prisma.session.findMany({ where: { id: { in: sessionIds } }, select: { id: true, startAt: true, endAt: true } }),
     prisma.sessionFeedback.findMany({ where: { id: { in: feedbackIds } }, select: { id: true, updatedAt: true, sessionId: true, content: true, parentContent: true, classPerformance: true, homework: true, previousHomeworkDone: true, actualStartAt: true, actualEndAt: true, reviewStatus: true, reviewNote: true, publishedAt: true, submittedAt: true, attachments: { orderBy: { createdAt: "asc" } } } }),
     prisma.auditLog.findMany({ where: { entityType: "ParentCommunicationTask", entityId: { in: rows.map((row) => row.id) } }, select: { entityId: true, action: true, actorName: true, actorEmail: true, actorRole: true, createdAt: true, meta: true }, orderBy: { createdAt: "desc" }, take: 1500 }),
-    prisma.miniappNotificationOutbox.findMany({
-      where: {
-        createdAt: { gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) },
-        OR: [{ targetType: "SessionFeedback", studentId: { in: studentIds } }, { studentId: { in: studentIds }, templateKey: "course_reminder_24h" }],
-      },
-      select: { id: true, studentId: true, targetId: true, templateKey: true, status: true, scheduledAt: true, sentAt: true, error: true, payloadJson: true },
-      take: 3000,
-    }),
+    communicationDeliveryEvidence(rows),
   ]);
   const correctionSources = correctionSourceIds.length
     ? await prisma.parentCommunicationTask.findMany({ where: { id: { in: correctionSourceIds } } })
@@ -816,16 +810,7 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
     if (list.length < 20) list.push(audit);
     historyMap.set(audit.entityId, list);
   }
-  function automaticSummary(row: (typeof rows)[number]) {
-    const matches = notificationRows.filter((notification) => {
-      if (row.feedbackId) return notification.targetId === row.feedbackId || notification.targetId?.startsWith(`${row.feedbackId}:revision:`) === true;
-      if (row.kind !== "COURSE_REMINDER_PARENT" || !row.studentId || notification.studentId !== row.studentId || !row.dueAt) return false;
-      const payload = notification.payloadJson && typeof notification.payloadJson === "object" ? notification.payloadJson as any : {};
-      const startAt = payload.startAt ? new Date(String(payload.startAt)) : null;
-      return Boolean(startAt && !Number.isNaN(startAt.getTime()) && formatBusinessDateOnly(startAt) === formatBusinessDateOnly(row.dueAt));
-    });
-    return automaticCommunicationSummary(matches);
-  }
+
   return {
     tasks: rows.map((row) => {
       const session = row.sessionId ? sessionMap.get(row.sessionId) ?? null : null;
@@ -886,7 +871,7 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
         },
       } : null,
       history: (historyMap.get(row.id) ?? []).map((audit) => ({ ...audit, createdAt: audit.createdAt.toISOString() })),
-      automaticNotification: automaticSummary(row),
+      automaticNotification: deliveryEvidence.get(row.id)!,
       correction,
     });}),
     summary: summaryRows.reduce<Record<string, number>>((acc, row) => {

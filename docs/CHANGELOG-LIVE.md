@@ -1,4 +1,19 @@
 # CHANGELOG LIVE
+## 2026-09-30-r459
+
+- Release ID: `2026-09-30-r459`
+- Date/Time (Asia/Singapore): `2026-09-30`
+- Deployment status: `READY`; live proof belongs in the execution ledger.
+- Problem: automatic delivery badges used a14-day/3000-row sample and merged feedback revisions and recipients. Another parent's sent row or an older revision could misrepresent the selected task.
+- Change: delivery evidence uses complete grouped counts in one consistent read snapshot, exact parent/student scope and the latest audited feedback publication identity. Historical single-publication records retain their exact original target; ambiguous revision history and unreviewed/proxy feedback require review. Single-lesson24-hour reminders use the exact lesson/recipient target. Combined reminders without exact lesson links remain review-needed rather than inferred from names/dates. The web shows bilingual scope/review notes separately from manual-send history.
+- Validation:763 tests, final260-page production build and TypeScript passed. Isolated UAT seeded3001 unrelated recipient rows plus an older failed recipient; verified no age/sample truncation, exact recipient separation, current revision independent of failed history, ambiguous history/combined lesson review, returned feedback not labelled sent, and read-only behavior. Actual communication-list HTTP returned the exact current-recipient failure and bilingual evidence note.
+- Compatibility: no migration, no existing history rewritten, no notification/financial business test writes in production and no send runner. API adds scope/note/reviewNeeded and NEEDS_REVIEW; older installed miniapp clients may show no label for the new review status, so full client display acceptance remains outstanding. No WeChat client publication is claimed.
+- Remaining: session-reminder retry validity/atomic audit, remaining actor boundaries, teacher-submission task sync and sender validity; full role/route/mobile/language acceptance and unified delivery remain incomplete.
+- Rollback reference: `19bf1eb3000e7dac64731c44254f5765315cc790` (r458).
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
 ## 2026-09-30-r458
 
 - Release ID: `2026-09-30-r458`
