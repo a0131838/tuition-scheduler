@@ -1,4 +1,19 @@
 # CHANGELOG LIVE
+## 2026-09-29-r455
+
+- Release ID: `2026-09-29-r455`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; live proof belongs in the execution ledger.
+- Problem: sixteen Care management/operations mutations relied on caller access and captured actor fields. Manager-only creation/configuration/consent/publication/service-review approval rules existed on pages but were not independently enforced in services. Concurrent same-track creation and backup coverage could race.
+- Change: all sixteen mutations resolve fresh actor/observer/ACL/workspace/project membership inside serializable transactions and audit the verified actor. Project creation locks the student and requires current management access without fabricating membership. Configuration, university consent and activity publication enforce the existing manager rule; service-review approval follows the existing manager-only UI rule, separate from report-reviewer membership. Activity publication rechecks current university consent. Existing task/report/parent workflows keep their prior checks.
+- Validation:759 tests; isolated sixteen-operation observer/unrelated-role matrix, successful ordinary/manager workflows and forced audit rollback for every changed mutation. Manager-only rules, withdrawn consent, removed membership/ACL, concurrent overlapping coverage and duplicate service-track creation were checked. Report/task/parent-delivery regression UAT passed; ledger/outbox unchanged. Final 260-page production build and TypeScript passed. Actual server-action form rejected a legacy unsigned observer session and accepted the assigned member.
+- Compatibility: no migration or layout/URL removal. New permission/consent messages include EN/ZH; existing language modes remain. No production business test writes, external senders or WeChat client publication.
+- Remaining: phase6 full route acceptance and university parent service-progress visibility by consent/section require separate verification. Phase5/7 follow-ups and phases8-10 remain; no full programme completion claim.
+- Rollback point: `27d33350eb6d6c9c2fc61bf0db1a4f68a90cb937` (r454).
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
 ## 2026-09-29-r454
 
 - Release ID: `2026-09-29-r454`

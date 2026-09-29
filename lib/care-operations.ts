@@ -100,6 +100,8 @@ export async function createCareRiskCase(input: {
   if (input.parentVisible && !publicSummary) throw new Error("Parent-visible risks require a public summary");
 
   return prisma.$transaction(async (tx) => {
+    const access = await requireCareReportWriteAccess(tx, input.actor.id, input.engagementId);
+    const { actor } = access;
     const [engagement, owner, backup] = await Promise.all([
       tx.careEngagement.findUnique({ where: { id: input.engagementId }, select: { id: true, studentId: true, status: true } }),
       tx.user.findUnique({ where: { id: ownerUserId }, select: { id: true } }),
@@ -123,13 +125,13 @@ export async function createCareRiskCase(input: {
         responseDueAt: careRiskResponseDueAt(riskLevel, detectedAt),
         parentVisible: input.parentVisible,
         publicSummary: publicSummary || null,
-        createdByUserId: input.actor.id,
-        updatedByUserId: input.actor.id,
+        createdByUserId: actor.id,
+        updatedByUserId: actor.id,
       },
     });
-    await tx.auditLog.create({ data: auditData(input.actor, "CREATE_RISK", "CareRiskCase", risk.id, { engagementId: engagement.id, riskLevel }) });
+    await tx.auditLog.create({ data: auditData(actor, "CREATE_RISK", "CareRiskCase", risk.id, { engagementId: engagement.id, riskLevel }) });
     return risk;
-  });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 });
 }
 
 export async function changeCareRiskCaseStatus(input: {
@@ -142,6 +144,8 @@ export async function changeCareRiskCaseStatus(input: {
 }) {
   const resolutionEvidence = careText(input.resolutionEvidence, 4000);
   return prisma.$transaction(async (tx) => {
+    const access = await requireCareReportWriteAccess(tx, input.actor.id, input.engagementId);
+    const { actor } = access;
     const current = await tx.careRiskCase.findFirst({ where: { id: input.riskCaseId, engagementId: input.engagementId } });
     if (!current) throw new Error("Risk record not found");
     if (!RISK_TRANSITIONS[current.status].includes(input.nextStatus)) throw new Error(`Risk cannot move from ${current.status} to ${input.nextStatus}`);
@@ -154,13 +158,13 @@ export async function changeCareRiskCaseStatus(input: {
         acknowledgedAt: input.nextStatus === "ACKNOWLEDGED" ? now : undefined,
         resolvedAt: input.nextStatus === "RESOLVED" ? now : undefined,
         resolutionEvidence: input.nextStatus === "RESOLVED" ? resolutionEvidence : undefined,
-        updatedByUserId: input.actor.id,
+        updatedByUserId: actor.id,
         version: { increment: 1 },
       },
     });
     if (result.count !== 1) throw new Error("This risk was updated by another user. Refresh and try again");
-    await tx.auditLog.create({ data: auditData(input.actor, "CHANGE_RISK_STATUS", "CareRiskCase", current.id, { from: current.status, to: input.nextStatus }) });
-  });
+    await tx.auditLog.create({ data: auditData(actor, "CHANGE_RISK_STATUS", "CareRiskCase", current.id, { from: current.status, to: input.nextStatus }) });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 });
 }
 
 export async function createCareCoveragePeriod(input: {
@@ -185,6 +189,8 @@ export async function createCareCoveragePeriod(input: {
   if (primaryUserId === backupUserId) throw new Error("Backup owner must be different from the primary owner");
 
   return prisma.$transaction(async (tx) => {
+    const access = await requireCareReportWriteAccess(tx, input.actor.id, input.engagementId);
+    const { actor } = access;
     const [engagement, primary, backup, overlap] = await Promise.all([
       tx.careEngagement.findUnique({ where: { id: input.engagementId }, select: { id: true, status: true } }),
       tx.user.findUnique({ where: { id: primaryUserId }, select: { id: true } }),
@@ -204,11 +210,11 @@ export async function createCareCoveragePeriod(input: {
     if (!primary || !backup) throw new Error("Coverage owner not found");
     if (overlap) throw new Error("This project already has overlapping backup coverage");
     const coverage = await tx.careCoveragePeriod.create({
-      data: { engagementId: engagement.id, primaryUserId, backupUserId, startAt, endAt, reason, handoverSummary, criticalActions, createdByUserId: input.actor.id },
+      data: { engagementId: engagement.id, primaryUserId, backupUserId, startAt, endAt, reason, handoverSummary, criticalActions, createdByUserId: actor.id },
     });
-    await tx.auditLog.create({ data: auditData(input.actor, "CREATE_COVERAGE", "CareCoveragePeriod", coverage.id, { engagementId: engagement.id, startAt: startAt.toISOString(), endAt: endAt.toISOString() }) });
+    await tx.auditLog.create({ data: auditData(actor, "CREATE_COVERAGE", "CareCoveragePeriod", coverage.id, { engagementId: engagement.id, startAt: startAt.toISOString(), endAt: endAt.toISOString() }) });
     return coverage;
-  });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 });
 }
 
 export async function changeCareCoverageStatus(input: {
@@ -219,6 +225,8 @@ export async function changeCareCoverageStatus(input: {
   nextStatus: CareCoverageStatus;
 }) {
   return prisma.$transaction(async (tx) => {
+    const access = await requireCareReportWriteAccess(tx, input.actor.id, input.engagementId);
+    const { actor } = access;
     const current = await tx.careCoveragePeriod.findFirst({ where: { id: input.coverageId, engagementId: input.engagementId } });
     if (!current) throw new Error("Coverage record not found");
     if (!COVERAGE_TRANSITIONS[current.status].includes(input.nextStatus)) throw new Error(`Coverage cannot move from ${current.status} to ${input.nextStatus}`);
@@ -233,8 +241,8 @@ export async function changeCareCoverageStatus(input: {
       },
     });
     if (result.count !== 1) throw new Error("This coverage record was updated by another user. Refresh and try again");
-    await tx.auditLog.create({ data: auditData(input.actor, "CHANGE_COVERAGE_STATUS", "CareCoveragePeriod", current.id, { from: current.status, to: input.nextStatus }) });
-  });
+    await tx.auditLog.create({ data: auditData(actor, "CHANGE_COVERAGE_STATUS", "CareCoveragePeriod", current.id, { from: current.status, to: input.nextStatus }) });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 });
 }
 
 function serviceReviewFields(input: {
@@ -269,24 +277,28 @@ function serviceReviewFields(input: {
 export async function createCareServiceReview(input: Parameters<typeof serviceReviewFields>[0] & { actor: CareActor; engagementId: string }) {
   const fields = serviceReviewFields(input);
   return prisma.$transaction(async (tx) => {
+    const access = await requireCareReportWriteAccess(tx, input.actor.id, input.engagementId);
+    const { actor } = access;
     const engagement = await tx.careEngagement.findUnique({ where: { id: input.engagementId }, select: { id: true, studentId: true } });
     if (!engagement) throw new Error("Care project not found");
-    const review = await tx.careServiceReview.create({ data: { engagementId: engagement.id, studentId: engagement.studentId, ...fields, preparedByUserId: input.actor.id } });
-    await tx.auditLog.create({ data: auditData(input.actor, "CREATE_SERVICE_REVIEW", "CareServiceReview", review.id, { engagementId: engagement.id, periodLabel: fields.periodLabel }) });
+    const review = await tx.careServiceReview.create({ data: { engagementId: engagement.id, studentId: engagement.studentId, ...fields, preparedByUserId: actor.id } });
+    await tx.auditLog.create({ data: auditData(actor, "CREATE_SERVICE_REVIEW", "CareServiceReview", review.id, { engagementId: engagement.id, periodLabel: fields.periodLabel }) });
     return review;
-  });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 });
 }
 
 export async function updateCareServiceReview(input: Parameters<typeof serviceReviewFields>[0] & { actor: CareActor; engagementId: string; reviewId: string; version: number }) {
   const fields = serviceReviewFields(input);
   return prisma.$transaction(async (tx) => {
+    const access = await requireCareReportWriteAccess(tx, input.actor.id, input.engagementId);
+    const { actor } = access;
     const current = await tx.careServiceReview.findFirst({ where: { id: input.reviewId, engagementId: input.engagementId }, select: { id: true, status: true } });
     if (!current) throw new Error("Service review not found");
     if (current.status !== "DRAFT") throw new Error("Only draft service reviews can be edited");
     const result = await tx.careServiceReview.updateMany({ where: { id: current.id, version: input.version }, data: { ...fields, version: { increment: 1 } } });
     if (result.count !== 1) throw new Error("This service review was updated by another user. Refresh and try again");
-    await tx.auditLog.create({ data: auditData(input.actor, "UPDATE_SERVICE_REVIEW", "CareServiceReview", current.id) });
-  });
+    await tx.auditLog.create({ data: auditData(actor, "UPDATE_SERVICE_REVIEW", "CareServiceReview", current.id) });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 });
 }
 
 export async function changeCareServiceReviewStatus(input: {
@@ -297,6 +309,9 @@ export async function changeCareServiceReviewStatus(input: {
   nextStatus: CareServiceReviewStatus;
 }) {
   return prisma.$transaction(async (tx) => {
+    const access = await requireCareReportWriteAccess(tx, input.actor.id, input.engagementId);
+    const { actor } = access;
+    if (input.nextStatus === "APPROVED" && !access.canManage) throw new Error("Manager approval required / 此操作须由管理人员批准");
     const current = await tx.careServiceReview.findFirst({ where: { id: input.reviewId, engagementId: input.engagementId } });
     if (!current) throw new Error("Service review not found");
     if (!REVIEW_TRANSITIONS[current.status].includes(input.nextStatus)) throw new Error(`Service review cannot move from ${current.status} to ${input.nextStatus}`);
@@ -306,15 +321,15 @@ export async function changeCareServiceReviewStatus(input: {
       data: {
         status: input.nextStatus,
         submittedAt: input.nextStatus === "SUBMITTED" ? now : undefined,
-        submittedByUserId: input.nextStatus === "SUBMITTED" ? input.actor.id : undefined,
+        submittedByUserId: input.nextStatus === "SUBMITTED" ? actor.id : undefined,
         approvedAt: input.nextStatus === "APPROVED" ? now : undefined,
-        approvedByUserId: input.nextStatus === "APPROVED" ? input.actor.id : undefined,
+        approvedByUserId: input.nextStatus === "APPROVED" ? actor.id : undefined,
         version: { increment: 1 },
       },
     });
     if (result.count !== 1) throw new Error("This service review was updated by another user. Refresh and try again");
-    await tx.auditLog.create({ data: auditData(input.actor, "CHANGE_SERVICE_REVIEW_STATUS", "CareServiceReview", current.id, { from: current.status, to: input.nextStatus }) });
-  });
+    await tx.auditLog.create({ data: auditData(actor, "CHANGE_SERVICE_REVIEW_STATUS", "CareServiceReview", current.id, { from: current.status, to: input.nextStatus }) });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 });
 }
 
 export async function createParentCareQuestion(input: ParentCareReportScope & { question: unknown }) {

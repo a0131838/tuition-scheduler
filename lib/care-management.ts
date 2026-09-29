@@ -66,10 +66,10 @@ function assertUniversityParentEligibility(
 ) {
   if (!isUniversityCareProgram(programType) || (audience !== "PARENT" && audience !== "PARENT_AND_STUDENT")) return;
   if (!universityProfile || !["GRANTED", "LIMITED"].includes(universityProfile.studentConsentStatus)) {
-    throw new Error("Student consent is required before marking university records for parent reporting");
+    throw new Error("Student consent is required before marking university records for parent reporting / 向家长展示大学阶段记录前须取得学生授权");
   }
   if (parentVisibilityIdsFromJson(universityProfile.parentVisibilityJson).length === 0) {
-    throw new Error("Select at least one parent-visible section in the university profile");
+    throw new Error("Select at least one parent-visible section in the university profile / 请在大学档案中选择至少一个家长可见栏目");
   }
 }
 
@@ -105,6 +105,10 @@ export async function createCareEngagement(input: {
   if (scopeIds.length === 0) throw new Error("Select at least one service scope");
 
   return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "Student" WHERE id=${studentId} FOR UPDATE`;
+    const access = await requireCareReportWriteAccess(tx, input.actor.id);
+    const { actor } = access;
+    if (!access.canManage) throw new Error("Only authorized managers can perform this care action / 仅有权限的管理人员可执行此托管操作");
     const [student, owner, reviewer, existing] = await Promise.all([
       tx.student.findUnique({ where: { id: studentId }, select: { id: true, name: true } }),
       tx.user.findUnique({ where: { id: caseOwnerUserId }, select: { id: true, name: true } }),
@@ -144,7 +148,7 @@ export async function createCareEngagement(input: {
         cadenceJson: isUniversityCareProgram(programType)
           ? { milestoneReview: true, monthlyReport: true }
           : { weeklyCheck: true, monthlyReport: true },
-        createdByUserId: input.actor.id,
+        createdByUserId: actor.id,
       },
     });
 
@@ -159,12 +163,12 @@ export async function createCareEngagement(input: {
         engagementId: engagement.id,
         userId: item.userId,
         role: item.role,
-        assignedByUserId: input.actor.id,
+        assignedByUserId: actor.id,
       })),
       skipDuplicates: true,
     });
     await tx.auditLog.create({
-      data: auditData(input.actor, "CREATE_DRAFT", "CareEngagement", engagement.id, {
+      data: auditData(actor, "CREATE_DRAFT", "CareEngagement", engagement.id, {
         studentId,
         studentName: student.name,
         programType,
@@ -172,7 +176,7 @@ export async function createCareEngagement(input: {
       }),
     });
     return engagement;
-  });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 });
 }
 
 export async function changeCareEngagementStatus(input: {
@@ -182,6 +186,8 @@ export async function changeCareEngagementStatus(input: {
   nextStatus: CareEngagementStatus;
 }) {
   return prisma.$transaction(async (tx) => {
+    const access = await requireCareReportWriteAccess(tx, input.actor.id, input.engagementId);
+    const { actor } = access;
     const engagement = await tx.careEngagement.findUnique({
       where: { id: input.engagementId },
       include: {
@@ -244,12 +250,12 @@ export async function changeCareEngagementStatus(input: {
     });
     if (updated.count !== 1) throw new Error("This project was updated by another user. Refresh and try again");
     await tx.auditLog.create({
-      data: auditData(input.actor, "CHANGE_STATUS", "CareEngagement", input.engagementId, {
+      data: auditData(actor, "CHANGE_STATUS", "CareEngagement", input.engagementId, {
         from: engagement.status,
         to: input.nextStatus,
       }),
     });
-  });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 });
 }
 
 export async function updateCareEngagementConfig(input: {
@@ -272,6 +278,9 @@ export async function updateCareEngagementConfig(input: {
   if (scopeIds.length === 0) throw new Error("Select at least one service scope");
 
   return prisma.$transaction(async (tx) => {
+    const access = await requireCareReportWriteAccess(tx, input.actor.id, input.engagementId);
+    const { actor } = access;
+    if (!access.canManage) throw new Error("Only authorized managers can perform this care action / 仅有权限的管理人员可执行此托管操作");
     const [engagement, owner, reviewer] = await Promise.all([
       tx.careEngagement.findUnique({
         where: { id: input.engagementId },
@@ -306,12 +315,12 @@ export async function updateCareEngagementConfig(input: {
     for (const role of ownerRoles) {
       await tx.careEngagementMember.upsert({
         where: { engagementId_userId_role: { engagementId: engagement.id, userId: caseOwnerUserId, role } },
-        update: { isActive: true, endedAt: null, assignedByUserId: input.actor.id },
+        update: { isActive: true, endedAt: null, assignedByUserId: actor.id },
         create: {
           engagementId: engagement.id,
           userId: caseOwnerUserId,
           role,
-          assignedByUserId: input.actor.id,
+          assignedByUserId: actor.id,
         },
       });
     }
@@ -329,19 +338,19 @@ export async function updateCareEngagementConfig(input: {
       for (const role of ["REVIEWER", "EXECUTIVE_OWNER"] as CareMemberRole[]) {
         await tx.careEngagementMember.upsert({
           where: { engagementId_userId_role: { engagementId: engagement.id, userId: reviewerUserId, role } },
-          update: { isActive: true, endedAt: null, assignedByUserId: input.actor.id },
+          update: { isActive: true, endedAt: null, assignedByUserId: actor.id },
           create: {
             engagementId: engagement.id,
             userId: reviewerUserId,
             role,
-            assignedByUserId: input.actor.id,
+            assignedByUserId: actor.id,
           },
         });
       }
     }
 
     await tx.auditLog.create({
-      data: auditData(input.actor, "UPDATE_CONFIG", "CareEngagement", engagement.id, {
+      data: auditData(actor, "UPDATE_CONFIG", "CareEngagement", engagement.id, {
         before: {
           startDate: engagement.startDate?.toISOString() ?? null,
           endDate: engagement.endDate?.toISOString() ?? null,
@@ -351,7 +360,7 @@ export async function updateCareEngagementConfig(input: {
         after: { startDate: startDate.toISOString(), endDate: endDate.toISOString(), caseOwnerUserId, reviewerUserId: reviewerUserId || null, scopeIds },
       }),
     });
-  });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 });
 }
 
 export async function upsertCareUniversityProfile(input: {
@@ -385,6 +394,9 @@ export async function upsertCareUniversityProfile(input: {
   assertCareUniversityConsent({ status: studentConsentStatus, parentVisibilityIds, consentNote });
 
   return prisma.$transaction(async (tx) => {
+    const access = await requireCareReportWriteAccess(tx, input.actor.id, input.engagementId);
+    const { actor } = access;
+    if (!access.canManage) throw new Error("Only authorized managers can perform this care action / 仅有权限的管理人员可执行此托管操作");
     const engagement = await tx.careEngagement.findUnique({
       where: { id: input.engagementId },
       select: {
@@ -419,7 +431,7 @@ export async function upsertCareUniversityProfile(input: {
       parentVisibilityJson: { sectionIds: parentVisibilityIds },
       consentNote: consentNote || null,
       consentRecordedAt: studentConsentStatus === "NOT_RECORDED" ? null : new Date(),
-      consentRecordedByUserId: studentConsentStatus === "NOT_RECORDED" ? null : input.actor.id,
+      consentRecordedByUserId: studentConsentStatus === "NOT_RECORDED" ? null : actor.id,
     };
 
     let profileId: string;
@@ -440,7 +452,7 @@ export async function upsertCareUniversityProfile(input: {
     }
 
     await tx.auditLog.create({
-      data: auditData(input.actor, engagement.universityProfile ? "UPDATE_UNIVERSITY_PROFILE" : "CREATE_UNIVERSITY_PROFILE", "CareUniversityProfile", profileId, {
+      data: auditData(actor, engagement.universityProfile ? "UPDATE_UNIVERSITY_PROFILE" : "CREATE_UNIVERSITY_PROFILE", "CareUniversityProfile", profileId, {
         engagementId: engagement.id,
         programType: engagement.programType,
         consentBefore: engagement.universityProfile?.studentConsentStatus ?? null,
@@ -449,7 +461,7 @@ export async function upsertCareUniversityProfile(input: {
         visibilityAfter: parentVisibilityIds,
       }),
     });
-  });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 });
 }
 
 export async function addCarePlan(input: {
@@ -473,6 +485,8 @@ export async function addCarePlan(input: {
   if (!periodStart || !periodEnd || periodEnd < periodStart) throw new Error("Enter a valid plan date range");
 
   return prisma.$transaction(async (tx) => {
+    const access = await requireCareReportWriteAccess(tx, input.actor.id, input.engagementId);
+    const { actor } = access;
     const engagement = await tx.careEngagement.findUnique({ where: { id: input.engagementId }, select: { id: true } });
     if (!engagement) throw new Error("Care project not found");
     const plan = await tx.carePlan.create({
@@ -486,12 +500,12 @@ export async function addCarePlan(input: {
         successCriteriaJson: successCriteria ? { summary: successCriteria } : undefined,
         actionPlanJson: actionPlan ? { summary: actionPlan } : undefined,
         status: "ACTIVE" as CarePlanStatus,
-        createdByUserId: input.actor.id,
+        createdByUserId: actor.id,
       },
     });
-    await tx.auditLog.create({ data: auditData(input.actor, "CREATE_PLAN", "CarePlan", plan.id, { engagementId: input.engagementId }) });
+    await tx.auditLog.create({ data: auditData(actor, "CREATE_PLAN", "CarePlan", plan.id, { engagementId: input.engagementId }) });
     return plan;
-  });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 });
 }
 
 export async function addCareActivity(input: {
@@ -538,6 +552,9 @@ export async function addCareActivity(input: {
   assertCareActivity({ riskLevel, ownerUserId, nextAction, nextActionDue, audience, publicSummary });
 
   return prisma.$transaction(async (tx) => {
+    const access = await requireCareReportWriteAccess(tx, input.actor.id, input.engagementId);
+    const { actor } = access;
+    await tx.$queryRaw`SELECT id FROM "CareUniversityProfile" WHERE "engagementId"=${input.engagementId} FOR SHARE`;
     const engagement = await tx.careEngagement.findUnique({
       where: { id: input.engagementId },
       select: {
@@ -581,8 +598,8 @@ export async function addCareActivity(input: {
         internalNote: internalNote || null,
         audience,
         publicSummary: publicSummary || null,
-        createdByUserId: input.actor.id,
-        updatedByUserId: input.actor.id,
+        createdByUserId: actor.id,
+        updatedByUserId: actor.id,
       },
     });
     if (nextAction && nextActionDue && ownerUserId) {
@@ -595,7 +612,7 @@ export async function addCareActivity(input: {
           assignedToUserId: ownerUserId,
           dueAt: nextActionDue,
           priority: riskLevel === "CRITICAL" ? "URGENT" : riskLevel === "HIGH" ? "HIGH" : "NORMAL",
-          createdByUserId: input.actor.id,
+          createdByUserId: actor.id,
         },
       });
     }
@@ -604,7 +621,7 @@ export async function addCareActivity(input: {
       data: { lastActivityAt: occurredAt, version: { increment: 1 } },
     });
     await tx.auditLog.create({
-      data: auditData(input.actor, "CREATE_ACTIVITY", "CareActivity", activity.id, {
+      data: auditData(actor, "CREATE_ACTIVITY", "CareActivity", activity.id, {
         engagementId: engagement.id,
         category,
         serviceMinutes,
@@ -613,7 +630,7 @@ export async function addCareActivity(input: {
       }),
     });
     return activity;
-  });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 });
 }
 
 export async function changeCareActivityPublicationStatus(input: {
@@ -627,12 +644,17 @@ export async function changeCareActivityPublicationStatus(input: {
     throw new Error("Invalid publication status");
   }
   return prisma.$transaction(async (tx) => {
+    const access = await requireCareReportWriteAccess(tx, input.actor.id, input.engagementId);
+    const { actor } = access;
+    if (!access.canManage) throw new Error("Only authorized managers can perform this care action / 仅有权限的管理人员可执行此托管操作");
+    await tx.$queryRaw`SELECT id FROM "CareUniversityProfile" WHERE "engagementId"=${input.engagementId} FOR SHARE`;
     const current = await tx.careActivity.findFirst({
       where: { id: input.activityId, engagementId: input.engagementId },
-      select: { id: true, audience: true, publicSummary: true, publicationStatus: true },
+      include: { engagement: { include: { universityProfile: true } } },
     });
     if (!current) throw new Error("Care update not found");
     if (input.nextStatus === "PUBLISHED") {
+      assertUniversityParentEligibility(current.engagement.programType, current.audience, current.engagement.universityProfile);
       if (current.audience === "INTERNAL_ONLY" || !current.publicSummary?.trim()) {
         throw new Error("Only updates with a parent summary can be published");
       }
@@ -645,19 +667,19 @@ export async function changeCareActivityPublicationStatus(input: {
         publicationStatus: input.nextStatus,
         publishedAt: input.nextStatus === "PUBLISHED" ? now : undefined,
         revokedAt: input.nextStatus === "REVOKED" ? now : null,
-        updatedByUserId: input.actor.id,
+        updatedByUserId: actor.id,
         version: { increment: 1 },
       },
     });
     if (result.count !== 1) throw new Error("This update was changed by another user. Refresh and try again");
     await tx.auditLog.create({
-      data: auditData(input.actor, `PUBLICATION_${input.nextStatus}`, "CareActivity", current.id, {
+      data: auditData(actor, `PUBLICATION_${input.nextStatus}`, "CareActivity", current.id, {
         engagementId: input.engagementId,
         from: current.publicationStatus,
         to: input.nextStatus,
       }),
     });
-  });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 });
 }
 
 export async function createCareAttachment(input: {
@@ -690,6 +712,9 @@ export async function createCareAttachment(input: {
   if (!Number.isInteger(input.fileSizeBytes) || input.fileSizeBytes <= 0) throw new Error("Invalid evidence file size");
 
   return prisma.$transaction(async (tx) => {
+    const access = await requireCareReportWriteAccess(tx, input.actor.id, input.engagementId);
+    const { actor } = access;
+    await tx.$queryRaw`SELECT id FROM "CareUniversityProfile" WHERE "engagementId"=${input.engagementId} FOR SHARE`;
     const engagement = await tx.careEngagement.findUnique({
       where: { id: input.engagementId },
       select: {
@@ -733,11 +758,11 @@ export async function createCareAttachment(input: {
         fileSizeBytes: input.fileSizeBytes,
         mimeType: mimeType || null,
         audience,
-        uploadedByUserId: input.actor.id,
+        uploadedByUserId: actor.id,
       },
     });
     await tx.auditLog.create({
-      data: auditData(input.actor, "UPLOAD_ATTACHMENT", "CareAttachment", attachment.id, {
+      data: auditData(actor, "UPLOAD_ATTACHMENT", "CareAttachment", attachment.id, {
         engagementId: engagement.id,
         activityId,
         taskId,
@@ -748,7 +773,7 @@ export async function createCareAttachment(input: {
       }),
     });
     return attachment;
-  });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 });
 }
 
 export async function setCareAttachmentArchived(input: {
@@ -759,6 +784,8 @@ export async function setCareAttachmentArchived(input: {
   archived: boolean;
 }) {
   return prisma.$transaction(async (tx) => {
+    const access = await requireCareReportWriteAccess(tx, input.actor.id, input.engagementId);
+    const { actor } = access;
     const current = await tx.careAttachment.findFirst({
       where: { id: input.attachmentId, engagementId: input.engagementId },
       select: { id: true, archivedAt: true },
@@ -769,17 +796,17 @@ export async function setCareAttachmentArchived(input: {
       where: { id: current.id, engagementId: input.engagementId, version: input.version },
       data: {
         archivedAt: input.archived ? new Date() : null,
-        archivedByUserId: input.archived ? input.actor.id : null,
+        archivedByUserId: input.archived ? actor.id : null,
         version: { increment: 1 },
       },
     });
     if (updated.count !== 1) throw new Error("This evidence file was updated by another user. Refresh and try again");
     await tx.auditLog.create({
-      data: auditData(input.actor, input.archived ? "ARCHIVE_ATTACHMENT" : "RESTORE_ATTACHMENT", "CareAttachment", current.id, {
+      data: auditData(actor, input.archived ? "ARCHIVE_ATTACHMENT" : "RESTORE_ATTACHMENT", "CareAttachment", current.id, {
         engagementId: input.engagementId,
       }),
     });
-  });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 });
 }
 
 export async function addCareTask(input: {
