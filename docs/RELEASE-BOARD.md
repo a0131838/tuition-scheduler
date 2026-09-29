@@ -1,4 +1,20 @@
 # RELEASE BOARD
+## 2026-09-29-r433
+
+- Release ID: `2026-09-29-r433`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; guarded release proof is maintained in the execution ledger.
+- Problem: reviewing a recreated lesson required finding its work order and audit separately, while the original URL only showed not-found after a historical deletion. Similar students/times could be mistaken for a confirmed relationship.
+- Change: a collapsed read-only section on the existing attendance page shows exact current source/result IDs, existing work-order links and separately recorded audit references, actor/time and before/after snapshots. Missing original rows still expose retained evidence through the original URL; class history links directly to that evidence. Unknown or inconsistent historical references remain explicit; no name/date inference, automatic relinking, attendance completion, feedback transfer, deduction or refund occurs.
+- Preservation: existing role access, old routes, history and business writes retained. The existing explicit ticket result workflow remains the way to link verified available lessons. New labels support EN/ZH/BILINGUAL; absence of records is not presented as proof that no changes occurred. Results are bounded to recent20 actions/30 audits with a visible truncation notice.
+- Validation:4 projection tests,181 backend tests,TypeScript and260-page production build. Isolated UAT covers direct and array result references, missing historical source, exact archived evidence and exclusion of same-name/same-time unrelated lessons. Actual existing-result verification and HTTP pages retain both IDs with unchanged attendance, feedback and ledger; ordinary teacher access stays denied. Browser follows the archived source link and checks EN/ZH/BILINGUAL context, snapshots and missing-evidence labels; console clean.
+- Migration: none. Read-only feature; no production business records or outbound messages used for acceptance.
+- Remaining: phase4 roster inconsistency found in acceptance (explicit one-to-one student absent from Enrollment can show0 students) and phases5–10. Previously destroyed evidence cannot be invented or automatically repaired.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `e8d3f78c99f9f8ce05ae5667f9cbe7da4fca39da` (r432).
+
+---
+
 ## 2026-09-29-r432
 
 - Release ID: `2026-09-29-r432`
@@ -467,7 +483,7 @@
 ---
 
 
-- Current release line on this branch: `2026-09-29-r432`, ready for guarded release of history-preserving deletion checks and atomic snapshots. Phase4 in progress; no Mini Program client release.
+- Current release line on this branch: `2026-09-29-r433`, ready for guarded release of exact-ID lesson traceability and retained original URLs. Phase4 in progress; no Mini Program client release.
 
 ## 2026-09-09-r404 Ready
 

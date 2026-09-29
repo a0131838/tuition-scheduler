@@ -899,6 +899,7 @@ export default async function ClassSessionsPage({
             {schedulingHistory.map((entry) => (
               <div key={entry.id} style={{ borderTop: "1px solid #e2e8f0", paddingTop: 8, fontSize: 13 }}>
                 <strong>{scheduleHistoryActionLabel(entry.action, lang)}</strong>
+                {entry.entityId ? <div><a href={`/admin/sessions/${encodeURIComponent(entry.entityId)}/attendance`}>{t(lang, "Original record and history", "原课记录及历史")}</a> · <small>{entry.entityId}</small></div> : null}
                 <span style={{ color: "#64748b" }}> · {formatBusinessDateTime(entry.createdAt)} · {entry.actorName || entry.actorEmail}</span>
                 <div style={{ color: "#475569", marginTop: 3, lineHeight: 1.45 }}>{scheduleHistoryMetaText(entry.meta, lang)}</div>
               </div>

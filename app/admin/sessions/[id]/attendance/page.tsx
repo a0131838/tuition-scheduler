@@ -1,3 +1,4 @@
+import SessionTraceabilityPanel from '@/app/admin/_components/SessionTraceabilityPanel';
 import {getCurrentUser,isManagerUser} from '@/lib/auth';
 import {feedbackPolicyState} from '@/lib/session-feedback-policy';
 import {feedbackPolicyFingerprint} from '@/lib/session-feedback-policy-service';
@@ -81,6 +82,7 @@ export default async function AttendancePage({
     return (
       <div>
         <h2>{t(lang, "Session Not Found", "课次不存在")}</h2>
+        <SessionTraceabilityPanel sessionId={sessionId} lang={lang} />
         <a href="/admin/classes">→ {t(lang, "Back", "返回")}</a>
       </div>
     );
@@ -292,6 +294,7 @@ export default async function AttendancePage({
         </div>
       )}
 
+      <SessionTraceabilityPanel sessionId={sessionId} lang={lang} />
       <SessionFeedbackPolicyClient studentSummary={session.class.capacity===1?(session.student?.name??session.class.oneOnOneStudent?.name??enrollments.map(e=>e.student.name).join(", ")):enrollments.map(e=>e.student.name).join(", ")} sessionId={sessionId} fingerprint={feedbackPolicyFingerprint({...session,class:{...session.class,enrollments}})} {...feedbackPolicyState({...session,class:{...session.class,enrollments}})} canManage={canReviewFeedbackPolicy} lang={lang}/>
 
       <div id="attendance-editor" style={{ padding: 12, border: "1px solid #eee", borderRadius: 8, background: "#fff" }}>
