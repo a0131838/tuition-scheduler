@@ -60,7 +60,7 @@ export default async function SchoolApplicationInfoPage({
     );
   }
 
-  if (app.status === "VOID" || app.status === "INVOICE_CREATED") {
+  if (app.status === "VOID" || app.status === "INVOICE_CREATED" || app.status === "SIGNED") {
     return (
       <div style={{ maxWidth: 860, margin: "40px auto", padding: "0 16px", display: "grid", gap: 14 }}>
         <h1 style={{ margin: 0 }}>Link Closed / 链接已关闭</h1>
@@ -79,8 +79,9 @@ export default async function SchoolApplicationInfoPage({
   }
 
   if (!app.parentInfoSubmittedAt) {
-    await markSchoolApplicationParentInfoViewed(app.id);
+    await markSchoolApplicationParentInfoViewed(app.id, token);
   }
+  const formApp = await getSchoolApplicationByParentInfoToken(token);
   const defaults = await getSchoolApplicationParentInfoDefaults(app.id);
 
   async function submitAction(formData: FormData) {
@@ -104,6 +105,7 @@ export default async function SchoolApplicationInfoPage({
     try {
       await submitSchoolApplicationParentInfo({
         parentInfoToken: tokenValue,
+        expectedUpdatedAt: String(formData.get("expectedUpdatedAt") ?? "").trim() || null,
         parentInfo: {
           parentName,
           parentIdNo: parentIdNo || null,
@@ -179,6 +181,7 @@ export default async function SchoolApplicationInfoPage({
 
       <form action={submitAction} style={{ ...cardStyle("#ffffff"), gap: 16 }}>
         <input type="hidden" name="token" value={token} />
+        <input type="hidden" name="expectedUpdatedAt" value={formApp?.updatedAt.toISOString() ?? ""} />
         <div style={{ ...cardStyle("#f8fbff"), gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
           <div>
             <div style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>Student / 学生</div>

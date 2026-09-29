@@ -1,4 +1,19 @@
 # CHANGELOG LIVE
+## 2026-09-29-r451
+
+- Release ID: `2026-09-29-r451`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; live proof is recorded in the execution ledger.
+- Problem: parent information could commit after link revocation, signing or voiding; its separate event could fail after the student changed. A stale student note could overwrite a newer staff note. Viewing and revoking links also updated timestamps separately from history.
+- Change: parent submissions lock/revalidate token, expiry, current status/history and submitted form version, then update the freshly locked student, application and event atomically. Identical repeated submissions preserve the first result. Preparing/submitting information pauses signing and clears the stale agreement, retaining its previous snapshot in the event; draft-save audit also retains the displaced snapshot. Link revocation preserves the first viewed timestamp and logs its action atomically. View telemetry requires the actual live token and records its first timestamp/event together. Draft creation and service-only billing package creation now roll back with their event. Current observer checks and existing role gates remain. Successful creation/preparation/revocation redirects no longer appear as errors.
+- Validation:756 full tests, final260-page build and TypeScript passed. Isolated UAT covers event rollback, concurrent first view/repeated submission, stale form, revocation and student-note races, expiry/closed/wrong links, observer denial, preserved viewed/snapshot history and creation rollback without orphan package. Public HTTP submits once, repeats without duplicate event and denies revoked links. Signature/history regressions passed; new staff guidance supports EN/ZH/BILINGUAL.
+- Migration: none. Real student/application/invoice/payment records and messages were not used for write testing. No sender or WeChat publication. Existing signed/voided history and valid URLs remain; explicitly revoked tokens remain unavailable.
+- Remaining: FullCare fresh reviewer/consent validation and end-to-end delivery, phase5 pause/exclusion offer lifecycle, phase7 communication publication/return/retry/sync, phases8-10 route/language/role acceptance and unified delivery. This is not whole-programme completion.
+- Rollback point: `c52634f662397af613aceb4d5840f92877c108f1` (r450).
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
 ## 2026-09-29-r450
 
 - Release ID: `2026-09-29-r450`

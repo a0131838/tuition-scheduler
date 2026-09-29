@@ -171,7 +171,7 @@ export default async function SchoolApplicationSignPage({
       </main>
     );
   }
-  if (app.status === "READY_TO_SIGN") await markSchoolApplicationSignViewed(app.id);
+  if (app.status === "READY_TO_SIGN") await markSchoolApplicationSignViewed(app.id, token);
   const snapshot = app.contractSnapshot;
   const signed = app.status === "INVOICE_CREATED" || app.status === "SIGNED";
   const expired = app.signExpiresAt ? app.signExpiresAt.getTime() < Date.now() : false;

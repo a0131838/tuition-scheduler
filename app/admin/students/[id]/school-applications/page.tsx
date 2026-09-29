@@ -101,16 +101,17 @@ async function createDraftAction(formData: FormData) {
   const studentId = String(formData.get("studentId") ?? "").trim();
   const source = sourceQuery(formData);
   if (!studentId) redirect("/admin/students?err=Missing+student");
+  let draft;
   try {
-    const draft = await createSchoolApplicationDraft({
+    draft = await createSchoolApplicationDraft({
       studentId,
       createdByUserId: admin.id,
     });
-    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("School application draft created")}&open=${encodeURIComponent(draft.id)}${source}`);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Create school application draft failed";
     redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?err=${encodeURIComponent(msg)}${source}`);
   }
+  redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("School application draft created")}&open=${encodeURIComponent(draft.id)}${source}`);
 }
 
 async function saveDraftAction(formData: FormData) {
@@ -152,11 +153,11 @@ async function prepareParentInfoAction(formData: FormData) {
   const source = sourceQuery(formData);
   try {
     await prepareSchoolApplicationParentInfoLink({ id, actorUserId: admin.id });
-    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("Parent info link ready")}&open=${encodeURIComponent(id)}${source}`);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Prepare parent info link failed";
     redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?err=${encodeURIComponent(msg)}&open=${encodeURIComponent(id)}${source}`);
   }
+  redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("Parent info link ready")}&open=${encodeURIComponent(id)}${source}`);
 }
 
 async function deleteParentInfoAction(formData: FormData) {
@@ -167,11 +168,11 @@ async function deleteParentInfoAction(formData: FormData) {
   const source = sourceQuery(formData);
   try {
     await deleteSchoolApplicationParentInfoLink({ id, actorUserId: admin.id });
-    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("Parent info link deleted")}&open=${encodeURIComponent(id)}${source}`);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Delete parent info link failed";
     redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?err=${encodeURIComponent(msg)}&open=${encodeURIComponent(id)}${source}`);
   }
+  redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("Parent info link deleted")}&open=${encodeURIComponent(id)}${source}`);
 }
 
 async function prepareSignAction(formData: FormData) {
@@ -335,6 +336,9 @@ export default async function SchoolApplicationsPage({
                       <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #f59e0b", background: "#fffbeb", color: "#92400e", fontWeight: 800 }}>
                         Generate parent info link / 生成家长资料链接
                       </button>
+                      <div style={{ color: "#475569", fontSize: 12 }}>
+                        {t(lang, "Requesting or updating parent information pauses signing. Review the details and generate the sign link again.", "申请或更新家长资料后将暂停签署，请核对资料后重新生成签字链接。")}
+                      </div>
                     </form>
                   ) : null}
                 </div>

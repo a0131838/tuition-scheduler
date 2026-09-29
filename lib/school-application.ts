@@ -404,22 +404,27 @@ export async function getSchoolApplicationParentInfoDefaults(applicationId: stri
   });
 }
 
-export async function markSchoolApplicationSignViewed(id: string) {
-  const row = await prisma.schoolApplicationService.findUnique({ where: { id }, select: { signViewedAt: true } });
-  if (!row || row.signViewedAt) return;
-  await prisma.schoolApplicationService.update({ where: { id }, data: { signViewedAt: new Date() } });
-  await event({ applicationId: id, eventType: SchoolApplicationEventType.SIGN_VIEWED, actorLabel: "Parent viewed sign link" });
+async function markSchoolApplicationViewed(id: string, linkToken: string, kind: "sign" | "info") {
+  return prisma.$transaction(async tx => {
+    await tx.$queryRaw`SELECT id FROM "SchoolApplicationService" WHERE id=${id} FOR UPDATE`;
+    const row = await tx.schoolApplicationService.findUnique({ where: { id } });
+    if (!row) return;
+    const active = kind === "sign" ? row.status === "READY_TO_SIGN" : ["DRAFT", "READY_TO_SIGN"].includes(row.status);
+    const currentToken = kind === "sign" ? row.signToken : row.parentInfoToken;
+    const expiresAt = kind === "sign" ? row.signExpiresAt : row.parentInfoExpiresAt;
+    const viewedAt = kind === "sign" ? row.signViewedAt : row.parentInfoViewedAt;
+    if (!active || row.voidedAt || !linkToken || currentToken !== linkToken || viewedAt || (expiresAt && expiresAt.getTime() < Date.now())) return;
+    await tx.schoolApplicationService.update({ where: { id }, data: kind === "sign" ? { signViewedAt: new Date() } : { parentInfoViewedAt: new Date() } });
+    await event({ applicationId: id, eventType: kind === "sign" ? "SIGN_VIEWED" : "PARENT_INFO_VIEWED", actorLabel: kind === "sign" ? "Parent viewed sign link" : "Parent viewed school application info link" }, tx);
+  });
 }
 
-export async function markSchoolApplicationParentInfoViewed(id: string) {
-  const row = await prisma.schoolApplicationService.findUnique({ where: { id }, select: { parentInfoViewedAt: true } });
-  if (!row || row.parentInfoViewedAt) return;
-  await prisma.schoolApplicationService.update({ where: { id }, data: { parentInfoViewedAt: new Date() } });
-  await event({
-    applicationId: id,
-    eventType: SchoolApplicationEventType.PARENT_INFO_VIEWED,
-    actorLabel: "Parent viewed school application info link",
-  });
+export async function markSchoolApplicationSignViewed(id: string, signToken: string) {
+  return markSchoolApplicationViewed(id, signToken, "sign");
+}
+
+export async function markSchoolApplicationParentInfoViewed(id: string, parentInfoToken: string) {
+  return markSchoolApplicationViewed(id, parentInfoToken, "info");
 }
 
 export async function createSchoolApplicationDraft(input: {
@@ -427,13 +432,15 @@ export async function createSchoolApplicationDraft(input: {
   packageId?: string | null;
   createdByUserId?: string | null;
 }) {
-  const student = await prisma.student.findUnique({
+  return prisma.$transaction(async tx => {
+  await schoolApplicationMutationActor(tx, input.createdByUserId);
+  const student = await tx.student.findUnique({
     where: { id: input.studentId },
     select: { id: true, name: true },
   });
   if (!student) throw new Error("Student not found");
-  const packageId = await ensureServiceBillingPackage(student.id);
-  const row = await prisma.schoolApplicationService.create({
+  const packageId = await ensureServiceBillingPackage(student.id, tx);
+  const row = await tx.schoolApplicationService.create({
     data: {
       studentId: student.id,
       packageId,
@@ -456,8 +463,9 @@ export async function createSchoolApplicationDraft(input: {
     eventType: SchoolApplicationEventType.GENERATED,
     actorUserId: input.createdByUserId ?? null,
     actorLabel: "Created school application service draft",
-  });
+  }, tx);
   return summarize(row);
+  }, { isolationLevel: "Serializable", timeout: 15000 }).catch(schoolApplicationHistoryConflict);
 }
 
 export async function saveSchoolApplicationDraft(input: {
@@ -513,7 +521,7 @@ export async function saveSchoolApplicationDraft(input: {
     eventType: SchoolApplicationEventType.DRAFT_SAVED,
     actorUserId: input.actorUserId ?? null,
     actorLabel: "Saved school application service draft",
-    payloadJson: { schoolCount: items.length, totalAmount },
+    payloadJson: { schoolCount: items.length, totalAmount, previousContractSnapshot: current.contractSnapshotJson },
   }, tx);
   return summarize(row);
   });
@@ -532,9 +540,12 @@ export async function prepareSchoolApplicationParentInfoLink(input: {
     throw new Error("Parent info link is only available before completion or void");
   }
   const defaults = await getSchoolApplicationParentInfoDefaults(current.id);
-  const row = await prisma.schoolApplicationService.update({
+  return writeSchoolApplicationDraftSnapshot(current, input.actorUserId, async tx => {
+  const row = await tx.schoolApplicationService.update({
     where: { id: current.id },
     data: {
+      status: SchoolApplicationStatus.DRAFT,
+      contractSnapshotJson: Prisma.JsonNull,
       parentInfoToken: current.parentInfoToken ?? token(),
       parentInfoExpiresAt: addDays(new Date(), DEFAULT_PARENT_INFO_TTL_DAYS),
       parentInfoJson: defaults as unknown as Prisma.InputJsonValue,
@@ -547,38 +558,24 @@ export async function prepareSchoolApplicationParentInfoLink(input: {
     eventType: SchoolApplicationEventType.PARENT_INFO_LINK_SENT,
     actorUserId: input.actorUserId ?? null,
     actorLabel: "Prepared school application parent info link",
-  });
+    payloadJson: { action: "PREPARED", previousContractSnapshot: current.contractSnapshotJson },
+  }, tx);
   return summarize(row);
+  });
 }
 
-export async function deleteSchoolApplicationParentInfoLink(input: {
-  id: string;
-  actorUserId?: string | null;
-}) {
-  const current = await prisma.schoolApplicationService.findUnique({
-    where: { id: input.id },
-    include: includeApplication,
-  });
-  if (!current) throw new Error("School application not found");
-  if (!current.parentInfoToken) {
-    return summarize(current);
-  }
-  const row = await prisma.schoolApplicationService.update({
-    where: { id: current.id },
-    data: {
-      parentInfoToken: null,
-      parentInfoExpiresAt: null,
-      parentInfoViewedAt: null,
-    },
-    include: includeApplication,
-  });
-  await event({
-    applicationId: current.id,
-    eventType: SchoolApplicationEventType.PARENT_INFO_LINK_SENT,
-    actorUserId: input.actorUserId ?? null,
-    actorLabel: "Deleted school application parent info link",
-  });
-  return summarize(row);
+export async function deleteSchoolApplicationParentInfoLink(input: { id: string; actorUserId?: string | null }) {
+  return prisma.$transaction(async tx => {
+    const actor = await schoolApplicationMutationActor(tx, input.actorUserId);
+    await tx.$queryRaw`SELECT id FROM "SchoolApplicationService" WHERE id=${input.id} FOR UPDATE`;
+    const current = await tx.schoolApplicationService.findUnique({ where: { id: input.id }, include: includeApplication });
+    if (!current) throw new Error("School application not found / 学校申请不存在");
+    if (!current.parentInfoToken) return summarize(current);
+    const row = await tx.schoolApplicationService.update({ where: { id: current.id }, data: { parentInfoToken: null, parentInfoExpiresAt: null }, include: includeApplication });
+    await event({ applicationId: current.id, eventType: "PARENT_INFO_LINK_SENT", actorUserId: actor.id,
+      actorLabel: "Revoked school application parent info link", payloadJson: { action: "REVOKED", previousViewedAt: current.parentInfoViewedAt?.toISOString() ?? null } }, tx);
+    return summarize(row);
+  }, { isolationLevel: "Serializable", timeout: 15000 }).catch(schoolApplicationHistoryConflict);
 }
 
 function appendDatedNote(existing: string | null | undefined, text: string) {
@@ -596,62 +593,37 @@ export async function submitSchoolApplicationParentInfo(input: {
   parentInfoToken: string;
   parentInfo: SchoolApplicationParentInfoForm;
   actorLabel?: string | null;
+  expectedUpdatedAt?: string | null;
 }) {
-  const row = await prisma.schoolApplicationService.findUnique({
-    where: { parentInfoToken: input.parentInfoToken },
-    include: includeApplication,
-  });
-  if (!row) throw new Error("School application parent info link not found");
-  if (row.status === SchoolApplicationStatus.INVOICE_CREATED || row.status === SchoolApplicationStatus.VOID) {
-    throw new Error("This school application is no longer open for parent information");
-  }
-  if (row.parentInfoExpiresAt && row.parentInfoExpiresAt.getTime() < Date.now()) {
-    throw new Error("School application parent info link has expired");
-  }
   const parentInfo = coerceParentInfoForm(input.parentInfo);
-  if (!parentInfo) throw new Error("Parent name is required");
-  if (!trim(parentInfo.phone) || !trim(parentInfo.email)) {
-    throw new Error("Parent phone and email are required");
-  }
-
-  const studentSchool = trimOrNull(parentInfo.studentSchool);
-  const studentGrade = trimOrNull(parentInfo.studentGrade);
-  const submittedAt = new Date();
-  const next = await prisma.$transaction(async (tx) => {
-    await tx.student.update({
-      where: { id: row.studentId },
-      data: {
-        ...(studentSchool ? { school: studentSchool } : {}),
-        ...(studentGrade ? { grade: studentGrade } : {}),
-        ...(parentInfo.applicationNote
-          ? { note: appendDatedNote(row.student.note, parentInfo.applicationNote) }
-          : {}),
-      },
-    });
-    return tx.schoolApplicationService.update({
-      where: { id: row.id },
-      data: {
-        parentInfoJson: parentInfo as unknown as Prisma.InputJsonValue,
-        parentInfoSubmittedAt: submittedAt,
-        billTo: trim(row.billTo) && trim(row.billTo) !== trim(row.student.name) ? row.billTo : parentInfo.parentName,
-        note: trim(row.note) ? row.note : trimOrNull(parentInfo.applicationNote),
-      },
-      include: includeApplication,
-    });
-  });
-  await event({
-    applicationId: row.id,
-    eventType: SchoolApplicationEventType.PARENT_INFO_SUBMITTED,
-    actorLabel: input.actorLabel ?? parentInfo.parentName,
-    payloadJson: {
-      parentName: parentInfo.parentName,
-      phone: parentInfo.phone ?? null,
-      email: parentInfo.email ?? null,
-      studentSchool,
-      studentGrade,
-    },
-  });
-  return summarize(next);
+  if (!parentInfo || !trim(parentInfo.phone) || !trim(parentInfo.email)) throw new Error("Parent name, phone and email are required / 请填写家长姓名、电话和邮箱");
+  return prisma.$transaction(async tx => {
+    const match = await tx.schoolApplicationService.findUnique({ where: { parentInfoToken: input.parentInfoToken }, select: { id: true } });
+    if (!match) throw new Error("Parent information link is unavailable / 家长资料链接不可用");
+    await tx.$queryRaw`SELECT id FROM "SchoolApplicationService" WHERE id=${match.id} FOR UPDATE`;
+    const row = await tx.schoolApplicationService.findUnique({ where: { id: match.id }, include: includeApplication });
+    if (!row || row.parentInfoToken !== input.parentInfoToken || row.voidedAt ||
+      (row.status !== "DRAFT" && row.status !== "READY_TO_SIGN") || schoolApplicationHasSignedHistory(row) ||
+      (row.parentInfoExpiresAt && row.parentInfoExpiresAt.getTime() < Date.now())) throw new Error("Application link changed, expired or closed / 申请链接已变更、过期或关闭");
+    if (row.parentInfoSubmittedAt && JSON.stringify(coerceParentInfoForm(row.parentInfoJson)) === JSON.stringify(parentInfo)) return summarize(row);
+    if (input.expectedUpdatedAt && row.updatedAt.toISOString() !== input.expectedUpdatedAt) throw new Error("Application changed; refresh before submitting / 申请已变更，请刷新后提交");
+    await tx.$queryRaw`SELECT id FROM "Student" WHERE id=${row.studentId} FOR UPDATE`;
+    const student = await tx.student.findUniqueOrThrow({ where: { id: row.studentId } });
+    const studentSchool = trimOrNull(parentInfo.studentSchool), studentGrade = trimOrNull(parentInfo.studentGrade);
+    await tx.student.update({ where: { id: row.studentId }, data: {
+      ...(studentSchool ? { school: studentSchool } : {}), ...(studentGrade ? { grade: studentGrade } : {}),
+      ...(parentInfo.applicationNote ? { note: appendDatedNote(student.note, parentInfo.applicationNote) } : {}),
+    } });
+    const next = await tx.schoolApplicationService.update({ where: { id: row.id }, data: {
+      status: SchoolApplicationStatus.DRAFT, contractSnapshotJson: Prisma.JsonNull,
+      parentInfoJson: parentInfo as unknown as Prisma.InputJsonValue, parentInfoSubmittedAt: new Date(),
+      billTo: trim(row.billTo) && trim(row.billTo) !== trim(student.name) ? row.billTo : parentInfo.parentName,
+      note: trim(row.note) ? row.note : trimOrNull(parentInfo.applicationNote),
+    }, include: includeApplication });
+    await event({ applicationId: row.id, eventType: "PARENT_INFO_SUBMITTED", actorLabel: input.actorLabel ?? parentInfo.parentName,
+      payloadJson: { previousContractSnapshot: row.contractSnapshotJson, parentName: parentInfo.parentName, phone: parentInfo.phone ?? null, email: parentInfo.email ?? null, studentSchool, studentGrade } }, tx);
+    return summarize(next);
+  }, { isolationLevel: "Serializable", timeout: 15000 }).catch(schoolApplicationHistoryConflict);
 }
 
 function snapshotFromSummary(app: SchoolApplicationSummary): SchoolApplicationSnapshot {
