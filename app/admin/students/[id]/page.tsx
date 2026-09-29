@@ -1,3 +1,4 @@
+import { hasGeneralCareAccess } from "@/lib/care-access";
 ﻿﻿import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
@@ -1500,6 +1501,7 @@ export default async function StudentDetailPage({
 }) {
   const lang = await getLang();
   const { id: studentId } = await params;
+  const canOpenCare = await hasGeneralCareAccess(await getCurrentUser());
   const sp = await searchParams;
 
   const courseId = sp?.courseId ?? "";
@@ -2676,6 +2678,7 @@ export default async function StudentDetailPage({
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {canOpenCare ? <a href={`/admin/care?forStudent=${encodeURIComponent(studentId)}`} style={{ padding: "8px 12px", border: "1px solid #99f6e4", borderRadius: 10, background: "#f0fdfa", color: "#0f766e", fontWeight: 800, textDecoration: "none" }}>{t(lang, "Full care projects", "全托管项目")}</a> : null}
             <a
               href={`/admin/students/${encodeURIComponent(studentId)}/school-applications`}
               style={{ padding: "8px 12px", border: "1px solid #93c5fd", borderRadius: 10, background: "#eff6ff", color: "#1d4ed8", fontWeight: 800, textDecoration: "none" }}

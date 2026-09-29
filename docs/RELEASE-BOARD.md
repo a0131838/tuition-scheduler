@@ -1,4 +1,19 @@
 # RELEASE BOARD
+## 2026-09-29-r445
+
+- Release ID: `2026-09-29-r445`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; guarded release evidence is recorded in the execution ledger.
+- Problem: student profiles had no direct full-care entry; care studentId meant new-project preselection rather than a filtered project list. Following a guessed filter could show other students' projects.
+- Change: add a permission-aware Full care projects shortcut using a separate exact forStudent filter. Filter intersects the existing active-membership scope; broad staff may return to the student or prepare a project. Old studentId creation links and the all-project list remain compatible. Scoped empty state does not imply no hidden records. Programme/status labels support all three language modes, and total task counts no longer imply unfinished tasks only.
+- Validation:181 backend tests, final TypeScript and260-page build passed. Isolated authenticated HTTP verifies owner sees both same-student projects, scoped CS sees only active membership, other students/inactive memberships are excluded, unknown scope leaks no student names, finance remains denied, old creation link retains its original behavior, and EN/ZH/BILINGUAL labels render. Project/member snapshots unchanged. Browser profile→care navigation and translated results verified.
+- Migration: none. Read/navigation changes only; no care project, report, application, approval, payment or message is written in production. School applications and care professional workflows remain separate; no WeChat client release.
+- Remaining: phase6 care/application end-to-end delivery acceptance; phase5 option feasibility; phases4/7–10. Overall programme remains in progress.
+- Rollback point: `9107519d56d9d1deb19372736d468694c7ac5966` (r444).
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
 ## 2026-09-29-r444
 
 - Release ID: `2026-09-29-r444`
@@ -663,7 +678,7 @@
 ---
 
 
-- Current release line on this branch: `2026-09-29-r444`, ready for guarded release of restored student feedback history, verified regression and r443 build recovery. Overall programme remains in progress; no Mini Program client release.
+- Current release line on this branch: `2026-09-29-r445`, ready for guarded release of scoped student-to-care navigation. Overall programme remains in progress; no Mini Program client release.
 
 ## 2026-09-09-r404 Ready
 

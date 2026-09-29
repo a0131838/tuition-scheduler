@@ -6,7 +6,7 @@ import {
   careScopeOptionsForProgram,
 } from "@/lib/care-validation";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
-import { getLang, t } from "@/lib/i18n";
+import { getLang, t, type Lang } from "@/lib/i18n";
 import { isManagerUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
@@ -22,9 +22,9 @@ function statusTone(status: string) {
   return status === "ACTIVE" ? "active" : status === "CANCELLED" ? "risk" : "neutral";
 }
 
-function programLabel(value: string, english: boolean) {
+function programLabel(value: string, lang: Lang) {
   const option = CARE_PROGRAM_OPTIONS.find((item) => item.value === value);
-  return option ? (english ? option.en : option.zh) : value;
+  return option ? t(lang, option.en, option.zh) : value;
 }
 
 export default async function CarePage({
@@ -33,6 +33,7 @@ export default async function CarePage({
   searchParams?: Promise<{
     q?: string | string[];
     studentId?: string | string[];
+    forStudent?: string | string[];
     msg?: string | string[];
     err?: string | string[];
   }>;
@@ -42,6 +43,7 @@ export default async function CarePage({
   const sp = await searchParams;
   const q = first(sp?.q).trim();
   const studentId = first(sp?.studentId).trim();
+  const forStudent = first(sp?.forStudent).trim();
   const msg = first(sp?.msg).trim();
   const err = first(sp?.err).trim();
   const broadAccess = actor.role === "ADMIN" || actor.operationsAdmin || (await isManagerUser(actor));
@@ -73,7 +75,7 @@ export default async function CarePage({
 
   const [engagements, students, selectedStudent, staff] = await Promise.all([
     prisma.careEngagement.findMany({
-      where: accessWhere,
+      where: { AND: [accessWhere, ...(forStudent ? [{ studentId: forStudent }] : [])] },
       include: {
         student: { select: { id: true, name: true, school: true, grade: true } },
         caseOwner: { select: { id: true, name: true } },
@@ -109,6 +111,11 @@ export default async function CarePage({
     }) : [],
   ]);
 
+  const statusLabels: Record<string, string> = {
+    DRAFT: t(lang, "Draft", "待启用"), ACTIVE: t(lang, "Active", "进行中"),
+    PAUSED: t(lang, "Paused", "已暂停"), COMPLETED: t(lang, "Completed", "已完成"),
+    CANCELLED: t(lang, "Cancelled", "已取消"),
+  };
   const counts = engagements.reduce(
     (acc, item) => {
       acc.total += 1;
@@ -126,7 +133,7 @@ export default async function CarePage({
         <div>
           <div className={styles.eyebrow}>{t(lang, "Student operations", "学生运营")}</div>
           <h1>{t(lang, "Care students", "全托管学生")}</h1>
-          <div className={styles.muted}>{t(lang, "One project per student, with clear owners and delivery records.", "每名学生一个项目，负责人、交付记录和下一步清晰可查。")}</div>
+          <div className={styles.muted}>{t(lang, "Student service projects, with clear owners and delivery records.", "按学生管理服务项目，负责人、交付记录和下一步清晰可查。")}</div>
         </div>
         <div className={styles.headerActions}>
           <Link className={styles.button} href="/admin/care/quality">{t(lang, "Open quality desk", "打开质量工作台")}</Link>
@@ -140,6 +147,14 @@ export default async function CarePage({
         <Link data-active="true" href="/admin/care">{t(lang, "Students", "学生项目")}</Link>
         <Link href="/admin/care/quality">{t(lang, "Quality", "质量工作台")}</Link>
       </nav>
+
+      {forStudent ? <div className={styles.noticeSuccess}>
+        <div>{t(lang, "Showing accessible projects for the selected student.", "当前仅显示所选学生在你权限内的托管项目。")}</div>
+        <div className={styles.toolbar}>
+          <a href="/admin/care">{t(lang, "All accessible projects", "查看全部可访问项目")}</a>
+          {broadAccess ? <><a href={`/admin/students/${encodeURIComponent(forStudent)}`}>{t(lang, "Back to student profile", "返回学生档案")}</a><a href={`/admin/care?forStudent=${encodeURIComponent(forStudent)}&studentId=${encodeURIComponent(forStudent)}`}>{t(lang, "Prepare a new project", "准备新项目")}</a></> : null}
+        </div>
+      </div> : null}
 
       <div className={styles.metrics}>
         <div className={styles.metric} data-tone="active"><strong>{counts.active}</strong><span className={styles.muted}>{t(lang, "Active", "进行中")}</span></div>
@@ -247,18 +262,18 @@ export default async function CarePage({
                 <div className={styles.muted}>{engagement.student.school ?? "-"} · {engagement.student.grade ?? "-"}</div>
               </div>
               <div>
-                <span className={styles.badge} data-tone={statusTone(engagement.status)}>{engagement.status}</span>
-                <div className={styles.muted}>{programLabel(engagement.programType, lang === "EN")}</div>
+                <span className={styles.badge} data-tone={statusTone(engagement.status)}>{statusLabels[engagement.status] ?? engagement.status}</span>
+                <div className={styles.muted}>{programLabel(engagement.programType, lang)}</div>
               </div>
               <div>
                 <div>{engagement.caseOwner?.name ?? "-"}</div>
-                <div className={styles.muted}>{engagement._count.activities} {t(lang, "updates", "条记录")} · {engagement._count.tasks} {t(lang, "tasks", "项待办")}</div>
+                <div className={styles.muted}>{engagement._count.activities} {t(lang, "updates", "条记录")} · {engagement._count.tasks} {t(lang, "tasks", "项任务")}</div>
               </div>
               <div className={styles.muted}>{formatBusinessDateTime(engagement.updatedAt)}</div>
               <Link className={styles.buttonSecondary} href={`/admin/care/${encodeURIComponent(engagement.id)}`}>{t(lang, "Open", "查看")}</Link>
             </div>
           ))}
-          {engagements.length === 0 ? <div className={styles.emptyState}><strong>{t(lang, "No care students yet", "还没有托管学生")}</strong><span>{t(lang, "Add the first student when service scope and owners are confirmed.", "确认服务范围和负责人后，再添加第一名学生。")}</span></div> : null}
+          {engagements.length === 0 ? <div className={styles.emptyState}><strong>{forStudent ? t(lang, "No accessible projects for this student", "此学生暂无你可访问的托管项目") : t(lang, "No care students yet", "还没有托管学生")}</strong><span>{t(lang, "Confirm project ownership and access before creating a new project.", "新建项目前，请先核对已有项目、负责人和访问权限。")}</span></div> : null}
         </div>
       </section>
     </main>
