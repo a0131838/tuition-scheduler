@@ -1,3 +1,4 @@
+import {monthlyStaffingLessonFacts,confirmedMonthlyDemand,monthlyBusyDateIntervals} from "./monthly-staffing-facts";
 import { assertMonthlyStaffStatusChange } from "./monthly-scheduling-status-policy";
 import { resolveAttendanceRoster } from "./session-attendance-roster";
 import { completionSessionInclude, verifyMonthlySchedule, monthlyCompletionReviews } from "./monthly-scheduling-completion";
@@ -1472,14 +1473,14 @@ export async function buildMonthlyStaffingReport(campaignId: string, cohort?: Mo
       },
     }),
     prisma.session.findMany({
-      where: { startAt: { gte: range.start, lt: range.end } },
-      include: { class: { include: { enrollments: { select: { studentId: true } } } } },
-      take: 10000,
+      where: { startAt: { lt: range.end }, endAt: { gt: range.start } },
+      include: { class: { include: { enrollments: { select: { studentId: true } } } }, attendances: {select: {studentId:true,status:true}} },
+      take: 10001,
     }),
     prisma.appointment.findMany({
-      where: { startAt: { gte: range.start, lt: range.end } },
+      where: { startAt: { lt: range.end }, endAt: { gt: range.start } },
       select: { teacherId: true, startAt: true, endAt: true },
-      take: 5000,
+      take: 5001,
     }),
   ]);
 
@@ -1491,20 +1492,16 @@ export async function buildMonthlyStaffingReport(campaignId: string, cohort?: Mo
     capacityByTeacher.set(teacher.id, intervals.reduce((sum, row) => sum + Math.max(0, row.endMin - row.startMin), 0));
   }
   const busyByTeacher = new Map<string, Array<{ date: string; startMin: number; endMin: number }>>();
+  let unresolvedLessons=0;
   for (const session of sessions) {
-    const teacherId = session.teacherId ?? session.class.teacherId;
-    busyByTeacher.set(teacherId, [...(busyByTeacher.get(teacherId) ?? []), {
-      date: formatBusinessDateOnly(session.startAt),
-      startMin: businessMinuteOfDay(session.startAt),
-      endMin: businessMinuteOfDay(session.endAt),
-    }]);
+    const facts=monthlyStaffingLessonFacts(session);
+    if(facts.needsReview)unresolvedLessons++;
+    if(!facts.teacherBusy)continue;
+    const teacherId=session.teacherId??session.class.teacherId;
+    busyByTeacher.set(teacherId,[...(busyByTeacher.get(teacherId)??[]),...monthlyBusyDateIntervals(session.startAt,session.endAt,range)]);
   }
   for (const appointment of appointments) {
-    busyByTeacher.set(appointment.teacherId, [...(busyByTeacher.get(appointment.teacherId) ?? []), {
-      date: formatBusinessDateOnly(appointment.startAt),
-      startMin: businessMinuteOfDay(appointment.startAt),
-      endMin: businessMinuteOfDay(appointment.endAt),
-    }]);
+    busyByTeacher.set(appointment.teacherId,[...(busyByTeacher.get(appointment.teacherId)??[]),...monthlyBusyDateIntervals(appointment.startAt,appointment.endAt,range)]);
   }
   for (const teacher of teachers) {
     const occupied = monthlySchedulingBusyOverlapMinutes(availabilityByTeacher.get(teacher.id) ?? [], busyByTeacher.get(teacher.id) ?? []);
@@ -1517,27 +1514,28 @@ export async function buildMonthlyStaffingReport(campaignId: string, cohort?: Mo
   }
   const scheduledMinutes = new Map<string, number>();
   for (const session of sessions) {
-    const duration = Math.max(0, Math.round((session.endAt.getTime() - session.startAt.getTime()) / 60000));
-    for (const studentId of monthlySchedulingSessionStudentIds(session)) {
+    const duration = Math.max(0, (Math.min(session.endAt.getTime(),range.end.getTime()) - Math.max(session.startAt.getTime(),range.start.getTime())) / 60000);
+    for (const studentId of monthlyStaffingLessonFacts(session).studentIds) {
       const key = `${studentId}:${session.class.courseId}`;
       scheduledMinutes.set(key, (scheduledMinutes.get(key) ?? 0) + duration);
     }
   }
 
-  const activeStatuses = new Set(["SUBMITTED", "NEEDS_CLARIFICATION", "MATCHED", "TEACHER_EXCEPTION", "SCHEDULED"]);
-  const courseMap = new Map<string, { courseId: string; courseName: string; students: Set<string>; demandMinutes: number; scheduledMinutes: number; pendingCount: number }>();
+  const incomplete = sessions.length>10000 || appointments.length>5000;
+  const activeStatuses = new Set(["SUBMITTED", "OFFERED", "PARENT_SELECTED", "CHANGE_REQUESTED", "NEEDS_CLARIFICATION", "MATCHED", "TEACHER_EXCEPTION", "SCHEDULED"]);
+  const courseMap = new Map<string, { courseId: string; courseName: string; students: Set<string>; demandMinutes: number; scheduledMinutes: number; unscheduledMinutes:number; unknownDemandCount:number; pendingCount: number }>();
   const timeBandMap = new Map<string, { label: string; itemCount: number; demandMinutes: number }>();
   for (const item of campaign.items) {
     if (cohort && monthlySchedulingCohortForSourceName(item.student.sourceChannel?.name) !== cohort) continue;
     if (!activeStatuses.has(item.status) || item.intent === "PAUSE") continue;
     const key = `${item.studentId}:${item.courseId}`;
     const alreadyScheduled = scheduledMinutes.get(key) ?? 0;
-    const currentRows = jsonRows(item.currentScheduleJson) as Array<{ durationMin?: number }>;
-    const baseline = currentRows.reduce((sum, row) => sum + Math.max(0, Number(row.durationMin ?? 0)), 0);
-    const demand = item.expectedMinutes ?? (((item.expectedSessionsPerWeek ?? 0) * 60 * 4) || baseline || 240);
-    const row = courseMap.get(item.courseId) ?? { courseId: item.courseId, courseName: item.course.name, students: new Set<string>(), demandMinutes: 0, scheduledMinutes: 0, pendingCount: 0 };
+    const demand = confirmedMonthlyDemand(item);
+    const row = courseMap.get(item.courseId) ?? { courseId: item.courseId, courseName: item.course.name, students: new Set<string>(), demandMinutes: 0, scheduledMinutes: 0, unscheduledMinutes:0, unknownDemandCount:0, pendingCount: 0 };
     row.students.add(item.studentId);
-    row.demandMinutes += demand;
+    row.demandMinutes += demand ?? 0;
+    if(demand==null)row.unknownDemandCount++;
+    else row.unscheduledMinutes += Math.max(0,demand-alreadyScheduled);
     row.scheduledMinutes += alreadyScheduled;
     if (item.status !== "SCHEDULED") row.pendingCount += 1;
     courseMap.set(item.courseId, row);
@@ -1549,7 +1547,7 @@ export async function buildMonthlyStaffingReport(campaignId: string, cohort?: Mo
           const bandKey = `${weekday}:${time.start}-${time.end}`;
           const band = timeBandMap.get(bandKey) ?? { label: `${weekday} ${time.start}-${time.end}`, itemCount: 0, demandMinutes: 0 };
           band.itemCount += 1;
-          band.demandMinutes += demand;
+          band.demandMinutes += demand ?? 0;
           timeBandMap.set(bandKey, band);
         }
       }
@@ -1558,7 +1556,7 @@ export async function buildMonthlyStaffingReport(campaignId: string, cohort?: Mo
 
   const courseCapacityInputs = Array.from(courseMap.values()).map((row) => ({
     courseId: row.courseId,
-    unscheduledMinutes: Math.max(0, row.demandMinutes - row.scheduledMinutes),
+    unscheduledMinutes: row.unscheduledMinutes,
     qualifiedTeacherIds: teachers.filter((teacher) => courseIdsByTeacher.get(teacher.id)?.has(row.courseId)).map((teacher) => teacher.id),
   }));
   const allocatedCapacity = allocateMonthlyCourseCapacity(courseCapacityInputs, capacityByTeacher);
@@ -1582,7 +1580,8 @@ export async function buildMonthlyStaffingReport(campaignId: string, cohort?: Mo
       gapMinutes,
       qualifiedTeacherCount: qualifiedTeacherIds.length,
       pendingCount: row.pendingCount,
-      tone: gapMinutes > 0 || qualifiedTeacherIds.length === 0 ? "RED" : utilization >= 0.8 ? "AMBER" : "GREEN",
+      unknownDemandCount:row.unknownDemandCount,
+      tone: gapMinutes > 0 || qualifiedTeacherIds.length === 0 ? "RED" : row.unknownDemandCount>0 || unresolvedLessons>0 || incomplete || utilization >= 0.8 ? "AMBER" : "GREEN",
     };
   }).sort((a, b) => b.gapMinutes - a.gapMinutes || b.unscheduledMinutes - a.unscheduledMinutes);
 
@@ -1591,6 +1590,8 @@ export async function buildMonthlyStaffingReport(campaignId: string, cohort?: Mo
     courses,
     timeBands: Array.from(timeBandMap.values()).sort((a, b) => b.itemCount - a.itemCount).slice(0, 30),
     summary: {
+      unknownDemandCount:courses.reduce((sum,row)=>sum+row.unknownDemandCount,0),
+      unresolvedLessons,incomplete,
       demandMinutes: courses.reduce((sum, row) => sum + row.demandMinutes, 0),
       scheduledMinutes: courses.reduce((sum, row) => sum + row.scheduledMinutes, 0),
       gapMinutes: courses.reduce((sum, row) => sum + row.gapMinutes, 0),

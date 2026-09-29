@@ -581,3 +581,22 @@ Logs: `/tmp/sgt-r438-uat.log`, `/tmp/sgt-r438-http.log`, `/tmp/sgt-r438-focused.
 ---
 
 Logs: `/tmp/sgt-r439-uat-final.log`, `/tmp/sgt-r439-http.log`, `/tmp/sgt-r439-focused-final.log`, `/tmp/sgt-r439-backend.log`, `/tmp/sgt-r439-build-final.log`.
+
+## 2026-09-29-r440
+
+- Release ID: `2026-09-29-r440`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; guarded release proof is maintained in the execution ledger.
+- Problem: staffing forecasts manufactured monthly demand from four weeks of one-hour lessons, omitted offered/selected/change-request rows, counted cancelled lessons as scheduled/busy, and allowed one student's excess schedule to offset another student's missing lessons.
+- Change: report demand uses recorded monthly minutes with keep/change intent; unconfirmed totals have an explicit review count and cannot appear green. Include response stages awaiting selection or change. Exact lesson ownership and per-student excused status determine scheduled instruction; fully cancelled lessons free teacher capacity, ambiguous ownership remains busy and flagged. Unscheduled demand is calculated per student/course before aggregation. Overnight appointments are clipped to Singapore days/month boundaries; scan limits now surface incompleteness.
+- UI: new confirmed-demand and totals-to-confirm labels, row warnings and planning-limit explanation support EN/ZH/BILINGUAL. Capacity remains a one-to-one planning estimate requiring actual time/campus/group review; no timetable or fee is inferred from the report.
+- Validation:51 focused tests,181 backend tests,TypeScript and260-page production build. Isolated report UAT covers offered/selected/change statuses, no four-week fallback, cross-student excess, cancelled instruction/capacity, unknown-demand warning and unchanged lessons/attendance/ledger/outbox/items. Pure tests cover explicit roster, ambiguous ownership, partial group cancellation and overnight/month clipping. Browser checks new report labels and figures in three languages.
+- Migration: none. Report-only computation; does not reschedule, deduct, refund, send or alter stored monthly responses. Existing option generation is a separate path still under review.
+- Risk: lower-bound known-demand totals can omit unconfirmed requirements, now visibly flagged. Time/campus/group feasibility is not guaranteed by pooled capacity. Existing broader page language cleanup remains phase8.
+- Remaining: option feasibility and phase5 final acceptance; phase4 acceptance and phases6–10. Student deletion history protection was identified for the next safety pass.
+- Rollback point: `ac050cf84189a800ae6c53306d4c1905342d6919` (r439).
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
+Logs: `/tmp/sgt-r440-uat.log`, `/tmp/sgt-r440-focused.log`, `/tmp/sgt-r440-backend.log`, `/tmp/sgt-r440-tsc.log`, `/tmp/sgt-r440-build.log`.
