@@ -8,6 +8,8 @@ import {
   Prisma,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { parentCareTransaction, requireParentCareReportAccess, type ParentCareReportScope } from "@/lib/parent-care-reports";
+import { requireCareReportWriteAccess } from "@/lib/care-report-access";
 import { careText, parseCareDateTime, requiredCareText } from "@/lib/care-validation";
 
 type CareActor = { id: string; email: string; name: string; role: string };
@@ -315,86 +317,82 @@ export async function changeCareServiceReviewStatus(input: {
   });
 }
 
-export async function createParentCareQuestion(input: { parentId: string; studentId: string; reportId: string; question: unknown }) {
-  const question = requiredCareText(input.question, "Question", 2000);
-  return prisma.$transaction(async (tx) => {
-    const report = await tx.careReport.findFirst({
-      where: { id: input.reportId, studentId: input.studentId, status: "PUBLISHED" },
-      include: {
-        engagement: { select: { id: true, caseOwnerUserId: true } },
-        student: { select: { name: true } },
-      },
-    });
-    if (!report) throw new Error("Published report not found");
-    const link = await tx.parentStudentLink.findFirst({ where: { parentId: input.parentId, studentId: input.studentId, canViewReports: true }, select: { id: true } });
-    if (!link) throw new Error("No access to this report");
-    if (!report.engagement.caseOwnerUserId) throw new Error("This care project has no case owner");
-    const dueAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    const task = await tx.careTask.create({
-      data: {
-        studentId: input.studentId,
-        engagementId: report.engagement.id,
-        title: `Reply to parent: ${report.title}`.slice(0, 240),
-        description: question,
-        assignedToUserId: report.engagement.caseOwnerUserId,
-        priority: "HIGH",
-        dueAt,
-        createdByUserId: report.engagement.caseOwnerUserId,
-      },
-    });
-    return tx.careParentQuestion.create({
-      data: {
-        reportId: report.id,
-        engagementId: report.engagement.id,
-        studentId: input.studentId,
-        parentId: input.parentId,
-        question,
-        assignedToUserId: report.engagement.caseOwnerUserId,
-        careTaskId: task.id,
-      },
-    });
+export async function createParentCareQuestion(input: ParentCareReportScope & { question: unknown }) {
+  const question = requiredCareText(input.question, "Question / 提问", 2000);
+  return parentCareTransaction(async tx => {
+    const report = await requireParentCareReportAccess(tx, input);
+    if (!report.engagement.caseOwnerUserId) throw new Error("This care project has no case owner / 此托管项目尚未指定负责人");
+    const task = await tx.careTask.create({ data: {
+      studentId: input.studentId, engagementId: report.engagementId,
+      title: `Reply to parent / 回复家长: ${report.title}`.slice(0, 240), description: question,
+      assignedToUserId: report.engagement.caseOwnerUserId, priority: "HIGH",
+      dueAt: new Date(Date.now() + 24 * 60 * 60 * 1000), createdByUserId: report.engagement.caseOwnerUserId,
+    } });
+    const created = await tx.careParentQuestion.create({ data: {
+      reportId: report.id, engagementId: report.engagementId, studentId: input.studentId,
+      parentId: input.parentId, question, assignedToUserId: report.engagement.caseOwnerUserId, careTaskId: task.id,
+    } });
+    await tx.parentPortalAudit.create({ data: { parentId: input.parentId, studentId: input.studentId, action: "ASK_CARE_REPORT_QUESTION", targetType: "CareParentQuestion", targetId: created.id, metaJson: { reportId: report.id } } });
+    return created;
   });
 }
 
 export async function answerParentCareQuestion(input: {
-  actor: CareActor;
-  engagementId: string;
-  questionId: string;
-  response: unknown;
+  actor: CareActor; engagementId: string; reportId: string; questionId: string;
+  expectedRespondedAt: string; response: unknown;
 }) {
-  const response = requiredCareText(input.response, "Response", 4000);
-  return prisma.$transaction(async (tx) => {
-    const question = await tx.careParentQuestion.findFirst({ where: { id: input.questionId, engagementId: input.engagementId } });
-    if (!question) throw new Error("Parent question not found");
-    if (question.status === "CLOSED") throw new Error("Closed parent questions cannot be changed");
+  const response = requiredCareText(input.response, "Response / 回复", 4000);
+  return parentCareTransaction(async tx => {
+    const { actor } = await requireCareReportWriteAccess(tx, input.actor.id, input.engagementId);
+    const question = await tx.careParentQuestion.findFirst({ where: { id: input.questionId, engagementId: input.engagementId, reportId: input.reportId } });
+    if (!question) throw new Error("Parent question not found in this report / 此报告中未找到家长提问");
+    const report = await tx.careReport.findFirst({ where: { id: input.reportId, engagementId: input.engagementId, studentId: question.studentId }, select: { id: true } });
+    if (!report) throw new Error("Report ownership needs review / 报告归属需要核对");
+    if (question.status === "CLOSED") throw new Error("Closed parent questions cannot be changed / 已关闭的家长提问不能修改");
+    if (question.status === "ANSWERED" && question.response === response) return;
+    if ((question.respondedAt?.toISOString() ?? "") !== input.expectedRespondedAt) throw new Error("Response changed. Refresh before editing / 回复已更新，请刷新后修改");
     const now = new Date();
-    await tx.careParentQuestion.update({
-      where: { id: question.id },
-      data: { response, status: "ANSWERED", respondedAt: now, respondedByUserId: input.actor.id, parentViewedResponseAt: null },
-    });
-    if (question.careTaskId) {
-      await tx.careTask.updateMany({
-        where: { id: question.careTaskId, status: { notIn: ["DONE", "CANCELLED"] } },
-        data: { status: "DONE", completionEvidence: `Parent reply sent: ${response}`.slice(0, 4000), completedAt: now, completedByUserId: input.actor.id, version: { increment: 1 } },
-      });
+    const updated = await tx.careParentQuestion.update({ where: { id: question.id }, data: { response, status: "ANSWERED", respondedAt: now, respondedByUserId: actor.id, parentViewedResponseAt: null } });
+    const task = question.careTaskId ? await tx.careTask.findFirst({ where: { id: question.careTaskId, engagementId: input.engagementId, studentId: question.studentId } }) : null;
+    if (question.careTaskId && !task) throw new Error("Linked task needs ownership review / 关联任务归属需要核对");
+    if (task && !["DONE", "CANCELLED"].includes(task.status)) {
+      await tx.careTask.update({ where: { id: task.id }, data: { status: "DONE", completionEvidence: `Response saved in parent portal / 已在家长端保存回复: ${response}`.slice(0, 4000), completedAt: now, completedByUserId: actor.id, version: { increment: 1 } } });
     }
-    await tx.auditLog.create({ data: auditData(input.actor, "ANSWER_PARENT_QUESTION", "CareParentQuestion", question.id, { reportId: question.reportId }) });
+    const snapshot = (q: typeof question) => ({ response: q.response, respondedAt: q.respondedAt?.toISOString() ?? null, respondedByUserId: q.respondedByUserId, parentViewedResponseAt: q.parentViewedResponseAt?.toISOString() ?? null });
+    await tx.auditLog.create({ data: auditData(actor, "ANSWER_PARENT_QUESTION", "CareParentQuestion", question.id, {
+      reportId: question.reportId, before: snapshot(question), after: snapshot(updated),
+      taskId: task?.id ?? null, previousTaskStatus: task?.status ?? null,
+      previousTaskEvidence: task?.completionEvidence ?? null, delivery: "PORTAL_RESPONSE_SAVED",
+    }) });
   });
 }
 
-export async function markParentCareQuestionRead(input: { parentId: string; studentId: string; questionId: string }) {
-  return prisma.careParentQuestion.updateMany({
-    where: { id: input.questionId, parentId: input.parentId, studentId: input.studentId, status: "ANSWERED" },
-    data: { parentViewedResponseAt: new Date() },
+export async function readParentCareQuestions(input: ParentCareReportScope) {
+  return parentCareTransaction(async tx => {
+    const report = await requireParentCareReportAccess(tx, input);
+    const questions = await tx.careParentQuestion.findMany({ where: { engagementId: report.engagementId, reportId: input.reportId, studentId: input.studentId, parentId: input.parentId }, orderBy: { createdAt: "asc" } });
+    for (const question of questions) {
+      if (question.status !== "ANSWERED" || question.parentViewedResponseAt) continue;
+      const now = new Date();
+      await tx.careParentQuestion.update({ where: { id: question.id }, data: { parentViewedResponseAt: now } });
+      await tx.parentPortalAudit.create({ data: { parentId: input.parentId, studentId: input.studentId, action: "VIEW_CARE_REPORT_RESPONSE", targetType: "CareParentQuestion", targetId: question.id, metaJson: { reportId: input.reportId, respondedAt: question.respondedAt?.toISOString() ?? null } } });
+      question.parentViewedResponseAt = now;
+    }
+    return questions;
   });
 }
 
-export async function closeParentCareQuestion(input: { parentId: string; studentId: string; questionId: string }) {
-  const result = await prisma.careParentQuestion.updateMany({
-    where: { id: input.questionId, parentId: input.parentId, studentId: input.studentId, status: "ANSWERED" },
-    data: { status: "CLOSED", closedAt: new Date(), parentViewedResponseAt: new Date() },
+export async function closeParentCareQuestion(input: ParentCareReportScope & { questionId: string }) {
+  return parentCareTransaction(async tx => {
+    const report = await requireParentCareReportAccess(tx, input);
+    const question = await tx.careParentQuestion.findFirst({ where: { id: input.questionId, engagementId: report.engagementId, reportId: input.reportId, parentId: input.parentId, studentId: input.studentId } });
+    if (!question) throw new Error("Parent question not found in this report / 此报告中未找到家长提问");
+    if (question.status === "CLOSED") return;
+    if (question.status !== "ANSWERED") throw new Error("Only answered questions can be closed / 仅可关闭已回复的提问");
+    const now = new Date();
+    await tx.careParentQuestion.update({ where: { id: question.id }, data: { status: "CLOSED", closedAt: now, parentViewedResponseAt: question.parentViewedResponseAt ?? now } });
+    await tx.parentPortalAudit.create({ data: { parentId: input.parentId, studentId: input.studentId, action: "CLOSE_CARE_REPORT_QUESTION", targetType: "CareParentQuestion", targetId: question.id, metaJson: { reportId: input.reportId } } });
   });
-  if (result.count !== 1) throw new Error("Only answered questions can be closed");
 }
 
 export function parentQuestionStatusLabel(status: CareParentQuestionStatus) {

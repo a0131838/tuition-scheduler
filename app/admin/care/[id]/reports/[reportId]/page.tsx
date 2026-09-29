@@ -99,6 +99,8 @@ export default async function CareReportPage({
     await actionRedirect(id, reportId, "Parent question answered", answerParentCareQuestion({
       actor: current,
       engagementId: id,
+      reportId,
+      expectedRespondedAt: String(formData.get("expectedRespondedAt") ?? ""),
       questionId: String(formData.get("questionId") ?? ""),
       response: formData.get("response"),
     }));
@@ -302,6 +304,7 @@ export default async function CareReportPage({
       <section className={styles.section} id="questions">
         <div className={styles.timelineHead}>
           <h2>{t(lang, "Parent questions", "家长问答")}</h2>
+          <p className={styles.muted}>{t(lang, "Saved responses appear in the parent portal. This does not send an external message.", "保存的回复显示在家长端，此操作不会发送外部消息。")}</p>
           <span className={styles.badge}>{report.questions.length}</span>
         </div>
         <div className={styles.rows}>
@@ -319,8 +322,9 @@ export default async function CareReportPage({
               {question.parentViewedResponseAt ? <div className={styles.muted}>{t(lang, "Parent viewed response", "家长已查看回复")}: {formatBusinessDateTime(question.parentViewedResponseAt)}</div> : null}
               {question.status !== "CLOSED" ? <form action={answerQuestionAction} className={styles.stack}>
                 <input type="hidden" name="questionId" value={question.id} />
+                <input type="hidden" name="expectedRespondedAt" value={question.respondedAt?.toISOString() ?? ""} />
                 <textarea className={styles.textarea} name="response" defaultValue={question.response ?? ""} placeholder={t(lang, "Write the formal response visible to the parent", "填写家长可见的正式回复")} required />
-                <button className={styles.button} type="submit">{t(lang, question.response ? "Update response" : "Send response", question.response ? "更新回复" : "发送回复")}</button>
+                <button className={styles.button} type="submit">{t(lang, question.response ? "Update response" : "Save response", question.response ? "更新回复" : "保存回复")}</button>
               </form> : null}
             </article>
           ))}

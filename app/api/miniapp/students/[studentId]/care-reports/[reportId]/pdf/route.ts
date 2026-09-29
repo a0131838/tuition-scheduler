@@ -1,5 +1,5 @@
 import { buildCareReportPdf } from "@/lib/care-report-pdf";
-import { getParentCareReport, recordParentCareReportView } from "@/lib/parent-care-reports";
+import { accessParentCareReport } from "@/lib/parent-care-reports";
 import { PassThrough } from "stream";
 import { bad, requireMiniappStudentAccess } from "../../../../../_lib";
 
@@ -9,9 +9,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
   const { studentId, reportId } = await params;
   const auth = await requireMiniappStudentAccess(req, studentId, "canViewReports");
   if (!auth.ok) return auth.response;
-  const report = await getParentCareReport(reportId, studentId);
-  if (!report) return bad("Report not found", 404);
-  await recordParentCareReportView(report.id, auth.parent.id);
+  const access = await accessParentCareReport({ parentId: auth.parent.id, studentId, reportId, mode: "PDF" });
+  if (!access) return bad("Report not found / 未找到报告", 404);
+  const { report } = access;
 
   const { doc, fileName } = buildCareReportPdf(report);
   const stream = new PassThrough();

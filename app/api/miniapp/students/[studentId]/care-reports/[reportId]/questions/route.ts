@@ -1,8 +1,6 @@
-import { createParentCareQuestion, markParentCareQuestionRead, parentQuestionStatusLabel } from "@/lib/care-operations";
+import { createParentCareQuestion, readParentCareQuestions, parentQuestionStatusLabel } from "@/lib/care-operations";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { getParentCareReport } from "@/lib/parent-care-reports";
-import { logParentPortalAudit } from "@/lib/parent-portal";
-import { prisma } from "@/lib/prisma";
 import { bad, ok, requireMiniappStudentAccess } from "../../../../../_lib";
 
 export async function GET(req: Request, { params }: { params: Promise<{ studentId: string; reportId: string }> }) {
@@ -12,12 +10,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
   const report = await getParentCareReport(reportId, studentId);
   if (!report) return bad("Report not found", 404);
 
-  const questions = await prisma.careParentQuestion.findMany({
-    where: { reportId, studentId, parentId: auth.parent.id },
-    select: { id: true, question: true, response: true, status: true, createdAt: true, respondedAt: true, parentViewedResponseAt: true },
-    orderBy: { createdAt: "asc" },
-  });
-  await Promise.all(questions.filter((item) => item.status === "ANSWERED" && !item.parentViewedResponseAt).map((item) => markParentCareQuestionRead({ parentId: auth.parent.id, studentId, questionId: item.id })));
+  const questions = await readParentCareQuestions({ reportId, studentId, parentId: auth.parent.id });
   return ok({
     items: questions.map((item) => ({
       id: item.id,
@@ -43,7 +36,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ student
   }
   try {
     const question = await createParentCareQuestion({ parentId: auth.parent.id, studentId, reportId, question: body.question });
-    await logParentPortalAudit({ parentId: auth.parent.id, studentId, action: "ASK_CARE_REPORT_QUESTION", targetType: "CareParentQuestion", targetId: question.id });
     return ok({ id: question.id, status: question.status });
   } catch (error) {
     return bad(error instanceof Error ? error.message : "Question failed", 400);

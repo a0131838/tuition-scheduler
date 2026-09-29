@@ -1,4 +1,19 @@
 # RELEASE BOARD
+## 2026-09-29-r454
+
+- Release ID: `2026-09-29-r454`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; live proof is recorded in the execution ledger.
+- Problem: parent report reads/acknowledgements and question actions wrote evidence separately from audit; repeated acknowledgement changed its original date. A question close URL did not enforce report ownership, and question creation did not independently check current university consent. Staff replies could overwrite a newer response or be labelled sent although only saved in the portal.
+- Change: report view/PDF/ack and question create/read/close recheck current parent status, student link, exact report/student and publication/consent within serializable transactions. View/ack/question/task and audit roll back together. Repeat acknowledgements, response reads and closures retain first timestamps and avoid duplicate audit; transient serialization conflicts retry with fresh checks. Staff response uses fresh scoped access, exact report/question, expected response date, unchanged-response replay and before/after reply history. The related task completes atomically; portal-saved wording replaces external-send claims in EN/ZH/BILINGUAL.
+- Validation:759 tests and isolated service UAT passed: forced audit rollback across all six operations, concurrent acknowledgement/close once, original timestamps, parent/link/consent/observer denial, exact report scope, stale reply rejection, consent withdrawal race, unchanged ledger/outbox. Actual HTTP covers parent detail/PDF/ack/question/read/close, repeated requests, wrong-report rejection, withdrawn consent, no internal note leakage, staff reply form and three-language guidance. Final 260-page production build and TypeScript passed.
+- Migration: none. Existing URLs/role boundaries remain. No real business test writes, external message runner or WeChat client publication.
+- Remaining: other Care management/risk/coverage/service-review boundaries and overall phase6 acceptance; phases5/7 follow-ups and phases8-10 route/language/role acceptance and unified delivery are not declared complete.
+- Rollback point: `7f9f1f68c29b920e645417ed86ab12666534c9c0` (r453).
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
 ## 2026-09-29-r453
 
 - Release ID: `2026-09-29-r453`
@@ -801,7 +816,7 @@
 ---
 
 
-- Current release line on this branch: `2026-09-29-r452`, ready for guarded release of current Care report access and consent checks. Overall programme remains in progress; no Mini Program client release.
+- Current release line on this branch: `2026-09-29-r454`, ready for guarded release of atomic Care parent report and question delivery. Overall programme remains in progress; no Mini Program client release.
 
 ## 2026-09-09-r404 Ready
 
