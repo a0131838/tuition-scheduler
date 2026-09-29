@@ -10,7 +10,7 @@ async function main(){
  const campus=await prisma.campus.create({data:{name:`Isolated read campus ${suffix}`}});
  const cls=await prisma.class.create({data:{teacherId:teacher.id,courseId:course.id,subjectId:subject.id,campusId:campus.id,capacity:1,oneOnOneStudentId:student.id}});
  await prisma.enrollment.create({data:{classId:cls.id,studentId:student.id}});
- const rows=[];
+ const rows:Array<{id:string;ticketNo:string}>=[];
  for(const [idx,type,status,isArchived] of [[0,'排课协调','Waiting Teacher',false],[1,'改上课老师','Confirmed',false],[2,'排课协调','Completed',false],[3,'客服事项','Cancelled',true]] as const){
   rows.push(await prisma.ticket.create({data:{ticketNo:`UAT-READ-${suffix}-${idx}`,type,status,isArchived,studentId:student.id,studentName:student.name,source:'Isolated UAT',priority:'Normal',durationMin:60,...(idx===1?{schedulingActions:{create:{sequence:1,actionType:'REPLACE_TEACHER',status:'NEED_INFO'}}}:{})}}));
  }

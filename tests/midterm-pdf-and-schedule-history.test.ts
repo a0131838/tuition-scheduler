@@ -28,7 +28,11 @@ test("class scheduling keeps history inside the existing sessions page and recor
   assert.match(page, /<details/);
   assert.match(page, /Schedule change history/);
   assert.match(createDelete, /SESSION_CREATED/);
-  assert.match(createDelete, /SESSION_DELETED/);
+  assert.match(createDelete, /deleteEmptySession/);
+  const deletion = read("../lib/session-deletion.ts");
+  assert.match(deletion, /action:'SESSION_DELETED'/);
+  assert.match(deletion, /sourceSnapshot:row/);
+  assert.match(deletion, /isolationLevel:'Serializable'/);
   assert.match(reschedule, /SESSION_RESCHEDULED/);
   assert.match(replaceTeacher, /SESSION_TEACHER_REPLACED/);
   assert.match(assignStudent, /SESSION_STUDENT_CHANGED/);

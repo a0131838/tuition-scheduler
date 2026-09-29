@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { sessionBelongsToStudentWhere } from "@/lib/session-students";
+import { studentLessonFeedbackState } from "@/lib/session-feedback-state";
+import { feedbackPolicyState } from "@/lib/session-feedback-policy";
 import { lessonRecordStatus } from "@/lib/student-scheduling-overview";
 import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 import { t, type Lang } from "@/lib/i18n";
@@ -25,13 +27,21 @@ export default async function StudentLessonRecords({ studentId, params, lang }: 
   const pages = Math.max(1, Math.ceil(count / pageSize));
   const page = Math.min(requestedPage, pages);
   const rows = await prisma.session.findMany({ where, orderBy: [{ startAt: "desc" }, { id: "asc" }], skip: (page - 1) * pageSize, take: pageSize,
-    include: { teacher: true, class: { include: { teacher: true, course: true, subject: true } }, attendances: { where: { studentId } } } });
+    include: { teacher: true, class: { include: { teacher: true, course: true, subject: true, enrollments: { select: { studentId: true } } } }, feedbacks: { select: { teacherId: true, status: true, isProxyDraft: true, content: true } }, attendances: { where: { studentId } } } });
   const subjects = await prisma.subject.findMany({ where: { classes: { some: { sessions: { some: {
     OR: [sessionBelongsToStudentWhere(studentId), { attendances: { some: { studentId } } }],
   } } } } }, include: { course: true }, orderBy: { name: "asc" } });
   const labels: Record<string, string> = {
     CANCELLED: t(lang, "Cancelled", "已取消"), ATTENDED: t(lang, "Attended", "已上课"),
     ABSENT: t(lang, "Absent", "缺席"), UNMARKED: t(lang, "Attendance pending", "已过期未点名"), SCHEDULED: t(lang, "Scheduled", "已排课"),
+  };
+  const feedbackLabels = {
+    CANCELLED: t(lang, "Not required - cancelled", "无需反馈 — 已取消"),
+    EXEMPT: t(lang, "Not required - reviewed activity", "无需反馈 — 活动已核验"),
+    NOT_DUE: t(lang, "Lesson not finished", "课程尚未结束"),
+    MISSING: t(lang, "Feedback pending", "待提交反馈"),
+    PROXY_DRAFT: t(lang, "Draft - teacher confirmation pending", "代录草稿 — 待老师确认"),
+    SUBMITTED: t(lang, "Feedback submitted", "反馈已提交"),
   };
   const href = (next: number) => {
     const p = new URLSearchParams();
@@ -55,16 +65,19 @@ export default async function StudentLessonRecords({ studentId, params, lang }: 
     </form>
     <div style={{ overflowX: "auto" }}>
       <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: 660 }}>
-        <thead><tr><th align="left">{t(lang, "Lesson time", "上课时间")}</th><th align="left">{t(lang, "Course / subject", "课程 / 科目")}</th><th align="left">{t(lang, "Teacher", "老师")}</th><th align="left">{t(lang, "Status", "状态")}</th><th align="left">{t(lang, "Scheduled minutes", "安排分钟")}</th></tr></thead>
+        <thead><tr><th align="left">{t(lang, "Lesson time", "上课时间")}</th><th align="left">{t(lang, "Course / subject", "课程 / 科目")}</th><th align="left">{t(lang, "Teacher", "老师")}</th><th align="left">{t(lang, "Status", "状态")}</th><th align="left">{t(lang, "Scheduled minutes", "安排分钟")}</th><th align="left">{t(lang, "Feedback", "反馈")}</th></tr></thead>
         <tbody>{rows.map((s) => {
           const status = lessonRecordStatus(s.attendances[0]?.status, s.endAt, now);
+          const feedback = studentLessonFeedbackState({...s, responsibleTeacherId: s.teacherId ?? s.class.teacherId}, studentId, now);
+          const policyNeedsReview = feedback !== "CANCELLED" && feedback !== "SUBMITTED" && feedbackPolicyState(s).stale;
           return <tr key={s.id} style={{ borderTop: "1px solid #e2e8f0", color: status === "CANCELLED" ? "#64748b" : undefined }}>
             <td><a href={`/admin/sessions/${s.id}/attendance`}>{formatBusinessDateTime(s.startAt)} - {formatBusinessTimeOnly(s.endAt)}</a></td>
             <td>{s.class.course.name} / {s.class.subject?.name ?? "-"}</td><td>{s.teacher?.name ?? s.class.teacher.name}</td>
             <td style={{ color: status === "UNMARKED" ? "#b45309" : undefined }}>{labels[status]}</td>
             <td>{Math.round((s.endAt.getTime() - s.startAt.getTime()) / 60000)}</td>
+            <td>{feedbackLabels[feedback]}{policyNeedsReview ? <div style={{ color: "#b45309", fontSize: 12 }}>{t(lang, "Activity exemption needs review", "活动豁免需重新核对")}</div> : null}</td>
           </tr>;
-        })}{!rows.length ? <tr><td colSpan={5}>{t(lang, "No lessons", "暂无课程")}</td></tr> : null}</tbody>
+        })}{!rows.length ? <tr><td colSpan={6}>{t(lang, "No lessons", "暂无课程")}</td></tr> : null}</tbody>
       </table>
     </div>
     <div style={{ display: "flex", gap: 16, marginTop: 12 }}>

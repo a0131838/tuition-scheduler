@@ -655,3 +655,22 @@ Logs: `/tmp/sgt-r442-language-http.log`, `/tmp/sgt-r442-backend.log`, `/tmp/sgt-
 ---
 
 Logs: `/tmp/sgt-r443-focused.log`, `/tmp/sgt-r443-backend.log`, `/tmp/sgt-r443-build.log`, `/tmp/sgt-r443-http.log`, `/tmp/sgt-r443-all-tests.log`.
+
+## 2026-09-29-r444
+
+- Release ID: `2026-09-29-r444`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; guarded release proof is recorded in the execution ledger.
+- Problem: the extracted student lesson-records table had lost its feedback column. Wider regression also revealed stale assertions against relocated code, a changed AI hostname, HR workspace additions and an incomplete leave-query mock.
+- Change: restore feedback per student/lesson using canonical teacher-final/draft/activity policy. Own cancellation does not exempt classmates; free teaching remains pending; another teacher's submission is not completion; outdated exemptions are flagged. All new labels support EN/ZH/BILINGUAL. Update old tests against inspected current boundaries and add approved-leave denial and student-specific feedback assertions.
+- Release recovery: r443 was blocked at server type checking because its newly added UAT array lacked a type. It never reached a PM2 switch; login remained HTTP200. This release fixes that script typing and includes r443 parallel ticket reads. Earlier r443 local build evidence preceded adding the UAT file; final exact-source build/tsc now include both scripts.
+- Validation:751 tests passed with0 failures, TypeScript and260-page production build passed. Isolated authenticated HTTP checks three languages, cancellation, free lesson, draft, wrong teacher, final submission, future lesson, valid/stale exemption and unchanged teaching/ledger snapshots. Browser verifies the eight-row bilingual history; no new console errors beyond the previously recorded r434 entry.
+- Migration: none. No production business writes, messages, deductions or history rewriting. No WeChat client release.
+- Risk: restores state visibility only; user must still review or submit the actual feedback through existing workflows. Whole-system cross-role/manual acceptance remains in progress despite the passing automated suite.
+- Remaining: phases4/5 final acceptance,6/7 integration,8 route/language inventory,9 cross-role regression and10 unified delivery.
+- Rollback point: `540c677e4321ec36d27775a5afaeee1692de829c` (r442, last verified live before this release).
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
+Logs: `/tmp/sgt-r444-all-tests.log`, `/tmp/sgt-r444-tsc.log`, `/tmp/sgt-r444-build-final.log`, `/tmp/sgt-r444-http.log`.

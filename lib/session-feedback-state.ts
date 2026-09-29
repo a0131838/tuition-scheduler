@@ -13,3 +13,9 @@ export function sessionFeedbackState(input:FeedbackPolicySession & {endAt:Date|s
  return feedback?.isProxyDraft||feedback?.status==='PROXY_DRAFT'?'PROXY_DRAFT':'MISSING';
 }
 export function isPendingFeedback(state:SessionFeedbackState){return state==='MISSING'||state==='PROXY_DRAFT';}
+
+/** A student's cancellation does not exempt classmates who attended the same lesson. */
+export function studentLessonFeedbackState(input:Parameters<typeof sessionFeedbackState>[0] & {attendances:Array<{studentId:string;status:string}>},studentId:string,now=new Date()):SessionFeedbackState|'CANCELLED' {
+ if(input.attendances.some(a=>a.studentId===studentId&&a.status==='EXCUSED'))return 'CANCELLED';
+ return sessionFeedbackState(input,now);
+}

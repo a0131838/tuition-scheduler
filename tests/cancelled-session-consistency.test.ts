@@ -9,8 +9,10 @@ function read(file: string) {
 
 test("student history labels cancelled lessons as feedback not required", () => {
   const source = read("app/admin/students/[id]/page.tsx");
-  assert.match(source, /a\.status === "EXCUSED"/);
-  assert.match(source, /Not required - cancelled/);
+  assert.match(source, /StudentLessonRecords/);
+  const records = read("app/admin/students/[id]/_components/StudentLessonRecords.tsx");
+  assert.match(records, /studentLessonFeedbackState/);
+  assert.match(records, /Not required - cancelled/);
 });
 
 test("academic management excludes each cancelled student from lesson and next-session statistics", () => {

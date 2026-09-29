@@ -7,7 +7,7 @@ test("web SSO route reuses the formal session and never accepts or forwards a pa
   const source = readFileSync(new URL("../app/api/admin/ai-os/sso/route.ts", import.meta.url), "utf8");
   assert.match(source, /getCurrentUser\(\)/);
   assert.match(source, /issueAiMiniappDelegation/);
-  assert.match(source, /const AI_ORIGIN = "https:\/\/gtaisg\.com"/);
+  assert.match(source, /const AI_ORIGIN = "https:\/\/ai\.gtaisg\.com"/);
   assert.match(source, /new URL\("\/auth\/sso", AI_ORIGIN\)/);
   assert.doesNotMatch(source, /passwordHash|passwordSalt|verifyPassword|body\.password/);
 });

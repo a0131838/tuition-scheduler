@@ -34,7 +34,7 @@ test("student desk exposes a dedicated missing-source review queue", () => {
   const page = read("app/admin/students/page.tsx");
   assert.match(page, /MISSING_SOURCE_FILTER = "__missing__"/);
   assert.match(page, /where\.sourceChannelId = null/);
-  assert.match(page, /学生来源未设置/);
+  assert.match(page, /<option value=\{MISSING_SOURCE_FILTER\}>\{t\(lang, "Not set", "未设置"\)\}<\/option>/);
 });
 
 test("guided intake displays the profile source and does not fall back to in-house", () => {
