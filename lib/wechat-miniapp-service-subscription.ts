@@ -1,3 +1,4 @@
+import {withNotificationToken,confirmedNotificationResponse} from './notification-transport-outcome';
 import { Prisma } from "@prisma/client";
 import { miniappRequestStatusLabel } from "@/lib/miniapp-parent-requests";
 import { countAcceptedTemplate } from "@/lib/wechat-miniapp-subscription";
@@ -111,10 +112,10 @@ export async function availableServiceTemplate(parentId: string, templateKey: st
   const [audits, sentRows] = await Promise.all([
     prisma.parentPortalAudit.findMany({
       where: { parentId, action: "MINIAPP_SUBSCRIPTION_INTENT", targetId: template.groupKey },
-      select: { metaJson: true }, orderBy: { createdAt: "desc" }, take: 500,
+      select: { metaJson: true }, orderBy: { createdAt: "desc" },
     }),
     prisma.miniappNotificationOutbox.findMany({
-      where: { parentId, status: "SENT" }, select: { templateKey: true, payloadJson: true }, take: 1000,
+      where: { parentId, status: { in: ["SENT", "PROCESSING"] } }, select: { templateKey: true, payloadJson: true },
     }),
   ]);
   const accepted = countAcceptedTemplate(audits, template.templateId);
@@ -144,25 +145,19 @@ export async function sendServiceNotification(input: {
   payload: unknown;
   template: ServiceTemplateDefinition;
 }) {
-  const token = await accessToken();
-  const payload = input.payload && typeof input.payload === "object" ? input.payload as Record<string, unknown> : {};
-  const response = await fetch(`https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token=${encodeURIComponent(token)}`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      touser: input.openId,
-      template_id: input.template.templateId,
-      page: input.template.page(payload),
-      data: buildServiceNotificationData(input.template.kind, payload),
-    }),
+  return withNotificationToken(accessToken, async token => {
+    const payload = input.payload && typeof input.payload === "object" ? input.payload as Record<string, unknown> : {};
+    return confirmedNotificationResponse(() => fetch(`https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token=${encodeURIComponent(token)}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        touser: input.openId,
+        template_id: input.template.templateId,
+        page: input.template.page(payload),
+        data: buildServiceNotificationData(input.template.kind, payload),
+      }),
+    }));
   });
-  const result = await response.json() as any;
-  if (!response.ok || result.errcode !== 0) {
-    const error = new Error(`Wechat subscribe send failed: ${result.errcode ?? response.status} ${result.errmsg ?? ""}`) as Error & { errcode?: number };
-    error.errcode = Number(result.errcode ?? response.status);
-    throw error;
-  }
-  return { errcode: 0, errmsg: String(result.errmsg ?? "ok") };
 }
 
 export function servicePayloadWithDeliveredTemplate(payload: unknown, templateId: string, consentGroupKey: string): Prisma.InputJsonValue {

@@ -41,7 +41,8 @@ export async function communicationDeliveryEvidence(tasks:TaskScope[]){
    const counts:Counts={};
    for(const group of groups)if(group.targetType===targetType&&group.targetId===targetId&&group.templateKey===templateKey&&group.parentId===task.parentId&&group.studentId===task.studentId)counts[group.status]=(counts[group.status]??0)+group._count._all;
    const summary=summarizeDeliveryCounts(counts);
-   return [task.id,{...summary,reviewNeeded:summary.status==='NEEDS_REVIEW',scope,note}] as const;
+   if(counts.PROCESSING) note+=' · Delivery in progress or unconfirmed; do not automatically resend / 正在发送或结果未确认，请勿自动重发';
+   return [task.id,{...summary,reviewNeeded:summary.status==='NEEDS_REVIEW'||Boolean(counts.PROCESSING),scope,note}] as const;
   }));
  },{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead,timeout:20000});
 }

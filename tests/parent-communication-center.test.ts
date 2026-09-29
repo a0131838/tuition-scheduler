@@ -52,7 +52,10 @@ test("parent feedback APIs only expose published parent-facing content", async (
 
 test("course reminder queue invalidates stale changed or cancelled reminders", async () => {
   const source = await readFile(new URL("../scripts/queue-miniapp-course-reminders.ts", import.meta.url), "utf8");
-  assert.match(source, /INVALIDATE_STALE_COURSE_REMINDER/);
+  assert.match(source, /invalidateScannedPendingNotification/);
+  const dispatch = await readFile(new URL("../lib/notification-dispatch.ts", import.meta.url), "utf8");
+  assert.match(dispatch, /INVALIDATE_STALE_COURSE_REMINDER/);
+  assert.match(dispatch, /status:'PENDING',updatedAt:row.updatedAt/);
   assert.match(source, /Session changed; stale reminder invalidated/);
   assert.match(source, /Student session cancelled; reminder invalidated/);
   assert.match(source, /getVisibleSessionStudents/);

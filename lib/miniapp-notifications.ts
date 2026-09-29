@@ -39,36 +39,34 @@ export async function queueMiniappNotification(input: {
   const existing = await db.miniappNotificationOutbox.findUnique({ where: uniqueWhere });
   if (
     existing &&
-    (["SENT", "PROCESSING"].includes(existing.status) ||
+    (existing.sentAt || ["SENT", "PROCESSING"].includes(existing.status) ||
       (existing.status === "SKIPPED" && existing.error !== COURSE_CHANGE_REMINDER_REQUEUE_ERROR))
   ) {
     return existing;
   }
 
-  return db.miniappNotificationOutbox.upsert({
-    where: uniqueWhere,
-    create: {
-      parentId: parent.id,
-      studentId: input.studentId || null,
-      openId: parent.wechatOpenId || null,
-      templateKey: input.templateKey,
-      eventType: input.eventType,
-      targetType: input.targetType || "",
-      targetId: input.targetId || "",
-      payloadJson: input.payload ?? Prisma.JsonNull,
-      scheduledAt: input.scheduledAt || new Date(),
-    },
-    update: {
-      studentId: input.studentId || null,
-      openId: parent.wechatOpenId || null,
-      eventType: input.eventType,
-      payloadJson: input.payload ?? Prisma.JsonNull,
-      scheduledAt: input.scheduledAt || new Date(),
-      status: "PENDING",
-      error: null,
-      sentAt: null,
-    },
-  });
+  const data = {
+    studentId: input.studentId || null,
+    openId: parent.wechatOpenId || null,
+    eventType: input.eventType,
+    payloadJson: input.payload ?? Prisma.JsonNull,
+    scheduledAt: input.scheduledAt || new Date(),
+  };
+  if (existing) {
+    // Consent lookup/queue scans can overlap sender claims. Never reset a newer state.
+    await db.miniappNotificationOutbox.updateMany({
+      where: { id: existing.id, status: existing.status, updatedAt: existing.updatedAt },
+      data: { ...data, status: "PENDING", error: null, sentAt: null },
+    });
+  } else {
+    // A concurrent creator may already have claimed this unique notification.
+    await db.miniappNotificationOutbox.createMany({
+      data: { ...data, parentId: parent.id, templateKey: input.templateKey,
+        targetType: input.targetType || "", targetId: input.targetId || "" },
+      skipDuplicates: true,
+    });
+  }
+  return db.miniappNotificationOutbox.findUnique({ where: uniqueWhere });
 }
 
 export async function queueMiniappNotificationsForStudent(input: {

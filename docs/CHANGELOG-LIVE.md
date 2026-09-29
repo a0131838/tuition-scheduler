@@ -1,4 +1,19 @@
 # CHANGELOG LIVE
+## 2026-09-30-r463
+
+- Release ID: `2026-09-30-r463`
+- Date/Time (Asia/Singapore): `2026-09-30`
+- Deployment status: `READY`; live evidence belongs in the execution ledger.
+- Problem: automatic senders used stale scanned payloads and treated a successful provider send followed by a database/audit failure as a retryable transport failure. Concurrent queue refresh/invalidation could also overwrite PROCESSING/SENT state.
+- Change: both runners delegate to a testable dispatcher. After consent lookup, a Serializable claim rechecks the current lesson, exact student/parent binding and permission, content, original expiry and latest evidenced feedback publication. Invalid sources are skipped with bilingual reasons and atomic audit. Transport is outside the database transaction; only explicit provider rejection or pre-send credential failure can enter bounded retry. Lost/ambiguous responses stay PROCESSING for reconciliation; successful transport followed by persistence failure never enters retry. Claim reserves the template, quota accounting includes unresolved PROCESSING without row caps, and communication evidence explains unconfirmed delivery in EN/ZH. Queue refresh uses conditional version/state writes; stale invalidation is audited and cannot overwrite a refreshed or claimed record. Existing financial/request payloads and business document rules remain separate.
+- Validation:765 unit/source tests,260-page production build and TypeScript; isolated injected-transport UAT covers stale source/recipient after consent lookup, cancellation/roster/timetable/content/permissions, current/old/ambiguous feedback revisions, original expiry, concurrent dispatch once, atomic claim and outcome audit, successful send followed by audit failure, uncertain outcomes, bounded known failures, quota reservation beyond1000 unrelated records and queue/invalidation races. Publication/retry/delivery-evidence regressions passed. External HTTP is forbidden in the dispatch UAT; no actual sender runner was executed.
+- Compatibility: no schema migration, production business acceptance writes or WeChat client publication. Existing statuses retained. SENT means provider accepted the notification; it does not prove parent read/reply. PROCESSING can mean in progress or unconfirmed and must not be blindly requeued. Full mobile/language/route acceptance remains open.
+- Remaining: external sending cannot be atomic with later source changes or the database. Already claimed/sent messages cannot be recalled; interrupted/ambiguous delivery needs evidence-based reconciliation. Phase4–7 integrated acceptance, phase8/9 routes/roles/languages/mobile and phase10 unified delivery remain incomplete.
+- Rollback reference: `52d91a720b923f9d18f0de04f36e50c6fb001724` (r462); reverting restores the stale-send/resend defects. No schema rollback.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
 ## 2026-09-30-r462
 
 - Release ID: `2026-09-30-r462`

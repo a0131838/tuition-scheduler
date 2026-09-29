@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { MINIAPP_TEMPLATE_KEYS, queueMiniappNotificationsForStudent } from "@/lib/miniapp-notifications";
 import { getVisibleSessionStudents } from "@/lib/session-students";
-import { logAudit } from "@/lib/audit-log";
+import { invalidateScannedPendingNotification } from "@/lib/notification-dispatch";
 
 function addHours(d: Date, hours: number) {
   return new Date(d.getTime() + hours * 60 * 60 * 1000);
@@ -21,7 +21,7 @@ async function main() {
   const now = new Date();
   const pendingRows = await prisma.miniappNotificationOutbox.findMany({
     where: { status: "PENDING", templateKey: MINIAPP_TEMPLATE_KEYS.courseReminder24h, targetType: "Session" },
-    select: { id: true, studentId: true, targetId: true, payloadJson: true },
+    select: { id: true, updatedAt:true, studentId: true, targetId: true, payloadJson: true },
     take: 3000,
   });
   const pendingSessionIds = Array.from(new Set(pendingRows.map((row) => {
@@ -42,9 +42,9 @@ async function main() {
     const staleTime = !current || String(payload.startAt || "") !== current.startAt.toISOString();
     const cancelledForStudent = Boolean(current?.attendances.some((attendance) => attendance.studentId === row.studentId && attendance.status === "EXCUSED"));
     if (!staleTime && !cancelledForStudent) continue;
-    await prisma.miniappNotificationOutbox.update({ where: { id: row.id }, data: { status: "SKIPPED", error: staleTime ? "Session changed; stale reminder invalidated" : "Student session cancelled; reminder invalidated" } });
-    await logAudit({ actor: { email: "system-reminders@sgtmanage.local", name: "Automatic Reminder", role: "SYSTEM" }, module: "NOTIFICATIONS", action: "INVALIDATE_STALE_COURSE_REMINDER", entityType: "MiniappNotificationOutbox", entityId: row.id, meta: { sessionId, staleTime, cancelledForStudent } });
-    invalidated += 1;
+    invalidated += await invalidateScannedPendingNotification(row,
+      staleTime ? "Session changed; stale reminder invalidated / 课次已变更，旧提醒已失效" : "Student session cancelled; reminder invalidated / 学生课程已取消，提醒已失效",
+      {sessionId,staleTime,cancelledForStudent});
   }
   const windowEnd = addHours(now, 30);
   const sessions = await prisma.session.findMany({

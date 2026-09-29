@@ -1,3 +1,4 @@
+import {withNotificationToken,confirmedNotificationResponse} from './notification-transport-outcome';
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
@@ -65,11 +66,11 @@ export async function courseReminderQuota(parentId: string) {
   const [audits, sentRows] = await Promise.all([
     prisma.parentPortalAudit.findMany({
       where: { parentId, action: "MINIAPP_SUBSCRIPTION_INTENT", targetId: "course" },
-      select: { metaJson: true }, orderBy: { createdAt: "desc" }, take: 500,
+      select: { metaJson: true }, orderBy: { createdAt: "desc" },
     }),
     prisma.miniappNotificationOutbox.findMany({
-      where: { parentId, status: "SENT", eventType: { in: ["COURSE_REMINDER", "COURSE_REMINDER_TEST"] } },
-      select: { templateKey: true, payloadJson: true }, take: 500,
+      where: { parentId, status: { in: ["SENT", "PROCESSING"] }, eventType: { in: ["COURSE_REMINDER", "COURSE_REMINDER_TEST"] } },
+      select: { templateKey: true, payloadJson: true },
     }),
   ]);
   return summarizeCourseTemplateQuota(templates, audits, sentRows);
@@ -116,17 +117,12 @@ async function accessToken() {
 }
 
 export async function sendCourseReminder(input: { openId: string; payload: unknown; template: CourseTemplate }) {
-  const token = await accessToken();
-  const response = await fetch(`https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token=${encodeURIComponent(token)}`, {
-    method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ touser: input.openId, template_id: input.template.templateId, page: "pages/schedule/schedule", data: buildCourseReminderData(input.template.kind, input.payload) }),
+  return withNotificationToken(accessToken, async token => {
+    return confirmedNotificationResponse(() => fetch(`https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token=${encodeURIComponent(token)}`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ touser: input.openId, template_id: input.template.templateId, page: "pages/schedule/schedule", data: buildCourseReminderData(input.template.kind, input.payload) }),
+    }));
   });
-  const result = (await response.json()) as any;
-  if (!response.ok || result.errcode !== 0) {
-    const error = new Error(`Wechat subscribe send failed: ${result.errcode ?? response.status} ${result.errmsg ?? ""}`) as Error & { errcode?: number };
-    error.errcode = Number(result.errcode ?? response.status); throw error;
-  }
-  return { errcode: 0, errmsg: String(result.errmsg ?? "ok") };
 }
 
 export function payloadWithDeliveredTemplate(payload: unknown, templateId: string): Prisma.InputJsonValue {
