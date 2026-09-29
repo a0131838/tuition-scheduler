@@ -1,4 +1,19 @@
 # RELEASE BOARD
+## 2026-09-29-r449
+
+- Release ID: `2026-09-29-r449`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; final live proof is recorded in the execution ledger.
+- Problem: invoice-only deletion guards allowed signed-but-uninvoiced or parent-submitted school applications to disappear with their event history. Voiding committed before its event, and successful void/delete redirects were caught as errors.
+- Change: retain voided records with signature, invoice, link, submission, snapshot or non-draft event evidence, even when current status is inconsistent. Only unused voided drafts may be deleted, with original draft and event snapshot in the independent audit table in the same serializable transaction. Voiding and its reason/from-status event are atomic; current observer accounts cannot invoke either mutation. Already-voided records cannot be edited or issued a new sign link. Successful redirects now occur outside error handlers. The delete affordance and retention explanation use EN/ZH/BILINGUAL.
+- Validation:756 full tests, final TypeScript and260-page production build passed. Isolated UAT verifies individual historical markers and event-only evidence, signed reason requirement, audit/event failure rollback, concurrent void/delete once, observer denial and unchanged billing/ledger/outbox. Authenticated local HTTP checks all three language variants, tampered historical delete denial, legacy-style observer denial and audited unused draft deletion.
+- Migration: none. Existing invoice/payment records, signatures and external link tokens are retained; voiding does not refund or cancel invoices. No real applications, student balances, approvals or messages were altered for testing; no WeChat package published.
+- Remaining: signing/invoice generation and parent/draft/link writes still need end-to-end concurrency review; this checkpoint does not claim all school-application transitions are atomic. Full Care fresh consent/reviewer checks and phases4-10 acceptance/delivery remain outstanding.
+- Rollback point: `6668293d1a8d995a3ec20c09fc913cb172b9cfcf` (r448).
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
 ## 2026-09-29-r448
 
 - Release ID: `2026-09-29-r448`
@@ -726,7 +741,7 @@
 ---
 
 
-- Current release line on this branch: `2026-09-29-r448`, ready for guarded release of fresh staff time-choice acceptance. Overall programme remains in progress; no Mini Program client release.
+- Current release line on this branch: `2026-09-29-r449`, ready for guarded release of school-application history protection. Overall programme remains in progress; no Mini Program client release.
 
 ## 2026-09-09-r404 Ready
 

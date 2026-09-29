@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import {
@@ -200,26 +201,26 @@ async function voidAction(formData: FormData) {
       reason: String(formData.get("reason") ?? "").trim() || null,
       actorUserId: admin.id,
     });
-    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("School application voided")}${source}`);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Void school application failed";
     redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?err=${encodeURIComponent(msg)}&open=${encodeURIComponent(id)}${source}`);
   }
+  redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("School application voided")}${source}`);
 }
 
 async function deleteVoidedAction(formData: FormData) {
   "use server";
-  await requireAdmin();
+  const admin = await requireAdmin();
   const studentId = String(formData.get("studentId") ?? "").trim();
   const id = String(formData.get("applicationId") ?? "").trim();
   const source = sourceQuery(formData);
   try {
-    await deleteVoidedSchoolApplication({ id });
-    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("Voided school application deleted")}${source}`);
+    await deleteVoidedSchoolApplication({ id, actorUserId: admin.id });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Delete school application failed";
     redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?err=${encodeURIComponent(msg)}&open=${encodeURIComponent(id)}${source}`);
   }
+  redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("Voided school application deleted")}${source}`);
 }
 
 export default async function SchoolApplicationsPage({
@@ -230,6 +231,7 @@ export default async function SchoolApplicationsPage({
   searchParams?: Promise<{ msg?: string; err?: string; open?: string; from?: string }>;
 }) {
   await requireAdmin();
+  const lang = await getLang();
   const { id: studentId } = await params;
   const sp = await searchParams;
   const [student, applications] = await Promise.all([
@@ -529,19 +531,19 @@ export default async function SchoolApplicationsPage({
                     </button>
                   </form>
                 ) : null}
-                {app.status === "VOID" && !app.invoiceId ? (
+                {app.canDeleteVoided ? (
                   <form action={deleteVoidedAction}>
                     <input type="hidden" name="studentId" value={student.id} />
                     <input type="hidden" name="applicationId" value={app.id} />
                     {returnToList ? <input type="hidden" name="from" value="school-applications" /> : null}
                     <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #991b1b", background: "#991b1b", color: "#fff", fontWeight: 800 }}>
-                      Delete voided / 删除已作废
+                      {t(lang, "Delete unused voided draft", "删除未使用的已作废草稿")}
                     </button>
                   </form>
                 ) : null}
-                {app.status === "VOID" && app.invoiceId ? (
+                {app.status === "VOID" && !app.canDeleteVoided ? (
                   <div style={{ color: "#92400e", fontSize: 12 }}>
-                    Linked invoice records are kept for audit and cannot be deleted.
+                    {t(lang, "Application links, submissions, signatures and billing history are retained. This voided record cannot be deleted.", "申请链接、资料提交、签署和账务历史须保留，此作废记录不能删除。")}
                   </div>
                 ) : null}
               </div>

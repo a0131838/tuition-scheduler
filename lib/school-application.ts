@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { canDeleteVoidedSchoolApplication, schoolApplicationHasSignedHistory } from "./school-application-history";
 import { Prisma, SchoolApplicationEventType, SchoolApplicationStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { BUSINESS_UPLOAD_PREFIX, storeBusinessBuffer } from "@/lib/business-file-storage";
@@ -18,6 +19,7 @@ const DEFAULT_PARENT_INFO_TTL_DAYS = 14;
 const INVOICE_MARKER_PREFIX = "school-application:";
 
 const includeApplication = {
+  events: { select: { eventType: true } },
   student: true,
   package: {
     include: {
@@ -57,6 +59,7 @@ export type SchoolApplicationParentInfo = {
 export type SchoolApplicationParentInfoForm = SchoolApplicationParentInfo;
 
 export type SchoolApplicationSummary = {
+  canDeleteVoided: boolean;
   id: string;
   studentId: string;
   packageId: string | null;
@@ -245,6 +248,7 @@ function mergeParentInfoForForm(input: {
 
 function summarize(row: Row): SchoolApplicationSummary {
   return {
+    canDeleteVoided: canDeleteVoidedSchoolApplication(row),
     id: row.id,
     studentId: row.studentId,
     packageId: row.packageId,
@@ -301,8 +305,8 @@ async function event(input: {
   actorUserId?: string | null;
   actorLabel?: string | null;
   payloadJson?: Prisma.JsonValue;
-}) {
-  await prisma.schoolApplicationEvent.create({
+}, db: Prisma.TransactionClient = prisma) {
+  await db.schoolApplicationEvent.create({
     data: {
       applicationId: input.applicationId,
       eventType: input.eventType,
@@ -470,8 +474,8 @@ export async function saveSchoolApplicationDraft(input: {
 }) {
   const current = await prisma.schoolApplicationService.findUnique({ where: { id: input.id } });
   if (!current) throw new Error("School application not found");
-  if (current.status === SchoolApplicationStatus.SIGNED || current.status === SchoolApplicationStatus.INVOICE_CREATED) {
-    throw new Error("Signed school application cannot be edited");
+  if (current.status === SchoolApplicationStatus.SIGNED || current.status === SchoolApplicationStatus.INVOICE_CREATED || current.status === SchoolApplicationStatus.VOID) {
+    throw new Error("Signed or voided school application cannot be edited / 已签署或已作废的申请不能编辑");
   }
   const items = coerceItems(input.items);
   if (items.length < 1 || items.length > 5) throw new Error("School application must include 1 to 5 schools");
@@ -726,8 +730,8 @@ export async function prepareSchoolApplicationSignLink(input: {
 }) {
   const app = await getSchoolApplicationById(input.id);
   if (!app) throw new Error("School application not found");
-  if (app.status === SchoolApplicationStatus.SIGNED || app.status === SchoolApplicationStatus.INVOICE_CREATED) {
-    throw new Error("School application is already signed");
+  if (app.status === SchoolApplicationStatus.SIGNED || app.status === SchoolApplicationStatus.INVOICE_CREATED || app.status === SchoolApplicationStatus.VOID) {
+    throw new Error("Signed or voided application cannot prepare a new sign link / 已签署或已作废的申请不能生成签字链接");
   }
   const snapshot = snapshotFromSummary(app);
   const unsignedPdf = await generateUnsignedSchoolApplicationPdfBuffer(snapshot);
@@ -866,53 +870,65 @@ export async function signSchoolApplication(input: {
   return summarize(row);
 }
 
+function schoolApplicationHistoryConflict(error: unknown): never {
+  if (error instanceof Prisma.PrismaClientKnownRequestError &&
+    (error.code === "P2034" || error.code === "P2010" && ["40001", "40P01"].includes(String(error.meta?.code)))) {
+    throw new Error("Application changed during this operation; refresh and review its current status / 申请在操作期间发生变化，请刷新并核对当前状态");
+  }
+  throw error;
+}
+
+async function schoolApplicationMutationActor(db: Prisma.TransactionClient, id?: string | null) {
+  if (!id) throw new Error("An authenticated operator is required / 需要已登录的操作人员");
+  const actor = await db.user.findUnique({ where: { id } });
+  if (!actor || actor.isObserver) throw new Error("Read-only or unavailable account / 此账号仅可查看或已失效");
+  return actor;
+}
+
 export async function voidSchoolApplication(input: {
   id: string;
   reason?: string | null;
   actorUserId?: string | null;
 }) {
-  const row = await prisma.schoolApplicationService.findUnique({
-    where: { id: input.id },
-    include: includeApplication,
-  });
-  if (!row) throw new Error("School application not found");
-  if (row.status === SchoolApplicationStatus.VOID) throw new Error("School application is already voided");
-  const reason = trimOrNull(input.reason);
-  if ((row.status === SchoolApplicationStatus.SIGNED || row.status === SchoolApplicationStatus.INVOICE_CREATED) && !reason) {
-    throw new Error("Voiding a signed school application requires a reason");
-  }
-  const next = await prisma.schoolApplicationService.update({
-    where: { id: row.id },
-    data: { status: SchoolApplicationStatus.VOID, voidedAt: new Date() },
-    include: includeApplication,
-  });
-  await event({
-    applicationId: row.id,
-    eventType: SchoolApplicationEventType.VOIDED,
-    actorUserId: input.actorUserId ?? null,
-    actorLabel: "Voided school application service",
-    payloadJson: { reason, invoiceId: row.invoiceId, invoiceNo: row.invoiceNo },
-  });
-  return summarize(next);
+  return prisma.$transaction(async tx => {
+    const actor = await schoolApplicationMutationActor(tx, input.actorUserId);
+    await tx.$queryRaw`SELECT id FROM "SchoolApplicationService" WHERE id=${input.id} FOR UPDATE`;
+    const row = await tx.schoolApplicationService.findUnique({ where: { id: input.id }, include: includeApplication });
+    if (!row) throw new Error("School application not found / 学校申请不存在");
+    if (row.status === SchoolApplicationStatus.VOID) throw new Error("School application is already voided / 学校申请已作废");
+    const reason = trimOrNull(input.reason);
+    if (schoolApplicationHasSignedHistory(row) && !reason) {
+      throw new Error("Voiding a signed school application requires a reason / 作废有签署或开票历史的申请必须填写原因");
+    }
+    const next = await tx.schoolApplicationService.update({
+      where: { id: row.id }, data: { status: SchoolApplicationStatus.VOID, voidedAt: new Date() }, include: includeApplication,
+    });
+    await event({
+      applicationId: row.id, eventType: SchoolApplicationEventType.VOIDED,
+      actorUserId: actor.id, actorLabel: "Voided school application service",
+      payloadJson: { reason, fromStatus: row.status, invoiceId: row.invoiceId, invoiceNo: row.invoiceNo },
+    }, tx);
+    return summarize(next);
+  }, { isolationLevel: "Serializable", timeout: 15000 }).catch(schoolApplicationHistoryConflict);
 }
 
-export async function deleteVoidedSchoolApplication(input: {
-  id: string;
-  actorUserId?: string | null;
-}) {
-  const row = await prisma.schoolApplicationService.findUnique({
-    where: { id: input.id },
-    select: { id: true, status: true, invoiceId: true, invoiceNo: true },
-  });
-  if (!row) throw new Error("School application not found");
-  if (row.status !== SchoolApplicationStatus.VOID) {
-    throw new Error("Only voided school application records can be deleted");
-  }
-  if (row.invoiceId || row.invoiceNo) {
-    throw new Error("Voided school application is linked to an invoice and must be kept for audit history");
-  }
-  await prisma.schoolApplicationService.delete({ where: { id: row.id } });
-  return { deleted: true };
+export async function deleteVoidedSchoolApplication(input: { id: string; actorUserId?: string | null }) {
+  return prisma.$transaction(async tx => {
+    const actor = await schoolApplicationMutationActor(tx, input.actorUserId);
+    await tx.$queryRaw`SELECT id FROM "SchoolApplicationService" WHERE id=${input.id} FOR UPDATE`;
+    const row = await tx.schoolApplicationService.findUnique({ where: { id: input.id }, include: { events: true } });
+    if (!row) throw new Error("School application not found / 学校申请不存在");
+    if (!canDeleteVoidedSchoolApplication(row)) {
+      throw new Error("Only an unused voided draft can be deleted; application links, submissions, signatures and invoices must be kept for history / 仅可删除未使用的已作废草稿；有链接、提交、签署或开票历史的申请须保留");
+    }
+    await tx.auditLog.create({ data: {
+      actorEmail: actor.email, actorName: actor.name, actorRole: actor.role,
+      module: "SCHOOL_APPLICATION", action: "DELETE_UNUSED_VOIDED_DRAFT", entityType: "SchoolApplicationService", entityId: row.id,
+      meta: JSON.parse(JSON.stringify({ sourceSnapshot: row })),
+    } });
+    await tx.schoolApplicationService.delete({ where: { id: row.id } });
+    return { deleted: true };
+  }, { isolationLevel: "Serializable", timeout: 15000 }).catch(schoolApplicationHistoryConflict);
 }
 
 export async function generateSchoolApplicationPdfBuffer(id: string, options: { companySeal?: boolean } = {}) {
