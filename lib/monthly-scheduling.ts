@@ -1,3 +1,5 @@
+import { resolveAttendanceRoster } from "./session-attendance-roster";
+import { completionSessionInclude, verifyMonthlySchedule, monthlyCompletionReviews } from "./monthly-scheduling-completion";
 import crypto from "crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -74,7 +76,7 @@ export const itemStatusLabels: Record<MonthlySchedulingItemStatus, { en: string;
   OFFERED: { en: "Options ready", zh: "待家长选择具体时间" },
   PARENT_SELECTED: { en: "Parent selected", zh: "家长已选时间" },
   NEEDS_CLARIFICATION: { en: "Needs clarification", zh: "需要澄清" },
-  MATCHED: { en: "Matched", zh: "已匹配" },
+  MATCHED: { en: "Arrangement confirmed; lessons to verify", zh: "安排已确认，待核验课表" },
   TEACHER_EXCEPTION: { en: "Teacher exception", zh: "需要老师例外确认" },
   SCHEDULED: { en: "Scheduled", zh: "已完成排课" },
   PAUSED: { en: "Paused", zh: "下月暂停" },
@@ -154,12 +156,7 @@ export function monthlySchedulingRelevantCourseIds(input: {
 }
 
 export function monthlySchedulingSessionStudentIds(session: any) {
-  const enrolled = (session.class?.enrollments ?? []).map((row: any) => row.studentId as string);
-  if (session.class?.capacity === 1) {
-    const studentId = session.studentId ?? session.class?.oneOnOneStudentId ?? enrolled[0] ?? null;
-    return studentId ? [studentId] : [];
-  }
-  return unique(enrolled.filter(Boolean));
+  return resolveAttendanceRoster(session).students.map(row => row.id);
 }
 
 function scheduleRow(session: any) {
@@ -413,7 +410,7 @@ export async function syncNextMonthlySchedulingAutomation(now = new Date()) {
 
 export async function getMonthlySchedulingCampaign(month?: string | null) {
   const where = month && monthlySchedulingRange(month) ? { month: monthlySchedulingRange(month)!.start } : undefined;
-  return prisma.monthlySchedulingCampaign.findFirst({
+  const campaign = await prisma.monthlySchedulingCampaign.findFirst({
     where,
     orderBy: { month: "desc" },
     include: {
@@ -433,6 +430,9 @@ export async function getMonthlySchedulingCampaign(month?: string | null) {
       },
     },
   });
+  if (!campaign) return null;
+  const reviews=await monthlyCompletionReviews(campaign.items,campaign.month);
+  return {...campaign,items:campaign.items.map(item=>({...item,completionNeedsReview:reviews.get(item.id)?.needsReview??false}))};
 }
 
 export async function listMonthlySchedulingQualifiedTeachers(courseIds: string[]) {
@@ -462,90 +462,57 @@ export async function setMonthlySchedulingCampaignStatus(campaignId: string, sta
 }
 
 export async function updateMonthlySchedulingItem(input: {
-  itemId: string;
-  status: MonthlySchedulingItemStatus;
-  expectedStatus?: MonthlySchedulingItemStatus;
-  ownerUserId?: string | null;
-  ownerName?: string | null;
-  internalNote?: string | null;
+  itemId: string; status: MonthlySchedulingItemStatus; expectedStatus?: MonthlySchedulingItemStatus;
+  expectedUpdatedAt?: string; ownerUserId?: string | null; ownerName?: string | null; internalNote?: string | null;
+  sessionIds?: string[]; expectedSessionCount?: number; completionReason?: string;
 }) {
-  if (!MONTHLY_SCHEDULING_ITEM_STATUSES.includes(input.status)) throw new Error("Invalid item status");
-  if (input.expectedStatus && !MONTHLY_SCHEDULING_ITEM_STATUSES.includes(input.expectedStatus)) throw new Error("Invalid expected status");
-  if (input.status === "MATCHED" && input.expectedStatus === "PARENT_SELECTED") {
+  if (!MONTHLY_SCHEDULING_ITEM_STATUSES.includes(input.status) || !input.expectedStatus || !MONTHLY_SCHEDULING_ITEM_STATUSES.includes(input.expectedStatus))
+    throw new Error("Refresh and select a valid status / 请刷新后选择有效状态");
+  return prisma.$transaction(async tx => {
+    await tx.$queryRaw`SELECT "id" FROM "MonthlySchedulingItem" WHERE "id" = ${input.itemId} FOR UPDATE`;
+    const item = await tx.monthlySchedulingItem.findUnique({where:{id:input.itemId},include:{campaign:true,offers:true}});
+    if (!item || item.status !== input.expectedStatus || (input.expectedUpdatedAt && item.updatedAt.toISOString() !== input.expectedUpdatedAt))
+      throw new Error("This item changed; refresh and try again / 记录已变化，请刷新重试");
+    const actor = input.ownerUserId ? await tx.user.findUnique({where:{id:input.ownerUserId}}) : null;
+    if (!actor) throw new Error("Authenticated staff required / 需要已登录员工身份");
+    if (["PAUSED","EXCLUDED"].includes(input.status) && (input.internalNote?.trim().length ?? 0) < 5)
+      throw new Error("Record the pause or exclusion reason / 请填写暂停或排除原因（至少5字）");
     const now = new Date();
-    return prisma.$transaction(async (tx) => {
-      const item = await tx.monthlySchedulingItem.findFirst({
-        where: { id: input.itemId, status: "PARENT_SELECTED" },
-        include: { offers: { where: { status: "HELD" }, orderBy: { parentRank: "asc" } } },
-      });
-      const offer = item?.offers[0];
-      if (!item || !offer || !offer.holdExpiresAt || offer.holdExpiresAt <= now) {
-        throw new Error("The parent time hold expired; ask the parent to select again");
-      }
-      await tx.monthlySchedulingOffer.update({
-        where: { id: offer.id },
-        data: { status: "ACCEPTED", acceptedAt: now, holdExpiresAt: null },
-      });
-      await tx.monthlySchedulingOffer.updateMany({
-        where: { itemId: item.id, id: { not: offer.id }, status: { in: ["AVAILABLE", "HELD"] } },
-        data: { status: "WITHDRAWN", holdExpiresAt: null },
-      });
-      return tx.monthlySchedulingItem.update({
-        where: { id: item.id },
-        data: {
-          status: "MATCHED",
-          ownerUserId: input.ownerUserId,
-          ownerName: input.ownerName,
-          internalNote: input.internalNote,
-          matchedAt: now,
-        },
-      });
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-  }
-  if (input.status === "SCHEDULED") {
-    const item = await prisma.monthlySchedulingItem.findUnique({
-      where: { id: input.itemId },
-      include: { campaign: true },
-    });
-    if (!item) throw new Error("Scheduling item not found");
-    const month = monthlySchedulingMonthKey(item.campaign.month);
-    const range = monthlySchedulingRange(month);
-    if (!range) throw new Error("Invalid campaign month");
-    const sessions = await prisma.session.findMany({
-      where: { startAt: { gte: range.start, lt: range.end }, class: { courseId: item.courseId } },
-      include: { class: { include: { enrollments: { select: { studentId: true } } } } },
-      take: 1000,
-    });
-    if (!sessions.some((session) => monthlySchedulingSessionStudentIds(session).includes(item.studentId))) {
-      throw new Error("Create the formal lesson before marking this item as scheduled");
+    if (input.status === "MATCHED" && item.status === "PARENT_SELECTED") {
+      const offer = item.offers.filter(o=>o.status==='HELD').sort((a,b)=>(a.parentRank??999)-(b.parentRank??999))[0];
+      if (!offer || !offer.holdExpiresAt || offer.holdExpiresAt <= now) throw new Error("The parent time hold expired; ask the parent to select again / 家长选时已过期，请重新选择");
+      await tx.monthlySchedulingOffer.update({where:{id:offer.id},data:{status:"ACCEPTED",acceptedAt:now,holdExpiresAt:null}});
+      await tx.monthlySchedulingOffer.updateMany({where:{itemId:item.id,id:{not:offer.id},status:{in:["AVAILABLE","HELD"]}},data:{status:"WITHDRAWN",holdExpiresAt:null}});
     }
-  }
-  const now = new Date();
-  const transitioning = !input.expectedStatus || input.expectedStatus !== input.status;
-  const updated = await prisma.monthlySchedulingItem.updateMany({
-    where: { id: input.itemId, ...(input.expectedStatus ? { status: input.expectedStatus } : {}) },
-    data: {
-      status: input.status,
-      ownerUserId: input.ownerUserId,
-      ownerName: input.ownerName,
-      internalNote: input.internalNote,
-      sentAt: transitioning && input.status === "SENT" ? now : undefined,
-      clarifiedAt: transitioning && input.status === "NEEDS_CLARIFICATION" ? now : undefined,
-      matchedAt: transitioning && input.status === "MATCHED" ? now : undefined,
-      scheduledAt: transitioning && input.status === "SCHEDULED" ? now : undefined,
-      pausedAt: transitioning && input.status === "PAUSED" ? now : undefined,
-    },
-  });
-  if (updated.count !== 1) throw new Error("This item changed in another session; refresh and try again");
-  const row = await prisma.monthlySchedulingItem.findUnique({ where: { id: input.itemId } });
-  if (!row) throw new Error("Scheduling item not found");
-  if (input.status === "SCHEDULED") {
-    await prisma.monthlySchedulingOffer.updateMany({
-      where: { itemId: input.itemId, status: "ACCEPTED" },
-      data: { status: "COMPLETED", holdExpiresAt: null },
-    });
-  }
-  return row;
+    let evidence: Prisma.InputJsonValue | undefined;
+    const verifyCompletion=input.status === "SCHEDULED" && (item.status !== "SCHEDULED" || !!input.sessionIds?.length);
+    if (verifyCompletion) {
+      if (!input.expectedUpdatedAt || !["MATCHED","SCHEDULED"].includes(item.status))
+        throw new Error("Confirm the arrangement, then verify formal lessons in the web workspace / 请先确认安排，再到网页工作台核验正式课次");
+      const ids=input.sessionIds??[];
+      if (!ids.length || ids.length>100) throw new Error("Select formal lessons in the web workspace / 请到网页工作台选择正式课次核验");
+      await tx.$queryRaw`SELECT "id" FROM "Session" WHERE "id" IN (${Prisma.join([...new Set(ids)].sort())}) ORDER BY "id" FOR UPDATE`;
+      const sessions=await tx.session.findMany({where:{id:{in:ids}},include:completionSessionInclude});
+      evidence=verifyMonthlySchedule({studentId:item.studentId,courseId:item.courseId,month:item.campaign.month,sessions,ids,
+        expectedSessionCount:input.expectedSessionCount??0,reason:input.completionReason??'',actorName:actor.name??actor.email,
+        expectedMinutes:item.expectedMinutes,offers:item.offers.filter(o=>['ACCEPTED','COMPLETED'].includes(o.status))});
+      await tx.monthlySchedulingOffer.updateMany({where:{itemId:item.id,status:"ACCEPTED"},data:{status:"COMPLETED",holdExpiresAt:null}});
+    }
+    const transitioning=item.status!==input.status;
+    const row=await tx.monthlySchedulingItem.update({where:{id:item.id},data:{status:input.status,
+      ownerUserId:item.ownerUserId??actor.id,ownerName:item.ownerName??actor.name,
+      internalNote:input.internalNote, scheduleEvidenceJson:evidence,
+      sentAt:transitioning&&input.status==='SENT'?now:undefined,
+      clarifiedAt:transitioning&&input.status==='NEEDS_CLARIFICATION'?now:undefined,
+      matchedAt:transitioning&&input.status==='MATCHED'?now:undefined,
+      scheduledAt:verifyCompletion?now:undefined,
+      pausedAt:transitioning&&input.status==='PAUSED'?now:undefined}});
+    await tx.auditLog.create({data:{actorEmail:actor.email,actorName:actor.name,actorRole:actor.role,module:'MONTHLY_SCHEDULING',
+      action:'ITEM_STATUS_VERIFIED',entityType:'MonthlySchedulingItem',entityId:item.id,
+      meta:{before:{status:item.status,ownerUserId:item.ownerUserId,internalNote:item.internalNote,scheduleEvidenceJson:item.scheduleEvidenceJson},
+        after:{status:row.status,ownerUserId:row.ownerUserId,internalNote:row.internalNote,scheduleEvidenceJson:row.scheduleEvidenceJson}}}});
+    return row;
+  },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
 }
 
 function cleanText(value: unknown, max: number) {
@@ -952,12 +919,14 @@ export async function submitMonthlySchedulingFamilyKeepByStaff(input: {
 
 export type MonthlySchedulingQueueLane = "READY_CONFIRM" | "WAITING_PARENT" | "EXCEPTIONS" | "COMPLETED" | "OTHER";
 
-export function monthlySchedulingQueueLane(row: { status: string; intent?: string | null; teacherPreferenceType?: string | null }): MonthlySchedulingQueueLane {
+export function monthlySchedulingQueueLane(row: { status: string; intent?: string | null; teacherPreferenceType?: string | null; completionNeedsReview?: boolean }): MonthlySchedulingQueueLane {
+  if (row.status === "SCHEDULED" && row.completionNeedsReview) return "EXCEPTIONS";
+  if (["SCHEDULED", "PAUSED", "EXCLUDED"].includes(row.status)) return "COMPLETED";
+  if (row.status === "MATCHED") return "READY_CONFIRM";
   if (row.status === "PARENT_SELECTED" || (row.status === "SUBMITTED" && row.intent === "KEEP")) return "READY_CONFIRM";
   if (["NOT_SENT", "SENT", "VIEWED", "OFFERED"].includes(row.status)) return "WAITING_PARENT";
   if (["NO_RESPONSE", "NEEDS_CLARIFICATION", "TEACHER_EXCEPTION", "CHANGE_REQUESTED"].includes(row.status)) return "EXCEPTIONS";
   if (row.status === "SUBMITTED" || row.intent === "UNSURE" || row.teacherPreferenceType === "VERIFY") return "EXCEPTIONS";
-  if (["MATCHED", "SCHEDULED", "PAUSED", "EXCLUDED"].includes(row.status)) return "COMPLETED";
   return "OTHER";
 }
 
@@ -1002,7 +971,12 @@ export async function listParentMonthlyScheduling(parentId: string, options: { m
       data: { viewedAt: new Date(), status: "VIEWED" },
     });
   }
-  return items.map((row) => ({ ...row, status: unseenIds.includes(row.id) ? "VIEWED" : row.status }));
+  const reviews=new Map<string, {needsReview:boolean}>();
+  for (const campaignId of unique(items.map(row=>row.campaignId))) {
+    const group=items.filter(row=>row.campaignId===campaignId);
+    for (const [id,result] of await monthlyCompletionReviews(group,group[0].campaign.month)) reviews.set(id,result);
+  }
+  return items.map((row) => ({ ...row, status: unseenIds.includes(row.id) ? "VIEWED" : row.status, completionNeedsReview:reviews.get(row.id)?.needsReview??false }));
 }
 
 type OfferSessionDate = { date: string; startAt: string; endAt: string };

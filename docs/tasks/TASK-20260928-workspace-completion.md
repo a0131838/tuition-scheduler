@@ -496,3 +496,20 @@ Logs: `/tmp/sgt-r433-focused.log`, `/tmp/sgt-r433-uat-final.log`, `/tmp/sgt-r433
 Logs: `/tmp/sgt-r434-focused.log`, `/tmp/sgt-r434-uat-final.log`, `/tmp/sgt-r434-http-final.log`, `/tmp/sgt-r434-admin-regression.log`, `/tmp/sgt-r434-teacher-regression.log`, `/tmp/sgt-r434-feedback-regression.log`, `/tmp/sgt-r434-backend.log`, `/tmp/sgt-r434-build-delivery.log`. Expected serialization conflicts assert safe rejection. Browser found and fixed misleading zero-student completion/cancelled labels. Screenshot: external `r434-isolated-roster-review.png`.
 
 Browser evidence note: one earlier React hydration #418 at03:18:32UTC was captured during local runtime rebuild acceptance. Final-build reload/language checks added no new error entries; underlying cause remains a phase9 stable-runtime investigation, not a claim of a completely clean console history. Final backend log: /tmp/sgt-r434-backend-final.log.
+
+## 2026-09-29-r435
+
+- Release ID: `2026-09-29-r435`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; guarded release evidence is recorded in the execution ledger.
+- Problem: monthly scheduling could be marked complete after finding any one lesson for a student/course in the month; confirmed arrangements shared the completed queue, and pause/exclusion lacked a required reason.
+- Change: completion selects exact formal lesson IDs, records the confirmed monthly total and review basis, validates student/course/month/cancellation, rejects overlap and missing monthly minutes, and verifies every accepted option date/time/teacher. Item, accepted offers, evidence snapshot and audit commit atomically with row locks and revision checks. Existing owners and parent replies stay intact; editing a completed item's note does not renew completion proof.
+- Read views: confirmed arrangements return to the confirmation/verification queue. Stored completion evidence is checked against current exact lessons; missing legacy proof or changed lessons surface for review in Web and parent/staff APIs without rewriting history. Pause/exclusion requires a reason. Existing Mini Program completion requests without evidence receive a web-workspace instruction; no WeChat client package is published.
+- UI: collapsed formal-timetable verification with candidate lessons, total, basis and last-verification links; EN/ZH/BILINGUAL for changed controls. Pending submissions disable inputs and open the saved result, fixing stale post-save state observed in browser acceptance. Existing broader monthly-page language cleanup remains in phase8.
+- Validation:33 focused tests,181 backend tests,260-page production build and full TypeScript. Isolated service covers missing/partial/duplicate/foreign/cancelled/mismatched lessons, forced audit rollback, concurrent completion once, owner/response preservation, current-vs-historical evidence review and unchanged attendance/feedback/ledger. HTTP covers four denied roles, legacy Mini bypass rejection, pause reason, shared staff/parent review state, family scope and private-note non-disclosure. Browser verifies real form save/result navigation and three-language changed controls.
+- Migration: additive nullable `MonthlySchedulingItem.scheduleEvidenceJson`; no backfill. Business-write acceptance uses isolated PostgreSQL only. No real classes, balances, messages, parent responses or completion statuses are altered by deployment.
+- Remaining: phase5 full sender/parent-response/manual-status transition review and capacity forecast; phases6–10 plus phase4 acceptance review. For arrangements without accepted options, the monthly count and basis are explicitly reviewed by staff, never inferred from four weeks.
+- Rollback point: `a3b67bbb05d9ede90998dbd4f8687bf65786ee9f` (r434); nullable column may remain.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---

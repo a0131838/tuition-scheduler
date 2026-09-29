@@ -88,9 +88,10 @@ test("staff proxy entry cannot replace matched or scheduled work", () => {
   assert.match(service, /status: input\.expectedStatus/);
 });
 
-test("scheduled completion requires a real target-month lesson", () => {
-  assert.match(service, /Create the formal lesson before marking this item as scheduled/);
-  assert.match(service, /monthlySchedulingSessionStudentIds\(session\)\.includes\(item\.studentId\)/);
+test("scheduled completion requires exact evidence within an atomic audited transaction", () => {
+  assert.match(service, /verifyMonthlySchedule/);
+  assert.match(service, /scheduleEvidenceJson:evidence/);
+  assert.match(service, /tx.auditLog.create/);
 });
 
 test("teacher-exception creation claims the item in the ticket transaction", () => {

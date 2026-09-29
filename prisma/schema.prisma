@@ -3490,6 +3490,7 @@ model MonthlySchedulingItem {
   submittedAt              DateTime?
   clarifiedAt              DateTime?
   matchedAt                DateTime?
+  scheduleEvidenceJson     Json?
   scheduledAt              DateTime?
   pausedAt                 DateTime?
   createdAt                DateTime  @default(now())
