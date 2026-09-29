@@ -1,3 +1,4 @@
+import { assertMonthlyStaffStatusChange } from "./monthly-scheduling-status-policy";
 import { resolveAttendanceRoster } from "./session-attendance-roster";
 import { completionSessionInclude, verifyMonthlySchedule, monthlyCompletionReviews } from "./monthly-scheduling-completion";
 import crypto from "crypto";
@@ -70,7 +71,7 @@ export const timePriorityLabels: Record<MonthlySchedulingTimePriority, { en: str
 
 export const itemStatusLabels: Record<MonthlySchedulingItemStatus, { en: string; zh: string }> = {
   NOT_SENT: { en: "Not sent", zh: "待发送" },
-  SENT: { en: "Sent", zh: "已发送" },
+  SENT: { en: "Send recorded", zh: "已记录发送" },
   VIEWED: { en: "Viewed", zh: "家长已查看" },
   SUBMITTED: { en: "Submitted", zh: "家长已提交" },
   OFFERED: { en: "Options ready", zh: "待家长选择具体时间" },
@@ -477,6 +478,7 @@ export async function updateMonthlySchedulingItem(input: {
     if (!actor) throw new Error("Authenticated staff required / 需要已登录员工身份");
     if (["PAUSED","EXCLUDED"].includes(input.status) && (input.internalNote?.trim().length ?? 0) < 5)
       throw new Error("Record the pause or exclusion reason / 请填写暂停或排除原因（至少5字）");
+    assertMonthlyStaffStatusChange(item,input.status,input.internalNote);
     const now = new Date();
     if (input.status === "MATCHED" && item.status === "PARENT_SELECTED") {
       const offer = item.offers.filter(o=>o.status==='HELD').sort((a,b)=>(a.parentRank??999)-(b.parentRank??999))[0];
@@ -923,6 +925,7 @@ export function monthlySchedulingQueueLane(row: { status: string; intent?: strin
   if (row.status === "SCHEDULED" && row.completionNeedsReview) return "EXCEPTIONS";
   if (["SCHEDULED", "PAUSED", "EXCLUDED"].includes(row.status)) return "COMPLETED";
   if (row.status === "MATCHED") return "READY_CONFIRM";
+  if (row.status === "SUBMITTED" && (row.intent === "UNSURE" || row.teacherPreferenceType === "VERIFY")) return "EXCEPTIONS";
   if (row.status === "PARENT_SELECTED" || (row.status === "SUBMITTED" && row.intent === "KEEP")) return "READY_CONFIRM";
   if (["NOT_SENT", "SENT", "VIEWED", "OFFERED"].includes(row.status)) return "WAITING_PARENT";
   if (["NO_RESPONSE", "NEEDS_CLARIFICATION", "TEACHER_EXCEPTION", "CHANGE_REQUESTED"].includes(row.status)) return "EXCEPTIONS";

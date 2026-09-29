@@ -513,3 +513,19 @@ Browser evidence note: one earlier React hydration #418 at03:18:32UTC was captur
 - Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
 
 ---
+
+## 2026-09-29-r436
+
+- Release ID: `2026-09-29-r436`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; guarded release evidence is maintained in the execution ledger.
+- Problem: the monthly scheduling status dropdown allowed staff to manufacture parent-read, reply and time-selection states without using the corresponding workflow, and an unresolved teacher identity could appear in the ready-confirm queue.
+- Change: shared Web/Mini status policy rejects new parent-observed states from generic status edits, preserves note-only updates, requires manual-send time/channel notes, prevents an existing reply being relabelled no-response, requires a recorded arrangement and resolved teacher identity for manual matching, and requires a reason to reopen completed verification. Parent time selections still use their live held offer; exact completion remains owned by r435's evidence check. Teacher identity review takes priority over keep-current intent in queue placement.
+- UI: status choices include only staff follow-up states plus the current status; owner is visible; send-record vs delivery/read/reply is explained in ZH/EN/BILINGUAL. Rejected actions open a red review message and leave state unchanged. Historical statuses, legacy links and existing client payloads remain readable; no WeChat package is uploaded.
+- Validation:41 focused tests,181 backend tests,TypeScript and260-page build. Isolated service UAT verifies no fabricated facts/no erase of replies, valid keep and held-offer confirmation, unresolved-teacher rejection, preserved owner/response and unchanged lesson/ledger counts. Authenticated Mini HTTP verifies crafted-state rejection, manual-send evidence and timestamp preservation during note updates. Browser verifies reduced dropdown, failed match with review message, owner display, result navigation and three-language instructions.
+- Migration: none. No production parent replies, notifications, lessons or balances changed for acceptance.
+- Remaining: phase5 response/hold transaction and staffing forecast review, phase4 acceptance and phases6–10. This release does not claim a manual send note proves delivery.
+- Rollback point: `387727a592547688f1be016871bc94025ae3ffd0` (r435).
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---

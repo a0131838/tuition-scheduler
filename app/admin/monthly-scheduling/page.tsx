@@ -1,3 +1,4 @@
+import { MONTHLY_STAFF_STATUS_CHOICES } from "@/lib/monthly-scheduling-status-policy";
 import MonthlyStatusForm from "./MonthlyStatusForm";
 import { isFormalMonthlyLesson, monthlyCompletionCandidates, readMonthlyScheduleEvidence } from "@/lib/monthly-scheduling-completion";
 import Link from "next/link";
@@ -165,7 +166,7 @@ async function itemStatusAction(formData: FormData) {
       completionReason:String(formData.get("completionReason")??'').slice(0,2000),
     });
   } catch(error) {
-    return monthlySchedulingRedirectPath(month,formData,{notice:error instanceof Error?error.message:'Verification failed / 核验失败'});
+    return monthlySchedulingRedirectPath(month,formData,{notice:error instanceof Error?error.message:'Verification failed / 核验失败',noticeTone:'error'});
   }
   revalidatePath("/admin/monthly-scheduling");
   return monthlySchedulingRedirectPath(month, formData, { status });
@@ -299,7 +300,7 @@ async function createExceptionTicketAction(formData: FormData) {
 export default async function MonthlySchedulingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; status?: string; lane?: string; cohort?: string; notice?: string }>;
+  searchParams: Promise<{ month?: string; status?: string; lane?: string; cohort?: string; notice?: string; noticeTone?: string }>;
 }) {
   const access = await requireMonthlySchedulingUser();
   const lang = await getLang();
@@ -350,7 +351,7 @@ export default async function MonthlySchedulingPage({
           <button style={buttonStyle}>{campaign ? t(lang, "Open selected month", "打开所选月份") : t(lang, "Create campaign", "创建活动")}</button>
           {campaign && <Link href={`/admin/monthly-scheduling/export?month=${month}&cohort=${selectedCohort}`} style={{ ...buttonStyle, textDecoration: "none", color: "#10243e" }}>{t(lang, "Export current group", "导出当前分组")}</Link>}
         </form>
-        {params.notice && <div style={{ padding: 10, background: "#eafaf0", color: "#17663a" }}>{params.notice}</div>}
+        {params.notice && <div style={{ padding: 10, background: params.noticeTone === "error" ? "#fff0f0" : "#eafaf0", color: params.noticeTone === "error" ? "#b42318" : "#17663a" }}>{params.notice}</div>}
       </section>
 
       {!campaign ? (
@@ -390,6 +391,7 @@ export default async function MonthlySchedulingPage({
 
           <section style={sectionStyle}>
             <h2 style={{ margin: 0 }}>{t(lang, "Follow-up queue", "家长跟进工作台")}</h2>
+            <p style={{margin:0,color:'#526071'}}>{t(lang,"Record replies through the parent or proxy-response form. A send record is not proof of delivery, reading or a reply. After confirming the arrangement, verify the formal timetable separately.","家长回复请通过家长端或代录入口记录。发送记录不代表送达、已读或已回复。确认安排后，仍须单独核验正式课表。")}</p>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <Link href={`/admin/monthly-scheduling?month=${month}&cohort=${selectedCohort}`} style={{ ...buttonStyle, textDecoration: "none", color: "#10243e", background: !selectedLane && selectedStatus === "ALL" ? "#dce9ff" : "#f7faff" }}>{t(lang, "All", "全部")} ({cohortItems.length})</Link>
               {[["READY_CONFIRM", t(lang,"Confirm / verify lessons","确认安排／核验课表")], ["WAITING_PARENT",t(lang,"Waiting for parent","等待家长")], ["EXCEPTIONS",t(lang,"Needs review","待核对")], ["COMPLETED",t(lang,"Scheduled / paused / excluded","已核验排课／暂停／排除")]].map(([lane, label]) => <Link key={lane} href={`/admin/monthly-scheduling?month=${month}&cohort=${selectedCohort}&lane=${lane}`} style={{ ...buttonStyle, textDecoration: "none", color: "#10243e", background: selectedLane === lane ? "#dce9ff" : "#f7faff" }}>{label} ({laneCounts[lane] ?? 0})</Link>)}
@@ -433,10 +435,11 @@ export default async function MonthlySchedulingPage({
                       </div>}
                     </td>
                     <td style={{ padding: 10, borderBottom: "1px solid #e5ebf3", minWidth: 360 }}>
+                      <div style={{fontSize:12,marginBottom:6}}>{t(lang,"Owner","负责人")}: {item.ownerName||t(lang,"Unassigned","未分配")}</div>
                       {access.canManage ? <>
                         <MonthlyStatusForm action={itemStatusAction} lang={lang} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 6 }}>
                           <input type="hidden" name="itemId" value={item.id} /><input type="hidden" name="month" value={month} /><input type="hidden" name="cohort" value={selectedCohort} /><input type="hidden" name="expectedStatus" value={item.status} /><input type="hidden" name="expectedUpdatedAt" value={item.updatedAt.toISOString()} />
-                          <select name="status" defaultValue={item.status} style={{ padding: 8 }}>{MONTHLY_SCHEDULING_ITEM_STATUSES.map((status) => <option key={status} value={status} disabled={status==="SCHEDULED" && item.status!=="SCHEDULED"}>{t(lang,itemStatusLabels[status].en,itemStatusLabels[status].zh)}</option>)}</select>
+                          <select name="status" defaultValue={item.status} style={{ padding: 8 }}>{[...new Set([item.status as MonthlySchedulingItemStatus,...MONTHLY_STAFF_STATUS_CHOICES])].map((status) => <option key={status} value={status} disabled={status==="SCHEDULED" && item.status!=="SCHEDULED"}>{t(lang,itemStatusLabels[status].en,itemStatusLabels[status].zh)}</option>)}</select>
                           <button style={buttonStyle}>{t(lang, "Save", "保存")}</button>
                           <input name="internalNote" defaultValue={item.internalNote ?? ""} placeholder={t(lang,"Internal note; reason required for pause / exclusion","内部备注；暂停／排除时必填原因")} style={{ gridColumn: "1 / -1", padding: 8 }} />
                         </MonthlyStatusForm>
