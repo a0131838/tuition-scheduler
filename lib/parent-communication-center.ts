@@ -15,6 +15,7 @@ export type CommunicationActor = {
   email: string;
   name: string;
   role: string;
+  isObserver?: boolean;
 };
 
 const OPEN_STATUSES = ["PENDING_REVIEW", "READY_TO_SEND", "CLAIMED", "RETURNED", "ATTENTION"];
@@ -822,9 +823,7 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
       const startAt = payload.startAt ? new Date(String(payload.startAt)) : null;
       return Boolean(startAt && !Number.isNaN(startAt.getTime()) && formatBusinessDateOnly(startAt) === formatBusinessDateOnly(row.dueAt));
     });
-    const counts = matches.reduce<Record<string, number>>((acc, notification) => { acc[notification.status] = (acc[notification.status] || 0) + 1; return acc; }, {});
-    const status = counts.FAILED ? "FAILED" : counts.SENT ? "SENT" : counts.PENDING ? "PENDING" : counts.PROCESSING ? "PROCESSING" : counts.SKIPPED ? "SKIPPED" : "NOT_QUEUED";
-    return { status, counts, total: matches.length };
+    return automaticCommunicationSummary(matches);
   }
   return {
     tasks: rows.map((row) => {
@@ -910,25 +909,124 @@ async function auditTask(actor: CommunicationActor, action: string, taskId: stri
   await logAudit({ actor, module: "COMMUNICATION", action, entityType: "ParentCommunicationTask", entityId: taskId, meta });
 }
 
-export async function updateParentCommunicationTask(input: {
+type CommunicationUpdateInput = {
   id: string;
   action: string;
   actor: CommunicationActor;
   data?: Record<string, unknown>;
-}) {
+};
+
+/** Manual workflow records and their audit must commit together; this never sends a message. */
+async function updateCommunicationTaskAtomically(input: CommunicationUpdateInput) {
+  return prisma.$transaction(async tx => {
+    const task = await tx.parentCommunicationTask.findUnique({where: {id: input.id}});
+    if (!task) throw new Error("Communication task not found / 沟通任务不存在");
+    const now = new Date(), data = input.data ?? {};
+    // Replayed confirmations retain the first operator, time and evidence.
+    if(input.action === "manual_sent" && task.status === "COMPLETED" && task.manualSentAt) return task;
+    if(input.action === "waive" && task.status === "WAIVED") return task;
+    if(input.action !== "copy" && !OPEN_STATUSES.includes(task.status))
+      throw new Error("This communication task is closed; use its correction workflow / 沟通任务已结束，请使用更正流程");
+    const audit = async (actor: CommunicationActor, action: string, taskId: string, meta: Prisma.InputJsonValue) => {
+      await tx.auditLog.create({data:{actorEmail:actor.email,actorName:actor.name,actorRole:actor.role,
+        module:"COMMUNICATION",action,entityType:"ParentCommunicationTask",entityId:taskId,meta}});
+    };
+    if (input.action === "claim") {
+      const updated = await tx.parentCommunicationTask.update({
+        where: { id: task.id },
+        data: { ownerUserId: input.actor.id, ownerName: input.actor.name, claimedAt: now, status: task.status === "READY_TO_SEND" ? "CLAIMED" : task.status },
+      });
+      await audit(input.actor, "CLAIM_TASK", task.id, { previousOwner: task.ownerName });
+      return updated;
+    }
+
+    if (input.action === "transfer") {
+      const ownerUserId = String(data.ownerUserId ?? "").trim();
+      const owner = await tx.user.findFirst({ where: { id: ownerUserId, role: { in: ["ADMIN", "CS"] } }, select: { id: true, name: true } });
+      if (!owner) throw new Error("Invalid communication owner");
+      const updated = await tx.parentCommunicationTask.update({ where: { id: task.id }, data: { ownerUserId: owner.id, ownerName: owner.name, claimedAt: now } });
+      await audit(input.actor, "TRANSFER_TASK", task.id, { from: task.ownerName, to: owner.name, note: String(data.note ?? "").slice(0, 500) });
+      return updated;
+    }
+
+    if (input.action === "copy") {
+      const updated = await tx.parentCommunicationTask.update({ where: { id: task.id }, data: { copiedAt: now, copiedByUserId: input.actor.id, copiedByName: input.actor.name } });
+      await audit(input.actor, "COPY_WECHAT_MESSAGE", task.id, { group: task.wechatGroupName });
+      return updated;
+    }
+
+    if (input.action === "manual_sent") {
+      if (task.feedbackId) {
+        const feedback = await tx.sessionFeedback.findUnique({where:{id:task.feedbackId},select:{reviewStatus:true,publishedAt:true}});
+        if(!feedback || feedback.reviewStatus !== "PUBLISHED" || !feedback.publishedAt)
+          throw new Error("Publish reviewed feedback before confirming its delivery / 请先审核发布反馈，再确认发送");
+      }
+      if (["PENDING_REVIEW","RETURNED"].includes(task.status))
+        throw new Error("Complete the review before confirming delivery / 请先完成审核，再确认发送");
+      if (task.kind === "COURSE_CHANGE" && !task.evidenceUrl) {
+        throw new Error("课程变更补发必须先上传微信发送截图，再确认已发送");
+      }
+      const groupName = String(data.wechatGroupName ?? task.wechatGroupName ?? "").trim();
+      const note = String(data.note ?? "").trim().slice(0, 1000);
+      const channel = String(data.channel ?? (task.kind === "COURSE_REMINDER_TEACHER" ? "WECHAT_DIRECT" : "WECHAT_GROUP")).trim();
+      const updated = await tx.parentCommunicationTask.update({
+        where: { id: task.id },
+        data: {
+          status: "COMPLETED", manualSentAt: now, manualSentByUserId: input.actor.id, manualSentByName: input.actor.name,
+          manualChannel: channel, wechatGroupName: groupName || null, note: note || task.note, completedAt: now,
+        },
+      });
+      if (task.studentId && task.parentId && groupName) {
+        await tx.parentStudentLink.updateMany({ where: { studentId: task.studentId, parentId: task.parentId }, data: { wechatGroupName: groupName, communicationOwner: input.actor.name } });
+      }
+      if (task.kind === "COURSE_REMINDER_PARENT" && task.studentId && task.dueAt) {
+        await tx.todoReminderConfirm.createMany({ data: [{ type: "STUDENT_TOMORROW", targetId: task.studentId, date: task.dueAt }], skipDuplicates: true });
+      }
+      if (task.kind === "COURSE_REMINDER_TEACHER" && task.teacherId && task.dueAt) {
+        await tx.todoReminderConfirm.createMany({ data: [{ type: "TEACHER_TOMORROW", targetId: task.teacherId, date: task.dueAt }], skipDuplicates: true });
+      }
+      if (task.kind === "MONTHLY_SCHEDULING" && task.taskKey.startsWith("monthly-scheduling:")) {
+        const campaignId = task.taskKey.split(":")[1] ?? "";
+        await tx.monthlySchedulingItem.updateMany({
+          where: {
+            campaignId,
+            campaign: {status: "OPEN"},
+            status: "NOT_SENT",
+            ...(task.parentId ? { parentId: task.parentId } : task.studentId ? { studentId: task.studentId } : { id: "__none__" }),
+          },
+          data: { status: "SENT", sentAt: now, ownerUserId: input.actor.id, ownerName: input.actor.name },
+        });
+      }
+      if (task.feedbackId) {
+        const remaining = await tx.parentCommunicationTask.count({ where: { feedbackId: task.feedbackId, manualSentAt: null, status: { not: "WAIVED" } } });
+        if (remaining === 0) {
+          await tx.sessionFeedback.update({ where: { id: task.feedbackId }, data: { forwardedAt: now, forwardedBy: input.actor.name, forwardChannel: channel, forwardNote: note || null } });
+        }
+      }
+      await audit(input.actor, "MARK_MANUAL_SENT", task.id, { channel, groupName, note });
+      return updated;
+    }
+
+    if (input.action === "waive") {
+      const note = String(data.note ?? "").trim();
+      if (!note) throw new Error("Waive reason is required");
+      const updated = await tx.parentCommunicationTask.update({ where: { id: task.id }, data: { status: "WAIVED", note, completedAt: now } });
+      await audit(input.actor, "WAIVE_COMMUNICATION_TASK", task.id, { note });
+      return updated;
+    }
+
+    throw new Error("Unsupported communication action / 不支持的沟通操作");
+  }, {isolationLevel: Prisma.TransactionIsolationLevel.Serializable});
+}
+
+export async function updateParentCommunicationTask(input: CommunicationUpdateInput) {
+  if(input.actor.isObserver) throw new Error("Observer account is read-only / 观察者账号不能修改系统数据");
+  if (["claim", "transfer", "copy", "manual_sent", "waive"].includes(input.action)) return updateCommunicationTaskAtomically(input);
+
   const task = await prisma.parentCommunicationTask.findUnique({ where: { id: input.id } });
   if (!task) throw new Error("Communication task not found");
   const now = new Date();
   const data = input.data ?? {};
-
-  if (input.action === "claim") {
-    const updated = await prisma.parentCommunicationTask.update({
-      where: { id: task.id },
-      data: { ownerUserId: input.actor.id, ownerName: input.actor.name, claimedAt: now, status: task.status === "PENDING_REVIEW" ? task.status : "CLAIMED" },
-    });
-    await auditTask(input.actor, "CLAIM_TASK", task.id, { previousOwner: task.ownerName });
-    return updated;
-  }
 
   if (input.action === "share_card") {
     await auditTask(input.actor, "SHARE_MINIAPP_CARD", task.id, {
@@ -939,15 +1037,6 @@ export async function updateParentCommunicationTask(input: {
       destination: String(data.destination ?? "WECHAT").slice(0, 60),
     });
     return task;
-  }
-
-  if (input.action === "transfer") {
-    const ownerUserId = String(data.ownerUserId ?? "").trim();
-    const owner = await prisma.user.findFirst({ where: { id: ownerUserId, role: { in: ["ADMIN", "CS"] } }, select: { id: true, name: true } });
-    if (!owner) throw new Error("Invalid communication owner");
-    const updated = await prisma.parentCommunicationTask.update({ where: { id: task.id }, data: { ownerUserId: owner.id, ownerName: owner.name, claimedAt: now } });
-    await auditTask(input.actor, "TRANSFER_TASK", task.id, { from: task.ownerName, to: owner.name, note: String(data.note ?? "").slice(0, 500) });
-    return updated;
   }
 
   if (input.action === "return_feedback") {
@@ -999,63 +1088,8 @@ export async function updateParentCommunicationTask(input: {
     return prisma.parentCommunicationTask.findUnique({ where: { id: task.id } });
   }
 
-  if (input.action === "copy") {
-    const updated = await prisma.parentCommunicationTask.update({ where: { id: task.id }, data: { copiedAt: now, copiedByUserId: input.actor.id, copiedByName: input.actor.name } });
-    await auditTask(input.actor, "COPY_WECHAT_MESSAGE", task.id, { group: task.wechatGroupName });
-    return updated;
-  }
 
-  if (input.action === "manual_sent") {
-    if (task.kind === "COURSE_CHANGE" && !task.evidenceUrl) {
-      throw new Error("课程变更补发必须先上传微信发送截图，再确认已发送");
-    }
-    const groupName = String(data.wechatGroupName ?? task.wechatGroupName ?? "").trim();
-    const note = String(data.note ?? "").trim().slice(0, 1000);
-    const channel = String(data.channel ?? (task.kind === "COURSE_REMINDER_TEACHER" ? "WECHAT_DIRECT" : "WECHAT_GROUP")).trim();
-    const updated = await prisma.parentCommunicationTask.update({
-      where: { id: task.id },
-      data: {
-        status: "COMPLETED", manualSentAt: now, manualSentByUserId: input.actor.id, manualSentByName: input.actor.name,
-        manualChannel: channel, wechatGroupName: groupName || null, note: note || task.note, completedAt: now,
-      },
-    });
-    if (task.studentId && task.parentId && groupName) {
-      await prisma.parentStudentLink.updateMany({ where: { studentId: task.studentId, parentId: task.parentId }, data: { wechatGroupName: groupName, communicationOwner: input.actor.name } });
-    }
-    if (task.kind === "COURSE_REMINDER_PARENT" && task.studentId && task.dueAt) {
-      await prisma.todoReminderConfirm.createMany({ data: [{ type: "STUDENT_TOMORROW", targetId: task.studentId, date: task.dueAt }], skipDuplicates: true });
-    }
-    if (task.kind === "COURSE_REMINDER_TEACHER" && task.teacherId && task.dueAt) {
-      await prisma.todoReminderConfirm.createMany({ data: [{ type: "TEACHER_TOMORROW", targetId: task.teacherId, date: task.dueAt }], skipDuplicates: true });
-    }
-    if (task.kind === "MONTHLY_SCHEDULING" && task.taskKey.startsWith("monthly-scheduling:")) {
-      const campaignId = task.taskKey.split(":")[1] ?? "";
-      await prisma.monthlySchedulingItem.updateMany({
-        where: {
-          campaignId,
-          status: "NOT_SENT",
-          ...(task.parentId ? { parentId: task.parentId } : task.studentId ? { studentId: task.studentId } : { id: "__none__" }),
-        },
-        data: { status: "SENT", sentAt: now, ownerUserId: input.actor.id, ownerName: input.actor.name },
-      });
-    }
-    if (task.feedbackId) {
-      const remaining = await prisma.parentCommunicationTask.count({ where: { feedbackId: task.feedbackId, manualSentAt: null, status: { not: "WAIVED" } } });
-      if (remaining === 0) {
-        await prisma.sessionFeedback.update({ where: { id: task.feedbackId }, data: { forwardedAt: now, forwardedBy: input.actor.name, forwardChannel: channel, forwardNote: note || null } });
-      }
-    }
-    await auditTask(input.actor, "MARK_MANUAL_SENT", task.id, { channel, groupName, note });
-    return updated;
-  }
 
-  if (input.action === "waive") {
-    const note = String(data.note ?? "").trim();
-    if (!note) throw new Error("Waive reason is required");
-    const updated = await prisma.parentCommunicationTask.update({ where: { id: task.id }, data: { status: "WAIVED", note, completedAt: now } });
-    await auditTask(input.actor, "WAIVE_COMMUNICATION_TASK", task.id, { note });
-    return updated;
-  }
 
   if (input.action === "retry_auto") {
     const where: Prisma.MiniappNotificationOutboxWhereInput = task.feedbackId
@@ -1081,4 +1115,12 @@ export function communicationTaskStatusLabel(status: string) {
     COMPLETED: "已人工发送 / Sent manually",
     WAIVED: "无需发送 / Waived",
   } as Record<string, string>)[status] || status;
+}
+
+/** One delivered recipient cannot conceal another pending, failed or skipped recipient. */
+export function automaticCommunicationSummary(rows: Array<{status:string}>) {
+  const counts = rows.reduce<Record<string,number>>((all,row) => {all[row.status]=(all[row.status]??0)+1;return all;}, {});
+  const status = counts.FAILED ? "FAILED" : counts.PROCESSING ? "PROCESSING" : counts.PENDING ? "PENDING"
+    : counts.SKIPPED ? "SKIPPED" : rows.length > 0 && counts.SENT === rows.length ? "SENT" : "NOT_QUEUED";
+  return {status, counts, total: rows.length};
 }

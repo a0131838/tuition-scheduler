@@ -8,6 +8,6 @@ export async function requireCommunicationCenterUser() {
   return user;
 }
 
-export function communicationActor(user: { id: string; email: string; name: string; role: string }) {
-  return { id: user.id, email: user.email, name: user.name, role: user.role };
+export function communicationActor(user: { id: string; email: string; name: string; role: string; isObserver?: boolean }) {
+  return { id: user.id, email: user.email, name: user.name, role: user.role, isObserver: user.isObserver === true };
 }

@@ -709,3 +709,21 @@ Logs: `/tmp/sgt-r445-backend.log`, `/tmp/sgt-r445-tsc-final.log`, `/tmp/sgt-r445
 ---
 
 Logs: `/tmp/sgt-r446-all-tests.log`, `/tmp/sgt-r446-build.log`, `/tmp/sgt-r446-tsc-final.log`, `/tmp/sgt-r446-uat.log`, `/tmp/sgt-r446-http.log`, `/tmp/sgt-r446-family-http.log`, `/tmp/sgt-r446-preference-http.log`.
+
+## 2026-09-29-r447
+
+- Release ID: `2026-09-29-r447`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; live verification is maintained in the execution ledger.
+- Problem: communication claim could reopen a completed task; manual confirmation committed before group/reminder/feedback/audit records. A single SENT outbox row also concealed other pending recipients.
+- Change: claim, transfer, copy, manual confirmation and waiver now use fresh serializable transactions with atomic audit. Closed tasks cannot be claimed/waived/sent again; repeated same completion preserves its first evidence. Claim retains review/returned/correction status. Unpublished feedback cannot be marked delivered, closed monthly campaigns are not advanced, and only the final manual recipient updates forwarding. Automatic summary reports SENT only when every matched outbox row is SENT. Existing share-card/retry/publication workflows remain separate.
+- Permission finding: isolated HTTP using an unsigned pre-observer-style session bypassed the cookie middleware's observer marker. Propagate the current authenticated observer flag to the communication service and reject writes independently of the cookie marker. Both signed and legacy-style observer sessions now fail; existing finance/teacher denial remains.
+- Validation:752 full tests, final TypeScript and260-page production build passed. Isolated DB verifies forced rollback for all five actions, concurrent/repeated confirmation once, linked group/reminder and final feedback forwarding atomicity, copy versus send, review/evidence guards and no outbox/ledger mutations. Authenticated HTTP verifies owner success/replay, closed-claim409 and observer/finance/teacher denial.
+- Migration: none. Tests use only isolated fake records; no actual communications sent, no production approvals or finance writes, no WeChat package published. New service errors are bilingual; existing page layout unchanged.
+- Remaining: feedback publication/return/retry and sync still need their own atomicity review; existing communication page language cleanup remains phase8. Overall phases4–10 are not complete.
+- Rollback point: `b49220c0bf90e8fe597496df20a25e68054914f3` (r446).
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
+Logs: `/tmp/sgt-r447-all-tests-final.log`, `/tmp/sgt-r447-build-final.log`, `/tmp/sgt-r447-tsc-final.log`, `/tmp/sgt-r447-uat-final.log`, `/tmp/sgt-r447-http-final.log`.
