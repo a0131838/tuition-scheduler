@@ -971,3 +971,19 @@ Logs: `/tmp/sgt-r448-all-tests.log`, `/tmp/sgt-r448-build.log`, `/tmp/sgt-r448-t
 - Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
 
 ---
+
+## 2026-09-30-r464
+
+- Release ID: `2026-09-30-r464`
+- Date/Time (Asia/Singapore): `2026-09-30`
+- Deployment status: `READY`; live evidence belongs in the execution ledger.
+- Problem: paused/excluded next-month requests retaining accepted/completed options or timetable evidence had no explicit staff resolution path; a status change alone could not establish a safe closure.
+- Change: audited closure verification checks current role, displayed item version, exact historical and current month/course/student lessons, cancellation charge decisions and net ledger evidence. Staff must record the parent agreement and explicitly withdraw retained options. Options keep their accepted/completed history; original timetable evidence, formal lessons, attendance, balances and ledger are preserved. Current-source fingerprints invalidate old acknowledgements after relevant changes, including missing referenced lessons. Web and staff API share the transaction; parent API receives only the review boolean and bilingual status, not internal review details.
+- Validation:765 unit/source tests,260-page production build and TypeScript passed. Isolated UAT covers active lessons, unreconciled and charged cancellations, ambiguous shared ledger, missing history, stale versions/current roles, forced audit rollback, concurrent/repeated submission, unchanged lesson/ledger snapshots and source changes reopening review. Prior closure/completion/acceptance regressions passed. Actual staff HTTP and observer denial, EN/ZH/BILINGUAL rendered controls and authenticated browser form submission passed; saved review and desktop form inspected. Browser session console empty; this is not a global visual/mobile acceptance claim.
+- Compatibility: no migration, no production business test writes, no sender execution or WeChat client release. Existing links, states and historical evidence remain. Ambiguous history stays review-needed. Verification is conservative for a whole-month pause/exclusion; active lessons must be resolved separately, never silently cancelled by this action.
+- Remaining: phase6/7 integrated acceptance, phase8/9 full route/role/language/mobile checks and phase10 unified delivery. Existing wide monthly table and untranslated older controls remain in that UI pass.
+- Rollback reference: `39a99f8681b3fa9001a0e83fda4d9498058c46a2` (r463). No schema rollback; old code does not consume new audit proofs.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+

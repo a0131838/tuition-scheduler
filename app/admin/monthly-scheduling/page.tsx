@@ -1,3 +1,4 @@
+import {verifyMonthlyClosure} from '@/lib/monthly-closure-verification';
 import { MONTHLY_STAFF_STATUS_CHOICES } from "@/lib/monthly-scheduling-status-policy";
 import MonthlyStatusForm from "./MonthlyStatusForm";
 import { isFormalMonthlyLesson, monthlyCompletionCandidates, readMonthlyScheduleEvidence } from "@/lib/monthly-scheduling-completion";
@@ -171,6 +172,20 @@ async function itemStatusAction(formData: FormData) {
   }
   revalidatePath("/admin/monthly-scheduling");
   return monthlySchedulingRedirectPath(month, formData, { status });
+}
+
+async function closureVerificationAction(formData: FormData) {
+  "use server";
+  const access=await requireMonthlySchedulingUser();
+  if(!access.canManage)throw Error("Read-only access / 仅可查看");
+  const month=String(formData.get("month")??"");
+  try {
+    await verifyMonthlyClosure({itemId:String(formData.get("itemId")??""),actorUserId:access.user.id,
+      expectedStatus:String(formData.get("expectedStatus")??""),expectedUpdatedAt:String(formData.get("expectedUpdatedAt")??""),
+      reason:String(formData.get("reason")??""),withdrawOptions:formData.get("withdrawOptions")==="yes"});
+  } catch(error) { return monthlySchedulingRedirectPath(month,formData,{notice:error instanceof Error?error.message:"Verification failed / 核验失败",noticeTone:"error"}); }
+  revalidatePath("/admin/monthly-scheduling");
+  return monthlySchedulingRedirectPath(month,formData,{notice:"Closure verified / 暂停或排除结果已核验"});
 }
 
 async function proxyPreferenceAction(formData: FormData) {
@@ -453,6 +468,19 @@ export default async function MonthlySchedulingPage({
                           <input name="internalNote" defaultValue={item.internalNote ?? ""} placeholder={t(lang,"Internal note; reason required for pause / exclusion","内部备注；暂停／排除时必填原因")} style={{ gridColumn: "1 / -1", padding: 8 }} />
                         </MonthlyStatusForm>
                         <p style={{fontSize:12,color:"#475569"}}>{t(lang,"Pause/exclude releases temporary choices only. Confirmed arrangements and formal lessons stay unchanged and need separate timetable review.","暂停／排除仅释放临时候选时间。已确认方案和正式课程保持原状，须另到课表核对处理。")}</p>
+                        {["PAUSED","EXCLUDED"].includes(item.status) && <details style={{marginTop:8,padding:8,border:'1px solid #aacbbb'}}>
+                          <summary style={{cursor:'pointer',fontWeight:700}}>{t(lang,"Verify pause / exclusion outcome","核验暂停／排除结果")}</summary>
+                          <p>{t(lang,"First resolve active lessons and any charge discrepancies in the timetable. Then record the parent agreement to withdraw retained options. Original lessons, balances and verification history are preserved.","请先到课表处理未取消课程及扣退不一致，再记录家长约定并确认撤回保留方案。原课次、余额及历史核验记录保持不变。")}</p>
+                          <Link href={`/admin/students/${item.studentId}?focus=attendance`}>{t(lang,"Open student lesson history","打开学生课程历史")}</Link>
+                          {item.closureReview?.blocker && <p role="alert">{item.closureReview.blocker}</p>}
+                          {item.closureReview?.evidence && <p>{t(lang,"Last valid closure review","最近有效的结果核验")}: {item.closureReview.evidence.actorName} · {formatBusinessDateTime(new Date(item.closureReview.evidence.verifiedAt))}<br/>{item.closureReview.evidence.reason}</p>}
+                          <MonthlyStatusForm action={closureVerificationAction} lang={lang} style={{display:'grid',gap:8}}>
+                            <input type="hidden" name="itemId" value={item.id}/><input type="hidden" name="month" value={month}/><input type="hidden" name="cohort" value={selectedCohort}/><input type="hidden" name="expectedStatus" value={item.status}/><input type="hidden" name="expectedUpdatedAt" value={item.updatedAt.toISOString()}/>
+                            <label>{t(lang,"Parent agreement and resolution basis","家长约定及处理依据")}<textarea name="reason" required minLength={20} maxLength={2000} style={{width:'100%'}}/></label>
+                            <label><input type="checkbox" name="withdrawOptions" value="yes" required/>{t(lang,"I confirmed the pause / exclusion with the parent and withdrawal of retained time options.","已与家长确认暂停／排除及撤回保留时间方案。")}</label>
+                            <button style={buttonStyle}>{t(lang,"Verify closure and retain history","核验结果并保留历史")}</button>
+                          </MonthlyStatusForm>
+                        </details>}
                         {["MATCHED","SCHEDULED"].includes(item.status) && <details style={{marginTop:8,padding:8,border:'1px solid #aacbbb'}}>
                           <summary style={{cursor:'pointer',fontWeight:700}}>{t(lang,"Verify formal timetable","核验正式课表")}</summary>
                           <p>{t(lang,"Select every agreed lesson for this month and confirm the total. This records evidence; it does not create lessons or deduct hours.","选中本月约定的全部课次并确认总次数。这里只记录核验依据，不创建课程或扣课。")}</p>

@@ -1,3 +1,4 @@
+import {monthlyClosureReviews} from './monthly-closure-verification';
 import {monthlyStaffingLessonFacts,confirmedMonthlyDemand,monthlyBusyDateIntervals} from "./monthly-staffing-facts";
 import { assertMonthlyStaffStatusChange } from "./monthly-scheduling-status-policy";
 import { resolveAttendanceRoster } from "./session-attendance-roster";
@@ -432,8 +433,8 @@ export async function getMonthlySchedulingCampaign(month?: string | null) {
     },
   });
   if (!campaign) return null;
-  const reviews=await monthlyCompletionReviews(campaign.items,campaign.month);
-  return {...campaign,items:campaign.items.map(item=>({...item,completionNeedsReview:reviews.get(item.id)?.needsReview??false}))};
+  const [reviews,closures]=await Promise.all([monthlyCompletionReviews(campaign.items,campaign.month),monthlyClosureReviews(campaign.items.filter(i=>["PAUSED","EXCLUDED"].includes(i.status)).map(i=>i.id))]);
+  return {...campaign,items:campaign.items.map(item=>({...item,completionNeedsReview:reviews.get(item.id)?.needsReview??false,closureReview:closures.get(item.id)??null}))};
 }
 
 export async function listMonthlySchedulingQualifiedTeachers(courseIds: string[]) {
@@ -965,8 +966,9 @@ export async function submitMonthlySchedulingFamilyKeepByStaff(input: {
 
 export type MonthlySchedulingQueueLane = "READY_CONFIRM" | "WAITING_PARENT" | "EXCEPTIONS" | "COMPLETED" | "OTHER";
 
-type MonthlyClosureReview = { status: string; offers?: Array<{ status: string }>; scheduleEvidenceJson?: unknown; scheduledAt?: Date | string | null };
+type MonthlyClosureReview = { closureReview?: {needsReview:boolean;blocker:string|null} | null; status: string; offers?: Array<{ status: string }>; scheduleEvidenceJson?: unknown; scheduledAt?: Date | string | null };
 export function monthlySchedulingClosureNeedsReview(row: MonthlyClosureReview) {
+  if(row.closureReview)return row.closureReview.needsReview;
   return ["PAUSED", "EXCLUDED"].includes(row.status) && (Boolean(row.scheduleEvidenceJson) || Boolean(row.scheduledAt)
     || Boolean(row.offers?.some(offer => ["AVAILABLE", "HELD", "ACCEPTED", "COMPLETED"].includes(offer.status))));
 }
@@ -1034,7 +1036,8 @@ export async function listParentMonthlyScheduling(parentId: string, options: { m
     const group=items.filter(row=>row.campaignId===campaignId);
     for (const [id,result] of await monthlyCompletionReviews(group,group[0].campaign.month)) reviews.set(id,result);
   }
-  return items.map((row) => ({ ...row, status: unseenIds.includes(row.id) ? "VIEWED" : row.status, completionNeedsReview:reviews.get(row.id)?.needsReview??false }));
+  const closures=await monthlyClosureReviews(items.filter(i=>["PAUSED","EXCLUDED"].includes(i.status)).map(i=>i.id));
+  return items.map((row) => ({ ...row, closureReview:closures.get(row.id)??null, status: unseenIds.includes(row.id) ? "VIEWED" : row.status, completionNeedsReview:reviews.get(row.id)?.needsReview??false }));
 }
 
 type OfferSessionDate = { date: string; startAt: string; endAt: string };

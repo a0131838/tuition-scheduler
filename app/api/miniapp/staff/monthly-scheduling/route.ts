@@ -1,3 +1,4 @@
+import {verifyMonthlyClosure} from '@/lib/monthly-closure-verification';
 import { bad, ok } from "@/app/api/miniapp/_lib";
 import { requireMiniappStaff } from "@/app/api/miniapp/staff/_lib";
 import { canUseMiniappAcademicDesk, cleanMiniappText } from "@/lib/miniapp-staff-action-center";
@@ -116,6 +117,7 @@ export async function GET(req: Request) {
       currentSchedule: Array.isArray(row.currentScheduleJson) ? row.currentScheduleJson : [],
       carryForwardSchedule: Array.isArray(row.carryForwardScheduleJson) ? row.carryForwardScheduleJson : [],
       exceptionReason: monthlySchedulingExceptionReason(row),
+      closureReview: row.closureReview,
       internalNote: row.internalNote,
       ownerName: row.ownerName,
       responseEntryMode: row.responseEntryMode,
@@ -213,6 +215,13 @@ export async function PATCH(req: Request) {
   if (!canUseMiniappAcademicDesk(auth.user)) return bad("Academic scheduling permission required", 403);
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") return bad("Invalid JSON");
+  if(body.action === 'VERIFY_CLOSURE') {
+    try { const row=await verifyMonthlyClosure({itemId:String(body.itemId??''),actorUserId:auth.user.id,
+      expectedStatus:String(body.expectedStatus??''),expectedUpdatedAt:String(body.expectedUpdatedAt??''),
+      reason:typeof body.reason==='string'?body.reason:'',withdrawOptions:body.withdrawOptions===true});
+      return ok({itemId:row.id,status:row.status,message:'Closure verified / 暂停或排除结果已核验'});
+    } catch(error){return bad(error instanceof Error?error.message:'Verification failed / 核验失败',409);}
+  }
   const status = String((body as any).status ?? "") as MonthlySchedulingItemStatus;
   const expectedStatus = String((body as any).expectedStatus ?? "") as MonthlySchedulingItemStatus;
   if (!MONTHLY_SCHEDULING_ITEM_STATUSES.includes(status)) return bad("Invalid status");
