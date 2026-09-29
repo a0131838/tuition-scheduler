@@ -563,3 +563,21 @@ Browser evidence note: one earlier React hydration #418 at03:18:32UTC was captur
 ---
 
 Logs: `/tmp/sgt-r438-uat.log`, `/tmp/sgt-r438-http.log`, `/tmp/sgt-r438-focused.log`, `/tmp/sgt-r438-backend.log`, `/tmp/sgt-r438-tsc-final.log`, `/tmp/sgt-r438-build-final.log`.
+
+## 2026-09-29-r439
+
+- Release ID: `2026-09-29-r439`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; guarded release proof is recorded in the execution ledger.
+- Problem: family replies and offer selection could commit without their audits; family confirmation could waive a reminder while an inaccessible sibling still needed a response. Change requests lacked an atomic audit and could target closed campaigns.
+- Change: family scope, live editable items, revision checks, replies, reminder waiver and parent/staff audits share one serializable transaction. Replaying an identical family reply reuses its batch. A remaining unanswered/option-selection item preserves the family reminder. Offer ranking records its audit in the same transaction and preserves withdrawn/expired ranking history. Parent change requests require open campaign/live access and optional revision, audit the original state and retain the accepted arrangement/formal lessons.
+- Validation:47 focused monthly tests,181 backend tests,TypeScript and260-page production build. Isolated UAT injects family/ranking/change audit failures and verifies complete rollback, partial-family permissions, duplicate/concurrent batch once, prior-rank preservation, closed-campaign rejection, accepted-option retention and unchanged teaching/ledger/outbox counts. Parent/staff HTTP verifies family replay, proxy ranking audit and versioned change requests.
+- Migration: none. Routes, payload compatibility, parent permission scope and staff role guards remain. This is backend transaction work; no new visible controls or WeChat client package.
+- Risk: medium for monthly persistence; no production business write used for acceptance. Family replies remain demand confirmation, not completed timetable verification.
+- Remaining: staffing forecast, broader monthly UI/language acceptance, phase4 final acceptance and phases6–10.
+- Rollback point: `70b441c1a841ed9da291d6de687135c7cc281d60` (r438).
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
+Logs: `/tmp/sgt-r439-uat-final.log`, `/tmp/sgt-r439-http.log`, `/tmp/sgt-r439-focused-final.log`, `/tmp/sgt-r439-backend.log`, `/tmp/sgt-r439-build-final.log`.

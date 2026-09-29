@@ -97,6 +97,7 @@ export async function POST(req: Request) {
     }
     if (action === "REQUEST_CHANGE") {
       const item = await requestMonthlySchedulingChange({
+        expectedUpdatedAt:typeof body.expectedUpdatedAt==='string'?body.expectedUpdatedAt:undefined,
         itemId: String((body as any).itemId ?? ""),
         parentId: auth.parent.id,
         note: String((body as any).note ?? ""),

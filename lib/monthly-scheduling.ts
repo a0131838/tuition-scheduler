@@ -5,7 +5,6 @@ import crypto from "crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
-import { logAudit } from "@/lib/audit-log";
 import { renderPublishedCommunicationTemplate } from "@/lib/parent-communication-templates";
 import { LEGACY_XDF_SOURCE_CHANNEL_NAME } from "@/lib/partners";
 
@@ -812,11 +811,12 @@ async function persistMonthlySchedulingFamilyKeep(input: {
   parentConfirmationNote: string | null;
   parentConfirmedAt: Date;
 }) {
-  const seed = input.seedItemId ? await prisma.monthlySchedulingItem.findFirst({ where: { id: input.seedItemId, campaignId: input.campaignId } }) : null;
+  return prisma.$transaction(async (tx) => {
+  const seed = input.seedItemId ? await tx.monthlySchedulingItem.findFirst({ where: { id: input.seedItemId, campaignId: input.campaignId } }) : null;
   const parentId = input.parentId ?? seed?.parentId ?? null;
   const studentId = parentId ? null : seed?.studentId ?? null;
   if (!input.linkedParentId && !parentId && !studentId) throw new Error("Family scheduling record is unavailable");
-  const rows = await prisma.monthlySchedulingItem.findMany({
+  const rows = await tx.monthlySchedulingItem.findMany({
     where: {
       campaignId: input.campaignId,
       campaign: { status: "OPEN" },
@@ -825,16 +825,27 @@ async function persistMonthlySchedulingFamilyKeep(input: {
         ? { student: { parentLinks: { some: { parentId: input.linkedParentId, canCreateRequests: true } } } }
         : parentId ? { parentId } : { studentId: studentId! }),
     },
-    select: { id: true, status: true, studentId: true, parentId: true, currentScheduleJson: true, carryForwardScheduleJson: true, expectedSessionsPerWeek: true },
+    select: { id: true, updatedAt: true, status: true, intent: true, studentId: true, parentId: true,
+      currentScheduleJson: true, carryForwardScheduleJson: true, expectedSessionsPerWeek: true,
+      familyDecisionBatchId: true, responseEntryMode: true, responseChannel: true, respondedByParentId: true,
+      respondedByUserId: true, parentConfirmationNote: true, parentConfirmedAt: true },
     orderBy: { createdAt: "asc" },
   });
   if (!monthlySchedulingFamilyCanKeep(rows)) throw new Error("这个家庭有课程没有可沿用的固定安排，请逐项确认");
+  const existingBatch = rows[0].familyDecisionBatchId;
+  const sameReply = existingBatch && rows.every(row => row.status === 'SUBMITTED' && row.intent === 'KEEP'
+    && row.familyDecisionBatchId === existingBatch && row.responseEntryMode === input.entryMode
+    && row.responseChannel === input.responseChannel && row.respondedByParentId === input.respondedByParentId
+    && row.respondedByUserId === input.respondedByUserId && row.parentConfirmationNote === input.parentConfirmationNote
+    && (input.entryMode === 'PARENT' || row.parentConfirmedAt?.getTime() === input.parentConfirmedAt.getTime()));
+  if (sameReply) return {batchId: existingBatch, itemIds: rows.map(row=>row.id), count: rows.length};
   const batchId = crypto.randomUUID();
   const now = new Date();
-  await prisma.$transaction(async (tx) => {
     for (const row of rows) {
       const updated = await tx.monthlySchedulingItem.updateMany({
-        where: { id: row.id, status: row.status },
+        where: { id: row.id, status: row.status, updatedAt: row.updatedAt, campaign: { status: "OPEN" },
+          ...(input.linkedParentId ? { student: { parentLinks: { some: { parentId: input.linkedParentId, canCreateRequests: true } } } } : {}),
+        },
         data: {
           status: "SUBMITTED",
           intent: "KEEP",
@@ -861,19 +872,44 @@ async function persistMonthlySchedulingFamilyKeep(input: {
     }
     await tx.monthlySchedulingOffer.updateMany({
       where: { itemId: { in: rows.map((row) => row.id) }, status: { in: ["AVAILABLE", "HELD"] } },
-      data: { status: "WITHDRAWN", holdExpiresAt: null, parentRank: null },
+      data: { status: "WITHDRAWN", holdExpiresAt: null },
     });
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   const familyTaskKeys = unique(rows.map((row) => `monthly-scheduling:${input.campaignId}:${row.parentId ?? `STUDENT:${row.studentId}`}`));
-  await prisma.parentCommunicationTask.updateMany({
-    where: {
-      taskKey: { in: familyTaskKeys },
-      manualSentAt: null,
-      status: { in: ["PENDING_REVIEW", "READY_TO_SEND", "CLAIMED", "RETURNED", "ATTENTION"] },
-    },
-    data: { status: "WAIVED", note: "家庭沿用安排已确认，无需再发送初始提醒。", completedAt: now },
-  });
+  const waivedTaskIds: string[] = [];
+  for (const taskKey of familyTaskKeys) {
+    const family = rows.find(row => taskKey === `monthly-scheduling:${input.campaignId}:${row.parentId ?? `STUDENT:${row.studentId}`}`)!;
+    // A partial household reply must not close another child's initial reminder.
+    const remaining = await tx.monthlySchedulingItem.count({where: {
+      campaignId: input.campaignId,
+      ...(family.parentId ? {parentId: family.parentId} : {studentId: family.studentId}),
+      status: {in: ['NOT_SENT','SENT','VIEWED','NO_RESPONSE','NEEDS_CLARIFICATION','OFFERED']},
+    }});
+    if (remaining) continue;
+    const tasks = await tx.parentCommunicationTask.findMany({where: {
+      taskKey, manualSentAt: null, status: {in: ['PENDING_REVIEW','READY_TO_SEND','CLAIMED','RETURNED','ATTENTION']},
+    }, select: {id: true}});
+    await tx.parentCommunicationTask.updateMany({where: {id: {in: tasks.map(task=>task.id)}}, data: {
+      status: 'WAIVED', note: 'Family confirmed current arrangements; initial reminder waived / 家庭已确认沿用安排，免除初始提醒', completedAt: now,
+    }});
+    waivedTaskIds.push(...tasks.map(task=>task.id));
+  }
+  const meta = {itemIds: rows.map(row=>row.id), responseChannel: input.responseChannel,
+    parentConfirmationNote: input.parentConfirmationNote, parentConfirmedAt: input.parentConfirmedAt.toISOString(),
+    before: rows.map(row=>({id:row.id,status:row.status,intent:row.intent,revision:row.updatedAt.toISOString(),
+      expectedSessionsPerWeek:row.expectedSessionsPerWeek,responseChannel:row.responseChannel,parentConfirmationNote:row.parentConfirmationNote,
+      parentConfirmedAt:row.parentConfirmedAt?.toISOString()??null})), waivedTaskIds};
+  if (input.respondedByParentId) {
+    for (const row of rows) await tx.parentPortalAudit.create({data: {
+      parentId: input.respondedByParentId, studentId: row.studentId, action: 'MONTHLY_FAMILY_KEEP',
+      targetType: 'MonthlySchedulingItem', targetId: row.id, metaJson: {...meta,batchId},
+    }});
+  } else {
+    const actor = await tx.user.findUniqueOrThrow({where: {id: input.respondedByUserId ?? ''}});
+    await tx.auditLog.create({data: {actorEmail:actor.email,actorName:actor.name,actorRole:actor.role,
+      module:'MONTHLY_SCHEDULING',action:'PROXY_FAMILY_KEEP_CURRENT',entityType:'MonthlySchedulingFamily',entityId:batchId,meta}});
+  }
   return { batchId, itemIds: rows.map((row) => row.id), count: rows.length };
+  }, {isolationLevel: Prisma.TransactionIsolationLevel.Serializable});
 }
 
 export async function submitMonthlySchedulingFamilyKeep(input: { campaignId: string; parentId: string }) {
@@ -905,14 +941,6 @@ export async function submitMonthlySchedulingFamilyKeepByStaff(input: {
     respondedByName: cleanText(input.actorName, 120),
     parentConfirmationNote: audit.note,
     parentConfirmedAt: audit.confirmedAt,
-  });
-  await logAudit({
-    actor: { email: input.actorEmail, name: input.actorName, role: input.actorRole },
-    module: "MONTHLY_SCHEDULING",
-    action: "PROXY_FAMILY_KEEP_CURRENT",
-    entityType: "MonthlySchedulingFamily",
-    entityId: result.batchId,
-    meta: { itemIds: result.itemIds, responseChannel: input.responseChannel, parentConfirmationNote: audit.note },
   });
   return result;
 }
@@ -1219,7 +1247,7 @@ async function rankMonthlySchedulingOffersCore(input: {
     ));
     if (!chosen) throw new Error("The selected times were just taken; refresh for new choices");
     await tx.monthlySchedulingOffer.updateMany({ where: { itemId: item.id, status: "HELD" }, data: { status: "AVAILABLE", holdExpiresAt: null, heldByParentId: null } });
-    await tx.monthlySchedulingOffer.updateMany({ where: { itemId: item.id }, data: { parentRank: null } });
+    await tx.monthlySchedulingOffer.updateMany({ where: { itemId: item.id, status: {in: ["AVAILABLE","HELD"]} }, data: { parentRank: null } });
     for (let index = 0; index < ranked.length; index += 1) {
       await tx.monthlySchedulingOffer.update({ where: { id: ranked[index].id }, data: { parentRank: index + 1 } });
     }
@@ -1241,6 +1269,19 @@ async function rankMonthlySchedulingOffersCore(input: {
         offerParentConfirmedAt: input.parentConfirmedAt,
       },
     });
+    const meta = {offerIds, selectedOfferId: held.id, holdExpiresAt: holdExpiresAt.toISOString(),
+      responseChannel: input.responseChannel, parentConfirmedAt: input.parentConfirmedAt.toISOString(),
+      parentConfirmationNote: input.selectionNote, beforeStatus: item.status,
+      previousChoices:item.offers.filter(row=>["AVAILABLE","HELD"].includes(row.status)).map(row=>({id:row.id,status:row.status,rank:row.parentRank,holdExpiresAt:row.holdExpiresAt?.toISOString()??null}))};
+    if (input.parentId) await tx.parentPortalAudit.create({data: {
+      parentId:input.parentId,studentId:item.studentId,action:'MONTHLY_OFFER_RANKING',
+      targetType:'MonthlySchedulingItem',targetId:item.id,metaJson:meta,
+    }});
+    else {
+      const actor=await tx.user.findUniqueOrThrow({where:{id:input.selectedByUserId??''}});
+      await tx.auditLog.create({data:{actorEmail:actor.email,actorName:actor.name,actorRole:actor.role,
+        module:'MONTHLY_SCHEDULING',action:'PROXY_PARENT_OFFER_RANKING',entityType:'MonthlySchedulingItem',entityId:item.id,meta}});
+    }
     return monthlySchedulingOfferView(held);
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
@@ -1272,40 +1313,30 @@ export async function rankMonthlySchedulingOffersByStaff(input: {
     selectionNote: audit.note,
     parentConfirmedAt: audit.confirmedAt,
   });
-  await logAudit({
-    actor: { email: input.actorEmail, name: input.actorName, role: input.actorRole },
-    module: "MONTHLY_SCHEDULING",
-    action: "PROXY_PARENT_OFFER_RANKING",
-    entityType: "MonthlySchedulingItem",
-    entityId: input.itemId,
-    meta: {
-      offerIds: input.offerIds.slice(0, 3),
-      selectedOfferId: selected.id,
-      responseChannel: input.responseChannel,
-      parentConfirmedAt: audit.confirmedAt.toISOString(),
-      parentConfirmationNote: audit.note,
-    },
-  });
   return selected;
 }
 
-export async function requestMonthlySchedulingChange(input: { itemId: string; parentId: string; note: string }) {
+export async function requestMonthlySchedulingChange(input: { itemId: string; parentId: string; note: string; expectedUpdatedAt?: string }) {
   const note = cleanText(input.note, 1000);
-  if (!note) throw new Error("Please explain what needs to change");
-  const item = await prisma.monthlySchedulingItem.findFirst({
-    where: {
-      id: input.itemId,
-      status: { in: ["MATCHED", "SCHEDULED"] },
-      student: { parentLinks: { some: { parentId: input.parentId, canCreateRequests: true } } },
-    },
-  });
-  if (!item) throw new Error("This arrangement cannot be changed here");
-  const updated = await prisma.monthlySchedulingItem.updateMany({
-    where: { id: item.id, status: item.status },
-    data: { status: "CHANGE_REQUESTED", parentNotes: note, submittedAt: new Date() },
-  });
-  if (updated.count !== 1) throw new Error("This arrangement changed; refresh and try again");
-  return prisma.monthlySchedulingItem.findUniqueOrThrow({ where: { id: item.id } });
+  if (!note) throw new Error("Please explain what needs to change / 请说明需要调整的内容");
+  return prisma.$transaction(async tx => {
+    const item = await tx.monthlySchedulingItem.findFirst({where: {
+      id: input.itemId, status: {in: ['MATCHED','SCHEDULED']}, campaign: {status:'OPEN'},
+      student: {parentLinks:{some:{parentId:input.parentId,canCreateRequests:true}}},
+    }});
+    if (!item) throw new Error("This arrangement cannot be changed here / 此安排暂不可申请调整，请联系学校");
+    if(input.expectedUpdatedAt && input.expectedUpdatedAt!==item.updatedAt.toISOString())
+      throw new Error("Arrangement changed; refresh first / 安排已变化，请先刷新");
+    const changed=await tx.monthlySchedulingItem.updateMany({where:{id:item.id,status: item.status,updatedAt:item.updatedAt,
+      campaign:{status:'OPEN'},student:{parentLinks:{some:{parentId:input.parentId,canCreateRequests:true}}}},
+      data:{status:'CHANGE_REQUESTED',parentNotes:note,submittedAt:new Date()}});
+    if(changed.count!==1)throw new Error("Arrangement or access changed; refresh first / 安排或权限已变化，请先刷新");
+    const row=await tx.monthlySchedulingItem.findUniqueOrThrow({where:{id:item.id}});
+    await tx.parentPortalAudit.create({data:{parentId:input.parentId,studentId:item.studentId,action:'MONTHLY_CHANGE_REQUEST',
+      targetType:'MonthlySchedulingItem',targetId:item.id,metaJson:{beforeStatus:item.status,beforeNote:item.parentNotes,note,
+        revision:item.updatedAt.toISOString(),formalLessonsRetained:true}}});
+    return row;
+  },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
 }
 
 export async function expireMonthlySchedulingOfferHolds(now = new Date()): Promise<number> {
