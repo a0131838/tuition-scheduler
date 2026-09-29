@@ -764,7 +764,7 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
     prisma.parentCommunicationTask.groupBy({ by: ["status"], _count: { _all: true } }),
     prisma.parentCommunicationTask.groupBy({ by: ["kind", "status"], _count: { _all: true } }),
     prisma.user.findMany({
-      where: { role: { in: ["ADMIN", "CS"] } },
+      where: { role: { in: ["ADMIN", "CS"] }, isObserver: false },
       select: { id: true, name: true, role: true },
       orderBy: { name: "asc" },
     }),
@@ -905,39 +905,48 @@ type CommunicationUpdateInput = {
 /** Manual workflow records and their audit must commit together; this never sends a message. */
 async function updateCommunicationTaskAtomically(input: CommunicationUpdateInput) {
   return prisma.$transaction(async tx => {
+    const actor = await requireCommunicationWriteAccess(tx, input.actor.id);
     const task = await tx.parentCommunicationTask.findUnique({where: {id: input.id}});
     if (!task) throw new Error("Communication task not found / 沟通任务不存在");
     const now = new Date(), data = input.data ?? {};
     // Replayed confirmations retain the first operator, time and evidence.
     if(input.action === "manual_sent" && task.status === "COMPLETED" && task.manualSentAt) return task;
     if(input.action === "waive" && task.status === "WAIVED") return task;
-    if(input.action !== "copy" && !OPEN_STATUSES.includes(task.status))
+    if(!["copy", "share_card"].includes(input.action) && !OPEN_STATUSES.includes(task.status))
       throw new Error("This communication task is closed; use its correction workflow / 沟通任务已结束，请使用更正流程");
     const audit = async (actor: CommunicationActor, action: string, taskId: string, meta: Prisma.InputJsonValue) => {
       await tx.auditLog.create({data:{actorEmail:actor.email,actorName:actor.name,actorRole:actor.role,
         module:"COMMUNICATION",action,entityType:"ParentCommunicationTask",entityId:taskId,meta}});
     };
+    if (input.action === "share_card") {
+      await audit(actor, "SHARE_MINIAPP_CARD", task.id, {
+        kind: task.kind, feedbackId: task.feedbackId, sessionId: task.sessionId,
+        studentId: task.studentId, destination: String(data.destination ?? "WECHAT").slice(0, 60),
+      });
+      return task;
+    }
     if (input.action === "claim") {
       const updated = await tx.parentCommunicationTask.update({
         where: { id: task.id },
-        data: { ownerUserId: input.actor.id, ownerName: input.actor.name, claimedAt: now, status: task.status === "READY_TO_SEND" ? "CLAIMED" : task.status },
+        data: { ownerUserId: actor.id, ownerName: actor.name, claimedAt: now, status: task.status === "READY_TO_SEND" ? "CLAIMED" : task.status },
       });
-      await audit(input.actor, "CLAIM_TASK", task.id, { previousOwner: task.ownerName });
+      await audit(actor, "CLAIM_TASK", task.id, { previousOwner: task.ownerName });
       return updated;
     }
 
     if (input.action === "transfer") {
       const ownerUserId = String(data.ownerUserId ?? "").trim();
-      const owner = await tx.user.findFirst({ where: { id: ownerUserId, role: { in: ["ADMIN", "CS"] } }, select: { id: true, name: true } });
-      if (!owner) throw new Error("Invalid communication owner");
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id=${ownerUserId} FOR SHARE`;
+      const owner = await tx.user.findFirst({ where: { id: ownerUserId, role: { in: ["ADMIN", "CS"] }, isObserver: false }, select: { id: true, name: true } });
+      if (!owner) throw new Error("Invalid communication owner / 请选择有效的沟通负责人");
       const updated = await tx.parentCommunicationTask.update({ where: { id: task.id }, data: { ownerUserId: owner.id, ownerName: owner.name, claimedAt: now } });
-      await audit(input.actor, "TRANSFER_TASK", task.id, { from: task.ownerName, to: owner.name, note: String(data.note ?? "").slice(0, 500) });
+      await audit(actor, "TRANSFER_TASK", task.id, { from: task.ownerName, to: owner.name, note: String(data.note ?? "").slice(0, 500) });
       return updated;
     }
 
     if (input.action === "copy") {
-      const updated = await tx.parentCommunicationTask.update({ where: { id: task.id }, data: { copiedAt: now, copiedByUserId: input.actor.id, copiedByName: input.actor.name } });
-      await audit(input.actor, "COPY_WECHAT_MESSAGE", task.id, { group: task.wechatGroupName });
+      const updated = await tx.parentCommunicationTask.update({ where: { id: task.id }, data: { copiedAt: now, copiedByUserId: actor.id, copiedByName: actor.name } });
+      await audit(actor, "COPY_WECHAT_MESSAGE", task.id, { group: task.wechatGroupName });
       return updated;
     }
 
@@ -958,12 +967,12 @@ async function updateCommunicationTaskAtomically(input: CommunicationUpdateInput
       const updated = await tx.parentCommunicationTask.update({
         where: { id: task.id },
         data: {
-          status: "COMPLETED", manualSentAt: now, manualSentByUserId: input.actor.id, manualSentByName: input.actor.name,
+          status: "COMPLETED", manualSentAt: now, manualSentByUserId: actor.id, manualSentByName: actor.name,
           manualChannel: channel, wechatGroupName: groupName || null, note: note || task.note, completedAt: now,
         },
       });
       if (task.studentId && task.parentId && groupName) {
-        await tx.parentStudentLink.updateMany({ where: { studentId: task.studentId, parentId: task.parentId }, data: { wechatGroupName: groupName, communicationOwner: input.actor.name } });
+        await tx.parentStudentLink.updateMany({ where: { studentId: task.studentId, parentId: task.parentId }, data: { wechatGroupName: groupName, communicationOwner: actor.name } });
       }
       if (task.kind === "COURSE_REMINDER_PARENT" && task.studentId && task.dueAt) {
         await tx.todoReminderConfirm.createMany({ data: [{ type: "STUDENT_TOMORROW", targetId: task.studentId, date: task.dueAt }], skipDuplicates: true });
@@ -980,16 +989,16 @@ async function updateCommunicationTaskAtomically(input: CommunicationUpdateInput
             status: "NOT_SENT",
             ...(task.parentId ? { parentId: task.parentId } : task.studentId ? { studentId: task.studentId } : { id: "__none__" }),
           },
-          data: { status: "SENT", sentAt: now, ownerUserId: input.actor.id, ownerName: input.actor.name },
+          data: { status: "SENT", sentAt: now, ownerUserId: actor.id, ownerName: actor.name },
         });
       }
       if (task.feedbackId) {
         const remaining = await tx.parentCommunicationTask.count({ where: { feedbackId: task.feedbackId, manualSentAt: null, status: { not: "WAIVED" } } });
         if (remaining === 0) {
-          await tx.sessionFeedback.update({ where: { id: task.feedbackId }, data: { forwardedAt: now, forwardedBy: input.actor.name, forwardChannel: channel, forwardNote: note || null } });
+          await tx.sessionFeedback.update({ where: { id: task.feedbackId }, data: { forwardedAt: now, forwardedBy: actor.name, forwardChannel: channel, forwardNote: note || null } });
         }
       }
-      await audit(input.actor, "MARK_MANUAL_SENT", task.id, { channel, groupName, note });
+      await audit(actor, "MARK_MANUAL_SENT", task.id, { channel, groupName, note });
       return updated;
     }
 
@@ -997,12 +1006,12 @@ async function updateCommunicationTaskAtomically(input: CommunicationUpdateInput
       const note = String(data.note ?? "").trim();
       if (!note) throw new Error("Waive reason is required");
       const updated = await tx.parentCommunicationTask.update({ where: { id: task.id }, data: { status: "WAIVED", note, completedAt: now } });
-      await audit(input.actor, "WAIVE_COMMUNICATION_TASK", task.id, { note });
+      await audit(actor, "WAIVE_COMMUNICATION_TASK", task.id, { note });
       return updated;
     }
 
     throw new Error("Unsupported communication action / 不支持的沟通操作");
-  }, {isolationLevel: Prisma.TransactionIsolationLevel.Serializable});
+  }, {isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000});
 }
 
 /** Review, parent projection, communication tasks, queued notifications and audit form one commit. */
@@ -1053,24 +1062,11 @@ async function reviewCommunicationFeedback(input: CommunicationUpdateInput) {
 export async function updateParentCommunicationTask(input: CommunicationUpdateInput) {
   if(input.actor.isObserver) throw new Error("Observer account is read-only / 观察者账号不能修改系统数据");
   if (["publish_feedback", "return_feedback"].includes(input.action)) return reviewCommunicationFeedback(input);
-  if (["claim", "transfer", "copy", "manual_sent", "waive"].includes(input.action)) return updateCommunicationTaskAtomically(input);
+  if (["claim", "transfer", "copy", "manual_sent", "waive", "share_card"].includes(input.action)) return updateCommunicationTaskAtomically(input);
 
   const task = await prisma.parentCommunicationTask.findUnique({ where: { id: input.id } });
   if (!task) throw new Error("Communication task not found");
   const now = new Date();
-  const data = input.data ?? {};
-
-  if (input.action === "share_card") {
-    await auditTask(input.actor, "SHARE_MINIAPP_CARD", task.id, {
-      kind: task.kind,
-      feedbackId: task.feedbackId,
-      sessionId: task.sessionId,
-      studentId: task.studentId,
-      destination: String(data.destination ?? "WECHAT").slice(0, 60),
-    });
-    return task;
-  }
-
   if (input.action === "retry_auto") {
     if (task.feedbackId) return prisma.$transaction(async tx => {
       const actor = await requireCommunicationWriteAccess(tx, input.actor.id);

@@ -911,3 +911,18 @@ Logs: `/tmp/sgt-r448-all-tests.log`, `/tmp/sgt-r448-build.log`, `/tmp/sgt-r448-t
 - Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
 
 ---
+
+## 2026-09-30-r460
+
+- Release ID: `2026-09-30-r460`
+- Date/Time (Asia/Singapore): `2026-09-30`
+- Deployment status: `READY`; live proof belongs in the execution ledger.
+- Problem: manual communication mutations trusted actor fields captured before the transaction, so revoked permissions or observer status could be stale and operator evidence could use outdated identity. Transfers also offered observer accounts as owners.
+- Change: claim, transfer, copy, manual-send confirmation, waiver and share-card intent recheck the current user/observer/role/workspace/ACL inside their audited transaction and use the current identity for ownership and evidence. Existing manager/operations/CS workspace access is retained. Transfer targets are locked and restricted to the existing ADMIN/CS boundary with observer accounts excluded from both choices and writes. Share intent still does not assert delivery; completed records keep their original evidence.
+- Validation:763 tests, final260-page production build and TypeScript passed. Isolated six-action UAT rejects stale observer/role and revoked workspace/manager/operations rights, preserves valid access, records current operator identity, rejects observer assignment, rolls back failed share audit, and rechecks permissions on repeated completed confirmations. Existing five-action rollback/concurrency/history regression passed; actual HTTP verifies owner confirmation, duplicate preservation, closed-task conflict and observer/finance/teacher rejection.
+- Compatibility: no migration, routes and payloads retained, no sender invoked, no production business acceptance writes, no WeChat client publication. New assignment failure has EN/ZH text; no new visual layout or overall language-completion claim.
+- Remaining: session reminder retry validity and atomic audit, teacher-submission task synchronization, sender validity, full role/route/mobile/language acceptance and unified delivery.
+- Rollback reference: `10c91e550806becde96ed7eb10395acf5aa1e4b6` (r459).
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
