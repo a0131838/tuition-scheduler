@@ -385,3 +385,21 @@ Logs: `/tmp/sgt-r427-focused.log`, `/tmp/sgt-r427-backend.log`, `/tmp/sgt-r427-u
 ---
 
 Logs: `/tmp/sgt-r428-sign-uat-final.log`, `/tmp/sgt-r428-void-regression.log`, `/tmp/sgt-r428-void-http.log`, `/tmp/sgt-r428-correction-http.log`, `/tmp/sgt-r428-browser-post.log`, `/tmp/sgt-r428-focused-final.log`, `/tmp/sgt-r428-backend-final.log`, `/tmp/sgt-r428-tsc-final.log`, `/tmp/sgt-r428-build-final.log`, `/tmp/sgt-r428-numbering-readonly.log`. Initial legacy billing test failed because its transaction client bypassed the old stub; the fixture now intercepts the transaction and notification recipient lookup. Real isolated database rollback/concurrency tests remain the primary transaction proof.
+
+## 2026-09-29-r429
+
+- Release ID: `2026-09-29-r429`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; guarded release proof is maintained in the execution ledger.
+- Problem: deleting an incorrect parent invoice, clearing approval/contract links and logging the deletion were separate writes. A failure could leave partial state; deleted history omitted the original amounts and review reason, and the page could keep displaying the old invoice after success.
+- Change: exact invoice/package ownership, source version and bounded review reason checked under a serializable transaction. The complete raw invoice is archived with actor/time/reason and prior contract, application, approval and notification evidence in the audit. Invoice removal, approval removal, gate recalculation, VOID contract detachment, queued-notification skipping and audit commit together. Duplicate requests return the existing archive; receipt/payment-proof/active-agreement/processing-notification conflicts require review. Signed documents, VOID status, invoice numbers, ledger, total and remaining entitlement are retained. No refund is created.
+- UI: existing billing and contract actions open the committed result with pending protection; existing deleted-history page expands the original invoice and reason. Historical rows without a snapshot explicitly remain unavailable. New controls/results/history support ZH/EN/BILINGUAL; original role guards and links retained. Unrelated legacy language gaps remain phase8 work.
+- Validation:25 focused tests,181 backend tests,full TypeScript and260-page production build. Isolated service UAT covers scoped/stale rejection, audit failure rollback, repeated/concurrent deletion, receipt-versus-deletion races, partial receipts, unallocated payment proof, active tuition/application agreements, processing notices and unchanged ledger. Five-role HTTP verifies existing access and observer denial. Browser submits fictional invoice, opens saved result and ZH/EN/BILINGUAL original evidence; independent DB asserts one archive/audit, retained signed history and600/300 minute balances; console clean.
+- Migration: none. Production business records and outbound messages are not used for acceptance. Shared/partner/monthly financial allocation remains explicit review, never guessed.
+- Remaining: phase3 acceptance review and phases4–10. This release is not overall programme completion.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `497073b29c446554997d5640a5315d6742b72f9c` (r428); retain archive/audit history.
+
+---
+
+Logs: `/tmp/sgt-r429-focused-final.log`, `/tmp/sgt-r429-backend.log`, `/tmp/sgt-r429-uat-final.log`, `/tmp/sgt-r429-http.log`, `/tmp/sgt-r429-browser-post.log`, `/tmp/sgt-r429-tsc-final.log`, `/tmp/sgt-r429-build-final.log`. Initial fictional invoice number was invalid; fixture now uses normal invoice numbering. Expected serialization conflicts are rejection assertions. Browser found and verified the saved-result navigation fix. Screenshot: external execution evidence `r429-isolated-invoice-archive.png`.

@@ -291,7 +291,7 @@ export async function POST(req: Request) {
 
   async function rollbackCreatedPackage() {
     if (createdInvoiceId) {
-      await deleteParentInvoice({ invoiceId: createdInvoiceId, actorEmail: admin.email }).catch(() => null);
+      await deleteParentInvoice({ invoiceId: createdInvoiceId, packageId: createdPackageId!, actorEmail: admin.email, reason:"Rollback unsuccessful package creation" }).catch(() => null);
     }
     if (createdPackageId) {
       await prisma.packageTxn.deleteMany({ where: { packageId: createdPackageId } }).catch(() => null);

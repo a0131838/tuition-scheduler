@@ -1,3 +1,4 @@
+import InvoiceArchiveForm from '@/app/admin/_components/InvoiceArchiveForm';
 import ContractVoidForm from '@/app/admin/_components/ContractVoidForm';
 import {hasContractExecutionHistory} from '@/lib/student-contract-history';
 import { StudentContractMode } from "@prisma/client";
@@ -17,7 +18,6 @@ import {
   buildStudentContractSignPath,
   createStudentContractDraft,
   deleteVoidStudentContractDraft,
-  detachDeletedInvoiceFromStudentContract,
   hasReusableStudentContractParentInfo,
   listStudentContractsForPackage,
   prepareStudentContractForSigning,
@@ -178,44 +178,21 @@ function contractCanDeleteVoidDraft(contract: Parameters<typeof hasContractExecu
 
 async function deleteInvoiceAction(formData: FormData) {
   "use server";
-  const admin = await requireAdmin();
+  const admin = await requireAdmin(), lang = await getLang();
   const packageId = String(formData.get("packageId") ?? "").trim();
   const invoiceId = String(formData.get("invoiceId") ?? "").trim();
   const sourceWorkflow = normalizePackageBillingSource(String(formData.get("source") ?? ""));
   const receiptsBack = sanitizeReceiptsBack(String(formData.get("receiptsBack") ?? ""));
-  if (!packageId || !invoiceId) {
-    redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, err: "Missing invoice id" }));
-  }
   try {
-    const linkedContracts = await prisma.studentContract.findMany({
-      where: { invoiceId },
-      select: { id: true, status: true, invoiceNo: true },
-    });
-    if (hasNonVoidedAgreementLink(linkedContracts)) {
-      throw new Error("Invoice is linked to contract history. Void or review the contract link before deleting the invoice.");
-    }
-    const linkedSchoolApplications = await prisma.schoolApplicationService.findMany({
-      where: { invoiceId },
-      select: { id: true, status: true, invoiceNo: true },
-    });
-    if (hasNonVoidedAgreementLink(linkedSchoolApplications)) {
-      throw new Error("Invoice is linked to a school application service agreement. Void or review that agreement before deleting the invoice.");
-    }
-    await deleteParentInvoice({ invoiceId, actorEmail: admin.email });
-    await detachDeletedInvoiceFromStudentContract({
-      invoiceId,
-      actorUserId: admin.id,
-      actorLabel: admin.email,
-    });
+    const expectedUpdatedAt=String(formData.get("expectedUpdatedAt")??"").trim();
+    if(!expectedUpdatedAt)throw new Error("Reload the invoice before deleting / 请刷新发票后再删除");
+    await deleteParentInvoice({invoiceId,packageId,actorEmail:admin.email,expectedUpdatedAt,reason:String(formData.get("reason")??"")});
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Delete invoice failed";
-    redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, err: msg }));
+    const raw = e instanceof Error ? e.message.split(" / ") : [];
+    const err = raw.length===2 ? t(lang,raw[0],raw[1]) : t(lang,"Unable to archive invoice. Reload and review its current state.","未能删除并留档发票，请刷新核对当前状态。");
+    return buildPackageContractHref(packageId, {sourceWorkflow,receiptsBack,err});
   }
-  redirect(buildPackageContractHref(packageId, {
-    sourceWorkflow,
-    receiptsBack,
-    msg: "Old invoice draft deleted. You can now create a replacement contract version.",
-  }));
+  return buildPackageContractHref(packageId, {sourceWorkflow,receiptsBack,msg:t(lang,"Invoice archived with its original evidence. No refund or lesson entitlement change.","发票已删除并保留原单据凭据；未退款，未改变课时权益。")});
 }
 
 async function createContractDraftAction(formData: FormData) {
@@ -1081,15 +1058,17 @@ export default async function PackageContractPage({
                         {t(lang, "Open invoice lane", "打开发票区")}
                       </a>
                       {canDeleteLatestContractInvoiceDraft && latestContractInvoice ? (
-                        <form action={deleteInvoiceAction}>
+                        <InvoiceArchiveForm action={deleteInvoiceAction} lang={lang} packageId={packageId} view="contract">
                           <input type="hidden" name="packageId" value={packageId} />
                           <input type="hidden" name="invoiceId" value={latestContractInvoice.id} />
+                          <input type="hidden" name="expectedUpdatedAt" value={latestContractInvoice.updatedAt} />
+                          <input required minLength={10} maxLength={2000} name="reason" aria-label={t(lang,"Deletion review reason","删除核对原因")} placeholder={t(lang,"Reason (at least10 characters)","核对原因（至少10字）")} />
                           <input type="hidden" name="source" value={sourceWorkflow} />
                           <input type="hidden" name="receiptsBack" value={receiptsBack} />
                           <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #b45309", background: "#fff7ed", color: "#9a3412", fontWeight: 700 }}>
                             {t(lang, "Delete old invoice draft", "删除旧发票草稿")}
                           </button>
-                        </form>
+                        </InvoiceArchiveForm>
                       ) : null}
                     </div>
                     {contractBusinessInfo?.careServiceIncluded ? (

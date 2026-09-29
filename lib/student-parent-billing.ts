@@ -1,3 +1,4 @@
+import {deleteParentInvoiceReviewed,type ParentInvoiceDeletionInput} from "./parent-invoice-deletion";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit-log";
@@ -82,6 +83,10 @@ type ParentBillingStore = {
     issueDate: string;
     deletedBy: string;
     deletedAt: string;
+    snapshot?: ParentInvoiceItem;
+    reason?: string;
+    contractIds?: string[];
+    applicationIds?: string[];
   }>;
   invoiceSeqByMonth: Record<string, number>;
 };
@@ -259,6 +264,10 @@ function sanitizeStore(input: unknown): ParentBillingStore {
       issueDate: normalizeDateOnly(x.issueDate as string | Date | null | undefined, new Date()) ?? today,
       deletedBy: normalizeEmail(String(x.deletedBy ?? "")),
       deletedAt: String(x.deletedAt ?? "").trim() || new Date().toISOString(),
+      ...(x.snapshot && typeof x.snapshot==="object" ? {snapshot: x.snapshot as ParentInvoiceItem} : {}),
+      ...(typeof x.reason==="string" ? {reason:x.reason} : {}),
+      ...(Array.isArray(x.contractIds) ? {contractIds:x.contractIds.filter((id):id is string=>typeof id==="string")} : {}),
+      ...(Array.isArray(x.applicationIds) ? {applicationIds:x.applicationIds.filter((id):id is string=>typeof id==="string")} : {}),
     });
   }
 
@@ -873,53 +882,8 @@ export async function buildParentReceiptNoForInvoice(invoiceId: string) {
   return receiptNo;
 }
 
-export async function deleteParentInvoice(input: { invoiceId: string; actorEmail: string }) {
-  let invoice: ParentInvoiceItem | null = null;
-  await mutateJsonAppSetting({
-    key: PARENT_BILLING_KEY,
-    fallback: EMPTY_PARENT_BILLING_STORE,
-    sanitize: sanitizeStore,
-    mutate(store) {
-      const invoiceId = input.invoiceId.trim();
-      invoice = store.invoices.find((x) => x.id === invoiceId) ?? null;
-      if (!invoice) throw new Error("Invoice not found");
-      if (store.receipts.some((x) => x.invoiceId === invoiceId)) {
-        throw new Error("Cannot delete invoice: linked receipt exists");
-      }
-      store.invoices = store.invoices.filter((x) => x.id !== invoiceId);
-      rebuildInvoiceSeqByMonth(store);
-      store.deletedInvoices.unshift({
-        id: crypto.randomUUID(),
-        invoiceId: invoice.id,
-        invoiceNo: invoice.invoiceNo,
-        packageId: invoice.packageId,
-        studentId: invoice.studentId,
-        billTo: invoice.billTo,
-        issueDate: invoice.issueDate,
-        deletedBy: normalizeEmail(input.actorEmail),
-        deletedAt: new Date().toISOString(),
-      });
-    },
-  });
-  const removedPendingApprovals = await prisma.packageInvoiceApproval.deleteMany({
-    where: {
-      invoiceId: input.invoiceId.trim(),
-      status: "PENDING_MANAGER",
-    },
-  });
-  await logAudit({
-    actor: { email: input.actorEmail, role: "ADMIN" },
-    module: "PARENT_BILLING",
-    action: "DELETE_INVOICE",
-    entityType: "ParentInvoice",
-    entityId: input.invoiceId.trim(),
-    meta: {
-      invoiceNo: invoice!.invoiceNo,
-      packageId: invoice!.packageId,
-      studentId: invoice!.studentId,
-      removedPendingInvoiceApprovals: removedPendingApprovals.count,
-    },
-  });
+export async function deleteParentInvoice(input: ParentInvoiceDeletionInput) {
+  return deleteParentInvoiceReviewed(input);
 }
 
 export async function applyParentInvoiceNumberAssignments(

@@ -1,7 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
-import { listDeletedParentInvoices } from "@/lib/student-parent-billing";
+import { listDeletedParentInvoices, type ParentInvoiceItem } from "@/lib/student-parent-billing";
 import { listDeletedPartnerInvoices } from "@/lib/partner-billing";
 import { listDeletedBusinessInvoices } from "@/lib/business-accounts";
 import { normalizeDateOnly } from "@/lib/date-only";
@@ -17,6 +17,8 @@ type HistoryRow = {
   partyLabel: string;
   contextLabel: string;
   openHref: string;
+  snapshot?: ParentInvoiceItem;
+  reason?: string;
 };
 
 function includesQuery(parts: Array<string | null | undefined>, query: string) {
@@ -63,6 +65,8 @@ export default async function FinanceDeletedInvoicesPage({
       const pkg = packageMap.get(row.packageId);
       return {
         id: row.id,
+        snapshot: row.snapshot,
+        reason: row.reason,
         channel: "PARENT" as const,
         invoiceNo: row.invoiceNo,
         issueDate: row.issueDate,
@@ -184,13 +188,24 @@ export default async function FinanceDeletedInvoicesPage({
             <tbody>
               {rows.map((row) => (
                 <tr key={`${row.channel}-${row.id}`} style={{ borderTop: "1px solid #eef2f7" }}>
-                  <td>{row.channel === "PARENT" ? t(lang, "Parent", "直客") : t(lang, "Partner", "合作方")}</td>
+                  <td>{row.channel === "PARENT" ? t(lang, "Parent", "直客") : row.channel === "BUSINESS" ? t(lang,"Business Account","企业账户") : t(lang, "Partner", "合作方")}</td>
                   <td style={{ fontWeight: 700 }}>{row.invoiceNo}</td>
                   <td>{normalizeDateOnly(row.issueDate) ?? "-"}</td>
-                  <td>{new Date(row.deletedAt).toLocaleString(lang === "ZH" ? "zh-CN" : "en-SG")}</td>
+                  <td>{new Date(row.deletedAt).toLocaleString(lang === "ZH" ? "zh-CN" : "en-SG",{timeZone:"Asia/Singapore"})}</td>
                   <td>{row.deletedBy || "-"}</td>
                   <td>{row.partyLabel}</td>
-                  <td>{row.contextLabel}</td>
+                  <td>{row.contextLabel}
+                    {row.snapshot ? <details style={{marginTop:8}}><summary>{t(lang,"Archived original and reason","原单据留档及原因")}</summary>
+                      <div>{t(lang,"Description","说明")}: {row.snapshot.description}</div>
+                      <div>{t(lang,"Quantity","数量")}: {row.snapshot.quantity}</div>
+                      <div>{t(lang,"Amount / GST / Total","金额 / GST / 合计")}: SGD {Number(row.snapshot.amount).toFixed(2)} / {Number(row.snapshot.gstAmount).toFixed(2)} / {Number(row.snapshot.totalAmount).toFixed(2)}</div>
+                      <div>{t(lang,"Due date","到期日")}: {row.snapshot.dueDate}</div>
+                      <div>{t(lang,"Payment terms","付款条款")}: {row.snapshot.paymentTerms}</div>
+                      <div>{t(lang,"Original note","原备注")}: {row.snapshot.note || "—"}</div>
+                      <div>{t(lang,"Review reason","核对原因")}: {row.reason || "—"}</div>
+                      <div>{t(lang,"Archived source only; no refund or entitlement change.","此处仅为原单据留档，不代表退款或课时变更。")}</div>
+                    </details> : row.channel==="PARENT" ? <div style={{fontSize:12,color:"#64748b"}}>{t(lang,"Legacy deletion: full original snapshot unavailable","历史删除记录：未留完整原单据快照")}</div> : null}
+                  </td>
                   <td><a href={row.openHref}>{t(lang, "Open source page", "打开来源页面")}</a></td>
                 </tr>
               ))}

@@ -17,7 +17,7 @@ test("contract signing replaces a stale pending approval with one for the signed
 });
 
 test("deleting an invoice also removes its pending approval", async () => {
-  const source = await readFile(new URL("../lib/student-parent-billing.ts", import.meta.url), "utf8");
+  const source = await readFile(new URL("../lib/parent-invoice-deletion.ts", import.meta.url), "utf8");
   assert.match(source, /packageInvoiceApproval\.deleteMany\(\{/);
-  assert.match(source, /invoiceId: input\.invoiceId\.trim\(\),\s+status: "PENDING_MANAGER"/);
+  assert.match(source, /packageInvoiceApproval\.deleteMany\(\{where:\{invoiceId\}\}\)/);
 });
