@@ -545,3 +545,21 @@ Browser evidence note: one earlier React hydration #418 at03:18:32UTC was captur
 - Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
 
 ---
+
+## 2026-09-29-r438
+
+- Release ID: `2026-09-29-r438`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; guarded release evidence is recorded in the execution ledger.
+- Problem: saving a parent response, refreshing options and recording its audit were separate writes. Refresh deleted old options and could publish candidates computed from a superseded response.
+- Change: response, option withdrawal/generation and parent/staff audit now commit in one serializable transaction. Exact revision and live parent access/campaign checks reject stale writes. Generation separately claims its input revision; held/accepted/completed arrangements block background replacement. Pause requires a reason; excluded items reject parent edits.
+- History: old options retain their IDs, dates, selection history and generation. Reusing the same slot creates a new generation. The staff page provides collapsed prior options with round/status/date in EN/ZH/BILINGUAL. Withdrawal does not cancel formal lessons. CSV completion status now agrees with the missing/changed-evidence review state.
+- Validation:41 focused tests,181 backend tests,TypeScript and260-page production build. Isolated service UAT covers same-slot generations, forced audit rollback, concurrent reply once, stale generation rejection, access revoked mid-request, pause/excluded guards and unchanged teaching/ledger/outbox counts. Authenticated staff/parent HTTP covers old revision and repeated submission rejection, retained history and shared response state without private-note disclosure. Browser checks history and changed controls in three languages.
+- Migration: additive MonthlySchedulingOffer.generation default0 and replacement unique index including generation; no record backfill or deletion. Migration142 passed on isolated PostgreSQL. Old rows are legacy generation0; no historical attribution is inferred.
+- Risk/rollback: medium because this changes scheduling persistence. Rollback point `fc2b3c1f488b13f8e984c03df63e30edcdad66dd` (r437). Preserve the new column/index and history on code rollback; do not restore the old unique constraint after repeated same-slot generations exist. Legacy Mini clients may omit the optional revision; server-read concurrency checks still apply. No WeChat client release.
+- Remaining: family batch/offer selection audit atomicity, staffing forecast, phase4 acceptance and phases6–10. No production business writes were used for acceptance.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
+Logs: `/tmp/sgt-r438-uat.log`, `/tmp/sgt-r438-http.log`, `/tmp/sgt-r438-focused.log`, `/tmp/sgt-r438-backend.log`, `/tmp/sgt-r438-tsc-final.log`, `/tmp/sgt-r438-build-final.log`.

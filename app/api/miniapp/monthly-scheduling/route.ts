@@ -117,6 +117,7 @@ export async function POST(req: Request) {
   if (!MONTHLY_SCHEDULING_INTENTS.includes(intent)) return bad("请选择下个月的安排");
   try {
     const item = await submitMonthlySchedulingPreference({
+      expectedUpdatedAt:typeof body.expectedUpdatedAt==='string'?body.expectedUpdatedAt:undefined,
       itemId: String((body as any).itemId ?? ""),
       parentId: auth.parent.id,
       intent,

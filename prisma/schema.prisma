@@ -3517,6 +3517,7 @@ model MonthlySchedulingItem {
 model MonthlySchedulingOffer {
   id               String    @id @default(uuid())
   itemId           String
+  generation       Int       @default(0)
   teacherId        String
   status           String    @default("AVAILABLE")
   weekdayLabel     String
@@ -3536,7 +3537,7 @@ model MonthlySchedulingOffer {
   item    MonthlySchedulingItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
   teacher Teacher               @relation(fields: [teacherId], references: [id], onDelete: Restrict)
 
-  @@unique([itemId, teacherId, weekdayLabel, startMin, endMin])
+  @@unique([itemId, teacherId, weekdayLabel, startMin, endMin, generation], map: "MonthlySchedulingOffer_generation_slot_key")
   @@index([itemId, status, parentRank])
   @@index([teacherId, status, holdExpiresAt])
 }

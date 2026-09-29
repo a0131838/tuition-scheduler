@@ -18,6 +18,7 @@ import {
   monthlySchedulingCohortForSourceName,
   monthlySchedulingFamilyCanKeep,
   monthlySchedulingQueueLane,
+  monthlySchedulingOfferView,
   monthlySchedulingMonthKey,
   monthlySchedulingParentMessageFromTemplate,
   MONTHLY_SCHEDULING_CAMPAIGN_STATUSES,
@@ -180,6 +181,7 @@ async function proxyPreferenceAction(formData: FormData) {
   const row = await submitMonthlySchedulingPreferenceByStaff({
     itemId: String(formData.get("itemId") ?? ""),
     expectedStatus: String(formData.get("expectedStatus") ?? "") as MonthlySchedulingItemStatus,
+    expectedUpdatedAt:String(formData.get("expectedUpdatedAt")??'')||undefined,
     intent: String(formData.get("intent") ?? "") as MonthlySchedulingIntent,
     expectedSessionsPerWeek: optionalFormNumber(formData, "expectedSessionsPerWeek"),
     expectedMinutes: optionalFormNumber(formData, "expectedMinutes"),
@@ -316,6 +318,7 @@ export default async function MonthlySchedulingPage({
     ? await Promise.all([buildMonthlyStaffingReport(campaign.id, selectedCohort), buildMonthlyMatchSuggestions(campaign.id), listMonthlySchedulingQualifiedTeachers(campaign.items.map((row) => row.courseId))])
     : [null, new Map<string, Array<{ teacherId: string; teacherName: string; date: string; start: string; end: string; startAt: string; endAt: string }>>(), new Map<string, Array<{ id: string; name: string }>>()];
   const formalCandidates = campaign ? await monthlyCompletionCandidates(campaign.month, [...new Set(campaign.items.map(row=>row.courseId))]) : [];
+  const pastOptions=campaign?await prisma.monthlySchedulingOffer.findMany({where:{itemId:{in:campaign.items.map(item=>item.id)},status:{in:['WITHDRAWN','EXPIRED']}},include:{teacher:{select:{name:true}}},orderBy:{createdAt:'desc'},take:500}):[];
   const cohortItems = campaign?.items.filter((row) => monthlySchedulingCohortForSourceName(row.student.sourceChannel?.name) === selectedCohort) ?? [];
   const cohortCounts = {
     BOSS_OTHER: campaign?.items.filter((row) => monthlySchedulingCohortForSourceName(row.student.sourceChannel?.name) === "BOSS_OTHER" && row.status !== "EXCLUDED").length ?? 0,
@@ -430,6 +433,12 @@ export default async function MonthlySchedulingPage({
                         教务代录 · {responseChannelLabels[item.responseChannel as MonthlySchedulingResponseChannel]?.zh ?? item.responseChannel ?? "-"}<br />
                         {item.respondedByName || "-"} · {item.parentConfirmedAt ? formatBusinessDateOnly(item.parentConfirmedAt) : "-"}
                       </div>}
+                      {pastOptions.some(option=>option.itemId===item.id) && <details style={{marginTop:8}}>
+                        <summary>{t(lang,"Prior time options","历次时间方案")}</summary>
+                        <p>{t(lang,"Previous proposals are retained here. Withdrawing a proposal does not cancel its formal lessons.","这里保留以前的时间方案。撤回方案不会取消已经排好的正式课程。")}</p>
+                        {pastOptions.filter(option=>option.itemId===item.id).map(option=>{const view=monthlySchedulingOfferView(option);return <div key={option.id} style={{marginBottom:8}}><strong>{option.teacher.name}</strong> · {option.generation>0?`${t(lang,"Round","轮次")} ${option.generation}`:t(lang,"Legacy option","历史方案")} · {option.status==='EXPIRED'?t(lang,"Expired","已过期"):t(lang,"Withdrawn","已撤回")} · {formatBusinessDateTime(option.createdAt)}{view.sessionDates.map(date=><div key={date.startAt}>{formatBusinessDateTime(new Date(date.startAt))} – {formatBusinessDateTime(new Date(date.endAt))}</div>)}</div>;})}
+                        {pastOptions.length===500 && <small>{t(lang,"Only the latest 500 prior options are displayed for this campaign.","本活动仅显示最近500个历史方案。")}</small>}
+                      </details>}
                       {item.offerSelectionEntryMode === "STAFF_PROXY" && <div style={{ marginTop: 6, color: "#17663a", fontSize: 12 }}>
                         代录家长排序 · {item.offerSelectedByName || "-"} · {item.offerParentConfirmedAt ? formatBusinessDateOnly(item.offerParentConfirmedAt) : "-"}
                       </div>}
@@ -459,7 +468,7 @@ export default async function MonthlySchedulingPage({
                         {canProxyPreference && <details style={{ marginTop: 8, border: "1px solid #f2c48d", padding: 8, background: "#fffaf3" }}>
                           <summary style={{ cursor: "pointer", fontWeight: 800, color: "#9a4d08" }}>{t(lang, "Enter response for parent", "代家长录入需求")}</summary>
                           <form action={proxyPreferenceAction} style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(130px,1fr))", gap: 8, marginTop: 10 }}>
-                            <input type="hidden" name="itemId" value={item.id} /><input type="hidden" name="month" value={month} /><input type="hidden" name="cohort" value={selectedCohort} /><input type="hidden" name="expectedStatus" value={item.status} />
+                            <input type="hidden" name="itemId" value={item.id} /><input type="hidden" name="month" value={month} /><input type="hidden" name="cohort" value={selectedCohort} /><input type="hidden" name="expectedStatus" value={item.status} /><input type="hidden" name="expectedUpdatedAt" value={item.updatedAt.toISOString()} />
                             <label>家长安排<select name="intent" defaultValue={item.intent ?? "KEEP"} required style={{ width: "100%", padding: 8 }}>{MONTHLY_SCHEDULING_INTENTS.map((value) => <option key={value} value={value}>{value === "KEEP" ? "保持目前安排" : value === "CHANGE" ? "希望修改时间" : value === "PAUSE" ? "下个月暂停" : "尚未确定"}</option>)}</select></label>
                             <label>沟通渠道<select name="responseChannel" defaultValue={item.responseChannel ?? "WECHAT_GROUP"} required style={{ width: "100%", padding: 8 }}>{MONTHLY_SCHEDULING_RESPONSE_CHANNELS.map((value) => <option key={value} value={value}>{responseChannelLabels[value].zh}</option>)}</select></label>
                             <label>每周次数<input name="expectedSessionsPerWeek" type="number" min="0" max="14" defaultValue={item.expectedSessionsPerWeek ?? 1} style={{ width: "100%", padding: 8, boxSizing: "border-box" }} /></label>

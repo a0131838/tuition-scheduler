@@ -150,6 +150,7 @@ export async function POST(req: Request) {
       const row = await submitMonthlySchedulingPreferenceByStaff({
         itemId: String((body as any).itemId ?? ""),
         expectedStatus: String((body as any).expectedStatus ?? "") as MonthlySchedulingItemStatus,
+        expectedUpdatedAt:typeof body.expectedUpdatedAt==='string'?body.expectedUpdatedAt:undefined,
         intent,
         expectedSessionsPerWeek: (body as any).expectedSessionsPerWeek,
         expectedMinutes: (body as any).expectedMinutes,

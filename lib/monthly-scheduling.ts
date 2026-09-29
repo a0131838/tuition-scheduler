@@ -580,6 +580,7 @@ export function normalizeMonthlyAvailability(value: unknown): MonthlyAvailabilit
 
 type MonthlySchedulingPreferenceInput = {
   itemId: string;
+  expectedUpdatedAt?: string;
   intent: MonthlySchedulingIntent;
   expectedSessionsPerWeek?: number | null;
   expectedMinutes?: number | null;
@@ -616,7 +617,7 @@ function proxyAuditValues(input: MonthlySchedulingProxyAuditInput) {
 }
 
 async function persistMonthlySchedulingPreference(
-  item: { id: string; status: string; courseId: string; currentScheduleJson: unknown; carryForwardScheduleJson: unknown; campaign: { month: Date } },
+  item: { id: string; studentId: string; updatedAt: Date; status: string; courseId: string; currentScheduleJson: unknown; carryForwardScheduleJson: unknown; campaign: { month: Date } },
   input: MonthlySchedulingPreferenceInput,
   audit: {
     entryMode: "PARENT" | "STAFF_PROXY";
@@ -628,6 +629,9 @@ async function persistMonthlySchedulingPreference(
     parentConfirmedAt: Date;
   },
 ) {
+  if(input.expectedUpdatedAt && input.expectedUpdatedAt!==item.updatedAt.toISOString())throw new Error("Response changed; refresh first / 回复已变化，请先刷新");
+  if(input.intent==='PAUSE' && (input.parentNotes?.trim()||audit.parentConfirmationNote?.trim()||'').length<5)
+    throw new Error("Please record why next month is paused / 请填写下月暂停的原因（至少5字）");
   if (!MONTHLY_SCHEDULING_INTENTS.includes(input.intent)) throw new Error("Invalid intent");
   const expectedSessionsPerWeek = boundedInteger(input.expectedSessionsPerWeek, 14, "Sessions per week");
   const expectedMinutes = boundedInteger(input.expectedMinutes, 20000, "Expected minutes");
@@ -668,11 +672,11 @@ async function persistMonthlySchedulingPreference(
   }
 
   const now = new Date();
-  const updated = await prisma.monthlySchedulingItem.updateMany({
-    where: {
-      id: item.id,
-      status: item.status,
-      campaign: { status: "OPEN" },
+  return prisma.$transaction(async tx=>{
+    const before=await tx.monthlySchedulingItem.findUniqueOrThrow({where:{id:item.id}});
+    const updated=await tx.monthlySchedulingItem.updateMany({where:{
+      id:item.id,status:item.status,updatedAt:item.updatedAt,campaign:{status:"OPEN"},
+      ...(audit.respondedByParentId?{student:{parentLinks:{some:{parentId:audit.respondedByParentId,canCreateRequests:true}}}}:{}),
     },
     data: {
       status: input.intent === "PAUSE" ? "PAUSED" : "SUBMITTED",
@@ -704,18 +708,25 @@ async function persistMonthlySchedulingPreference(
       submittedAt: now,
       pausedAt: input.intent === "PAUSE" ? now : null,
     },
-  });
-  if (updated.count !== 1) throw new Error("The scheduling item changed; refresh before submitting again");
-  if (input.intent === "CHANGE") await refreshMonthlySchedulingOffers(item.id);
-  else {
-    await prisma.monthlySchedulingOffer.updateMany({
-      where: { itemId: item.id, status: { in: ["AVAILABLE", "HELD"] } },
-      data: { status: "WITHDRAWN", holdExpiresAt: null, parentRank: null },
     });
-  }
-  const row = await prisma.monthlySchedulingItem.findUnique({ where: { id: item.id } });
-  if (!row) throw new Error("Scheduling item is unavailable");
-  return row;
+    if(updated.count!==1)throw new Error("The scheduling item or access changed; refresh before submitting again / 排课需求或权限已变化，请刷新后重试");
+    const previousOffers=await tx.monthlySchedulingOffer.findMany({where:{itemId:item.id,status:{in:["AVAILABLE","HELD","ACCEPTED","COMPLETED"]}},select:{id:true,status:true}});
+    // Previous arrangements remain as records; this does not cancel their formal lessons.
+    await tx.monthlySchedulingOffer.updateMany({where:{id:{in:previousOffers.map(row=>row.id)}},data:{status:"WITHDRAWN",holdExpiresAt:null}});
+    if(input.intent==='CHANGE')await refreshMonthlySchedulingOffers(item.id,tx);
+    const row=await tx.monthlySchedulingItem.findUniqueOrThrow({where:{id:item.id}});
+    const snapshot=(value:typeof row)=>({status:value.status,intent:value.intent,expectedMinutes:value.expectedMinutes,expectedSessionsPerWeek:value.expectedSessionsPerWeek,
+      preferredTeacherId:value.preferredTeacherId,availabilityJson:value.availabilityJson,unavailableDatesJson:value.unavailableDatesJson,parentNotes:value.parentNotes,
+      responseEntryMode:value.responseEntryMode,responseChannel:value.responseChannel,parentConfirmationNote:value.parentConfirmationNote,parentConfirmedAt:value.parentConfirmedAt?.toISOString()??null});
+    const meta={before:snapshot(before),after:snapshot(row),retainedOffers:previousOffers};
+    if(audit.respondedByParentId)await tx.parentPortalAudit.create({data:{parentId:audit.respondedByParentId,studentId:item.studentId,action:'MONTHLY_PREFERENCE',targetType:'MonthlySchedulingItem',targetId:item.id,metaJson:meta}});
+    else {
+      const actor=await tx.user.findUniqueOrThrow({where:{id:audit.respondedByUserId??''}});
+      await tx.auditLog.create({data:{actorEmail:actor.email,actorName:actor.name,actorRole:actor.role,module:'MONTHLY_SCHEDULING',action:'PROXY_PARENT_PREFERENCE',entityType:'MonthlySchedulingItem',entityId:item.id,meta}});
+    }
+    return row;
+  },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:20000});
+
 }
 
 export async function submitMonthlySchedulingPreference(input: MonthlySchedulingPreferenceInput & { parentId: string }) {
@@ -728,6 +739,7 @@ export async function submitMonthlySchedulingPreference(input: MonthlyScheduling
     include: { campaign: true },
   });
   if (!item) throw new Error("Scheduling item is unavailable");
+  if (item.status === "EXCLUDED") throw new Error("This item is excluded; contact the school / 此项已排除，请联系学校核对");
   if (["OFFERED", "PARENT_SELECTED", "MATCHED", "SCHEDULED", "CHANGE_REQUESTED"].includes(item.status)) {
     throw new Error("The school is processing the confirmed schedule; please contact the school for changes");
   }
@@ -762,20 +774,6 @@ export async function submitMonthlySchedulingPreferenceByStaff(
     respondedByName: cleanText(input.actorName, 120),
     parentConfirmationNote: audit.note,
     parentConfirmedAt: audit.confirmedAt,
-  });
-  await logAudit({
-    actor: { email: input.actorEmail, name: input.actorName, role: input.actorRole },
-    module: "MONTHLY_SCHEDULING",
-    action: "PROXY_PARENT_PREFERENCE",
-    entityType: "MonthlySchedulingItem",
-    entityId: item.id,
-    meta: {
-      intent: input.intent,
-      responseChannel: input.responseChannel,
-      parentConfirmedAt: audit.confirmedAt.toISOString(),
-      parentConfirmationNote: audit.note,
-      resultingStatus: row.status,
-    },
   });
   return row;
 }
@@ -1037,13 +1035,14 @@ export function monthlySchedulingOfferView(row: any) {
   };
 }
 
-export async function refreshMonthlySchedulingOffers(itemId: string) {
-  const item = await prisma.monthlySchedulingItem.findUnique({
+export async function refreshMonthlySchedulingOffers(itemId: string, db?: Prisma.TransactionClient) {
+  const database=db??prisma;
+  const item = await database.monthlySchedulingItem.findUnique({
     where: { id: itemId },
     include: { campaign: true },
   });
   if (!item || item.intent !== "CHANGE") return [];
-  if (["PARENT_SELECTED", "MATCHED", "SCHEDULED"].includes(item.status)) return [];
+  if (!["SUBMITTED", "OFFERED"].includes(item.status) || item.campaign.status !== "OPEN") return [];
   const month = monthlySchedulingMonthKey(item.campaign.month);
   const range = monthlySchedulingRange(month);
   if (!range) throw new Error("Invalid campaign month");
@@ -1051,7 +1050,7 @@ export async function refreshMonthlySchedulingOffers(itemId: string) {
   const unavailableDates = new Set(cleanStringList(item.unavailableDatesJson, /^\d{4}-\d{2}-\d{2}$/, 40));
   const durationMin = monthlyOfferDuration(item);
   const [teachers, sessions, appointments] = await Promise.all([
-    prisma.teacher.findMany({
+    database.teacher.findMany({
       include: {
         dateAvailabilities: { where: { date: { gte: range.start, lt: range.end } } },
         courseRates: { select: { courseId: true } },
@@ -1059,7 +1058,7 @@ export async function refreshMonthlySchedulingOffers(itemId: string) {
       },
       orderBy: { name: "asc" },
     }),
-    prisma.session.findMany({
+    database.session.findMany({
       where: { startAt: { gte: range.start, lt: range.end } },
       select: {
         startAt: true,
@@ -1077,7 +1076,7 @@ export async function refreshMonthlySchedulingOffers(itemId: string) {
       },
       take: 10000,
     }),
-    prisma.appointment.findMany({
+    database.appointment.findMany({
       where: { startAt: { gte: range.start, lt: range.end } },
       select: { startAt: true, endAt: true, teacherId: true },
       take: 5000,
@@ -1137,30 +1136,29 @@ export async function refreshMonthlySchedulingOffers(itemId: string) {
   }
   candidates.sort((a, b) => MONTHLY_SCHEDULING_TIME_PRIORITIES.indexOf(a.preferenceLevel) - MONTHLY_SCHEDULING_TIME_PRIORITIES.indexOf(b.preferenceLevel) || Number(b.teacherId === item.preferredTeacherId) - Number(a.teacherId === item.preferredTeacherId) || b.dates.length - a.dates.length || a.dates[0]?.startAt.localeCompare(b.dates[0]?.startAt ?? "") || 0);
   const selected = candidates.slice(0, 5);
-  await prisma.$transaction(async (tx) => {
-    await tx.monthlySchedulingOffer.deleteMany({
-      where: { itemId, status: { in: ["AVAILABLE", "EXPIRED", "WITHDRAWN"] } },
+  const persist=async (tx:Prisma.TransactionClient)=>{
+    const claimed=await tx.monthlySchedulingItem.updateMany({
+      where:{id:item.id,status:item.status,updatedAt:item.updatedAt,intent:"CHANGE",campaign:{status:"OPEN"},offers:{none:{status:{in:["HELD","ACCEPTED","COMPLETED"]}}}},
+      data:{status:selected.length?"OFFERED":"SUBMITTED"},
     });
+    if(claimed.count!==1)throw new Error("The response or time selection changed; refresh before generating options / 家长回复或选时已变化，请刷新后重新生成方案");
+    const previous=await tx.monthlySchedulingOffer.findMany({where:{itemId},select:{id:true,status:true,generation:true}});
+    const generation=Math.max(0,...previous.map(row=>row.generation))+1;
+    await tx.monthlySchedulingOffer.updateMany({where:{itemId,status:"AVAILABLE"},data:{status:"WITHDRAWN"}});
+    const offerIds:string[]=[];
     for (const candidate of selected) {
-      await tx.monthlySchedulingOffer.create({
-        data: {
-          itemId,
-          teacherId: candidate.teacherId,
-          weekdayLabel: candidate.weekdayLabel,
-          startMin: candidate.startMin,
-          endMin: candidate.endMin,
-          durationMin,
-          preferenceLevel: candidate.preferenceLevel,
-          sessionDatesJson: candidate.dates,
-        },
-      });
+      const created=await tx.monthlySchedulingOffer.create({data:{itemId,generation,teacherId:candidate.teacherId,
+        weekdayLabel:candidate.weekdayLabel,startMin:candidate.startMin,endMin:candidate.endMin,durationMin,
+        preferenceLevel:candidate.preferenceLevel,sessionDatesJson:candidate.dates}});
+      offerIds.push(created.id);
     }
-    await tx.monthlySchedulingItem.updateMany({
-      where: { id: itemId, status: "SUBMITTED" },
-      data: { status: selected.length ? "OFFERED" : "SUBMITTED" },
-    });
-  });
-  return listMonthlySchedulingOffers(itemId);
+    await tx.auditLog.create({data:{actorEmail:'system.monthly-scheduling@sgtmanage.local',actorName:'Monthly scheduling',actorRole:'SYSTEM',
+      module:'MONTHLY_SCHEDULING',action:'GENERATE_TIME_OPTIONS',entityType:'MonthlySchedulingItem',entityId:itemId,
+      meta:{sourceRevision:item.updatedAt.toISOString(),generation,offerIds,retainedOfferIds:previous.map(row=>row.id)}}});
+  };
+  if(db)await persist(db);else await prisma.$transaction(persist,{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
+  const rows=await database.monthlySchedulingOffer.findMany({where:{itemId,status:{notIn:["WITHDRAWN","EXPIRED"]}},include:{teacher:{select:{name:true}}},orderBy:[{parentRank:"asc"},{generatedAt:"asc"}]});
+  return rows.map(monthlySchedulingOfferView);
 }
 
 export async function listMonthlySchedulingOffers(itemId: string) {
