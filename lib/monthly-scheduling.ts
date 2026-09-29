@@ -1310,19 +1310,37 @@ export async function requestMonthlySchedulingChange(input: { itemId: string; pa
   return prisma.monthlySchedulingItem.findUniqueOrThrow({ where: { id: item.id } });
 }
 
-export async function expireMonthlySchedulingOfferHolds(now = new Date()) {
-  const expired = await prisma.monthlySchedulingOffer.findMany({
-    where: { status: "HELD", holdExpiresAt: { lte: now } },
-    select: { id: true, itemId: true },
-    take: 500,
-  });
-  if (!expired.length) return 0;
-  const itemIds = unique(expired.map((row) => row.itemId));
-  await prisma.$transaction([
-    prisma.monthlySchedulingOffer.updateMany({ where: { id: { in: expired.map((row) => row.id) }, status: "HELD" }, data: { status: "EXPIRED", holdExpiresAt: null } }),
-    prisma.monthlySchedulingItem.updateMany({ where: { id: { in: itemIds }, status: "PARENT_SELECTED" }, data: { status: "OFFERED" } }),
-  ]);
-  return expired.length;
+export async function expireMonthlySchedulingOfferHolds(now = new Date()): Promise<number> {
+  // Renewal and acceptance can race a scan. Read and mutate the same fresh snapshot;
+  // retry only serialization failures, never expire a hold from an earlier scan.
+  for (let attempt=0; ; attempt++) {
+    try {
+      return await prisma.$transaction(async tx=>{
+        const expired=await tx.monthlySchedulingOffer.findMany({
+          where:{status:"HELD",holdExpiresAt:{lte:now}},select:{id:true,itemId:true},take:500,
+          orderBy:{id:'asc'},
+        });
+        if(!expired.length)return 0;
+        const changed=await tx.monthlySchedulingOffer.updateMany({
+          where:{id:{in:expired.map(row=>row.id)},status:"HELD",holdExpiresAt:{lte:now}},
+          data:{status:"EXPIRED",holdExpiresAt:null},
+        });
+        for(const itemId of unique(expired.map(row=>row.itemId))) {
+          const reverted=await tx.monthlySchedulingItem.updateMany({
+            where:{id:itemId,status:"PARENT_SELECTED",offers:{none:{status:{in:["HELD","ACCEPTED","COMPLETED"]}}}},
+            data:{status:"OFFERED"},
+          });
+          await tx.auditLog.create({data:{actorEmail:'system.monthly-scheduling@sgtmanage.local',actorName:'Monthly scheduling',actorRole:'SYSTEM',
+            module:'MONTHLY_SCHEDULING',action:'EXPIRE_TIME_HOLD',entityType:'MonthlySchedulingItem',entityId:itemId,
+            meta:{offerIds:expired.filter(row=>row.itemId===itemId).map(row=>row.id),asOf:now.toISOString(),returnedToOptions:reverted.count===1}}});
+        }
+        return changed.count;
+      },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
+    } catch(error) {
+      const retryable=error instanceof Prisma.PrismaClientKnownRequestError && (error.code==='P2034'||error.code==='P2010'&&['40001','40P01'].includes(String(error.meta?.code)));
+      if(!retryable||attempt>=2)throw error;
+    }
+  }
 }
 
 function intervalsForTeacher(input: {

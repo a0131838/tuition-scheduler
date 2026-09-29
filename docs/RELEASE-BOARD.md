@@ -1,4 +1,20 @@
 # RELEASE BOARD
+## 2026-09-29-r437
+
+- Release ID: `2026-09-29-r437`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; guarded release evidence is recorded in the execution ledger.
+- Problem: expiry scanned held time options before its transaction, then expired by ID/status without rechecking the deadline. A concurrent parent renewal could therefore be expired using a stale scan; an item could return to options despite another live hold.
+- Change: scan, deadline-qualified expiry, conditional queue update and audit now use one serializable transaction. Only serialization/deadlock conflicts retry, at most twice. A remaining held/accepted/completed option prevents automatic queue downgrade. The result counts actual expirations; repeats do not duplicate audits.
+- Validation:41 monthly focused tests,181 backend tests,260-page production build,TypeScript. Isolated deterministic renewal between scan and mutation survives; real expiry records one audit; another live hold preserves selection; injected audit failure rolls back item and offer; concurrent scans expire once. Session, feedback and ledger counts remain unchanged. Parent/staff authenticated HTTP completion/review regression passes. No user interface or client payload changed in this release.
+- Production read-only context:181 monthly items (52NOT_SENT,111NO_RESPONSE,18EXCLUDED),0 options; r435 nullable evidence migration finished2026-09-29T03:48:22.953Z,0 evidence records. No real expiry, send or reply was used for acceptance.
+- Migration: none. Existing parent selection and teaching/finance workflows are retained.
+- Remaining: parent response persistence/offer refresh and staffing forecast review; phase4 acceptance plus phases6–10.
+- Rollback point: `68c5b33b6d7ec310ee9222f8b9449fda717ce3a2` (r436).
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
 ## 2026-09-29-r436
 
 - Release ID: `2026-09-29-r436`
@@ -532,7 +548,7 @@
 ---
 
 
-- Current release line on this branch: `2026-09-29-r436`, ready for guarded release of evidence-based monthly status transitions. Overall programme remains in progress; no Mini Program client release.
+- Current release line on this branch: `2026-09-29-r437`, ready for guarded release of atomic monthly time-hold expiry. Overall programme remains in progress; no Mini Program client release.
 
 ## 2026-09-09-r404 Ready
 
