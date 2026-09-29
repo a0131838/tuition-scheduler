@@ -1,3 +1,4 @@
+import {isFinalTeacherFeedback} from "./session-feedback-state";
 import { prisma } from "@/lib/prisma";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import {
@@ -243,7 +244,7 @@ export async function listCommunicationReminders(now = new Date(), limit = 300) 
         const en = `Hello ${teacherName}, attendance is still missing for ${studentText}'s ${label} lesson at ${time}. Please complete it as soon as possible.`;
         items.push(reminder({ key: `ATTENDANCE_MISSING:${session.id}`, category: "ATTENDANCE", categoryLabel: "考勤提醒", title: `${teacherName} · 未点名`, subject: `${studentText} · ${time}`, recipientType: "TEACHER", recipientName: teacherName, studentName: studentText, teacherName, dueAt, now, sourceHref: `/admin/sessions?focusSessionId=${session.id}`, sourceLabel: "考勤", copyZh: zh, copyEn: en }));
       }
-      const finalFeedback = session.feedbacks.find((row) => !row.isProxyDraft && row.status !== "PROXY_DRAFT");
+      const finalFeedback = session.feedbacks.find((row) => row.teacherId===(session.teacherId??session.class.teacherId) && isFinalTeacherFeedback(row));
       const feedbackRequired = students.some((student) => {
         const attendance = session.attendances.find((row) => row.studentId === student.id);
         return attendance?.status === "PRESENT" || attendance?.status === "LATE";

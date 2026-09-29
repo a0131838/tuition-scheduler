@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {sessionFeedbackState,isPendingFeedback,isFinalTeacherFeedback} from '../lib/session-feedback-state';
+const now=new Date('2026-09-29T04:00:00Z');
+const state=(feedbacks:any[],endAt='2026-09-28T04:00:00Z')=>sessionFeedbackState({feedbacks,endAt,responsibleTeacherId:'actual'},now);
+test('future and ongoing lessons are visible but not feedback debt',()=>{assert.equal(state([],'2026-09-30T04:00:00Z'),'NOT_DUE');assert.equal(isPendingFeedback(state([],'2026-09-29T04:01:00Z')),false);assert.equal(state([]),'MISSING');});
+test('proxy content and either draft marker never prove teacher submission',()=>{for(const feedback of [{status:'PROXY_DRAFT',isProxyDraft:false},{status:'ON_TIME',isProxyDraft:true}]){const value={teacherId:'actual',content:'A complete looking draft',...feedback};assert.equal(isFinalTeacherFeedback(value),false);assert.equal(state([value]),'PROXY_DRAFT');assert.equal(isPendingFeedback(state([value])),true);}});
+test('only the assigned teacher’s final feedback fulfills the requirement',()=>{assert.equal(state([{teacherId:'previous',status:'ON_TIME'}]),'MISSING');for(const status of ['ON_TIME','LATE'])assert.equal(state([{teacherId:'actual',status}]),'SUBMITTED');});
+test('missing, unknown and empty evidence is not completed',()=>{assert.equal(isFinalTeacherFeedback(null),false);assert.equal(isFinalTeacherFeedback({status:'UNKNOWN'}),false);assert.equal(isFinalTeacherFeedback({status:'ON_TIME',content:'   '}),false);});
+test('feedback eligibility is independent of charge waivers and lesson subject names',()=>{for(const extra of [{waiveDeduction:true},{courseName:'iTEP'},{amount:0}])assert.equal(state([{teacherId:'previous',status:'ON_TIME',...extra}]),'MISSING');});

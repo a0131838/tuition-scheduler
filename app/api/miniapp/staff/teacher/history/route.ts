@@ -1,3 +1,4 @@
+import {sessionFeedbackState,isPendingFeedback} from "@/lib/session-feedback-state";
 import { ok } from "@/app/api/miniapp/_lib";
 import { requireMiniappTeacher } from "@/app/api/miniapp/staff/teacher/_lib";
 import { formatBusinessDateTime } from "@/lib/date-only";
@@ -19,7 +20,7 @@ export async function GET(req: Request) {
     },
     include: {
       attendances: { select: { studentId: true, status: true } },
-      feedbacks: { where: { teacherId: access.teacherId }, select: { id: true, status: true, submittedAt: true } },
+      feedbacks: { where: { teacherId: access.teacherId }, select: { id: true, teacherId: true, status: true, isProxyDraft: true, submittedAt: true } },
       student: { select: { id: true, name: true } },
       class: {
         include: {
@@ -36,6 +37,7 @@ export async function GET(req: Request) {
     orderBy: { startAt: "desc" },
   });
   const visible = rows.filter((row) => !isSessionFullyCancelled(row));
+  const feedbackState=(row:typeof rows[number])=>sessionFeedbackState({endAt:row.endAt,feedbacks:row.feedbacks,responsibleTeacherId:access.teacherId},now);
   const totalMinutes = visible.reduce((sum, row) => sum + Math.max(0, Math.round((row.endAt.getTime() - row.startAt.getTime()) / 60000)), 0);
   return ok({
     month: range.month,
@@ -43,8 +45,8 @@ export async function GET(req: Request) {
       sessions: visible.length,
       minutes: totalMinutes,
       durationText: miniappTeacherDurationText(totalMinutes),
-      feedbackCompleted: visible.filter((row) => row.feedbacks.length > 0).length,
-      feedbackPending: visible.filter((row) => row.feedbacks.length === 0).length,
+      feedbackCompleted: visible.filter((row) => feedbackState(row)==='SUBMITTED').length,
+      feedbackPending: visible.filter((row) => isPendingFeedback(feedbackState(row))).length,
     },
     sessions: visible.slice(0, 100).map((row) => {
       const courseLabel = [row.class.course?.name, row.class.subject?.name, row.class.level?.name].filter(Boolean).join(" / ") || "-";
@@ -60,7 +62,7 @@ export async function GET(req: Request) {
         studentText: studentNames.join("、") || "-",
         locationText: row.class.campus.isOnline ? "线上" : room ? `${row.class.campus.name} · ${room}` : row.class.campus.name,
         attendanceText: attendanceDone ? "已点名" : "待完成考勤",
-        feedbackText: row.feedbacks.length ? "已反馈" : "未反馈",
+        feedbackText: feedbackState(row)==='SUBMITTED' ? 'Submitted / 已反馈' : feedbackState(row)==='PROXY_DRAFT' ? 'Proxy draft / 代填草稿，待老师提交' : 'Pending / 未反馈',
       };
     }),
   });

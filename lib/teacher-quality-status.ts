@@ -1,3 +1,4 @@
+import {isFinalTeacherFeedback} from "./session-feedback-state";
 export type TeacherQualityFeedbackState = "SUBMITTED" | "PROXY_DRAFT" | "MISSING";
 
 type FeedbackLike = {
@@ -13,5 +14,5 @@ export function resolveTeacherQualityFeedbackState(
   const feedback = feedbacks.find((item) => item.teacherId === responsibleTeacherId);
   if (!feedback) return "MISSING";
   if (feedback.isProxyDraft || feedback.status === "PROXY_DRAFT") return "PROXY_DRAFT";
-  return "SUBMITTED";
+  return isFinalTeacherFeedback(feedback)?"SUBMITTED":"MISSING";
 }

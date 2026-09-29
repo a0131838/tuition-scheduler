@@ -1,3 +1,4 @@
+import {sessionFeedbackState,isPendingFeedback} from "@/lib/session-feedback-state";
 import { bad, ok } from "@/app/api/miniapp/_lib";
 import { requireMiniappStaff } from "@/app/api/miniapp/staff/_lib";
 import { getApprovalInboxData } from "@/lib/approval-inbox";
@@ -34,7 +35,7 @@ export async function GET(req: Request) {
       where: { endAt: { gte: recent, lte: now } },
       include: {
         attendances: { select: { studentId: true, status: true } },
-        feedbacks: { select: { id: true } },
+        feedbacks: { select: { id: true, teacherId: true, status: true, isProxyDraft: true } },
         student: { select: { id: true, name: true } },
         class: { include: { oneOnOneStudent: { select: { id: true, name: true } }, enrollments: { include: { student: { select: { id: true, name: true } } } } } },
       },
@@ -43,7 +44,7 @@ export async function GET(req: Request) {
   ]);
   const visible = sessions.filter((row) => !isSessionFullyCancelled(row));
   const attendanceMissing = visible.filter((row) => { const names = getVisibleSessionStudentNames(row); return !names.length || row.attendances.length < names.length || row.attendances.some((item) => item.status === "UNMARKED"); }).length;
-  const feedbackMissing = visible.filter((row) => row.feedbacks.length === 0).length;
+  const feedbackMissing = visible.filter((row) => isPendingFeedback(sessionFeedbackState({endAt:row.endAt,feedbacks:row.feedbacks,responsibleTeacherId:row.teacherId??row.class.teacherId},now))).length;
   const approvalCount = approvalData.summary.manager || 0;
   const items = [
     { key: "corrections", title: "纠正与系统问题", count: corrections, target: "operations", urgent: corrections > 0, definition: "未完成的操作纠正和小程序问题工单" },

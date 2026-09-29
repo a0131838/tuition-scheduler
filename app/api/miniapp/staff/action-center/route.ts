@@ -1,3 +1,4 @@
+import {sessionFeedbackState,isPendingFeedback} from "@/lib/session-feedback-state";
 import { ok } from "@/app/api/miniapp/_lib";
 import { requireMiniappStaff } from "@/app/api/miniapp/staff/_lib";
 import { getApprovalInboxData } from "@/lib/approval-inbox";
@@ -50,7 +51,7 @@ export async function GET(req: Request) {
         where: { ...teacherWhere, endAt: { gte: lookback, lte: now } },
         include: {
           attendances: { select: { studentId: true, status: true } },
-          feedbacks: { where: { teacherId: user.teacherId }, select: { id: true, content: true } },
+          feedbacks: { where: { teacherId: user.teacherId }, select: { id: true, teacherId: true, content: true, status: true, isProxyDraft: true } },
           student: { select: { id: true, name: true } },
           class: {
             include: {
@@ -71,7 +72,7 @@ export async function GET(req: Request) {
       const names = getVisibleSessionStudentNames(row);
       return !names.length || row.attendances.length < names.length || row.attendances.some((item) => item.status === "UNMARKED");
     });
-    const lessonFeedbackPending = visibleSessions.filter((row) => !row.feedbacks.some((item) => String(item.content ?? "").trim()));
+    const lessonFeedbackPending = visibleSessions.filter((row) => isPendingFeedback(sessionFeedbackState({endAt:row.endAt,feedbacks:row.feedbacks,responsibleTeacherId:user.teacherId!},now)));
     const taughtStudentIds = taughtRows.map((row) => row.studentId);
     let unreadOtherFeedback = 0;
     if (taughtStudentIds.length) {

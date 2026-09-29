@@ -1,3 +1,4 @@
+import {isFinalTeacherFeedback} from "./session-feedback-state";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { getFeedbackDueAt, isFeedbackOverdue } from "@/lib/feedback-timing";
@@ -23,7 +24,7 @@ type SessionForAlert = {
   teacherId: string | null;
   studentId: string | null;
   attendances: Array<{ studentId: string; status: string }>;
-  feedbacks: Array<{ id: string; teacherId: string; status: string }>;
+  feedbacks: Array<{ id: string; teacherId: string; status: string; isProxyDraft: boolean }>;
   class: {
     capacity: number;
     teacherId: string;
@@ -147,7 +148,7 @@ export async function syncSignInAlerts(now = new Date()) {
     },
     include: {
       attendances: { select: { studentId: true, status: true } },
-      feedbacks: { select: { id: true, teacherId: true, status: true } },
+      feedbacks: { select: { id: true, teacherId: true, status: true, isProxyDraft: true } },
       class: { include: { enrollments: { select: { studentId: true } } } },
     },
   })) as SessionForAlert[];
@@ -157,7 +158,7 @@ export async function syncSignInAlerts(now = new Date()) {
     return { thresholdMin, activeCount: 0, skipped: false as const };
   }
 
-  const teacherIds = Array.from(new Set(sessions.map((s) => s.class.teacherId)));
+  const teacherIds = Array.from(new Set(sessions.map((s) => s.teacherId??s.class.teacherId)));
   const teacherUsers = teacherIds.length
     ? await prisma.user.findMany({
         where: { teacherId: { in: teacherIds } },
@@ -185,7 +186,7 @@ export async function syncSignInAlerts(now = new Date()) {
     const missTeacher = inSignInWindow && !teacherSignedIn(s);
     const feedbackDueAt = getFeedbackDueAt(s.endAt);
     const teacherFeedback = s.feedbacks.find((f) => f.teacherId === actualTeacherId) ?? null;
-    const missFeedback = isFeedbackOverdue(s.endAt, now) && (!teacherFeedback || teacherFeedback.status === "PROXY_DRAFT");
+    const missFeedback = isFeedbackOverdue(s.endAt, now) && !isFinalTeacherFeedback(teacherFeedback);
 
     const teacherUserIds = teacherUserIdsByTeacherId.get(actualTeacherId) ?? [];
 

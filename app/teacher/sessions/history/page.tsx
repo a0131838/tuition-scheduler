@@ -1,3 +1,4 @@
+import {sessionFeedbackState} from "@/lib/session-feedback-state";
 import type { Prisma } from "@prisma/client";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import { requireTeacherProfile } from "@/lib/auth";
@@ -92,6 +93,7 @@ export default async function TeacherHistoricalFeedbackPage({
           OR: [
             { feedbacks: { none: { teacherId: teacher.id } } },
             { feedbacks: { some: { teacherId: teacher.id, isProxyDraft: true } } },
+            { feedbacks: { some: { teacherId: teacher.id, status: "PROXY_DRAFT" } } },
           ],
         },
         ...(searchWhere ? [searchWhere] : []),
@@ -102,7 +104,7 @@ export default async function TeacherHistoricalFeedbackPage({
       attendances: { select: { studentId: true, status: true } },
       feedbacks: {
         where: { teacherId: teacher.id },
-        select: { id: true, isProxyDraft: true, submittedAt: true },
+        select: { id: true, teacherId: true, status: true, isProxyDraft: true, submittedAt: true },
         take: 1,
       },
       class: {
@@ -122,11 +124,12 @@ export default async function TeacherHistoricalFeedbackPage({
   });
 
   const activeRows = rawSessions.filter((session) => !isSessionFullyCancelled(session));
-  const missingCount = activeRows.filter((session) => !session.feedbacks[0]).length;
-  const proxyCount = activeRows.filter((session) => session.feedbacks[0]?.isProxyDraft).length;
+  const feedbackState=(row:typeof rawSessions[number])=>sessionFeedbackState({endAt:row.endAt,feedbacks:row.feedbacks,responsibleTeacherId:teacher.id},now);
+  const missingCount = activeRows.filter((session) => feedbackState(session)==='MISSING').length;
+  const proxyCount = activeRows.filter((session) => feedbackState(session)==='PROXY_DRAFT').length;
   const filteredRows = activeRows.filter((session) => {
-    if (status === "missing") return !session.feedbacks[0];
-    if (status === "proxy") return Boolean(session.feedbacks[0]?.isProxyDraft);
+    if (status === "missing") return feedbackState(session)==='MISSING';
+    if (status === "proxy") return feedbackState(session)==='PROXY_DRAFT';
     return true;
   });
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
@@ -217,9 +220,9 @@ export default async function TeacherHistoricalFeedbackPage({
       ) : (
         <section style={{ display: "grid", gap: 10 }}>
           {pageRows.map((session) => {
-            const feedback = session.feedbacks[0] ?? null;
+            const isProxy = feedbackState(session) === "PROXY_DRAFT";
             const studentNames = getVisibleSessionStudentNames(session);
-            const stateLabel = feedback?.isProxyDraft
+            const stateLabel = isProxy
               ? t(lang, "Proxy draft - teacher must complete", "代填草稿，需老师补全")
               : t(lang, "No feedback submitted", "尚未提交反馈");
             return (
@@ -228,7 +231,7 @@ export default async function TeacherHistoricalFeedbackPage({
                   <div style={{ fontWeight: 800 }}>
                     {formatBusinessDateTime(new Date(session.startAt))} - {formatBusinessTimeOnly(new Date(session.endAt))}
                   </div>
-                  <span style={{ color: feedback?.isProxyDraft ? "#075985" : "#b91c1c", fontWeight: 800 }}>{stateLabel}</span>
+                  <span style={{ color: isProxy ? "#075985" : "#b91c1c", fontWeight: 800 }}>{stateLabel}</span>
                 </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                   <ClassTypeBadge capacity={session.class.capacity} compact />
@@ -240,7 +243,7 @@ export default async function TeacherHistoricalFeedbackPage({
                 </div>
                 <div>
                   <a href={`/teacher/sessions/${session.id}?returnTo=${encodeURIComponent(returnTo)}`} style={{ display: "inline-flex", padding: "9px 12px", border: "1px solid #93c5fd", borderRadius: 8, textDecoration: "none", color: "#1d4ed8", fontWeight: 800 }}>
-                    {feedback?.isProxyDraft ? t(lang, "Open and complete draft", "打开并补全草稿") : t(lang, "Open and submit feedback", "打开并补交反馈")}
+                    {isProxy ? t(lang, "Open and complete draft", "打开并补全草稿") : t(lang, "Open and submit feedback", "打开并补交反馈")}
                   </a>
                 </div>
               </article>

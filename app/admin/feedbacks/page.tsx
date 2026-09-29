@@ -1,3 +1,4 @@
+import {isFinalTeacherFeedback} from "@/lib/session-feedback-state";
 import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import { requireAdmin } from "@/lib/auth";
@@ -159,12 +160,6 @@ function toBilingualFeedbackText(content: string | null | undefined) {
     .replace(/\bNote:/g, "Note / 备注:");
 }
 
-function isFinalTeacherFeedback(feedback: { isProxyDraft?: boolean | null; status?: string | null }) {
-  if (!feedback) return false;
-  if (feedback.isProxyDraft) return false;
-  if (feedback.status === "PROXY_DRAFT") return false;
-  return true;
-}
 
 export default async function AdminFeedbacksPage({
   searchParams,

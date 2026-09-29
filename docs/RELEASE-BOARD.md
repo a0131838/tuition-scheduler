@@ -1,4 +1,20 @@
 # RELEASE BOARD
+## 2026-09-29-r430
+
+- Release ID: `2026-09-29-r430`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; guarded release proof is maintained in the execution ledger.
+- Problem: future sessions inflated the teacher's pending-feedback count, while some Mini Program summaries treated populated proxy drafts as completed teacher feedback. Reminder completion could come from another teacher, and sign-in alert recipients omitted a session's replacement teacher.
+- Change: shared final-feedback/state rules distinguish not-yet-due, missing, proxy draft and submitted; either proxy marker remains pending. Final feedback is scoped to the actual session teacher. Web timeline/history, Mini Program teacher history/todos/action-center/management health, admin feedback, lead quality and reminder/alert checks use these rules. Future sessions stay visible but do not count as feedback debt. Teacher alert recipients use the session override before the class teacher.
+- Preservation: existing cancellation filters, lesson links, authorization, submitted feedback, attendance, deductions, payroll and historical rows retained. Free/waived teaching still requires feedback; course names or zero price do not grant exemptions. New Web labels support EN/ZH/BILINGUAL. Mini Program response shape remains compatible; no WeChat client release is claimed.
+- Validation:27 focused tests,181 backend tests,TypeScript and260-page production build. Isolated seven-session fixture verifies Web/Mini Program both count4 pending,1 completed,2 proxy variants remain pending, future/cancelled lessons excluded, free teaching retained and other-teacher feedback cannot complete the current teacher's task. Four correctly addressed override-teacher alerts and4 communication reminders verified; attendance/feedback snapshots unchanged. Actual teacher browser EN/ZH/BILINGUAL passes with clean console.
+- Migration: none. No production classroom/business records or outbound messages used for acceptance; isolated alert records only.
+- Remaining: phase4 explicit reasoned non-teaching exemptions and source/recreated lesson traceability; phases5–10. Whole programme is still in progress.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `b00e192a38aa56e6b96b2c3c7c1ee46e69bd3cdd` (r429).
+
+---
+
 ## 2026-09-29-r429
 
 - Release ID: `2026-09-29-r429`
@@ -418,7 +434,7 @@
 ---
 
 
-- Current release line on this branch: `2026-09-29-r429`, ready for guarded release of atomic invoice archival and retained source evidence. Phase3 remains in progress; no Mini Program client release.
+- Current release line on this branch: `2026-09-29-r430`, ready for guarded release of consistent teacher feedback completion and recipient scope. Phase3 accepted; phase4 in progress; no Mini Program client release.
 
 ## 2026-09-09-r404 Ready
 

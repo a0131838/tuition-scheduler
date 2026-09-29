@@ -1,4 +1,5 @@
-﻿import { prisma } from "@/lib/prisma";
+import {sessionFeedbackState,isPendingFeedback} from "@/lib/session-feedback-state";
+import { prisma } from "@/lib/prisma";
 import { requireTeacherProfile } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
@@ -25,7 +26,7 @@ type SessionWithMeta = {
   };
   student: { id: string; name: string } | null;
   attendances: Array<{ studentId: string; status: string }>;
-  feedbacks: Array<{ isProxyDraft: boolean; status: string }>;
+  feedbacks: Array<{ teacherId: string; isProxyDraft: boolean; status: string }>;
 };
 
 function dayKey(d: Date) {
@@ -54,20 +55,11 @@ function attendancePill(marked: number, total: number) {
   return { label: `${marked}/${total}`, bg: "#fef3c7", color: "#92400e", border: "#fde68a" };
 }
 
-function feedbackMeta(feedback: { isProxyDraft: boolean; status: string } | null, overdue: boolean, lang: string) {
-  if (!feedback) {
-    if (overdue) {
-      return { label: lang === "EN" ? "Overdue" : "已超时", bg: "#fee2e2", color: "#b91c1c", border: "#fecaca" };
-    }
-    return { label: lang === "EN" ? "Pending" : "待提交", bg: "#fef3c7", color: "#92400e", border: "#fde68a" };
-  }
-  if (feedback.isProxyDraft) {
-    return { label: lang === "EN" ? "Proxy draft" : "代填草稿", bg: "#e0f2fe", color: "#075985", border: "#bae6fd" };
-  }
-  if (feedback.status === "LATE") {
-    return { label: lang === "EN" ? "Late submitted" : "迟交", bg: "#ffedd5", color: "#9a3412", border: "#fed7aa" };
-  }
-  return { label: lang === "EN" ? "Submitted" : "已提交", bg: "#dcfce7", color: "#166534", border: "#bbf7d0" };
+function feedbackMeta(state: ReturnType<typeof sessionFeedbackState>, overdue:boolean, lang:Awaited<ReturnType<typeof getLang>>, late:boolean) {
+ if(state==='NOT_DUE')return {label:t(lang,'After session ends','课后填写'),bg:'#f1f5f9',color:'#334155',border:'#cbd5e1'};
+ if(state==='SUBMITTED')return {label:late?t(lang,'Late submitted','迟交'):t(lang,'Submitted','已提交'),bg:'#dcfce7',color:'#166534',border:'#bbf7d0'};
+ if(state==='PROXY_DRAFT')return {label:t(lang,'Proxy draft — teacher submission pending','代填草稿，待老师提交'),bg:'#e0f2fe',color:'#075985',border:'#bae6fd'};
+ return overdue?{label:t(lang,'Overdue','已超时'),bg:'#fee2e2',color:'#b91c1c',border:'#fecaca'}:{label:t(lang,'Pending','待提交'),bg:'#fef3c7',color:'#92400e',border:'#fde68a'};
 }
 
 function statCard(bg: string, border: string) {
@@ -123,7 +115,7 @@ export default async function TeacherSessionsPage() {
       },
     },
     attendances: { select: { studentId: true, status: true } },
-    feedbacks: { where: { teacherId: teacher.id }, select: { isProxyDraft: true, status: true } },
+    feedbacks: { where: { teacherId: teacher.id }, select: { teacherId: true, isProxyDraft: true, status: true } },
   };
 
   const [timelineRaw, recoveryRaw] = (await Promise.all([
@@ -145,6 +137,7 @@ export default async function TeacherSessionsPage() {
             OR: [
               { feedbacks: { none: { teacherId: teacher.id } } },
               { feedbacks: { some: { teacherId: teacher.id, isProxyDraft: true } } },
+              { feedbacks: { some: { teacherId: teacher.id, status: "PROXY_DRAFT" } } },
             ],
           },
         ],
@@ -160,8 +153,9 @@ export default async function TeacherSessionsPage() {
   const recoveryCount = sessions.filter((s) => !timelineSessionIds.has(s.id)).length;
   const todayKey = dayKey(now);
   const todayCount = sessions.filter((s) => dayKey(s.startAt) === todayKey).length;
-  const pendingFeedbackCount = sessions.filter((s) => !s.feedbacks[0]).length;
-  const overdueFeedbackCount = sessions.filter((s) => !s.feedbacks[0] && isFeedbackOverdue(s.endAt)).length;
+  const feedbackState = (s:SessionWithMeta) => sessionFeedbackState({endAt:s.endAt,feedbacks:s.feedbacks,responsibleTeacherId:teacher.id},now);
+  const pendingFeedbackCount = sessions.filter((s) => isPendingFeedback(feedbackState(s))).length;
+  const overdueFeedbackCount = sessions.filter((s) => isPendingFeedback(feedbackState(s)) && isFeedbackOverdue(s.endAt,now)).length;
 
   const grouped = new Map<string, SessionWithMeta[]>();
   for (const s of sessions) {
@@ -199,7 +193,7 @@ export default async function TeacherSessionsPage() {
         <div style={statCard("#fefce8", "#fde68a")}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#a16207" }}>{t(lang, "Feedback pending", "待提交反馈")}</div>
           <div style={{ fontSize: 28, fontWeight: 800, color: "#a16207", marginTop: 8 }}>{pendingFeedbackCount}</div>
-          <div style={{ color: "#92400e", marginTop: 4 }}>{t(lang, "Sessions without teacher feedback yet.", "还没有提交老师反馈的课次。")}</div>
+          <div style={{ color: "#92400e", marginTop: 4 }}>{t(lang, "Ended sessions awaiting final teacher feedback, including proxy drafts.", "已结束且待老师正式提交的课次，包含代填草稿。")}</div>
         </div>
         <div style={statCard("#fef2f2", "#fecaca")}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#b91c1c" }}>{t(lang, "Feedback overdue", "反馈超时")}</div>
@@ -250,10 +244,9 @@ export default async function TeacherSessionsPage() {
                   const statusByStudentId = new Map(s.attendances.map((a) => [a.studentId, a.status]));
                   const total = students.length;
                   const marked = students.filter((st) => (statusByStudentId.get(st.id) ?? "UNMARKED") !== "UNMARKED").length;
-                  const feedback = s.feedbacks[0] ?? null;
                   const overdue = isFeedbackOverdue(s.endAt);
                   const att = attendancePill(marked, total);
-                  const fb = feedbackMeta(feedback, overdue, lang);
+                  const fb = feedbackMeta(feedbackState(s), overdue, lang, s.feedbacks[0]?.status==="LATE");
 
                   return (
                     <div key={s.id} style={{ display: "grid", gridTemplateColumns: "30px 1fr", gap: 10, marginBottom: idx === items.length - 1 ? 0 : 12 }}>

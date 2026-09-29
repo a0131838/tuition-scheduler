@@ -403,3 +403,21 @@ Logs: `/tmp/sgt-r428-sign-uat-final.log`, `/tmp/sgt-r428-void-regression.log`, `
 ---
 
 Logs: `/tmp/sgt-r429-focused-final.log`, `/tmp/sgt-r429-backend.log`, `/tmp/sgt-r429-uat-final.log`, `/tmp/sgt-r429-http.log`, `/tmp/sgt-r429-browser-post.log`, `/tmp/sgt-r429-tsc-final.log`, `/tmp/sgt-r429-build-final.log`. Initial fictional invoice number was invalid; fixture now uses normal invoice numbering. Expected serialization conflicts are rejection assertions. Browser found and verified the saved-result navigation fix. Screenshot: external execution evidence `r429-isolated-invoice-archive.png`.
+
+## 2026-09-29-r430
+
+- Release ID: `2026-09-29-r430`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; guarded release proof is maintained in the execution ledger.
+- Problem: future sessions inflated the teacher's pending-feedback count, while some Mini Program summaries treated populated proxy drafts as completed teacher feedback. Reminder completion could come from another teacher, and sign-in alert recipients omitted a session's replacement teacher.
+- Change: shared final-feedback/state rules distinguish not-yet-due, missing, proxy draft and submitted; either proxy marker remains pending. Final feedback is scoped to the actual session teacher. Web timeline/history, Mini Program teacher history/todos/action-center/management health, admin feedback, lead quality and reminder/alert checks use these rules. Future sessions stay visible but do not count as feedback debt. Teacher alert recipients use the session override before the class teacher.
+- Preservation: existing cancellation filters, lesson links, authorization, submitted feedback, attendance, deductions, payroll and historical rows retained. Free/waived teaching still requires feedback; course names or zero price do not grant exemptions. New Web labels support EN/ZH/BILINGUAL. Mini Program response shape remains compatible; no WeChat client release is claimed.
+- Validation:27 focused tests,181 backend tests,TypeScript and260-page production build. Isolated seven-session fixture verifies Web/Mini Program both count4 pending,1 completed,2 proxy variants remain pending, future/cancelled lessons excluded, free teaching retained and other-teacher feedback cannot complete the current teacher's task. Four correctly addressed override-teacher alerts and4 communication reminders verified; attendance/feedback snapshots unchanged. Actual teacher browser EN/ZH/BILINGUAL passes with clean console.
+- Migration: none. No production classroom/business records or outbound messages used for acceptance; isolated alert records only.
+- Remaining: phase4 explicit reasoned non-teaching exemptions and source/recreated lesson traceability; phases5–10. Whole programme is still in progress.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `b00e192a38aa56e6b96b2c3c7c1ee46e69bd3cdd` (r429).
+
+---
+
+Logs: `/tmp/sgt-r430-focused.log`, `/tmp/sgt-r430-backend.log`, `/tmp/sgt-r430-uat-final.log`, `/tmp/sgt-r430-tsc-final.log`, `/tmp/sgt-r430-build-final.log`. Screenshot: external `r430-isolated-feedback-state.png`. Fixture stores only local fake-account details in `/tmp/sgt-r430-fixture.json`; never a production login.
