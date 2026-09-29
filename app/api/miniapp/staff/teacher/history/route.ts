@@ -37,7 +37,7 @@ export async function GET(req: Request) {
     orderBy: { startAt: "desc" },
   });
   const visible = rows.filter((row) => !isSessionFullyCancelled(row));
-  const feedbackState=(row:typeof rows[number])=>sessionFeedbackState({endAt:row.endAt,feedbacks:row.feedbacks,responsibleTeacherId:access.teacherId},now);
+  const feedbackState=(row:typeof rows[number])=>sessionFeedbackState({...row,responsibleTeacherId:access.teacherId},now);
   const totalMinutes = visible.reduce((sum, row) => sum + Math.max(0, Math.round((row.endAt.getTime() - row.startAt.getTime()) / 60000)), 0);
   return ok({
     month: range.month,
@@ -62,7 +62,7 @@ export async function GET(req: Request) {
         studentText: studentNames.join("、") || "-",
         locationText: row.class.campus.isOnline ? "线上" : room ? `${row.class.campus.name} · ${room}` : row.class.campus.name,
         attendanceText: attendanceDone ? "已点名" : "待完成考勤",
-        feedbackText: feedbackState(row)==='SUBMITTED' ? 'Submitted / 已反馈' : feedbackState(row)==='PROXY_DRAFT' ? 'Proxy draft / 代填草稿，待老师提交' : 'Pending / 未反馈',
+        feedbackText: feedbackState(row)==='EXEMPT' ? 'Not required / 已核对非教学活动，无需反馈' : feedbackState(row)==='SUBMITTED' ? 'Submitted / 已反馈' : feedbackState(row)==='PROXY_DRAFT' ? 'Proxy draft / 代填草稿，待老师提交' : 'Pending / 未反馈',
       };
     }),
   });

@@ -1,4 +1,20 @@
 # CHANGELOG LIVE
+## 2026-09-29-r431
+
+- Release ID: `2026-09-29-r431`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; guarded release proof is maintained in the execution ledger.
+- Problem: exam-only or other reviewed non-teaching bookings appeared as missing teaching feedback, while individual detail/staff schedule views could still treat a proxy draft as completed.
+- Change: teaching management can review one exact session with an explicit activity, reason, acknowledgment and preserved actor/time/audit. Only a fresh non-teaching review exempts feedback; free lessons and course names do not. Changed teacher, time, class or student roster invalidates the review. Existing final feedback prevents exemption. Submission and review serialize against each other; repeated requests do not duplicate audits. Teacher details, timelines, history, Mini Program backend summaries and reminder predicates share the result.
+- UI: collapsed review section in the existing attendance page, explicit involved students, reason and reviewer; teacher detail retains attendance and explains exemption. New controls support ZH/EN/BILINGUAL. History, role restrictions, schedule, deductions and payroll are retained. This does not deploy a new WeChat client.
+- Validation:29 focused tests,181 backend tests,TypeScript and260-page production build. Isolated service UAT verifies scope, audit rollback, idempotence, stale review, restoration and concurrent teacher submission; HTTP UAT verifies five denied roles, complete group roster and new-student invalidation, Web/Mini Program consistency and unchanged attendance. Actual browser saved fictional exam-only review, verified three language modes and teacher result without feedback form; console clean. Independent DB check confirms all three review audits, original attendance, zero invented feedback/ledger entries.
+- Migration: one nullable Session.feedbackPolicyJson JSONB column; no backfill, no production exemption or business-record mutation for acceptance.
+- Remaining: phase4 source/recreated lesson traceability and phases5–10; programme remains in progress. Unknown historical ownership must remain review-only.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `35443363b5b5e3dbc571b1e009685fc12ef28b49` (r430); retain nullable column and audit evidence.
+
+---
+
 ## 2026-09-29-r430
 
 - Release ID: `2026-09-29-r430`

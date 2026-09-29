@@ -1,3 +1,4 @@
+import {needsTeachingFeedback} from "@/lib/session-feedback-policy";
 import {isFinalTeacherFeedback} from "@/lib/session-feedback-state";
 import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
@@ -288,7 +289,7 @@ export default async function AdminFeedbacksPage({
     take: FEEDBACK_OVERDUE_SCAN_LIMIT,
   });
 
-  const overdueItems = overdueSessions
+  const overdueItems = overdueSessions.filter(needsTeachingFeedback)
     .map((s) => {
       const responsibleTeacherId = s.teacherId ?? s.class.teacherId;
       const responsibleTeacherName = s.teacher?.name ?? s.class.teacher.name;

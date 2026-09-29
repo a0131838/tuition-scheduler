@@ -1,3 +1,5 @@
+import {feedbackPolicyState} from "@/lib/session-feedback-policy";
+import {saveTeacherFeedbackReviewed} from "@/lib/teacher-feedback-save";
 import { FeedbackStatus } from "@prisma/client";
 import { bad, ok } from "@/app/api/miniapp/_lib";
 import { requireMiniappStaff } from "@/app/api/miniapp/staff/_lib";
@@ -22,7 +24,7 @@ async function getAllowedSession(sessionId: string, teacherId: string) {
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
     include: {
-      class: { include: { course: true, subject: true, teacher: true } },
+      class: { include: { course: true, subject: true, teacher: true, enrollments:{select:{studentId:true}} } },
       teacher: true,
       feedbacks: { where: { teacherId }, include: { attachments: { orderBy: { createdAt: "asc" } } } },
     },
@@ -43,6 +45,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ sessionId: stri
 
   const feedback = session.feedbacks[0] ?? null;
   return ok({
+    feedbackRequirement:feedbackPolicyState(session),
     session: {
       id: session.id,
       courseLabel: [session.class.course?.name, session.class.subject?.name].filter(Boolean).join(" / "),
@@ -125,7 +128,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ sessionId: str
     `Previous homework done / 之前作业完成情况: ${previousHomeworkText}`,
   ].join("\n");
 
-  const savedFeedback = await prisma.sessionFeedback.upsert({
+  let savedFeedback;
+  try {savedFeedback = await saveTeacherFeedbackReviewed(sessionId,auth.user.teacherId,{
     where: { sessionId_teacherId: { sessionId, teacherId: auth.user.teacherId } },
     update: {
       content,
@@ -160,7 +164,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sessionId: str
       submittedAt: now,
       reviewStatus: "PENDING_REVIEW",
     },
-  });
+  });} catch(e){return bad(e instanceof Error?e.message:"Feedback changed; reload / 反馈状态已变化，请刷新",409);}
   await ensureFeedbackCommunicationTasks(savedFeedback.id).catch(() => null);
 
   return ok({

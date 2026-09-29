@@ -1,3 +1,4 @@
+import {needsTeachingFeedback} from "@/lib/session-feedback-policy";
 import {isFinalTeacherFeedback} from "./session-feedback-state";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
@@ -18,6 +19,7 @@ export const ALERT_ROLE_TEACHER = "TEACHER";
 
 type SessionForAlert = {
   id: string;
+  feedbackPolicyJson?:unknown;
   classId: string;
   startAt: Date;
   endAt: Date;
@@ -186,7 +188,7 @@ export async function syncSignInAlerts(now = new Date()) {
     const missTeacher = inSignInWindow && !teacherSignedIn(s);
     const feedbackDueAt = getFeedbackDueAt(s.endAt);
     const teacherFeedback = s.feedbacks.find((f) => f.teacherId === actualTeacherId) ?? null;
-    const missFeedback = isFeedbackOverdue(s.endAt, now) && !isFinalTeacherFeedback(teacherFeedback);
+    const missFeedback = needsTeachingFeedback(s) && isFeedbackOverdue(s.endAt, now) && !isFinalTeacherFeedback(teacherFeedback);
 
     const teacherUserIds = teacherUserIdsByTeacherId.get(actualTeacherId) ?? [];
 

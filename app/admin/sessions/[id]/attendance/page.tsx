@@ -1,4 +1,8 @@
-﻿import { prisma } from "@/lib/prisma";
+import {getCurrentUser,isManagerUser} from '@/lib/auth';
+import {feedbackPolicyState} from '@/lib/session-feedback-policy';
+import {feedbackPolicyFingerprint} from '@/lib/session-feedback-policy-service';
+import SessionFeedbackPolicyClient from '@/app/admin/_components/SessionFeedbackPolicyClient';
+import { prisma } from "@/lib/prisma";
 import { AttendanceStatus, PackageStatus } from "@prisma/client";
 import { AttendanceRow } from "./AttendanceEditor";
 import { getLang, t } from "@/lib/i18n";
@@ -55,6 +59,8 @@ export default async function AttendancePage({
   searchParams?: Promise<{ msg?: string; err?: string; source?: string; todoBack?: string }>;
 }) {
   const lang = await getLang();
+  const user=await getCurrentUser();
+  const canReviewFeedbackPolicy=!!user&&!user.isObserver&&(user.role==="ADMIN"||user.operationsAdmin||await isManagerUser(user));
   const { id: sessionId } = await params;
   const sp = await searchParams;
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
@@ -66,7 +72,8 @@ export default async function AttendancePage({
     where: { id: sessionId },
     include: {
       teacher: true,
-      class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+      student: true,
+      class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true, oneOnOneStudent:true } },
     },
   });
 
@@ -284,6 +291,8 @@ export default async function AttendancePage({
           )}
         </div>
       )}
+
+      <SessionFeedbackPolicyClient studentSummary={session.class.capacity===1?(session.student?.name??session.class.oneOnOneStudent?.name??enrollments.map(e=>e.student.name).join(", ")):enrollments.map(e=>e.student.name).join(", ")} sessionId={sessionId} fingerprint={feedbackPolicyFingerprint({...session,class:{...session.class,enrollments}})} {...feedbackPolicyState({...session,class:{...session.class,enrollments}})} canManage={canReviewFeedbackPolicy} lang={lang}/>
 
       <div id="attendance-editor" style={{ padding: 12, border: "1px solid #eee", borderRadius: 8, background: "#fff" }}>
         {attendanceEnrollments.length === 0 ? (

@@ -44,7 +44,7 @@ export async function GET(req: Request) {
   ]);
   const visible = sessions.filter((row) => !isSessionFullyCancelled(row));
   const attendanceMissing = visible.filter((row) => { const names = getVisibleSessionStudentNames(row); return !names.length || row.attendances.length < names.length || row.attendances.some((item) => item.status === "UNMARKED"); }).length;
-  const feedbackMissing = visible.filter((row) => isPendingFeedback(sessionFeedbackState({endAt:row.endAt,feedbacks:row.feedbacks,responsibleTeacherId:row.teacherId??row.class.teacherId},now))).length;
+  const feedbackMissing = visible.filter((row) => isPendingFeedback(sessionFeedbackState({...row,responsibleTeacherId:row.teacherId??row.class.teacherId},now))).length;
   const approvalCount = approvalData.summary.manager || 0;
   const items = [
     { key: "corrections", title: "纠正与系统问题", count: corrections, target: "operations", urgent: corrections > 0, definition: "未完成的操作纠正和小程序问题工单" },

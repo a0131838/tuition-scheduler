@@ -123,8 +123,8 @@ export default async function TeacherHistoricalFeedbackPage({
     take: HISTORY_SCAN_LIMIT,
   });
 
-  const activeRows = rawSessions.filter((session) => !isSessionFullyCancelled(session));
-  const feedbackState=(row:typeof rawSessions[number])=>sessionFeedbackState({endAt:row.endAt,feedbacks:row.feedbacks,responsibleTeacherId:teacher.id},now);
+  const activeRows = rawSessions.filter((session) => !isSessionFullyCancelled(session) && sessionFeedbackState({...session,responsibleTeacherId:teacher.id},now)!=='EXEMPT');
+  const feedbackState=(row:typeof rawSessions[number])=>sessionFeedbackState({...row,responsibleTeacherId:teacher.id},now);
   const missingCount = activeRows.filter((session) => feedbackState(session)==='MISSING').length;
   const proxyCount = activeRows.filter((session) => feedbackState(session)==='PROXY_DRAFT').length;
   const filteredRows = activeRows.filter((session) => {

@@ -1,3 +1,4 @@
+import {needsTeachingFeedback} from "@/lib/session-feedback-policy";
 import { requireTeacherLead } from "@/lib/auth";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly, parseBusinessDateEnd, parseBusinessDateStart } from "@/lib/date-only";
 import { getLang, t, type Lang } from "@/lib/i18n";
@@ -20,7 +21,8 @@ function read(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
 
-function feedbackStateMeta(state: TeacherQualityFeedbackState, lang: Lang) {
+function feedbackStateMeta(state: TeacherQualityFeedbackState | "EXEMPT", lang: Lang) {
+  if (state === "EXEMPT") return {label:t(lang,"Not required: reviewed activity","已核对活动，无需反馈"),color:"#64748b"};
   if (state === "SUBMITTED") return { label: t(lang, "Submitted", "已提交"), color: "#047857" };
   if (state === "PROXY_DRAFT") return { label: t(lang, "Proxy draft pending", "代填草稿待补全"), color: "#b45309" };
   return { label: t(lang, "Missing", "缺失"), color: "#b91c1c" };
@@ -68,6 +70,8 @@ export default async function TeacherLeadQualityPage({
       orderBy: { startAt: "asc" },
       select: {
         id: true,
+        classId: true,
+        feedbackPolicyJson: true,
         startAt: true,
         endAt: true,
         teacherId: true,
@@ -78,6 +82,7 @@ export default async function TeacherLeadQualityPage({
         feedbacks: { select: { teacherId: true, isProxyDraft: true, status: true } },
         class: {
           select: {
+            teacherId: true,
             capacity: true,
             oneOnOneStudentId: true,
             teacher: { select: { id: true, name: true } },
@@ -103,7 +108,7 @@ export default async function TeacherLeadQualityPage({
       teacherName: teacher.name,
       students: students.join(", ") || "-",
       course: [session.class.course.name, session.class.subject?.name, session.class.level?.name].filter(Boolean).join(" / "),
-      feedbackState: resolveTeacherQualityFeedbackState(session.feedbacks, teacher.id),
+      feedbackState: needsTeachingFeedback(session)?resolveTeacherQualityFeedbackState(session.feedbacks, teacher.id):"EXEMPT" as const,
     };
   });
   const selectedSession = rows.find((row) => row.id === sp?.sessionId);

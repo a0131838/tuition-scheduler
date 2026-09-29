@@ -12,9 +12,14 @@ const FEEDBACK_RECOVERY_LOOKBACK_DAYS = 90;
 
 type SessionWithMeta = {
   id: string;
+  classId: string;
+  teacherId: string|null;
+  studentId: string|null;
+  feedbackPolicyJson: unknown;
   startAt: Date;
   endAt: Date;
   class: {
+    teacherId: string;
     capacity: number;
     oneOnOneStudent: { id: string; name: string } | null;
     enrollments: Array<{ studentId: string; student: { id: string; name: string } }>;
@@ -56,6 +61,7 @@ function attendancePill(marked: number, total: number) {
 }
 
 function feedbackMeta(state: ReturnType<typeof sessionFeedbackState>, overdue:boolean, lang:Awaited<ReturnType<typeof getLang>>, late:boolean) {
+ if(state==='EXEMPT')return {label:t(lang,'Not required: reviewed non-teaching activity','已核对非教学活动，无需课后反馈'),bg:'#f1f5f9',color:'#334155',border:'#cbd5e1'};
  if(state==='NOT_DUE')return {label:t(lang,'After session ends','课后填写'),bg:'#f1f5f9',color:'#334155',border:'#cbd5e1'};
  if(state==='SUBMITTED')return {label:late?t(lang,'Late submitted','迟交'):t(lang,'Submitted','已提交'),bg:'#dcfce7',color:'#166534',border:'#bbf7d0'};
  if(state==='PROXY_DRAFT')return {label:t(lang,'Proxy draft — teacher submission pending','代填草稿，待老师提交'),bg:'#e0f2fe',color:'#075985',border:'#bae6fd'};
@@ -149,11 +155,11 @@ export default async function TeacherSessionsPage() {
   ])) as [SessionWithMeta[], SessionWithMeta[]];
 
   const timelineSessionIds = new Set(timelineRaw.map((s) => s.id));
-  const sessions = uniqueSessionsById([...recoveryRaw.reverse(), ...timelineRaw]).filter((s) => !isSessionFullyCancelled(s));
+  const sessions = uniqueSessionsById([...recoveryRaw.reverse().filter(s=>isPendingFeedback(sessionFeedbackState({...s,responsibleTeacherId:teacher.id},now))), ...timelineRaw]).filter((s) => !isSessionFullyCancelled(s));
   const recoveryCount = sessions.filter((s) => !timelineSessionIds.has(s.id)).length;
   const todayKey = dayKey(now);
   const todayCount = sessions.filter((s) => dayKey(s.startAt) === todayKey).length;
-  const feedbackState = (s:SessionWithMeta) => sessionFeedbackState({endAt:s.endAt,feedbacks:s.feedbacks,responsibleTeacherId:teacher.id},now);
+  const feedbackState = (s:SessionWithMeta) => sessionFeedbackState({...s,responsibleTeacherId:teacher.id},now);
   const pendingFeedbackCount = sessions.filter((s) => isPendingFeedback(feedbackState(s))).length;
   const overdueFeedbackCount = sessions.filter((s) => isPendingFeedback(feedbackState(s)) && isFeedbackOverdue(s.endAt,now)).length;
 

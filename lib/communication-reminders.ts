@@ -1,3 +1,4 @@
+import {needsTeachingFeedback} from "@/lib/session-feedback-policy";
 import {isFinalTeacherFeedback} from "./session-feedback-state";
 import { prisma } from "@/lib/prisma";
 import { formatBusinessDateTime } from "@/lib/date-only";
@@ -245,7 +246,7 @@ export async function listCommunicationReminders(now = new Date(), limit = 300) 
         items.push(reminder({ key: `ATTENDANCE_MISSING:${session.id}`, category: "ATTENDANCE", categoryLabel: "考勤提醒", title: `${teacherName} · 未点名`, subject: `${studentText} · ${time}`, recipientType: "TEACHER", recipientName: teacherName, studentName: studentText, teacherName, dueAt, now, sourceHref: `/admin/sessions?focusSessionId=${session.id}`, sourceLabel: "考勤", copyZh: zh, copyEn: en }));
       }
       const finalFeedback = session.feedbacks.find((row) => row.teacherId===(session.teacherId??session.class.teacherId) && isFinalTeacherFeedback(row));
-      const feedbackRequired = students.some((student) => {
+      const feedbackRequired = needsTeachingFeedback(session) && students.some((student) => {
         const attendance = session.attendances.find((row) => row.studentId === student.id);
         return attendance?.status === "PRESENT" || attendance?.status === "LATE";
       });

@@ -1,3 +1,4 @@
+import {saveTeacherFeedbackReviewed} from "@/lib/teacher-feedback-save";
 import { prisma } from "@/lib/prisma";
 import { requireTeacherProfile, getCurrentUser } from "@/lib/auth";
 import { FeedbackStatus } from "@prisma/client";
@@ -104,7 +105,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     `Previous homework done / 之前作业完成情况: ${previousHomeworkText}`,
   ].join("\n");
 
-  const savedFeedback = await prisma.sessionFeedback.upsert({
+  let savedFeedback;
+  try {savedFeedback = await saveTeacherFeedbackReviewed(sessionId,teacher.id,{
     where: { sessionId_teacherId: { sessionId, teacherId: teacher.id } },
     update: {
       content,
@@ -143,7 +145,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       submittedAt: now,
       reviewStatus: "PENDING_REVIEW",
     },
-  });
+  });} catch(e){return bad(e instanceof Error?e.message:"Feedback changed; reload / 反馈状态已变化，请刷新",409);}
   await ensureFeedbackCommunicationTasks(savedFeedback.id).catch(() => null);
 
   return Response.json({

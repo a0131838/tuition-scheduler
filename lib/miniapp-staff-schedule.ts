@@ -1,3 +1,4 @@
+import {sessionFeedbackState} from "./session-feedback-state";
 import { prisma } from "@/lib/prisma";
 import { formatBusinessDateTime } from "@/lib/date-only";
 
@@ -66,7 +67,7 @@ export async function getStaffMiniappDailySchedule(input: {
     },
     include: {
       attendances: { select: { studentId: true, status: true } },
-      feedbacks: { select: { teacherId: true, submittedAt: true, status: true } },
+      feedbacks: { select: { teacherId: true, submittedAt: true, status: true, isProxyDraft: true } },
       student: { select: { id: true, name: true } },
       class: {
         include: {
@@ -90,6 +91,7 @@ export async function getStaffMiniappDailySchedule(input: {
       const students = visibleStudentNames(s, includeExcused);
       const effectiveTeacherId = s.teacher?.id ?? s.class.teacher.id;
       const feedback = s.feedbacks.find((f) => f.teacherId === effectiveTeacherId) ?? null;
+      const state=sessionFeedbackState({...s,responsibleTeacherId:effectiveTeacherId});
       const campusName = s.class.campus.name;
       const roomName = s.class.room?.name ?? null;
       return {
@@ -121,8 +123,8 @@ export async function getStaffMiniappDailySchedule(input: {
           acc[a.status] = (acc[a.status] ?? 0) + 1;
           return acc;
         }, {}),
-        feedbackStatus: feedback ? feedback.status : "NOT_SUBMITTED",
-        feedbackLabel: feedback ? "已反馈" : "未反馈",
+        feedbackStatus: state==="EXEMPT"?"NOT_REQUIRED":state==="PROXY_DRAFT"?"PROXY_DRAFT":feedback?feedback.status:"NOT_SUBMITTED",
+        feedbackLabel: state==="EXEMPT"?"Not required / 已核对非教学活动，无需反馈":state==="NOT_DUE"?"After class / 课后填写":state==="PROXY_DRAFT"?"Proxy draft / 代填草稿待提交":state==="SUBMITTED"?"Submitted / 已反馈":"Pending / 未反馈",
       };
     })
     .filter((x) => !(hideFullyExcused && x.visibleStudents.length === 0));

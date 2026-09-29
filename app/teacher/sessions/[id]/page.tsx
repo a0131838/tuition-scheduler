@@ -1,3 +1,5 @@
+import {sessionFeedbackState} from "@/lib/session-feedback-state";
+import {feedbackPolicyState} from "@/lib/session-feedback-policy";
 import { prisma } from "@/lib/prisma";
 import { requireTeacherProfile } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
@@ -89,6 +91,12 @@ export default async function TeacherSessionDetailPage({
 
   const attMap = new Map(session.attendances.map((a) => [a.studentId, a]));
   const feedback = session.feedbacks[0] ?? null;
+  const policySession={...session,class:{...session.class,enrollments}};
+  const policy=feedbackPolicyState(policySession);
+  const state=sessionFeedbackState({...policySession,responsibleTeacherId:teacher.id});
+  const finalFeedback=state==="SUBMITTED";
+  const noFeedbackTask=state==="EXEMPT"||state==="NOT_DUE";
+  const draftFeedback=state==="PROXY_DRAFT";
   const deadline = getFeedbackDueAt(session.endAt);
   const feedbackOverdue = isFeedbackOverdue(session.endAt);
   const deadlineText = formatBusinessDateTime(deadline);
@@ -112,73 +120,13 @@ export default async function TeacherSessionDetailPage({
     session.attendances.length > 0
       ? new Date(Math.max(...session.attendances.map((a) => new Date(a.updatedAt).getTime())))
       : null;
-  const feedbackStateLabel = feedback
-    ? feedback.isProxyDraft
-      ? t(lang, "Admin draft waiting for your update", "教务代填草稿等待你补全")
-      : feedback.status === "LATE"
-        ? t(lang, "Feedback submitted late", "反馈已提交，状态为迟交")
-        : t(lang, "Feedback submitted on time", "反馈已按时提交")
-    : feedbackOverdue
-      ? t(lang, "Feedback is overdue and still not submitted", "反馈已超时，且尚未提交")
-      : t(lang, "Feedback not submitted yet", "反馈尚未提交");
-  const nextActionTitle =
-    pendingAttendanceCount > 0
-      ? t(lang, "Finish attendance before anything else", "先把点名补齐")
-      : feedback
-        ? feedback.isProxyDraft
-          ? t(lang, "Review the draft and resubmit it yourself", "检查草稿并由你重新提交")
-          : t(lang, "Double-check feedback details if you need to revise", "如需修改，可先复核当前反馈内容")
-        : t(lang, "Attendance is done, so submit after-class feedback next", "点名已完成，下一步提交课后反馈");
-  const nextActionDetail =
-    pendingAttendanceCount > 0
-      ? t(
-          lang,
-          `${pendingAttendanceCount} students are still unmarked. Save attendance first so the rest of the page becomes simpler to scan.`,
-          `还有 ${pendingAttendanceCount} 位学生未点名。先保存点名，下面的页面状态会更清晰。`
-        )
-      : feedback
-        ? t(
-            lang,
-            "You already have a feedback record on this session. Use the form below only if you need to update what was submitted.",
-            "这节课已经有一条反馈记录。只有在需要补充或修订时，才继续编辑下方表单。"
-          )
-        : t(
-            lang,
-            "Move to the feedback section now and record class performance, homework, and any follow-up points.",
-            "现在可以进入反馈区，补充课堂表现、作业和后续跟进点。"
-          );
-  const sessionCompletionTitle =
-    pendingAttendanceCount > 0
-      ? t(lang, "Session still in progress", "本节课仍在处理中")
-      : feedback
-        ? t(lang, "Session admin is complete", "本节课记录已完成")
-        : t(lang, "Attendance complete, feedback still pending", "点名已完成，反馈待提交");
-  const sessionCompletionDetail =
-    pendingAttendanceCount > 0
-      ? t(
-          lang,
-          "Keep this page focused on attendance first. Once every student has a status, the rest of the workflow becomes much easier.",
-          "先把注意力放在点名上。所有学生状态补齐后，后续反馈流程会简单很多。"
-        )
-      : feedback
-        ? t(
-            lang,
-            "Attendance and after-class feedback are both saved. Reopen the feedback form only if you need to revise details.",
-            "点名和课后反馈都已经保存完成。只有在需要修改内容时，才继续打开下方反馈表单。"
-          )
-        : t(
-            lang,
-            "The class roster is already settled, so you can move straight into after-class feedback without more attendance work.",
-            "本节课的点名已经确认完成，现在可以直接进入课后反馈，不需要再处理点名。"
-          );
-  const sessionCompletionHref = pendingAttendanceCount > 0 ? "#attendance" : feedback ? returnTo : "#feedback";
-  const sessionCompletionAction = pendingAttendanceCount > 0
-    ? t(lang, "Go finish attendance", "去完成点名")
-    : feedback
-      ? returningToHistory
-        ? t(lang, "Back to historical feedback", "返回历史待补反馈")
-        : t(lang, "Back to my sessions", "返回我的课次")
-      : t(lang, "Go submit feedback", "去提交反馈");
+  const feedbackStateLabel = state==='EXEMPT'?t(lang,'Reviewed non-teaching activity; no lesson feedback required','已核对非教学活动，无需课后反馈'):state==='NOT_DUE'?t(lang,'Feedback is due after the session ends','课程结束后填写反馈'):draftFeedback?t(lang,'Admin draft waiting for your completion','教务代填草稿，待老师正式提交'):finalFeedback?(feedback?.status==='LATE'?t(lang,'Feedback submitted late','反馈已提交，状态为迟交'):t(lang,'Feedback submitted','反馈已提交')):feedbackOverdue?t(lang,'Feedback overdue','反馈已超时'):t(lang,'Feedback pending','反馈待提交');
+  const nextActionTitle=pendingAttendanceCount>0?t(lang,'Finish attendance','完成点名'):noFeedbackTask?feedbackStateLabel:finalFeedback?t(lang,'Review submitted feedback if needed','按需复核已提交反馈'):t(lang,'Complete and submit teacher feedback','补全并正式提交老师反馈');
+  const nextActionDetail=state==='EXEMPT'?policy.reason:state==='NOT_DUE'?t(lang,'This scheduled session stays visible. Submit teaching feedback after it ends.','此课次仍保留在课表中，请在课程结束后提交教学反馈。'):draftFeedback?t(lang,'A proxy draft is not a completed teacher submission. Review and submit it yourself.','代填草稿不代表老师已提交，请核对并由老师正式提交。'):t(lang,'Attendance and feedback are separate records. Check both before finishing.','点名和反馈是两项独立记录，请分别核对。');
+  const sessionCompletionTitle=pendingAttendanceCount>0?t(lang,'Attendance still pending','点名仍待完成'):finalFeedback?t(lang,'Attendance and feedback recorded','点名和反馈已记录'):noFeedbackTask?feedbackStateLabel:t(lang,'Attendance recorded; teacher feedback pending','点名已记录，老师反馈待提交');
+  const sessionCompletionDetail=nextActionDetail;
+  const sessionCompletionHref=pendingAttendanceCount>0?'#attendance':finalFeedback||noFeedbackTask?returnTo:'#feedback';
+  const sessionCompletionAction=pendingAttendanceCount>0?t(lang,'Go finish attendance','去完成点名'):finalFeedback||noFeedbackTask?t(lang,'Back to sessions','返回课次'):t(lang,'Complete teacher feedback','补全老师反馈');
 
   const msg = decode(sp?.msg);
   const err = decode(sp?.err);
@@ -214,13 +162,13 @@ export default async function TeacherSessionDetailPage({
           marginBottom: 14,
           padding: 12,
           borderRadius: 12,
-          border: pendingAttendanceCount > 0 ? "1px solid #fdba74" : feedback ? "1px solid #86efac" : "1px solid #93c5fd",
-          background: pendingAttendanceCount > 0 ? "#fff7ed" : feedback ? "#f0fdf4" : "#eff6ff",
+          border: pendingAttendanceCount > 0 ? "1px solid #fdba74" : finalFeedback ? "1px solid #86efac" : "1px solid #93c5fd",
+          background: pendingAttendanceCount > 0 ? "#fff7ed" : finalFeedback ? "#f0fdf4" : "#eff6ff",
           display: "grid",
           gap: 6,
         }}
       >
-        <div style={{ fontSize: 12, fontWeight: 800, color: pendingAttendanceCount > 0 ? "#c2410c" : feedback ? "#166534" : "#1d4ed8", letterSpacing: 0.2 }}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: pendingAttendanceCount > 0 ? "#c2410c" : finalFeedback ? "#166534" : "#1d4ed8", letterSpacing: 0.2 }}>
           {t(lang, "Completion state", "完成状态")}
         </div>
         <div style={{ fontWeight: 700 }}>{sessionCompletionTitle}</div>
@@ -304,7 +252,7 @@ export default async function TeacherSessionDetailPage({
           <div style={{ color: "#0f172a", fontSize: 13 }}>
             {feedback
               ? `${t(lang, "Last saved", "最近保存")}: ${formatBusinessDateTime(new Date(feedback.submittedAt))}`
-              : `${t(lang, "Deadline", "截止")}: ${deadlineText}`}
+              : noFeedbackTask ? feedbackStateLabel : `${t(lang, "Deadline", "截止")}: ${deadlineText}`}
           </div>
           <a href="#feedback">{t(lang, "Jump to feedback", "跳到反馈区")}</a>
         </div>
@@ -323,8 +271,8 @@ export default async function TeacherSessionDetailPage({
           </div>
           <div style={{ fontWeight: 700 }}>{nextActionTitle}</div>
           <div style={{ color: "#0f172a", fontSize: 13 }}>{nextActionDetail}</div>
-          <a href={pendingAttendanceCount > 0 ? "#attendance" : "#feedback"}>
-            {pendingAttendanceCount > 0 ? t(lang, "Go finish attendance", "去完成点名") : t(lang, "Go write feedback", "去填写反馈")}
+          <a href={sessionCompletionHref}>
+            {sessionCompletionAction}
           </a>
         </div>
       </div>
@@ -360,8 +308,8 @@ export default async function TeacherSessionDetailPage({
                 )
               : t(
                   lang,
-                  `Attendance is complete for ${attendanceDoneCount} students. You can move on to feedback now.`,
-                  `已完成 ${attendanceDoneCount} 位学生的点名，现在可以继续填写反馈。`
+                  `Attendance is complete for ${attendanceDoneCount} students. Check this session’s feedback requirement.`,
+                  `已完成 ${attendanceDoneCount} 位学生的点名，请查看本节课的反馈要求。`
                 )}
           </div>
         </div>
@@ -378,9 +326,9 @@ export default async function TeacherSessionDetailPage({
           <div style={{ fontSize: 12, fontWeight: 800, color: "#6d28d9", letterSpacing: 0.2 }}>
             {t(lang, "Step 2", "步骤 2")}
           </div>
-          <div style={{ fontWeight: 700 }}>{t(lang, "Then submit after-class feedback", "然后提交课后反馈")}</div>
+          <div style={{ fontWeight: 700 }}>{noFeedbackTask?feedbackStateLabel:t(lang, "Then submit after-class feedback", "然后提交课后反馈")}</div>
           <div style={{ color: "#0f172a", fontSize: 13 }}>
-            {t(
+            {noFeedbackTask?nextActionDetail:t(
               lang,
               "Once attendance is settled, write the parent-facing version: what problem was solved, what was found, what changed, and what comes next.",
               "点名确认后，填写家长视角反馈：解决了什么问题、发现了什么、孩子有什么变化、下一步怎么练。"
@@ -394,14 +342,14 @@ export default async function TeacherSessionDetailPage({
         sessionId={session.id}
         initialRows={attendanceRows}
         completionGuide={{
-          title: t(lang, "Attendance saved. Move to after-class feedback next.", "点名已保存，下一步去完成课后反馈。"),
-          detail: t(
+          title: noFeedbackTask?feedbackStateLabel:t(lang, "Attendance saved. Move to after-class feedback next.", "点名已保存，下一步去完成课后反馈。"),
+          detail: noFeedbackTask?nextActionDetail:t(
             lang,
             "The roster is recorded now, so you can use the feedback section below without rescanning the whole page.",
             "点名已经记录完成，现在可以直接进入下方反馈区，不用重新扫整页。"
           ),
-          href: "#feedback",
-          actionLabel: t(lang, "Jump to feedback", "跳到反馈区"),
+          href: noFeedbackTask?returnTo:"#feedback",
+          actionLabel: noFeedbackTask?t(lang,"Back to sessions","返回课次"):t(lang, "Jump to feedback", "跳到反馈区"),
         }}
         labels={{
           save: t(lang, "Save Attendance", "保存点名"),
@@ -416,6 +364,8 @@ export default async function TeacherSessionDetailPage({
       />
 
       <h3 id="feedback" style={{ marginTop: 20 }}>{t(lang, "After-class Feedback", "课后反馈")}</h3>
+      {policy.stale?<p role="status">{t(lang,'Earlier exemption no longer matches this session. Ask teaching management to review it.','旧豁免与当前课次不符，请教务重新核对。')}</p>:null}
+      {state==='EXEMPT'?<p>{policy.reason} · {t(lang,'If teaching actually took place, ask teaching management to restore the feedback requirement.','若实际开展了教学，请教务恢复反馈要求。')}</p>:<>
       {pendingAttendanceCount > 0 ? (
         <div
           style={{
@@ -448,7 +398,7 @@ export default async function TeacherSessionDetailPage({
             )}
       </div>
       <div style={{ color: "#64748b", fontSize: 13, marginBottom: 8 }}>{feedbackRuleHint}</div>
-      {feedback?.isProxyDraft ? (
+      {draftFeedback ? (
         <div style={{ color: "#92400e", background: "#fff7ed", border: "1px solid #fed7aa", padding: 8, borderRadius: 6, marginBottom: 8 }}>
           {t(lang, "Admin created a temporary draft. Please complete and resubmit.", "教务已代填临时草稿，请补全后重新提交。")}
         </div>
@@ -519,6 +469,7 @@ export default async function TeacherSessionDetailPage({
           no: t(lang, "No", "否"),
         }}
       />
+      </>}
     </div>
   );
 }

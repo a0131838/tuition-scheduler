@@ -72,7 +72,7 @@ export async function GET(req: Request) {
       const names = getVisibleSessionStudentNames(row);
       return !names.length || row.attendances.length < names.length || row.attendances.some((item) => item.status === "UNMARKED");
     });
-    const lessonFeedbackPending = visibleSessions.filter((row) => isPendingFeedback(sessionFeedbackState({endAt:row.endAt,feedbacks:row.feedbacks,responsibleTeacherId:user.teacherId!},now)));
+    const lessonFeedbackPending = visibleSessions.filter((row) => isPendingFeedback(sessionFeedbackState({...row,responsibleTeacherId:user.teacherId!},now)));
     const taughtStudentIds = taughtRows.map((row) => row.studentId);
     let unreadOtherFeedback = 0;
     if (taughtStudentIds.length) {

@@ -865,6 +865,7 @@ model Session {
   endAt     DateTime
   teacherId String?
   studentId String?
+  feedbackPolicyJson Json?
 
   class                     Class                          @relation(fields: [classId], references: [id])
   teacher                   Teacher?                       @relation("SessionTeacherOverride", fields: [teacherId], references: [id])
