@@ -600,3 +600,22 @@ Logs: `/tmp/sgt-r439-uat-final.log`, `/tmp/sgt-r439-http.log`, `/tmp/sgt-r439-fo
 ---
 
 Logs: `/tmp/sgt-r440-uat.log`, `/tmp/sgt-r440-focused.log`, `/tmp/sgt-r440-backend.log`, `/tmp/sgt-r440-tsc.log`, `/tmp/sgt-r440-build.log`.
+
+## 2026-09-29-r441
+
+- Release ID: `2026-09-29-r441`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; guarded release proof is maintained in the execution ledger.
+- Problem: student DELETE sequentially removed attendance, appointments, packages and ledger entries before deleting the profile. A later foreign-key failure could leave partial historical loss. Test-lead cleanup also deleted a converted student based on its name.
+- Change: the dedicated delete path locks and checks the exact student, all relational counts, direct-ID communication/alert/feedback/sales records, audit references and JSON billing history. Linked profiles are retained. Only an unused profile can be deleted in one serializable transaction with its complete pre-delete snapshot. Observer writes are explicitly rejected; existing requireAdmin role policy remains. Remove the unused cascading server action. Test-lead cleanup retains linked students for separate review instead of treating a TEST name as proof of disposability.
+- UI: both student-list and profile confirmations explain that business history blocks deletion; test-resource cleanup explains retained profiles. Changed wording supports EN/ZH/BILINGUAL. No new archive state or automatic historical correction.
+- Validation:181 backend tests,TypeScript and260-page production build. Isolated service covers relational/communication/JSON billing history, preserved package and ledger snapshot, observer denial, audit failure rollback, concurrent deletion once and complete snapshot. HTTP verifies four unauthorized roles denied, protected student409 and unused profile200 with one audit. Actual authenticated student-page rendering verifies new confirmation text in all three languages and restores bilingual preference.
+- Migration: none. No production profile, lessons, package, finance, care or school-application data was deleted for acceptance.
+- Risk: existing used profiles can no longer be removed through cascading deletion; review their exact business records instead. This release does not introduce an archive workflow or infer duplicate identities.
+- Remaining: phase6 service/profile integration; phase5 option feasibility, phase4 final acceptance and phases7–10. Overall programme remains in progress.
+- Rollback point: `50a136f903ab06251143ce7796d7b7162126e568` (r440). Rolling back restores the old deletion risk and should be restricted to incident recovery.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
+Logs: `/tmp/sgt-r441-uat-final.log`, `/tmp/sgt-r441-http.log`, `/tmp/sgt-r441-language.log`, `/tmp/sgt-r441-backend.log`, `/tmp/sgt-r441-build.log`.

@@ -1,4 +1,21 @@
 # RELEASE BOARD
+## 2026-09-29-r441
+
+- Release ID: `2026-09-29-r441`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; guarded release proof is maintained in the execution ledger.
+- Problem: student DELETE sequentially removed attendance, appointments, packages and ledger entries before deleting the profile. A later foreign-key failure could leave partial historical loss. Test-lead cleanup also deleted a converted student based on its name.
+- Change: the dedicated delete path locks and checks the exact student, all relational counts, direct-ID communication/alert/feedback/sales records, audit references and JSON billing history. Linked profiles are retained. Only an unused profile can be deleted in one serializable transaction with its complete pre-delete snapshot. Observer writes are explicitly rejected; existing requireAdmin role policy remains. Remove the unused cascading server action. Test-lead cleanup retains linked students for separate review instead of treating a TEST name as proof of disposability.
+- UI: both student-list and profile confirmations explain that business history blocks deletion; test-resource cleanup explains retained profiles. Changed wording supports EN/ZH/BILINGUAL. No new archive state or automatic historical correction.
+- Validation:181 backend tests,TypeScript and260-page production build. Isolated service covers relational/communication/JSON billing history, preserved package and ledger snapshot, observer denial, audit failure rollback, concurrent deletion once and complete snapshot. HTTP verifies four unauthorized roles denied, protected student409 and unused profile200 with one audit. Actual authenticated student-page rendering verifies new confirmation text in all three languages and restores bilingual preference.
+- Migration: none. No production profile, lessons, package, finance, care or school-application data was deleted for acceptance.
+- Risk: existing used profiles can no longer be removed through cascading deletion; review their exact business records instead. This release does not introduce an archive workflow or infer duplicate identities.
+- Remaining: phase6 service/profile integration; phase5 option feasibility, phase4 final acceptance and phases7–10. Overall programme remains in progress.
+- Rollback point: `50a136f903ab06251143ce7796d7b7162126e568` (r440). Rolling back restores the old deletion risk and should be restricted to incident recovery.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
 ## 2026-09-29-r440
 
 - Release ID: `2026-09-29-r440`
@@ -597,7 +614,7 @@
 ---
 
 
-- Current release line on this branch: `2026-09-29-r440`, ready for guarded release of evidence-based monthly staffing forecasts. Overall programme remains in progress; no Mini Program client release.
+- Current release line on this branch: `2026-09-29-r441`, ready for guarded release of student business-history deletion protection. Overall programme remains in progress; no Mini Program client release.
 
 ## 2026-09-09-r404 Ready
 

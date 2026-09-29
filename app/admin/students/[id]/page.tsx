@@ -713,25 +713,6 @@ async function updateStudent(studentId: string, formData: FormData) {
   redirect(buildStudentDetailHref(studentId, params, returnHash, "#edit-student"));
 }
 
-async function deleteStudent(studentId: string) {
-  "use server";
-  await prisma.enrollment.deleteMany({ where: { studentId } });
-  await prisma.appointment.deleteMany({ where: { studentId } });
-  await prisma.attendance.deleteMany({ where: { studentId } });
-
-  const packages = await prisma.coursePackage.findMany({
-    where: { studentId },
-    select: { id: true },
-  });
-  const packageIds = packages.map((p) => p.id);
-  if (packageIds.length > 0) {
-    await prisma.packageTxn.deleteMany({ where: { packageId: { in: packageIds } } });
-  }
-  await prisma.coursePackage.deleteMany({ where: { studentId } });
-
-  await prisma.student.delete({ where: { id: studentId } });
-  redirect("/admin/students");
-}
 
 async function createQuickAppointment(studentId: string, formData: FormData) {
   "use server";
@@ -4787,7 +4768,7 @@ export default async function StudentDetailPage({
             notes: tl(lang, "Notes"),
             save: tl(lang, "Save"),
             deleteStudent: tl(lang, "Delete Student"),
-            deleteConfirm: tl(lang, "Delete student? This also deletes enrollments/appointments/packages."),
+            deleteConfirm: t(lang, "Delete this unused student profile? Profiles with business history cannot be deleted.", "删除此未使用的学生档案？存在业务历史的档案不能删除。"),
             ok: tl(lang, "OK"),
             error: tl(lang, "Error"),
           }}

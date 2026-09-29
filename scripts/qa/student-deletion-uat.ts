@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import {readFileSync,writeFileSync} from 'node:fs';
+import {prisma} from '../../lib/prisma';
+import {deleteUnusedStudent} from '../../lib/student-deletion';
+async function main(){
+ for(const key of ['DATABASE_URL','DIRECT_DATABASE_URL']){const u=new URL(process.env[key]||'');assert.equal(u.hostname,'127.0.0.1');assert.equal(u.port,'55439');assert.equal(u.pathname,'/sgt_workspace_completion_test');}
+ if(process.argv.includes('--http')){
+  const f=JSON.parse(readFileSync('/tmp/sgt-r441-fixture.json','utf8')),base='http://127.0.0.1:3149';
+  const login=async(email:string,password:string,portal='admin')=>{const r=await fetch(base+'/api/admin/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password,portal})});assert.equal(r.status,200);return r.headers.getSetCookie().map(c=>c.split(';')[0]).join('; ');};
+  const send=(Cookie:string,id:string)=>fetch(base+'/api/admin/students/'+id,{method:'DELETE',headers:{Cookie},redirect:'manual'});
+  for(const role of ['OBSERVER','SALES','CS','TEACHER']){const user=await prisma.user.findFirstOrThrow({where:{name:`Policy ${role}`},orderBy:{createdAt:'desc'}}),cookie=await login(user.email,'LocalUAT-FeedbackPolicy-20260929',role==='TEACHER'?'teacher':'admin');assert([303,307,403].includes((await send(cookie,f.safeId)).status));}
+  const owner=await login('zhaohongwei0880@gmail.com','LocalUAT-Cancellation-20260928');assert.equal((await send(owner,f.blockedId)).status,409);assert.equal((await send(owner,f.safeId)).status,200);assert.equal(await prisma.auditLog.count({where:{entityId:f.safeId,action:'DELETE_UNUSED_STUDENT'}}),1);assert.equal(await prisma.student.count({where:{id:f.blockedId}}),1);
+  console.log(JSON.stringify({passed:true,httpHistoricalStudentBlocked:true,httpUnusedStudentAudited:true,fourUnauthorizedRolesDenied:true}));return;
+ }
+ const actor=await prisma.user.findUniqueOrThrow({where:{email:'zhaohongwei0880@gmail.com'}}),make=()=>prisma.student.create({data:{name:'Isolated deletion profile'}});
+ const blocked=await make(),parent=await prisma.parentAccount.create({data:{name:'Isolated parent history'}});await prisma.parentStudentLink.create({data:{studentId:blocked.id,parentId:parent.id}});
+ const before=await prisma.student.findUniqueOrThrow({where:{id:blocked.id},include:{parentLinks:true}});await assert.rejects(deleteUnusedStudent(blocked.id,actor),/business history/);assert.deepEqual(await prisma.student.findUniqueOrThrow({where:{id:blocked.id},include:{parentLinks:true}}),before);
+ const communication=await make();await prisma.parentCommunicationTask.create({data:{studentId:communication.id,taskKey:'isolated-delete-'+communication.id,kind:'TEST',title:'Preserved history',messageText:'No sending'}});await assert.rejects(deleteUnusedStudent(communication.id,actor),/business history/);
+ const invoice=await make(),billing=await prisma.appSetting.findUnique({where:{key:'parent_billing_v1'}});const value=billing?JSON.parse(billing.value):{};await prisma.appSetting.upsert({where:{key:'parent_billing_v1'},create:{key:'parent_billing_v1',value:JSON.stringify({...value,isolatedHistory:[{studentId:invoice.id}]})},update:{value:JSON.stringify({...value,isolatedHistory:[{studentId:invoice.id}]})}});try{await assert.rejects(deleteUnusedStudent(invoice.id,actor),/business history/);}finally{if(billing)await prisma.appSetting.update({where:{key:billing.key},data:{value:billing.value}});else await prisma.appSetting.delete({where:{key:'parent_billing_v1'}});}
+ const financial=await prisma.coursePackage.findFirstOrThrow({where:{txns:{some:{}}}}),ledgerBefore=await prisma.packageTxn.findMany({where:{packageId:financial.id},orderBy:{id:'asc'}});
+ await assert.rejects(deleteUnusedStudent(financial.studentId,actor),/business history/);assert.deepEqual(await prisma.coursePackage.findUniqueOrThrow({where:{id:financial.id}}),financial);assert.deepEqual(await prisma.packageTxn.findMany({where:{packageId:financial.id},orderBy:{id:'asc'}}),ledgerBefore);
+ const safe=await make();await assert.rejects(deleteUnusedStudent(safe.id,{...actor,isObserver:true}),/Read-only/);
+ let fail=true;prisma.$use(async(p,next)=>{if(fail&&p.model==='AuditLog'&&p.action==='create'&&p.args.data.entityId===safe.id)throw Error('forced student deletion audit');return next(p);});await assert.rejects(deleteUnusedStudent(safe.id,actor),/forced student deletion audit/);assert.equal(await prisma.student.count({where:{id:safe.id}}),1);fail=false;
+ const results=await Promise.allSettled([deleteUnusedStudent(safe.id,actor),deleteUnusedStudent(safe.id,actor)]);assert.equal(results.filter(r=>r.status==='fulfilled').length,1);const audit=await prisma.auditLog.findFirstOrThrow({where:{entityId:safe.id,action:'DELETE_UNUSED_STUDENT'}});assert.equal((audit.meta as any).sourceSnapshot.name,safe.name);assert.equal(await prisma.auditLog.count({where:{entityId:safe.id,action:'DELETE_UNUSED_STUDENT'}}),1);
+ const next=await make();writeFileSync('/tmp/sgt-r441-fixture.json',JSON.stringify({safeId:next.id,blockedId:blocked.id}));console.log(JSON.stringify({passed:true,relationalHistoryRetained:true,packageAndLedgerRetained:true,unrelatedCommunicationHistoryRetained:true,jsonBillingHistoryRetained:true,observerDenied:true,auditFailureRollback:true,concurrentDeleteOnce:true,originalProfileSnapshot:true}));
+}
+main().finally(()=>prisma.$disconnect());

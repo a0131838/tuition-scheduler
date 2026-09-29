@@ -177,9 +177,8 @@ async function deleteTestLeadAction(formData: FormData) {
       }
     }
     await tx.lead.delete({ where: { id: lead.id } });
-    if (lead.convertedStudent && canHardDeleteLead({ studentName: lead.convertedStudent.name })) {
-      await tx.student.deleteMany({ where: { id: lead.convertedStudent.id, name: { contains: "TEST", mode: "insensitive" } } });
-    }
+    // A test-named lead is not proof that its converted student has no business history.
+    // Retain the profile; the dedicated student deletion path checks exact dependencies.
   });
   revalidatePath("/admin/leads");
   revalidatePath("/admin/students");
@@ -477,7 +476,7 @@ export default async function LeadDetailPage({
                   <form action={deleteTestLeadAction} style={{ display: "grid", gap: 8, marginTop: 8 }}>
                     <input type="hidden" name="id" value={lead.id} />
                     <div style={{ color: "#991b1b", fontSize: 12 }}>{t(lang, "Only resources marked TEST can be physically deleted.", "只有标记 TEST 的资源允许物理删除。")}</div>
-                    <input name="confirmDelete" placeholder="DELETE_TEST" style={fieldStyle} />
+                    <p>{t(lang,"Linked student profiles are retained. Review them separately in Students.","关联学生档案会保留，请到学生页面单独核对。")}</p><input name="confirmDelete" placeholder="DELETE_TEST" style={fieldStyle} />
                     <button type="submit" style={{ borderColor: "#991b1b", color: "#991b1b" }}>{t(lang, "Delete Test Resource", "删除测试资源")}</button>
                   </form>
                 </details>

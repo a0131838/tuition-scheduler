@@ -764,8 +764,8 @@ export default async function StudentsPage({
           delete: t(lang, "Delete", "删除"),
           deleteConfirm: t(
             lang,
-            "Delete student? This also deletes enrollments/appointments/packages.",
-            "删除学生？将同时删除报名/预约/课包。"
+            "Delete this unused student profile? Profiles with business history cannot be deleted.",
+            "删除此未使用的学生档案？存在业务历史的档案不能删除。"
           ),
           ok: t(lang, "OK", "成功"),
           error: t(lang, "Error", "错误"),

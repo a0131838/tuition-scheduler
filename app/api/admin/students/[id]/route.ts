@@ -1,3 +1,4 @@
+import {deleteUnusedStudent} from "@/lib/student-deletion";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 
@@ -84,24 +85,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  const actor=await requireAdmin();
+  if(actor.isObserver)return bad("Read-only account / 此账号仅可查看",403);
   const { id: studentId } = await params;
   if (!studentId) return bad("Missing studentId");
-
-  await prisma.enrollment.deleteMany({ where: { studentId } });
-  await prisma.appointment.deleteMany({ where: { studentId } });
-  await prisma.attendance.deleteMany({ where: { studentId } });
-
-  const packages = await prisma.coursePackage.findMany({
-    where: { studentId },
-    select: { id: true },
-  });
-  const packageIds = packages.map((p) => p.id);
-  if (packageIds.length > 0) {
-    await prisma.packageTxn.deleteMany({ where: { packageId: { in: packageIds } } });
-  }
-  await prisma.coursePackage.deleteMany({ where: { studentId } });
-
-  await prisma.student.delete({ where: { id: studentId } });
-  return Response.json({ ok: true });
+  try{return Response.json(await deleteUnusedStudent(studentId,actor));}
+  catch(error){return bad(error instanceof Error?error.message:"Deletion failed / 删除失败",409);}
 }
