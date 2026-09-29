@@ -1,4 +1,19 @@
 # RELEASE BOARD
+## 2026-09-29-r452
+
+- Release ID: `2026-09-29-r452`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; live proof is recorded in the execution ledger.
+- Problem: Care report publication checked reviewer membership and student consent before its write transaction. Independently changed permissions/visibility could therefore be accepted from an earlier read. Report services also relied on the caller's captured role rather than the current account and assignments.
+- Change: report creation, editing and status changes resolve current identity, observer flag, Care workspace, active project membership and existing manager/operations-admin ACLs inside serializable transactions. Relevant access rows and the university consent profile are locked while reviewed. Status/evidence/consent/version checks, publication deadline update and audit commit together. Assigned coordinators can prepare/submit; only assigned reviewers or existing management access can review. Operations admins can execute the review actions already offered by the UI. Captured/spoofed role fields cannot elevate access.
+- Validation:759 full tests, final260-page production build and TypeScript passed. Isolated workflow covers draft creation, editing, submission, return, resubmission, approval and publication; audit failures roll back report and deadline. Observer, spoofed role, removed membership, withdrawn consent and missing formal-report visibility fail. Consent/membership races fail safely; concurrent publication commits once. Parent HTTP reads/PDF/acknowledgement pass without internal notes; withdrawal/revocation hides access. Staff HTTP rejects coordinator and legacy-style observer review attempts. Tuition ledger and notification outbox remain unchanged by report publication.
+- Migration: none. No real care report approval/publication, parent acknowledgement, billing or messages used for testing. No sender or WeChat publication. New errors are bilingual; existing report layouts and old links remain.
+- Remaining: Care task/activity/attachment/service-review/parent-question mutation boundaries still need their own audit and delivery checks. Phase5 offer pause/exclusion, phase7 communication lifecycle, and phases8-10 route/language/role acceptance and unified delivery remain. No whole-programme completion claim.
+- Rollback point: `a5220b09e0360880585cbfc7d6b474ff6221d49b` (r451).
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
 ## 2026-09-29-r451
 
 - Release ID: `2026-09-29-r451`
@@ -771,7 +786,7 @@
 ---
 
 
-- Current release line on this branch: `2026-09-29-r451`, ready for guarded release of school parent-information lifecycle safety. Overall programme remains in progress; no Mini Program client release.
+- Current release line on this branch: `2026-09-29-r452`, ready for guarded release of current Care report access and consent checks. Overall programme remains in progress; no Mini Program client release.
 
 ## 2026-09-09-r404 Ready
 

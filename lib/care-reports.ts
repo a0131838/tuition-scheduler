@@ -2,9 +2,9 @@ import type {
   CareReportStatus,
   CareReportType,
   CareRiskLevel,
-  Prisma,
 } from "@prisma/client";
-import { isManagerUser } from "@/lib/auth";
+import { Prisma } from "@prisma/client";
+import { requireCareReportWriteAccess } from "./care-report-access";
 import {
   assertCareReportReady,
   assertCareReportTransition,
@@ -21,6 +21,13 @@ import { prisma } from "@/lib/prisma";
 import { sessionBelongsToStudentWhere } from "@/lib/session-students";
 
 type ReportActor = { id: string; email: string; name: string; role: string };
+
+function careReportConflict(error: unknown): never {
+  if (error instanceof Prisma.PrismaClientKnownRequestError && (error.code === "P2034" || error.code === "P2010" && ["40001", "40P01"].includes(String(error.meta?.code)))) {
+    throw new Error("Care report or access changed; refresh and review before retrying / 托管报告或权限已变更，请刷新核对后重试");
+  }
+  throw error;
+}
 
 function reportDate(value: unknown, endOfDay = false) {
   const text = careReportText(value, 40);
@@ -210,6 +217,7 @@ export async function createCareReportDraft(input: {
   if (periodEnd < periodStart) throw new Error("Report end date must not be before start date");
 
   return prisma.$transaction(async (tx) => {
+    const access = await requireCareReportWriteAccess(tx, input.actor.id, input.engagementId);
     const engagement = await tx.careEngagement.findUnique({
       where: { id: input.engagementId },
       select: { id: true, studentId: true, status: true, student: { select: { name: true } } },
@@ -256,7 +264,7 @@ export async function createCareReportDraft(input: {
       });
     }
     await tx.auditLog.create({
-      data: reportAudit(input.actor, "CREATE_DRAFT", report.id, {
+      data: reportAudit(access.actor, "CREATE_DRAFT", report.id, {
         engagementId: engagement.id,
         reportType,
         periodLabel,
@@ -264,7 +272,7 @@ export async function createCareReportDraft(input: {
       }),
     });
     return report;
-  });
+  }, { isolationLevel: "Serializable", timeout: 15000 }).catch(careReportConflict);
 }
 
 export async function updateCareReportDraft(input: {
@@ -302,6 +310,7 @@ export async function updateCareReportDraft(input: {
     internalNote: careReportText(input.internalNote) || null,
   };
   return prisma.$transaction(async (tx) => {
+    const access = await requireCareReportWriteAccess(tx, input.actor.id, input.engagementId);
     const report = await tx.careReport.findFirst({
       where: { id: input.reportId, engagementId: input.engagementId },
       select: { status: true },
@@ -313,17 +322,8 @@ export async function updateCareReportDraft(input: {
       data: { ...data, version: { increment: 1 } },
     });
     if (updated.count !== 1) throw new Error("This report was updated by another user. Refresh and try again");
-    await tx.auditLog.create({ data: reportAudit(input.actor, "UPDATE_DRAFT", input.reportId, { riskLevel: data.riskLevel }) });
-  });
-}
-
-async function canReview(actor: ReportActor, engagementId: string) {
-  if (actor.role === "ADMIN" || await isManagerUser(actor as never)) return true;
-  const membership = await prisma.careEngagementMember.findFirst({
-    where: { engagementId, userId: actor.id, isActive: true, role: { in: ["REVIEWER", "EXECUTIVE_OWNER"] } },
-    select: { id: true },
-  });
-  return Boolean(membership);
+    await tx.auditLog.create({ data: reportAudit(access.actor, "UPDATE_DRAFT", input.reportId, { riskLevel: data.riskLevel }) });
+  }, { isolationLevel: "Serializable", timeout: 15000 }).catch(careReportConflict);
 }
 
 function nextMonthlyReportDue(periodEnd: Date) {
@@ -342,7 +342,10 @@ export async function changeCareReportStatus(input: {
   reviewNote?: unknown;
 }) {
   const reviewNote = careReportText(input.reviewNote, 3000);
-  const report = await prisma.careReport.findFirst({
+  return prisma.$transaction(async tx => {
+  const access = await requireCareReportWriteAccess(tx, input.actor.id, input.engagementId);
+  await tx.$queryRaw`SELECT id FROM "CareUniversityProfile" WHERE "engagementId"=${input.engagementId} FOR SHARE`;
+  const report = await tx.careReport.findFirst({
     where: { id: input.reportId, engagementId: input.engagementId },
     include: {
       engagement: { include: { universityProfile: true } },
@@ -351,9 +354,9 @@ export async function changeCareReportStatus(input: {
   });
   if (!report) throw new Error("Care report not found");
   assertCareReportTransition(report.status, input.nextStatus);
-  const reviewer = await canReview(input.actor, report.engagementId);
+  const reviewer = access.canReview;
   if (["RETURNED", "APPROVED", "PUBLISHED", "REVOKED"].includes(input.nextStatus) && !reviewer) {
-    throw new Error("Only the assigned reviewer or a manager can perform this report action");
+    throw new Error("Only an assigned reviewer or an authorized manager can perform this report action / 仅指定审核人或有权限的管理人员可执行此操作");
   }
   if (input.nextStatus === "RETURNED" && !reviewNote) throw new Error("Return reason is required");
   if (input.nextStatus === "REVOKED" && !reviewNote) throw new Error("Revocation reason is required");
@@ -375,7 +378,7 @@ export async function changeCareReportStatus(input: {
         ? (profile.parentVisibilityJson as { sectionIds?: unknown }).sectionIds
         : [];
       if (!profile || !["GRANTED", "LIMITED"].includes(profile.studentConsentStatus) || !Array.isArray(visible) || !visible.includes("formal_reports")) {
-        throw new Error("Student consent for formal parent reports is required before publication");
+        throw new Error("Student consent for formal parent reports is required before publication / 发布前须取得学生对家长正式报告的授权");
       }
     }
   }
@@ -408,7 +411,6 @@ export async function changeCareReportStatus(input: {
     statusData.reviewNote = reviewNote;
   }
 
-  return prisma.$transaction(async (tx) => {
     const updated = await tx.careReport.updateMany({
       where: { id: report.id, version: input.version, status: report.status },
       data: statusData,
@@ -421,13 +423,13 @@ export async function changeCareReportStatus(input: {
       });
     }
     await tx.auditLog.create({
-      data: reportAudit(input.actor, `STATUS_${input.nextStatus}`, report.id, {
+      data: reportAudit(access.actor, `STATUS_${input.nextStatus}`, report.id, {
         from: report.status,
         to: input.nextStatus,
         reviewNote: reviewNote || null,
       }),
     });
-  });
+  }, { isolationLevel: "Serializable", timeout: 15000 }).catch(careReportConflict);
 }
 
 export function careReportParentAccessAllowed(report: {

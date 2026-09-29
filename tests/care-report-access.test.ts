@@ -1,0 +1,7 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {careReportCapabilities} from '../lib/care-report-access';
+const base={role:'CS',isObserver:false,manager:false,operationsAdmin:false,careWorkspace:true,memberRoles:['COORDINATOR']};
+test('assigned Care coordinators write but only reviewers review',()=>{assert.deepEqual(careReportCapabilities(base),{canWrite:true,canReview:false});assert.equal(careReportCapabilities({...base,memberRoles:['REVIEWER']}).canReview,true);assert.equal(careReportCapabilities({...base,memberRoles:[]}).canWrite,false);assert.equal(careReportCapabilities({...base,careWorkspace:false}).canWrite,false);});
+test('current observer and unrelated finance/teaching roles cannot gain review through membership',()=>{for(const role of ['FINANCE','TEACHER','SALES','STUDENT'])assert.equal(careReportCapabilities({...base,role,memberRoles:['REVIEWER']}).canWrite,false);assert.equal(careReportCapabilities({...base,role:'ADMIN',isObserver:true}).canReview,false);});
+test('existing managers and operations admins can execute displayed review actions',()=>{assert.equal(careReportCapabilities({...base,role:'ADMIN',careWorkspace:false,memberRoles:[]}).canReview,true);assert.equal(careReportCapabilities({...base,role:'TEACHER',manager:true}).canReview,true);assert.equal(careReportCapabilities({...base,role:'SALES',operationsAdmin:true,careWorkspace:false,memberRoles:[]}).canReview,true);assert.equal(careReportCapabilities({...base,role:'FINANCE',operationsAdmin:true}).canReview,false);});
