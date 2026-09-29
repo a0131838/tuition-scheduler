@@ -22,13 +22,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
   const sessions = await prisma.session.findMany({
     where: {
       startAt: { gte: from, lte: to },
-      feedbacks: { some: { publishedAt: { not: null } } },
+      feedbacks: { some: { publishedAt: { not: null }, reviewStatus: "PUBLISHED", isProxyDraft: false } },
       ...sessionBelongsToStudentWhere(studentId),
     },
     include: {
       class: { include: { course: true, subject: true, level: true } },
       feedbacks: {
-        where: { publishedAt: { not: null } },
+        where: { publishedAt: { not: null }, reviewStatus: "PUBLISHED", isProxyDraft: false },
         include: { teacher: { select: { name: true } }, attachments: { where: { visibility: "PARENT" }, orderBy: { createdAt: "asc" } } },
         orderBy: { submittedAt: "desc" },
       },

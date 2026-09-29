@@ -12,7 +12,7 @@ type Task = {
   dateLabel: string | null; shortDateLabel: string | null;
   student: { name: string; school: string | null; grade: string | null } | null;
   teacher: { name: string } | null;
-  feedback: { content: string; parentContent: string | null; homework: string | null; previousHomeworkDone: boolean | null; reviewStatus: string; reviewNote: string | null; publishedAt: string | null; sections: Record<string, string>; completeness: { complete: boolean; completed: number; total: number; missing: string[] } } | null;
+  feedback: { updatedAt: string; content: string; parentContent: string | null; homework: string | null; previousHomeworkDone: boolean | null; reviewStatus: string; reviewNote: string | null; publishedAt: string | null; sections: Record<string, string>; completeness: { complete: boolean; completed: number; total: number; missing: string[] } } | null;
   history: Array<{ action: string; actorName: string | null; actorEmail: string; actorRole: string | null; createdAt: string }>;
   automaticNotification: { status: string; total: number; counts: Record<string, number> };
   correction: { type: string; typeLabel: string; previousLines: string[]; currentLines: string[]; noReplacement: boolean; reason: string; originalSentAt: string | null; originalSentByName: string | null; originalGroupName: string | null; changedAt: string; changedByName: string | null } | null;
@@ -74,7 +74,7 @@ export default function CommunicationCenterClient({ currentUser }: { currentUser
   async function act(row: Task, action: string, data: Record<string, unknown> = {}) {
     setLoading(true); setMessage("");
     try {
-      const res = await fetch(`/api/admin/communications/${row.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ action, data }) });
+      const res = await fetch(`/api/admin/communications/${row.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ action, data: {...data, ...(["publish_feedback", "return_feedback"].includes(action) ? {expectedFeedbackUpdatedAt: row.feedback?.updatedAt} : {})} }) });
       const result = await res.json();
       if (!res.ok || result.ok === false) throw new Error(result.message || "操作失败");
       await load(false);

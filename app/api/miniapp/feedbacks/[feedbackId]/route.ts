@@ -26,7 +26,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ feedback
       },
     },
   });
-  if (!feedback || !feedback.publishedAt) return bad("Feedback not found", 404);
+  if (!feedback || !feedback.publishedAt || feedback.reviewStatus !== "PUBLISHED" || feedback.isProxyDraft) return bad("Feedback not found", 404);
 
   const studentIds = getSessionStudentIds(feedback.session);
   const link = await prisma.parentStudentLink.findFirst({

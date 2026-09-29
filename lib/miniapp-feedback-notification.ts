@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { MINIAPP_TEMPLATE_KEYS, queueMiniappNotificationsForStudent } from "@/lib/miniapp-notifications";
 import { getSessionStudentIds } from "@/lib/session-students";
@@ -23,8 +24,8 @@ export async function queueFirstPublishedFeedback(input: {
   feedbackId: string;
   submittedAt: Date;
   notificationTargetId?: string;
-}) {
-  const session = await prisma.session.findUnique({
+}, db: Prisma.TransactionClient = prisma) {
+  const session = await db.session.findUnique({
     where: { id: input.sessionId },
     include: {
       teacher: { select: { name: true } },
@@ -48,7 +49,7 @@ export async function queueFirstPublishedFeedback(input: {
   });
   if (studentIds.length === 0) return [];
 
-  const students = await prisma.student.findMany({
+  const students = await db.student.findMany({
     where: { id: { in: studentIds } },
     select: { id: true, name: true },
   });
@@ -70,5 +71,5 @@ export async function queueFirstPublishedFeedback(input: {
       teacherName,
       submittedAt: input.submittedAt.toISOString(),
     },
-  })));
+  }, db)));
 }

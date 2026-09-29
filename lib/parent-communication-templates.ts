@@ -62,8 +62,8 @@ export function renderCommunicationTemplate(content: string, variables: Record<s
   return rendered;
 }
 
-export async function ensureDefaultParentCommunicationTemplates() {
-  defaultsReady ??= prisma.parentCommunicationTemplate.createMany({
+export async function ensureDefaultParentCommunicationTemplates(db?: Prisma.TransactionClient) {
+  const createDefaults = () => (db ?? prisma).parentCommunicationTemplate.createMany({
     data: DEFAULT_PARENT_COMMUNICATION_TEMPLATES.map((row) => ({
       ...row,
       version: 1,
@@ -80,7 +80,8 @@ export async function ensureDefaultParentCommunicationTemplates() {
     })),
     skipDuplicates: true,
   }).then(() => undefined).catch((error) => { defaultsReady = null; throw error; });
-  await defaultsReady;
+  if (db) await createDefaults();
+  else { defaultsReady ??= createDefaults(); await defaultsReady; }
 }
 
 export async function listParentCommunicationTemplates(options: { publishedOnly?: boolean } = {}) {
@@ -91,9 +92,9 @@ export async function listParentCommunicationTemplates(options: { publishedOnly?
   });
 }
 
-export async function renderPublishedCommunicationTemplate(code: string, variables: Record<string, unknown>) {
-  await ensureDefaultParentCommunicationTemplates();
-  const template = await prisma.parentCommunicationTemplate.findFirst({
+export async function renderPublishedCommunicationTemplate(code: string, variables: Record<string, unknown>, db?: Prisma.TransactionClient) {
+  await ensureDefaultParentCommunicationTemplates(db === prisma ? undefined : db);
+  const template = await (db ?? prisma).parentCommunicationTemplate.findFirst({
     where: { code, status: "PUBLISHED" },
     orderBy: { version: "desc" },
   });

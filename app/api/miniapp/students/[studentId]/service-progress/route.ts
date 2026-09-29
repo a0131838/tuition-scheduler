@@ -79,7 +79,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
             },
             attendances: { where: { studentId }, select: { status: true }, take: 1 },
             feedbacks: {
-              where: canViewFeedback ? { publishedAt: { not: null } } : { id: "__not_visible__" },
+              where: canViewFeedback ? { publishedAt: { not: null }, reviewStatus: "PUBLISHED", isProxyDraft: false } : { id: "__not_visible__" },
               select: { id: true, content: true, parentContent: true, submittedAt: true, teacher: { select: { name: true } } },
               orderBy: { submittedAt: "desc" },
             },

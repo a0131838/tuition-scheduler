@@ -14,7 +14,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       id: attachmentId,
       feedbackId,
       visibility: "PARENT",
-      feedback: { publishedAt: { not: null }, session: sessionBelongsToStudentWhere(studentId) },
+      feedback: { publishedAt: { not: null }, reviewStatus: "PUBLISHED", isProxyDraft: false, session: sessionBelongsToStudentWhere(studentId) },
     },
   });
   if (!row) return bad("Attachment not found", 404);

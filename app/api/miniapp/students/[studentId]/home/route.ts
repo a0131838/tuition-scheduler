@@ -52,12 +52,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
     auth.link.canViewFeedback ? prisma.session.findFirst({
       where: {
         startAt: { lte: now },
-        feedbacks: { some: { publishedAt: { not: null } } },
+        feedbacks: { some: { publishedAt: { not: null }, reviewStatus: "PUBLISHED", isProxyDraft: false } },
         ...sessionBelongsToStudentWhere(studentId),
       },
       include: {
         feedbacks: {
-          where: { publishedAt: { not: null } },
+          where: { publishedAt: { not: null }, reviewStatus: "PUBLISHED", isProxyDraft: false },
           include: { teacher: { select: { name: true } } },
           orderBy: { submittedAt: "desc" },
           take: 1,

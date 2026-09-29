@@ -1,3 +1,4 @@
+import {requireCommunicationWriteAccess} from "./communication-write-access";
 import crypto from "crypto";
 import { Prisma } from "@prisma/client";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessDateWithWeekday, formatBusinessTimeOnly, parseBusinessDateStart } from "@/lib/date-only";
@@ -151,8 +152,8 @@ function locationLabel(session: any) {
   return [session.class.campus?.name, session.class.room?.name].filter(Boolean).join(" · ") || "待确认 / To confirm";
 }
 
-async function primaryParentLink(studentId: string) {
-  return prisma.parentStudentLink.findFirst({
+async function primaryParentLink(studentId: string, db: Prisma.TransactionClient = prisma) {
+  return db.parentStudentLink.findFirst({
     where: { studentId, parent: { status: "ACTIVE" } },
     include: { parent: { select: { id: true, name: true, phone: true } } },
     orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
@@ -179,12 +180,12 @@ async function upsertCommunicationTask(input: {
   wechatGroupName?: string | null;
   presentationOnlyIfBodyUnchanged?: boolean;
   forceCourseCancelled?: boolean;
-}) {
+}, db: Prisma.TransactionClient = prisma) {
   const { presentationOnlyIfBodyUnchanged = false, forceCourseCancelled = false, ...taskData } = input;
   const contentFingerprint = fingerprint(input.messageText);
-  const existing = await prisma.parentCommunicationTask.findUnique({ where: { taskKey: input.taskKey } });
+  const existing = await db.parentCommunicationTask.findUnique({ where: { taskKey: input.taskKey } });
   if (!existing) {
-    return prisma.parentCommunicationTask.create({
+    return db.parentCommunicationTask.create({
       data: { ...taskData, priority: input.priority ?? "NORMAL", contentFingerprint },
     });
   }
@@ -192,8 +193,8 @@ async function upsertCommunicationTask(input: {
     return existing;
   }
   if (existing.contentFingerprint === contentFingerprint) {
-    if (!existing.manualSentAt && existing.status !== input.status) {
-      return prisma.parentCommunicationTask.update({ where: { id: existing.id }, data: { status: input.status, note: input.status === "PENDING_REVIEW" ? null : existing.note } });
+    if (!existing.manualSentAt && existing.status !== "WAIVED" && existing.status !== input.status) {
+      return db.parentCommunicationTask.update({ where: { id: existing.id }, data: { status: input.status, note: input.status === "PENDING_REVIEW" ? null : existing.note } });
     }
     return existing;
   }
@@ -202,7 +203,7 @@ async function upsertCommunicationTask(input: {
     presentationOnlyIfBodyUnchanged &&
     hasSameReminderSchedule(existing.messageText, input.messageText)
   ) {
-    return prisma.parentCommunicationTask.update({
+    return db.parentCommunicationTask.update({
       where: { id: existing.id },
       data: { title: input.title, messageText: input.messageText, contentFingerprint, dueAt: input.dueAt ?? existing.dueAt, templateCode: input.templateCode, templateVersion: input.templateVersion, templateVariables: input.templateVariables ?? undefined },
     });
@@ -211,13 +212,13 @@ async function upsertCommunicationTask(input: {
   if (existing.manualSentAt || existing.status === "COMPLETED") {
     const correctionKey = `${input.taskKey}:correction:${contentFingerprint.slice(0, 12)}`;
     if (input.kind === "MONTHLY_SCHEDULING") {
-      const existingCorrection = await prisma.parentCommunicationTask.findUnique({ where: { taskKey: correctionKey } });
+      const existingCorrection = await db.parentCommunicationTask.findUnique({ where: { taskKey: correctionKey } });
       if (existingCorrection?.manualSentAt || existingCorrection?.status === "COMPLETED") return existingCorrection;
-      await prisma.parentCommunicationTask.update({
+      await db.parentCommunicationTask.update({
         where: { id: existing.id },
         data: { supersededAt: existing.supersededAt ?? new Date() },
       });
-      return prisma.parentCommunicationTask.upsert({
+      return db.parentCommunicationTask.upsert({
         where: { taskKey: correctionKey },
         create: {
           ...taskData,
@@ -242,7 +243,7 @@ async function upsertCommunicationTask(input: {
       });
     }
     const feedbackRevision = input.kind === "FEEDBACK";
-    const existingCorrection = await prisma.parentCommunicationTask.findUnique({ where: { taskKey: correctionKey } });
+    const existingCorrection = await db.parentCommunicationTask.findUnique({ where: { taskKey: correctionKey } });
     const courseChange = feedbackRevision ? null : buildCourseChangeMessage({
       kind: input.kind,
       previousMessageText: existing.messageText,
@@ -255,13 +256,13 @@ async function upsertCommunicationTask(input: {
           parentName: recipientGreeting(input.messageText || existing.messageText, input.kind).replace(/[，,]$/, ""),
           previousSchedule: courseChange.previousLines.length ? courseChange.previousLines.map((line) => `• ${line}`).join("\n") : "• 原安排详情请查看上一条提醒",
           currentSchedule: courseChange.currentLines.length ? courseChange.currentLines.map((line) => `• ${line}`).join("\n") : "• 该课程已取消，暂无替代课程。 / This class has been cancelled.",
-        })
+        }, db)
       : null;
-    await prisma.parentCommunicationTask.update({
+    await db.parentCommunicationTask.update({
       where: { id: existing.id },
       data: { supersededAt: existing.supersededAt ?? new Date() },
     });
-    return prisma.parentCommunicationTask.upsert({
+    return db.parentCommunicationTask.upsert({
       where: { taskKey: correctionKey },
       create: {
         ...taskData,
@@ -281,7 +282,7 @@ async function upsertCommunicationTask(input: {
         title: feedbackRevision ? `【反馈修订】${input.title}` : `【${courseChange!.label}】${input.title}`,
         messageText: feedbackRevision ? input.messageText : renderedCourseChange?.messageText ?? courseChange!.messageText,
         contentFingerprint,
-        status: existingCorrection?.manualSentAt || existingCorrection?.status === "COMPLETED" ? "COMPLETED" : feedbackRevision ? input.status : "ATTENTION",
+        status: existingCorrection?.manualSentAt || existingCorrection?.status === "COMPLETED" ? "COMPLETED" : existingCorrection?.status === "WAIVED" ? "WAIVED" : feedbackRevision ? input.status : "ATTENTION",
         priority: "HIGH",
         templateCode: feedbackRevision ? input.templateCode : renderedCourseChange?.template.code,
         templateVersion: feedbackRevision ? input.templateVersion : renderedCourseChange?.template.version,
@@ -290,7 +291,7 @@ async function upsertCommunicationTask(input: {
     });
   }
 
-  return prisma.parentCommunicationTask.update({
+  return db.parentCommunicationTask.update({
     where: { id: existing.id },
     data: {
       title: input.title,
@@ -308,8 +309,8 @@ async function upsertCommunicationTask(input: {
   });
 }
 
-export async function ensureFeedbackCommunicationTasks(feedbackId: string) {
-  const feedback = await prisma.sessionFeedback.findUnique({
+export async function ensureFeedbackCommunicationTasks(feedbackId: string, db: Prisma.TransactionClient = prisma) {
+  const feedback = await db.sessionFeedback.findUnique({
     where: { id: feedbackId },
     include: {
       teacher: { select: { name: true } },
@@ -337,11 +338,11 @@ export async function ensureFeedbackCommunicationTasks(feedbackId: string) {
   const students = getVisibleSessionStudents(feedback.session);
   const messageContent = feedback.reviewStatus === "PENDING_REVIEW" ? feedback.content : feedback.parentContent || feedback.content;
   return Promise.all(students.map(async (student) => {
-    const link = await primaryParentLink(student.id);
+    const link = await primaryParentLink(student.id, db);
     const rendered = await renderPublishedCommunicationTemplate("FEEDBACK_PUBLISHED", {
       parentName: link?.parent.name || "家长", studentName: student.name || "孩子", courseName: courseLabel(feedback.session),
       sessionTime: formatBusinessDateTime(feedback.session.startAt), teacherName: feedback.teacher.name, feedbackSummary: compact(messageContent),
-    });
+    }, db);
     return upsertCommunicationTask({
       taskKey: `FEEDBACK:${feedback.id}:${student.id}`,
       kind: "FEEDBACK",
@@ -359,7 +360,7 @@ export async function ensureFeedbackCommunicationTasks(feedbackId: string) {
       dueAt: new Date(feedback.submittedAt.getTime() + 24 * 60 * 60 * 1000),
       ownerName: link?.communicationOwner ?? null,
       wechatGroupName: link?.wechatGroupName ?? null,
-    });
+    }, db);
   }));
 }
 
@@ -776,7 +777,7 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
     prisma.student.findMany({ where: { id: { in: studentIds } }, select: { id: true, name: true, school: true, grade: true } }),
     prisma.teacher.findMany({ where: { id: { in: teacherIds } }, select: { id: true, name: true } }),
     prisma.session.findMany({ where: { id: { in: sessionIds } }, select: { id: true, startAt: true, endAt: true } }),
-    prisma.sessionFeedback.findMany({ where: { id: { in: feedbackIds } }, select: { id: true, sessionId: true, content: true, parentContent: true, classPerformance: true, homework: true, previousHomeworkDone: true, actualStartAt: true, actualEndAt: true, reviewStatus: true, reviewNote: true, publishedAt: true, submittedAt: true, attachments: { orderBy: { createdAt: "asc" } } } }),
+    prisma.sessionFeedback.findMany({ where: { id: { in: feedbackIds } }, select: { id: true, updatedAt: true, sessionId: true, content: true, parentContent: true, classPerformance: true, homework: true, previousHomeworkDone: true, actualStartAt: true, actualEndAt: true, reviewStatus: true, reviewNote: true, publishedAt: true, submittedAt: true, attachments: { orderBy: { createdAt: "asc" } } } }),
     prisma.auditLog.findMany({ where: { entityType: "ParentCommunicationTask", entityId: { in: rows.map((row) => row.id) } }, select: { entityId: true, action: true, actorName: true, actorEmail: true, actorRole: true, createdAt: true, meta: true }, orderBy: { createdAt: "desc" }, take: 1500 }),
     prisma.miniappNotificationOutbox.findMany({
       where: {
@@ -1019,8 +1020,54 @@ async function updateCommunicationTaskAtomically(input: CommunicationUpdateInput
   }, {isolationLevel: Prisma.TransactionIsolationLevel.Serializable});
 }
 
+/** Review, parent projection, communication tasks, queued notifications and audit form one commit. */
+async function reviewCommunicationFeedback(input: CommunicationUpdateInput) {
+  return prisma.$transaction(async tx => {
+    const actor = await requireCommunicationWriteAccess(tx, input.actor.id);
+    const selected = await tx.parentCommunicationTask.findUnique({where:{id:input.id}});
+    if (!selected?.feedbackId || selected.kind !== "FEEDBACK") throw new Error("Feedback task required / 请选择反馈任务");
+    const initial = await tx.sessionFeedback.findUnique({where:{id:selected.feedbackId}});
+    if (!initial) throw new Error("Feedback not found / 反馈不存在");
+    // Teacher submission uses this same session lock before changing feedback.
+    await tx.$queryRaw`SELECT id FROM "Session" WHERE id=${initial.sessionId} FOR UPDATE`;
+    const feedback = await tx.sessionFeedback.findUniqueOrThrow({where:{id:initial.id}});
+    if (selected.sessionId && selected.sessionId !== feedback.sessionId) throw new Error("Feedback task scope mismatch / 反馈任务归属不匹配");
+    const data = input.data ?? {}, now = new Date();
+    if (data.expectedFeedbackUpdatedAt && String(data.expectedFeedbackUpdatedAt) !== feedback.updatedAt.toISOString())
+      throw new Error("Feedback changed. Refresh before reviewing / 反馈已更新，请刷新后重新审核");
+    if (feedback.isProxyDraft || feedback.status === "PROXY_DRAFT") throw new Error("Teacher submission required before review / 请先由老师完成提交再审核");
+    const outboxWhere: Prisma.MiniappNotificationOutboxWhereInput = {targetType:"SessionFeedback", OR:[{targetId:feedback.id},{targetId:{startsWith:`${feedback.id}:revision:`}}],status:{in:["PENDING","FAILED"]}};
+    if (input.action === "return_feedback") {
+      const note = String(data.note ?? "").trim();
+      if (!note) throw new Error("Return reason is required / 请填写退回原因");
+      if (feedback.reviewStatus === "RETURNED" && feedback.reviewNote === note) return selected;
+      await tx.sessionFeedback.update({where:{id:feedback.id},data:{reviewStatus:"RETURNED",reviewNote:note,reviewedAt:now,reviewedByUserId:actor.id,reviewedByName:actor.name}});
+      await tx.parentCommunicationTask.updateMany({where:{feedbackId:feedback.id,manualSentAt:null,status:{notIn:["WAIVED","COMPLETED"]}},data:{status:"RETURNED",note}});
+      await tx.miniappNotificationOutbox.updateMany({where:outboxWhere,data:{status:"SKIPPED",error:"Feedback awaiting review / 反馈待重新审核"}});
+      await tx.auditLog.create({data:{actorEmail:actor.email,actorName:actor.name,actorRole:actor.role,module:"COMMUNICATION",action:"RETURN_FEEDBACK",entityType:"ParentCommunicationTask",entityId:selected.id,meta:{feedbackId:feedback.id,beforeStatus:feedback.reviewStatus,previousPublishedAt:feedback.publishedAt?.toISOString()??null,previousParentContent:feedback.parentContent,note}}});
+    } else {
+      const parentContent = String(data.parentContent ?? feedback.parentContent ?? feedback.content).trim();
+      if (!parentContent) throw new Error("Parent-facing feedback is required / 请填写家长展示版反馈");
+      const missing = getMissingParentFeedbackSections(parentContent);
+      if (missing.length) throw new Error(`Missing parent feedback sections / 家长展示版缺少：${missing.join("、")}`);
+      if (!feedback.homework?.trim() || feedback.previousHomeworkDone === null) throw new Error("Homework and previous homework review are required / 请补齐课后作业和上次作业完成情况");
+      if (feedback.reviewStatus === "PUBLISHED" && feedback.parentContent === parentContent) return selected;
+      await tx.sessionFeedback.update({where:{id:feedback.id},data:{parentContent,reviewStatus:"PUBLISHED",reviewNote:null,reviewedAt:now,reviewedByUserId:actor.id,reviewedByName:actor.name,publishedAt:feedback.publishedAt??now,publishedByUserId:actor.id,publishedByName:actor.name}});
+      // Never revive invalidated or stale revisions. Create a fresh notification identity.
+      await tx.miniappNotificationOutbox.updateMany({where:outboxWhere,data:{status:"SKIPPED",error:"Superseded feedback revision / 已由新版反馈替代"}});
+      await ensureFeedbackCommunicationTasks(feedback.id, tx);
+      await tx.parentCommunicationTask.updateMany({where:{feedbackId:feedback.id,manualSentAt:null,status:{in:["READY_TO_SEND","CLAIMED"]}},data:{publishedAt:now,publishedByUserId:actor.id,publishedByName:actor.name}});
+      const notificationTargetId = feedback.publishedAt ? `${feedback.id}:revision:${crypto.randomUUID()}` : feedback.id;
+      await queueFirstPublishedFeedback({sessionId:feedback.sessionId,feedbackId:feedback.id,submittedAt:feedback.submittedAt,notificationTargetId},tx);
+      await tx.auditLog.create({data:{actorEmail:actor.email,actorName:actor.name,actorRole:actor.role,module:"COMMUNICATION",action:"PUBLISH_FEEDBACK",entityType:"ParentCommunicationTask",entityId:selected.id,meta:{feedbackId:feedback.id,before:feedback.parentContent,after:parentContent,beforeStatus:feedback.reviewStatus,notificationTargetId}}});
+    }
+    return tx.parentCommunicationTask.findUniqueOrThrow({where:{id:selected.id}});
+  }, {isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:20000});
+}
+
 export async function updateParentCommunicationTask(input: CommunicationUpdateInput) {
   if(input.actor.isObserver) throw new Error("Observer account is read-only / 观察者账号不能修改系统数据");
+  if (["publish_feedback", "return_feedback"].includes(input.action)) return reviewCommunicationFeedback(input);
   if (["claim", "transfer", "copy", "manual_sent", "waive"].includes(input.action)) return updateCommunicationTaskAtomically(input);
 
   const task = await prisma.parentCommunicationTask.findUnique({ where: { id: input.id } });
@@ -1039,59 +1086,21 @@ export async function updateParentCommunicationTask(input: CommunicationUpdateIn
     return task;
   }
 
-  if (input.action === "return_feedback") {
-    if (!task.feedbackId) throw new Error("Feedback task required");
-    const note = String(data.note ?? "").trim();
-    if (!note) throw new Error("Return reason is required");
-    await prisma.$transaction([
-      prisma.sessionFeedback.update({ where: { id: task.feedbackId }, data: { reviewStatus: "RETURNED", reviewNote: note, reviewedAt: now, reviewedByUserId: input.actor.id, reviewedByName: input.actor.name } }),
-      prisma.parentCommunicationTask.updateMany({ where: { feedbackId: task.feedbackId, manualSentAt: null }, data: { status: "RETURNED", note } }),
-    ]);
-    await auditTask(input.actor, "RETURN_FEEDBACK", task.id, { note });
-    return prisma.parentCommunicationTask.findUnique({ where: { id: task.id } });
-  }
-
-  if (input.action === "publish_feedback") {
-    if (!task.feedbackId) throw new Error("Feedback task required");
-    const feedback = await prisma.sessionFeedback.findUnique({ where: { id: task.feedbackId } });
-    if (!feedback) throw new Error("Feedback not found");
-    const parentContent = String(data.parentContent ?? feedback.parentContent ?? feedback.content).trim();
-    if (!parentContent) throw new Error("Parent-facing feedback is required");
-    const missingSections = getMissingParentFeedbackSections(parentContent);
-    if (missingSections.length) throw new Error(`家长展示版还缺少：${missingSections.join("、")}`);
-    if (!String(feedback.homework ?? "").trim()) throw new Error("家长展示版还缺少：课后作业 / Homework");
-    if (feedback.previousHomeworkDone === null) throw new Error("家长展示版还缺少：上次作业完成情况 / Previous homework");
-    await prisma.$transaction([
-      prisma.sessionFeedback.update({
-        where: { id: feedback.id },
-        data: {
-          parentContent, reviewStatus: "PUBLISHED", reviewNote: null,
-          reviewedAt: now, reviewedByUserId: input.actor.id, reviewedByName: input.actor.name,
-          publishedAt: feedback.publishedAt ?? now, publishedByUserId: input.actor.id, publishedByName: input.actor.name,
-        },
-      }),
-      prisma.parentCommunicationTask.updateMany({
-        where: { feedbackId: feedback.id, manualSentAt: null },
-        data: { status: "READY_TO_SEND", publishedAt: now, publishedByUserId: input.actor.id, publishedByName: input.actor.name },
-      }),
-    ]);
-    if (feedback.reviewStatus !== "PUBLISHED") {
-      await queueFirstPublishedFeedback({
-        sessionId: feedback.sessionId,
-        feedbackId: feedback.id,
-        submittedAt: feedback.submittedAt,
-        notificationTargetId: feedback.publishedAt ? `${feedback.id}:revision:${now.getTime()}` : feedback.id,
-      }).catch(() => null);
-    }
-    await ensureFeedbackCommunicationTasks(feedback.id);
-    await auditTask(input.actor, "PUBLISH_FEEDBACK", task.id, { before: feedback.parentContent, after: parentContent });
-    return prisma.parentCommunicationTask.findUnique({ where: { id: task.id } });
-  }
-
-
-
-
   if (input.action === "retry_auto") {
+    if (task.feedbackId) return prisma.$transaction(async tx => {
+      const actor = await requireCommunicationWriteAccess(tx, input.actor.id);
+      const feedback = await tx.sessionFeedback.findUnique({where:{id:task.feedbackId!}});
+      if (!feedback || feedback.reviewStatus !== "PUBLISHED" || !feedback.publishedAt || feedback.isProxyDraft)
+        throw new Error("Publish the reviewed feedback before retrying / 请先审核发布反馈再重试");
+      const publication = await tx.auditLog.findFirst({where:{module:"COMMUNICATION",action:"PUBLISH_FEEDBACK",meta:{path:["feedbackId"],equals:feedback.id}},orderBy:{createdAt:"desc"},select:{meta:true}});
+      const meta = publication?.meta as {notificationTargetId?: string} | undefined;
+      if (!meta?.notificationTargetId && await tx.miniappNotificationOutbox.findFirst({where:{targetType:"SessionFeedback",targetId:{startsWith:`${feedback.id}:revision:`}},select:{id:true}}))
+        throw new Error("Historical notification revision needs review / 历史通知版本需先核对");
+      const targetId = meta?.notificationTargetId ?? feedback.id;
+      const result = await tx.miniappNotificationOutbox.updateMany({where:{targetType:"SessionFeedback",targetId,status:"FAILED"},data:{status:"PENDING",scheduledAt:new Date(),sentAt:null,error:null}});
+      await tx.auditLog.create({data:{actorEmail:actor.email,actorName:actor.name,actorRole:actor.role,module:"COMMUNICATION",action:"RETRY_AUTOMATIC_NOTIFICATION",entityType:"ParentCommunicationTask",entityId:task.id,meta:{count:result.count,targetId,invalidatedRevisionsRetained:true}}});
+      return {...task,retryCount:result.count};
+    }, {isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:15000});
     const where: Prisma.MiniappNotificationOutboxWhereInput = task.feedbackId
       ? { targetType: "SessionFeedback", targetId: task.feedbackId, status: { in: ["FAILED", "SKIPPED"] } }
       : task.sessionId

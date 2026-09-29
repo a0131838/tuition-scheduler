@@ -881,3 +881,18 @@ Logs: `/tmp/sgt-r448-all-tests.log`, `/tmp/sgt-r448-build.log`, `/tmp/sgt-r448-t
 - Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
 
 ---
+
+## 2026-09-30-r458
+
+- Release ID: `2026-09-30-r458`
+- Date/Time (Asia/Singapore): `2026-09-30`
+- Deployment status: `READY`; live proof belongs in the execution ledger.
+- Problem: feedback publication/return committed before task synchronization, notification queue and audit; queue errors were swallowed. A historical publication date also allowed returned or resubmitted drafts through parent endpoints. Repeated sync reopened unchanged waived tasks.
+- Change: review resolves current actor/observer/ACL/workspace permissions, locks the lesson against teacher submission, and commits review, communication tasks, queued notifications and audit together. Helpers accept the transaction, including template initialization. Repeated publication/return preserves original evidence; changed publication receives its own notification identity and pending older revisions are invalidated. Unchanged waived and sent-task history stays closed. Web review sends the displayed feedback version. Parent list/home/progress/detail/attachments require current published, non-proxy feedback. The original publication timestamp and reviewed content are retained as historical evidence. Feedback retry is atomic and only retries FAILED recipients of the latest evidenced publication; SKIPPED revisions remain invalidated.
+- Validation:762 tests, production build260 pages and TypeScript passed. Isolated UAT covers publication/return/retry audit rollback, concurrent and repeated publication once, fresh observer/unrelated-role denial, stale review and proxy rejection, unchanged waiver, revision queue identities, original timestamps, and unchanged teaching/ledger data. Actual HTTP verifies publication/return/republication, parent list/home/progress/detail visibility, stale web review and observer rejection. Existing manual-communication regression UAT passed.
+- Compatibility: no migration or external send runner; only isolated fake records used for write acceptance. No WeChat client package publication. New errors have EN/ZH text; no overall visual/mobile or three-language interface completion claim.
+- Remaining: session-notification retries, sample-based delivery totals, teacher-submission task sync and remaining communication mutation/access boundaries need review. Legacy callers that omit the optional feedback version still use fresh transactional state but lack displayed-version protection. Full programme and cross-role/mobile/language acceptance remain incomplete.
+- Rollback reference: `985348c0ade4462bfb5ed04cf4a63a1638cb07e9` (r457); reverting restores the prior feedback exposure/atomicity defects, so prefer a forward fix.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
