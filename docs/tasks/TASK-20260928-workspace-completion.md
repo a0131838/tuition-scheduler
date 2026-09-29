@@ -760,3 +760,18 @@ Logs: `/tmp/sgt-r448-all-tests.log`, `/tmp/sgt-r448-build.log`, `/tmp/sgt-r448-t
 - Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
 
 ---
+
+## 2026-09-29-r450
+
+- Release ID: `2026-09-29-r450`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; final live proof is recorded in the execution ledger.
+- Problem: school-application signing created an invoice before PDF preparation and then committed application status and events separately. Repeated/stale signing could create duplicates or overwrite a void. A stale draft/sign-link action could also overwrite a concurrently completed application.
+- Change: prepare files first, then lock and revalidate the application in a serializable transaction before creating its service billing package, invoice, outbox, signature status and events together. Replay preserves the original completed signature and invoice. Changed tokens/versions, expiry, void, partial historical evidence and mismatched package ownership are rejected. Draft save and sign-link preparation also lock/revalidate and append events atomically, checking current observer identity. Saving a draft returns it to DRAFT and clears the old agreement snapshot; the same URL can be prepared again after review. Closed records display disabled editing controls. New signing-pause guidance follows EN/ZH/BILINGUAL.
+- Validation:756 full tests, final TypeScript and260-page production build passed. Isolated UAT covers rollback at both signing events including invoice/outbox/package creation, repeat/concurrent once, stale token/version/expiry/history, signing/void races, paused stale draft/link writes, updated snapshot regeneration, actual signature/PDF preparation and unchanged tuition ledger. Public HTTP signs once, repeats without changes and rejects replay after void. r449 service/HTTP history regressions and three-language new guidance passed.
+- Migration: none. No live application signature, invoice, approval, message or student balance was created/changed for testing; no sender or WeChat client publication invoked. File preparation may leave unreferenced files after a rejected race; no historical uploads are deleted.
+- Remaining: parent-info link/view/submission lifecycle still needs transaction review; Full Care delivery/fresh reviewer and consent checks, phase5 pause/exclusion offers, phase7 communication publication/sync, and phases8-10 acceptance/delivery remain. Whole programme is not complete.
+- Rollback point: `74c0e897d89003efdf2535446431b5be99257b2f` (r449).
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---

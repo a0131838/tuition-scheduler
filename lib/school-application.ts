@@ -4,8 +4,8 @@ import { Prisma, SchoolApplicationEventType, SchoolApplicationStatus } from "@pr
 import { prisma } from "@/lib/prisma";
 import { BUSINESS_UPLOAD_PREFIX, storeBusinessBuffer } from "@/lib/business-file-storage";
 import { formatDateOnly, normalizeDateOnly } from "@/lib/date-only";
-import { assertGlobalInvoiceNoAvailable, getNextGlobalInvoiceNo } from "@/lib/global-invoice-sequence";
-import { createParentInvoice } from "@/lib/student-parent-billing";
+import { getNextGlobalInvoiceNoForDb } from "@/lib/global-invoice-sequence";
+import { createParentInvoiceInTransaction } from "@/lib/student-parent-billing";
 import { getSchoolApplicationTarget, inferSchoolApplicationEquivalentLevel } from "@/lib/school-application-directory";
 import {
   generateSignedSchoolApplicationPdfBuffer,
@@ -487,10 +487,13 @@ export async function saveSchoolApplicationDraft(input: {
   const totalAmount = money(serviceFeeAmount + officialFeeAmount + addOnFeeAmount);
   if (totalAmount <= 0) throw new Error("Total amount must be greater than 0");
   const agreementDate = normalizeDateOnly(input.agreementDate, new Date()) ?? formatDateOnly(new Date());
-  const packageId = await ensureServiceBillingPackage(current.studentId);
-  const row = await prisma.schoolApplicationService.update({
+  return writeSchoolApplicationDraftSnapshot(current, input.actorUserId, async tx => {
+  const packageId = await ensureServiceBillingPackage(current.studentId, tx);
+  const row = await tx.schoolApplicationService.update({
     where: { id: input.id },
     data: {
+      status: SchoolApplicationStatus.DRAFT,
+      contractSnapshotJson: Prisma.JsonNull,
       packageId,
       parentInfoJson: parentInfo as unknown as Prisma.InputJsonValue,
       applicationItemsJson: items as unknown as Prisma.InputJsonValue,
@@ -511,8 +514,9 @@ export async function saveSchoolApplicationDraft(input: {
     actorUserId: input.actorUserId ?? null,
     actorLabel: "Saved school application service draft",
     payloadJson: { schoolCount: items.length, totalAmount },
-  });
+  }, tx);
   return summarize(row);
+  });
 }
 
 export async function prepareSchoolApplicationParentInfoLink(input: {
@@ -691,8 +695,8 @@ function snapshotFromSummary(app: SchoolApplicationSummary): SchoolApplicationSn
   };
 }
 
-async function ensureServiceBillingPackage(studentId: string) {
-  const existing = await prisma.coursePackage.findFirst({
+async function ensureServiceBillingPackage(studentId: string, db: Prisma.TransactionClient = prisma) {
+  const existing = await db.coursePackage.findFirst({
     where: {
       studentId,
       note: { contains: "SERVICE_BILLING_CASE:SCHOOL_APPLICATION" },
@@ -702,9 +706,9 @@ async function ensureServiceBillingPackage(studentId: string) {
   if (existing) return existing.id;
 
   const course =
-    (await prisma.course.findFirst({ where: { name: "School Application Service" } })) ??
-    (await prisma.course.create({ data: { name: "School Application Service" } }));
-  const pkg = await prisma.coursePackage.create({
+    (await db.course.findFirst({ where: { name: "School Application Service" } })) ??
+    (await db.course.create({ data: { name: "School Application Service" } }));
+  const pkg = await db.coursePackage.create({
     data: {
       studentId,
       courseId: course.id,
@@ -739,7 +743,8 @@ export async function prepareSchoolApplicationSignLink(input: {
     { content: unsignedPdf, originalName: `school-application-${app.id}.pdf` },
     { allowedPrefix: BUSINESS_UPLOAD_PREFIX.contracts, subdirSegments: ["school-applications", app.id] }
   );
-  const row = await prisma.schoolApplicationService.update({
+  return writeSchoolApplicationDraftSnapshot(app, input.actorUserId, async tx => {
+  const row = await tx.schoolApplicationService.update({
     where: { id: app.id },
     data: {
       status: SchoolApplicationStatus.READY_TO_SIGN,
@@ -754,20 +759,20 @@ export async function prepareSchoolApplicationSignLink(input: {
     eventType: SchoolApplicationEventType.SIGN_READY,
     actorUserId: input.actorUserId ?? null,
     actorLabel: "Prepared school application service sign link",
-  });
+  }, tx);
   return summarize(row);
+  });
 }
 
-async function ensureInvoiceForSignedApplication(row: SchoolApplicationSummary, snapshot: SchoolApplicationSnapshot) {
+async function ensureInvoiceForSignedApplication(row: SchoolApplicationSummary, snapshot: SchoolApplicationSnapshot, db: Prisma.TransactionClient) {
   if (row.invoiceId && row.invoiceNo) {
     return { invoiceId: row.invoiceId, invoiceNo: row.invoiceNo, createdAt: row.invoiceCreatedAt ?? new Date() };
   }
-  const packageId = row.packageId ?? (await ensureServiceBillingPackage(row.studentId));
+  const packageId = row.packageId ?? (await ensureServiceBillingPackage(row.studentId, db));
   const issueDate = normalizeDateOnly(snapshot.agreementDate, new Date()) ?? formatDateOnly(new Date());
-  const invoiceNo = await getNextGlobalInvoiceNo(issueDate);
-  await assertGlobalInvoiceNoAvailable(invoiceNo);
+  const invoiceNo = await getNextGlobalInvoiceNoForDb(db, issueDate);
   const schoolLabel = snapshot.items.map((item) => item.schoolName).join(", ");
-  const invoice = await createParentInvoice({
+  const invoice = await createParentInvoiceInTransaction(db, {
     packageId,
     studentId: row.studentId,
     invoiceNo,
@@ -786,7 +791,7 @@ async function ensureInvoiceForSignedApplication(row: SchoolApplicationSummary, 
     createdBy: "system.school-application@sgtmanage.local",
   });
   if (!row.packageId) {
-    await prisma.schoolApplicationService.update({
+    await db.schoolApplicationService.update({
       where: { id: row.id },
       data: { packageId },
     });
@@ -804,6 +809,7 @@ export async function signSchoolApplication(input: {
 }) {
   const app = await getSchoolApplicationBySignToken(input.signToken);
   if (!app) throw new Error("School application sign link not found");
+  if (app.status === SchoolApplicationStatus.INVOICE_CREATED && app.signedAt && app.invoiceId && app.invoiceNo && !app.voidedAt) return app;
   if (app.status !== SchoolApplicationStatus.READY_TO_SIGN || !app.contractSnapshot) {
     throw new Error("School application is not ready to sign");
   }
@@ -826,7 +832,6 @@ export async function signSchoolApplication(input: {
       subdirSegments: [app.studentId, "school-applications"],
     }
   );
-  const invoice = await ensureInvoiceForSignedApplication(app, app.contractSnapshot);
   const signedPdf = await generateSignedSchoolApplicationPdfBuffer({
     snapshot: app.contractSnapshot,
     signerName,
@@ -838,35 +843,56 @@ export async function signSchoolApplication(input: {
     { content: signedPdf, originalName: `signed-school-application-${app.id}.pdf` },
     { allowedPrefix: BUSINESS_UPLOAD_PREFIX.contracts, subdirSegments: ["school-applications", app.id] }
   );
-  const row = await prisma.schoolApplicationService.update({
-    where: { id: app.id },
+  return prisma.$transaction(tx => finalizeSchoolApplicationSignature(tx, input, {
+    applicationId: app.id, expectedUpdatedAt: app.updatedAt.toISOString(), signedAt: now,
+    signatureImagePath: storedSignature.relativePath, signedPdfPath: stored.relativePath,
+  }), { isolationLevel: "Serializable", timeout: 15000 }).catch(schoolApplicationHistoryConflict);
+}
+
+/** Files are prepared first; invoice, application and events commit together. */
+export async function finalizeSchoolApplicationSignature(tx: Prisma.TransactionClient,
+  input: { signToken: string; signerName: string; signerEmail?: string | null; signerPhone?: string | null; signerIp?: string | null },
+  prepared: { applicationId: string; expectedUpdatedAt: string; signedAt: Date; signatureImagePath: string; signedPdfPath: string }) {
+  await tx.$queryRaw`SELECT id FROM "SchoolApplicationService" WHERE id=${prepared.applicationId} FOR UPDATE`;
+  const current = await tx.schoolApplicationService.findUnique({ where: { id: prepared.applicationId }, include: includeApplication });
+  if (!current || current.signToken !== input.signToken) throw new Error("School application sign link changed / 学校申请签署链接已变更");
+  if (current.status === SchoolApplicationStatus.INVOICE_CREATED && current.signedAt && current.invoiceId && current.invoiceNo && !current.voidedAt) return summarize(current);
+  if (current.status !== SchoolApplicationStatus.READY_TO_SIGN || current.voidedAt || current.updatedAt.toISOString() !== prepared.expectedUpdatedAt ||
+    (current.signExpiresAt && current.signExpiresAt.getTime() < Date.now())) throw new Error("Application changed, expired or voided; refresh before signing / 申请已变更、过期或作废，请刷新后签署");
+  if (current.invoiceId || current.invoiceNo || current.signedAt) throw new Error("Existing signature or invoice history needs review / 现有签署或开票历史需核对");
+  const app = summarize(current), signerName = trim(input.signerName);
+  if (!app.contractSnapshot || !signerName || !prepared.signatureImagePath || !prepared.signedPdfPath) throw new Error("Signature evidence is incomplete / 签署凭据不完整");
+  if (current.packageId && current.package?.studentId !== current.studentId) throw new Error("Application billing package needs review / 申请关联账单课包的学生归属需核对");
+  const invoice = await ensureInvoiceForSignedApplication(app, app.contractSnapshot, tx);
+  const row = await tx.schoolApplicationService.update({
+    where: { id: current.id },
     data: {
       status: SchoolApplicationStatus.INVOICE_CREATED,
-      signedAt: now,
+      signedAt: prepared.signedAt,
       invoiceCreatedAt: invoice.createdAt,
       signerName,
       signerEmail: trimOrNull(input.signerEmail),
       signerPhone: trimOrNull(input.signerPhone),
       signerIp: trimOrNull(input.signerIp),
-      signatureImagePath: storedSignature.relativePath,
-      signedPdfPath: stored.relativePath,
+      signatureImagePath: prepared.signatureImagePath,
+      signedPdfPath: prepared.signedPdfPath,
       invoiceId: invoice.invoiceId,
       invoiceNo: invoice.invoiceNo,
     },
     include: includeApplication,
   });
   await event({
-    applicationId: app.id,
+    applicationId: current.id,
     eventType: SchoolApplicationEventType.SIGNED,
     actorLabel: "Parent signed school application service agreement",
     payloadJson: { signerName, invoiceNo: invoice.invoiceNo },
-  });
+  }, tx);
   await event({
-    applicationId: app.id,
+    applicationId: current.id,
     eventType: SchoolApplicationEventType.INVOICE_CREATED,
     actorLabel: "School application invoice created",
     payloadJson: { invoiceId: invoice.invoiceId, invoiceNo: invoice.invoiceNo },
-  });
+  }, tx);
   return summarize(row);
 }
 
@@ -876,6 +902,19 @@ function schoolApplicationHistoryConflict(error: unknown): never {
     throw new Error("Application changed during this operation; refresh and review its current status / 申请在操作期间发生变化，请刷新并核对当前状态");
   }
   throw error;
+}
+
+async function writeSchoolApplicationDraftSnapshot<T>(snapshot: { id: string; updatedAt: Date; status: SchoolApplicationStatus }, actorUserId: string | null | undefined, write: (tx: Prisma.TransactionClient) => Promise<T>) {
+  return prisma.$transaction(async tx => {
+    await schoolApplicationMutationActor(tx, actorUserId);
+    await tx.$queryRaw`SELECT id FROM "SchoolApplicationService" WHERE id=${snapshot.id} FOR UPDATE`;
+    const current = await tx.schoolApplicationService.findUnique({ where: { id: snapshot.id }, include: { events: { select: { eventType: true } } } });
+    if (!current || (current.status !== SchoolApplicationStatus.DRAFT && current.status !== SchoolApplicationStatus.READY_TO_SIGN) ||
+      schoolApplicationHasSignedHistory(current) || current.voidedAt || current.status !== snapshot.status || current.updatedAt.getTime() !== snapshot.updatedAt.getTime()) {
+      throw new Error("Application changed; refresh before editing / 申请已变更，请刷新后编辑");
+    }
+    return write(tx);
+  }, { isolationLevel: "Serializable", timeout: 15000 }).catch(schoolApplicationHistoryConflict);
 }
 
 async function schoolApplicationMutationActor(db: Prisma.TransactionClient, id?: string | null) {

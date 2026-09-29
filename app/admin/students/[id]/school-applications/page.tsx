@@ -137,11 +137,11 @@ async function saveDraftAction(formData: FormData) {
       note: String(formData.get("note") ?? "").trim() || null,
       actorUserId: admin.id,
     });
-    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("School application draft saved")}&open=${encodeURIComponent(id)}${source}`);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Save school application failed";
     redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?err=${encodeURIComponent(msg)}&open=${encodeURIComponent(id)}${source}`);
   }
+  redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("School application draft saved")}&open=${encodeURIComponent(id)}${source}`);
 }
 
 async function prepareParentInfoAction(formData: FormData) {
@@ -182,11 +182,11 @@ async function prepareSignAction(formData: FormData) {
   const source = sourceQuery(formData);
   try {
     await prepareSchoolApplicationSignLink({ id, actorUserId: admin.id });
-    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("Sign link ready")}&open=${encodeURIComponent(id)}${source}`);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Prepare sign link failed";
     redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?err=${encodeURIComponent(msg)}&open=${encodeURIComponent(id)}${source}`);
   }
+  redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("Sign link ready")}&open=${encodeURIComponent(id)}${source}`);
 }
 
 async function voidAction(formData: FormData) {
@@ -290,6 +290,7 @@ export default async function SchoolApplicationsPage({
         <div style={cardStyle("#fff7ed")}>No school application service records yet.</div>
       ) : (
         applications.map((app) => {
+          const editable = app.status === "DRAFT" || app.status === "READY_TO_SIGN";
           const signHref = app.signToken ? `${baseUrl}${buildSchoolApplicationSignPath(app.signToken)}` : "";
           const parentInfoHref = app.parentInfoToken ? `${baseUrl}${buildSchoolApplicationParentInfoPath(app.parentInfoToken)}` : "";
           const agreementPdfReady = canExportAgreementPdf(app);
@@ -326,7 +327,7 @@ export default async function SchoolApplicationsPage({
                       {parentInfoStatus(app)} · Use this before the formal signing link when parent details need confirmation.
                     </div>
                   </div>
-                  {app.status !== "INVOICE_CREATED" && app.status !== "VOID" ? (
+                  {editable ? (
                     <form action={prepareParentInfoAction}>
                       <input type="hidden" name="studentId" value={student.id} />
                       <input type="hidden" name="applicationId" value={app.id} />
@@ -358,7 +359,7 @@ export default async function SchoolApplicationsPage({
                 <input type="hidden" name="studentId" value={student.id} />
                 <input type="hidden" name="applicationId" value={app.id} />
                 {returnToList ? <input type="hidden" name="from" value="school-applications" /> : null}
-                {app.status !== "INVOICE_CREATED" ? (
+                {editable ? (
                   <div style={{ border: "1px solid #fed7aa", background: "#fff7ed", color: "#9a3412", borderRadius: 10, padding: 10, fontSize: 13, lineHeight: 1.5 }}>
                     Required fields / 必填项: Parent name, agreement date, first school/application, and total amount greater than 0. / 家长姓名、合同日期、第一所学校/申请项目，以及总金额大于 0。
                   </div>
@@ -372,32 +373,32 @@ export default async function SchoolApplicationsPage({
                   </div>
                   <label style={{ display: "grid", gap: 6 }}>
                     <span style={{ fontWeight: 700 }}>Parent name / 家长姓名 {requiredStar()}</span>
-                    <input name="parentName" defaultValue={parentNameDefault(app)} placeholder="Fill parent name / 填写家长姓名" style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} required={app.status !== "INVOICE_CREATED"} />
+                    <input name="parentName" defaultValue={parentNameDefault(app)} placeholder="Fill parent name / 填写家长姓名" style={inputStyle()} disabled={!editable} required={editable} />
                   </label>
                   <label style={{ display: "grid", gap: 6 }}>
                     <span style={{ fontWeight: 700 }}>Parent phone / 家长电话</span>
-                    <input name="parentPhone" defaultValue={app.parentInfo?.phone ?? ""} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} />
+                    <input name="parentPhone" defaultValue={app.parentInfo?.phone ?? ""} style={inputStyle()} disabled={!editable} />
                   </label>
                   <label style={{ display: "grid", gap: 6 }}>
                     <span style={{ fontWeight: 700 }}>Parent email / 家长邮箱</span>
-                    <input name="parentEmail" defaultValue={app.parentInfo?.email ?? ""} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} />
+                    <input name="parentEmail" defaultValue={app.parentInfo?.email ?? ""} style={inputStyle()} disabled={!editable} />
                   </label>
                   <label style={{ display: "grid", gap: 6 }}>
                     <span style={{ fontWeight: 700 }}>Parent ID / 证件号</span>
-                    <input name="parentIdNo" defaultValue={app.parentInfo?.parentIdNo ?? ""} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} />
+                    <input name="parentIdNo" defaultValue={app.parentInfo?.parentIdNo ?? ""} style={inputStyle()} disabled={!editable} />
                   </label>
                   <label style={{ display: "grid", gap: 6 }}>
                     <span style={{ fontWeight: 700 }}>Bill to / 开票对象</span>
-                    <input name="billTo" defaultValue={app.billTo} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} />
+                    <input name="billTo" defaultValue={app.billTo} style={inputStyle()} disabled={!editable} />
                   </label>
                   <label style={{ display: "grid", gap: 6 }}>
                     <span style={{ fontWeight: 700 }}>Agreement date / 合同日期 {requiredStar()}</span>
-                    <input name="agreementDate" type="date" defaultValue={formatDateOnly(app.agreementDate)} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} required={app.status !== "INVOICE_CREATED"} />
+                    <input name="agreementDate" type="date" defaultValue={formatDateOnly(app.agreementDate)} style={inputStyle()} disabled={!editable} required={editable} />
                   </label>
                 </div>
                 <label style={{ display: "grid", gap: 6 }}>
                   <span style={{ fontWeight: 700 }}>Parent address / 地址</span>
-                  <input name="parentAddress" defaultValue={app.parentInfo?.address ?? ""} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} />
+                  <input name="parentAddress" defaultValue={app.parentInfo?.address ?? ""} style={inputStyle()} disabled={!editable} />
                 </label>
 
                 <div style={{ overflowX: "auto" }}>
@@ -421,7 +422,7 @@ export default async function SchoolApplicationsPage({
                         return (
                           <tr key={i}>
                             <td style={{ border: "1px solid #e5e7eb", padding: 4 }}>
-                              <select name={`targetId_${i}`} defaultValue={item?.targetId ?? ""} style={{ ...inputStyle(), minWidth: 260 }} disabled={app.status === "INVOICE_CREATED"} required={i === 0 && app.status !== "INVOICE_CREATED"}>
+                              <select name={`targetId_${i}`} defaultValue={item?.targetId ?? ""} style={{ ...inputStyle(), minWidth: 260 }} disabled={!editable} required={i === 0 && editable}>
                                 <option value="">Select / 请选择</option>
                                 <optgroup label="MOE / AEIS">
                                   {SCHOOL_APPLICATION_TARGETS.filter((target) => target.kind === "MOE_EXERCISE").map((target) => (
@@ -437,33 +438,33 @@ export default async function SchoolApplicationsPage({
                               {item?.schoolName ? <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{item.schoolName}</div> : null}
                             </td>
                             <td style={{ border: "1px solid #e5e7eb", padding: 4 }}>
-                              <select name={`programme_${i}`} defaultValue={item?.programme ?? ""} style={{ ...inputStyle(), minWidth: 150 }} disabled={app.status === "INVOICE_CREATED"}>
+                              <select name={`programme_${i}`} defaultValue={item?.programme ?? ""} style={{ ...inputStyle(), minWidth: 150 }} disabled={!editable}>
                                 <option value="">Select</option>
                                 {SCHOOL_APPLICATION_PROGRAMMES.map((value) => <option key={value} value={value}>{value}</option>)}
                               </select>
                             </td>
                             <td style={{ border: "1px solid #e5e7eb", padding: 4 }}>
-                              <select name={`grade_${i}`} defaultValue={item?.grade ?? ""} style={{ ...inputStyle(), minWidth: 140 }} disabled={app.status === "INVOICE_CREATED"}>
+                              <select name={`grade_${i}`} defaultValue={item?.grade ?? ""} style={{ ...inputStyle(), minWidth: 140 }} disabled={!editable}>
                                 <option value="">Select</option>
                                 {SCHOOL_APPLICATION_GRADES.map((value) => <option key={value} value={value}>{value}</option>)}
                               </select>
                             </td>
                             <td style={{ border: "1px solid #e5e7eb", padding: 4 }}>
-                              <select name={`equivalentLevel_${i}`} defaultValue={item?.equivalentLevel ?? ""} style={{ ...inputStyle(), minWidth: 170 }} disabled={app.status === "INVOICE_CREATED"}>
+                              <select name={`equivalentLevel_${i}`} defaultValue={item?.equivalentLevel ?? ""} style={{ ...inputStyle(), minWidth: 170 }} disabled={!editable}>
                                 <option value="">Auto/default</option>
                                 {SCHOOL_APPLICATION_EQUIVALENT_LEVELS.map((value) => <option key={value} value={value}>{value}</option>)}
                               </select>
                             </td>
                             <td style={{ border: "1px solid #e5e7eb", padding: 4 }}>
-                              <select name={`intake_${i}`} defaultValue={item?.intake ?? ""} style={{ ...inputStyle(), minWidth: 140 }} disabled={app.status === "INVOICE_CREATED"}>
+                              <select name={`intake_${i}`} defaultValue={item?.intake ?? ""} style={{ ...inputStyle(), minWidth: 140 }} disabled={!editable}>
                                 <option value="">Select</option>
                                 {SCHOOL_APPLICATION_INTAKES.map((value) => <option key={value} value={value}>{value}</option>)}
                               </select>
                             </td>
-                            <td style={{ border: "1px solid #e5e7eb", padding: 4 }}><input name={`serviceFee_${i}`} type="number" step="0.01" min="0" defaultValue={item?.serviceFee ?? ""} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} /></td>
-                            <td style={{ border: "1px solid #e5e7eb", padding: 4 }}><input name={`officialFee_${i}`} type="number" step="0.01" min="0" defaultValue={item?.officialFee ?? ""} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} /></td>
+                            <td style={{ border: "1px solid #e5e7eb", padding: 4 }}><input name={`serviceFee_${i}`} type="number" step="0.01" min="0" defaultValue={item?.serviceFee ?? ""} style={inputStyle()} disabled={!editable} /></td>
+                            <td style={{ border: "1px solid #e5e7eb", padding: 4 }}><input name={`officialFee_${i}`} type="number" step="0.01" min="0" defaultValue={item?.officialFee ?? ""} style={inputStyle()} disabled={!editable} /></td>
                             <td style={{ border: "1px solid #e5e7eb", padding: 4 }}>
-                              <select name={`officialFeeMode_${i}`} defaultValue={item?.officialFeeMode ?? ""} style={{ ...inputStyle(), minWidth: 180 }} disabled={app.status === "INVOICE_CREATED"}>
+                              <select name={`officialFeeMode_${i}`} defaultValue={item?.officialFeeMode ?? ""} style={{ ...inputStyle(), minWidth: 180 }} disabled={!editable}>
                                 <option value="">Use directory default</option>
                                 <option value="Parent pays school / official fee varies">Parent pays school / official fee varies</option>
                                 <option value="We collect and pay school">We collect and pay school</option>
@@ -471,7 +472,7 @@ export default async function SchoolApplicationsPage({
                                 <option value="MOE application fee, non-refundable">MOE application fee, non-refundable</option>
                               </select>
                             </td>
-                            <td style={{ border: "1px solid #e5e7eb", padding: 4 }}><input name={`notes_${i}`} defaultValue={item?.notes ?? ""} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} /></td>
+                            <td style={{ border: "1px solid #e5e7eb", padding: 4 }}><input name={`notes_${i}`} defaultValue={item?.notes ?? ""} style={inputStyle()} disabled={!editable} /></td>
                           </tr>
                         );
                       })}
@@ -482,7 +483,7 @@ export default async function SchoolApplicationsPage({
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
                   <label style={{ display: "grid", gap: 6 }}>
                     <span style={{ fontWeight: 700 }}>Add-on fee / 增值服务费</span>
-                    <input name="addOnFeeAmount" type="number" step="0.01" min="0" defaultValue={app.addOnFeeAmount || ""} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} />
+                    <input name="addOnFeeAmount" type="number" step="0.01" min="0" defaultValue={app.addOnFeeAmount || ""} style={inputStyle()} disabled={!editable} />
                   </label>
                   <div style={{ ...cardStyle("#f0fdf4"), gap: 4 }}>
                     <strong>Total / 总额</strong>
@@ -492,19 +493,22 @@ export default async function SchoolApplicationsPage({
                 </div>
                 <label style={{ display: "grid", gap: 6 }}>
                   <span style={{ fontWeight: 700 }}>Note / 备注</span>
-                  <textarea name="note" defaultValue={app.note ?? ""} style={{ ...inputStyle(), minHeight: 70 }} disabled={app.status === "INVOICE_CREATED"} />
+                  <textarea name="note" defaultValue={app.note ?? ""} style={{ ...inputStyle(), minHeight: 70 }} disabled={!editable} />
                 </label>
-                {app.status !== "INVOICE_CREATED" ? (
+                {editable ? (
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                     <button type="submit" style={{ padding: "9px 14px", borderRadius: 10, border: "1px solid #16a34a", background: "#16a34a", color: "#fff", fontWeight: 800 }}>
                       Save draft / 保存草稿
                     </button>
+                    <span style={{ color: "#475569", fontSize: 12 }}>
+                      {t(lang, "Saving changes pauses signing. Generate the sign link again after reviewing the updated agreement.", "保存修改后将暂停签署，请核对更新后的协议，再生成签字链接。")}
+                    </span>
                   </div>
                 ) : null}
               </form>
 
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                {app.status !== "INVOICE_CREATED" && app.status !== "VOID" ? (
+                {editable ? (
                   <form action={prepareSignAction}>
                     <input type="hidden" name="studentId" value={student.id} />
                     <input type="hidden" name="applicationId" value={app.id} />

@@ -1,0 +1,54 @@
+import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
+import {readFileSync,writeFileSync} from 'node:fs';
+import {Prisma} from '@prisma/client';
+import {prisma} from '../../lib/prisma';
+import {finalizeSchoolApplicationSignature,signSchoolApplication,voidSchoolApplication,saveSchoolApplicationDraft,prepareSchoolApplicationSignLink} from '../../lib/school-application';
+import type {SchoolApplicationSnapshot} from '../../lib/school-application-pdf';
+const image='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
+async function main(){
+ for(const key of ['DATABASE_URL','DIRECT_DATABASE_URL']){const u=new URL(process.env[key]||'');assert.equal(u.hostname,'127.0.0.1');assert.equal(u.port,'55439');assert.equal(u.pathname,'/sgt_workspace_completion_test');}
+ const owner=await prisma.user.findUniqueOrThrow({where:{email:'zhaohongwei0880@gmail.com'}});
+ if(process.argv.includes('--http')){
+  const f=JSON.parse(readFileSync('/tmp/sgt-r450-fixture.json','utf8')),base='http://127.0.0.1:3149',url=base+'/school-application/'+f.token;
+  const html=await(await fetch(url)).text(),action=html.match(/name="(\$ACTION_ID_[^"]+)"/);assert(action);
+  const send=async()=>{const data=new FormData();data.set(action[1],'');data.set('token',f.token);data.set('signerName','Isolated HTTP Parent');data.set('signatureDataUrl',image);return fetch(url,{method:'POST',headers:{Origin:base},body:data,redirect:'manual'});};
+  const signed=await send();assert.equal(signed.status,303);assert(signed.headers.get('location')?.includes('msg=signed'));
+  const before=await prisma.schoolApplicationService.findUniqueOrThrow({where:{id:f.id}});assert.equal(before.status,'INVOICE_CREATED');assert(before.signatureImagePath&&before.signedPdfPath);assert.equal((await send()).status,303);assert.deepEqual(await prisma.schoolApplicationService.findUniqueOrThrow({where:{id:f.id}}),before);
+  await voidSchoolApplication({id:f.id,actorUserId:owner.id,reason:'Isolated void after signature'});const denied=await send();assert.equal(denied.status,303);assert(denied.headers.get('location')?.includes('err='));assert.equal((await prisma.schoolApplicationService.findUniqueOrThrow({where:{id:f.id}})).status,'VOID');
+  assert.equal(await prisma.schoolApplicationEvent.count({where:{applicationId:f.id,eventType:'INVOICE_CREATED'}}),1);
+  console.log(JSON.stringify({passed:true,publicSignatureAndPdf:true,publicRepeatKeepsOriginal:true,voidedPublicReplayDenied:true}));return;
+ }
+ const make=async()=>{
+  const student=await prisma.student.create({data:{name:'Isolated school sign '+randomUUID().slice(0,6)}}),id=randomUUID();
+  const snapshot:SchoolApplicationSnapshot={applicationId:id,generatedAtIso:new Date().toISOString(),agreementDate:'2049-01-01',agencyName:'Isolated agency',agencyDetails:'Fixture',parentName:'Isolated Parent',parentIdNo:null,parentPhone:null,parentEmail:null,parentAddress:null,studentName:student.name,studentGrade:null,studentSchool:null,items:[{schoolName:'Isolated school',programme:null,grade:null,equivalentLevel:null,intake:null,serviceFee:100,officialFee:0,officialFeeMode:null,notes:null}],serviceHours:null,serviceFeeAmount:100,officialFeeAmount:0,addOnFeeAmount:0,totalAmount:100,billTo:'Isolated Parent',note:null,refundPolicyLabel:'Fixture only'};
+  const row=await prisma.schoolApplicationService.create({data:{id,studentId:student.id,status:'READY_TO_SIGN',applicationItemsJson:snapshot.items as unknown as Prisma.InputJsonValue,parentInfoJson:{parentName:'Isolated Parent'},serviceFeeAmount:100,totalAmount:100,billTo:'Isolated Parent',agreementDate:new Date('2049-01-01'),signToken:randomUUID(),signExpiresAt:new Date(Date.now()+86400000),contractSnapshotJson:snapshot as unknown as Prisma.InputJsonValue}});
+  return {student,row,input:{signToken:row.signToken!,signerName:'Isolated Parent'},prepared:{applicationId:row.id,expectedUpdatedAt:row.updatedAt.toISOString(),signedAt:new Date(),signatureImagePath:'/uploads/contract-signatures/isolated.png',signedPdfPath:'/uploads/contracts/isolated.pdf'}};
+ };
+ const f=await make(),parent=await prisma.parentAccount.create({data:{name:'Isolated finance recipient'}});await prisma.parentStudentLink.create({data:{parentId:parent.id,studentId:f.student.id,canViewFinance:true}});
+ const state=async()=>({application:await prisma.schoolApplicationService.findUnique({where:{id:f.row.id},include:{events:true}}),packages:await prisma.coursePackage.findMany({where:{studentId:f.student.id}}),billing:await prisma.appSetting.findUnique({where:{key:'parent_billing_v1'}}),outbox:await prisma.miniappNotificationOutbox.findMany({where:{studentId:f.student.id}}),audits:await prisma.auditLog.findMany({where:{meta:{path:['studentId'],equals:f.student.id}}})});
+ const before=await state();let failing='SIGNED';prisma.$use(async(p,next)=>{if(p.model==='SchoolApplicationEvent'&&p.action==='create'&&p.args.data.applicationId===f.row.id&&p.args.data.eventType===failing)throw Error('forced sign event failure');return next(p);});
+ const execute=()=>prisma.$transaction(tx=>finalizeSchoolApplicationSignature(tx,f.input,f.prepared),{isolationLevel:'Serializable',timeout:15000});
+ for(const type of ['SIGNED','INVOICE_CREATED']){failing=type;await assert.rejects(execute(),/forced sign event failure/);assert.deepEqual(await state(),before);}failing='';
+ await assert.rejects(prisma.$transaction(tx=>finalizeSchoolApplicationSignature(tx,{...f.input,signToken:'wrong'},f.prepared)),/link changed/);
+ await assert.rejects(prisma.$transaction(tx=>finalizeSchoolApplicationSignature(tx,f.input,{...f.prepared,expectedUpdatedAt:'stale'})),/changed, expired/);
+ const ledgerBefore=await prisma.packageTxn.count();
+ const races=await Promise.allSettled([execute(),execute()]);assert(races.some(r=>r.status==='fulfilled'));await execute();const signed=await state();assert.equal(signed.application?.status,'INVOICE_CREATED');assert.equal(signed.application.events.length,2);assert.equal(signed.packages.length,1);assert.equal(signed.packages[0].totalMinutes,0);assert.equal(signed.packages[0].remainingMinutes,0);assert.equal(signed.outbox.length,2);assert.equal(await prisma.packageTxn.count(),ledgerBefore);assert.deepEqual((await execute()).invoiceId,signed.application.invoiceId);
+ const invoices=JSON.parse(signed.billing!.value).invoices.filter((i:any)=>i.studentId===f.student.id);assert.equal(invoices.length,1);assert.equal(invoices[0].totalAmount,100);
+ const expired=await make();await prisma.schoolApplicationService.update({where:{id:expired.row.id},data:{signExpiresAt:new Date(0)}});await assert.rejects(prisma.$transaction(tx=>finalizeSchoolApplicationSignature(tx,expired.input,expired.prepared)),/changed, expired/);
+ const partial=await make();const partialRow=await prisma.schoolApplicationService.update({where:{id:partial.row.id},data:{invoiceNo:'ISOLATED-LEGACY'}});await assert.rejects(prisma.$transaction(tx=>finalizeSchoolApplicationSignature(tx,partial.input,{...partial.prepared,expectedUpdatedAt:partialRow.updatedAt.toISOString()})),/history needs review/);
+ const other=await make();const results=await Promise.allSettled([prisma.$transaction(tx=>finalizeSchoolApplicationSignature(tx,other.input,other.prepared),{isolationLevel:'Serializable'}),voidSchoolApplication({id:other.row.id,actorUserId:owner.id,reason:'Isolated signing race'})]);assert(results.some(r=>r.status==='fulfilled'));const latest=await prisma.schoolApplicationService.findUniqueOrThrow({where:{id:other.row.id}});assert(['VOID','INVOICE_CREATED'].includes(latest.status));if(latest.status==='VOID'&&!latest.signedAt)assert.equal(latest.invoiceId,null);if(latest.signedAt)assert(latest.invoiceId);assert.equal(await prisma.schoolApplicationEvent.count({where:{applicationId:other.row.id,eventType:'SIGNED'}}),latest.signedAt?1:0);
+ const voided=await make();await voidSchoolApplication({id:voided.row.id,actorUserId:owner.id});await assert.rejects(prisma.$transaction(tx=>finalizeSchoolApplicationSignature(tx,voided.input,voided.prepared)),/changed, expired/);assert.equal(await prisma.coursePackage.count({where:{studentId:voided.student.id}}),0);
+ const draftInput=(id:string)=>({id,actorUserId:owner.id,parentInfo:{parentName:'Isolated Parent'},items:[{schoolName:'Isolated school',serviceFee:150}],billTo:'Isolated Parent',agreementDate:'2049-01-01'});
+ for(const operation of ['save','prepare']){
+  const stale=await make(),model=prisma.schoolApplicationService as any,original=model.findUnique;
+  let release!:()=>void,reached!:()=>void,paused=false;const gate=new Promise<void>(r=>release=r),read=new Promise<void>(r=>reached=r);
+  model.findUnique=async(args:any)=>{const row=await original.call(model,args);if(!paused&&args.where.id===stale.row.id){paused=true;reached();await gate;}return row;};
+  try{const pending=operation==='save'?saveSchoolApplicationDraft(draftInput(stale.row.id)):prepareSchoolApplicationSignLink({id:stale.row.id,actorUserId:owner.id});await read;await voidSchoolApplication({id:stale.row.id,actorUserId:owner.id});release();await assert.rejects(pending,/Application changed/);}finally{release();model.findUnique=original;}
+  assert.equal((await prisma.schoolApplicationService.findUniqueOrThrow({where:{id:stale.row.id}})).status,'VOID');assert.equal(await prisma.schoolApplicationEvent.count({where:{applicationId:stale.row.id,eventType:{in:['DRAFT_SAVED','SIGN_READY']}}}),0);
+ }
+ const changed=await make();await saveSchoolApplicationDraft(draftInput(changed.row.id));const draft=await prisma.schoolApplicationService.findUniqueOrThrow({where:{id:changed.row.id}});assert.equal(draft.status,'DRAFT');assert.equal(draft.contractSnapshotJson,null);await assert.rejects(signSchoolApplication({...changed.input,signatureDataUrl:image}),/not ready/);const reissued=await prepareSchoolApplicationSignLink({id:changed.row.id,actorUserId:owner.id});assert.equal(reissued.contractSnapshot?.totalAmount,150);assert.equal(reissued.signToken,changed.input.signToken);
+ const publicFlow=await make();const publicResult=await signSchoolApplication({...publicFlow.input,signatureDataUrl:image});assert.equal(publicResult.status,'INVOICE_CREATED');assert(publicResult.signedPdfPath);assert.equal((await signSchoolApplication(publicFlow.input)).invoiceId,publicResult.invoiceId);
+ const http=await make();writeFileSync('/tmp/sgt-r450-fixture.json',JSON.stringify({id:http.row.id,token:http.input.signToken}));console.log(JSON.stringify({passed:true,invoicePackageOutboxEventRollback:true,repeatAndConcurrentOnce:true,staleTokenExpiryHistoryGuards:true,signVoidRaceConsistent:true,staleDraftAndSignLinkCannotReviveVoid:true,draftEditInvalidatesOldSnapshot:true,noTuitionHoursOrLedgerMutation:true,realFileAndPdfPreparation:true}));
+}
+main().finally(()=>prisma.$disconnect());
