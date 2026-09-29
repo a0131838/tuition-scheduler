@@ -509,6 +509,14 @@ export async function updateMonthlySchedulingItem(input: {
         expectedMinutes:item.expectedMinutes,offers:item.offers.filter(o=>['ACCEPTED','COMPLETED'].includes(o.status))});
       await tx.monthlySchedulingOffer.updateMany({where:{itemId:item.id,status:"ACCEPTED"},data:{status:"COMPLETED",holdExpiresAt:null}});
     }
+    // Closing demand releases temporary options only. Accepted arrangements and formal
+    // timetable evidence remain visible for separate review, never cancelled here.
+    const releasedOffers = ["PAUSED", "EXCLUDED"].includes(input.status)
+      ? item.offers.filter(offer => ["AVAILABLE", "HELD"].includes(offer.status)) : [];
+    if (releasedOffers.length) await tx.monthlySchedulingOffer.updateMany({
+      where: { itemId: item.id, id: { in: releasedOffers.map(offer => offer.id) }, status: { in: ["AVAILABLE", "HELD"] } },
+      data: { status: "WITHDRAWN", holdExpiresAt: null },
+    });
     const transitioning=item.status!==input.status;
     const row=await tx.monthlySchedulingItem.update({where:{id:item.id},data:{status:input.status,
       ownerUserId:item.ownerUserId??actor.id,ownerName:item.ownerName??actor.name,
@@ -520,7 +528,7 @@ export async function updateMonthlySchedulingItem(input: {
       pausedAt:transitioning&&input.status==='PAUSED'?now:undefined}});
     await tx.auditLog.create({data:{actorEmail:actor.email,actorName:actor.name,actorRole:actor.role,module:'MONTHLY_SCHEDULING',
       action:'ITEM_STATUS_VERIFIED',entityType:'MonthlySchedulingItem',entityId:item.id,
-      meta:{acceptedOfferId,before:{status:item.status,ownerUserId:item.ownerUserId,internalNote:item.internalNote,scheduleEvidenceJson:item.scheduleEvidenceJson},
+      meta:{acceptedOfferId,releasedOffers:releasedOffers.map(offer=>({id:offer.id,status:offer.status,holdExpiresAt:offer.holdExpiresAt?.toISOString()??null,heldByParentId:offer.heldByParentId,parentRank:offer.parentRank})),formalLessonsRetained:true,before:{status:item.status,ownerUserId:item.ownerUserId,internalNote:item.internalNote,scheduleEvidenceJson:item.scheduleEvidenceJson},
         after:{status:row.status,ownerUserId:row.ownerUserId,internalNote:row.internalNote,scheduleEvidenceJson:row.scheduleEvidenceJson}}}});
     return row;
   },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
@@ -957,7 +965,13 @@ export async function submitMonthlySchedulingFamilyKeepByStaff(input: {
 
 export type MonthlySchedulingQueueLane = "READY_CONFIRM" | "WAITING_PARENT" | "EXCEPTIONS" | "COMPLETED" | "OTHER";
 
-export function monthlySchedulingQueueLane(row: { status: string; intent?: string | null; teacherPreferenceType?: string | null; completionNeedsReview?: boolean }): MonthlySchedulingQueueLane {
+type MonthlyClosureReview = { status: string; offers?: Array<{ status: string }>; scheduleEvidenceJson?: unknown; scheduledAt?: Date | string | null };
+export function monthlySchedulingClosureNeedsReview(row: MonthlyClosureReview) {
+  return ["PAUSED", "EXCLUDED"].includes(row.status) && (Boolean(row.scheduleEvidenceJson) || Boolean(row.scheduledAt)
+    || Boolean(row.offers?.some(offer => ["AVAILABLE", "HELD", "ACCEPTED", "COMPLETED"].includes(offer.status))));
+}
+export function monthlySchedulingQueueLane(row: MonthlyClosureReview & { intent?: string | null; teacherPreferenceType?: string | null; completionNeedsReview?: boolean }): MonthlySchedulingQueueLane {
+  if (monthlySchedulingClosureNeedsReview(row)) return "EXCEPTIONS";
   if (row.status === "SCHEDULED" && row.completionNeedsReview) return "EXCEPTIONS";
   if (["SCHEDULED", "PAUSED", "EXCLUDED"].includes(row.status)) return "COMPLETED";
   if (row.status === "MATCHED") return "READY_CONFIRM";
@@ -969,7 +983,12 @@ export function monthlySchedulingQueueLane(row: { status: string; intent?: strin
   return "OTHER";
 }
 
-export function monthlySchedulingExceptionReason(row: { status: string; intent?: string | null; teacherPreferenceType?: string | null }) {
+export function monthlySchedulingExceptionReason(row: MonthlyClosureReview & { intent?: string | null; teacherPreferenceType?: string | null }, language = "BILINGUAL") {
+  if (monthlySchedulingClosureNeedsReview(row)) {
+    const en = "Paused/excluded demand still has arrangements to review. Confirmed arrangements and formal lessons are retained; review them in the timetable.";
+    const zh = "暂停／排除后仍有安排待核对。已确认方案及正式课程均保留，请到课表核对处理。";
+    return language === "EN" ? en : language === "ZH" ? zh : `${en} / ${zh}`;
+  }
   if (row.status === "NO_RESPONSE") return "家长逾期未回复";
   if (row.teacherPreferenceType === "VERIFY") return "老师姓名需要核对";
   if (row.intent === "UNSURE") return "家长尚未确定，需要联系";

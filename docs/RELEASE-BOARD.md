@@ -1,4 +1,19 @@
 # RELEASE BOARD
+## 2026-09-29-r457
+
+- Release ID: `2026-09-29-r457`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; production proof belongs in the execution ledger.
+- Problem: staff pause/exclusion left AVAILABLE/HELD choices reserving time. Closed demand with accepted arrangements or timetable evidence appeared in the completed queue.
+- Change: pause/exclusion withdraws only temporary AVAILABLE/HELD choices in the existing serializable status-and-audit transaction, recording original status/expiry/rank/parent attribution. Accepted/completed arrangements, reply history and formal lessons remain unchanged. Closed demand with retained arrangements or timetable evidence stays in the exceptions queue; EN/ZH/BILINGUAL guidance explains that timetable review is separate. Historical inconsistent closures are surfaced for review, never silently cancelled.
+- Validation:762 tests, final260-page production build and TypeScript passed. Isolated service UAT covers both closures, audit rollback, concurrent closure once, repeated timestamp preservation, observer/reason rejection, retained accepted/completed/history, original formal lesson and unchanged ledger/attendance/feedback/outbox. Actual staff PATCH and exception-list HTTP plus three-language web guidance passed. Existing status/acceptance and formal-completion regression UAT passed.
+- Compatibility: no migration, old URLs/roles retained; no production business test writes, send runners or WeChat client publication. Browser automation initialization remained unavailable; visual/mobile acceptance is deferred, not claimed.
+- Remaining: confirmed arrangements require separate evidence-based review; this change does not provide blanket cancellation or declare the monthly phase complete. Phase7 communication transactions and phases6/8-10 full acceptance/delivery remain.
+- Rollback: `42a1b2ee0fcf8171976c326a2390e55fdfa7ba3e` (r456).
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
 ## 2026-09-29-r456
 
 - Release ID: `2026-09-29-r456`
@@ -847,7 +862,7 @@
 ---
 
 
-- Current release line on this branch: `2026-09-29-r456`, ready for guarded release of university Care parent-summary visibility and explicit section review. Overall programme remains in progress; no Mini Program client release.
+- Current release line on this branch: `2026-09-29-r457`, ready for guarded release of monthly pause/exclusion temporary-offer cleanup and retained-arrangement review. Overall programme remains in progress; no Mini Program client release.
 
 ## 2026-09-09-r404 Ready
 

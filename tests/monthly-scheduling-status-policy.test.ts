@@ -13,3 +13,12 @@ test('reopening a completed timetable requires a reason but does not reset any l
 
 import {monthlySchedulingQueueLane} from '../lib/monthly-scheduling';
 test('teacher identity review takes priority over a keep-current response',()=>assert.equal(monthlySchedulingQueueLane({status:'SUBMITTED',intent:'KEEP',teacherPreferenceType:'VERIFY'}),'EXCEPTIONS'));
+
+test('closed demand with retained arrangements is an exception, not completed',()=>{
+ for(const status of ['PAUSED','EXCLUDED']){
+  for(const offerStatus of ['AVAILABLE','HELD','ACCEPTED','COMPLETED'])assert.equal(monthlySchedulingQueueLane({status,offers:[{status:offerStatus}]}),'EXCEPTIONS');
+  assert.equal(monthlySchedulingQueueLane({status,offers:[{status:'WITHDRAWN'}]}),'COMPLETED');
+  assert.equal(monthlySchedulingQueueLane({status,scheduleEvidenceJson:{version:1}}),'EXCEPTIONS');
+  assert.equal(monthlySchedulingQueueLane({status,scheduledAt:new Date()}),'EXCEPTIONS');
+ }
+});

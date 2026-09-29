@@ -428,7 +428,7 @@ export default async function MonthlySchedulingPage({
                       {item.completionNeedsReview && <div style={{color:'#b42318'}}>{t(lang,"Completion evidence missing or lessons changed; review required","完成证据缺失或课次已变化，需重新核验")}</div>}
                       {evidence && <details><summary>{t(lang,"Last verification record","上次核验记录")}</summary><div>{evidence.actorName} · {formatBusinessDateTime(new Date(evidence.verifiedAt))}</div><div>{evidence.reason}</div>{evidence.sessions.map(lesson=><div key={lesson.id}><Link href={`/admin/sessions/${lesson.id}/attendance`}>{formatBusinessDateTime(new Date(lesson.startAt))}</Link></div>)}</details>}
                       <small>{item.parent?.name || "未绑定家长"}</small>
-                      {monthlySchedulingExceptionReason(item) && <div style={{ marginTop: 6, color: "#b42318", fontSize: 12, fontWeight: 700 }}>{monthlySchedulingExceptionReason(item)}</div>}
+                      {monthlySchedulingExceptionReason(item, lang) && <div style={{ marginTop: 6, color: "#b42318", fontSize: 12, fontWeight: 700 }}>{monthlySchedulingExceptionReason(item, lang)}</div>}
                       {item.responseEntryMode === "STAFF_PROXY" && <div style={{ marginTop: 6, color: "#8a4b08", fontSize: 12 }}>
                         教务代录 · {responseChannelLabels[item.responseChannel as MonthlySchedulingResponseChannel]?.zh ?? item.responseChannel ?? "-"}<br />
                         {item.respondedByName || "-"} · {item.parentConfirmedAt ? formatBusinessDateOnly(item.parentConfirmedAt) : "-"}
@@ -452,6 +452,7 @@ export default async function MonthlySchedulingPage({
                           <button style={buttonStyle}>{t(lang, "Save", "保存")}</button>
                           <input name="internalNote" defaultValue={item.internalNote ?? ""} placeholder={t(lang,"Internal note; reason required for pause / exclusion","内部备注；暂停／排除时必填原因")} style={{ gridColumn: "1 / -1", padding: 8 }} />
                         </MonthlyStatusForm>
+                        <p style={{fontSize:12,color:"#475569"}}>{t(lang,"Pause/exclude releases temporary choices only. Confirmed arrangements and formal lessons stay unchanged and need separate timetable review.","暂停／排除仅释放临时候选时间。已确认方案和正式课程保持原状，须另到课表核对处理。")}</p>
                         {["MATCHED","SCHEDULED"].includes(item.status) && <details style={{marginTop:8,padding:8,border:'1px solid #aacbbb'}}>
                           <summary style={{cursor:'pointer',fontWeight:700}}>{t(lang,"Verify formal timetable","核验正式课表")}</summary>
                           <p>{t(lang,"Select every agreed lesson for this month and confirm the total. This records evidence; it does not create lessons or deduct hours.","选中本月约定的全部课次并确认总次数。这里只记录核验依据，不创建课程或扣课。")}</p>
