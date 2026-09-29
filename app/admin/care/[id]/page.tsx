@@ -1,3 +1,4 @@
+import { CARE_SUMMARY_SECTIONS, setCareParentVisibilitySection } from "@/lib/care-parent-visibility";
 import { requireCareEngagementAccess } from "@/lib/care-access";
 import { CARE_REPORT_STATUS_LABELS, CARE_REPORT_TYPE_OPTIONS, reportTypeLabel } from "@/lib/care-report-validation";
 import { createCareReportDraft } from "@/lib/care-reports";
@@ -105,6 +106,15 @@ export default async function CareDetailPage({
   const sp = await searchParams;
   const msg = first(sp?.msg).trim();
   const err = first(sp?.err).trim();
+
+  async function visibilitySectionAction(formData: FormData) {
+    "use server";
+    const current = await requireCareEngagementAccess(id);
+    await runCareAction(id, "Parent visibility reviewed / 家长可见栏目已核对", setCareParentVisibilitySection({
+      actorId: current.id, engagementId: id, recordType: String(formData.get("recordType") ?? ""),
+      recordId: String(formData.get("recordId") ?? ""), version: Number(formData.get("version")), section: String(formData.get("section") ?? ""),
+    }));
+  }
 
   async function statusAction(formData: FormData) {
     "use server";
@@ -378,6 +388,12 @@ export default async function CareDetailPage({
     })]);
   if (!engagement) notFound();
 
+  const visibilityRows = canManageConfig && isUniversityCareProgram(engagement.programType) ? (await Promise.all([
+    prisma.careActivity.findMany({ where: { engagementId: id, audience: { in: ["PARENT", "PARENT_AND_STUDENT"] } }, select: { id: true, title: true, publicSummary: true, version: true, parentVisibilitySection: true }, orderBy: { occurredAt: "desc" } }).then(rows => rows.map(row => ({ ...row, kind: "ACTIVITY", summary: row.publicSummary }))),
+    prisma.careTask.findMany({ where: { engagementId: id, parentActionRequired: true }, select: { id: true, title: true, parentVisibleSummary: true, version: true, parentVisibilitySection: true }, orderBy: { dueAt: "desc" } }).then(rows => rows.map(row => ({ ...row, kind: "TASK", summary: row.parentVisibleSummary }))),
+    prisma.careRiskCase.findMany({ where: { engagementId: id, parentVisible: true }, select: { id: true, title: true, publicSummary: true, version: true, parentVisibilitySection: true }, orderBy: { detectedAt: "desc" } }).then(rows => rows.map(row => ({ ...row, kind: "RISK", summary: row.publicSummary }))),
+  ])).flat().sort((a, b) => Number(Boolean(a.parentVisibilitySection)) - Number(Boolean(b.parentVisibilitySection))) : [];
+
   const staff = Array.from(
     new Map(engagement.members.map((member) => [member.user.id, { id: member.user.id, name: member.user.name }])).values(),
   );
@@ -449,7 +465,9 @@ export default async function CareDetailPage({
     <main className={styles.page}>
       <header className={styles.header}>
         <div>
-          <div className={styles.eyebrow}>{t(lang, "Student care project", "学生托管项目")}</div>
+
+
+      <div className={styles.eyebrow}>{t(lang, "Student care project", "学生托管项目")}</div>
           <h1>{engagement.student.name}</h1>
           <div className={styles.muted}>{engagement.student.school ?? "-"} · {engagement.student.grade ?? "-"} · {program ? (lang === "EN" ? program.en : program.zh) : engagement.programType}</div>
         </div>
@@ -467,6 +485,21 @@ export default async function CareDetailPage({
           ) : null}
         </div>
       </header>
+
+      {isUniversityCareProgram(engagement.programType) ? <details className={styles.section} id="parent-visibility-review">
+        <summary>{t(lang, "Review parent-visible sections", "核对家长可见栏目")}{canManageConfig ? ` · ${visibilityRows.filter(row => !row.parentVisibilitySection).length}` : ""}</summary>
+        <p className={styles.muted}>{t(lang, "University summaries need a reviewed section and current student consent. Unclassified history stays internal. Saving a section does not grant consent or publish a draft.", "大学阶段摘要须核对栏目，并符合学生当前授权。未分类的历史记录保留在内部；保存栏目不会代替学生授权，也不会发布草稿。")}</p>
+        {canManageConfig ? visibilityRows.map(row => <form key={`${row.kind}-${row.id}`} action={visibilitySectionAction} className={styles.taskItem}>
+          <strong>{t(lang, row.kind === "ACTIVITY" ? "Update" : row.kind === "TASK" ? "Task" : "Risk", row.kind === "ACTIVITY" ? "动态" : row.kind === "TASK" ? "待办" : "风险")} · {row.title}</strong>
+          <p>{row.summary}</p>
+          <input type="hidden" name="recordType" value={row.kind} /><input type="hidden" name="recordId" value={row.id} /><input type="hidden" name="version" value={row.version} />
+          <div className={styles.toolbar}><select name="section" className={styles.select} defaultValue={row.parentVisibilitySection ?? ""} aria-label={t(lang, "Parent-visible section", "家长可见栏目")}>
+            <option value="">{t(lang, "Pending review — internal only", "待核对，仅内部可见")}</option>
+            {CARE_SUMMARY_SECTIONS.map(option => <option key={option.id} value={option.id}>{t(lang, option.en, option.zh)}</option>)}
+          </select><button type="submit" className={styles.buttonSecondary}>{t(lang, "Save reviewed section", "保存核对栏目")}</button></div>
+        </form>) : <p>{t(lang, "Ask a manager to review the parent-visible section.", "请管理人员核对家长可见栏目。")}</p>}
+        {canManageConfig && visibilityRows.length === 0 ? <p>{t(lang, "No summaries to review.", "暂无需要核对的摘要。")}</p> : null}
+      </details> : null}
 
       {err ? <div className={styles.noticeError}>{err}</div> : null}
       {msg ? <div className={styles.noticeSuccess}>{msg}</div> : null}

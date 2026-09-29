@@ -1,4 +1,20 @@
 # CHANGELOG LIVE
+## 2026-09-29-r456
+
+- Release ID: `2026-09-29-r456`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; live proof belongs in the execution ledger.
+- Problem: university Care service-progress summaries bypassed the selected consent sections; counts used truncated recent lists. Historical summaries lacked explicit section attribution.
+- Change: parent activity/task/risk summaries require both an explicitly reviewed section and current student consent in one consistent read snapshot. Formal reports keep their own section gate; global student next-action and risk/report-date fallbacks cannot bypass university visibility. Published totals use the same filter without recent-list limits. A collapsed EN/ZH/BILINGUAL manager review panel records explicit section attribution with fresh access, exact project scope, version checks and atomic audit; unclassified history stays internal without guessing or backfill. Pre-university Full Care remains unchanged.
+- Validation:761 tests; isolated service and real HTTP/server-action UAT cover selected sections, withdrawn consent, unknown history, counts beyond 12 recent items, observer/wrong-project/stale-version denial, audit rollback, three language modes and Pre-U compatibility. Final production build and TypeScript checked before release. Browser automation was unavailable; visual/mobile acceptance remains in phase9.
+- Migration:143rd additive migration adds nullable parentVisibilitySection to CareActivity, CareTask and CareRiskCase. No existing rows are rewritten. Old code tolerates the additive columns, but rollback would restore the previous visibility defect; prefer a forward fix and retain the columns/evidence.
+- Safety: no production business test writes, message senders or WeChat client publication. Existing URLs and other modules retained.
+- Remaining: phase6 overall route/delivery acceptance, phase5/7 follow-ups and phases8-10 remain. This release is not overall project completion.
+- Rollback reference: `ad56c49f19b0b5ffb57e2fb92627605464f71e93` (r455).
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
 ## 2026-09-29-r455
 
 - Release ID: `2026-09-29-r455`

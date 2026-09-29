@@ -59,7 +59,7 @@ test("parent progress API selects only published care summaries", () => {
   const route = fs.readFileSync(
     path.join(process.cwd(), "app/api/miniapp/students/[studentId]/service-progress/route.ts"),
     "utf8",
-  );
+  ) + fs.readFileSync(path.join(process.cwd(), "lib/care-parent-visibility.ts"), "utf8").replaceAll("'", '\"');
   assert.match(route, /publicationStatus: "PUBLISHED"/);
   assert.match(route, /audience: \{ in: \["PARENT", "PARENT_AND_STUDENT"\] \}/);
   assert.match(route, /publicSummary: true/);
@@ -81,7 +81,7 @@ test("parent progress projects acknowledgement without exposing report workflow 
   const route = fs.readFileSync(
     path.join(process.cwd(), "app/api/miniapp/students/[studentId]/service-progress/route.ts"),
     "utf8",
-  );
+  ) + fs.readFileSync(path.join(process.cwd(), "lib/care-parent-visibility.ts"), "utf8").replaceAll("'", '\"');
   assert.match(route, /views: \{/);
   assert.match(route, /acknowledged: Boolean/);
   assert.doesNotMatch(route, /reviewerNote: true/);
@@ -101,20 +101,20 @@ test("service tab preserves relationship permissions for reports and requests", 
   const route = fs.readFileSync(
     path.join(process.cwd(), "app/api/miniapp/students/[studentId]/service-progress/route.ts"),
     "utf8",
-  );
+  ) + fs.readFileSync(path.join(process.cwd(), "lib/care-parent-visibility.ts"), "utf8").replaceAll("'", '\"');
   assert.match(route, /requireMiniappStudentAccess\(req, studentId\)/);
-  assert.match(route, /canViewReports\s*\? prisma\.careEngagement\.findFirst/);
+  assert.match(route, /canViewReports\s*\? getParentCareProgress\(studentId, auth\.parent\.id/);
   assert.doesNotMatch(route, /hasManagedCare && canViewReports/);
   assert.match(route, /canCreateRequests \? prisma\.ticket\.findMany/);
   assert.match(route, /permissions: \{ canViewSchedule, canViewFeedback, canViewReports, canCreateRequests \}/);
-  assert.match(route, /riskLabel: canViewReports \? academicRiskLabel/);
+  assert.match(route, /riskLabel: canViewReports && .*visibility\.sections\.includes\("academic_risks"\).*\? academicRiskLabel/);
 });
 
 test("Full Care parent dashboard answers the four reassurance questions with reviewed data only", () => {
   const route = fs.readFileSync(
     path.join(process.cwd(), "app/api/miniapp/students/[studentId]/service-progress/route.ts"),
     "utf8",
-  );
+  ) + fs.readFileSync(path.join(process.cwd(), "lib/care-parent-visibility.ts"), "utf8").replaceAll("'", '\"');
   const page = fs.readFileSync(
     path.join(process.cwd(), "miniapp/boss-academic-parent/pages/progress/progress.wxml"),
     "utf8",

@@ -1,5 +1,6 @@
 import { academicRiskLabel } from "@/lib/academic-management";
 import { careReportParentAccessAllowed } from "@/lib/care-reports";
+import { getParentCareProgress } from "@/lib/care-parent-visibility";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
 import {
   compactParentProgressText,
@@ -16,7 +17,6 @@ import { FULL_CARE_PROGRAMS } from "@/lib/full-care-pricing";
 import { bad, courseLabel, ok, requireMiniappStudentAccess, sessionTeacherName } from "../../../_lib";
 
 const CLOSED_TICKET_STATUSES = ["Completed", "Cancelled", "Closed", "已完成", "已关闭"];
-const OPEN_CARE_TASK_STATUSES = ["OPEN", "IN_PROGRESS", "WAITING_EXTERNAL", "BLOCKED"] as const;
 
 function isStudentSessionCancelled(session: { attendances: Array<{ status: string }> }) {
   return session.attendances.some((row) => row.status === "EXCUSED");
@@ -104,77 +104,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       orderBy: { updatedAt: "desc" },
       take: 30,
     }) : Promise.resolve([]),
-    canViewReports
-      ? prisma.careEngagement.findFirst({
-          where: {
-            studentId,
-            status: "ACTIVE",
-            ...(student.servicePlanType === "FULL_CARE"
-              ? { programType: { in: ["PRE_U_ACADEMIC_CARE", "PRE_U_FULL_COORDINATION"] as const } }
-              : {}),
-          },
-          select: {
-            id: true,
-            programType: true,
-            startDate: true,
-            endDate: true,
-            nextReportDueAt: true,
-            scopeJson: true,
-            caseOwner: { select: { name: true } },
-            universityProfile: true,
-            reports: {
-              where: { status: "PUBLISHED" },
-              select: {
-                id: true,
-                status: true,
-                reportType: true,
-                periodLabel: true,
-                title: true,
-                publishedAt: true,
-                views: {
-                  where: { parentId: auth.parent.id },
-                  select: { acknowledgedAt: true },
-                  take: 1,
-                },
-              },
-              orderBy: { publishedAt: "desc" },
-              take: 12,
-            },
-            activities: {
-              where: {
-                publicationStatus: "PUBLISHED",
-                audience: { in: ["PARENT", "PARENT_AND_STUDENT"] },
-                publicSummary: { not: null },
-              },
-              select: { id: true, title: true, publicSummary: true, occurredAt: true },
-              orderBy: { occurredAt: "desc" },
-              take: 12,
-            },
-            tasks: {
-              where: {
-                parentActionRequired: true,
-                parentVisibleSummary: { not: null },
-                status: { in: [...OPEN_CARE_TASK_STATUSES] },
-              },
-              select: { id: true, parentVisibleSummary: true, dueAt: true, status: true },
-              orderBy: { dueAt: "asc" },
-              take: 5,
-            },
-            riskCases: {
-              where: {
-                parentVisible: true,
-                publicSummary: { not: null },
-                status: { in: ["OPEN", "ACKNOWLEDGED"] },
-              },
-              select: { id: true, publicSummary: true, status: true, updatedAt: true },
-              orderBy: { updatedAt: "desc" },
-              take: 5,
-            },
-          },
-          orderBy: { createdAt: "desc" },
-          relationLoadStrategy: "join",
-        })
-      : Promise.resolve(null),
+    canViewReports ? getParentCareProgress(studentId, auth.parent.id, student.servicePlanType === "FULL_CARE") : Promise.resolve(null),
   ]);
 
   const visibleSessions = sessions.filter((session) => !isStudentSessionCancelled(session));
@@ -201,7 +131,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
 
   const nextStep = parentActions[0]
     ? { label: "需要家长配合", text: parentActions[0].summary, dueText: parentActions[0].dueAtText }
-    : canViewReports && student.nextAction
+    : canViewReports && !careEngagement?.visibility.university && student.nextAction
       ? {
           label: "下一步",
           text: compactParentProgressText(student.nextAction, 180),
@@ -310,7 +240,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       updatedAtText: formatBusinessDateTime(risk.updatedAt),
     }))
     .filter((risk) => risk.summary);
-  const nextUpdate = careEngagement?.nextReportDueAt
+  const nextUpdate = careEngagement?.visibility.university && !careEngagement.visibility.reports
+    ? { label: "Updates / 进展更新", date: null, dateText: null, promise: "Updates follow the student-approved visibility / 进展更新以学生授权范围为准" }
+    : careEngagement?.nextReportDueAt
     ? {
         label: "下次正式更新",
         date: careEngagement.nextReportDueAt.toISOString(),
@@ -330,7 +262,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       school: student.school,
       grade: student.grade,
       servicePlanType: student.servicePlanType || "STANDARD_COURSE",
-      riskLabel: canViewReports ? academicRiskLabel(student.academicRiskLevel) : null,
+      riskLabel: canViewReports && (!careEngagement?.visibility.university || careEngagement.visibility.sections.includes("academic_risks")) ? academicRiskLabel(student.academicRiskLevel) : null,
     },
     service,
     period: { label: week.label, start: week.start.toISOString(), end: week.end.toISOString() },
@@ -358,9 +290,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       programLabel: careProgramme?.labelZh ?? service.label,
       startDate: careEngagement?.startDate ? formatBusinessDateOnly(careEngagement.startDate) : null,
       endDate: careEngagement?.endDate ? formatBusinessDateOnly(careEngagement.endDate) : null,
-      nextReportDue: careEngagement?.nextReportDueAt ? formatBusinessDateOnly(careEngagement.nextReportDueAt) : null,
-      publishedActivityCount: careEngagement?.activities.length ?? 0,
-      publishedReportCount: visibleReports.length,
+      nextReportDue: careEngagement?.visibility.reports && careEngagement.nextReportDueAt ? formatBusinessDateOnly(careEngagement.nextReportDueAt) : null,
+      publishedActivityCount: careEngagement?._count.activities ?? 0,
+      publishedReportCount: careEngagement?._count.reports ?? 0,
       serviceCommitments,
       latestPublishedUpdate,
       nextUpdate,
