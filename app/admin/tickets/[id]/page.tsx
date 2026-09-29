@@ -907,8 +907,8 @@ export default async function AdminTicketDetailPage({
   });
   if (!row) notFound();
 
-  const resultTeacherOptions = row.schedulingActions.some((action) => action.actionType === "REPLACE_TEACHER" && !["APPLIED", "CANCELLED"].includes(action.status))
-    ? await prisma.teacher.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }) : [];
+  const resultTeacherOptionsPromise = row.schedulingActions.some((action) => action.actionType === "REPLACE_TEACHER" && !["APPLIED", "CANCELLED"].includes(action.status))
+    ? prisma.teacher.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }) : Promise.resolve([]);
 
   const requestEntry = row.parentAssistedByName || row.createdByName?.startsWith("员工代录：")
     ? "员工代家长录入 / Staff-assisted parent request"
@@ -920,15 +920,6 @@ export default async function AdminTicketDetailPage({
   const aiPlanPromise = !row.isArchived && !["Completed", "Cancelled"].includes(row.status)
     ? readAdminAiTicketPlan(adminUser, row.id)
     : Promise.resolve(null);
-  const aiPlanResult = await aiPlanPromise;
-  if (aiPlanResult?.status === "READY") {
-    const scopeError = ticketCommandScopeError(row.schedulingActions, aiPlanResult.plan.operations);
-    if (scopeError) {
-      aiPlanResult.plan.preparationStatus = "BLOCKED";
-      aiPlanResult.plan.operations = [];
-      aiPlanResult.plan.blockers.unshift({ code: "FORMAL_SCOPE_MISMATCH", title: "建议范围需要核对", detail: scopeError, action: "先核对原课程；也可直接使用人工处理。" });
-    }
-  }
 
   const parsed = parseTicketSituationSummary(row.summary);
   const template = getTicketTypeTemplate(row.type);
@@ -955,9 +946,9 @@ export default async function AdminTicketDetailPage({
   const studentCoordinationHref = row.studentId
     ? `/admin/students/${row.studentId}?focus=scheduling-coordination#scheduling-coordination`
     : "";
-  const coordinationContext =
+  const coordinationContextPromise =
     row.type === "排课协调" && row.studentId
-      ? await (async () => {
+      ? (async () => {
           const [enrollments, teachers] = await Promise.all([
             prisma.enrollment.findMany({
               where: { studentId: row.studentId! },
@@ -999,9 +990,9 @@ export default async function AdminTicketDetailPage({
                 now: new Date(),
               })
             : null;
-          const availabilitySlots =
+          const availabilitySlotsPromise =
             teacherOptions.length > 0
-              ? await listSchedulingCoordinationCandidateSlots({
+              ? listSchedulingCoordinationCandidateSlots({
                   studentId: row.studentId!,
                   teacherOptions,
                   startAt: parentSearchWindow?.startAt ?? new Date(),
@@ -1009,10 +1000,10 @@ export default async function AdminTicketDetailPage({
                   durationMin,
                   maxSlots: parentAvailabilityPayload?.selectionMode === "calendar" ? 24 : 12,
                 })
-              : [];
-          const matchedParentSlots =
+              : Promise.resolve([]);
+          const matchedParentSlotsPromise =
             teacherOptions.length > 0
-              ? await listSchedulingCoordinationParentMatchedSlots({
+              ? listSchedulingCoordinationParentMatchedSlots({
                   studentId: row.studentId!,
                   teacherOptions,
                   payload: parentAvailabilityPayload,
@@ -1020,7 +1011,8 @@ export default async function AdminTicketDetailPage({
                   durationMin,
                   maxSlots: 5,
                 })
-              : [];
+              : Promise.resolve([]);
+          const [availabilitySlots, matchedParentSlots] = await Promise.all([availabilitySlotsPromise, matchedParentSlotsPromise]);
           return {
             teacherCount: teacherOptions.length,
             durationMin,
@@ -1028,7 +1020,20 @@ export default async function AdminTicketDetailPage({
             fallbackSlots: availabilitySlots.slice(0, 3),
           };
         })()
-      : null;
+      : Promise.resolve(null);
+  // Independent reads must start before waiting for the optional AI service.
+  const [aiPlanResult, resultTeacherOptions, coordinationContext] = await Promise.all([
+    aiPlanPromise, resultTeacherOptionsPromise, coordinationContextPromise,
+  ]);
+  if (aiPlanResult?.status === "READY") {
+    const scopeError = ticketCommandScopeError(row.schedulingActions, aiPlanResult.plan.operations);
+    if (scopeError) {
+      aiPlanResult.plan.preparationStatus = "BLOCKED";
+      aiPlanResult.plan.operations = [];
+      aiPlanResult.plan.blockers.unshift({ code: "FORMAL_SCOPE_MISMATCH", title: "建议范围需要核对", detail: scopeError, action: "先核对原课程；也可直接使用人工处理。" });
+    }
+  }
+
   const coordinationPhase = row.type === "排课协调"
     ? deriveSchedulingCoordinationPhase({
         ticketStatus: row.status,

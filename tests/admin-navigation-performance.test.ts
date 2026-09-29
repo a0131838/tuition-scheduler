@@ -33,8 +33,14 @@ test("slow secondary work is parallelized or deferred", () => {
   assert.match(alerts, /const \[thresholdMin, alerts\] = await Promise\.all/);
   assert.match(monthly, /const \[data, monthlySchedulingCampaign\] = await Promise\.all/);
   assert.match(ticket, /const aiPlanPromise =/);
-  assert.match(ticket, /const sessionsPromise =/);
-  assert.match(ticket, /const \[aiPlanResult, \[upcomingSessions, existingResultSessions\]\] = await Promise\.all/);
+  assert.match(ticket, /const coordinationContextPromise =/);
+  assert.match(ticket, /const resultTeacherOptionsPromise =/);
+  assert.match(ticket, /const \[aiPlanResult, resultTeacherOptions, coordinationContext\] = await Promise\.all\(\[\s*aiPlanPromise, resultTeacherOptionsPromise, coordinationContextPromise,/);
+  assert.doesNotMatch(ticket, /await aiPlanPromise/);
+  assert.match(ticket, /const \[availabilitySlots, matchedParentSlots\] = await Promise\.all\(\[availabilitySlotsPromise, matchedParentSlotsPromise\]\)/);
+  const independentReads = ticket.slice(ticket.indexOf("const resultTeacherOptionsPromise ="), ticket.indexOf("const [aiPlanResult, resultTeacherOptions, coordinationContext]"));
+  assert.doesNotMatch(independentReads, /\? await prisma\.teacher|\? await \(async|\? await listSchedulingCoordination/);
+  assert.ok(ticket.indexOf("ticketCommandScopeError(row.schedulingActions, aiPlanResult.plan.operations)") > ticket.indexOf("const [aiPlanResult, resultTeacherOptions, coordinationContext]"));
   assert.match(todos, /const operationsDataPromise = Promise\.all/);
   assert.match(todos, /await operationsDataPromise/);
 });

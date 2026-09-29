@@ -637,3 +637,21 @@ Logs: `/tmp/sgt-r441-uat-final.log`, `/tmp/sgt-r441-http.log`, `/tmp/sgt-r441-la
 ---
 
 Logs: `/tmp/sgt-r442-language-http.log`, `/tmp/sgt-r442-backend.log`, `/tmp/sgt-r442-tsc.log`, `/tmp/sgt-r442-build.log`.
+
+## 2026-09-29-r443
+
+- Release ID: `2026-09-29-r443`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; guarded release evidence is maintained in the execution ledger.
+- Problem: ticket details awaited the optional AI service before independent teacher/coordination reads; candidate and parent-matched availability were also sequential. The old performance test named a removed query rather than the current coordination path.
+- Change: start independent reads together and await one Promise.all; run candidate and parent-matched reads together. Preserve all query scopes, optional AI skip/failure handling and formal operation-scope validation before rendering.
+- Validation:6 navigation checks,181 backend checks and260-page production build passed. Isolated authenticated HTTP covers active coordination, replacement teacher options, archived/closed AI skip, unavailable-AI manual fallback, anonymous denial and unchanged business snapshots. No production business writes or external AI calls in UAT.
+- Wider regression:749 tests ran,741 passed and8 failed. Investigated separately: student lesson history lost its feedback column; other failures include obsolete source locations/labels and a missing approved-leave mock. These remain explicitly pending; this release does not claim a fully passing suite.
+- Migration/UI wording: none. No WeChat client release. Query results and role policy unchanged; no quantified latency claim.
+- Remaining: restore history feedback and reconcile full-suite failures, then continue phases4/5 acceptance and6–10. Overall programme remains in progress.
+- Rollback point: `540c677e4321ec36d27775a5afaeee1692de829c` (r442).
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
+Logs: `/tmp/sgt-r443-focused.log`, `/tmp/sgt-r443-backend.log`, `/tmp/sgt-r443-build.log`, `/tmp/sgt-r443-http.log`, `/tmp/sgt-r443-all-tests.log`.
