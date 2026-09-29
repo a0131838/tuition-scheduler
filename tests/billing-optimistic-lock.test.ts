@@ -121,12 +121,17 @@ async function withPrismaStubs(
     create: appSetting.create,
     updateMany: appSetting.updateMany,
     auditCreate: auditLog.create,
+    transaction: prisma.$transaction,
+    studentLinks: prisma.parentStudentLink.findMany,
   };
 
   appSetting.findUnique = appSettingApi.findUnique;
   appSetting.create = appSettingApi.create;
   appSetting.updateMany = appSettingApi.updateMany;
   auditLog.create = async () => ({ id: "audit-1" });
+  // Route the transaction client to the same controlled optimistic-lock store.
+  (prisma as any).$transaction = async (work: (db: typeof prisma) => Promise<unknown>) => work(prisma);
+  (prisma.parentStudentLink as any).findMany = async () => [];
 
   try {
     await run();
@@ -135,6 +140,8 @@ async function withPrismaStubs(
     appSetting.create = original.create;
     appSetting.updateMany = original.updateMany;
     auditLog.create = original.auditCreate;
+    prisma.$transaction = original.transaction;
+    prisma.parentStudentLink.findMany = original.studentLinks;
   }
 }
 

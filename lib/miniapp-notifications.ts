@@ -21,8 +21,8 @@ export async function queueMiniappNotification(input: {
   targetId?: string | null;
   payload?: Prisma.InputJsonValue | null;
   scheduledAt?: Date | null;
-}) {
-  const parent = await prisma.parentAccount.findUnique({
+}, db: Prisma.TransactionClient = prisma) {
+  const parent = await db.parentAccount.findUnique({
     where: { id: input.parentId },
     select: { id: true, wechatOpenId: true, status: true },
   });
@@ -36,7 +36,7 @@ export async function queueMiniappNotification(input: {
       targetId: input.targetId || "",
     },
   };
-  const existing = await prisma.miniappNotificationOutbox.findUnique({ where: uniqueWhere });
+  const existing = await db.miniappNotificationOutbox.findUnique({ where: uniqueWhere });
   if (
     existing &&
     (["SENT", "PROCESSING"].includes(existing.status) ||
@@ -45,7 +45,7 @@ export async function queueMiniappNotification(input: {
     return existing;
   }
 
-  return prisma.miniappNotificationOutbox.upsert({
+  return db.miniappNotificationOutbox.upsert({
     where: uniqueWhere,
     create: {
       parentId: parent.id,
@@ -80,8 +80,8 @@ export async function queueMiniappNotificationsForStudent(input: {
   payload?: Prisma.InputJsonValue | null;
   scheduledAt?: Date | null;
   permission?: "canViewSchedule" | "canViewFeedback" | "canViewFinance" | "canViewReports" | "canCreateRequests";
-}) {
-  const links = await prisma.parentStudentLink.findMany({
+}, db: Prisma.TransactionClient = prisma) {
+  const links = await db.parentStudentLink.findMany({
     where: {
       studentId: input.studentId,
       ...(input.permission ? { [input.permission]: true } : {}),
@@ -101,7 +101,7 @@ export async function queueMiniappNotificationsForStudent(input: {
         targetId: input.targetId,
         payload: input.payload,
         scheduledAt: input.scheduledAt,
-      })
+      }, db)
     )
   );
 }

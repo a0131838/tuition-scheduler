@@ -1,3 +1,4 @@
+import type {Prisma} from "@prisma/client";
 import { getApprovalRoleConfig } from "@/lib/approval-flow";
 import {
   applyParentInvoiceNumberAssignments,
@@ -204,4 +205,31 @@ export async function resequenceGlobalInvoiceNumbersForMonth(monthKey: string) {
     applyPartnerInvoiceNumberAssignments(partnerAssignments),
   ]);
   return { changed: parentChanged + partnerChanged };
+}
+
+/** Read all numbering sources in the caller's transaction, including retained deleted numbers. */
+export async function getNextGlobalInvoiceNoForDb(db: Prisma.TransactionClient, issueDate?: string | Date | null) {
+  const monthKey = monthKeyFromDate(issueDate);
+  const sources = ["parent_billing_v1", "partner_billing_v1", "business_accounts_v1"];
+  const rows = await db.appSetting.findMany({where:{key:{in:sources}},select:{key:true,value:true}});
+  const used = new Set<number>();
+  for (const row of rows) {
+    let root: Record<string, unknown>;
+    try { root=JSON.parse(row.value); } catch { throw new Error("Invoice numbering evidence is unreadable / 发票编号凭据无法读取"); }
+    if (!root || typeof root!=="object" || Array.isArray(root)) throw new Error("Invoice numbering evidence is invalid / 发票编号凭据无效");
+    const fields=row.key==="business_accounts_v1"?["monthlyDocuments","deletedInvoices"]:["invoices","deletedInvoices"];
+    for(const field of fields){
+      const list=root[field];
+      if(list===undefined)continue;
+      if(!Array.isArray(list))throw new Error("Invoice numbering evidence needs review / 发票编号凭据需要核对");
+      for(const item of list){
+        if(!item || typeof item!=="object" || typeof item.invoiceNo!=="string")throw new Error("Invoice numbering evidence needs review / 发票编号凭据需要核对");
+        const parsed=parseInvoiceNoParts(item.invoiceNo);
+        if(parsed?.monthKey===monthKey)used.add(parsed.seq);
+      }
+    }
+  }
+  let seq=1;while(used.has(seq))seq++;
+  if(seq>9999)throw new Error("Monthly invoice numbering capacity exceeded / 当月发票编号容量已满");
+  return formatInvoiceNo(monthKey,seq);
 }

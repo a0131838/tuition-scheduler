@@ -11,7 +11,7 @@ import {
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-export const metadata = { title: "Full Care Service Agreement | GT Educational Institute" };
+export const metadata = { title: "Student Agreement / 学生协议 | GT Educational Institute" };
 
 function isNextRedirectError(error: unknown) {
   if (!error || typeof error !== "object") return false;

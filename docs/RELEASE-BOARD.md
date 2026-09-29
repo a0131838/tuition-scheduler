@@ -1,4 +1,23 @@
 # RELEASE BOARD
+## 2026-09-29-r428
+
+- Release ID: `2026-09-29-r428`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; guarded release proof is maintained in the execution ledger.
+- Problem: signing created invoices and renewal purchases before the signed contract and its events were saved. A later failure could leave partial business records; simultaneous void/refresh/expiry could overwrite terminal state or duplicate renewal entitlement.
+- Change: prepare signature/PDF files before acquiring database locks, then commit the freshly checked contract, invoice, invoice audit, finance gate, renewal purchase, signed/invoice events, intake state and notification outbox in one serializable transaction. Repeated signed submissions return the existing result. Voided, expired, retokened or changed contracts cannot commit an old signature. Outbox writes only queue the existing notification types; they do not send messages in the signing transaction.
+- Lifecycle: draft/intake/link-preparation changes compare the source version and save their event atomically. Expiration loses safely to a concurrent update; invoice detachment rereads locked contract state and preserves VOID. Renewal invoice choice now locks the contract, validates current billing, records an audit and advances its version; signed/void contracts cannot change choice. Existing first-purchase versus renewal quantities and invoice-link choices remain distinct.
+- Billing compatibility: standalone parent invoice creation also commits invoice/audit/outbox together and retries full transactions on optimistic conflicts. Contract invoice numbering reads current parent/partner/business and retained deleted numbers in the same transaction; unreadable evidence blocks rather than silently resets numbering. This is not a claim that all legacy cross-channel invoice writers have been converted to a global allocator.
+- UI: public signing URL, agreement terms, Full Care scope and permissions retained. The browser title is now Student Agreement / 学生协议 instead of incorrectly labeling ordinary tuition contracts as Full Care. New conflict messages are bilingual; existing language modes remain.
+- Validation:31 focused tests,181 backend tests,full TypeScript and260-page final production build. Isolated signature UAT verifies failure after invoice/gate/top-up/outbox rolls everything back, one renewal purchase/invoice/event on competing/repeated signatures, signature-versus-void race, deterministic stale link/expiry rejection, signed choice denial, VOID preservation and real PDF creation. Five-role void HTTP and seven-role correction/gift concurrency regressions passed. Actual browser signs a fictional tuition agreement, downloads a valid PDF with the correct token, rejects the wrong token, and independently confirms one signed/invoice event with original first-purchase balance unchanged; browser console clean.
+- Read-only production investigation: parent62 invoices/22 deleted, partner13/8, business6/2; all current numbering source records have string invoice numbers. No production business acceptance writes, real signatures or outbound messages.
+- Migration: none. Prepared files may remain unlinked after a failed/competing commit; the database does not claim they are signed. Retain them for separate storage hygiene rather than deleting historical signed documents.
+- Remaining: phase3 invoice-deletion atomicity/full evidence retention and review-only shared/partner/monthly paths; phases4–10. Programme remains in progress.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+- Rollback point: `b9324572e9a49f4aee65724ae7b7a29ec2fe742a` (r427). No schema rollback or business-history deletion.
+
+---
+
 ## 2026-09-29-r427
 
 - Release ID: `2026-09-29-r427`
@@ -383,7 +402,7 @@
 ---
 
 
-- Current release line on this branch: `2026-09-29-r427`, ready for guarded release of owner-reviewed append-only entitlement cancellation and protected correction history. Phase3 remains in progress; no Mini Program client release.
+- Current release line on this branch: `2026-09-29-r428`, ready for guarded release of atomic contract signing and stale lifecycle protection. Phase3 remains in progress; no Mini Program client release.
 
 ## 2026-09-09-r404 Ready
 

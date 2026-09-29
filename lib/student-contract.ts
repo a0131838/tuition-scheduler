@@ -32,12 +32,12 @@ import {
   buildPackageFinanceGateReason,
   createPackageInvoiceApproval,
   getLatestPackageInvoiceApproval,
-  packageInvoiceApprovalMatchesInvoice,
   removeStalePendingPackageInvoiceApprovals,
+  packageInvoiceApprovalMatchesInvoice,
   shouldRequirePackageInvoiceGate,
 } from "@/lib/package-finance-gate";
-import { assertGlobalInvoiceNoAvailable, getNextGlobalInvoiceNo } from "@/lib/global-invoice-sequence";
-import { createParentInvoice, listParentBillingForPackage } from "@/lib/student-parent-billing";
+import { getNextGlobalInvoiceNoForDb } from "@/lib/global-invoice-sequence";
+import { createParentInvoiceInTransaction, listParentBillingForPackage } from "@/lib/student-parent-billing";
 import { formatDateOnly, normalizeDateOnly } from "@/lib/date-only";
 import { getStudentContractInvoiceChoice } from "@/lib/student-contract-invoice-choice";
 import {
@@ -662,8 +662,8 @@ export async function appendStudentContractEvent(input: {
   actorUserId?: string | null;
   actorLabel?: string | null;
   payloadJson?: Prisma.JsonValue;
-}) {
-  await prisma.studentContractEvent.create({
+}, db: Prisma.TransactionClient = prisma) {
+  await db.studentContractEvent.create({
     data: {
       contractId: input.contractId,
       eventType: input.eventType,
@@ -972,6 +972,14 @@ export async function createReadyToSignStudentContract(input: {
   return summarize(row);
 }
 
+async function runContractTransition<T>(work:(tx:Prisma.TransactionClient)=>Promise<T>) {
+  try { return await prisma.$transaction(work); }
+  catch(error){
+    if(error instanceof Prisma.PrismaClientKnownRequestError && ["P2025","P2034"].includes(error.code))throw new Error("Contract changed; reload before retrying / 合同已变更，请刷新后重试");
+    throw error;
+  }
+}
+
 export async function refreshStudentContractIntakeLink(input: {
   contractId: string;
   actorUserId?: string | null;
@@ -980,30 +988,32 @@ export async function refreshStudentContractIntakeLink(input: {
 }) {
   const row = await getContractRow({ id: input.contractId });
   if (!row) throw new Error("Contract not found");
-  if (isTerminalStatus(row.status)) {
+  if (isTerminalStatus(row.status) || canonicalStudentContractStatus(row.status)===StudentContractStatus.VOID || hasContractExecutionHistory(row)) {
     throw new Error("Signed or invoiced contracts cannot be resent for intake");
   }
-  const next = await prisma.studentContract.update({
-    where: { id: row.id },
-    data: {
-      status: StudentContractStatus.INTAKE_PENDING,
-      intakeToken: createStudentContractToken(),
-      intakeExpiresAt: input.expiresAt ?? addDays(new Date(), DEFAULT_TOKEN_TTL_DAYS),
-      signToken: null,
-      signExpiresAt: null,
-      signViewedAt: null,
-      contractSnapshotJson: Prisma.JsonNull,
-    },
-    include: studentContractInclude,
+  return runContractTransition(async tx=>{
+    const next = await tx.studentContract.update({
+      where: { id: row.id, updatedAt:row.updatedAt },
+      data: {
+        status: StudentContractStatus.INTAKE_PENDING,
+        intakeToken: createStudentContractToken(),
+        intakeExpiresAt: input.expiresAt ?? addDays(new Date(), DEFAULT_TOKEN_TTL_DAYS),
+        signToken: null,
+        signExpiresAt: null,
+        signViewedAt: null,
+        contractSnapshotJson: Prisma.JsonNull,
+      },
+      include: studentContractInclude,
+    });
+    await appendStudentContractEvent({
+      contractId: row.id,
+      eventType: StudentContractEventType.INTAKE_SENT,
+      actorType: input.actorUserId ? "ADMIN" : "SYSTEM",
+      actorUserId: input.actorUserId ?? null,
+      actorLabel: input.actorLabel ?? "Sent parent info link",
+    }, tx);
+    return summarize(next);
   });
-  await appendStudentContractEvent({
-    contractId: row.id,
-    eventType: StudentContractEventType.INTAKE_SENT,
-    actorType: input.actorUserId ? "ADMIN" : "SYSTEM",
-    actorUserId: input.actorUserId ?? null,
-    actorLabel: input.actorLabel ?? "Sent parent info link",
-  });
-  return summarize(next);
 }
 
 export async function refreshStudentContractSignLink(input: {
@@ -1017,23 +1027,25 @@ export async function refreshStudentContractSignLink(input: {
   if (canonicalStudentContractStatus(row.status) !== StudentContractStatus.READY_TO_SIGN) {
     throw new Error("Contract must be prepared before the sign link can be resent");
   }
-  const next = await prisma.studentContract.update({
-    where: { id: row.id },
-    data: {
-      signToken: createStudentContractToken(),
-      signExpiresAt: input.expiresAt ?? addDays(new Date(), DEFAULT_TOKEN_TTL_DAYS),
-      signViewedAt: null,
-    },
-    include: studentContractInclude,
+  return runContractTransition(async tx=>{
+    const next = await tx.studentContract.update({
+      where: { id: row.id, updatedAt:row.updatedAt },
+      data: {
+        signToken: createStudentContractToken(),
+        signExpiresAt: input.expiresAt ?? addDays(new Date(), DEFAULT_TOKEN_TTL_DAYS),
+        signViewedAt: null,
+      },
+      include: studentContractInclude,
+    });
+    await appendStudentContractEvent({
+      contractId: row.id,
+      eventType: StudentContractEventType.SIGN_LINK_SENT,
+      actorType: input.actorUserId ? "ADMIN" : "SYSTEM",
+      actorUserId: input.actorUserId ?? null,
+      actorLabel: input.actorLabel ?? "Resent sign link",
+    }, tx);
+    return summarize(next);
   });
-  await appendStudentContractEvent({
-    contractId: row.id,
-    eventType: StudentContractEventType.SIGN_LINK_SENT,
-    actorType: input.actorUserId ? "ADMIN" : "SYSTEM",
-    actorUserId: input.actorUserId ?? null,
-    actorLabel: input.actorLabel ?? "Resent sign link",
-  });
-  return summarize(next);
 }
 
 async function expireContractIfNeeded(row: StudentContractRow) {
@@ -1046,20 +1058,25 @@ async function expireContractIfNeeded(row: StudentContractRow) {
       : null;
   if (!expiresAt || expiresAt.getTime() >= Date.now()) return row;
   if (isTerminalStatus(row.status) || canonical === StudentContractStatus.VOID) return row;
-  const next = await prisma.studentContract.update({
-    where: { id: row.id },
-    data: {
-      status: StudentContractStatus.EXPIRED,
-    },
-    include: studentContractInclude,
+  return prisma.$transaction(async tx=>{
+    const next = await tx.studentContract.update({
+      where: { id: row.id, updatedAt:row.updatedAt },
+      data: {
+        status: StudentContractStatus.EXPIRED,
+      },
+      include: studentContractInclude,
+    });
+    await appendStudentContractEvent({
+      contractId: row.id,
+      eventType: StudentContractEventType.EXPIRED,
+      actorType: "SYSTEM",
+      actorLabel: "Token expired",
+    }, tx);
+    return next;
+  }).catch(async error=>{
+    if(error instanceof Prisma.PrismaClientKnownRequestError && error.code==="P2025")return (await getContractRow({id:row.id})) || row;
+    throw error;
   });
-  await appendStudentContractEvent({
-    contractId: row.id,
-    eventType: StudentContractEventType.EXPIRED,
-    actorType: "SYSTEM",
-    actorLabel: "Token expired",
-  });
-  return next;
 }
 
 export async function getStudentContractByIntakeToken(token: string) {
@@ -1132,26 +1149,28 @@ export async function submitStudentContractIntake(input: {
     throw new Error("Contract intake is no longer available");
   }
 
-  const next = await prisma.studentContract.update({
-    where: { id: current.id },
-    data: {
-      status: StudentContractStatus.INTAKE_SUBMITTED,
-      parentInfoJson: input.parentInfo as unknown as Prisma.InputJsonValue,
-      intakeSubmittedAt: new Date(),
-      signToken: null,
-      signExpiresAt: null,
-      signViewedAt: null,
-      contractSnapshotJson: Prisma.JsonNull,
-    },
-    include: studentContractInclude,
+  return runContractTransition(async tx=>{
+    const next = await tx.studentContract.update({
+      where: { id: current.id, updatedAt:current.updatedAt },
+      data: {
+        status: StudentContractStatus.INTAKE_SUBMITTED,
+        parentInfoJson: input.parentInfo as unknown as Prisma.InputJsonValue,
+        intakeSubmittedAt: new Date(),
+        signToken: null,
+        signExpiresAt: null,
+        signViewedAt: null,
+        contractSnapshotJson: Prisma.JsonNull,
+      },
+      include: studentContractInclude,
+    });
+    await appendStudentContractEvent({
+      contractId: current.id,
+      eventType: StudentContractEventType.INTAKE_SUBMITTED,
+      actorType: "PARENT",
+      actorLabel: input.actorLabel ?? input.parentInfo.parentFullNameEn,
+    }, tx);
+    return summarize(next);
   });
-  await appendStudentContractEvent({
-    contractId: current.id,
-    eventType: StudentContractEventType.INTAKE_SUBMITTED,
-    actorType: "PARENT",
-    actorLabel: input.actorLabel ?? input.parentInfo.parentFullNameEn,
-  });
-  return summarize(next);
 }
 
 function normalizeBusinessInfoInput(
@@ -1342,44 +1361,46 @@ export async function saveStudentContractBusinessDraft(input: {
       ? StudentContractMode.TUITION_AGREEMENT
       : current.contractMode;
 
-  const next = await prisma.studentContract.update({
-    where: { id: current.id },
-    data: {
-      status: StudentContractStatus.CONTRACT_DRAFT,
-      contractMode,
-      businessInfoJson: businessInfo as unknown as Prisma.InputJsonValue,
-      contractSnapshotJson: Prisma.JsonNull,
-      signToken: null,
-      signExpiresAt: null,
-      signViewedAt: null,
-    },
-    include: studentContractInclude,
+  return runContractTransition(async tx=>{
+    const next = await tx.studentContract.update({
+      where: { id: current.id, updatedAt:current.updatedAt },
+      data: {
+        status: StudentContractStatus.CONTRACT_DRAFT,
+        contractMode,
+        businessInfoJson: businessInfo as unknown as Prisma.InputJsonValue,
+        contractSnapshotJson: Prisma.JsonNull,
+        signToken: null,
+        signExpiresAt: null,
+        signViewedAt: null,
+      },
+      include: studentContractInclude,
+    });
+    await appendStudentContractEvent({
+      contractId: current.id,
+      eventType: StudentContractEventType.BUSINESS_DRAFT_SAVED,
+      actorType: input.actorUserId ? "ADMIN" : "SYSTEM",
+      actorUserId: input.actorUserId ?? null,
+      actorLabel: input.actorLabel ?? "Saved contract draft details",
+      payloadJson: {
+        feeAmount: businessInfo.feeAmount,
+        totalMinutes: businessInfo.totalMinutes,
+        billTo: businessInfo.billTo,
+        careServiceIncluded: businessInfo.careServiceIncluded || false,
+        carePricingPlan: businessInfo.carePricingPlan ?? null,
+        careEngagementId: businessInfo.careEngagementId ?? null,
+        careProgramType: businessInfo.careProgramType ?? null,
+        carePricingVersion: businessInfo.carePricingVersion ?? null,
+        bundleDiscountRate: businessInfo.bundleDiscountRate ?? null,
+        bundleSavingsAmount: businessInfo.bundleSavingsAmount ?? null,
+        specialDiscountAmount: businessInfo.specialDiscountAmount ?? null,
+        specialDiscountReason: businessInfo.specialDiscountReason ?? null,
+        specialDiscountApprovedBy: businessInfo.specialDiscountApprovedBy ?? null,
+        tuitionFeeAmount: businessInfo.tuitionFeeAmount ?? null,
+        careServiceFeeAmount: businessInfo.careServiceFeeAmount ?? null,
+      },
+    }, tx);
+    return summarize(next);
   });
-  await appendStudentContractEvent({
-    contractId: current.id,
-    eventType: StudentContractEventType.BUSINESS_DRAFT_SAVED,
-    actorType: input.actorUserId ? "ADMIN" : "SYSTEM",
-    actorUserId: input.actorUserId ?? null,
-    actorLabel: input.actorLabel ?? "Saved contract draft details",
-    payloadJson: {
-      feeAmount: businessInfo.feeAmount,
-      totalMinutes: businessInfo.totalMinutes,
-      billTo: businessInfo.billTo,
-      careServiceIncluded: businessInfo.careServiceIncluded || false,
-      carePricingPlan: businessInfo.carePricingPlan ?? null,
-      careEngagementId: businessInfo.careEngagementId ?? null,
-      careProgramType: businessInfo.careProgramType ?? null,
-      carePricingVersion: businessInfo.carePricingVersion ?? null,
-      bundleDiscountRate: businessInfo.bundleDiscountRate ?? null,
-      bundleSavingsAmount: businessInfo.bundleSavingsAmount ?? null,
-      specialDiscountAmount: businessInfo.specialDiscountAmount ?? null,
-      specialDiscountReason: businessInfo.specialDiscountReason ?? null,
-      specialDiscountApprovedBy: businessInfo.specialDiscountApprovedBy ?? null,
-      tuitionFeeAmount: businessInfo.tuitionFeeAmount ?? null,
-      careServiceFeeAmount: businessInfo.careServiceFeeAmount ?? null,
-    },
-  });
-  return summarize(next);
 }
 
 export async function prepareStudentContractForSigning(input: {
@@ -1421,26 +1442,28 @@ export async function prepareStudentContractForSigning(input: {
     contractMode: current.contractMode,
   });
 
-  const next = await prisma.studentContract.update({
-    where: { id: current.id },
-    data: {
-      status: StudentContractStatus.READY_TO_SIGN,
-      businessInfoJson: businessInfo as unknown as Prisma.InputJsonValue,
-      contractSnapshotJson: snapshot as unknown as Prisma.InputJsonValue,
-      signToken: createStudentContractToken(),
-      signExpiresAt: input.expiresAt ?? addDays(new Date(), DEFAULT_TOKEN_TTL_DAYS),
-      signViewedAt: null,
-    },
-    include: studentContractInclude,
+  return runContractTransition(async tx=>{
+    const next = await tx.studentContract.update({
+      where: { id: current.id, updatedAt:current.updatedAt },
+      data: {
+        status: StudentContractStatus.READY_TO_SIGN,
+        businessInfoJson: businessInfo as unknown as Prisma.InputJsonValue,
+        contractSnapshotJson: snapshot as unknown as Prisma.InputJsonValue,
+        signToken: createStudentContractToken(),
+        signExpiresAt: input.expiresAt ?? addDays(new Date(), DEFAULT_TOKEN_TTL_DAYS),
+        signViewedAt: null,
+      },
+      include: studentContractInclude,
+    });
+    await appendStudentContractEvent({
+      contractId: current.id,
+      eventType: StudentContractEventType.SIGN_READY,
+      actorType: input.actorUserId ? "ADMIN" : "SYSTEM",
+      actorUserId: input.actorUserId ?? null,
+      actorLabel: input.actorLabel ?? "Prepared sign link",
+    }, tx);
+    return summarize(next);
   });
-  await appendStudentContractEvent({
-    contractId: current.id,
-    eventType: StudentContractEventType.SIGN_READY,
-    actorType: input.actorUserId ? "ADMIN" : "SYSTEM",
-    actorUserId: input.actorUserId ?? null,
-    actorLabel: input.actorLabel ?? "Prepared sign link",
-  });
-  return summarize(next);
 }
 
 function parseDataUrlImage(input: string) {
@@ -1454,8 +1477,8 @@ function parseDataUrlImage(input: string) {
   return { buffer, ext };
 }
 
-async function ensureInvoiceForSignedContract(row: StudentContractRow, snapshot: ContractSnapshot) {
-  const billing = await listParentBillingForPackage(row.packageId);
+async function ensureInvoiceForSignedContract(row: StudentContractRow, snapshot: ContractSnapshot, db: Prisma.TransactionClient) {
+  const billing = await listParentBillingForPackage(row.packageId, db);
   const noteMarker = contractInvoiceMarker(row.id);
   const markedInvoice =
     row.invoiceId
@@ -1475,7 +1498,7 @@ async function ensureInvoiceForSignedContract(row: StudentContractRow, snapshot:
 
   const renewalChoice =
     row.flowType === StudentContractFlowType.RENEWAL
-      ? await getStudentContractInvoiceChoice(row.id)
+      ? await getStudentContractInvoiceChoice(row.id, db)
       : null;
   if (row.flowType === StudentContractFlowType.RENEWAL && !renewalChoice) {
     throw new Error("Renewal contract needs an invoice choice before the sign link can be used.");
@@ -1531,13 +1554,12 @@ async function ensureInvoiceForSignedContract(row: StudentContractRow, snapshot:
     normalizeDateOnly(snapshot.generatedAtIso, new Date()) ??
     normalizeDateOnly(snapshot.agreementDateLabel, new Date()) ??
     formatDateOnly(new Date());
-  const invoiceNo = await getNextGlobalInvoiceNo(agreementIssueDate);
-  await assertGlobalInvoiceNoAvailable(invoiceNo);
+  const invoiceNo = await getNextGlobalInvoiceNoForDb(db, agreementIssueDate);
   const amount = roundMoney(snapshot.package.feeAmount);
   const invoiceDescription = snapshot.care?.included && snapshot.care.pricingVersion
     ? `${snapshot.care.programLabel || "Full Care / 全程托管"}; ${snapshot.care.courseTier === "IB_AP" ? "IB/AP" : "Standard / 标准课程"}; ${snapshot.care.packageHours != null ? `${snapshot.care.packageHours}h` : snapshot.package.totalHoursLabel}; tuition SGD ${roundMoney(snapshot.care.tuitionFeeAmount).toFixed(2)} + care SGD ${roundMoney(snapshot.care.careServiceFeeAmount).toFixed(2)}; bundle savings SGD ${roundMoney(snapshot.care.bundleSavingsAmount).toFixed(2)}; special discount SGD ${roundMoney(snapshot.care.specialDiscountAmount).toFixed(2)}; one-time payment / 一次性付款`
     : `Student contract invoice for ${row.student.name} (${snapshot.package.courseName}, ${snapshot.package.totalHoursLabel})`;
-  const invoice = await createParentInvoice({
+  const invoice = await createParentInvoiceInTransaction(db, {
     packageId: row.packageId,
     studentId: row.studentId,
     invoiceNo,
@@ -1571,7 +1593,7 @@ async function ensurePackageGateAfterSignedContract(input: {
   row: StudentContractRow;
   invoiceId: string;
   invoiceNo: string;
-}) {
+}, db: Prisma.TransactionClient) {
   if (
     !shouldRequirePackageInvoiceGate({
       settlementMode: input.row.package.settlementMode,
@@ -1581,17 +1603,10 @@ async function ensurePackageGateAfterSignedContract(input: {
     return;
   }
 
-  let currentApproval = await getLatestPackageInvoiceApproval(input.row.packageId);
+  let currentApproval = await getLatestPackageInvoiceApproval(input.row.packageId, db);
   if (!packageInvoiceApprovalMatchesInvoice(currentApproval, input.invoiceId)) {
-    await removeStalePendingPackageInvoiceApprovals({
-      packageId: input.row.packageId,
-      currentInvoiceId: input.invoiceId,
-    });
-    currentApproval = await createPackageInvoiceApproval({
-      packageId: input.row.packageId,
-      invoiceId: input.invoiceId,
-      submittedBy: "system.contract@sgtmanage.local",
-    });
+    await removeStalePendingPackageInvoiceApprovals({packageId:input.row.packageId,currentInvoiceId:input.invoiceId}, db);
+    currentApproval = await createPackageInvoiceApproval({packageId:input.row.packageId,invoiceId:input.invoiceId,submittedBy:"system.contract@sgtmanage.local"}, db);
   }
   const nextStatus =
     currentApproval?.status === "APPROVED"
@@ -1600,7 +1615,7 @@ async function ensurePackageGateAfterSignedContract(input: {
       ? "BLOCKED"
       : "INVOICE_PENDING_MANAGER";
 
-  await prisma.coursePackage.update({
+  await db.coursePackage.update({
     where: { id: input.row.packageId },
     data: {
       financeGateStatus: nextStatus,
@@ -1619,7 +1634,7 @@ async function ensureRenewalTopUpAfterSign(input: {
   row: StudentContractRow;
   snapshot: ContractSnapshot;
   signedAt: Date;
-}) {
+}, tx: Prisma.TransactionClient) {
   if (input.row.flowType !== StudentContractFlowType.RENEWAL) {
     return { applied: false, topUpMinutes: 0 };
   }
@@ -1633,7 +1648,7 @@ async function ensureRenewalTopUpAfterSign(input: {
   }
 
   const marker = contractRenewalTopUpMarker(input.row.id);
-  const existingTxn = await prisma.packageTxn.findFirst({
+  const existingTxn = await tx.packageTxn.findFirst({
     where: {
       packageId: input.row.packageId,
       kind: "PURCHASE",
@@ -1654,7 +1669,7 @@ async function ensureRenewalTopUpAfterSign(input: {
     baseCreatedAt: input.signedAt,
   });
 
-  await prisma.$transaction(async (tx) => {
+  {
     const pkgNow = await tx.coursePackage.findUnique({
       where: { id: input.row.packageId },
       select: {
@@ -1690,7 +1705,7 @@ async function ensureRenewalTopUpAfterSign(input: {
         },
       });
     }
-  });
+  }
 
   return { applied: true, topUpMinutes };
 }
@@ -1745,17 +1760,6 @@ export async function signStudentContract(input: {
     Promise.resolve(new Date()),
   ]);
 
-  const invoice = await ensureInvoiceForSignedContract(current, snapshot);
-  await ensurePackageGateAfterSignedContract({
-    row: current,
-    invoiceId: invoice.invoiceId,
-    invoiceNo: invoice.invoiceNo,
-  });
-  const renewalTopUp = await ensureRenewalTopUpAfterSign({
-    row: current,
-    snapshot,
-    signedAt,
-  });
   const signedPdf = await generateSignedStudentContractPdfBuffer({
     snapshot,
     signerName,
@@ -1782,15 +1786,45 @@ export async function signStudentContract(input: {
     }
   );
 
-  const next = await prisma.studentContract.update({
+  try {
+    return await prisma.$transaction(tx=>finalizeStudentContractSignature(tx,input,{contractId:current.id,expectedUpdatedAt:current.updatedAt.toISOString(),signedAt,signatureImagePath:storedSignature.relativePath,signedPdfPath:storedPdf.relativePath}),{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:15000});
+  } catch(error) {
+    if(error instanceof Prisma.PrismaClientKnownRequestError && (error.code==="P2034" || (error.code==="P2010" && ["40001","40P01"].includes(String(error.meta?.code)))))throw new Error("Contract changed during signing; reload and retry / 签署期间合同已变更，请刷新后重试");
+    throw error;
+  }
+}
+
+/** Internal commit step: file preparation completed; all business records commit or roll back together. */
+export async function finalizeStudentContractSignature(tx: Prisma.TransactionClient, input: {token:string;signerName:string;signerEmail?:string|null;signerPhone?:string|null;signerIp?:string|null}, prepared:{contractId:string;expectedUpdatedAt:string;signedAt:Date;signatureImagePath:string;signedPdfPath:string}) {
+  await tx.$queryRaw`SELECT id FROM "StudentContract" WHERE id=${prepared.contractId} FOR UPDATE`;
+  const current=await tx.studentContract.findUnique({where:{id:prepared.contractId},include:studentContractInclude});
+  if(!current || current.signToken!==input.token)throw new Error("Contract sign link changed / 合同签署链接已变更");
+  if(canonicalStudentContractStatus(current.status)===StudentContractStatus.INVOICE_CREATED)return summarize(current);
+  if(canonicalStudentContractStatus(current.status)!==StudentContractStatus.READY_TO_SIGN || current.voidedAt || current.updatedAt.toISOString()!==prepared.expectedUpdatedAt || (current.signExpiresAt && current.signExpiresAt.getTime()<Date.now()))throw new Error("Contract is no longer ready for signing; reload / 合同已变更、过期或作废，请刷新核对");
+  const snapshot=coerceSnapshot(current.contractSnapshotJson);
+  const signerName=coerceString(input.signerName),signedAt=prepared.signedAt;
+  if(!snapshot || !signerName || !prepared.signatureImagePath || !prepared.signedPdfPath)throw new Error("Signature evidence is incomplete / 签署凭据不完整");
+  await tx.$queryRaw`SELECT id FROM "CoursePackage" WHERE id=${current.packageId} FOR UPDATE`;
+  const invoice = await ensureInvoiceForSignedContract(current, snapshot, tx);
+  await ensurePackageGateAfterSignedContract({
+    row: current,
+    invoiceId: invoice.invoiceId,
+    invoiceNo: invoice.invoiceNo,
+  }, tx);
+  const renewalTopUp = await ensureRenewalTopUpAfterSign({
+    row: current,
+    snapshot,
+    signedAt,
+  }, tx);
+  const next = await tx.studentContract.update({
     where: { id: current.id },
     data: {
       status: StudentContractStatus.INVOICE_CREATED,
       signedAt,
       invoiceCreatedAt: invoice.invoiceCreatedAt,
       signViewedAt: current.signViewedAt ?? signedAt,
-      signatureImagePath: storedSignature?.relativePath ?? null,
-      signedPdfPath: storedPdf.relativePath,
+      signatureImagePath: prepared.signatureImagePath,
+      signedPdfPath: prepared.signedPdfPath,
       signerName,
       signerEmail: trimOrNull(input.signerEmail),
       signerPhone: trimOrNull(input.signerPhone),
@@ -1813,7 +1847,7 @@ export async function signStudentContract(input: {
       renewalTopUpMinutes: renewalTopUp.topUpMinutes || null,
       renewalTopUpApplied: renewalTopUp.applied,
     },
-  });
+  }, tx);
   await appendStudentContractEvent({
     contractId: current.id,
     eventType: StudentContractEventType.INVOICE_CREATED,
@@ -1832,8 +1866,8 @@ export async function signStudentContract(input: {
       invoiceChoiceNote: invoice.choiceNote,
       invoiceChoiceSelectedBy: invoice.choiceSelectedBy,
     },
-  });
-  await prisma.studentParentIntake.updateMany({
+  }, tx);
+  await tx.studentParentIntake.updateMany({
     where: { contractId: current.id },
     data: {
       status: "SIGNED",
@@ -1899,13 +1933,16 @@ export async function detachDeletedInvoiceFromStudentContract(input: {
   if (!row) return null;
 
   await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "StudentContract" WHERE id=${row.id} FOR UPDATE`;
+    const current=await tx.studentContract.findUniqueOrThrow({where:{id:row.id}});
+    if(current.invoiceId!==invoiceId)return;
     await tx.studentContract.update({
       where: { id: row.id },
       data: {
         status:
-          canonicalStudentContractStatus(row.status) === StudentContractStatus.INVOICE_CREATED
+          canonicalStudentContractStatus(current.status) === StudentContractStatus.INVOICE_CREATED
             ? StudentContractStatus.SIGNED
-            : row.status,
+            : current.status,
         invoiceId: null,
         invoiceNo: null,
         invoiceCreatedAt: null,

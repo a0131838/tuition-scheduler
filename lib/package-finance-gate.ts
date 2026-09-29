@@ -1,4 +1,4 @@
-import { PackageFinanceGateStatus, PackageInvoiceApprovalStatus, type PartnerSettlementMode } from "@prisma/client";
+import { PackageFinanceGateStatus, PackageInvoiceApprovalStatus, type PartnerSettlementMode, type Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getApprovalRoleConfig, isRoleApprover } from "@/lib/approval-flow";
 
@@ -83,8 +83,8 @@ export async function createPackageInvoiceApproval(input: {
   packageId: string;
   invoiceId: string;
   submittedBy: string;
-}) {
-  return prisma.packageInvoiceApproval.create({
+}, db: Prisma.TransactionClient = prisma) {
+  return db.packageInvoiceApproval.create({
     data: {
       packageId: input.packageId,
       invoiceId: input.invoiceId,
@@ -94,8 +94,8 @@ export async function createPackageInvoiceApproval(input: {
   });
 }
 
-export async function getLatestPackageInvoiceApproval(packageId: string) {
-  return prisma.packageInvoiceApproval.findFirst({
+export async function getLatestPackageInvoiceApproval(packageId: string, db: Prisma.TransactionClient = prisma) {
+  return db.packageInvoiceApproval.findFirst({
     where: { packageId },
     orderBy: [{ submittedAt: "desc" }, { id: "desc" }],
   });
@@ -111,8 +111,8 @@ export function packageInvoiceApprovalMatchesInvoice(
 export async function removeStalePendingPackageInvoiceApprovals(input: {
   packageId: string;
   currentInvoiceId: string;
-}) {
-  return prisma.packageInvoiceApproval.deleteMany({
+}, db: Prisma.TransactionClient = prisma) {
+  return db.packageInvoiceApproval.deleteMany({
     where: {
       packageId: input.packageId,
       status: PackageInvoiceApprovalStatus.PENDING_MANAGER,

@@ -1,5 +1,5 @@
-import { StudentContractFlowType } from "@prisma/client";
-import { loadJsonAppSettingForDb, mutateJsonAppSetting } from "@/lib/app-setting-lock";
+import { StudentContractFlowType, type Prisma } from "@prisma/client";
+import { loadJsonAppSettingForDb, mutateJsonAppSettingForDb } from "@/lib/app-setting-lock";
 import { prisma } from "@/lib/prisma";
 import { listParentBillingForPackage, type ParentInvoiceItem, type ParentReceiptItem } from "@/lib/student-parent-billing";
 
@@ -49,9 +49,9 @@ function sanitizeStore(input: unknown): Store {
   return { choices };
 }
 
-async function loadStore() {
+async function loadStore(db: Prisma.TransactionClient = prisma) {
   const { store } = await loadJsonAppSettingForDb(
-    prisma as any,
+    db as any,
     STUDENT_CONTRACT_INVOICE_CHOICE_KEY,
     EMPTY_STORE,
     sanitizeStore
@@ -59,10 +59,10 @@ async function loadStore() {
   return store;
 }
 
-export async function getStudentContractInvoiceChoice(contractId: string) {
+export async function getStudentContractInvoiceChoice(contractId: string, db: Prisma.TransactionClient = prisma) {
   const id = contractId.trim();
   if (!id) return null;
-  const store = await loadStore();
+  const store = await loadStore(db);
   return store.choices.find((choice) => choice.contractId === id) ?? null;
 }
 
@@ -135,7 +135,7 @@ export async function listStudentContractInvoiceOptions(packageId: string) {
   });
 }
 
-export async function saveStudentContractInvoiceChoice(input: {
+export async function saveStudentContractInvoiceChoiceInTransaction(db: Prisma.TransactionClient, input: {
   contractId: string;
   packageId: string;
   mode: StudentContractInvoiceChoiceMode;
@@ -151,18 +151,20 @@ export async function saveStudentContractInvoiceChoice(input: {
   const confirmationNote = String(input.confirmationNote ?? "").trim();
   if (!contractId || !packageId || !selectedBy) throw new Error("Missing contract invoice choice target");
 
-  const contract = await prisma.studentContract.findUnique({
+  await db.$queryRaw`SELECT id FROM "StudentContract" WHERE id=${contractId} FOR UPDATE`;
+  const contract = await db.studentContract.findUnique({
     where: { id: contractId },
     select: { id: true, packageId: true, flowType: true, status: true },
   });
   if (!contract || contract.packageId !== packageId) throw new Error("Contract not found for this package");
+  if(["SIGNED","INVOICE_CREATED","VOID"].includes(contract.status))throw new Error("Signed or void contracts cannot change invoice choice / 已签或已作废合同不能更改发票选择");
   if (contract.flowType !== StudentContractFlowType.RENEWAL) {
     return null;
   }
 
-  const billing = await listParentBillingForPackage(packageId);
+  const billing = await listParentBillingForPackage(packageId, db);
   const invoice = invoiceId ? billing.invoices.find((row) => row.id === invoiceId) ?? null : null;
-  const feeAmount = await prisma.studentContract.findUnique({
+  const feeAmount = await db.studentContract.findUnique({
     where: { id: contractId },
     select: { businessInfoJson: true },
   }).then((row) => Number((row?.businessInfoJson as any)?.feeAmount ?? 0));
@@ -192,9 +194,10 @@ export async function saveStudentContractInvoiceChoice(input: {
     selectedAt: new Date().toISOString(),
   };
 
-  await mutateJsonAppSetting<Store>({
+  await mutateJsonAppSettingForDb<Store>(db as any, {
+    maxRetries:0,
     key: STUDENT_CONTRACT_INVOICE_CHOICE_KEY,
-    fallback: EMPTY_STORE,
+    fallback: {choices:[]},
     sanitize: sanitizeStore,
     mutate(store) {
       store.choices = store.choices.filter((row) => row.contractId !== contractId);
@@ -203,5 +206,11 @@ export async function saveStudentContractInvoiceChoice(input: {
     },
   });
 
+  await db.studentContract.update({where:{id:contractId},data:{updatedAt:new Date()}});
+  await db.auditLog.create({data:{actorEmail:selectedBy,actorRole:"ADMIN",module:"STUDENT_CONTRACT",action:"SET_INVOICE_CHOICE",entityType:"StudentContract",entityId:contractId,meta:{packageId,mode,invoiceId:choice.invoiceId,confirmationNote:choice.confirmationNote}}});
   return choice;
+}
+
+export async function saveStudentContractInvoiceChoice(input: Parameters<typeof saveStudentContractInvoiceChoiceInTransaction>[1]) {
+  return prisma.$transaction(db=>saveStudentContractInvoiceChoiceInTransaction(db,input),{isolationLevel:"Serializable"});
 }

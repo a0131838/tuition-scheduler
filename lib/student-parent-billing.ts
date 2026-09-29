@@ -1,9 +1,9 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit-log";
 import crypto from "crypto";
 import { formatDateOnly, monthKeyFromDateOnly, normalizeDateOnly, normalizeNullableDateOnly } from "@/lib/date-only";
-import { loadJsonAppSettingForDb, mutateJsonAppSetting } from "@/lib/app-setting-lock";
+import { AppSettingConflictError, loadJsonAppSettingForDb, mutateJsonAppSetting, mutateJsonAppSettingForDb } from "@/lib/app-setting-lock";
 import { MINIAPP_TEMPLATE_KEYS, queueMiniappNotificationsForStudent } from "@/lib/miniapp-notifications";
 
 const PARENT_BILLING_KEY = "parent_billing_v1";
@@ -396,7 +396,7 @@ export async function getParentReceiptById(receiptId: string) {
   return store.receipts.find((x) => x.id === receiptId) ?? null;
 }
 
-export async function createParentInvoice(input: {
+export async function createParentInvoiceInTransaction(db: Prisma.TransactionClient, input: {
   packageId: string;
   studentId: string;
   invoiceNo: string;
@@ -437,9 +437,10 @@ export async function createParentInvoice(input: {
     createdAt: now,
     updatedAt: now,
   };
-  await mutateJsonAppSetting({
+  await mutateJsonAppSettingForDb(db as any, {
+    maxRetries: 0,
     key: PARENT_BILLING_KEY,
-    fallback: EMPTY_PARENT_BILLING_STORE,
+    fallback: structuredClone(EMPTY_PARENT_BILLING_STORE),
     sanitize: sanitizeStore,
     mutate(store) {
       ensureUniqueInvoiceNo(store, normalizedInvoiceNo);
@@ -447,14 +448,7 @@ export async function createParentInvoice(input: {
       store.invoices.push(item);
     },
   });
-  await logAudit({
-    actor: { email: input.createdBy, role: "ADMIN" },
-    module: "PARENT_BILLING",
-    action: "CREATE_INVOICE",
-    entityType: "ParentInvoice",
-    entityId: item.id,
-    meta: { packageId: item.packageId, studentId: item.studentId, invoiceNo: item.invoiceNo },
-  });
+  await db.auditLog.create({data:{actorEmail:normalizeEmail(input.createdBy),actorRole:"ADMIN",module:"PARENT_BILLING",action:"CREATE_INVOICE",entityType:"ParentInvoice",entityId:item.id,meta:{packageId:item.packageId,studentId:item.studentId,invoiceNo:item.invoiceNo}}});
   await Promise.all([
     queueMiniappNotificationsForStudent({
       studentId: item.studentId,
@@ -469,7 +463,7 @@ export async function createParentInvoice(input: {
         issueDate: `${item.issueDate}T12:00:00+08:00`,
         note: `发票号 ${item.invoiceNo}`,
       },
-    }),
+    }, db),
     ...(item.totalAmount > 0
       ? [queueMiniappNotificationsForStudent({
           studentId: item.studentId,
@@ -484,10 +478,21 @@ export async function createParentInvoice(input: {
             dueAt: `${item.dueDate}T23:59:00+08:00`,
             totalAmount: item.totalAmount,
           },
-        })]
+        }, db)]
       : []),
-  ]).catch(() => null);
+  ]);
   return item;
+}
+
+/** Persist invoice, audit and notification outbox together; this never sends a notification. */
+export async function createParentInvoice(input: Parameters<typeof createParentInvoiceInTransaction>[1]) {
+  for(let attempt=0;;attempt++) {
+    try { return await prisma.$transaction(db=>createParentInvoiceInTransaction(db,input),{isolationLevel:"Serializable",timeout:15000}); }
+    catch(error){
+      const conflict=error instanceof AppSettingConflictError || (error instanceof Prisma.PrismaClientKnownRequestError && ["P2034","P2002"].includes(error.code));
+      if(!conflict || attempt>=3)throw error;
+    }
+  }
 }
 
 export async function addParentPaymentRecord(input: {
