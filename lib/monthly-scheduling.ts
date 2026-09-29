@@ -1064,6 +1064,71 @@ export function monthlySchedulingOfferView(row: any) {
   };
 }
 
+/** Fresh availability and conflicts used both for suggestions and for taking a hold.
+ * Dated teacher availability remains the monthly planning source; a hold is not a formal booking.
+ */
+async function monthlyOfferFeasibility(database: Prisma.TransactionClient, month: string, studentId: string) {
+  const range = monthlySchedulingRange(month);
+  if (!range) throw new Error("Invalid campaign month / 排课月份无效");
+  const [teachers, sessions, appointments, leaves] = await Promise.all([
+    database.teacher.findMany({
+      include: {
+        dateAvailabilities: { where: { date: { gte: range.start, lt: range.end } } },
+        courseRates: { select: { courseId: true } },
+        classes: { select: { courseId: true } },
+      },
+      orderBy: { name: "asc" },
+    }),
+    database.session.findMany({
+      where: { startAt: { lt: range.end }, endAt: { gt: range.start } },
+      select: {
+        startAt: true,
+        endAt: true,
+        teacherId: true,
+        studentId: true,
+        attendances: { select: { studentId: true, status: true } },
+        class: {
+          select: {
+            teacherId: true,
+            capacity: true,
+            oneOnOneStudentId: true,
+            enrollments: { select: { studentId: true } },
+          },
+        },
+      },
+      take: 10001,
+    }),
+    database.appointment.findMany({
+      where: { startAt: { lt: range.end }, endAt: { gt: range.start } },
+      select: { startAt: true, endAt: true, teacherId: true, studentId: true },
+      take: 5001,
+    }),
+    database.hrLeaveRequest.findMany({
+      where: {status: "APPROVED", startAt: {lt: range.end}, endAt: {gt: range.start}, employee: {teacherId: {not: null}}},
+      select: {startAt: true, endAt: true, employee: {select: {teacherId: true}}}, take: 5001,
+    }),
+  ]);
+  if(sessions.length > 10000 || appointments.length > 5000 || leaves.length > 5000)
+    throw new Error("Too many scheduling records to verify safely; contact school / 排课记录超出安全核验范围，请联系学校");
+  const busyByTeacher = new Map<string, Array<{startAt: Date; endAt: Date}>>();
+  const busyForStudent: Array<{startAt: Date; endAt: Date}> = [];
+  const add = (id: string, row: {startAt: Date; endAt: Date}) => busyByTeacher.set(id, [...(busyByTeacher.get(id) ?? []), row]);
+  for(const row of sessions) {
+    const facts = monthlyStaffingLessonFacts(row);
+    if(facts.teacherBusy) add(row.teacherId ?? row.class.teacherId, row);
+    // Ambiguous historical ownership never proves the student is free.
+    if(facts.studentIds.includes(studentId) || facts.needsReview && row.class.enrollments.some(e => e.studentId === studentId)) busyForStudent.push(row);
+  }
+  for(const row of appointments) {
+    add(row.teacherId, row);
+    if(row.studentId === studentId) busyForStudent.push(row);
+  }
+  for(const row of leaves) if(row.employee.teacherId) add(row.employee.teacherId, row);
+  const free = (teacherId: string, startAt: Date, endAt: Date) =>
+    ![...(busyByTeacher.get(teacherId) ?? []), ...busyForStudent].some(row => startAt < row.endAt && row.startAt < endAt);
+  return {teachers, free};
+}
+
 export async function refreshMonthlySchedulingOffers(itemId: string, db?: Prisma.TransactionClient) {
   const database=db??prisma;
   const item = await database.monthlySchedulingItem.findUnique({
@@ -1078,46 +1143,7 @@ export async function refreshMonthlySchedulingOffers(itemId: string, db?: Prisma
   const parent = normalizeMonthlyAvailability(item.availabilityJson);
   const unavailableDates = new Set(cleanStringList(item.unavailableDatesJson, /^\d{4}-\d{2}-\d{2}$/, 40));
   const durationMin = monthlyOfferDuration(item);
-  const [teachers, sessions, appointments] = await Promise.all([
-    database.teacher.findMany({
-      include: {
-        dateAvailabilities: { where: { date: { gte: range.start, lt: range.end } } },
-        courseRates: { select: { courseId: true } },
-        classes: { select: { courseId: true } },
-      },
-      orderBy: { name: "asc" },
-    }),
-    database.session.findMany({
-      where: { startAt: { gte: range.start, lt: range.end } },
-      select: {
-        startAt: true,
-        endAt: true,
-        teacherId: true,
-        studentId: true,
-        class: {
-          select: {
-            teacherId: true,
-            capacity: true,
-            oneOnOneStudentId: true,
-            enrollments: { select: { studentId: true } },
-          },
-        },
-      },
-      take: 10000,
-    }),
-    database.appointment.findMany({
-      where: { startAt: { gte: range.start, lt: range.end } },
-      select: { startAt: true, endAt: true, teacherId: true },
-      take: 5000,
-    }),
-  ]);
-  const busyByTeacher = new Map<string, Array<{ startAt: Date; endAt: Date }>>();
-  for (const row of sessions) {
-    const teacherId = row.teacherId ?? row.class.teacherId;
-    busyByTeacher.set(teacherId, [...(busyByTeacher.get(teacherId) ?? []), row]);
-  }
-  for (const row of appointments) busyByTeacher.set(row.teacherId, [...(busyByTeacher.get(row.teacherId) ?? []), row]);
-  const busyForStudent = sessions.filter((row) => monthlySchedulingSessionStudentIds(row).includes(item.studentId));
+  const {teachers, free} = await monthlyOfferFeasibility(database, month, item.studentId);
 
   const candidates: Array<{
     teacherId: string;
@@ -1140,13 +1166,13 @@ export async function refreshMonthlySchedulingOffers(itemId: string, db?: Prisma
       for (const rangeRow of ranges) {
         const [startHour, startMinute] = rangeRow.start.split(":").map(Number);
         const [endHour, endMinute] = rangeRow.end.split(":").map(Number);
-        const startMin = ceilQuarter(Math.max(interval.startMin, startHour * 60 + startMinute));
+        const limit = Math.min(interval.endMin, endHour * 60 + endMinute);
+        let startMin = ceilQuarter(Math.max(interval.startMin, startHour * 60 + startMinute));
+        while(startMin + durationMin <= limit && !free(teacher.id, dateMinute(interval.date, startMin), dateMinute(interval.date, startMin + durationMin))) startMin += 15;
         const endMin = startMin + durationMin;
-        if (endMin > Math.min(interval.endMin, endHour * 60 + endMinute)) continue;
+        if (endMin > limit) continue;
         const startAt = dateMinute(interval.date, startMin);
         const endAt = dateMinute(interval.date, endMin);
-        if ((busyByTeacher.get(teacher.id) ?? []).some((row) => startAt < row.endAt && row.startAt < endAt)) continue;
-        if (busyForStudent.some((row) => startAt < row.endAt && row.startAt < endAt)) continue;
         const key = `${weekdayLabel}:${startMin}:${endMin}`;
         const group = groups.get(key) ?? { weekdayLabel, startMin, endMin, preferenceLevel: rangeRow.priority, dates: [] };
         if (MONTHLY_SCHEDULING_TIME_PRIORITIES.indexOf(rangeRow.priority) < MONTHLY_SCHEDULING_TIME_PRIORITIES.indexOf(group.preferenceLevel)) {
@@ -1226,7 +1252,7 @@ async function rankMonthlySchedulingOffersCore(input: {
         campaign: { status: "OPEN" },
         ...(input.parentId ? { student: { parentLinks: { some: { parentId: input.parentId, canCreateRequests: true } } } } : {}),
       },
-      include: { offers: { include: { teacher: { select: { name: true } } } } },
+      include: { campaign: true, offers: { include: { teacher: { select: { name: true } } } } },
     });
     if (!item) throw new Error("This scheduling choice is no longer available");
     const ranked = offerIds.map((id) => item.offers.find((row) => row.id === id && ["AVAILABLE", "HELD"].includes(row.status))).filter(Boolean) as typeof item.offers;
@@ -1242,11 +1268,29 @@ async function rankMonthlySchedulingOffersCore(input: {
       },
       include: { item: { select: { studentId: true, parentId: true } } },
     });
-    const chosen = ranked.find((candidate) => !active.some((held) =>
-      (held.teacherId === candidate.teacherId || held.item.studentId === item.studentId || Boolean(item.parentId && held.item.parentId === item.parentId))
-      && monthlySchedulingOffersConflict(offerSessionDates(candidate.sessionDatesJson), offerSessionDates(held.sessionDatesJson))
-    ));
-    if (!chosen) throw new Error("The selected times were just taken; refresh for new choices");
+    const month = monthlySchedulingMonthKey(item.campaign.month);
+    const feasibility = await monthlyOfferFeasibility(tx, month, item.studentId);
+    const chosen = ranked.find((candidate) => {
+      const dates = offerSessionDates(candidate.sessionDatesJson);
+      // Reject incomplete/corrupt historical options rather than retaining only the valid fragments.
+      if(!Array.isArray(candidate.sessionDatesJson) || !dates.length || dates.length !== candidate.sessionDatesJson.length) return false;
+      const teacher = feasibility.teachers.find(row => row.id === candidate.teacherId);
+      if(!teacher || ![...teacher.courseRates, ...teacher.classes].some(row => row.courseId === item.courseId)) return false;
+      const intervals = intervalsForTeacher({month, dates: teacher.dateAvailabilities});
+      if(!dates.every(date => {
+        const start = new Date(date.startAt), end = new Date(date.endAt);
+        return date.date.startsWith(month + "-") && formatBusinessDateOnly(start) === date.date
+          && start.getTime() === dateMinute(date.date, candidate.startMin).getTime()
+          && end.getTime() === dateMinute(date.date, candidate.endMin).getTime()
+          && candidate.endMin - candidate.startMin === candidate.durationMin && candidate.durationMin > 0
+          && intervals.some(slot => slot.date === date.date && slot.startMin <= candidate.startMin && slot.endMin >= candidate.endMin)
+          && feasibility.free(candidate.teacherId, start, end);
+      })) return false;
+      return !active.some(held =>
+        (held.teacherId === candidate.teacherId || held.item.studentId === item.studentId || Boolean(item.parentId && held.item.parentId === item.parentId))
+        && monthlySchedulingOffersConflict(dates, offerSessionDates(held.sessionDatesJson)));
+    });
+    if (!chosen) throw new Error("The selected times are no longer available; refresh or contact school / 所选时间已不可用，请刷新或联系学校重新提供方案");
     await tx.monthlySchedulingOffer.updateMany({ where: { itemId: item.id, status: "HELD" }, data: { status: "AVAILABLE", holdExpiresAt: null, heldByParentId: null } });
     await tx.monthlySchedulingOffer.updateMany({ where: { itemId: item.id, status: {in: ["AVAILABLE","HELD"]} }, data: { parentRank: null } });
     for (let index = 0; index < ranked.length; index += 1) {

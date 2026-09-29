@@ -691,3 +691,21 @@ Logs: `/tmp/sgt-r444-all-tests.log`, `/tmp/sgt-r444-tsc.log`, `/tmp/sgt-r444-bui
 ---
 
 Logs: `/tmp/sgt-r445-backend.log`, `/tmp/sgt-r445-tsc-final.log`, `/tmp/sgt-r445-build-final.log`, `/tmp/sgt-r445-http-final.log`.
+
+## 2026-09-29-r446
+
+- Release ID: `2026-09-29-r446`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; guarded release proof is recorded in the execution ledger.
+- Problem: monthly options only tried the start of each availability window and treated cancelled lessons as busy. Taking a hold checked competing holds but not lessons, appointments, leave or dated availability changed since generation.
+- Change: search subsequent quarter-hour starts within the same parent/teacher window; share fresh feasibility checks between generation and the serializable ranking transaction. Respect exact roster/cancellation, student appointments with other teachers, approved HR leave, overlapping month-boundary records, current teacher qualification and dated availability. Reject incomplete historical options and oversized scans rather than silently dropping evidence. Keep ranked fallback choices, historic offer generations, parent permissions and atomic audit behavior.
+- Validation:51 focused and751 full regression tests passed; final TypeScript and260-page production build passed. Isolated service UAT covers later free starts, cancelled lessons, student appointments, newly inserted formal lessons, changed availability, leave, month boundary, fallback choice, forced audit rollback and unchanged teaching/ledger/outbox during holds. Existing family/preference UAT and authenticated parent/staff HTTP passed; stale option409 and newly feasible hold200 verified. No new page or layout.
+- Migration: none. No production lessons, attendance, leave, deductions, approvals or messages created or changed for testing. No WeChat package published.
+- Limit: proposed times and temporary holds remain distinct from formal booking; room/travel and final scheduling rules still run through formal scheduling. Dated availability remains the existing monthly planning source. No legacy choices are automatically rewritten.
+- Remaining: phase5 staff acceptance/expiry follow-up and overall phases4–10; programme remains in progress.
+- Rollback point: `600468e2e38556dec449ea7fb7d7e3469a977054` (r445).
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
+Logs: `/tmp/sgt-r446-all-tests.log`, `/tmp/sgt-r446-build.log`, `/tmp/sgt-r446-tsc-final.log`, `/tmp/sgt-r446-uat.log`, `/tmp/sgt-r446-http.log`, `/tmp/sgt-r446-family-http.log`, `/tmp/sgt-r446-preference-http.log`.

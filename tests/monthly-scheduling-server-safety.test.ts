@@ -35,7 +35,8 @@ test("parent concrete-time selection uses serializable holds and staff acceptanc
   assert.match(service, /status: "ACCEPTED"/);
   assert.match(parentRoute, /RANK_OFFERS/);
   assert.match(staffRoute, /READY_CONFIRM/);
-  assert.match(service, /monthlySchedulingSessionStudentIds\(row\)\.includes\(item\.studentId\)/);
+  assert.match(service, /facts\.studentIds\.includes\(studentId\)/);
+  assert.match(service, /monthlyOfferFeasibility\(tx, month, item\.studentId\)/);
   assert.match(service, /item: \{ studentId: item\.studentId \}/);
   assert.match(service, /held\.item\.studentId === item\.studentId/);
   assert.match(service, /held\.item\.parentId === item\.parentId/);
