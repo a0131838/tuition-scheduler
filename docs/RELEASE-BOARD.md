@@ -1,4 +1,19 @@
 # RELEASE BOARD
+## 2026-09-30-r465
+
+- Release ID: `2026-09-30-r465`
+- Date/Time (Asia/Singapore): `2026-09-30`
+- Deployment status: `READY`; live evidence belongs in the execution ledger.
+- Problem: HR draft save checked status before a later upsert, permitting a stale save to overwrite approved amounts. Draft/status changes committed before their audit, and the service trusted captured caller identity and page-only role checks.
+- Change: payroll draft and approval writes use Serializable transactions with current locked account/workspace/manager rights, employee/draft locks, displayed updatedAt checks and atomic full before/after audit. Existing HR-versus-finance approval assignments and transition graph are retained; paid marking requires a reference. Observers cannot write and stale forms must reload. Invalid numeric amounts are rejected without changing the existing calculation. Payroll page labels, statuses and success messages now follow EN/ZH/BILINGUAL and observer mutation controls are hidden.
+- Validation:765 unit/source tests,260-page build and TypeScript passed. Isolated service UAT covers audit rollback for create/edit/approval/payment, stale/approved draft denial, current roles and revoked HR workspace/manager ACL, concurrent create/save-versus-approval/payment, unchanged formula/history and unrelated package/outbox records. Actual HTTP forms cover draft save, stale paid-record edit denial, HR→finance→director→paid, role/observer/skip rejection, repeat approval, required payment reference and exact employee PDF visibility only after approval. Three-language rendered copy passed; bilingual desktop and375px form/header inspected, browser console empty.
+- Compatibility: no migration, no production business acceptance writes, no real payments/sender or WeChat client release. HR payslips remain separate from teacher lesson payroll. Already-open old forms lacking a version must refresh. The existing HR-manager director-step policy is preserved; no new organizational approver rule is inferred.
+- Remaining: phase7 HR leave/training/material boundaries, existing HR-workspace-only teacher admin-entry inconsistency, phase6 remaining delivery operations and phase8/9 full route/language/mobile acceptance; phase10 unified delivery pending. The HTTP HR actor uses an existing supported ADMIN+HR account; this does not claim the teacher-only HR entry works.
+- Rollback reference: `b09c8ded8a8306037f6bbf7770018a13dc3c24f4` (r464). No schema rollback; reverting restores the split-write and stale-save risks.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
 ## 2026-09-30-r464
 
 - Release ID: `2026-09-30-r464`
@@ -967,7 +982,7 @@
 ---
 
 
-- Current release: `2026-09-30-r464` prepared; guarded deployment evidence is recorded in the execution ledger after version/PM2/HTTP verification.
+- Current release: `2026-09-30-r465` prepared; guarded deployment evidence is recorded in the execution ledger after version/PM2/HTTP verification.
 
 ## 2026-09-09-r404 Ready
 
