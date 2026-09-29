@@ -18,3 +18,8 @@ test("finance is read-only and unrelated roles cannot open the desk", () => {
   assert.equal(finance.canManage, false);
   assert.equal(monthlySchedulingAccessFor({ role: "TEACHER", workspaces: [], manager: false }).canView, false);
 });
+
+test("observer retains visibility but cannot manage through an old session", () => {
+  const access = monthlySchedulingAccessFor({role:"ADMIN",workspaces:[],manager:false,isObserver:true});
+  assert.equal(access.canView,true);assert.equal(access.canManage,false);assert.equal(access.canViewStaffing,true);
+});

@@ -1,4 +1,20 @@
 # CHANGELOG LIVE
+## 2026-09-29-r448
+
+- Release ID: `2026-09-29-r448`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; live proof is recorded in the execution ledger.
+- Problem: staff could accept an unexpired parent hold even after availability changed, a formal lesson was added or another arrangement reserved the same time. Closed campaigns and multiple inconsistent held records were not checked at this transition.
+- Change: share the r446 fresh feasibility predicate between parent ranking and staff acceptance inside their serializable transactions. Accept only one unexpired held choice in an OPEN campaign; preserve the parent's specific choice and reject fresh conflicts without changing offer history. Audit records the exact accepted offer ID. Current observer identity disables monthly management and rejects direct status writes independently of a session cookie marker.
+- Validation:753 full tests, final TypeScript and260-page production build passed. Isolated service UAT checks changed dated availability, competing accepted offer, new formal lesson, cancellation, closed campaign, expiry, multiple holds, audit rollback, observer denial and concurrent acceptance once. Accept→explicit formal lesson fixture→exact-ID completion passed; acceptance itself leaves teaching, ledger and outbox unchanged. Parent hold, staff status and authenticated Mini Program HTTP regressions passed, including stale409/valid200/repeated409.
+- Migration: none. No production lessons, holds, attendance, payments or messages changed for testing; no WeChat package published. New errors are bilingual; layouts and old links remain.
+- Workflow: accept the held arrangement before creating formal lessons, then verify exact lesson IDs. A conflicting existing formal lesson is retained for review; this change does not infer that it belongs to the held option. Existing historical completion/notes remain available after campaign closure; only taking a new acceptance requires reopening.
+- Remaining: phase5 pause/exclusion reservation lifecycle review, phase6 service delivery, phase7 communication publication/sync safety, phase8–10 acceptance and delivery. Overall programme remains in progress.
+- Rollback point: `9a627eed370f4f92c8782538ed46bec1feab15fe` (r447).
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
 ## 2026-09-29-r447
 
 - Release ID: `2026-09-29-r447`

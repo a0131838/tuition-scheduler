@@ -3,7 +3,7 @@ import { assertMonthlyStaffStatusChange } from "./monthly-scheduling-status-poli
 import { resolveAttendanceRoster } from "./session-attendance-roster";
 import { completionSessionInclude, verifyMonthlySchedule, monthlyCompletionReviews } from "./monthly-scheduling-completion";
 import crypto from "crypto";
-import { Prisma } from "@prisma/client";
+import { Prisma, type MonthlySchedulingOffer } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
 import { renderPublishedCommunicationTemplate } from "@/lib/parent-communication-templates";
@@ -476,13 +476,22 @@ export async function updateMonthlySchedulingItem(input: {
       throw new Error("This item changed; refresh and try again / 记录已变化，请刷新重试");
     const actor = input.ownerUserId ? await tx.user.findUnique({where:{id:input.ownerUserId}}) : null;
     if (!actor) throw new Error("Authenticated staff required / 需要已登录员工身份");
+    if (actor.isObserver) throw new Error("Observer account is read-only / 观察者账号不能修改系统数据");
     if (["PAUSED","EXCLUDED"].includes(input.status) && (input.internalNote?.trim().length ?? 0) < 5)
       throw new Error("Record the pause or exclusion reason / 请填写暂停或排除原因（至少5字）");
     assertMonthlyStaffStatusChange(item,input.status,input.internalNote);
     const now = new Date();
+    let acceptedOfferId: string | null = null;
     if (input.status === "MATCHED" && item.status === "PARENT_SELECTED") {
-      const offer = item.offers.filter(o=>o.status==='HELD').sort((a,b)=>(a.parentRank??999)-(b.parentRank??999))[0];
+      if(item.campaign.status !== "OPEN")
+        throw new Error("Reopen the campaign before accepting a time choice / 请先重新开放排课活动，再接受选时");
+      const held = item.offers.filter(o=>o.status==='HELD');
+      if(held.length !== 1) throw new Error("The time hold needs review; ask the parent to select again / 临时保留记录需核对，请家长重新选时");
+      const offer = held[0];
       if (!offer || !offer.holdExpiresAt || offer.holdExpiresAt <= now) throw new Error("The parent time hold expired; ask the parent to select again / 家长选时已过期，请重新选择");
+      const feasible = await feasibleMonthlyOffers(tx, item, [offer], now);
+      if(!feasible.length) throw new Error("The held time is no longer available; review the timetable and ask the parent to select again / 保留时间已不可用，请核对正式课表并请家长重新选时");
+      acceptedOfferId = offer.id;
       await tx.monthlySchedulingOffer.update({where:{id:offer.id},data:{status:"ACCEPTED",acceptedAt:now,holdExpiresAt:null}});
       await tx.monthlySchedulingOffer.updateMany({where:{itemId:item.id,id:{not:offer.id},status:{in:["AVAILABLE","HELD"]}},data:{status:"WITHDRAWN",holdExpiresAt:null}});
     }
@@ -511,7 +520,7 @@ export async function updateMonthlySchedulingItem(input: {
       pausedAt:transitioning&&input.status==='PAUSED'?now:undefined}});
     await tx.auditLog.create({data:{actorEmail:actor.email,actorName:actor.name,actorRole:actor.role,module:'MONTHLY_SCHEDULING',
       action:'ITEM_STATUS_VERIFIED',entityType:'MonthlySchedulingItem',entityId:item.id,
-      meta:{before:{status:item.status,ownerUserId:item.ownerUserId,internalNote:item.internalNote,scheduleEvidenceJson:item.scheduleEvidenceJson},
+      meta:{acceptedOfferId,before:{status:item.status,ownerUserId:item.ownerUserId,internalNote:item.internalNote,scheduleEvidenceJson:item.scheduleEvidenceJson},
         after:{status:row.status,ownerUserId:row.ownerUserId,internalNote:row.internalNote,scheduleEvidenceJson:row.scheduleEvidenceJson}}}});
     return row;
   },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
@@ -1229,6 +1238,48 @@ export function monthlySchedulingOffersConflict(left: OfferSessionDate[], right:
   return left.some((a) => right.some((b) => new Date(a.startAt) < new Date(b.endAt) && new Date(b.startAt) < new Date(a.endAt)));
 }
 
+/** Used inside the caller's serializable transaction at both hold and staff acceptance. */
+async function feasibleMonthlyOffers(
+  tx: Prisma.TransactionClient,
+  item: {id:string;studentId:string;courseId:string;parentId:string|null;campaign:{month:Date}},
+  candidates: MonthlySchedulingOffer[],
+  now: Date,
+) {
+  const teacherIds = unique(candidates.map((row) => row.teacherId));
+  const active = await tx.monthlySchedulingOffer.findMany({
+    where: {
+      itemId: { not: item.id },
+      AND: [
+        { OR: [{ status: "ACCEPTED" }, { status: "HELD", holdExpiresAt: { gt: now } }] },
+        { OR: [{ teacherId: { in: teacherIds } }, { item: { studentId: item.studentId } }, ...(item.parentId ? [{ item: { parentId: item.parentId } }] : [])] },
+      ],
+    },
+    include: { item: { select: { studentId: true, parentId: true } } },
+  });
+  const month = monthlySchedulingMonthKey(item.campaign.month);
+  const feasibility = await monthlyOfferFeasibility(tx, month, item.studentId);
+  return candidates.filter((candidate) => {
+    const dates = offerSessionDates(candidate.sessionDatesJson);
+    // Reject incomplete/corrupt historical options rather than retaining only the valid fragments.
+    if(!Array.isArray(candidate.sessionDatesJson) || !dates.length || dates.length !== candidate.sessionDatesJson.length) return false;
+    const teacher = feasibility.teachers.find(row => row.id === candidate.teacherId);
+    if(!teacher || ![...teacher.courseRates, ...teacher.classes].some(row => row.courseId === item.courseId)) return false;
+    const intervals = intervalsForTeacher({month, dates: teacher.dateAvailabilities});
+    if(!dates.every(date => {
+      const start = new Date(date.startAt), end = new Date(date.endAt);
+      return date.date.startsWith(month + "-") && formatBusinessDateOnly(start) === date.date
+        && start.getTime() === dateMinute(date.date, candidate.startMin).getTime()
+        && end.getTime() === dateMinute(date.date, candidate.endMin).getTime()
+        && candidate.endMin - candidate.startMin === candidate.durationMin && candidate.durationMin > 0
+        && intervals.some(slot => slot.date === date.date && slot.startMin <= candidate.startMin && slot.endMin >= candidate.endMin)
+        && feasibility.free(candidate.teacherId, start, end);
+    })) return false;
+    return !active.some(held =>
+      (held.teacherId === candidate.teacherId || held.item.studentId === item.studentId || Boolean(item.parentId && held.item.parentId === item.parentId))
+      && monthlySchedulingOffersConflict(dates, offerSessionDates(held.sessionDatesJson)));
+  });
+}
+
 async function rankMonthlySchedulingOffersCore(input: {
   itemId: string;
   offerIds: string[];
@@ -1257,39 +1308,8 @@ async function rankMonthlySchedulingOffersCore(input: {
     if (!item) throw new Error("This scheduling choice is no longer available");
     const ranked = offerIds.map((id) => item.offers.find((row) => row.id === id && ["AVAILABLE", "HELD"].includes(row.status))).filter(Boolean) as typeof item.offers;
     if (ranked.length !== offerIds.length) throw new Error("One or more time choices are invalid");
-    const teacherIds = unique(ranked.map((row) => row.teacherId));
-    const active = await tx.monthlySchedulingOffer.findMany({
-      where: {
-        itemId: { not: item.id },
-        AND: [
-          { OR: [{ status: "ACCEPTED" }, { status: "HELD", holdExpiresAt: { gt: now } }] },
-          { OR: [{ teacherId: { in: teacherIds } }, { item: { studentId: item.studentId } }, ...(item.parentId ? [{ item: { parentId: item.parentId } }] : [])] },
-        ],
-      },
-      include: { item: { select: { studentId: true, parentId: true } } },
-    });
-    const month = monthlySchedulingMonthKey(item.campaign.month);
-    const feasibility = await monthlyOfferFeasibility(tx, month, item.studentId);
-    const chosen = ranked.find((candidate) => {
-      const dates = offerSessionDates(candidate.sessionDatesJson);
-      // Reject incomplete/corrupt historical options rather than retaining only the valid fragments.
-      if(!Array.isArray(candidate.sessionDatesJson) || !dates.length || dates.length !== candidate.sessionDatesJson.length) return false;
-      const teacher = feasibility.teachers.find(row => row.id === candidate.teacherId);
-      if(!teacher || ![...teacher.courseRates, ...teacher.classes].some(row => row.courseId === item.courseId)) return false;
-      const intervals = intervalsForTeacher({month, dates: teacher.dateAvailabilities});
-      if(!dates.every(date => {
-        const start = new Date(date.startAt), end = new Date(date.endAt);
-        return date.date.startsWith(month + "-") && formatBusinessDateOnly(start) === date.date
-          && start.getTime() === dateMinute(date.date, candidate.startMin).getTime()
-          && end.getTime() === dateMinute(date.date, candidate.endMin).getTime()
-          && candidate.endMin - candidate.startMin === candidate.durationMin && candidate.durationMin > 0
-          && intervals.some(slot => slot.date === date.date && slot.startMin <= candidate.startMin && slot.endMin >= candidate.endMin)
-          && feasibility.free(candidate.teacherId, start, end);
-      })) return false;
-      return !active.some(held =>
-        (held.teacherId === candidate.teacherId || held.item.studentId === item.studentId || Boolean(item.parentId && held.item.parentId === item.parentId))
-        && monthlySchedulingOffersConflict(dates, offerSessionDates(held.sessionDatesJson)));
-    });
+    const feasible = await feasibleMonthlyOffers(tx, item, ranked, now);
+    const chosen = feasible[0];
     if (!chosen) throw new Error("The selected times are no longer available; refresh or contact school / 所选时间已不可用，请刷新或联系学校重新提供方案");
     await tx.monthlySchedulingOffer.updateMany({ where: { itemId: item.id, status: "HELD" }, data: { status: "AVAILABLE", holdExpiresAt: null, heldByParentId: null } });
     await tx.monthlySchedulingOffer.updateMany({ where: { itemId: item.id, status: {in: ["AVAILABLE","HELD"]} }, data: { parentRank: null } });
