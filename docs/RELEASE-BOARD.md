@@ -1,4 +1,20 @@
 # RELEASE BOARD
+## 2026-09-29-r442
+
+- Release ID: `2026-09-29-r442`
+- Date/Time (Asia/Singapore): `2026-09-29`
+- Deployment status: `READY`; guarded release proof is recorded in the execution ledger.
+- Problem: in a stable local production build, Apply saved the chosen language but left server-rendered headings/navigation in the previous language. Admin loading text was always Chinese.
+- Change: after a successful existing language API response, admin and teacher controls reload the current page from the persisted preference. Inputs remain disabled during saving, failure restores retry, and applying a changed language explains that unfinished edits should be saved first. Admin scroll restoration is best-effort and scoped to the current path. Admin loading now uses the user's ZH/EN/BILINGUAL preference; teacher labels/errors are translated.
+- Validation:181 backend tests,TypeScript and260-page production build. Authenticated browser switches admin EN/ZH/BILINGUAL and teacher EN/ZH/BILINGUAL without an extra manual reload; page headings and navigation agree with the selected language. Actual authenticated HTTP rendering verifies loading strings in all three modes and restores bilingual preference. No new console errors beyond the previously recorded r434 hydration entry.
+- Migration: none. Existing language endpoints, accounts and permissions remain; no business records or messages used for acceptance. No WeChat client package.
+- Risk: applying language reloads the page and can discard unfinished edits, explicitly explained before applying. Broader hardcoded labels on existing screens still need the planned route-by-route pass; this is not a claim of complete system translation.
+- Remaining: phases4/5 final acceptance,6/7 service integration,8 inventory/language pass,9 regression and10 delivery. Overall programme remains in progress.
+- Rollback point: `44d4a995b3e63945b7db45749c9334c15d3c2ca8` (r441).
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
 ## 2026-09-29-r441
 
 - Release ID: `2026-09-29-r441`
@@ -614,7 +630,7 @@
 ---
 
 
-- Current release line on this branch: `2026-09-29-r441`, ready for guarded release of student business-history deletion protection. Overall programme remains in progress; no Mini Program client release.
+- Current release line on this branch: `2026-09-29-r442`, ready for guarded release of consistent admin/teacher language application. Overall programme remains in progress; no Mini Program client release.
 
 ## 2026-09-09-r404 Ready
 

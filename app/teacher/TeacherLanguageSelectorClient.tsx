@@ -1,16 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 export default function TeacherLanguageSelectorClient({
   initialLang,
 }: {
   initialLang: "BILINGUAL" | "ZH" | "EN" | string;
 }) {
-  const router = useRouter();
   const [lang, setLang] = useState(String(initialLang || "BILINGUAL"));
   const [saving, setSaving] = useState(false);
+  const label=(en:string,zh:string)=>lang==='EN'?en:lang==='ZH'?zh:`${en} / ${zh}`;
 
   async function apply() {
     if (saving) return;
@@ -22,11 +21,10 @@ export default function TeacherLanguageSelectorClient({
         body: JSON.stringify({ lang }),
       });
       const data = (await res.json()) as any;
-      if (!res.ok || !data?.ok) throw new Error(String(data?.message ?? "Apply failed"));
-      router.refresh();
+      if (!res.ok || !data?.ok) throw new Error(String(data?.message ?? label("Unable to save language preference","无法保存语言设置")));
+      window.location.reload();
     } catch (e: any) {
-      alert(e?.message ?? "Apply failed");
-    } finally {
+      alert(e?.message ?? label("Unable to save language preference","无法保存语言设置"));
       setSaving(false);
     }
   }
@@ -35,6 +33,8 @@ export default function TeacherLanguageSelectorClient({
     <div className="language-selector" style={{ display: "inline-flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
       <select
         name="lang"
+        aria-label={label("Language","语言")}
+        disabled={saving}
         value={lang}
         onChange={(e) => setLang(e.target.value)}
         style={{ minWidth: 146, padding: "6px 8px", borderRadius: 10, border: "1px solid #cbd5e1", background: "#fff", fontSize: 12 }}
@@ -60,8 +60,9 @@ export default function TeacherLanguageSelectorClient({
           flex: "0 0 auto",
         }}
       >
-        {saving ? "..." : "Apply / 应用"}
+        {saving ? label("Saving…","保存中…") : label("Apply","应用")}
       </button>
+      {lang !== initialLang && <small style={{flexBasis:"100%",textAlign:"right",color:"#64748b"}}>{label("Save unfinished edits before applying the language; the page will reload.","应用语言将重新加载页面，请先保存未完成的编辑。")}</small>}
     </div>
   );
 }
