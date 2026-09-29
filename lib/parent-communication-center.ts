@@ -1,3 +1,4 @@
+import {retryCommunicationNotification} from "./communication-notification-retry";
 import {communicationDeliveryEvidence} from "./communication-delivery-evidence";
 import {requireCommunicationWriteAccess} from "./communication-write-access";
 import crypto from "crypto";
@@ -891,10 +892,6 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
   };
 }
 
-async function auditTask(actor: CommunicationActor, action: string, taskId: string, meta?: Prisma.JsonValue) {
-  await logAudit({ actor, module: "COMMUNICATION", action, entityType: "ParentCommunicationTask", entityId: taskId, meta });
-}
-
 type CommunicationUpdateInput = {
   id: string;
   action: string;
@@ -1064,33 +1061,7 @@ export async function updateParentCommunicationTask(input: CommunicationUpdateIn
   if (["publish_feedback", "return_feedback"].includes(input.action)) return reviewCommunicationFeedback(input);
   if (["claim", "transfer", "copy", "manual_sent", "waive", "share_card"].includes(input.action)) return updateCommunicationTaskAtomically(input);
 
-  const task = await prisma.parentCommunicationTask.findUnique({ where: { id: input.id } });
-  if (!task) throw new Error("Communication task not found");
-  const now = new Date();
-  if (input.action === "retry_auto") {
-    if (task.feedbackId) return prisma.$transaction(async tx => {
-      const actor = await requireCommunicationWriteAccess(tx, input.actor.id);
-      const feedback = await tx.sessionFeedback.findUnique({where:{id:task.feedbackId!}});
-      if (!feedback || feedback.reviewStatus !== "PUBLISHED" || !feedback.publishedAt || feedback.isProxyDraft)
-        throw new Error("Publish the reviewed feedback before retrying / 请先审核发布反馈再重试");
-      const publication = await tx.auditLog.findFirst({where:{module:"COMMUNICATION",action:"PUBLISH_FEEDBACK",meta:{path:["feedbackId"],equals:feedback.id}},orderBy:{createdAt:"desc"},select:{meta:true}});
-      const meta = publication?.meta as {notificationTargetId?: string} | undefined;
-      if (!meta?.notificationTargetId && await tx.miniappNotificationOutbox.findFirst({where:{targetType:"SessionFeedback",targetId:{startsWith:`${feedback.id}:revision:`}},select:{id:true}}))
-        throw new Error("Historical notification revision needs review / 历史通知版本需先核对");
-      const targetId = meta?.notificationTargetId ?? feedback.id;
-      const result = await tx.miniappNotificationOutbox.updateMany({where:{targetType:"SessionFeedback",targetId,status:"FAILED"},data:{status:"PENDING",scheduledAt:new Date(),sentAt:null,error:null}});
-      await tx.auditLog.create({data:{actorEmail:actor.email,actorName:actor.name,actorRole:actor.role,module:"COMMUNICATION",action:"RETRY_AUTOMATIC_NOTIFICATION",entityType:"ParentCommunicationTask",entityId:task.id,meta:{count:result.count,targetId,invalidatedRevisionsRetained:true}}});
-      return {...task,retryCount:result.count};
-    }, {isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:15000});
-    const where: Prisma.MiniappNotificationOutboxWhereInput = task.feedbackId
-      ? { targetType: "SessionFeedback", targetId: task.feedbackId, status: { in: ["FAILED", "SKIPPED"] } }
-      : task.sessionId
-        ? { targetType: "Session", targetId: { startsWith: `${task.sessionId}:` }, status: { in: ["FAILED", "SKIPPED"] } }
-        : { id: "__none__" };
-    const result = await prisma.miniappNotificationOutbox.updateMany({ where, data: { status: "PENDING", scheduledAt: now, sentAt: null, error: null } });
-    await auditTask(input.actor, "RETRY_AUTOMATIC_NOTIFICATION", task.id, { count: result.count });
-    return { ...task, retryCount: result.count };
-  }
+  if (input.action === "retry_auto") return retryCommunicationNotification(input.id, input.actor.id);
 
   throw new Error("Unsupported communication action");
 }

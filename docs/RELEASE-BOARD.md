@@ -1,4 +1,19 @@
 # RELEASE BOARD
+## 2026-09-30-r461
+
+- Release ID: `2026-09-30-r461`
+- Date/Time (Asia/Singapore): `2026-09-30`
+- Deployment status: `READY`; live proof belongs in the execution ledger.
+- Problem: lesson retry revived FAILED/SKIPPED records by lesson prefix, reset their expiry clock and committed before audit. Feedback retry could affect other recipients and trust an unrelated audit target.
+- Change: both retry paths share a current-actor, exact-task/parent/student/target Serializable transaction. Only FAILED records are eligible. Lesson roster/cancellation, current parent permission/openId, current notification content and the original reminder window are checked. Feedback requires the latest evidenced publication identity and current published content metadata. Ambiguous history/combined lessons, changed content and expired notifications return bilingual review errors. Retry preserves original scheduledAt and delivery history; audit includes exact outbox/recipient and previous failure. Repeated retry does not create another audit or revive SKIPPED, PROCESSING or SENT records.
+- Validation:763 tests, final260-page build and TypeScript passed. Isolated UAT covers exact recipient/student, current roles, concurrent/repeated retry once, forced audit rollback, skipped preservation, original expiry, changed timetable/content/openId/permissions/cancellation, ambiguous combined lessons, feedback target/revision isolation and returned feedback denial. Existing feedback publication/return/retry rollback regression passed with an explicitly bound fake recipient. Actual Web and Mini Program HTTP retry/replay/combined-link rejection passed.
+- Compatibility: no schema migration, routes/payloads retained, no sender execution or production business test writes, no WeChat client publication. Expired or invalid historical failures now require review instead of being blindly requeued. No entire mobile/visual/language acceptance claim.
+- Remaining: teacher-save/task-sync atomicity and sender pre-send validation with mocked transport; cross-role/lifecycle/route/mobile/language acceptance and unified delivery remain incomplete. This retry guard cannot revoke PROCESSING or SENT work or protect later edits after a successful retry by itself.
+- Rollback reference: `bdf63423933e186b148e6cdba6c37855ec87e0af` (r460).
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
 ## 2026-09-30-r460
 
 - Release ID: `2026-09-30-r460`
@@ -907,7 +922,7 @@
 ---
 
 
-- Current release line on this branch: `2026-09-30-r460`, ready for guarded release of current actor authorization and evidence for manual communication actions. Overall programme remains in progress; no Mini Program client release.
+- Current release line on this branch: `2026-09-30-r461`, ready for guarded release of exact recipient/current-source automatic notification retry. Overall programme remains in progress; no Mini Program client release.
 
 ## 2026-09-09-r404 Ready
 
