@@ -12,7 +12,6 @@ import {
   parseParentFeedbackSections,
 } from "@/lib/parent-feedback-format";
 import { prisma } from "@/lib/prisma";
-import { ensureFeedbackCommunicationTasks } from "@/lib/parent-communication-center";
 import { feedbackAttachmentDto } from "@/lib/feedback-attachments";
 
 function previousHomeworkValue(value: boolean | null | undefined) {
@@ -167,7 +166,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ sessionId: str
       reviewStatus: "PENDING_REVIEW",
     },
   });} catch(e){return bad(e instanceof Error?e.message:"Feedback changed; reload / 反馈状态已变化，请刷新",409);}
-  await ensureFeedbackCommunicationTasks(savedFeedback.id).catch(() => null);
 
   return ok({
     feedbackId: savedFeedback.id,

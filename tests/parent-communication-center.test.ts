@@ -29,9 +29,13 @@ test("teacher feedback submission now enters academic review instead of directly
   ]) {
     const source = await readFile(path, "utf8");
     assert.match(source, /reviewStatus:\s*"PENDING_REVIEW"/);
-    assert.match(source, /ensureFeedbackCommunicationTasks/);
+    assert.match(source, /saveTeacherFeedbackReviewed/);
+    assert.doesNotMatch(source, /ensureFeedbackCommunicationTasks/);
     assert.doesNotMatch(source, /queueFirstPublishedFeedback/);
   }
+  const save = await readFile(new URL("../lib/teacher-feedback-save.ts", import.meta.url), "utf8");
+  assert.match(save, /ensureFeedbackCommunicationTasks\(feedback.id,tx\)/);
+  assert.doesNotMatch(save, /queueFirstPublishedFeedback/);
 });
 
 test("parent feedback APIs only expose published parent-facing content", async () => {
@@ -238,7 +242,7 @@ test("presentation-only reminder changes compare real course lines and never lea
   assert.deepEqual(reminderScheduleLines(before), reminderScheduleLines(after));
   assert.notDeepEqual(reminderScheduleLines(before), reminderScheduleLines(changedCourse));
   const source = await readFile(new URL("../lib/parent-communication-center.ts", import.meta.url), "utf8");
-  assert.match(source, /const \{ presentationOnlyIfBodyUnchanged = false, forceCourseCancelled = false, \.\.\.taskData \} = input/);
+  assert.match(source, /const \{ presentationOnlyIfBodyUnchanged = false, forceCourseCancelled = false, sourceFingerprint, \.\.\.taskData \} = input/);
   assert.match(source, /data: \{ \.\.\.taskData/);
   assert.doesNotMatch(source, /data: \{ \.\.\.input/);
 });

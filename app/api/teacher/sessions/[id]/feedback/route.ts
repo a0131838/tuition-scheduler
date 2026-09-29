@@ -13,7 +13,6 @@ import {
   getMissingParentFeedbackSectionLabels,
   parseParentFeedbackSections,
 } from "@/lib/parent-feedback-format";
-import { ensureFeedbackCommunicationTasks } from "@/lib/parent-communication-center";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -146,7 +145,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       reviewStatus: "PENDING_REVIEW",
     },
   });} catch(e){return bad(e instanceof Error?e.message:"Feedback changed; reload / 反馈状态已变化，请刷新",409);}
-  await ensureFeedbackCommunicationTasks(savedFeedback.id).catch(() => null);
 
   return Response.json({
     ok: true,

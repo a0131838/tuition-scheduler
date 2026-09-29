@@ -1,4 +1,19 @@
 # RELEASE BOARD
+## 2026-09-30-r462
+
+- Release ID: `2026-09-30-r462`
+- Date/Time (Asia/Singapore): `2026-09-30`
+- Deployment status: `READY`; live evidence belongs in the execution ledger.
+- Problem: both teacher clients saved feedback before a swallowed communication-sync failure. Task fingerprints only hashed the260-character preview, so a long-tail edit or same-text resubmission could leave feedback awaiting review with only a closed historical delivery task.
+- Change: teacher submission, review state, current communication obligation, invalidation of pending/failed old notifications and submission audit now commit together under the existing lesson lock. Current submitting-account observer/profile binding is checked. Feedback tasks have an explicit submission identity and full source fingerprint. Obsolete open obligations become SUPERSEDED with replacement audit; completed/waived/manual-send records and original publication content/timestamps remain historical. Repeated sync preserves one current obligation. Review/retry rejects replaced tasks; return does not reopen them and they do not block forwarding completion. Both teacher APIs use this shared transaction without swallowing sync failures.
+- Validation:763 tests,260-page build and final TypeScript passed. Isolated UAT covers forced task-sync and submission-audit rollback, same-preview long-tail edits, same-text resubmission, completed/waived history, exactly one current review, current publish/return/forwarding, stale task denial, pending notification invalidation with SENT/PROCESSING unchanged, fresh observer/profile denial and concurrent submission. Existing publication/retry, non-teaching policy and deletion-vs-feedback race regressions passed. Actual Web and staff Mini Program HTTP submissions preserve one current review; observer writes denied. Two existing source assertions were updated to follow the shared transaction and stripped fingerprint control field; checks retained.
+- Compatibility: no schema migration or bulk history cleanup, no production business acceptance writes, no sender run or WeChat client publication. Web/shared labels and errors include EN/ZH. Older installed Mini Program clients may display the literal SUPERSEDED state in history; full client language/display acceptance remains open.
+- Remaining: mocked sender pre-send source validity; full lifecycle/route/role/mobile/language acceptance and unified delivery. Already PROCESSING/SENT notifications are not revoked, and original publication/forwarding timestamps remain history rather than evidence of the current unpublished submission.
+- Rollback reference: `c056ca1171aa1446f0d9f464720d5102d2f2c53b` (r461). No schema rollback; reverting restores the prior split-save and preview-fingerprint defects.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
 ## 2026-09-30-r461
 
 - Release ID: `2026-09-30-r461`
@@ -922,7 +937,7 @@
 ---
 
 
-- Current release line on this branch: `2026-09-30-r461`, ready for guarded release of exact recipient/current-source automatic notification retry. Overall programme remains in progress; no Mini Program client release.
+- Current release line on this branch: `2026-09-30-r462`, ready for guarded release of atomic teacher submission and current feedback review obligations. Overall programme remains in progress; no Mini Program client release.
 
 ## 2026-09-09-r404 Ready
 

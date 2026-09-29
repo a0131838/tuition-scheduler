@@ -11,6 +11,7 @@ export async function retryCommunicationNotification(taskId:string,userId:string
   await tx.$queryRaw`SELECT id FROM "ParentCommunicationTask" WHERE id=${taskId} FOR UPDATE`;
   const task=await tx.parentCommunicationTask.findUnique({where:{id:taskId}});
   if(!task)throw Error('Communication task not found / 沟通任务不存在');
+  if(task.status==='SUPERSEDED')throw Error('Feedback task replaced; open the current task / 反馈任务已替代，请打开当前任务');
   if(!task.parentId||!task.studentId)throw Error('Recipient identity needs review / 收件家长及学生归属待核对');
   const isFeedback=task.kind==='FEEDBACK';
   if(!isFeedback&&task.kind!=='COURSE_REMINDER_PARENT')throw Error('No supported automatic reminder for this task / 此任务无可重试的自动提醒');

@@ -20,7 +20,7 @@ type Task = {
 
 const statusLabels: Record<string, string> = {
   OPEN: "全部待处理", PENDING_REVIEW: "待审核反馈", READY_TO_SEND: "待发微信群", CLAIMED: "处理中",
-  RETURNED: "已退回老师", ATTENTION: "待补发", COMPLETED: "已人工发送", WAIVED: "无需发送", ALL: "全部记录",
+  RETURNED: "已退回老师", ATTENTION: "待补发", COMPLETED: "已人工发送", WAIVED: "无需发送", SUPERSEDED: "已由新版替代 / Superseded", ALL: "全部记录",
 };
 const kindLabels: Record<string, string> = {
   ALL: "全部类型", FEEDBACK: "课后反馈", COURSE_REMINDER_PARENT: "家长课程提醒",

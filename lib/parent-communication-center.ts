@@ -182,9 +182,10 @@ async function upsertCommunicationTask(input: {
   wechatGroupName?: string | null;
   presentationOnlyIfBodyUnchanged?: boolean;
   forceCourseCancelled?: boolean;
+  sourceFingerprint?: string;
 }, db: Prisma.TransactionClient = prisma) {
-  const { presentationOnlyIfBodyUnchanged = false, forceCourseCancelled = false, ...taskData } = input;
-  const contentFingerprint = fingerprint(input.messageText);
+  const { presentationOnlyIfBodyUnchanged = false, forceCourseCancelled = false, sourceFingerprint, ...taskData } = input;
+  const contentFingerprint = fingerprint(sourceFingerprint ? `${sourceFingerprint}\n${input.messageText}` : input.messageText);
   const existing = await db.parentCommunicationTask.findUnique({ where: { taskKey: input.taskKey } });
   if (!existing) {
     return db.parentCommunicationTask.create({
@@ -311,7 +312,8 @@ async function upsertCommunicationTask(input: {
   });
 }
 
-export async function ensureFeedbackCommunicationTasks(feedbackId: string, db: Prisma.TransactionClient = prisma) {
+export async function ensureFeedbackCommunicationTasks(feedbackId: string, db: Prisma.TransactionClient = prisma): Promise<import('@prisma/client').ParentCommunicationTask[]> {
+  if (db === prisma) return prisma.$transaction(tx => ensureFeedbackCommunicationTasks(feedbackId, tx), {isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 20000});
   const feedback = await db.sessionFeedback.findUnique({
     where: { id: feedbackId },
     include: {
@@ -345,8 +347,10 @@ export async function ensureFeedbackCommunicationTasks(feedbackId: string, db: P
       parentName: link?.parent.name || "家长", studentName: student.name || "孩子", courseName: courseLabel(feedback.session),
       sessionTime: formatBusinessDateTime(feedback.session.startAt), teacherName: feedback.teacher.name, feedbackSummary: compact(messageContent),
     }, db);
-    return upsertCommunicationTask({
-      taskKey: `FEEDBACK:${feedback.id}:${student.id}`,
+    const sourceFingerprint = fingerprint(JSON.stringify({content: messageContent, homework: feedback.homework, performance: feedback.classPerformance, previousHomeworkDone: feedback.previousHomeworkDone, actualStartAt: feedback.actualStartAt, actualEndAt: feedback.actualEndAt}));
+    const current = await upsertCommunicationTask({
+      taskKey: `FEEDBACK:${feedback.id}:${student.id}:submission:${feedback.submittedAt.getTime()}`,
+      sourceFingerprint,
       kind: "FEEDBACK",
       status: feedback.reviewStatus === "RETURNED" ? "RETURNED" : feedback.reviewStatus === "PUBLISHED" && feedback.publishedAt ? "READY_TO_SEND" : "PENDING_REVIEW",
       studentId: student.id,
@@ -363,6 +367,13 @@ export async function ensureFeedbackCommunicationTasks(feedbackId: string, db: P
       ownerName: link?.communicationOwner ?? null,
       wechatGroupName: link?.wechatGroupName ?? null,
     }, db);
+    // Retain every completed/waived delivery record; only replace obsolete open obligations.
+    const obsolete = await db.parentCommunicationTask.findMany({where:{kind:"FEEDBACK", feedbackId: feedback.id, studentId: student.id, id:{not:current.id}, manualSentAt:null, status:{in:OPEN_STATUSES}},select:{id:true,status:true}});
+    if (obsolete.length) {
+      await db.parentCommunicationTask.updateMany({where:{id:{in:obsolete.map(row=>row.id)}},data:{status:"SUPERSEDED",supersededAt:new Date()}});
+      await db.auditLog.create({data:{actorEmail:"system-feedback@sgtmanage.local",actorName:"Feedback task synchronization",actorRole:"SYSTEM",module:"COMMUNICATION",action:"SUPERSEDE_FEEDBACK_TASKS",entityType:"ParentCommunicationTask",entityId:current.id,meta:{feedbackId:feedback.id,studentId:student.id,submittedAt:feedback.submittedAt.toISOString(),replaced:obsolete}}});
+    }
+    return current;
   }));
 }
 
@@ -990,7 +1001,7 @@ async function updateCommunicationTaskAtomically(input: CommunicationUpdateInput
         });
       }
       if (task.feedbackId) {
-        const remaining = await tx.parentCommunicationTask.count({ where: { feedbackId: task.feedbackId, manualSentAt: null, status: { not: "WAIVED" } } });
+        const remaining = await tx.parentCommunicationTask.count({ where: { kind: "FEEDBACK", feedbackId: task.feedbackId, manualSentAt: null, status: { notIn: ["WAIVED", "SUPERSEDED"] } } });
         if (remaining === 0) {
           await tx.sessionFeedback.update({ where: { id: task.feedbackId }, data: { forwardedAt: now, forwardedBy: actor.name, forwardChannel: channel, forwardNote: note || null } });
         }
@@ -1017,6 +1028,7 @@ async function reviewCommunicationFeedback(input: CommunicationUpdateInput) {
     const actor = await requireCommunicationWriteAccess(tx, input.actor.id);
     const selected = await tx.parentCommunicationTask.findUnique({where:{id:input.id}});
     if (!selected?.feedbackId || selected.kind !== "FEEDBACK") throw new Error("Feedback task required / 请选择反馈任务");
+    if (selected.status === "SUPERSEDED") throw new Error("Feedback task replaced; open the current review / 反馈任务已替代，请打开当前审核任务");
     const initial = await tx.sessionFeedback.findUnique({where:{id:selected.feedbackId}});
     if (!initial) throw new Error("Feedback not found / 反馈不存在");
     // Teacher submission uses this same session lock before changing feedback.
@@ -1033,7 +1045,7 @@ async function reviewCommunicationFeedback(input: CommunicationUpdateInput) {
       if (!note) throw new Error("Return reason is required / 请填写退回原因");
       if (feedback.reviewStatus === "RETURNED" && feedback.reviewNote === note) return selected;
       await tx.sessionFeedback.update({where:{id:feedback.id},data:{reviewStatus:"RETURNED",reviewNote:note,reviewedAt:now,reviewedByUserId:actor.id,reviewedByName:actor.name}});
-      await tx.parentCommunicationTask.updateMany({where:{feedbackId:feedback.id,manualSentAt:null,status:{notIn:["WAIVED","COMPLETED"]}},data:{status:"RETURNED",note}});
+      await tx.parentCommunicationTask.updateMany({where:{kind:"FEEDBACK",feedbackId:feedback.id,manualSentAt:null,status:{notIn:["WAIVED","COMPLETED","SUPERSEDED"]}},data:{status:"RETURNED",note}});
       await tx.miniappNotificationOutbox.updateMany({where:outboxWhere,data:{status:"SKIPPED",error:"Feedback awaiting review / 反馈待重新审核"}});
       await tx.auditLog.create({data:{actorEmail:actor.email,actorName:actor.name,actorRole:actor.role,module:"COMMUNICATION",action:"RETURN_FEEDBACK",entityType:"ParentCommunicationTask",entityId:selected.id,meta:{feedbackId:feedback.id,beforeStatus:feedback.reviewStatus,previousPublishedAt:feedback.publishedAt?.toISOString()??null,previousParentContent:feedback.parentContent,note}}});
     } else {
@@ -1047,7 +1059,7 @@ async function reviewCommunicationFeedback(input: CommunicationUpdateInput) {
       // Never revive invalidated or stale revisions. Create a fresh notification identity.
       await tx.miniappNotificationOutbox.updateMany({where:outboxWhere,data:{status:"SKIPPED",error:"Superseded feedback revision / 已由新版反馈替代"}});
       await ensureFeedbackCommunicationTasks(feedback.id, tx);
-      await tx.parentCommunicationTask.updateMany({where:{feedbackId:feedback.id,manualSentAt:null,status:{in:["READY_TO_SEND","CLAIMED"]}},data:{publishedAt:now,publishedByUserId:actor.id,publishedByName:actor.name}});
+      await tx.parentCommunicationTask.updateMany({where:{kind:"FEEDBACK",feedbackId:feedback.id,manualSentAt:null,status:{in:["READY_TO_SEND","CLAIMED"]}},data:{publishedAt:now,publishedByUserId:actor.id,publishedByName:actor.name}});
       const notificationTargetId = feedback.publishedAt ? `${feedback.id}:revision:${crypto.randomUUID()}` : feedback.id;
       await queueFirstPublishedFeedback({sessionId:feedback.sessionId,feedbackId:feedback.id,submittedAt:feedback.submittedAt,notificationTargetId},tx);
       await tx.auditLog.create({data:{actorEmail:actor.email,actorName:actor.name,actorRole:actor.role,module:"COMMUNICATION",action:"PUBLISH_FEEDBACK",entityType:"ParentCommunicationTask",entityId:selected.id,meta:{feedbackId:feedback.id,before:feedback.parentContent,after:parentContent,beforeStatus:feedback.reviewStatus,notificationTargetId}}});
@@ -1075,6 +1087,7 @@ export function communicationTaskStatusLabel(status: string) {
     ATTENTION: "需更正 / Correction",
     COMPLETED: "已人工发送 / Sent manually",
     WAIVED: "无需发送 / Waived",
+    SUPERSEDED: "已由新版替代 / Superseded",
   } as Record<string, string>)[status] || status;
 }
 
