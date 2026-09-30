@@ -1,3 +1,4 @@
+import { requireHrAreaUser } from "@/lib/hr-access";
 import { isManagerUser, requireAdminAreaUser } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { parseLedgerIntegrityAlertState, LEDGER_INTEGRITY_ALERT_KEY } from "@/lib/ledger-integrity-alert";
@@ -53,14 +54,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     return <>{children}</>;
   }
 
-  const user = await requireAdminAreaUser();
+  const isHrPath = pathname === "/admin/hr" || pathname.startsWith("/admin/hr/");
+  const user = await (isHrPath ? requireHrAreaUser() : requireAdminAreaUser());
+  const manager = await isManagerUser(user);
+  const hrOnly = user.role === "TEACHER" && !manager && !user.operationsAdmin && user.workspaces.includes("HR");
   if (user.operationsAdmin && !isOperationsAdminPathAllowed(pathname)) {
     redirect("/admin");
   }
   const [lang, showManagerConsole, ledgerAlertRow, employeeProfile] = await Promise.all([
     getLang(),
-    isManagerUser(user),
-    user.operationsAdmin
+    Promise.resolve(manager),
+    (user.operationsAdmin || hrOnly)
       ? Promise.resolve(null)
       : prisma.appSetting.findUnique({
           where: { key: LEDGER_INTEGRITY_ALERT_KEY },
@@ -391,9 +395,20 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     },
   ];
 
+  const hrNavGroups = [{
+    title: t(lang, "HR workspace", "人事工作台"),
+    items: [
+      { href: "/teacher", label: t(lang, "Back to teaching", "返回教学工作台"), tone: "neutral" as const },
+      { href: "/admin/hr", label: t(lang, "Employees", "员工档案"), tone: "accent" as const },
+      { href: "/admin/hr/leave", label: t(lang, "Leave approvals", "假期审批"), tone: "warning" as const },
+      { href: "/admin/hr/payslips", label: t(lang, "Employee payslips", "员工工资单"), tone: "success" as const },
+      ...(employeeProfile ? [{ href: "/staff/hr", label: t(lang, "My HR & Leave", "我的 HR 与请假"), tone: "neutral" as const }] : []),
+      { href: "/training", label: t(lang, "Training centre", "培训中心"), tone: "neutral" as const },
+    ],
+  }];
   // Regroup only links already selected by the existing role/workspace checks.
   const workspaceNavGroups = reorganizeAdminNavigation(
-    isFinance ? financeNavGroups : isResourceOnly ? resourceNavGroups : user.operationsAdmin ? operationsAdminNavGroups : adminNavGroups,
+    hrOnly ? hrNavGroups : isFinance ? financeNavGroups : isResourceOnly ? resourceNavGroups : user.operationsAdmin ? operationsAdminNavGroups : adminNavGroups,
     lang,
   );
   const sidebarNavContent = (

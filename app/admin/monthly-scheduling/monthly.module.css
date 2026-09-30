@@ -1,0 +1,18 @@
+.queue td { vertical-align: top; }
+@media (max-width: 760px) {
+  .queue { display: block; min-width: 0 !important; }
+  .queue thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .queue tbody { display: grid; gap: 16px; }
+  .queue tr { display: block; border: 1px solid #cad6e5; border-radius: 8px; overflow: hidden; }
+  .queue td { display: block; min-width: 0 !important; width: auto; overflow-wrap: anywhere; }
+  .queue td::before { content: attr(data-label); display: block; margin-bottom: 6px; color: #526071; font-size: 12px; font-weight: 700; }
+  .queue input, .queue select, .queue textarea { max-width: 100%; box-sizing: border-box; }
+  .queue form { min-width: 0; }
+}
+@media (max-width: 760px) {
+  .queue td { white-space: normal !important; }
+  .queue form { grid-template-columns: minmax(0, 1fr) !important; }
+  .queue label, .queue fieldset, .queue form > div { min-width: 0; max-width: 100%; }
+  .queue fieldset label { display: inline-block; }
+  .queue form > div[style*="grid"] { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}

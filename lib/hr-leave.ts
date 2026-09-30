@@ -241,8 +241,8 @@ export async function findApprovedTeacherLeaveConflict(teacherId: string, startA
   });
 }
 
-export function hrLeaveTypeLabel(type: HrLeaveType) {
-  return {
+export function hrLeaveTypeLabel(type: HrLeaveType, lang: "EN" | "ZH" | "BILINGUAL" = "BILINGUAL") {
+  const label = {
     ANNUAL: "Annual leave / 年假",
     SICK_OUTPATIENT: "Outpatient sick leave / 门诊病假",
     HOSPITALISATION: "Hospitalisation leave / 住院病假",
@@ -250,4 +250,5 @@ export function hrLeaveTypeLabel(type: HrLeaveType) {
     UNPAID: "Unpaid leave / 无薪假",
     OTHER: "Other leave / 其他假期",
   }[type];
+  return lang === "EN" ? label.split(" / ")[0] : lang === "ZH" ? label.split(" / ")[1] : label;
 }

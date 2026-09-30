@@ -1,4 +1,5 @@
 ﻿import { getCurrentUser, isTeacherLeadUser, requireTeacher } from "@/lib/auth";
+import { canManageHr } from "@/lib/hr-access";
 import { getLang, t } from "@/lib/i18n";
 import TeacherLanguageSelectorClient from "./TeacherLanguageSelectorClient";
 import TeacherSidebarNavClient from "./TeacherSidebarNavClient";
@@ -8,9 +9,10 @@ export default async function TeacherLayout({ children }: { children: React.Reac
   const lang = await getLang();
   await requireTeacher();
   const user = await getCurrentUser();
-  const [isLead, employeeProfile] = await Promise.all([
+  const [isLead, employeeProfile, hrManager] = await Promise.all([
     isTeacherLeadUser(user),
     user ? prisma.employeeProfile.findUnique({ where: { userId: user.id }, select: { id: true } }) : Promise.resolve(null),
+    user ? canManageHr(user) : Promise.resolve(false),
   ]);
   const navGroups = [
     {
@@ -45,6 +47,7 @@ export default async function TeacherLayout({ children }: { children: React.Reac
     {
       title: t(lang, "My Employment", "我的员工事务"),
       items: [
+        ...(hrManager ? [{ href: "/admin/hr", label: t(lang, "HR workspace", "人事工作台") }] : []),
         ...(employeeProfile ? [{ href: "/staff/hr", label: t(lang, "My HR & Leave", "我的 HR 与请假") }] : []),
         { href: "/teacher/payroll", label: t(lang, "My Payroll", "我的工资单") },
         { href: "/teacher/expense-claims", label: t(lang, "My Expense Claims", "我的报销") },

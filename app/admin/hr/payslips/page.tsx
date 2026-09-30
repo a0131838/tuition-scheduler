@@ -3,8 +3,8 @@ import {getLang,t} from "@/lib/i18n";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { HrPayslipStatus } from "@prisma/client";
-import { isStrictSuperAdmin, requireAdminAreaUser } from "@/lib/auth";
-import { canManageHr } from "@/lib/hr-access";
+import { isStrictSuperAdmin } from "@/lib/auth";
+import { canManageHr, requireHrAreaUser } from "@/lib/hr-access";
 import { formatHrMoney, saveDraftHrPayslip, transitionHrPayslip } from "@/lib/hr-payslip";
 import { prisma } from "@/lib/prisma";
 
@@ -25,7 +25,7 @@ function allowedTransition(actor: { role: string; email: string; name: string },
 }
 
 export default async function HrPayslipsPage({ searchParams }: { searchParams?: Promise<{ month?: string; msg?: string; err?: string }> }) {
-  const actor = await requireAdminAreaUser();
+  const actor = await requireHrAreaUser();
   const lang = await getLang();
   const hrManager = await canManageHr(actor);
   if (!hrManager && actor.role !== "FINANCE") redirect("/admin?err=Payroll+access+required");
@@ -34,7 +34,7 @@ export default async function HrPayslipsPage({ searchParams }: { searchParams?: 
 
   async function save(formData: FormData) {
     "use server";
-    const user = await requireAdminAreaUser();
+    const user = await requireHrAreaUser();
     if (!(await canManageHr(user)) && user.role !== "FINANCE") redirect("/admin?err=Payroll+access+required");
     try {
       await saveDraftHrPayslip({
@@ -51,7 +51,7 @@ export default async function HrPayslipsPage({ searchParams }: { searchParams?: 
 
   async function transition(formData: FormData) {
     "use server";
-    const user = await requireAdminAreaUser();
+    const user = await requireHrAreaUser();
     const manager = await canManageHr(user);
     const payslipId = String(formData.get("payslipId") || "");
     const nextStatus = String(formData.get("nextStatus") || "") as HrPayslipStatus;

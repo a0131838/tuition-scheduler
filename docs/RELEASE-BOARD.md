@@ -1,4 +1,19 @@
 # RELEASE BOARD
+## 2026-09-30-r468
+
+- Release ID: `2026-09-30-r468`
+- Date/Time (Asia/Singapore): `2026-09-30`
+- Deployment status: `READY`; verified live evidence is recorded in the execution ledger.
+- Problem: teachers explicitly assigned the HR workspace passed module policy but failed the outer admin gate; several monthly, HR and school application screens mixed languages. Mobile tables and intrinsic grid widths clipped parent-response and leave forms.
+- Change: allow existing HR-authorized accounts through HR routes only, with a scoped sidebar and teacher entry; retain finance and action-specific policies and all unrelated admin guards. Complete EN/ZH/BILINGUAL labels for monthly proxy/status tables, HR leave/self-service, school application actions and Care review options. School parent-info dates explicitly describe historical first opening rather than current-token activity. Monthly mobile rows become labelled cards; editable fields wrap into one column. HR self-service/approval grids fit narrow screens, and existing day conversion is explicitly labelled eight hours per day. Observer write controls are hidden.
+- Validation:766 tests,TypeScript and261-page production build passed. New isolated HTTP UAT verifies HR-only teacher entry, actual assigned leave approval, revocation and unrelated company-page denial, plus three-language monthly/HR/school/Care copy. HR service and Web/Mini, monthly preference service/HTTP and school parent-info service/HTTP regression passed. Final-build authenticated 375px browser inspection verifies readable HR and monthly forms with no fields beyond viewport, and school/Care mobile headings; no console errors in that session. Initial mobile acceptance found nowrap and intrinsic-grid overflow, both repaired before release.
+- Compatibility: no schema, calculation, approval-chain, scheduling or billing mutation changes; no production business test writes, external sending or WeChat client publication. All old links and required professional-service modules remain.
+- Remaining: phase6/7 closure, comprehensive phase8/9 acceptance and phase10 unified role guides/delivery remain open. This is not whole-program completion.
+- Rollback reference: `abce0ede766a80c273c9b93794d64c82f81d364a` (r467). No schema rollback.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
 ## 2026-09-30-r467
 
 - Release ID: `2026-09-30-r467`
@@ -1012,7 +1027,7 @@
 ---
 
 
-- Current release: `2026-09-30-r467` prepared; guarded deployment evidence is recorded in the execution ledger after version/PM2/HTTP verification.
+- Current release: `2026-09-30-r468` prepared; guarded deployment evidence is recorded in the execution ledger after version/PM2/HTTP verification.
 
 ## 2026-09-09-r404 Ready
 

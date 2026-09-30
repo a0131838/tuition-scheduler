@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser, isManagerUser, isStrictSuperAdmin, requireAdminAreaUser } from "@/lib/auth";
+import { getCurrentUser, isManagerUser, isStrictSuperAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { SystemUserRole } from "@/lib/staff-roles";
 
@@ -16,8 +16,15 @@ export async function canManageHr(user: {
   return isManagerUser(user);
 }
 
+export async function requireHrAreaUser() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/admin/login");
+  if (user.role === "FINANCE" || await canManageHr(user)) return user;
+  redirect(user.role === "TEACHER" ? "/teacher" : "/admin");
+}
+
 export async function requireHrManager() {
-  const user = await requireAdminAreaUser();
+  const user = await requireHrAreaUser();
   if (!(await canManageHr(user))) redirect("/admin?err=HR+access+required");
   return user;
 }
