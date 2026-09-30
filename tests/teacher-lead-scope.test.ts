@@ -101,3 +101,7 @@ test("training sign-off loads teacher rows for teacher leads and rechecks target
   assert.match(manage, /manager \? \{ role: \{ not: "STUDENT" \} \} : \{ role: "TEACHER" \}/);
   assert.match(actions, /canReviewTrainingTarget\(reviewer, progress\.user\.role\)/);
 });
+
+test("generic document reactivation cannot republish archived training", () => {
+  assert.equal(teacherTrainingMaterialState([TRAINING_MATERIAL_ACTION.ARCHIVED, TRAINING_MATERIAL_ACTION.PUBLISHED], false), "ARCHIVED");
+});

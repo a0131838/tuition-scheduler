@@ -1,4 +1,19 @@
 # RELEASE BOARD
+## 2026-09-30-r467
+
+- Release ID: `2026-09-30-r467`
+- Date/Time (Asia/Singapore): `2026-09-30`
+- Deployment status: `READY`; live proof is recorded in the execution ledger after guarded release.
+- Problem: local training files under public uploads bypassed document API permissions, including encoded URL variants. Draft replacement and owner review checked state before separate writes, so the reviewed file could change concurrently.
+- Change: legacy shared-document URLs resolve the exact document and reuse library/training permissions; encoded prefixes receive the same guard, ambiguous/unlinked paths fail closed. Other public pages/assets keep their existing handling. Local protected responses use no-store. Training create/edit/submit/publish/return/archive use current locked account/ACL, displayed versions, row locks and Serializable atomic state/history/full audit. Old draft bytes and audit evidence remain; generic document reactivation cannot republish an archived training release. Stale forms receive a bilingual refresh message and observers have no mutation controls.
+- Validation:766 tests,261-page build and final TypeScript passed. Isolated lifecycle UAT covers forced audit rollback, edit-versus-submit race, one publication, revoked teacher-lead ACL, owner-only publish and published-edit denial. Actual HTTP forms cover lead submission→owner publication→archive, observer/finance denial and stale replay; raw/API/encoded URLs agree for anonymous, teacher and owner, draft/archived access is denied, unknown/traversal paths fail, and image optimization cannot retrieve the fake protected image. HR service and Web/Mini lifecycle regression passed after middleware change. A brittle staff matcher source assertion now exercises Next's actual matcher against original routes and encoded upload paths.
+- Compatibility: no migration, no production business test writes, no external sending or WeChat client publication. Current library links and authorized legacy links remain. Existing S3 signed downloads retain their bounded five-minute lifetime; this does not revoke files already downloaded or previously cached outside the app.
+- Remaining: HR-workspace-only teacher entry and phase6/7 completion checks; phase8/9 route/language/mobile acceptance and phase10 unified delivery are still open.
+- Rollback reference: `51c854ddfe1f8653df68901cb2eeebc7d94e7654` (r466); reverting restores public URL bypass and draft/review races. No schema rollback.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
 ## 2026-09-30-r466
 
 - Release ID: `2026-09-30-r466`
@@ -997,7 +1012,7 @@
 ---
 
 
-- Current release: `2026-09-30-r466` prepared; guarded deployment evidence is recorded in the execution ledger after version/PM2/HTTP verification.
+- Current release: `2026-09-30-r467` prepared; guarded deployment evidence is recorded in the execution ledger after version/PM2/HTTP verification.
 
 ## 2026-09-09-r404 Ready
 

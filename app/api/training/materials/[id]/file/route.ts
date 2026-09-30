@@ -34,6 +34,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     relativePath: row.filePath,
     originalFileName: fileName,
     fallbackFileName: "training-material",
+    cacheControl: "private, no-store",
     contentType: row.mimeType,
   });
 }

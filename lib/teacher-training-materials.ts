@@ -19,6 +19,7 @@ type TrainingMaterialUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser
 export function teacherTrainingMaterialState(actions: readonly string[], archived = false): TeacherTrainingMaterialState {
   if (archived) return "ARCHIVED";
   for (const action of actions) {
+    if (action === TRAINING_MATERIAL_ACTION.ARCHIVED) return "ARCHIVED";
     if (action === TRAINING_MATERIAL_ACTION.PUBLISHED) return "PUBLISHED";
     if (action === TRAINING_MATERIAL_ACTION.SUBMITTED) return "SUBMITTED";
     if (action === TRAINING_MATERIAL_ACTION.NEEDS_REVISION) return "NEEDS_REVISION";

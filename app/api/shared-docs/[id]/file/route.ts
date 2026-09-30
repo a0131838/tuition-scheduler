@@ -5,6 +5,7 @@ import { activeTeacherNoticeAttachments, getAllTeacherNotices } from '@/lib/teac
 import { signSharedDocS3DownloadUrl } from '@/lib/shared-doc-storage';
 import { buildStoredBusinessFileResponse, BUSINESS_UPLOAD_PREFIX } from '@/lib/business-file-storage';
 import path from 'path';
+import { canReadTeacherTrainingMaterial, TEACHER_TRAINING_CATEGORY } from '@/lib/teacher-training-materials';
 
 export const runtime = 'nodejs';
 
@@ -25,6 +26,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const row = await prisma.sharedDocument.findUnique({
     where: { id },
     select: {
+      category: { select: { name: true } },
       filePath: true,
       originalFileName: true,
       mimeType: true,
@@ -32,6 +34,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     },
   });
   if (!row) return new Response('Not Found', { status: 404 });
+  if (row.category.name === TEACHER_TRAINING_CATEGORY && !(await canReadTeacherTrainingMaterial(user, id))) return new Response('Forbidden', { status: 403 });
   if (canAccessNoticeAttachment && row.status !== 'ACTIVE') return new Response('Not Found', { status: 404 });
 
   const url = new URL(req.url);
@@ -52,6 +55,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     relativePath: row.filePath,
     originalFileName: path.basename(row.originalFileName || 'document'),
     fallbackFileName: 'document',
+    cacheControl: 'private, no-store',
     contentType: row.mimeType,
   });
 }

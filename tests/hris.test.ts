@@ -1,3 +1,5 @@
+import { config as middlewareConfig } from "../middleware";
+import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -48,7 +50,7 @@ test("HR permissions, self service, miniapp and scheduling guard are wired", () 
   assert.match(read("app/staff/hr/page.tsx"), /returnPath="\/staff\/hr"/);
   assert.match(read("app/admin/layout.tsx"), /href: "\/staff\/hr"/);
   assert.match(read("app/teacher/layout.tsx"), /href: "\/staff\/hr"/);
-  assert.match(read("middleware.ts"), /"\/staff\/:path\*"/);
+  for (const url of ["/staff/hr", "/admin/hr", "/teacher", "/api/hr/documents/example", "/uploads/shared-docs/example.txt", "/%75ploads/shared-docs/example.txt", "/uploads%2fshared-docs/example.txt"]) assert.equal(unstable_doesMiddlewareMatch({ config: middlewareConfig, url }), true, url);
   assert.match(read("lib/teacher-scheduling-availability.ts"), /hrLeaveRequest\.findFirst/);
   assert.match(read("lib/teacher-scheduling-availability.ts"), /status: "APPROVED"/);
 });
