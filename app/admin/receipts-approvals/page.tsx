@@ -53,10 +53,6 @@ import WorkflowSourceBanner from "../_components/WorkflowSourceBanner";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatDateOnly, monthKeyFromDateOnly, normalizeDateOnly } from "@/lib/date-only";
 import {
   workbenchFilterPanelStyle,
-  workbenchHeroStyle,
-  workbenchMetricCardStyle,
-  workbenchMetricLabelStyle,
-  workbenchStickyPanelStyle,
 } from "../_components/workbenchStyles";
 import PackageWorkspacePickerClient from "./_components/PackageWorkspacePickerClient";
 import ReceiptAmountReceivedField from "./_components/ReceiptAmountReceivedField";
@@ -238,10 +234,6 @@ function queueStatusKind(status: "COMPLETED" | "REJECTED" | "PENDING") {
 
 function queueTypeLabel(lang: "BILINGUAL" | "ZH" | "EN", type: "PARENT" | "PARTNER") {
   return type === "PARENT" ? t(lang, "Parent", "家长") : t(lang, "Partner", "合作方");
-}
-
-function bilingualLabel(en: string, zh: string) {
-  return `${en} / ${zh}`;
 }
 
 function renderRejectReasonFields(lang: "BILINGUAL" | "ZH" | "EN", idSuffix: string) {
@@ -1917,10 +1909,6 @@ export async function ReceiptsApprovalsPageContent({
             ? t(lang, "This receipt is next in line, but needs a quick amount/detail check before approval.", "这条是当前下一条，但批准前需要先快速核对金额或明细。")
             : t(lang, "This is the cleanest pending item to clear next.", "这是当前最适合先清掉的一条待处理项。")
     : "";
-  const queueScopeLabel =
-    isRepairsScreen && implicitRepairBlockerMode
-      ? t(lang, "Repair blockers only", "仅显示待修复阻塞项")
-      : queueFilter;
   const queueBucketOptions = [
     ["ALL", t(lang, "Show all buckets", "显示全部分组")],
     ["MINE", t(lang, "Only my actions", "只看我待处理的")],
@@ -1938,6 +1926,11 @@ export async function ReceiptsApprovalsPageContent({
         ["FILE_ISSUE", t(lang, "Proof or file issues", "凭证或文件异常")],
         ["TODAY_MINE", t(lang, "Today Mine", "今天我处理的")],
       ] as const);
+  const queueScopeLabel = isHistoryScreen
+    ? t(lang, "Completed only", "仅看已完成")
+    : isRepairsScreen && implicitRepairBlockerMode
+      ? t(lang, "Repair blockers only", "仅显示待修复阻塞项")
+      : queueFilterOptions.find(([value]) => value === queueFilter)?.[1] ?? queueFilter;
   const packageWorkspaceRiskCount = packageWorkspaceMode
     ? [missingPaymentFileCount > 0, pendingReceiptAmount > 0, uninvoicedPaidAmount > 0].filter(Boolean).length
     : 0;
@@ -2196,7 +2189,7 @@ export async function ReceiptsApprovalsPageContent({
           <WorkbenchScrollMemoryClient storageKey="adminReceiptsQueueScroll" />
         </>
       ) : null}
-      <h2>{t(lang, "Receipt Approval Center", "收据审批中心")}</h2>
+      <h2>{screenTitle}</h2>
       {err ? (
         <WorkbenchActionBanner
           tone="error"
@@ -2266,57 +2259,15 @@ export async function ReceiptsApprovalsPageContent({
         })}
       </div>
 
-      <div style={workbenchHeroStyle("indigo")}>
-        <div style={{ display: "grid", gap: 6 }}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "#3730a3", letterSpacing: 0.4 }}>
-            {screenEyebrow}
-          </div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>
-            {screenTitle}
-          </div>
-          <div style={{ color: "#475569", lineHeight: 1.5 }}>
-            {screenDescription}
-          </div>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
-          <div style={workbenchMetricCardStyle("blue")}>
-            <div style={workbenchMetricLabelStyle("blue")}>{bilingualLabel("My next actions", "我待处理的")}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: "#1d4ed8" }}>{mineQueue.length}</div>
-            <div style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Items currently waiting on my role.", "当前需要我这个角色处理的项。")}</div>
-          </div>
-          <div style={workbenchMetricCardStyle("amber")}>
-            <div style={workbenchMetricLabelStyle("amber")}>{bilingualLabel("Open work", "未完成工作")}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: "#c2410c" }}>{actionableQueue.length}</div>
-            <div style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Pending and rejected receipts still in circulation.", "仍在流转中的待审批和已驳回收据。")}</div>
-          </div>
-          <div style={workbenchMetricCardStyle("rose")}>
-            <div style={workbenchMetricLabelStyle("rose")}>{bilingualLabel("Blockers", "阻塞项")}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: "#be123c" }}>{queueBlockerCount}</div>
-            <div style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Missing proof, missing file, or risky rows.", "缺少凭证、文件缺失或高风险行。")}</div>
-          </div>
-          <div style={workbenchMetricCardStyle("indigo")}>
-            <div style={workbenchMetricLabelStyle("indigo")}>{packageWorkspaceMode ? t(lang, "Package risks", "课包风险") : bilingualLabel("Completed history", "已完成历史")}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: "#3730a3" }}>
-              {packageWorkspaceMode ? packageWorkspaceRiskCount : completedQueue.length}
-            </div>
-            <div style={{ fontSize: 12, color: "#475569" }}>
-              {packageWorkspaceMode
-                ? t(lang, "Missing files, pending receipt amount, or paid-not-invoiced issues.", "文件缺失、待开收据金额或已付未开票问题。")
-                : t(lang, "Receipts already fully completed.", "已经完成的收据历史。")}
-            </div>
-          </div>
+      <div style={{ marginBottom: 12, display: "grid", gap: 8 }}>
+        <div style={{ color: "#475569", lineHeight: 1.5 }}>{screenDescription}</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <WorkbenchStatusChip label={t(lang, "My next actions", "我待处理的")} detail={mineQueue.length} tone={mineQueue.length ? "success" : "neutral"} />
+          <WorkbenchStatusChip label={t(lang, "Open work", "未完成工作")} detail={actionableQueue.length} tone="neutral" />
+          <WorkbenchStatusChip label={t(lang, "Blockers", "阻塞项")} detail={queueBlockerCount} tone={queueBlockerCount ? "warn" : "neutral"} />
+          <WorkbenchStatusChip label={packageWorkspaceMode ? t(lang, "Package risks", "课包风险") : t(lang, "Completed history", "已完成历史")} detail={packageWorkspaceMode ? packageWorkspaceRiskCount : completedQueue.length} tone="neutral" />
         </div>
       </div>
-
-      <section style={{ marginBottom: 12, display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
-        {receiptsSummaryCards.map((card) => (
-          <div key={card.title} style={receiptsSummaryCardStyle(card.background, card.border)}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b" }}>{card.title}</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>{card.value}</div>
-            <div style={{ color: "#475569", fontSize: 13, lineHeight: 1.45 }}>{card.detail}</div>
-          </div>
-        ))}
-      </section>
 
       {!packageWorkspaceMode && resumedRememberedQueue ? (
         <div
@@ -2364,94 +2315,32 @@ export async function ReceiptsApprovalsPageContent({
         />
       ) : null}
 
-      <section
-        style={{
-          ...workbenchFilterPanelStyle,
-          marginBottom: 12,
-          ...workbenchStickyPanelStyle(),
-          display: "grid",
-          gap: 12,
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <div style={{ display: "grid", gap: 4 }}>
-            <div style={{ fontWeight: 800, color: "#0f172a" }}>{t(lang, "Receipt work map", "收据工作地图")}</div>
-            <div style={{ color: "#475569", fontSize: 13 }}>
-              {t(lang, "Use this strip to jump between queue controls, package workspace, review, and repair areas without losing context.", "通过这条工作地图在队列控制区、课包工作区、审核区和修复区之间来回切换，不容易丢上下文。")}
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {nextBestQueueRow && !packageWorkspaceMode ? <Link href={openHref(nextBestQueueRow.type, nextBestQueueRow.id)} scroll={false}>{t(lang, "Open next best item", "打开下一条最该处理")}</Link> : null}
-            {queueFileIssueCount > 0 ? <Link href={queueFilterHref("FILE_ISSUE")} scroll={false}>{t(lang, "Open blockers", "查看阻塞项")}</Link> : null}
-            {packageWorkspaceMode ? <Link href={globalQueueHref} scroll={false}>{t(lang, "Global queue", "统一队列")}</Link> : null}
-          </div>
+      <details className="receipt-workspace-help" style={{ ...workbenchFilterPanelStyle, marginBottom: 12 }}>
+        <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+          {t(lang, "Workflow guidance and shortcuts", "流程说明与快捷定位")}
+        </summary>
+        <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
+          <section style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))" }}>
+            {receiptsSummaryCards.map((card) => (
+              <div key={card.title} style={receiptsSummaryCardStyle(card.background, card.border)}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b" }}>{card.title}</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>{card.value}</div>
+                <div style={{ color: "#475569", fontSize: 13, lineHeight: 1.45 }}>{card.detail}</div>
+              </div>
+            ))}
+          </section>
+          <nav aria-label={t(lang, "Receipt sections", "收据页面分区")} style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            {receiptsSectionLinks.map((link) => renderReceiptsSectionAnchor(link.href, link.label, link.detail, link.background, link.border))}
+          </nav>
         </div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {receiptsSectionLinks.map((link) => renderReceiptsSectionAnchor(link.href, link.label, link.detail, link.background, link.border))}
-        </div>
-      </section>
+      </details>
 
       {!isPackageScreen ? (
-        <div
-        id="receipts-queue-focus"
-        style={{
-          marginBottom: 12,
-          scrollMarginTop: 104,
-          border: "1px solid #dbeafe",
-            borderRadius: 12,
-            background: "#f8fbff",
-            padding: "12px 14px",
-            display: "grid",
-            gap: 10,
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            <div style={{ display: "grid", gap: 4 }}>
-              <div style={{ fontWeight: 800, color: "#1d4ed8" }}>{t(lang, "Queue work focus", "当前队列工作焦点")}</div>
-              <div style={{ color: "#475569", fontSize: 13 }}>
-                {t(
-                  lang,
-                  "Use this strip to confirm the live queue scope before you open filters or jump into the next receipt.",
-                  "先通过这条摘要确认当前队列范围，再决定是否展开筛选或直接进入下一张收据。"
-                )}
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {resumedRememberedQueue ? <Link href={defaultQueueHref} scroll={false}>{t(lang, "Reset to default queue", "恢复默认队列")}</Link> : null}
-              {nextBestQueueRow ? <Link href={openHref(nextBestQueueRow.type, nextBestQueueRow.id)} scroll={false}>{t(lang, "Open next best item", "打开下一条最该处理")}</Link> : null}
-              {queueFileIssueCount > 0 ? <Link href={queueFilterHref("FILE_ISSUE")} scroll={false}>{t(lang, "Open repair blockers", "查看修复阻塞项")}</Link> : null}
-            </div>
-          </div>
-          <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-            <div style={{ border: "1px solid #bfdbfe", borderRadius: 10, background: "#fff", padding: "10px 12px" }}>
-              <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Working in", "当前模式")}</div>
-              <div style={{ fontWeight: 800, marginTop: 4 }}>{screenEyebrow}</div>
-              <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>{screenDescription}</div>
-            </div>
-            <div style={{ border: "1px solid #bfdbfe", borderRadius: 10, background: "#fff", padding: "10px 12px" }}>
-              <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Queue scope", "当前范围")}</div>
-              <div style={{ fontWeight: 800, marginTop: 4 }}>{queueScopeLabel}</div>
-              <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
-                {t(lang, "Open work", "待处理")}: {mineQueue.length + otherQueue.length} · {t(lang, "History", "历史")}: {completedQueue.length}
-              </div>
-            </div>
-            <div style={{ border: "1px solid #bfdbfe", borderRadius: 10, background: "#fff", padding: "10px 12px" }}>
-              <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Repair blockers", "修复阻塞项")}</div>
-              <div style={{ fontWeight: 800, marginTop: 4, color: queueFileIssueCount > 0 ? "#b91c1c" : "#166534" }}>{queueFileIssueCount}</div>
-              <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
-                {t(lang, "Missing proof or missing files still slowing approval.", "缺付款记录或缺文件仍会拖慢审批。")}
-              </div>
-            </div>
-            <div style={{ border: "1px solid #bfdbfe", borderRadius: 10, background: "#fff", padding: "10px 12px" }}>
-              <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Next best item", "下一条最该处理")}</div>
-              <div style={{ fontWeight: 800, marginTop: 4 }}>
-                {nextBestQueueRow ? nextBestQueueRow.receiptNo : t(lang, "No active item", "暂无")}
-              </div>
-              <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
-                {nextBestQueueRow ? nextBestQueueRow.partyName : t(lang, "Clear filters or switch mode to see more rows.", "可清空筛选或切换模式查看更多。")}
-              </div>
-            </div>
-          </div>
+        <div id="receipts-queue-focus" style={{ marginBottom: 12, scrollMarginTop: 104, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <strong>{t(lang, "Queue scope", "当前范围")}: {queueScopeLabel}</strong>
+          {resumedRememberedQueue ? <Link href={defaultQueueHref} scroll={false}>{t(lang, "Reset to default queue", "恢复默认队列")}</Link> : null}
+          {!isHistoryScreen && nextBestQueueRow ? <Link href={openHref(nextBestQueueRow.type, nextBestQueueRow.id)} scroll={false}>{t(lang, "Open next item", "打开下一条")}: {nextBestQueueRow.receiptNo}</Link> : null}
+          {queueFileIssueCount > 0 ? <Link href={queueFilterHref("FILE_ISSUE")} scroll={false}>{t(lang, "Open repair blockers", "查看修复阻塞项")} ({queueFileIssueCount})</Link> : null}
         </div>
       ) : null}
 
@@ -3481,9 +3370,9 @@ export async function ReceiptsApprovalsPageContent({
             : t(lang, "Choose one receipt from the queue, then complete the main review action on the right.", "先从队列中选择一张收据，再在右侧完成主要审核动作。")}
         </div>
         <div style={{ marginBottom: 8, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <WorkbenchStatusChip label={bilingualLabel("My next actions", "我待处理的")} detail={mineQueue.length} tone={mineQueue.length > 0 ? "success" : "neutral"} />
-          <WorkbenchStatusChip label={bilingualLabel("Other open items", "其他待处理项")} detail={otherQueue.length} tone={otherQueue.length > 0 ? "warn" : "neutral"} />
-          <WorkbenchStatusChip label={bilingualLabel("Completed history", "已完成历史")} detail={completedQueue.length} tone="neutral" />
+          <WorkbenchStatusChip label={t(lang, "My next actions", "我待处理的")} detail={mineQueue.length} tone={mineQueue.length > 0 ? "success" : "neutral"} />
+          <WorkbenchStatusChip label={t(lang, "Other open items", "其他待处理项")} detail={otherQueue.length} tone={otherQueue.length > 0 ? "warn" : "neutral"} />
+          <WorkbenchStatusChip label={t(lang, "Completed history", "已完成历史")} detail={completedQueue.length} tone="neutral" />
         </div>
         {!isHistoryScreen && nextBestQueueRow ? (
           <div
@@ -3635,7 +3524,7 @@ export async function ReceiptsApprovalsPageContent({
               )}
             </div>
             {renderQueueSection(visibleMineQueue, {
-              heading: bilingualLabel("My next actions", "我待处理的"),
+              heading: t(lang, "My next actions", "我待处理的"),
               count: visibleMineQueue.length,
               tone: "ok",
               lang,
@@ -3646,7 +3535,7 @@ export async function ReceiptsApprovalsPageContent({
               packageBillingHref: packageBillingWorkflowHref,
             })}
             {renderQueueSection(visibleOtherQueue, {
-              heading: bilingualLabel("Other open items", "其他待处理项"),
+              heading: t(lang, "Other open items", "其他待处理项"),
               count: visibleOtherQueue.length,
               tone: "warn",
               lang,
@@ -3659,7 +3548,7 @@ export async function ReceiptsApprovalsPageContent({
             {visibleCompletedQueue.length > 0 ? (
               <details open={queueBucket === "HISTORY"}>
                 <summary style={{ cursor: "pointer", listStyle: "none", background: "#f8fafc", fontWeight: 700, color: "#64748b", padding: "8px 12px", borderRadius: 10, border: "1px solid #e5e7eb" }}>
-                  {bilingualLabel("Completed history", "已完成历史")} ({visibleCompletedQueue.length})
+                  {t(lang, "Completed history", "已完成历史")} ({visibleCompletedQueue.length})
                 </summary>
                 <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
                   {renderQueueCards(visibleCompletedQueue, lang, selectedRow, roleCfg, openHref)}
@@ -3933,7 +3822,7 @@ export async function ReceiptsApprovalsPageContent({
               </div>
             ) : null}
             <div style={{ marginBottom: 10, border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fafafa" }}>
-              <div style={{ fontWeight: 700, marginBottom: 6 }}>{bilingualLabel("Timeline", "时间线")}</div>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Timeline", "时间线")}</div>
               <div style={{ display: "grid", gap: 4, fontSize: 13, color: "#374151" }}>
                 <div>
                   {t(lang, "Created", "创建")}: {formatBusinessDateTime(new Date(selectedRow.createdAt))} · {selectedRow.createdBy}

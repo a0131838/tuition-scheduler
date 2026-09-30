@@ -1,4 +1,18 @@
 # CHANGELOG LIVE
+## 2026-09-30-r472
+
+- Release ID: `2026-09-30-r472`
+- Date/Time (Asia/Singapore): `2026-09-30`
+- Deployment status: `READY`; live verification is recorded in the execution ledger.
+- Problem: receipt queue/package/repair/history pages repeated a hero, metrics, guidance cards, sticky work map and focus cards before the actual filters. Some headings and scope labels ignored the selected language.
+- Change: use the specific screen title, compact status chips and one collapsed guidance/shortcut section; keep scope, next receipt and repair links visible. Translate existing labels in EN/ZH/BILINGUAL, including human-readable scope. Preserve all existing section IDs, routes, forms and workflow actions.
+- Validation:766 tests and final262-page build passed.48 isolated requests cover four screens ×four roles ×three languages, closed guidance and teacher access denial. AST comparison confirms all14 receipt forms unchanged (apart from equivalent language-label call normalization). Desktop browser: filters move from1357px to568px; help expands to four existing links.375px browser: visible fields stay within viewport, guidance fits339px; console has no errors. Initial harness expected a selected-package anchor on the empty package picker; corrected the assertion to respect that existing empty state, without changing application behavior.
+- Compatibility: presentation only; no schema, finance/approval calculation, submission, history or permissions change, no production business test writes or messages.
+- Rollback reference: `b45e61d44d379f9871fc758a2e1c6ed2a48e8add` (r471); no schema rollback.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
 ## 2026-09-30-r471
 
 - Release ID: `2026-09-30-r471`
