@@ -50,3 +50,14 @@ test("the most specific destination owns nested route highlighting", () => {
 test("no available links means no groups; hidden roles gain no destinations", () => {
   assert.deepEqual(reorganizeAdminNavigation([], "EN"), []);
 });
+
+test("query-specific workspaces only highlight their matching link", () => {
+  const groups = [{ title: "Work", items: ["/admin?workspace=cs", "/admin?workspace=sales", "/admin", "/admin/leads"].map(href => ({ href, label: href })) }];
+  assert.equal(activeAdminNavHref(groups, "/admin", "workspace=sales"), "/admin?workspace=sales");
+  assert.equal(activeAdminNavHref(groups, "/admin", "workspace=cs&unused=yes"), "/admin?workspace=cs");
+  assert.equal(activeAdminNavHref(groups, "/admin"), "/admin");
+  assert.equal(activeAdminNavHref(groups, "/admin", "workspace=unknown"), "/admin");
+  assert.equal(activeAdminNavHref(groups, "/admin/leads/123", "workspace=sales"), "/admin/leads");
+  const scoped = [{ title: "Sales", items: [{ href: "/admin?workspace=sales", label: "Sales" }] }];
+  assert.equal(activeAdminNavHref(scoped, "/admin", "workspace=cs"), undefined);
+});

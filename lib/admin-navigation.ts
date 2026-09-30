@@ -67,11 +67,16 @@ export function reorganizeAdminNavigation(groups: AdminNavGroup[], lang: Lang): 
   });
 }
 
-export function activeAdminNavHref(groups: AdminNavGroup[], pathname: string) {
+export function activeAdminNavHref(groups: AdminNavGroup[], pathname: string, search = "") {
+  const currentQuery = new URLSearchParams(search);
   return groups.flatMap((group) => group.items)
-    .filter(({ href }) => {
-      const path = href.split("?")[0];
-      return pathname === path || (path !== "/admin" && pathname.startsWith(`${path}/`));
+    .map((item) => {
+      const [path, query] = item.href.split("?");
+      const requiredQuery = new URLSearchParams(query);
+      const pathMatches = pathname === path || (path !== "/admin" && pathname.startsWith(`${path}/`));
+      const queryMatches = [...requiredQuery].every(([key, value]) => currentQuery.getAll(key).includes(value));
+      return { item, path, requiredQuery, matches: pathMatches && queryMatches };
     })
-    .sort((a, b) => b.href.split("?")[0].length - a.href.split("?")[0].length)[0]?.href;
+    .filter(({ matches }) => matches)
+    .sort((a, b) => b.path.length - a.path.length || b.requiredQuery.size - a.requiredQuery.size)[0]?.item.href;
 }

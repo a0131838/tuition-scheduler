@@ -1,23 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { activeAdminNavHref, type AdminNavGroup, type AdminNavItem } from "@/lib/admin-navigation";
+import styles from "./sidebar-navigation.module.css";
 export type { AdminNavGroup, AdminNavItem } from "@/lib/admin-navigation";
 
 const OPEN_GROUP_KEY = "sgt-admin-nav-open-group-v1";
 const FAVORITES_KEY = "sgt-admin-nav-favorites-v1";
 const FAVORITES_LIMIT = 4;
-
-function groupStyles(_title: string, isActiveGroup: boolean) {
-  return { background: "#ffffff", borderColor: "#e2e8e3", accent: isActiveGroup ? "#25664c" : "#53635a" };
-}
-
-function toneStyles(isActive: boolean) {
-  return { background: isActive ? "#edf4ef" : "transparent", borderColor: "transparent", color: isActive ? "#25664c" : "#33443b" };
-}
 
 function NavRow({
   item,
@@ -35,7 +28,6 @@ function NavRow({
   unpinLabel: string;
 }) {
   const isActive = activeHref === item.href;
-  const tone = toneStyles(isActive);
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 30px", gap: 5, minHeight: 36 }}>
@@ -44,27 +36,16 @@ function NavRow({
         href={item.href}
         aria-current={isActive ? "page" : undefined}
         title={item.description || item.label}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          minWidth: 0,
-          padding: "8px 9px",
-          borderRadius: 7,
-          textDecoration: "none",
-          border: `1px solid ${tone.borderColor}`,
-          background: tone.background,
-          color: tone.color,
-          fontWeight: isActive ? 700 : 500,
-          lineHeight: 1.25,
-          boxShadow: "none",
-        }}
+        className={styles.link}
       >
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{item.label}</span>
+        <span className={styles.label}>{item.label}</span>
+        {isActive ? <span className={styles.currentMark} aria-hidden="true">✓</span> : null}
       </Link>
       <button
         type="button"
         title={isFavorite ? unpinLabel : pinLabel}
         aria-label={isFavorite ? unpinLabel : pinLabel}
+        className={styles.favorite}
         onClick={() => onToggleFavorite(item.href)}
         style={{
           width: 30,
@@ -72,8 +53,8 @@ function NavRow({
           padding: 0,
           borderRadius: 7,
           border: "1px solid transparent",
-          background: isFavorite ? "#edf4ef" : "transparent",
-          color: isFavorite ? "#25664c" : "#819087",
+          background: isFavorite ? "#fff7df" : "transparent",
+          color: isFavorite ? "#8a5800" : "#68786e",
           cursor: "pointer",
           fontSize: 17,
           lineHeight: 1,
@@ -107,7 +88,8 @@ export default function AdminSidebarNavClient({
   navigationLabel?: string;
 }) {
   const pathname = usePathname();
-  const activeHref = activeAdminNavHref(groups, pathname);
+  const searchParams = useSearchParams();
+  const activeHref = activeAdminNavHref(groups, pathname, searchParams.toString());
   const activeGroup = groups.find((group) => group.items.some((item) => item.href === activeHref))?.title;
   const [query, setQuery] = useState("");
   const [openGroup, setOpenGroup] = useState(activeGroup || groups[0]?.title || "");
@@ -125,7 +107,7 @@ export default function AdminSidebarNavClient({
     const validTitles = new Set(groups.map((group) => group.title));
     const remembered = window.localStorage.getItem(OPEN_GROUP_KEY);
     const validRemembered = remembered && validTitles.has(remembered) ? remembered : "";
-    setOpenGroup(pathname === "/admin" ? validRemembered || activeGroup || groups[0]?.title || "" : activeGroup || validRemembered || groups[0]?.title || "");
+    setOpenGroup(activeGroup || validRemembered || groups[0]?.title || "");
 
     try {
       const stored = JSON.parse(window.localStorage.getItem(FAVORITES_KEY) || "[]");
@@ -217,45 +199,26 @@ export default function AdminSidebarNavClient({
         const primaryItems = group.items.filter((item) => normalizedQuery || !item.secondary);
         const secondaryItems = normalizedQuery ? [] : group.items.filter((item) => item.secondary);
         const isOpen = Boolean(normalizedQuery) || openGroup === group.title;
-        const groupTone = groupStyles(group.title, isActiveGroup);
 
         return (
           <section
             key={group.title}
-            style={{
-              borderRadius: 8,
-              background: groupTone.background,
-              border: "none",
-              overflow: "hidden",
-            }}
+            className={styles.group}
+            data-active={isActiveGroup || undefined}
           >
             <button
               type="button"
               onClick={() => toggleGroup(group.title)}
               aria-expanded={isOpen}
               title={group.summary || group.title}
-              style={{
-                width: "100%",
-                minHeight: 38,
-                display: "grid",
-                gridTemplateColumns: "18px minmax(0, 1fr) auto",
-                alignItems: "center",
-                gap: 6,
-                padding: "8px 9px",
-                border: 0,
-                background: "transparent",
-                color: groupTone.accent,
-                cursor: "pointer",
-                textAlign: "left",
-                fontWeight: 650,
-              }}
+              className={styles.groupToggle}
             >
               <span aria-hidden="true" style={{ fontSize: 13 }}>{isOpen ? "▾" : "▸"}</span>
               <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{group.title}</span>
-              <span style={{ minWidth: 24, textAlign: "right", fontSize: 11, color: "#64748b" }}>{group.items.length}</span>
+              <span className={styles.count}>{group.items.length}</span>
             </button>
             {isOpen ? (
-              <div style={{ display: "grid", gap: 5, padding: "0 8px 8px" }}>
+              <div className={styles.items}>
                 {primaryItems.map((item) => (
                   <NavRow
                     key={item.href}
@@ -269,7 +232,7 @@ export default function AdminSidebarNavClient({
                 ))}
                 {secondaryItems.length > 0 ? (
                   <details key={`${group.title}-${activeHref ?? ""}`} open={secondaryItems.some((item) => item.href === activeHref)}>
-                    <summary style={{ padding: "8px 9px", cursor: "pointer", color: "#64748b", fontSize: 11.5 }}>{moreLabel} ({secondaryItems.length})</summary>
+                    <summary className={styles.more}>{moreLabel} ({secondaryItems.length})</summary>
                     <div style={{ display: "grid", gap: 5 }}>
                       {secondaryItems.map((item) => (
                         <NavRow key={item.href} item={item} activeHref={activeHref} isFavorite={favoriteHrefs.includes(item.href)} onToggleFavorite={toggleFavorite} pinLabel={pinLabel} unpinLabel={unpinLabel} />
