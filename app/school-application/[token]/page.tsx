@@ -1,3 +1,4 @@
+import { schoolApplicationSignLinkCanRead } from "@/lib/school-application-document-policy";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import ContractSignaturePad from "@/app/contract/_components/ContractSignaturePad";
@@ -161,7 +162,7 @@ export default async function SchoolApplicationSignPage({
   const { token } = await params;
   const sp = await searchParams;
   const app = await getSchoolApplicationBySignToken(token);
-  if (!app) {
+  if (!app || !schoolApplicationSignLinkCanRead(app, token)) {
     return (
       <main style={{ padding: 32, maxWidth: 920, margin: "0 auto" }}>
         <div style={cardStyle("#fff1f2")}>
@@ -244,10 +245,10 @@ export default async function SchoolApplicationSignPage({
               {app.signatureImagePath ? (
                 <div style={{ display: "grid", gap: 6, maxWidth: 340 }}>
                   <strong>Signature / 签名</strong>
-                  <img src={app.signatureImagePath} alt="School application signature" style={{ maxWidth: 260, maxHeight: 90, objectFit: "contain", border: "1px solid #bbf7d0", borderRadius: 10, background: "#fff" }} />
+                  <img src={`/api/school-applications/${encodeURIComponent(app.id)}/signature?token=${encodeURIComponent(token)}`} alt="School application signature" style={{ maxWidth: 260, maxHeight: 90, objectFit: "contain", border: "1px solid #bbf7d0", borderRadius: 10, background: "#fff" }} />
                 </div>
               ) : null}
-              <a href={`/api/exports/school-application/${encodeURIComponent(app.id)}`} target="_blank" rel="noreferrer">Open signed PDF / 打开已签 PDF</a>
+              <a href={`/api/exports/school-application/${encodeURIComponent(app.id)}?token=${encodeURIComponent(token)}`} target="_blank" rel="noreferrer">Open signed PDF / 打开已签 PDF</a>
             </section>
           ) : expired ? (
             <section style={cardStyle("#fff1f2")}>
@@ -277,7 +278,7 @@ export default async function SchoolApplicationSignPage({
                   </section>
                 ) : null}
               </div>
-              <a href={`/api/exports/school-application/${encodeURIComponent(app.id)}`} target="_blank" rel="noreferrer">
+              <a href={`/api/exports/school-application/${encodeURIComponent(app.id)}?token=${encodeURIComponent(token)}`} target="_blank" rel="noreferrer">
                 Preview agreement PDF / 预览合同 PDF
               </a>
             </section>

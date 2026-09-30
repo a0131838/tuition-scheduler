@@ -1,4 +1,19 @@
 # RELEASE BOARD
+## 2026-09-30-r470
+
+- Release ID: `2026-09-30-r470`
+- Date/Time (Asia/Singapore): `2026-09-30`
+- Deployment status: `READY`; verified live evidence follows in the execution ledger.
+- Problem: an isolated anonymous GET by school application ID returned a valid248078-byte agreement PDF. Public school PDF/signature storage URLs also needed the same document access boundary as the application workflow.
+- Change: agreement exports require existing authorized staff rights or the exact current application signing capability. Public page PDF/signature links carry that capability. Draft/withdrawn, expired ready-to-sign and void states do not expose public documents. Preserve the existing signed-link read semantics after its signing deadline; staff retain historical/void document access. Company-sealed export is a staff operation. School-specific legacy PDF/signature paths, including encoded prefixes, resolve exactly one record and apply the same permission check; unrelated upload families retain their handling. Protected responses use private no-store and no-referrer.
+- Validation:766 tests,262-page build and TypeScript passed. Actual isolated HTTP verifies anonymous/teacher denial, owner/finance access, exact parent capability, cross-record and rotated-token denial, ready expiry, draft/void denial, signed read access, no-store, raw/encoded file protection and staff history. Public signature and parent-info service+HTTP regressions passed, including repeated signing, invoice/audit rollback, stale/void replay denial, preserved opening history and revoked links. All fixtures and files are isolated; no production document was accessed to reproduce the issue.
+- Compatibility: no migration, calculation, financial/lesson-ledger write or sending change. Existing authorized staff and valid parent signing links remain usable. Previously downloaded files cannot be recalled; this is not a claim that all unrelated upload families were audited.
+- Remaining: per-page acceptance consolidation, remaining exports/mobile checks and bilingual unified delivery. The overall programme remains in progress.
+- Rollback reference: `5f213e63a9a8ebbc988971ea0d03b5769f45ca61` (r469); reverting restores anonymous school PDF access. Prefer forward repair; no schema rollback.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
 ## 2026-09-30-r469
 
 - Release ID: `2026-09-30-r469`
@@ -1042,7 +1057,7 @@
 ---
 
 
-- Current release: `2026-09-30-r469` prepared; guarded deployment evidence is recorded in the execution ledger after version/PM2/HTTP verification.
+- Current release: `2026-09-30-r470` prepared; guarded deployment evidence is recorded in the execution ledger after version/PM2/HTTP verification.
 
 ## 2026-09-09-r404 Ready
 

@@ -1,3 +1,4 @@
+import { canReadSchoolApplicationDocument } from "@/lib/school-application-document-access";
 import { NextResponse } from "next/server";
 import { generateSchoolApplicationPdfBuffer, getSchoolApplicationById } from "@/lib/school-application";
 
@@ -11,9 +12,9 @@ export async function GET(
 ) {
   const { id } = await params;
   const app = await getSchoolApplicationById(id);
-  if (!app) return new NextResponse("Not found", { status: 404 });
   const url = new URL(req.url);
   const withSeal = url.searchParams.get("seal") === "1";
+  if (!app || !await canReadSchoolApplicationDocument(req, app, withSeal)) return new NextResponse("Forbidden / 无权访问", { status: 403 });
   let buffer: Buffer;
   try {
     buffer = await generateSchoolApplicationPdfBuffer(id, { companySeal: withSeal });
@@ -27,7 +28,8 @@ export async function GET(
     headers: {
       "content-type": "application/pdf",
       "content-length": String(buffer.byteLength),
-      "cache-control": "private, max-age=300",
+      "cache-control": "private, no-store",
+      "referrer-policy": "no-referrer",
       "content-disposition": `${download ? "attachment" : "inline"}; filename="${name}"`,
     },
   });

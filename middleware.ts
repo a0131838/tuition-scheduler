@@ -1,3 +1,4 @@
+import { isSchoolApplicationStoredPath } from "@/lib/school-application-document-policy";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { isMutationMethod, validObserverSessionToken } from "@/lib/observer-mode";
@@ -8,13 +9,14 @@ export async function middleware(req: NextRequest) {
   let decodedPath: string;
   try { decodedPath = decodeURIComponent(req.nextUrl.pathname); }
   catch { return new NextResponse("Not Found", { status: 404 }); }
+  const rawSchoolDoc = isSchoolApplicationStoredPath(decodedPath);
   const rawSharedDoc = decodedPath.startsWith("/uploads/shared-docs/");
   // Static file resolution decodes paths too; encoded prefixes must not bypass guards.
-  if (!rawSharedDoc && !/^\/(admin|teacher|staff|api)(\/|$)/.test(req.nextUrl.pathname)) return NextResponse.next();
+  if (!rawSharedDoc && !rawSchoolDoc && !/^\/(admin|teacher|staff|api)(\/|$)/.test(req.nextUrl.pathname)) return NextResponse.next();
   const sessionToken = req.cookies.get("ts_admin_session")?.value;
   const observerMode = await validObserverSessionToken(sessionToken);
   const operationsAdminMode = await validOperationsAdminSessionToken(sessionToken);
-  const pathname = rawSharedDoc ? "/api/shared-docs/legacy-file" : req.nextUrl.pathname;
+  const pathname = rawSchoolDoc ? "/api/school-applications/legacy-file" : rawSharedDoc ? "/api/shared-docs/legacy-file" : req.nextUrl.pathname;
   const observerWriteAllowed = pathname === "/api/admin/auth/login" || pathname === "/api/miniapp/staff/auth/logout";
   if (observerMode && isMutationMethod(req.method) && !observerWriteAllowed) {
     return NextResponse.json(
@@ -31,9 +33,9 @@ export async function middleware(req: NextRequest) {
     );
   }
 
-  if (rawSharedDoc) {
+  if (rawSharedDoc || rawSchoolDoc) {
     const target = req.nextUrl.clone();
-    target.pathname = "/api/shared-docs/legacy-file";
+    target.pathname = rawSchoolDoc ? "/api/school-applications/legacy-file" : "/api/shared-docs/legacy-file";
     target.searchParams.set("path", decodedPath);
     return NextResponse.rewrite(target);
   }
