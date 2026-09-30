@@ -1,8 +1,9 @@
+import { getLang, t } from "@/lib/i18n";
+import { exportDisplayLabel } from "@/lib/export-display-labels";
 import { requireAdmin } from "@/lib/auth";
 import {
   financeDocumentGeneratedAt,
   listFilteredFinanceDocumentRows,
-  type FinanceDocumentPaymentStatus,
 } from "@/lib/finance-documents";
 import ExcelJS from "exceljs";
 
@@ -10,25 +11,10 @@ function safeFileName(value: string) {
   return value.replace(/[\\/:*?"<>|]/g, "_").replace(/\s+/g, "_");
 }
 
-function paymentStatusLabel(status: FinanceDocumentPaymentStatus) {
-  if (status === "PAID") return "Paid";
-  if (status === "PARTIAL") return "Partial";
-  if (status === "PENDING_APPROVAL") return "Pending approval";
-  if (status === "REJECTED") return "Rejected";
-  if (status === "CREDITED") return "Fully credited";
-  if (status === "VOID") return "Void";
-  return "Unpaid";
-}
-
-function channelLabel(channel: "PARENT" | "PARTNER" | "BUSINESS") {
-  if (channel === "PARENT") return "Parent";
-  if (channel === "BUSINESS") return "Business";
-  return "Partner";
-}
-
 function applyHeader(row: ExcelJS.Row) {
   row.font = { bold: true, color: { argb: "FF0F172A" } };
-  row.alignment = { vertical: "middle", horizontal: "center" };
+  row.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+  row.height = 44;
   row.fill = {
     type: "pattern",
     pattern: "solid",
@@ -61,6 +47,7 @@ function applyDataBorders(sheet: ExcelJS.Worksheet, startRow: number) {
 
 export async function GET(req: Request) {
   await requireAdmin();
+  const lang = await getLang();
   const { searchParams } = new URL(req.url);
   const rows = await listFilteredFinanceDocumentRows({
     channel: searchParams.get("channel"),
@@ -78,43 +65,45 @@ export async function GET(req: Request) {
   workbook.created = new Date();
   workbook.modified = new Date();
 
-  const sheet = workbook.addWorksheet("Finance Documents");
+  const sheet = workbook.addWorksheet(t(lang,"Finance Documents","财务单据").replace(/\//g, "·"));
   sheet.mergeCells("A1:D1");
-  sheet.getCell("A1").value = "Finance Documents - Invoices, Receipts and Credit Notes";
+  sheet.getCell("A1").value = t(lang,"Finance Documents - Invoices, Receipts and Credit Notes","财务单据：发票、收据及贷项通知单");
   sheet.getCell("A1").font = { bold: true, size: 14 };
-  sheet.getCell("A2").value = `Generated at: ${generatedAt}`;
-  sheet.getCell("A3").value = `Rows: ${rows.length}`;
-  sheet.columns = [
-    { header: "Channel", key: "channel", width: 14 },
-    { header: "Type", key: "type", width: 12 },
-    { header: "Document No", key: "docNo", width: 24 },
-    { header: "Date", key: "issueDate", width: 14 },
-    { header: "Party", key: "partyLabel", width: 24 },
-    { header: "Context", key: "contextLabel", width: 36 },
-    { header: "Package ID", key: "packageId", width: 38 },
-    { header: "Original / Document Amount", key: "amount", width: 24 },
-    { header: "Issued Credit", key: "creditAmount", width: 16 },
-    { header: "Adjusted Amount", key: "adjustedAmount", width: 18 },
-    { header: "Approved Received", key: "receiptedAmount", width: 18 },
-    { header: "Pending Receipt Amount", key: "pendingReceiptAmount", width: 22 },
-    { header: "Rejected Receipt Amount", key: "rejectedReceiptAmount", width: 22 },
-    { header: "Remaining Unpaid", key: "remainingAmount", width: 18 },
-    { header: "Receipt Count", key: "receiptCount", width: 14 },
-    { header: "Status", key: "status", width: 18 },
-    { header: "Related Document", key: "relatedDocumentNo", width: 24 },
-    { header: "PDF Link", key: "exportHref", width: 42 },
-    { header: "PDF + Seal Link", key: "sealedExportHref", width: 42 },
-    { header: "Source Page", key: "openHref", width: 52 },
+  sheet.getCell("A2").value = `${t(lang,"Generated at","生成时间")}: ${generatedAt}`;
+  sheet.getCell("A3").value = `${t(lang,"Rows","记录数")}: ${rows.length}`;
+  const columns = [
+    { header: t(lang,"Channel","渠道"), key: "channel", width: 14 },
+    { header: t(lang,"Type","类型"), key: "type", width: 12 },
+    { header: t(lang,"Document No","单据编号"), key: "docNo", width: 24 },
+    { header: t(lang,"Date","日期"), key: "issueDate", width: 14 },
+    { header: t(lang,"Party","对象"), key: "partyLabel", width: 24 },
+    { header: t(lang,"Context","关联业务"), key: "contextLabel", width: 36 },
+    { header: t(lang,"Package ID","课包ID"), key: "packageId", width: 38 },
+    { header: t(lang,"Original / Document Amount","原金额／单据金额"), key: "amount", width: 24 },
+    { header: t(lang,"Issued Credit","已开贷项"), key: "creditAmount", width: 16 },
+    { header: t(lang,"Adjusted Amount","调整后金额"), key: "adjustedAmount", width: 18 },
+    { header: t(lang,"Approved Received","已批准收款"), key: "receiptedAmount", width: 18 },
+    { header: t(lang,"Pending Receipt Amount","待审收款金额"), key: "pendingReceiptAmount", width: 22 },
+    { header: t(lang,"Rejected Receipt Amount","已驳回收款金额"), key: "rejectedReceiptAmount", width: 22 },
+    { header: t(lang,"Remaining Unpaid","未收余额"), key: "remainingAmount", width: 18 },
+    { header: t(lang,"Receipt Count","收据数量"), key: "receiptCount", width: 14 },
+    { header: t(lang,"Status","状态"), key: "status", width: 18 },
+    { header: t(lang,"Related Document","关联单据"), key: "relatedDocumentNo", width: 24 },
+    { header: t(lang,"PDF Link","PDF链接"), key: "exportHref", width: 42 },
+    { header: t(lang,"PDF + Seal Link","盖章PDF链接"), key: "sealedExportHref", width: 42 },
+    { header: t(lang,"Source Page","来源页面"), key: "openHref", width: 52 },
   ];
 
+  // Column headers otherwise write into row 1 and overwrite the merged report title.
+  sheet.columns = columns.map(({ header: _header, ...column }) => column);
   const header = sheet.getRow(5);
-  header.values = sheet.columns.map((column) => column.header as string);
+  header.values = columns.map((column) => column.header);
   applyHeader(header);
 
   for (const row of rows) {
     sheet.addRow({
-      channel: channelLabel(row.channel),
-      type: row.type === "INVOICE" ? "Invoice" : row.type === "RECEIPT" ? "Receipt" : "Credit Note",
+      channel: exportDisplayLabel(row.channel, lang),
+      type: exportDisplayLabel(row.type, lang),
       docNo: row.docNo,
       issueDate: row.issueDate,
       partyLabel: row.partyLabel,
@@ -128,7 +117,7 @@ export async function GET(req: Request) {
       rejectedReceiptAmount: row.type === "CREDIT_NOTE" ? null : row.rejectedReceiptAmount,
       remainingAmount: row.type === "CREDIT_NOTE" ? null : row.remainingAmount,
       receiptCount: row.type === "CREDIT_NOTE" ? null : row.receiptCount,
-      status: row.type === "CREDIT_NOTE" ? row.creditNoteStatus : paymentStatusLabel(row.paymentStatus),
+      status: exportDisplayLabel(row.type === "CREDIT_NOTE" ? row.creditNoteStatus : row.paymentStatus, lang),
       relatedDocumentNo: row.relatedDocumentNo ?? "",
       exportHref: row.exportHref ?? "",
       sealedExportHref: row.sealedExportHref ?? "",

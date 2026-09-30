@@ -1,10 +1,13 @@
 type ClassTypeBadgeProps = {
   capacity?: number | null;
   compact?: boolean;
+  lang?: "EN" | "ZH" | "BILINGUAL";
 };
 
-export default function ClassTypeBadge({ capacity, compact = false }: ClassTypeBadgeProps) {
+export default function ClassTypeBadge({ capacity, compact = false, lang = "BILINGUAL" }: ClassTypeBadgeProps) {
   const oneOnOne = capacity === 1;
+  const en = oneOnOne ? "1-on-1" : "Group";
+  const zh = oneOnOne ? "一对一" : "班课";
   return (
     <span
       style={{
@@ -18,7 +21,7 @@ export default function ClassTypeBadge({ capacity, compact = false }: ClassTypeB
         border: `1px solid ${oneOnOne ? "#fecaca" : "#bfdbfe"}`,
       }}
     >
-      {oneOnOne ? "1-on-1 / 一对一" : "Group / 班课"}
+      {lang === "EN" ? en : lang === "ZH" ? zh : `${en} / ${zh}`}
     </span>
   );
 }

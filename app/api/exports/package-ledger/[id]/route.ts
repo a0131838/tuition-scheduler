@@ -1,4 +1,5 @@
-﻿import { prisma } from "@/lib/prisma";
+import { exportDisplayLabel } from "@/lib/export-display-labels";
+import { prisma } from "@/lib/prisma";
 import PDFDocument from "pdfkit";
 import { PassThrough } from "stream";
 import path from "path";
@@ -329,8 +330,8 @@ export async function GET(
       zh: "课程",
       value: `${pkg.course?.name ?? "-"} ${(pkg.course as any)?.level ?? ""}`.trim(),
     },
-    { en: "Package Type", zh: "课包类型", value: pkg.type },
-    { en: "Status", zh: "状态", value: pkg.status },
+    { en: "Package Type", zh: "课包类型", value: exportDisplayLabel(pkg.type, lang) },
+    { en: "Status", zh: "状态", value: exportDisplayLabel(pkg.status, lang) },
     {
       en: "Valid",
       zh: "有效期",
@@ -468,7 +469,7 @@ export async function GET(
 
     const h = Math.max(
       doc.heightOfString(time, { width: col[0] }),
-      doc.heightOfString(r.txn.kind, { width: col[1] }),
+      doc.heightOfString(exportDisplayLabel(r.txn.kind, lang), { width: col[1] }),
       doc.heightOfString(delta, { width: col[2] }),
       doc.heightOfString(balance, { width: col[3] }),
       doc.heightOfString(detail, { width: col[4] })
@@ -481,7 +482,7 @@ export async function GET(
 
     const rowY = doc.y;
     doc.text(time, leftX, rowY, { width: col[0] });
-    doc.text(r.txn.kind, leftX + col[0], rowY, { width: col[1] });
+    doc.text(exportDisplayLabel(r.txn.kind, lang), leftX + col[0], rowY, { width: col[1] });
     doc.text(delta, leftX + col[0] + col[1], rowY, { width: col[2] });
     doc.text(balance, leftX + col[0] + col[1] + col[2], rowY, { width: col[3] });
     doc.text(detail, leftX + col[0] + col[1] + col[2] + col[3], rowY, {

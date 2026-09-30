@@ -1,4 +1,5 @@
-﻿import { prisma } from "@/lib/prisma";
+import { exportDisplayLabel } from "@/lib/export-display-labels";
+import { prisma } from "@/lib/prisma";
 import PDFDocument from "pdfkit";
 import { PassThrough } from "stream";
 import path from "path";
@@ -281,13 +282,13 @@ export async function GET(
       const openText = choose(lang, "(open)", "（长期）");
       doc.fontSize(10).text(
         `${p.course?.name ?? "-"} (${(p.course as any)?.level ?? ""}) | ${
-          p.type
+          exportDisplayLabel(p.type, lang)
         } | ${choose(lang, "Remaining", "剩余")}: ${remaining} | ${choose(
           lang,
           "Valid",
           "有效期"
         )}: ${formatDate(p.validFrom)} ~ ${p.validTo ? formatDate(p.validTo) : openText} | ${
-          p.status
+          exportDisplayLabel(p.status, lang)
         }`
       );
     }
@@ -316,7 +317,7 @@ export async function GET(
       } | ${
         sess.class.teacher.name
       }`;
-      const deductLine = `${choose(lang, "Status", "状态")}: ${a.status} | ${choose(
+      const deductLine = `${choose(lang, "Status", "状态")}: ${exportDisplayLabel(a.status, lang)} | ${choose(
         lang,
         "Deduct",
         "扣减"

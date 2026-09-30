@@ -1081,3 +1081,18 @@ Logs: `/tmp/sgt-r448-all-tests.log`, `/tmp/sgt-r448-build.log`, `/tmp/sgt-r448-t
 
 ---
 
+
+## 2026-09-30-r471
+
+- Release ID: `2026-09-30-r471`
+- Date/Time (Asia/Singapore): `2026-09-30`
+- Deployment status: `READY`; live proof follows in the execution ledger.
+- Change: translate teacher lesson type and attendance option labels in EN/ZH/BILINGUAL while preserving submitted enum values. Small-screen attendance rows become labelled cards with accessible field names. Translate student/ledger PDF status labels and finance XLSX headers/statuses. Preserve the spreadsheet title instead of overwriting merged row1 with column headers; use an Excel-safe bilingual worksheet name and wrapped headers.
+- Validation: final262-page production build/type check passed. Three-language actual attendance HTML verifies Late labels and unchanged LATE values;375px browser review found no field overflow or console errors. Nine actual isolated PDF/XLSX exports and18 anonymous/teacher denial checks passed. Each finance workbook retains77 data rows and1309 checked non-display cells (amounts, document IDs, dates and links) against the prior export. Rendered Chinese student and bilingual ledger PDF pages reviewed for readable labels and non-overlapping rows. Initial export UAT caught the invalid slash in the bilingual worksheet name; fixed before release.
+- Compatibility: display only; no migration, attendance request-body, financial calculation, rights, balance, historical records, sending or production business test writes. Other class badge callers retain their bilingual default. This is sample PDF visual acceptance, not every possible document layout.
+- Remaining: page disposition/evidence consolidation, receipt workspace density and unified delivery remain in progress.
+- Rollback reference: `a5f6ec96f2e48762b1bd8505ec9733945764119c` (r470); no schema rollback.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+

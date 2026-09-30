@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import styles from "./attendance.module.css";
 
 type Row = {
   studentId: string;
@@ -26,6 +27,7 @@ export default function TeacherAttendanceClient({
     colStudent: string;
     colStatus: string;
     colNote: string;
+    statuses: Record<string, string>;
   };
   completionGuide?: {
     title: string;
@@ -107,7 +109,7 @@ export default function TeacherAttendanceClient({
           ) : null}
         </div>
       ) : null}
-      <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 12 }}>
+      <table className={styles.table} cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 12 }}>
         <thead>
           <tr style={{ background: "#f5f5f5" }}>
             <th align="left">{labels.colStudent}</th>
@@ -118,9 +120,10 @@ export default function TeacherAttendanceClient({
         <tbody>
           {rows.map((r, idx) => (
             <tr key={r.studentId} style={{ borderTop: "1px solid #eee" }}>
-              <td>{r.studentName}</td>
-              <td>
+              <td data-label={labels.colStudent}>{r.studentName}</td>
+              <td data-label={labels.colStatus}>
                 <select
+                  aria-label={`${labels.colStatus}: ${r.studentName}`}
                   value={r.status}
                   onChange={(e) =>
                     setRows((prev) => prev.map((x, i) => (i === idx ? { ...x, status: e.target.value } : x)))
@@ -128,13 +131,14 @@ export default function TeacherAttendanceClient({
                 >
                   {statusOptions.map((opt) => (
                     <option key={opt} value={opt}>
-                      {opt}
+                      {labels.statuses[opt] ?? opt}
                     </option>
                   ))}
                 </select>
               </td>
-              <td>
+              <td data-label={labels.colNote}>
                 <input
+                  aria-label={`${labels.colNote}: ${r.studentName}`}
                   value={r.note}
                   onChange={(e) =>
                     setRows((prev) => prev.map((x, i) => (i === idx ? { ...x, note: e.target.value } : x)))

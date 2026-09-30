@@ -1,0 +1,8 @@
+@media (max-width: 640px) {
+  .table, .table tbody, .table tr, .table td { display: block; width: 100%; min-width: 0; box-sizing: border-box; }
+  .table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .table tr { margin-bottom: 12px; padding: 8px; border: 1px solid #dbe5ef; border-radius: 10px; }
+  .table td { white-space: normal !important; overflow-wrap: anywhere; padding: 6px 0; }
+  .table td::before { content: attr(data-label); display: block; margin-bottom: 4px; font-size: 12px; font-weight: 650; color: #475569; }
+  .table select, .table input { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
+}

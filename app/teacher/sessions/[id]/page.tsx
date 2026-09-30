@@ -173,7 +173,7 @@ export default async function TeacherSessionDetailPage({
           {formatBusinessDateTime(new Date(session.startAt))} - {formatBusinessTimeOnly(new Date(session.endAt))}
         </b>
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-          <ClassTypeBadge capacity={session.class.capacity} compact />
+          <ClassTypeBadge capacity={session.class.capacity} compact lang={lang} />
           <span>
             {session.class.course.name}
             {session.class.subject ? ` / ${session.class.subject.name}` : ""}
@@ -350,6 +350,7 @@ export default async function TeacherSessionDetailPage({
           colStudent: t(lang, "Student", "学生"),
           colStatus: t(lang, "Status", "状态"),
           colNote: t(lang, "Note", "备注"),
+          statuses: { UNMARKED: t(lang,"Unmarked","未点名"), PRESENT: t(lang,"Present","出席"), ABSENT: t(lang,"Absent","缺席"), LATE: t(lang,"Late","迟到"), EXCUSED: t(lang,"Excused","请假") },
         }}
       />}
 
