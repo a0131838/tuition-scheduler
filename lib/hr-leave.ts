@@ -1,6 +1,6 @@
-import { HrLeaveLedgerEntryType, HrLeaveStatus, HrLeaveType, Prisma } from "@prisma/client";
+import { HrLeaveStatus, HrLeaveType, Prisma } from "@prisma/client";
 import { getApprovalRoleConfig } from "@/lib/approval-flow";
-import { logAudit } from "@/lib/audit-log";
+import {requireHrWriteActor} from "./hr-write-access";
 import { prisma } from "@/lib/prisma";
 import { isSessionFullyCancelled } from "@/lib/session-students";
 
@@ -18,8 +18,8 @@ export function calculateWorkingLeaveMinutes(input: {
   hourlyMinutes?: number;
   workPattern?: Prisma.JsonValue | null;
 }) {
-  if (!(input.startAt instanceof Date) || !(input.endAt instanceof Date) || input.endAt < input.startAt) {
-    throw new Error("Invalid leave period");
+  if (!(input.startAt instanceof Date) || !(input.endAt instanceof Date) || !Number.isFinite(+input.startAt) || !Number.isFinite(+input.endAt) || input.endAt < input.startAt) {
+    throw new Error("Invalid leave period / 请假时间无效");
   }
   const pattern = input.workPattern && typeof input.workPattern === "object" && !Array.isArray(input.workPattern)
     ? (input.workPattern as Record<string, unknown>)
@@ -39,12 +39,12 @@ export function calculateWorkingLeaveMinutes(input: {
     if (workDays.has(cursor.getDay())) workingDays += 1;
     cursor.setDate(cursor.getDate() + 1);
   }
-  if (!workingDays) throw new Error("Leave period contains no working day");
+  if (!workingDays) throw new Error("Leave period contains no working day / 请假时段不包含工作日");
   return workingDays * (input.portion === "HALF_DAY" ? Math.round(dailyMinutes / 2) : dailyMinutes);
 }
 
-export async function getEmployeeLeaveBalances(employeeId: string, now = new Date()) {
-  const rows = await prisma.hrLeaveLedgerEntry.groupBy({
+export async function getEmployeeLeaveBalances(employeeId: string, now = new Date(), db: Prisma.TransactionClient = prisma) {
+  const rows = await db.hrLeaveLedgerEntry.groupBy({
     by: ["leaveType"],
     where: { employeeId, OR: [{ expiresAt: null }, { expiresAt: { gte: now } }] },
     _sum: { minutes: true },
@@ -52,15 +52,15 @@ export async function getEmployeeLeaveBalances(employeeId: string, now = new Dat
   return new Map(rows.map((row) => [row.leaveType, row._sum.minutes ?? 0]));
 }
 
-async function resolveLeaveApprover(employeeId: string) {
-  const employee = await prisma.employeeProfile.findUnique({
+async function resolveLeaveApprover(employeeId: string, db: Prisma.TransactionClient) {
+  const employee = await db.employeeProfile.findUnique({
     where: { id: employeeId },
     select: { userId: true, managerUserId: true },
   });
-  if (!employee) throw new Error("Employee profile not found");
+  if (!employee) throw new Error("Employee profile not found / 员工档案不存在");
   if (employee.managerUserId && employee.managerUserId !== employee.userId) return employee.managerUserId;
 
-  const hrManager = await prisma.user.findFirst({
+  const hrManager = await db.user.findFirst({
     where: {
       id: { not: employee.userId },
       role: "ADMIN",
@@ -71,8 +71,8 @@ async function resolveLeaveApprover(employeeId: string) {
   });
   if (hrManager) return hrManager.id;
 
-  const config = await getApprovalRoleConfig();
-  const fallback = await prisma.user.findFirst({
+  const config = await getApprovalRoleConfig(db);
+  const fallback = await db.user.findFirst({
     where: { id: { not: employee.userId }, email: { in: config.managerApproverEmails, mode: "insensitive" } },
     orderBy: { createdAt: "asc" },
     select: { id: true },
@@ -80,10 +80,10 @@ async function resolveLeaveApprover(employeeId: string) {
   return fallback?.id ?? null;
 }
 
-export async function countEmployeeScheduleConflicts(employeeId: string, startAt: Date, endAt: Date) {
-  const employee = await prisma.employeeProfile.findUnique({ where: { id: employeeId }, select: { teacherId: true } });
+export async function countEmployeeScheduleConflicts(employeeId: string, startAt: Date, endAt: Date, db: Prisma.TransactionClient = prisma) {
+  const employee = await db.employeeProfile.findUnique({ where: { id: employeeId }, select: { teacherId: true } });
   if (!employee?.teacherId) return 0;
-  const sessions = await prisma.session.findMany({
+  const sessions = await db.session.findMany({
     where: {
       startAt: { lt: endAt },
       endAt: { gt: startAt },
@@ -103,6 +103,24 @@ export async function countEmployeeScheduleConflicts(employeeId: string, startAt
   return sessions.filter((session) => !isSessionFullyCancelled(session)).length;
 }
 
+// Employee lock serializes separate requests spending the same leave balance.
+async function lockedLeave(tx:Prisma.TransactionClient,id:string){
+ const initial=await tx.hrLeaveRequest.findUnique({where:{id},select:{employeeId:true}});
+ if(!initial)throw Error('Leave request not found / 请假申请不存在');
+ await tx.$queryRaw`SELECT id FROM "EmployeeProfile" WHERE id=${initial.employeeId} FOR UPDATE`;
+ await tx.$queryRaw`SELECT id FROM "HrLeaveRequest" WHERE id=${id} FOR UPDATE`;
+ const row=await tx.hrLeaveRequest.findUnique({where:{id},include:{employee:{select:{userId:true}}}});
+ if(!row||row.employeeId!==initial.employeeId)throw Error('Leave request changed / 请假申请已变化');
+ return row;
+}
+async function leaveAudit(tx:Prisma.TransactionClient,actor:{email:string;name:string;role:string},action:string,id:string,before:unknown,after:unknown){
+ await tx.auditLog.create({data:{actorEmail:actor.email,actorName:actor.name,actorRole:actor.role,module:'hr',action,entityType:'HrLeaveRequest',entityId:id,meta:JSON.parse(JSON.stringify({before,after}))}});
+}
+function leaveConflict(error:unknown):never{
+ if(error instanceof Prisma.PrismaClientKnownRequestError&&(error.code==='P2034'||(error.code==='P2010'&&String(error.meta?.code)==='40001')))throw Error('Leave records changed; refresh and review before retrying / 请假记录已变化，请刷新核对后再试');
+ throw error;
+}
+
 export async function submitLeaveRequest(input: {
   employeeId: string;
   leaveType: HrLeaveType;
@@ -112,10 +130,17 @@ export async function submitLeaveRequest(input: {
   hourlyMinutes?: number;
   reason?: string | null;
   attachment?: { privatePath: string; originalName: string; mimeType?: string | null } | null;
-  actor: { email: string; name?: string | null; role?: string | null };
+  actor: { id: string; email: string; name?: string | null; role?: string | null };
 }) {
-  const employee = await prisma.employeeProfile.findUnique({ where: { id: input.employeeId } });
-  if (!employee?.leaveEligible) throw new Error("Employee is not eligible for leave requests");
+  return prisma.$transaction(async tx=>{
+  const actor=await requireHrWriteActor(tx,input.actor.id);
+  await tx.$queryRaw`SELECT id FROM "EmployeeProfile" WHERE id=${input.employeeId} FOR UPDATE`;
+  const employee = await tx.employeeProfile.findUnique({ where: { id: input.employeeId } });
+  if (!employee?.leaveEligible) throw new Error("Employee is not eligible for leave requests / 员工未启用请假");
+  if(employee.userId!==actor.id)throw Error('Leave request does not belong to this employee / 仅可提交本人的请假');
+  if(!Object.values(HrLeaveType).includes(input.leaveType))throw Error('Invalid leave type / 假期类型无效');
+  const policy=await tx.hrLeavePolicy.findUnique({where:{legalEntityId_leaveType:{legalEntityId:employee.legalEntityId,leaveType:input.leaveType}}});
+  if(policy?.requiresAttachment&&!input.attachment?.privatePath)throw Error('This leave type requires an attachment / 此假期类型需要证明附件');
   const durationMinutes = calculateWorkingLeaveMinutes({
     startAt: input.startAt,
     endAt: input.endAt,
@@ -123,7 +148,7 @@ export async function submitLeaveRequest(input: {
     hourlyMinutes: input.hourlyMinutes,
     workPattern: employee.workPattern,
   });
-  const overlap = await prisma.hrLeaveRequest.findFirst({
+  const overlap = await tx.hrLeaveRequest.findFirst({
     where: {
       employeeId: input.employeeId,
       status: { in: [HrLeaveStatus.SUBMITTED, HrLeaveStatus.APPROVED] },
@@ -132,10 +157,10 @@ export async function submitLeaveRequest(input: {
     },
     select: { id: true },
   });
-  if (overlap) throw new Error("An active leave request already overlaps this period");
-  const approverUserId = await resolveLeaveApprover(input.employeeId);
-  const scheduleConflictCount = await countEmployeeScheduleConflicts(input.employeeId, input.startAt, input.endAt);
-  const row = await prisma.hrLeaveRequest.create({
+  if (overlap) throw new Error("An active leave request already overlaps this period / 此时段已有未结束的请假申请");
+  const approverUserId = await resolveLeaveApprover(input.employeeId,tx);
+  const scheduleConflictCount = await countEmployeeScheduleConflicts(input.employeeId, input.startAt, input.endAt,tx);
+  const row = await tx.hrLeaveRequest.create({
     data: {
       employeeId: input.employeeId,
       leaveType: input.leaveType,
@@ -152,8 +177,9 @@ export async function submitLeaveRequest(input: {
       scheduleConflictCount,
     },
   });
-  await logAudit({ actor: input.actor, module: "hr", action: "LEAVE_SUBMITTED", entityType: "HrLeaveRequest", entityId: row.id, meta: { leaveType: row.leaveType, durationMinutes, scheduleConflictCount } });
+  await leaveAudit(tx,actor,'LEAVE_SUBMITTED',row.id,null,row);
   return row;
+  },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:20000}).catch(leaveConflict);
 }
 
 export async function decideLeaveRequest(input: {
@@ -162,48 +188,22 @@ export async function decideLeaveRequest(input: {
   decisionNote?: string | null;
   actor: { id: string; email: string; name?: string | null; role?: string | null };
 }) {
-  const request = await prisma.hrLeaveRequest.findUnique({
-    where: { id: input.requestId },
-    include: { employee: { select: { userId: true } } },
-  });
-  if (!request || request.status !== HrLeaveStatus.SUBMITTED) throw new Error("Leave request is no longer pending");
-  if (request.employee.userId === input.actor.id) throw new Error("Self-approval is not allowed");
-  if (request.approverUserId && request.approverUserId !== input.actor.id && input.actor.role !== "ADMIN") {
-    throw new Error("This leave request is assigned to another approver");
-  }
-
-  if (input.decision === "APPROVE" && BALANCE_CONTROLLED_TYPES.has(request.leaveType)) {
-    const balances = await getEmployeeLeaveBalances(request.employeeId);
-    if ((balances.get(request.leaveType) ?? 0) < request.durationMinutes) throw new Error("Insufficient leave balance");
-  }
-
-  const now = new Date();
-  await prisma.$transaction(async (tx) => {
-    const updated = await tx.hrLeaveRequest.updateMany({
-      where: { id: request.id, status: HrLeaveStatus.SUBMITTED },
-      data: {
-        status: input.decision === "APPROVE" ? HrLeaveStatus.APPROVED : HrLeaveStatus.REJECTED,
-        approverUserId: input.actor.id,
-        decidedAt: now,
-        decisionNote: input.decisionNote?.trim() || null,
-      },
-    });
-    if (updated.count !== 1) throw new Error("Leave request was updated by another user");
-    if (input.decision === "APPROVE" && BALANCE_CONTROLLED_TYPES.has(request.leaveType)) {
-      await tx.hrLeaveLedgerEntry.create({
-        data: {
-          employeeId: request.employeeId,
-          leaveType: request.leaveType,
-          entryType: HrLeaveLedgerEntryType.USED,
-          minutes: -request.durationMinutes,
-          leaveRequestId: request.id,
-          source: "APPROVED_LEAVE",
-          createdById: input.actor.id,
-        },
-      });
+  return prisma.$transaction(async tx=>{
+    const actor=await requireHrWriteActor(tx,input.actor.id,true);
+    const request=await lockedLeave(tx,input.requestId);
+    if(request.status!=='SUBMITTED')throw Error('Leave request is no longer pending / 此请假已不在待审批状态');
+    if(request.employee.userId===actor.id)throw Error('Self-approval is not allowed / 不能审批本人的请假');
+    if(request.approverUserId&&request.approverUserId!==actor.id&&actor.role!=='ADMIN')throw Error('This leave request is assigned to another approver / 此请假已分配给其他审批人');
+    if(!['APPROVE','REJECT'].includes(input.decision))throw Error('Invalid leave decision / 审批操作无效');
+    if(input.decision==='APPROVE'&&BALANCE_CONTROLLED_TYPES.has(request.leaveType)){
+      const balances=await getEmployeeLeaveBalances(request.employeeId,new Date(),tx);
+      if((balances.get(request.leaveType)??0)<request.durationMinutes)throw Error('Insufficient leave balance / 假期余额不足');
     }
-  });
-  await logAudit({ actor: input.actor, module: "hr", action: input.decision === "APPROVE" ? "LEAVE_APPROVED" : "LEAVE_REJECTED", entityType: "HrLeaveRequest", entityId: request.id, meta: { note: input.decisionNote || null } });
+    const row=await tx.hrLeaveRequest.update({where:{id:request.id},data:{status:input.decision==='APPROVE'?'APPROVED':'REJECTED',approverUserId:actor.id,decidedAt:new Date(),decisionNote:input.decisionNote?.trim()||null}});
+    if(input.decision==='APPROVE'&&BALANCE_CONTROLLED_TYPES.has(request.leaveType))await tx.hrLeaveLedgerEntry.create({data:{employeeId:request.employeeId,leaveType:request.leaveType,entryType:'USED',minutes:-request.durationMinutes,leaveRequestId:request.id,source:'APPROVED_LEAVE',createdById:actor.id}});
+    await leaveAudit(tx,actor,input.decision==='APPROVE'?'LEAVE_APPROVED':'LEAVE_REJECTED',row.id,request,row);
+    return row;
+  },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:20000}).catch(leaveConflict);
 }
 
 export async function cancelLeaveRequest(input: {
@@ -212,31 +212,21 @@ export async function cancelLeaveRequest(input: {
   reason?: string | null;
   actor: { id: string; email: string; name?: string | null; role?: string | null };
 }) {
-  const request = await prisma.hrLeaveRequest.findUnique({ where: { id: input.requestId }, include: { employee: { select: { userId: true } } } });
-  if (!request || (request.status !== HrLeaveStatus.SUBMITTED && request.status !== HrLeaveStatus.APPROVED)) throw new Error("Leave request cannot be cancelled");
-  if (request.employee.userId !== input.employeeUserId && input.actor.role !== "ADMIN") throw new Error("Leave request does not belong to this employee");
-  const wasApproved = request.status === HrLeaveStatus.APPROVED;
-  await prisma.$transaction(async (tx) => {
-    const changed = await tx.hrLeaveRequest.updateMany({
-      where: { id: request.id, status: request.status },
-      data: { status: HrLeaveStatus.CANCELLED, cancelledAt: new Date(), cancelReason: input.reason?.trim() || null },
-    });
-    if (changed.count !== 1) throw new Error("Leave request was updated by another user");
-    if (wasApproved && BALANCE_CONTROLLED_TYPES.has(request.leaveType)) {
-      await tx.hrLeaveLedgerEntry.create({
-        data: {
-          employeeId: request.employeeId,
-          leaveType: request.leaveType,
-          entryType: HrLeaveLedgerEntryType.RESTORED,
-          minutes: request.durationMinutes,
-          leaveRequestId: request.id,
-          source: "CANCELLED_APPROVED_LEAVE",
-          createdById: input.actor.id,
-        },
-      });
+  return prisma.$transaction(async tx=>{
+    const actor=await requireHrWriteActor(tx,input.actor.id);
+    const request=await lockedLeave(tx,input.requestId);
+    if(request.employee.userId!==actor.id&&actor.role!=='ADMIN')throw Error('Leave request does not belong to this employee / 仅本人或管理员可取消此请假');
+    if(!['SUBMITTED','APPROVED'].includes(request.status))throw Error('Leave request cannot be cancelled / 此请假当前不能取消');
+    const row=await tx.hrLeaveRequest.update({where:{id:request.id},data:{status:'CANCELLED',cancelledAt:new Date(),cancelReason:input.reason?.trim()||null}});
+    if(request.status==='APPROVED'&&BALANCE_CONTROLLED_TYPES.has(request.leaveType)){
+      const ledger=await tx.hrLeaveLedgerEntry.findMany({where:{employeeId:request.employeeId,leaveType:request.leaveType,leaveRequestId:request.id}});
+      const used=ledger.filter(e=>e.entryType==='USED'),other=ledger.filter(e=>e.entryType!=='USED');
+      if(used.length!==1||used[0].minutes!==-request.durationMinutes||other.length)throw Error('Leave ledger needs review before cancellation / 请假流水需核对后才能取消');
+      await tx.hrLeaveLedgerEntry.create({data:{employeeId:request.employeeId,leaveType:request.leaveType,entryType:'RESTORED',minutes:request.durationMinutes,leaveRequestId:request.id,source:'CANCELLED_APPROVED_LEAVE',createdById:actor.id}});
     }
-  });
-  await logAudit({ actor: input.actor, module: "hr", action: "LEAVE_CANCELLED", entityType: "HrLeaveRequest", entityId: request.id });
+    await leaveAudit(tx,actor,'LEAVE_CANCELLED',row.id,request,row);
+    return row;
+  },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:20000}).catch(leaveConflict);
 }
 
 export async function findApprovedTeacherLeaveConflict(teacherId: string, startAt: Date, endAt: Date) {

@@ -1001,3 +1001,19 @@ Logs: `/tmp/sgt-r448-all-tests.log`, `/tmp/sgt-r448-build.log`, `/tmp/sgt-r448-t
 - Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
 
 ---
+
+## 2026-09-30-r466
+
+- Release ID: `2026-09-30-r466`
+- Date/Time (Asia/Singapore): `2026-09-30`
+- Deployment status: `READY`; verified live evidence is recorded separately in the execution ledger.
+- Problem: two different leave requests could approve against the same pre-transaction balance and overspend; submit/decision/cancellation audit failure left business changes committed. Captured roles and supplied employee identity were trusted by the service.
+- Change: submission, approval/rejection and cancellation use Serializable transactions, current actor rights, employee/request locks and atomic before/after audit. Overlapping submissions cannot both commit; separate approvals share a locked balance. Cancellation restores exactly one evidenced debit once; ambiguous historical deductions require review. Existing leave duration, HR assignment, ADMIN override, unpaid leave and scheduling conflict reporting remain.
+- Validation:765 regression tests,8 final HR tests,TypeScript and260-page build passed. Isolated service UAT reproduced and closed negative balance, audit rollback at all three operations, concurrent submit/approve/cancel, current role/ownership and attachment-policy denial; historical missing debit remains unchanged. Actual Web and Mini Program HTTP submission, HR approval, observer/finance denial and single restoration passed. No package ledger or notification outbox changes. An initial HTTP test harness omitted HTML-entity decoding for bound Server Actions; corrected harness passes against the same application build.
+- Compatibility: no migration or production business test writes; no real leave approval, tuition deduction, refund, sending or WeChat client publication. Existing UI language cleanup remains phase8; new service errors include English and Chinese.
+- Remaining: phase7 training/material publication and access, HR-only teacher entry; phase6 delivery and phase8/9 language/mobile/route acceptance, unified delivery still open. Isolated fake training file also confirmed direct public storage access bypassing guarded API; investigate and correct next without accessing real documents.
+- Rollback reference: `970c01706ef3d059f4641d580f68511158acb8e0` (r465). No schema rollback; reverting restores leave race/audit risks.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
