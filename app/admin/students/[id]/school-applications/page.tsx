@@ -247,7 +247,7 @@ export default async function SchoolApplicationsPage({
   const returnToList = sp?.from === "school-applications";
 
   return (
-    <main style={{ padding: 24, display: "grid", gap: 16 }}>
+    <main style={{ padding: 24, display: "grid", gridTemplateColumns: "minmax(0, 1fr)", minWidth: 0, gap: 16 }}>
       <div style={cardStyle("#f8fbff")}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <div>
@@ -259,7 +259,7 @@ export default async function SchoolApplicationsPage({
             href={returnToList ? "/admin/school-applications" : `/admin/students/${encodeURIComponent(student.id)}`}
             style={{ textDecoration: "none", color: "#2563eb", fontWeight: 800 }}
           >
-            {returnToList ? "Back to school applications / 返回学校申请列表" : "Back to student / 返回学生"}
+            {returnToList ? t(lang,"Back to school applications","返回学校申请列表") : t(lang,"Back to student","返回学生")}
           </a>
         </div>
         {sp?.msg ? <div style={{ color: "#166534", fontWeight: 700 }}>{decodeURIComponent(sp.msg)}</div> : null}
@@ -271,7 +271,7 @@ export default async function SchoolApplicationsPage({
         <form action={createDraftAction} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "end" }}>
           <input type="hidden" name="studentId" value={student.id} />
           {returnToList ? <input type="hidden" name="from" value="school-applications" /> : null}
-          <div style={{ minWidth: 320, flex: "1 1 360px", display: "grid", gap: 4, padding: "8px 0" }}>
+          <div style={{ minWidth: 0, flex: "1 1 360px", display: "grid", gap: 4, padding: "8px 0" }}>
             <strong>{t(lang,"Billing case","收款记录")}</strong>
             <span style={{ color: "#475569", fontSize: 13 }}>{t(lang,"The system will use a separate School Application Service billing case for both new and existing students.","新生和老生均使用独立的学校申请服务收款记录。")}</span>
           </div>
@@ -293,7 +293,7 @@ export default async function SchoolApplicationsPage({
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                 <div>
                   <h2 style={{ margin: 0, fontSize: 20 }}>
-                    {t(lang, app.status === "DRAFT" ? "Draft" : app.status === "READY_TO_SIGN" ? "Ready to sign" : app.status === "SIGNED" ? "Signed" : app.status === "VOID" ? "Voided" : app.status, app.status === "DRAFT" ? "草稿" : app.status === "READY_TO_SIGN" ? "待签署" : app.status === "SIGNED" ? "已签署" : app.status === "VOID" ? "已作废" : app.status)} · {app.items.length || 0}{" "}{t(lang,"school(s)","所学校")} · {money(app.totalAmount)}
+                    {t(lang, app.status === "DRAFT" ? "Draft" : app.status === "READY_TO_SIGN" ? "Ready to sign" : app.status === "SIGNED" ? "Signed" : app.status === "INVOICE_CREATED" ? "Invoiced" : app.status === "VOID" ? "Voided" : app.status, app.status === "DRAFT" ? "草稿" : app.status === "READY_TO_SIGN" ? "待签署" : app.status === "SIGNED" ? "已签署" : app.status === "INVOICE_CREATED" ? "已开票" : app.status === "VOID" ? "已作废" : app.status)} · {app.items.length || 0}{" "}{t(lang,"school(s)","所学校")} · {money(app.totalAmount)}
                   </h2>
                   <div style={{ color: "#475569", fontSize: 13 }}>{t(lang,"Created","创建时间")}{" "}{app.createdAt.toLocaleString("en-SG")} · {t(lang,"Invoice","发票")}{" "}{app.invoiceNo ?? "-"}
                   </div>
@@ -332,7 +332,7 @@ export default async function SchoolApplicationsPage({
                 {parentInfoHref ? (
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                     <a href={parentInfoHref} target="_blank" rel="noreferrer">{t(lang,"Open parent info link","打开家长资料链接")}</a>
-                    <CopyTextButton text={parentInfoHref} label="Copy parent info link / 复制家长资料链接" copiedLabel="Copied" style={{ padding: "7px 10px", borderRadius: 10, border: "1px solid #cbd5e1", background: "#fff", fontWeight: 700 }} />
+                    <CopyTextButton text={parentInfoHref} label={t(lang,"Copy parent info link","复制家长资料链接")} copiedLabel={t(lang,"Copied","已复制")} style={{ padding: "7px 10px", borderRadius: 10, border: "1px solid #cbd5e1", background: "#fff", fontWeight: 700 }} />
                     <form action={deleteParentInfoAction}>
                       <input type="hidden" name="studentId" value={student.id} />
                       <input type="hidden" name="applicationId" value={app.id} />
@@ -344,7 +344,7 @@ export default async function SchoolApplicationsPage({
               </div>
 
               <form action={saveDraftAction} style={{ display: "grid", gap: 12 }}>
-                <SchoolApplicationDraftGuard />
+                <SchoolApplicationDraftGuard lang={lang} />
                 <input type="hidden" name="studentId" value={student.id} />
                 <input type="hidden" name="applicationId" value={app.id} />
                 {returnToList ? <input type="hidden" name="from" value="school-applications" /> : null}
@@ -358,7 +358,7 @@ export default async function SchoolApplicationsPage({
                   </div>
                   <label style={{ display: "grid", gap: 6 }}>
                     <span style={{ fontWeight: 700 }}>{t(lang,"Parent name","家长姓名")}{requiredStar()}</span>
-                    <input name="parentName" defaultValue={parentNameDefault(app)} placeholder="Fill parent name / 填写家长姓名" style={inputStyle()} disabled={!editable} required={editable} />
+                    <input name="parentName" defaultValue={parentNameDefault(app)} placeholder={t(lang,"Fill parent name","填写家长姓名")} style={inputStyle()} disabled={!editable} required={editable} />
                   </label>
                   <label style={{ display: "grid", gap: 6 }}>
                     <span style={{ fontWeight: 700 }}>{t(lang,"Parent phone","家长电话")}</span>
@@ -500,7 +500,7 @@ export default async function SchoolApplicationsPage({
                 {signHref ? (
                   <>
                     <a href={signHref} target="_blank" rel="noreferrer">{t(lang,"Open sign link","打开签署链接")}</a>
-                    <CopyTextButton text={signHref} label="Copy sign link / 复制签字链接" copiedLabel="Copied" style={{ padding: "7px 10px", borderRadius: 10, border: "1px solid #cbd5e1", background: "#fff", fontWeight: 700 }} />
+                    <CopyTextButton text={signHref} label={t(lang,"Copy sign link","复制签字链接")} copiedLabel={t(lang,"Copied","已复制")} style={{ padding: "7px 10px", borderRadius: 10, border: "1px solid #cbd5e1", background: "#fff", fontWeight: 700 }} />
                   </>
                 ) : null}
                 {app.status !== "VOID" ? (
@@ -508,7 +508,7 @@ export default async function SchoolApplicationsPage({
                     <input type="hidden" name="studentId" value={student.id} />
                     <input type="hidden" name="applicationId" value={app.id} />
                     {returnToList ? <input type="hidden" name="from" value="school-applications" /> : null}
-                    <input name="reason" placeholder="Void reason / 作废原因" style={{ ...inputStyle(), width: 220 }} required={app.status === "INVOICE_CREATED"} />
+                    <input name="reason" placeholder={t(lang,"Void reason","作废原因")} style={{ ...inputStyle(), width: 220 }} required={app.status === "INVOICE_CREATED"} />
                     <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #dc2626", background: "#fff1f2", color: "#b91c1c", fontWeight: 800 }}>{t(lang,"Void","作废")}</button>
                   </form>
                 ) : null}

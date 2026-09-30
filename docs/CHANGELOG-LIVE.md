@@ -1,4 +1,19 @@
 # CHANGELOG LIVE
+## 2026-09-30-r469
+
+- Release ID: `2026-09-30-r469`
+- Date/Time (Asia/Singapore): `2026-09-30`
+- Deployment status: `READY`; live proof follows in the execution ledger.
+- Problem: staff lacked concise page-specific guidance connecting responsibility, next steps and completion evidence. School forms still had fixed bilingual copy and validation prompts, and narrow layouts inherited unconstrained grid widths.
+- Change: add collapsed EN/ZH/BILINGUAL workflow help to existing FullCare, school application, monthly scheduling, relationship/lead, communication, approvals and HR workspaces. Help follows client navigation and links to existing role-filtered training. Explain source-specific approval scope, separate publication/delivery/view evidence, school agreement versus admission, and shared student follow-up responsibility without inventing an admissions workflow. Translate school copy buttons, return links, input hints, invoice-created status and client validation prompts; constrain the existing school grid on mobile.
+- Validation:261-page final production build passed;21 isolated GET checks cover seven workflow help contexts in three languages and default collapse. Authenticated375px help and school screen reviewed; stable teacher lesson detail checked at375px and1365px with no console errors. Extended isolated route acceptance made101 GET requests spanning all catalogued dynamic route patterns, teacher pages and public guide pages, with no5xx or non-framework stream errors. Some existing routes intentionally redirect or show invalid/expired-link states; this is route coverage, not a claim that every business action was exercised. All added fixtures and view records are local fake data. Harness initially mistook Next's $undefined digest placeholder for an error; corrected parser excludes only that placeholder and framework control-flow digests.
+- Compatibility: no database schema, business transition, teacher pay, invoice, package ledger or permission changes. No real messages, production business test writes or WeChat client publication. Existing training/SOP access rules and source links stay in force.
+- Remaining: full page disposition/miniapp dependency register, remaining cross-role export and mobile acceptance, updated bilingual role guides and unified final delivery. The overall programme is not complete.
+- Rollback reference: `ed31547afab35ffc3582b19e3c1202f2e673d698` (r468). No schema rollback.
+- Task: `docs/tasks/TASK-20260928-workspace-completion.md`.
+
+---
+
 ## 2026-09-30-r468
 
 - Release ID: `2026-09-30-r468`

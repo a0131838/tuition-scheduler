@@ -18,31 +18,32 @@ function focusNamedField(form: HTMLFormElement, name: string) {
   if (field instanceof HTMLElement) field.focus();
 }
 
-export default function SchoolApplicationDraftGuard() {
+export default function SchoolApplicationDraftGuard({ lang = "BILINGUAL" }: { lang?: "EN" | "ZH" | "BILINGUAL" }) {
   const markerRef = useRef<HTMLSpanElement | null>(null);
 
   useEffect(() => {
     const form = markerRef.current?.closest("form");
     if (!(form instanceof HTMLFormElement)) return;
 
+    const text = (en: string, zh: string) => lang === "EN" ? en : lang === "ZH" ? zh : `${en} / ${zh}`;
     const onSubmit = (event: SubmitEvent) => {
       const formData = new FormData(form);
       if (!value(formData, "parentName")) {
         event.preventDefault();
         focusNamedField(form, "parentName");
-        window.alert("Parent name is required / 请填写家长姓名");
+        window.alert(text("Parent name is required", "请填写家长姓名"));
         return;
       }
       if (!value(formData, "agreementDate")) {
         event.preventDefault();
         focusNamedField(form, "agreementDate");
-        window.alert("Agreement date is required / 请填写合同日期");
+        window.alert(text("Agreement date is required", "请填写合同日期"));
         return;
       }
       if (!value(formData, "targetId_0")) {
         event.preventDefault();
         focusNamedField(form, "targetId_0");
-        window.alert("Please select at least the first school/application / 请至少选择第一所学校或申请项目");
+        window.alert(text("Please select at least the first school/application", "请至少选择第一所学校或申请项目"));
         return;
       }
 
@@ -54,13 +55,13 @@ export default function SchoolApplicationDraftGuard() {
       if (total <= 0) {
         event.preventDefault();
         focusNamedField(form, "serviceFee_0");
-        window.alert("Total amount must be greater than 0 / 服务费、官方费或增值服务费至少一项需要大于 0");
+        window.alert(text("Total amount must be greater than 0", "服务费、官方费或增值服务费至少一项需要大于 0"));
       }
     };
 
     form.addEventListener("submit", onSubmit);
     return () => form.removeEventListener("submit", onSubmit);
-  }, []);
+  }, [lang]);
 
   return <span ref={markerRef} hidden />;
 }

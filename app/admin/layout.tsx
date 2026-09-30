@@ -1,3 +1,4 @@
+import WorkflowHelpClient from "./_components/WorkflowHelpClient";
 import { requireHrAreaUser } from "@/lib/hr-access";
 import { isManagerUser, requireAdminAreaUser } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
@@ -532,6 +533,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               </div>
             </details>
           ) : null}
+          <WorkflowHelpClient initialPathname={pathname} lang={lang} />
           {children}
         </main>
       </div>
