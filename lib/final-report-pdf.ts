@@ -5,25 +5,8 @@ import {
   finalReportStageProgressLabel,
   parseLearningReportAttendanceSnapshot,
 } from "@/lib/learning-report-attendance";
-import { setPdfBoldFont, setPdfFont } from "@/lib/pdf-font";
 import { prisma } from "@/lib/prisma";
-import { formatBusinessDateOnly } from "@/lib/date-only";
-import PDFDocument from "pdfkit";
-import { PassThrough } from "stream";
-
-type PDFDoc = InstanceType<typeof PDFDocument>;
-
-const MM_TO_PT = 72 / 25.4;
-function mm(value: number) {
-  return value * MM_TO_PT;
-}
-
-function streamPdf(doc: PDFDoc) {
-  const stream = new PassThrough();
-  doc.pipe(stream);
-  doc.end();
-  return stream;
-}
+import { renderLearningReportPdf, type ReportPdfSection } from "./learning-report-pdf-layout";
 
 function safeName(s: string) {
   return s.replace(/[\\/:*?"<>|]/g, "_").replace(/\s+/g, "_");
@@ -42,74 +25,6 @@ function normalizeOptionalText(input: string | null | undefined) {
 function hasMeaningfulText(input: string | null | undefined) {
   const raw = String(input || "").replace(/\r/g, "").trim();
   return raw.length > 0 && raw !== "-";
-}
-
-function paintPageBackground(doc: PDFDoc) {
-  doc.save();
-  doc.rect(0, 0, doc.page.width, doc.page.height).fill("#F8FAFC");
-  doc.restore();
-}
-
-function panel(doc: PDFDoc, x: number, y: number, w: number, h: number, title: string, tone: { bg: string; border: string; title: string }) {
-  doc.save();
-  doc.lineWidth(0.8);
-  doc.roundedRect(x, y, w, h, 8).fill(tone.bg).stroke(tone.border);
-  doc.restore();
-
-  setPdfBoldFont(doc);
-  doc.fillColor(tone.title).fontSize(11.5).text(title, x + 10, y + 8, { width: w - 20 });
-}
-
-function field(doc: PDFDoc, x: number, y: number, w: number, label: string, value: string, height = 48) {
-  setPdfBoldFont(doc);
-  doc.fillColor("#475569").fontSize(8.5).text(label, x, y, { width: w });
-  setPdfFont(doc);
-  doc.fillColor("#0F172A").fontSize(10.5).text(normalizeText(value), x, y + 12, {
-    width: w,
-    height,
-    lineGap: 1.5,
-  });
-}
-
-function fitBodyFontSize(doc: PDFDoc, value: string, width: number, height: number, max = 9.2, min = 6.6) {
-  const text = normalizeText(value);
-  for (let size = max; size >= min; size -= 0.2) {
-    const measured = doc.heightOfString(text, { width, lineGap: 1.15, align: "left" });
-    if (measured <= height) return Number(size.toFixed(1));
-    doc.fontSize(size);
-  }
-  return min;
-}
-
-function compactSectionText(
-  doc: PDFDoc,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  label: string,
-  value: string,
-  tone: { bg: string; border: string; title: string } = { bg: "#FFFFFF", border: "#E2E8F0", title: "#0F172A" }
-) {
-  panel(doc, x, y, w, h, label, tone);
-  setPdfBoldFont(doc);
-  doc.fontSize(11.5);
-  const titleH = Math.min(38, doc.heightOfString(label, { width: w - 20, lineGap: 1.2 }));
-  const bodyX = x + 9;
-  const bodyY = y + 12 + titleH + 6;
-  const bodyW = w - 18;
-  const bodyH = Math.max(24, h - (bodyY - y) - 8);
-  const fontSize = fitBodyFontSize(doc, value, bodyW, bodyH);
-
-  doc.save();
-  doc.rect(bodyX, bodyY, bodyW, bodyH).clip();
-  setPdfFont(doc);
-  doc.fillColor("#1F2937").fontSize(fontSize).text(normalizeText(value), bodyX, bodyY, {
-    width: bodyW,
-    height: bodyH,
-    lineGap: 1.15,
-  });
-  doc.restore();
 }
 
 function recommendationLabel(value: string, lang: "BILINGUAL" | "ZH" | "EN") {
@@ -222,28 +137,7 @@ function focusLabel(
   return `${en} / ${zh}`;
 }
 
-function compactFieldRow(doc: PDFDoc, x: number, y: number, w: number, items: Array<{ label: string; value: string }>) {
-  const gap = 10;
-  const itemW = (w - gap * (items.length - 1)) / items.length;
-  items.forEach((item, index) => {
-    field(doc, x + index * (itemW + gap), y, itemW, item.label, item.value, 24);
-  });
-}
-
-function sectionRowDistribution(count: number) {
-  if (count <= 0) return [];
-  if (count === 1) return [1];
-  if (count === 2) return [2];
-  if (count === 3) return [3];
-  if (count === 4) return [2, 2];
-  if (count === 5) return [2, 3];
-  if (count === 6) return [3, 3];
-  if (count === 7) return [2, 2, 3];
-  if (count === 8) return [3, 2, 3];
-  return [3, 3, 3];
-}
-
-function buildSections(lang: "BILINGUAL" | "ZH" | "EN", draft: ReturnType<typeof parseFinalReportDraft>, report: {
+export function buildFinalPdfSections(lang: "BILINGUAL" | "ZH" | "EN", draft: ReturnType<typeof parseFinalReportDraft>, report: {
   reportPeriodLabel: string | null;
   finalLevel: string | null;
   recommendation: string | null;
@@ -333,50 +227,12 @@ export async function buildFinalReportPdfResponse(id: string, lang: "BILINGUAL" 
       teacherId: report.teacherId,
       throughAt: report.submittedAt ?? new Date(),
     }));
-  const sections = buildSections(lang, draft, report);
+  const sections = buildFinalPdfSections(lang, draft, report);
 
-  const doc = new PDFDocument({
-    size: "A4",
-    layout: "landscape",
-    margin: mm(8),
-  });
-  setPdfFont(doc);
-  paintPageBackground(doc);
-  doc.on("pageAdded", () => {
-    paintPageBackground(doc);
-    setPdfFont(doc);
-  });
-
-  const left = doc.page.margins.left;
-  const top = doc.page.margins.top;
-  const right = doc.page.margins.right;
-  const contentW = doc.page.width - left - right;
-  const contentH = doc.page.height - top - doc.page.margins.bottom;
-  const gap = 8;
-  let y = top;
-
-  setPdfBoldFont(doc);
-  doc.fillColor("#111827").fontSize(18).text(lang === "ZH" ? "结课报告" : lang === "EN" ? "Final Report" : "Final Report / 结课报告", left, y, { width: contentW });
-  setPdfFont(doc);
-  doc.fillColor("#64748B").fontSize(9.2).text(
-    lang === "ZH"
-      ? `${report.student.name} · ${report.course.name}`
-      : lang === "EN"
-        ? `${report.student.name} · ${report.course.name}`
-        : `${report.student.name} · ${report.course.name}`,
-    left,
-    y + 18,
-    { width: contentW }
-  );
-  y += 34;
-
-  const summaryH = 56;
-  panel(doc, left, y, contentW, summaryH, lang === "ZH" ? "课程信息" : lang === "EN" ? "Course Overview" : "Course Overview / 课程信息", {
-    bg: "#EFF6FF",
-    border: "#BFDBFE",
-    title: "#1D4ED8",
-  });
-  compactFieldRow(doc, left + 10, y + 24, contentW - 20, [
+  const pdfSections: ReportPdfSection[] = [{
+    title: lang === "ZH" ? "课程信息" : lang === "EN" ? "Course Overview" : "Course Overview / 课程信息",
+    table: true,
+    fields: [
     { label: lang === "ZH" ? "学生" : lang === "EN" ? "Student" : "Student / 学生", value: report.student.name },
     { label: lang === "ZH" ? "课程" : lang === "EN" ? "Course" : "Course / 课程", value: `${report.course.name}${report.subject ? ` / ${report.subject.name}` : ""}` },
     { label: lang === "ZH" ? "老师" : lang === "EN" ? "Teacher" : "Teacher / 老师", value: report.teacher.name },
@@ -384,15 +240,8 @@ export async function buildFinalReportPdfResponse(id: string, lang: "BILINGUAL" 
       label: lang === "ZH" ? "学习阶段" : lang === "EN" ? "Learning period" : "Learning period / 学习阶段",
       value: learningReportPeriodLabel(attendanceSnapshot, report.reportPeriodLabel, lang),
     },
-  ]);
-  y += summaryH + gap;
-
-  const snapshotH = 54;
-  panel(doc, left, y, contentW, snapshotH, lang === "ZH" ? "学习成长概览" : lang === "EN" ? "Learning snapshot" : "Learning snapshot / 学习成长概览", {
-    bg: "#ECFDF5",
-    border: "#BBF7D0",
-    title: "#166534",
-  });
+    ],
+  }];
   const snapshotItems = [
     {
       label: lang === "ZH" ? "阶段完成情况" : lang === "EN" ? "Stage progress" : "Stage progress / 阶段完成情况",
@@ -407,36 +256,20 @@ export async function buildFinalReportPdfResponse(id: string, lang: "BILINGUAL" 
       value: finalLevelValue,
     });
   }
-  compactFieldRow(doc, left + 10, y + 22, contentW - 20, snapshotItems);
-  y += snapshotH + gap;
-
-  const remainingH = top + contentH - y;
-  const rowGap = gap;
-  const rowDistribution = sectionRowDistribution(sections.length);
-  const rowCount = rowDistribution.length || 1;
-  const rowH = Math.floor((remainingH - rowGap * Math.max(0, rowCount - 1)) / rowCount);
-  let sectionIndex = 0;
-
-  rowDistribution.forEach((itemsInRow, row) => {
-    const sectionY = y + row * (rowH + rowGap);
-    const colGap = gap;
-    const colW = (contentW - colGap * Math.max(0, itemsInRow - 1)) / itemsInRow;
-
-    for (let col = 0; col < itemsInRow; col += 1) {
-      const section = sections[sectionIndex];
-      if (!section) break;
-      const sectionX = left + col * (colW + colGap);
-      compactSectionText(doc, sectionX, sectionY, colW, rowH, section.title, section.value, section.tone);
-      sectionIndex += 1;
-    }
+  pdfSections.push({
+    title: lang === "ZH" ? "学习成长概览" : lang === "EN" ? "Learning snapshot" : "Learning snapshot / 学习成长概览",
+    table: true, fields: snapshotItems,
   });
-
-  const stream = streamPdf(doc);
+  pdfSections.push(...sections.map(section => ({ title: section.title, fields: [{ label: "", value: section.value }] })));
+  const bytes = await renderLearningReportPdf(
+    lang === "ZH" ? "结课报告" : lang === "EN" ? "Final Report" : "Final Report / 结课报告",
+    pdfSections, lang,
+  );
   const filename = `final-report-${safeName(report.student.name)}-${safeName(report.course.name)}.pdf`;
   const filenameAscii = filename.replace(/[^\x20-\x7E]/g, "_");
   const filenameUtf8 = encodeURIComponent(filename);
 
-  return new Response(stream as any, {
+  return new Response(new Uint8Array(bytes), {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename=\"${filenameAscii}\"; filename*=UTF-8''${filenameUtf8}`,

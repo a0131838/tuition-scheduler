@@ -19,7 +19,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ kind: st
     if (!report || report.status !== "SUBMITTED" || report.archivedAt || meta.lockedAfterForwarded || !isLearningReportApprovedForDelivery(report.reportJson)) {
       return bad("Only an approved, undelivered report can be opened", 409);
     }
-    return buildMidtermReportPdfResponse(id);
+    return buildMidtermReportPdfResponse(id, auth.user.language);
   }
 
   if (kind === "FINAL") {

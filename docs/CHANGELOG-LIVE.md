@@ -1,4 +1,18 @@
 # CHANGELOG LIVE
+## 2026-10-05-r474
+
+- Release ID: `2026-10-05-r474`
+- Date/Time (Asia/Singapore): `2026-10-05`
+- Deployment status: `READY`; post-deploy proof is recorded in the report PDF acceptance folder.
+- Problem: fixed-height midterm fields clipped teacher narrative and score values; an overflowing exam cell could add an empty page. Final reports used the same fixed-height clipping pattern.
+- Change: share an A4 portrait flow renderer across midterm/final exports. Keep readable body text, move short fields together, continue long fields across pages, size score/overview table rows from content, add page totals and section context. Preserve saved narrative, score values, attendance snapshots, final-report section selection, original PDF URLs and all authentication/approval gates. Midterm labels now follow ZH/EN/BILINGUAL at existing web and staff Mini Program entry points; original teacher text is not translated or rewritten.
+- Validation: 23 focused tests pass, covering all draft fields/seven scores, final narrative, multi-page generation, report attendance/delivery and route guards. Nine rendered PDFs (actual report, long final narrative, oversized table fields × three languages) pass extraction of every expected field and geometry checks for blank pages, out-of-page text and overlaps. The actual report is five pages with complete text and score 2.8. Production build validation and exact live release evidence are recorded in the acceptance report.
+- Data safety: read-only production report inspection and rendering only; no report resubmission, approval, delivery, attendance, package or finance writes. No schema migration.
+- Rollback reference: `08f167020e58ec4d3ed799b58cc3e85fc8147625` (r473).
+- Task: `docs/tasks/TASK-20261005-learning-report-pdf-overflow.md`.
+
+---
+
 ## 2026-09-30-r473
 
 - Release ID: `2026-09-30-r473`

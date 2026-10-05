@@ -4,14 +4,6 @@ import test from "node:test";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 
-test("midterm PDF continues long recommendations instead of clipping the target field", () => {
-  const pdf = read("../lib/midterm-report-pdf.ts");
-  assert.match(pdf, /needsRecommendationContinuation/);
-  assert.match(pdf, /drawRecommendationContinuation/);
-  assert.match(pdf, /完整学习建议请见下一页/);
-  assert.match(pdf, /textFitsInField/);
-});
-
 test("class scheduling keeps history inside the existing sessions page and records core changes", () => {
   const history = read("../lib/scheduling-change-history.ts");
   const page = read("../app/admin/classes/[id]/sessions/page.tsx");
