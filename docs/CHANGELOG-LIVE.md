@@ -1,4 +1,18 @@
 # CHANGELOG LIVE
+## 2026-10-05-r475
+
+- Release ID: `2026-10-05-r475`
+- Date/Time (Asia/Singapore): `2026-10-05`
+- Deployment status: `READY`; exact live proof is recorded in the original-layout PDF acceptance folder.
+- Request: the r474 portrait redesign changed the original report too much. Restore the landscape report and card arrangement while retaining the clipping fix.
+- Change: restore original midterm/final landscape card positions, colours and section selection. Measure card text; show a numbered preview or continuation reference when it cannot fit, and append the full original field in matching landscape panels. Split even oversized fields safely across pages. Fit all seven exam scores inside their original panel, including iTEP Level 2.8. Adjust label/body spacing to avoid overlaps. Preserve ZH/EN/BILINGUAL labels, original routes and report access/status guards.
+- Validation: 29 focused tests pass. Twelve PDFs (actual midterm, oversized midterm field/score, oversized final narrative, short report × three languages) preserve landscape dimensions, all expected text/scores, page bounds and non-overlapping text. Short midterm stays one page; the supplied report renders as four pages. Production build and guarded deployment evidence are in the acceptance folder.
+- Business safety: no database migration or report/attendance/balance/finance mutation; real report is regenerated read-only. Earlier downloaded PDFs need replacement with a fresh export. Original long fields appear in full on numbered continuations instead of being silently clipped.
+- Rollback reference: `5fd55a874544e3c7832bf90b5a766b1ad060ec84` (r474).
+- Task: `docs/tasks/TASK-20261005-report-original-layout.md`.
+
+---
+
 ## 2026-10-05-r474
 
 - Release ID: `2026-10-05-r474`
