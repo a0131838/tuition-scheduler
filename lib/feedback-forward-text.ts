@@ -1,8 +1,8 @@
 import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
-import { PARENT_FEEDBACK_SECTIONS, parseParentFeedbackSections } from "@/lib/parent-feedback-format";
 
 type ForwardFeedbackRow = {
   content?: string | null;
+  parentContent?: string | null;
   classPerformance?: string | null;
   homework?: string | null;
   previousHomeworkDone?: boolean | null;
@@ -37,28 +37,14 @@ function compactBlankLines(value: string) {
     .trim();
 }
 
-function hasStructuredParentFeedback(value: string) {
-  const parsed = parseParentFeedbackSections(value);
-  return PARENT_FEEDBACK_SECTIONS.filter((section) => cleanLine(parsed[section.key]).length > 0).length >= 2;
-}
-
-function parentFeedbackBody(value: string) {
-  const parsed = parseParentFeedbackSections(value);
-  const sections = PARENT_FEEDBACK_SECTIONS.map((section) => {
-    const body = cleanLine(parsed[section.key]);
-    if (!body) return "";
-    return `${section.zh}：\n${body}`;
-  }).filter(Boolean);
-  return sections.join("\n\n");
-}
-
 export function buildWeChatFeedbackText(row: ForwardFeedbackRow, studentNames: string[]) {
   const studentLabel = studentNames.length > 0 ? studentNames.join("、") : "学生";
-  const source = cleanLine(row.classPerformance) || cleanLine(row.content);
-  const body = hasStructuredParentFeedback(source) ? parentFeedbackBody(source) : `课堂反馈：\n${source || "暂无反馈内容"}`;
-  const homework = cleanLine(row.homework);
+  const parentContent = cleanLine(row.parentContent);
+  const source = cleanLine(row.content) || cleanLine(row.classPerformance);
+  const body = parentContent || `课堂反馈 / Lesson feedback：\n${source || "暂无反馈内容 / No feedback content"}`;
+  const homework = parentContent ? "" : cleanLine(row.homework);
   const previousHomework =
-    row.previousHomeworkDone === true ? "已完成" : row.previousHomeworkDone === false ? "未完成/未完全完成" : "";
+    parentContent ? "" : row.previousHomeworkDone === true ? "已完成" : row.previousHomeworkDone === false ? "未完成/未完全完成" : "";
   const lines = [
     `【${studentLabel} 课后反馈】`,
     `课程：${classLine(row)}`,

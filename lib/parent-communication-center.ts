@@ -1,3 +1,4 @@
+import { formatFullFeedbackMessage } from "./feedback-communication-text";
 import {retryCommunicationNotification} from "./communication-notification-retry";
 import {communicationDeliveryEvidence} from "./communication-delivery-evidence";
 import {requireCommunicationWriteAccess} from "./communication-write-access";
@@ -10,7 +11,7 @@ import { getMissingParentFeedbackSections, parseParentFeedbackSections } from "@
 import { prisma } from "@/lib/prisma";
 import { feedbackAttachmentDto } from "@/lib/feedback-attachments";
 import { getVisibleSessionStudents } from "@/lib/session-students";
-import { renderPublishedCommunicationTemplate } from "@/lib/parent-communication-templates";
+import { renderCommunicationTemplate, renderPublishedCommunicationTemplate } from "@/lib/parent-communication-templates";
 import { monthlySchedulingMonthKey } from "@/lib/monthly-scheduling";
 
 export type CommunicationActor = {
@@ -183,8 +184,9 @@ async function upsertCommunicationTask(input: {
   presentationOnlyIfBodyUnchanged?: boolean;
   forceCourseCancelled?: boolean;
   sourceFingerprint?: string;
+  previousPresentationFingerprint?: string;
 }, db: Prisma.TransactionClient = prisma) {
-  const { presentationOnlyIfBodyUnchanged = false, forceCourseCancelled = false, sourceFingerprint, ...taskData } = input;
+  const { presentationOnlyIfBodyUnchanged = false, forceCourseCancelled = false, sourceFingerprint, previousPresentationFingerprint, ...taskData } = input;
   const contentFingerprint = fingerprint(sourceFingerprint ? `${sourceFingerprint}\n${input.messageText}` : input.messageText);
   const existing = await db.parentCommunicationTask.findUnique({ where: { taskKey: input.taskKey } });
   if (!existing) {
@@ -192,6 +194,9 @@ async function upsertCommunicationTask(input: {
       data: { ...taskData, priority: input.priority ?? "NORMAL", contentFingerprint },
     });
   }
+  // A formatting upgrade must not create a new delivery obligation for unchanged feedback.
+  if (previousPresentationFingerprint === existing.contentFingerprint &&
+      (existing.manualSentAt || ["COMPLETED", "WAIVED", "SUPERSEDED"].includes(existing.status))) return existing;
   if (input.kind === "MONTHLY_SCHEDULING" && existing.contentFingerprint === contentFingerprint) {
     return existing;
   }
@@ -345,12 +350,15 @@ export async function ensureFeedbackCommunicationTasks(feedbackId: string, db: P
     const link = await primaryParentLink(student.id, db);
     const rendered = await renderPublishedCommunicationTemplate("FEEDBACK_PUBLISHED", {
       parentName: link?.parent.name || "家长", studentName: student.name || "孩子", courseName: courseLabel(feedback.session),
-      sessionTime: formatBusinessDateTime(feedback.session.startAt), teacherName: feedback.teacher.name, feedbackSummary: compact(messageContent),
+      sessionTime: formatBusinessDateTime(feedback.session.startAt), teacherName: feedback.teacher.name, feedbackSummary: messageContent.trim(),
     }, db);
     const sourceFingerprint = fingerprint(JSON.stringify({content: messageContent, homework: feedback.homework, performance: feedback.classPerformance, previousHomeworkDone: feedback.previousHomeworkDone, actualStartAt: feedback.actualStartAt, actualEndAt: feedback.actualEndAt}));
+    rendered.messageText = formatFullFeedbackMessage(rendered.messageText);
+    const legacyMessage = renderCommunicationTemplate(rendered.template.content, { ...rendered.variables, feedbackSummary: compact(messageContent) });
     const current = await upsertCommunicationTask({
       taskKey: `FEEDBACK:${feedback.id}:${student.id}:submission:${feedback.submittedAt.getTime()}`,
       sourceFingerprint,
+      previousPresentationFingerprint: fingerprint(`${sourceFingerprint}\n${legacyMessage}`),
       kind: "FEEDBACK",
       status: feedback.reviewStatus === "RETURNED" ? "RETURNED" : feedback.reviewStatus === "PUBLISHED" && feedback.publishedAt ? "READY_TO_SEND" : "PENDING_REVIEW",
       studentId: student.id,
@@ -379,8 +387,12 @@ export async function ensureFeedbackCommunicationTasks(feedbackId: string, db: P
 
 async function syncFeedbackTasks() {
   const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  const openPublishedTasks = await prisma.parentCommunicationTask.findMany({
+    where: { kind: "FEEDBACK", manualSentAt: null, status: { in: OPEN_STATUSES }, feedbackId: { not: null } },
+    select: { feedbackId: true },
+  });
   const rows = await prisma.sessionFeedback.findMany({
-    where: { submittedAt: { gte: since }, isProxyDraft: false, status: { not: "PROXY_DRAFT" }, reviewStatus: { in: ["PENDING_REVIEW", "RETURNED"] } },
+    where: { submittedAt: { gte: since }, isProxyDraft: false, status: { not: "PROXY_DRAFT" }, OR: [{ reviewStatus: { in: ["PENDING_REVIEW", "RETURNED"] } }, { reviewStatus: "PUBLISHED", id: { in: openPublishedTasks.map(row => row.feedbackId!) } }] },
     select: { id: true },
     orderBy: { submittedAt: "desc" },
     take: 1000,

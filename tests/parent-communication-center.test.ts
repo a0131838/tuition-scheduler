@@ -245,7 +245,7 @@ test("presentation-only reminder changes compare real course lines and never lea
   assert.deepEqual(reminderScheduleLines(before), reminderScheduleLines(after));
   assert.notDeepEqual(reminderScheduleLines(before), reminderScheduleLines(changedCourse));
   const source = await readFile(new URL("../lib/parent-communication-center.ts", import.meta.url), "utf8");
-  assert.match(source, /const \{ presentationOnlyIfBodyUnchanged = false, forceCourseCancelled = false, sourceFingerprint, \.\.\.taskData \} = input/);
+  assert.match(source, /const \{ presentationOnlyIfBodyUnchanged = false, forceCourseCancelled = false, sourceFingerprint, previousPresentationFingerprint, \.\.\.taskData \} = input/);
   assert.match(source, /data: \{ \.\.\.taskData/);
   assert.doesNotMatch(source, /data: \{ \.\.\.input/);
 });

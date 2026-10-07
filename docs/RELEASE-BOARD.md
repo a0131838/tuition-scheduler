@@ -1,4 +1,18 @@
 # RELEASE BOARD
+## 2026-10-07-r477
+
+- Release ID: `2026-10-07-r477`
+- Date/Time (Asia/Singapore): `2026-10-07`
+- Deployment status: `READY`; exact release proof is in the feedback full-copy acceptance folder.
+- Problem: communication copy took only the first 260 characters and flattened paragraphs; feedback share images silently cut off text at a fixed height. The older web copy could omit source sections or prefer raw fields over reviewed parent content.
+- Change: preserve full parent-facing text and paragraphs for feedback copy, prioritize reviewed parent content at the web entry, grow feedback images to fit all body lines, and refresh existing open published tasks during normal communication sync. Formatting-only upgrades preserve completed/waived delivery snapshots and do not generate correction tasks; actual content revisions still do. Add a dry-run-first, optimistic-lock/audited repair for matching unsent published snapshots.
+- Validation: 28 focused tests; isolated PostgreSQL UAT for complete long content, original/correction workflow, completed/waived preservation, pending review gate and no outbox/ledger writes, rolled back fixtures. Repair apply/idempotency tested only on isolated database before deployment; production build.
+- Business safety: no schema, payroll, finance, attendance or scheduling changes; no outbound messages. Parent miniapp list summaries remain compact. Previously sent truncated messages are historical snapshots and are not automatically resent.
+- Rollback reference: `22aa6b493b5934f84b3bae51e2c0813d18ae4629`; any repaired unsent message remains complete in storage.
+- Task: `docs/tasks/TASK-20261007-feedback-full-copy.md`.
+
+---
+
 ## 2026-10-07-r476
 
 - Release ID: `2026-10-07-r476`
