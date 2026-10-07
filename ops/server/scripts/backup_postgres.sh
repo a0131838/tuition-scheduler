@@ -11,11 +11,10 @@ fi
 source "$ENV_FILE"
 
 BACKUP_DIR="${BACKUP_DIR:-/home/ubuntu/backups/$APP_NAME}"
-RETENTION_DAYS="${RETENTION_DAYS:-7}"
 mkdir -p "$BACKUP_DIR"
 
 STAMP="$(date +%F_%H%M%S)"
-OUT="$BACKUP_DIR/${APP_NAME}_${STAMP}.dump"
+OUT="$BACKUP_DIR/${APP_NAME}_${STAMP}.dump.partial"
 
 URL_FOR_DUMP="${DIRECT_DATABASE_URL:-$DATABASE_URL}"
 
@@ -47,8 +46,7 @@ if [[ ! -s "$OUT" ]]; then
   exit 1
 fi
 
-# Keep both old and new backup naming patterns to avoid leaving stale files around.
-find "$BACKUP_DIR" -type f -name "${APP_NAME}_*.sql.gz" -mtime +"$RETENTION_DAYS" -delete
-find "$BACKUP_DIR" -type f -name "${APP_NAME}_*.dump" -mtime +"$RETENTION_DAYS" -delete
-
-echo "Backup saved: $OUT"
+# Publish only complete dumps. Rotation occurs AFTER verified cloud upload.
+FINAL="${OUT%.partial}"
+mv "$OUT" "$FINAL"
+echo "Backup saved: $FINAL"

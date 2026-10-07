@@ -1,4 +1,18 @@
 # CHANGELOG LIVE
+## 2026-10-07-r476
+
+- Release ID: `2026-10-07-r476`
+- Date/Time (Asia/Singapore): `2026-10-07`
+- Deployment status: `READY`; exact live proof is in the storage recovery acceptance folder.
+- Problem: the 70GB root disk filled with daily upload archives. Disk cron did not source monitor.env, so capacity warnings stayed in logs; upload failures became generic HTTP 500 errors.
+- Change: preserve all COS history, checksum-gate local retention at seven archives per type, publish only complete backups, alert on backup failure/staleness and disk/COS usage, load the existing monitor channel and verify delivery before starting cooldown. Check every five minutes with 70/80/90 percent tiers. Communication screenshot storage failures now return actionable ZH/EN/BILINGUAL responses without updating evidence records.
+- Validation: production build; 17 isolated Python safety/alert tests; 5 TypeScript error/upload roundtrip tests. Read-only recovery audit matched 200 local backups to COS after adding 8 missing early archives; latest PostgreSQL backup restored into a network-isolated PostgreSQL 17 container (130 public tables), attachment restore sample verified.
+- Business safety: no schema migration, financial/attendance/scheduling mutation or reminder send; live business attachments stay in place. Only verified old local backup duplicates are eligible for removal; cloud versions remain.
+- Rollback: previous app commit `8947c07424f109d8c2f5cc7338cd74445b630302`. Do not restore old backup deletion/monitor scripts without retaining the new cloud-preservation and alert configuration. Removed local duplicates can be retrieved from their verified COS keys.
+- Task: `docs/tasks/TASK-20261007-storage-recovery.md`.
+
+---
+
 ## 2026-10-05-r475
 
 - Release ID: `2026-10-05-r475`

@@ -13,7 +13,9 @@ if [[ ! -r "$ENV_FILE" ]]; then
 fi
 
 # shellcheck disable=SC1090
+set -a
 source "$ENV_FILE"
+set +a
 
 OPS_ENV="/etc/tuition-scheduler/backup.env"
 if [[ -r "$OPS_ENV" ]]; then
@@ -27,6 +29,13 @@ elif [[ -f "$OPS_ENV" ]]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+trap 'bash "$SCRIPT_DIR/check-disk-usage.sh" "$ENV_FILE" --backup-failed database || true' ERR
+
+# Serialize creation/rotation so concurrent runs cannot replace verification state.
+BACKUP_DIR="${BACKUP_DIR:-/home/ubuntu/backups/${APP_NAME:-tuition-scheduler}}"
+mkdir -p "$BACKUP_DIR"
+exec 9>"$BACKUP_DIR/.backup.lock"
+flock -w 300 9
 
 # Create local backup.
 bash "$SCRIPT_DIR/backup_postgres.sh" "$ENV_FILE"
@@ -41,12 +50,10 @@ fi
 if [[ -z "${S3_BUCKET:-}" ]]; then
   echo "S3 not configured (missing S3_BUCKET). Skipping upload."
   echo "Local backup is ready: $LATEST"
-  exit 0
+  false # ERR trap sends a failure alert; no local rotation occurs.
 fi
 
 bash "$SCRIPT_DIR/upload_object_storage_s3.sh" "$LATEST"
 
-# Optional: clean up old objects in the bucket (COS/S3 lifecycle may not be available).
-if [[ "${S3_CLEANUP_ENABLED:-true}" == "true" ]]; then
-  bash "$SCRIPT_DIR/cleanup_object_storage_backups.sh" || true
-fi
+# Preserve ALL cloud history; only prune checksum-verified local duplicates.
+python3 "$SCRIPT_DIR/verified_backup_retention.py" --apply

@@ -5,7 +5,7 @@ APP_DIR="${APP_DIR:-/home/ubuntu/apps/tuition-scheduler}"
 LOG_DIR="${LOG_DIR:-/home/ubuntu/logs}"
 LOG_FILE="${LOG_FILE:-$LOG_DIR/tuition-scheduler_disk_usage.log}"
 CRON_TZ_VALUE="${CRON_TZ_VALUE:-Asia/Singapore}"
-CRON_EXPR="${CRON_EXPR:-0 * * * *}"
+CRON_EXPR="${CRON_EXPR:-*/5 * * * *}"
 ENV_FILE="${ENV_FILE:-$APP_DIR/ops/server/.deploy.env}"
 RUN_CMD="${RUN_CMD:-/bin/bash $APP_DIR/ops/server/scripts/check-disk-usage.sh $ENV_FILE}"
 
