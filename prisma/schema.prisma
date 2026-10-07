@@ -521,6 +521,7 @@ model Teacher {
 
   availabilities            TeacherAvailability[]
   dateAvailabilities        TeacherAvailabilityDate[]
+  availabilityBlocks        TeacherAvailabilityBlock[]
   oneOnOneTemplates         TeacherOneOnOneTemplate[]        @relation("TeacherOneOnOneTemplateTeacher")
   oneOnOneGroups            OneOnOneGroup[]
   classes                   Class[]
@@ -663,6 +664,22 @@ model TeacherAvailabilityDate {
   endMin    Int
 
   teacher Teacher @relation(fields: [teacherId], references: [id])
+
+  @@unique([teacherId, date, startMin, endMin])
+  @@index([teacherId, date])
+}
+
+// Explicit date exceptions; independent of slots so template generation cannot erase them.
+model TeacherAvailabilityBlock {
+  id        String   @id @default(uuid())
+  teacherId String
+  date      DateTime
+  startMin  Int
+  endMin    Int
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  teacher   Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@unique([teacherId, date, startMin, endMin])
   @@index([teacherId, date])

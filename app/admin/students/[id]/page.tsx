@@ -2126,7 +2126,7 @@ export default async function StudentDetailPage({
     name: string;
     ok: boolean;
     reason?: string;
-    statusLabel?: string;
+    statusLabel?: string; warning?: boolean;
   }[] = [];
   let quickPackageWarn = "";
   const quickCampus = campuses.find((c) => c.id === quickCampusId) ?? null;
@@ -2254,14 +2254,11 @@ export default async function StudentDetailPage({
           });
           continue;
         }
-        let availabilitySource: "date" | "weekly" | null = null;
-        if (!bypassAvailabilityCheck) {
-          const availabilityCheck = await inspectTeacherAvailability(tch.id, startAt, endAt);
-          availabilitySource = availabilityCheck.source;
-          if (availabilityCheck.error) {
-            quickCandidates.push({ id: tch.id, name: tch.name, ok: false, reason: availabilityCheck.error });
-            continue;
-          }
+        const availabilityCheck = await inspectTeacherAvailability(tch.id, startAt, endAt);
+        const availabilityOverride = Boolean(availabilityCheck.error && bypassAvailabilityCheck);
+        if (availabilityCheck.error && !bypassAvailabilityCheck) {
+          quickCandidates.push({ id: tch.id, name: tch.name, ok: false, reason: availabilityCheck.error });
+          continue;
         }
         const sessionConflicts = await prisma.session.findMany({
           where: {
@@ -2309,8 +2306,10 @@ export default async function StudentDetailPage({
           id: tch.id,
           name: tch.name,
           ok: true,
-          statusLabel:
-            availabilitySource === "date" ? t(lang, "Available via date availability", "按日期时段可排") : undefined,
+          warning: availabilityOverride,
+          statusLabel: availabilityOverride
+            ? t(lang, "Super-admin exception; teacher confirmation required", "管理员例外排课；需老师确认") + ` · ${availabilityCheck.error}`
+            : t(lang, "Confirmed date availability", "当天已确认可用"),
         });
       }
       if (quickTeacherId) {

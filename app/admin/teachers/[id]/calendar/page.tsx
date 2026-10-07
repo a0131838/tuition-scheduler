@@ -1,6 +1,7 @@
 ﻿import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
-import { formatBusinessDateOnly } from "@/lib/date-only";
+import {effectiveDateAvailability} from "@/lib/teacher-availability-ranges";
+import { formatBusinessDateOnly, formatBusinessTimeOnly, parseBusinessDateStart, parseBusinessDateEnd } from "@/lib/date-only";
 import { getVisibleSessionStudents } from "@/lib/session-students";
 
 function parseMonth(s?: string) {
@@ -25,20 +26,21 @@ function fromMin(min: number) {
 }
 
 function toMin(d: Date) {
-  return d.getHours() * 60 + d.getMinutes();
+  const parts=formatBusinessTimeOnly(d).split(":").map(Number);
+  return parts[0]*60+parts[1];
 }
 
 function buildMonthGrid(year: number, monthIndex: number) {
-  const first = new Date(year, monthIndex, 1);
-  const last = new Date(year, monthIndex + 1, 0);
-  const daysInMonth = last.getDate();
-  const startPad = (first.getDay() + 6) % 7;
+  const first = new Date(Date.UTC(year, monthIndex, 1));
+  const last = new Date(Date.UTC(year, monthIndex + 1, 0));
+  const daysInMonth = last.getUTCDate();
+  const startPad = (first.getUTCDay() + 6) % 7;
   const totalCells = Math.ceil((startPad + daysInMonth) / 7) * 7;
   const cells: Array<Date | null> = [];
   for (let i = 0; i < totalCells; i += 1) {
     const dayNum = i - startPad + 1;
     if (dayNum < 1 || dayNum > daysInMonth) cells.push(null);
-    else cells.push(new Date(year, monthIndex, dayNum));
+    else cells.push(parseBusinessDateStart(`${year}-${String(monthIndex+1).padStart(2,"0")}-${String(dayNum).padStart(2,"0")}`));
   }
   const weeks: Array<Array<Date | null>> = [];
   for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
@@ -60,27 +62,6 @@ function mergeIntervals(list: Interval[]) {
     }
   }
   return out;
-}
-
-function subtractOne(base: Interval, busy: Interval) {
-  const s = Math.max(base.startMin, busy.startMin);
-  const e = Math.min(base.endMin, busy.endMin);
-  if (s >= e) return [base];
-  const out: Interval[] = [];
-  if (base.startMin < s) out.push({ startMin: base.startMin, endMin: s });
-  if (e < base.endMin) out.push({ startMin: e, endMin: base.endMin });
-  return out;
-}
-
-function subtractIntervals(avails: Interval[], busy: Interval[]) {
-  let free = avails.slice();
-  for (const b of busy) {
-    const next: Interval[] = [];
-    for (const f of free) next.push(...subtractOne(f, b));
-    free = next;
-    if (free.length === 0) break;
-  }
-  return free.filter((x) => x.endMin > x.startMin);
 }
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -105,13 +86,13 @@ export default async function TeacherCalendarPage({
   const now = new Date();
   const parsed = parseMonth(sp?.month) ?? { year: now.getFullYear(), monthIndex: now.getMonth() };
   const month = `${parsed.year}-${String(parsed.monthIndex + 1).padStart(2, "0")}`;
-  const first = new Date(parsed.year, parsed.monthIndex, 1, 0, 0, 0, 0);
-  const last = new Date(parsed.year, parsed.monthIndex + 1, 0, 23, 59, 59, 999);
+  const first = parseBusinessDateStart(`${month}-01`)!;
+  const last = parseBusinessDateEnd(`${month}-${new Date(parsed.year,parsed.monthIndex+1,0).getDate()}`)!;
   const grid = buildMonthGrid(parsed.year, parsed.monthIndex);
   const prevMonth = monthKey(new Date(parsed.year, parsed.monthIndex - 1, 1));
   const nextMonth = monthKey(new Date(parsed.year, parsed.monthIndex + 1, 1));
 
-  const [dateAvails, sessions] = await Promise.all([
+  const [dateAvails, sessions, weekly, blocks, leave, appointments] = await Promise.all([
     prisma.teacherAvailabilityDate.findMany({
       where: { teacherId, date: { gte: first, lte: last } },
       orderBy: [{ date: "asc" }, { startMin: "asc" }],
@@ -139,6 +120,10 @@ export default async function TeacherCalendarPage({
         },
       },
     }),
+    prisma.teacherAvailability.findMany({where:{teacherId}}),
+    prisma.teacherAvailabilityBlock.findMany({where:{teacherId,date:{gte:first,lte:last}}}),
+    prisma.hrLeaveRequest.findMany({where:{status:"APPROVED",employee:{teacherId},startAt:{lte:last},endAt:{gte:first}},select:{startAt:true,endAt:true}}),
+    prisma.appointment.findMany({where:{teacherId,startAt:{lte:last},endAt:{gte:first}},select:{startAt:true,endAt:true}}),
   ]);
 
   const availMap = new Map<string, Interval[]>();
@@ -268,7 +253,12 @@ export default async function TeacherCalendarPage({
                 const daySessions = sessionMap.get(key) ?? [];
                 const dayBusy = mergeIntervals(daySessions.map((s) => ({ startMin: s.startMin, endMin: s.endMin })));
                 const dayAvail = availMap.get(key) ?? [];
-                const dayFree = subtractIntervals(dayAvail, dayBusy);
+                const dayStart=parseBusinessDateStart(key)!;
+                const dayEnd=new Date(+dayStart+86400000);
+                const dayBlocks=blocks.filter(row=>ymd(row.date)===key);
+                const otherBusy=[...leave,...appointments].filter(row=>row.startAt<dayEnd&&row.endAt>dayStart).map(row=>({startMin:Math.max(0,Math.floor((+row.startAt-+dayStart)/60000)),endMin:Math.min(1440,Math.ceil((+row.endAt-+dayStart)/60000))}));
+                const dayFree = effectiveDateAvailability(dayAvail,[...dayBusy,...dayBlocks,...otherBusy]);
+                const dayWeekly=weekly.filter(row=>row.weekday===new Date(+dayStart+8*3600000).getUTCDay());
                 const hasScheduled = daySessions.length > 0;
                 const hasFree = dayFree.length > 0;
                 const dayBorderColor = hasScheduled && hasFree ? "#d97706" : hasScheduled ? "#2563eb" : hasFree ? "#16a34a" : "#cbd5e1";
@@ -286,7 +276,7 @@ export default async function TeacherCalendarPage({
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                      <div style={{ fontWeight: 800, fontSize: 14 }}>{day.getDate()}</div>
+                      <div style={{ fontWeight: 800, fontSize: 14 }}>{Number(key.slice(-2))}</div>
                       <div style={{ display: "flex", gap: 4 }}>
                         <span
                           style={{
@@ -343,6 +333,8 @@ export default async function TeacherCalendarPage({
                       )}
                     </div>
 
+                    {dayBlocks.length>0 && <div style={{color:"#b91c1c",fontSize:12,marginBottom:8}}>{t(lang,"Explicitly unavailable","已明确不可用")}: {dayBlocks.map(row=>row.startMin===0&&row.endMin===1440?t(lang,"All day","全天"):`${fromMin(row.startMin)}–${fromMin(row.endMin)}`).join(", ")}</div>}
+                    {dayAvail.length===0 && <div style={{color:"#b45309",fontSize:12,marginBottom:8}}>{dayWeekly.length?t(lang,"Weekly template only; date confirmation required","只有每周模板；当天待确认"):t(lang,"No confirmed date availability","未录入当天可用时间")}</div>}
                     <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 6, padding: 6 }}>
                       <div style={{ fontSize: 12, fontWeight: 700, color: "#15803d", marginBottom: 4 }}>
                         {t(lang, "Free to Schedule", "可排")}

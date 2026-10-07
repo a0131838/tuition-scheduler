@@ -1,3 +1,4 @@
+import { effectiveDateAvailability } from "@/lib/teacher-availability-ranges";
 import { Prisma } from "@prisma/client";
 import {
   formatBusinessDateOnly,
@@ -145,7 +146,7 @@ export async function getStaffMiniappScheduleCalendar(input: {
     ...(courseId ? { courseId } : {}),
   };
 
-  const [rawSessions, teachers, campuses, courses, availabilityRows, teacherBusySessions, tickets] = await Promise.all([
+  const [rawSessions, teachers, campuses, courses, availabilityRows, teacherBusySessions, tickets, blocks, leave, appointments] = await Promise.all([
     prisma.session.findMany({
       relationLoadStrategy: "join",
       where: {
@@ -205,6 +206,9 @@ export async function getStaffMiniappScheduleCalendar(input: {
       },
       select: { id: true, nextActionDue: true },
     }),
+    teacherId ? prisma.teacherAvailabilityBlock.findMany({where:{teacherId,date:{gte:start,lte:end}}}) : Promise.resolve([]),
+    teacherId ? prisma.hrLeaveRequest.findMany({where:{status:"APPROVED",employee:{teacherId},startAt:{lt:end},endAt:{gt:start}},select:{startAt:true,endAt:true}}) : Promise.resolve([]),
+    teacherId ? prisma.appointment.findMany({where:{teacherId,startAt:{lt:end},endAt:{gt:start}},select:{startAt:true,endAt:true}}) : Promise.resolve([]),
   ]);
 
   const sessions = rawSessions.filter((session) => !isSessionFullyCancelled(session)).filter((session) => {
@@ -277,7 +281,10 @@ export async function getStaffMiniappScheduleCalendar(input: {
   const availability = dayKeys(start, rangeDays).flatMap((date) => {
     const slots = availabilityByDate.get(date) ?? [];
     const busy = teacherBusyByDate.get(date) ?? [];
-    return subtractBusyTime(slots, busy).map((slot) => ({
+    const dayStart=parseBusinessDateStart(date)!,dayEnd=new Date(+dayStart+86400000);
+    const dayBlocks=blocks.filter(row=>formatBusinessDateOnly(row.date)===date);
+    const otherBusy=[...leave,...appointments].filter(row=>row.startAt<dayEnd&&row.endAt>dayStart).map(row=>({startMin:Math.max(0,Math.floor((+row.startAt-+dayStart)/60000)),endMin:Math.min(1440,Math.ceil((+row.endAt-+dayStart)/60000))}));
+    return effectiveDateAvailability(slots, [...busy,...dayBlocks,...otherBusy]).filter(slot=>slot.endMin-slot.startMin>=15).map((slot) => ({
       date,
       ...slot,
       startTime: `${String(Math.floor(slot.startMin / 60)).padStart(2, "0")}:${String(slot.startMin % 60).padStart(2, "0")}`,

@@ -1,3 +1,4 @@
+import { effectiveDateAvailability } from "@/lib/teacher-availability-ranges";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 
@@ -92,20 +93,20 @@ export async function GET(req: Request) {
     const rangeStart = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 0, 0, 0, 0);
     const rangeEnd = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999);
 
-    const dateSlots = await prisma.teacherAvailabilityDate.findMany({
+    const [dateSlots, blocks] = await Promise.all([prisma.teacherAvailabilityDate.findMany({
       where: {
         teacherId: { in: teacherIds },
         date: { gte: rangeStart, lte: rangeEnd },
       },
       select: { teacherId: true, date: true, startMin: true, endMin: true },
-    });
+    }), prisma.teacherAvailabilityBlock.findMany({where:{teacherId:{in:teacherIds},date:{gte:rangeStart,lte:rangeEnd}}})]);
 
     const dateSlotMap = new Map<string, number[]>();
-    for (const slot of dateSlots) {
-      const key = `${slot.teacherId}|${fmtDateKey(slot.date)}`;
-      const len = Math.max(0, slot.endMin - slot.startMin);
-      if (!dateSlotMap.has(key)) dateSlotMap.set(key, []);
-      dateSlotMap.get(key)!.push(len);
+    const dateRanges=new Map<string,Array<{startMin:number;endMin:number}>>();
+    for(const slot of dateSlots){const key=`${slot.teacherId}|${fmtDateKey(slot.date)}`;dateRanges.set(key,[...(dateRanges.get(key)??[]),slot]);}
+    for(const [key,ranges] of dateRanges){
+      const unavailable=blocks.filter(row=>`${row.teacherId}|${fmtDateKey(row.date)}`===key);
+      dateSlotMap.set(key,effectiveDateAvailability(ranges,unavailable).map(row=>row.endMin-row.startMin));
     }
 
     availableTeacherIdSet = new Set<string>();

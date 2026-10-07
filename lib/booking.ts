@@ -1,3 +1,4 @@
+import { effectiveDateAvailability } from "@/lib/teacher-availability-ranges";
 import { prisma } from "@/lib/prisma";
 import { shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
 
@@ -90,7 +91,7 @@ export async function listBookingSlotsForMonth(opts: {
   const teacherNameMap = new Map(opts.teachers.map((x) => [x.teacherId, x.teacherName]));
   const teacherSubjectLabelMap = new Map(opts.teachers.map((x) => [x.teacherId, x.subjectLabel ?? ""]));
 
-  const [dateSlots, sessions, appointments] = await Promise.all([
+  const [dateSlots, sessions, appointments, blocks, leave] = await Promise.all([
     prisma.teacherAvailabilityDate.findMany({
       where: { teacherId: { in: teacherIds }, date: { gte: windowStart, lt: windowEnd } },
       orderBy: [{ teacherId: "asc" }, { date: "asc" }, { startMin: "asc" }],
@@ -123,6 +124,8 @@ export async function listBookingSlotsForMonth(opts: {
       where: { teacherId: { in: teacherIds }, startAt: { lt: windowEnd }, endAt: { gt: windowStart } },
       select: { teacherId: true, startAt: true, endAt: true },
     }),
+    prisma.teacherAvailabilityBlock.findMany({where:{teacherId:{in:teacherIds},date:{gte:windowStart,lt:windowEnd}}}),
+    prisma.hrLeaveRequest.findMany({where:{status:"APPROVED",employee:{teacherId:{in:teacherIds}},startAt:{lt:windowEnd},endAt:{gt:windowStart}},select:{startAt:true,endAt:true,employee:{select:{teacherId:true}}}}),
   ]);
 
   const dateMap = new Map<string, { startMin: number; endMin: number }[]>();
@@ -132,6 +135,8 @@ export async function listBookingSlotsForMonth(opts: {
     arr.push({ startMin: s.startMin, endMin: s.endMin });
     dateMap.set(key, arr);
   }
+
+  for (const [key, ranges] of dateMap) dateMap.set(key, effectiveDateAvailability(ranges, []));
 
   const busyByTeacher = new Map<string, { startAt: Date; endAt: Date }[]>();
   for (const s of sessions) {
@@ -146,6 +151,17 @@ export async function listBookingSlotsForMonth(opts: {
     const arr = busyByTeacher.get(a.teacherId) ?? [];
     arr.push({ startAt: new Date(a.startAt), endAt: new Date(a.endAt) });
     busyByTeacher.set(a.teacherId, arr);
+  }
+
+  for (const block of blocks) {
+    const ranges=busyByTeacher.get(block.teacherId) ?? [];
+    ranges.push({startAt:new Date(+block.date+block.startMin*60000),endAt:new Date(+block.date+block.endMin*60000)});
+    busyByTeacher.set(block.teacherId,ranges);
+  }
+  for (const row of leave) {
+    if(!row.employee.teacherId)continue;
+    const ranges=busyByTeacher.get(row.employee.teacherId) ?? [];
+    ranges.push({startAt:row.startAt,endAt:row.endAt});busyByTeacher.set(row.employee.teacherId,ranges);
   }
 
   const existingRequests = await prisma.studentBookingRequest.findMany({

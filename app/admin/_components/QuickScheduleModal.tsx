@@ -133,7 +133,7 @@ export default function QuickScheduleModal({
   levels: LevelOption[];
   campuses: CampusOption[];
   rooms: RoomOption[];
-  candidates: { id: string; name: string; ok: boolean; reason?: string; statusLabel?: string }[];
+  candidates: { id: string; name: string; ok: boolean; reason?: string; statusLabel?: string; warning?: boolean }[];
   sessionOptions: SessionOption[];
   scheduleUrl: string;
   labels: Labels;
@@ -816,7 +816,7 @@ export default function QuickScheduleModal({
                           ) : null}
                         </div>
                       </td>
-                      <td style={{ color: c.ok ? "#0a7" : "#b00", fontWeight: c.ok ? 600 : 400 }}>
+                      <td style={{ color: c.warning ? "#b45309" : c.ok ? "#0a7" : "#b00", fontWeight: c.ok ? 600 : 400 }}>
                         {c.ok ? c.statusLabel ?? labels.available : c.reason}
                       </td>
                       <td>

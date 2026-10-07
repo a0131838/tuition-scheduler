@@ -1,3 +1,4 @@
+import TeacherUnavailableEditor from "@/app/_components/TeacherUnavailableEditor";
 import { prisma } from "@/lib/prisma";
 import { requireTeacherProfile } from "@/lib/auth";
 import { getLang, t, type Lang } from "@/lib/i18n";
@@ -129,6 +130,7 @@ export default async function TeacherAvailabilityPage() {
         </div>
       </section>
 
+      <TeacherUnavailableEditor endpoint="/api/teacher/availability/blocks" month={startKey.slice(0,7)} lang={lang}/>
       <TeacherAvailabilityClient
         lang={lang as Lang}
         teacherId={teacher.id}

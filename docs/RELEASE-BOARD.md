@@ -1,4 +1,19 @@
 # RELEASE BOARD
+## 2026-10-07-r478
+
+- Release ID: `2026-10-07-r478`
+- Date/Time (Asia/Singapore): `2026-10-07`
+- Deployment status: `READY`; exact server proof is stored in the teacher availability acceptance folder.
+- Problem: the calendar used date availability only, while scheduling silently fell back to a weekly template on an empty date. Jasmine October 16/19 had no confirmed date rows but could appear available.
+- Change: require confirmed date availability for normal scheduling, label weekly-only dates as pending confirmation, and show the existing super-admin exception in amber with an explicit reason. Add audited full-day/partial unavailable intervals independent of generated date slots; they take priority in scheduling validation, calendar, Mini Program schedule calendar and booking slots. Admin and teacher self-service editors support EN/ZH/BILINGUAL. Approved leave also removes free calendar/booking intervals.
+- Validation: 33 focused tests; isolated PostgreSQL UAT covers real save/remove, partial/full blocks, booking/Mini Program consistency, template regeneration, retained sessions, audit and stale/cross-teacher removal. Authenticated HTTP UAT verifies role/observer scope, teacher self-binding, all three languages and editors. Production build passed.
+- Business safety: additive empty exception table only; existing date slots, weekly templates, lessons, attendance, feedback, package ledger and payroll are retained. No production business test writes or messages. Historical empty dates are not guessed as available or unavailable.
+- Operational change: staff must confirm the date with the teacher and add date slots; an unavailable date/time can be recorded in Teachers → Availability. Existing super-admin scheduling authority is retained with a visible exception warning. Restrictions survive monthly template regeneration; removing a restriction does not create date availability.
+- Rollback reference: `34ecbe783b67e7e299fb8b326bdda4aef02283d0`; keep the additive table and any recorded exceptions. Old code will not enforce new exceptions, so review restrictions before scheduling after rollback.
+- Task: `docs/tasks/TASK-20261007-teacher-availability-consistency.md`.
+
+---
+
 ## 2026-10-07-r477
 
 - Release ID: `2026-10-07-r477`

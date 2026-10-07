@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import TeacherUnavailableEditor from "@/app/_components/TeacherUnavailableEditor";
+import type {Lang} from "@/lib/i18n";
 import BlurTimeInput from "@/app/_components/BlurTimeInput";
 
 function fromMin(min: number) {
@@ -71,6 +73,7 @@ async function jsonOrNull(res: Response) {
 
 export default function AdminTeacherAvailabilityClient(props: {
   teacherId: string;
+  lang: Lang;
   teacherName: string;
   initialMonth: string; // YYYY-MM
   initialDateAvails: DateSlot[];
@@ -161,6 +164,7 @@ export default function AdminTeacherAvailabilityClient(props: {
 
   return (
     <div>
+      <TeacherUnavailableEditor endpoint={`/api/admin/teachers/${teacherId}/availability/blocks`} month={month} lang={props.lang}/>
       <h2>
         {labels.title} - {teacherName}
       </h2>

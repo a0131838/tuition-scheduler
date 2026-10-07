@@ -158,6 +158,7 @@ export default async function AvailabilityPage({
       </section>
 
       <AdminTeacherAvailabilityClient
+        lang={lang}
         teacherId={teacher.id}
         teacherName={teacher.name}
         initialMonth={month}
