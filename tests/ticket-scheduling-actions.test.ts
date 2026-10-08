@@ -71,7 +71,7 @@ test("only applied or cancelled scheduling actions are resolved", () => {
 test("ticket-level manual resolution separates completed work from genuinely unnecessary work", () => {
   assert.equal(TICKET_SCHEDULING_RESOLUTION_MODES.length, 3);
   assert.equal(schedulingResolutionDefinition("COMPLETED_EXTERNALLY")?.label, "已在正式系统或其他页面处理完成");
-  assert.equal(schedulingResolutionDefinition("NOT_REQUIRED")?.label, "整张工单确实无需处理");
+  assert.equal(schedulingResolutionDefinition("NOT_REQUIRED")?.label, "撤回／无需执行（重复录单、家长撤回或需求失效）");
   assert.equal(schedulingResolutionDefinition("UNKNOWN"), null);
   assert.equal(schedulingResolutionActionStatus("COMPLETED_EXTERNALLY"), "APPLIED");
   assert.equal(schedulingResolutionActionStatus("PARTIALLY_COMPLETED_EXTERNALLY"), "APPLIED");
@@ -122,11 +122,11 @@ test("ticket workbench exposes blockers and audited existing-result recovery", (
   assert.match(webList, /前往处理排课动作/);
   assert.match(webList, /blockedTicket/);
   assert.match(readFileSync("lib/ticket-existing-results.ts", "utf8"), /ADMIN_LINK_EXISTING_SCHEDULING_RESULT/);
-  assert.match(webDetail, /existingResultVerified/);
+  assert.match(readFileSync("app/admin/tickets/[id]/TicketResultVerification.tsx", "utf8"), /existingResultVerified/);
   assert.match(readFileSync("app/admin/tickets/[id]/ResultSubmitButton.tsx", "utf8"), /核验并更新工单/);
   assert.match(webDetail, /ADMIN_RESOLVE_TICKET_SCHEDULING_ACTIONS/);
-  assert.match(webDetail, /实际工作已经处理过：只核验一次/);
-  assert.match(webDetail, /保存实际结果并自动更新工单/);
+  assert.match(webDetail, /已在课表处理？核验并完成/);
+  assert.match(webDetail, /保存处理决定/);
   assert.match(webDetail, /这张旧工单没有结构化动作/);
   assert.match(webDetail, /单项例外：补资料或修改等待状态/);
 });

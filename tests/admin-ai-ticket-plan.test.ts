@@ -58,7 +58,7 @@ test("web Ticket Center exposes one state-specific primary action and keeps manu
   assert.match(source, /AI处理建议 · 不直接修改正式数据/);
   assert.match(source, /核对AI建议并进入正式执行/);
   assert.match(source, /人工手动处理（始终保留）/);
-  assert.match(source, /AI不适用、系统外已处理或需要人工例外/);
+  assert.match(source, /人工处理、撤回或历史工单核验/);
   assert.match(source, /AI只负责读取、核对和准备建议/);
   assert.match(source, /前期不会自动落课、扣课时、改考勤、算工资或发送真实消息/);
   assert.match(source, /AiPlanSubmitButton/);

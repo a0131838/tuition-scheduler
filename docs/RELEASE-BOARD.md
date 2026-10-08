@@ -1,4 +1,18 @@
 # RELEASE BOARD
+## 2026-10-08-r479
+
+- Release ID: `2026-10-08-r479`
+- Date/Time (Asia/Singapore): `2026-10-08`
+- Deployment status: `READY`; exact deployment evidence is saved in the ticket verification acceptance folder.
+- Problem: work already performed in the schedule was reported as cancelled when staff used the only visible ticket-level option, NOT_REQUIRED. Existing result verification was hidden below multiple disclosures and duplicated forms.
+- Change: put action-specific result verification at the current-decision entry, show original lesson state and target, list existing new lessons with matching-condition hints, display applied/waived/remaining counts, and show concrete requested-versus-actual differences. Keep withdrawal in a separate disclosure with explicit duplicate/withdrawn/invalid-request wording. The lower execution workbench links back to the single result form.
+- Business boundary: verification still uses the existing locked/serializable result service, exact student/source checks, cancellation attendance/net-ledger evidence and partial/makeup follow-up. No database migration, historical status conversion, lesson restoration, scheduling/attendance/ledger/payroll changes, automatic outbound messages or WeChat client release.
+- Validation: production build and type checking; focused ticket tests; full regression with the independently reproduced pre-existing HR source-location assertion noted in the task; isolated service/concurrency/ledger UAT, authenticated form POST UAT, three-language rendering and desktop/mobile browser verification. Exact counts and outcomes are recorded in the task after final checks.
+- Rollback reference: `f13b78c6`; retain any subsequent verification audits and result links. Historical cancelled tickets are not silently converted to completed.
+- Task: `docs/tasks/TASK-20261008-ticket-result-verification.md`.
+
+---
+
 ## 2026-10-07-r478
 
 - Release ID: `2026-10-07-r478`

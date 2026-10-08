@@ -26,7 +26,7 @@ export const TICKET_SCHEDULING_RESOLUTION_MODES = [
   },
   {
     value: "NOT_REQUIRED",
-    label: "整张工单确实无需处理",
+    label: "撤回／无需执行（重复录单、家长撤回或需求失效）",
     description: "仅用于家长撤回、重复工单或需求已经失效；不会标记为已执行。",
   },
   {

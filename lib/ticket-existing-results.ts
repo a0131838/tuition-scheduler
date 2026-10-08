@@ -39,7 +39,10 @@ export async function ticketResultCandidates(ticketId: string, actionId: string 
   const where = { ...sessionBelongsToStudentWhere(ticket.studentId), startAt: { gte: start, lt: end } };
   const safePage = Number.isSafeInteger(page) ? Math.max(0, Math.min(page, 1000)) : 0;
   const rows = await prisma.session.findMany({ where, include, orderBy: [{ startAt: "asc" }, { id: "asc" }], take: 51, skip: safePage * 50 });
-  return { date: day, page: safePage, hasMore: rows.length > 50, lessons: rows.slice(0, 50).map((row) => lessonDto(row, ticket.studentId!)) };
+  const lessons = rows.slice(0, 50).map((row) => lessonDto(row, ticket.studentId!));
+  return { date: day, page: safePage, hasMore: rows.length > 50, lessons: lessons.map(lesson => ({ ...lesson,
+    recommended: Boolean(action?.actionType === "CREATE_SESSION" && (action.requestedStartAt || action.courseLabel || action.requestedTeacherId) && checkResultEvidence(action, [lesson]).errors.length === 0),
+  })) };
 }
 
 export async function linkTicketResults(input: {

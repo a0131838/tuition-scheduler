@@ -61,3 +61,11 @@ test("cancel and makeup cannot close as a single cancellation", () => {
   assert.equal(needsMakeupFollowup({ actionType: "CANCEL_SESSION", replacementRequired: true }), true);
   assert.equal(needsMakeupFollowup({ actionType: "CANCEL_SESSION", notes: "不需要补课" }), false);
 });
+
+test("verification differences show concrete requested and actual values", () => {
+  const result = checkResultEvidence({ actionType: "CREATE_SESSION", notes: "安排2节共90分钟", durationMin: 60, requestedStartAt: new Date("2026-09-07T05:00:00Z"), courseLabel: "数学" }, [lesson, { ...lesson, id: "s2" }]);
+  assert.ok(result.differences.some(text => text.includes("要求 60 分钟，实际 90 分钟")));
+  assert.ok(result.differences.some(text => text.includes("要求 90 分钟，实际 180 分钟")));
+  assert.ok(result.differences.some(text => text.includes("要求 数学，实际 大学 / 计算机")));
+  assert.equal(checkResultEvidence({ actionType: "RESCHEDULE_SESSION", sourceSessionId: "s1", requestedStartAt: new Date("2026-09-07T05:00:00Z") }, [lesson]).differences.some(text => text.includes("要求 2026-09-07 13:00，实际 2026-09-06 13:00")), true);
+});

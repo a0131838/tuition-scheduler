@@ -80,8 +80,7 @@ import {
 } from "@/lib/admin-ai-ticket-plan";
 import { linkTicketResults } from "@/lib/ticket-existing-results";
 import TicketLessonPicker from "./TicketLessonPicker";
-import ResultSubmitButton from "./ResultSubmitButton";
-import { explicitLessonCount } from "@/lib/ticket-result-evidence";
+import TicketResultVerification from "./TicketResultVerification";
 import { ticketCommandScopeError } from "@/lib/ticket-command-scope";
 import { cancellationAttendanceLabel, cancellationNotesForDisplay } from "@/lib/ticket-cancellation-intake";
 import AiPlanSubmitButton from "./AiPlanSubmitButton";
@@ -1052,7 +1051,7 @@ export default async function AdminTicketDetailPage({
   ];
   const sideNodes = [
     { key: "Exception", label: "异常升级", caption: "Exception" },
-    { key: "Cancelled", label: "已取消", caption: "Cancelled" },
+    { key: "Cancelled", label: "已撤回／无需执行", caption: "Cancelled" },
   ];
   const unresolvedSchedulingActions = row.schedulingActions.filter((action) => !isTicketSchedulingActionResolved(action));
   const aiPlanCanProceed = aiPlanResult?.status === "READY"
@@ -1076,7 +1075,7 @@ export default async function AdminTicketDetailPage({
     : row.status === "Completed"
       ? "已完成"
       : row.status === "Cancelled"
-        ? "已取消"
+        ? "已撤回／无需执行"
         : unresolvedSchedulingActions.some((action) => action.status === "WAITING_PARENT")
           ? "等待家长"
           : unresolvedSchedulingActions.some((action) => action.status === "WAITING_TEACHER")
@@ -1399,6 +1398,20 @@ export default async function AdminTicketDetailPage({
 
         {isSchedulingTicket && !row.isArchived && !["Completed", "Cancelled"].includes(row.status) ? (
           <div style={{ display: "grid", gap: 16 }}>
+            <section id="ticket-existing-results" style={{ border: "1px solid #99d5cd", borderRadius: 12, padding: 14, display: "grid", gap: 12, scrollMarginTop: 96 }}>
+              <strong style={{ fontSize: 18 }}>{t(lang, "Already updated the schedule? Verify and complete", "已在课表处理？核验并完成")}</strong>
+              <div>{t(lang, "Check the actual results below. Verification records completion without booking, restoring or cancelling a lesson again. Remaining actions stay open.", "核对下方实际结果，确认后记录完成；无需重新排课、恢复或取消课程。尚未完成的事项继续保留。")}</div>
+              <div>{t(lang, "Applied / waived / remaining", "已执行 / 无需执行 / 待处理")}：{row.schedulingActions.filter(action => action.status === "APPLIED").length} / {row.schedulingActions.filter(action => action.status === "CANCELLED").length} / {unresolvedSchedulingActions.length}</div>
+              {unresolvedSchedulingActions.map((action, index) => {
+                const source = action.sourceSession;
+                const attendance = source?.attendances.find(item => item.studentId === row.studentId);
+                return <TicketResultVerification key={action.id} ticketId={row.id} back={`${selfHref}#ticket-existing-results`} lang={lang}
+                  action={action} index={index + 1} submit={linkExistingSchedulingResultAction}
+                  sourceLabel={source ? `${formatBusinessDateTime(source.startAt)}–${formatBusinessTimeOnly(source.endAt)} · ${source.class.course.name} · ${source.teacher?.name ?? source.class.teacher.name}` : null}
+                  sourceCancelled={attendance?.status === "EXCUSED"} />;
+              })}
+              {!unresolvedSchedulingActions.length ? <a href="#scheduling-actions">{t(lang, "Review the recorded actions or add a missing requirement", "查看已记录动作或补充遗漏需求")} →</a> : null}
+            </section>
             {aiPlanCanProceed ? (
               <div style={{ borderLeft: "4px solid #ea580c", padding: "12px 14px", display: "grid", gap: 8, background: "#fff7ed" }}>
                 <div style={{ color: "#9a3412", fontSize: 12, fontWeight: 850 }}>当前主操作</div>
@@ -1413,7 +1426,7 @@ export default async function AdminTicketDetailPage({
             )}
 
             <details style={{ border: "1px solid #d6d3d1", borderRadius: 12, padding: 14, background: "#fafaf9" }}>
-              <summary style={{ cursor: "pointer", fontWeight: 850 }}>AI不适用、系统外已处理或需要人工例外？</summary>
+              <summary style={{ cursor: "pointer", fontWeight: 850 }}>人工处理、撤回或历史工单核验</summary>
               <div style={{ borderLeft: "4px solid #0f766e", padding: "12px 14px", display: "grid", gap: 8, background: "#f0fdfa", marginTop: 14 }}>
                 <div style={{ fontWeight: 900, fontSize: 18 }}>人工手动处理（始终保留）</div>
                 <div style={{ color: "#475569", fontSize: 13 }}>AI不准确、暂时不可用或员工已有更可靠信息时，直接按原流程处理。</div>
@@ -1435,9 +1448,9 @@ export default async function AdminTicketDetailPage({
               <input type="hidden" name="id" value={row.id} />
               <input type="hidden" name="back" value={`${selfHref}#ticket-decision`} />
               <div>
-                <div style={{ fontSize: 18, fontWeight: 900 }}>实际工作已经处理过：只核验一次</div>
+                <div style={{ fontSize: 18, fontWeight: 900 }}>{unresolvedSchedulingActions.some(action => ["CREATE_SESSION", "CANCEL_SESSION", "RESCHEDULE_SESSION", "REPLACE_TEACHER"].includes(action.actionType)) ? t(lang, "Withdraw a duplicate or invalid request", "撤回重复或已失效的需求") : t(lang, "Verify a historical or coordination request", "历史或协调工单核验")}</div>
                 <div style={{ color: "#57534e", fontSize: 13, marginTop: 5 }}>
-                  不需要再逐项填写。“已处理完成”和“无需处理”会写入不同审计结果，避免把未做的工作记成已执行。
+                  {t(lang, "For completed lessons, use the result verification above. Withdraw only a duplicate, withdrawn or invalid request; withdrawal does not record the work as completed.", "课程已经处理完成，请使用上方结果核验。只有重复录单、家长撤回或需求失效才选择撤回；撤回不会记为已完成。")}
                 </div>
               </div>
               <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))" }}>
@@ -1469,7 +1482,7 @@ export default async function AdminTicketDetailPage({
                   name="resolutionNote"
                   rows={3}
                   required
-                  placeholder="例如：Eva 已在学生课表完成改课并与家长确认；本工单为事后补录。"
+                  placeholder="例如：家长撤回需求／重复录单；历史协调单请说明实际处理依据。"
                   style={{ width: "100%", boxSizing: "border-box", marginTop: 5 }}
                 />
               </label>
@@ -1478,7 +1491,7 @@ export default async function AdminTicketDetailPage({
                 <span>我已核对正式课表或真实沟通记录，确认不会造成重复排课、重复取消或漏处理。</span>
               </label>
               <button type="submit" style={{ justifySelf: "start", padding: "11px 18px", fontWeight: 850, background: "#0f766e", color: "#fff" }}>
-                保存实际结果并自动更新工单
+                {t(lang, "Save this decision", "保存处理决定")}
               </button>
               </form>
             </details>
@@ -1696,49 +1709,9 @@ export default async function AdminTicketDetailPage({
                           </div>
                         </details>
                         {["CREATE_SESSION", "RESCHEDULE_SESSION", "CANCEL_SESSION", "REPLACE_TEACHER"].includes(action.actionType) ? (
-                          <details open={alreadyCancelled || action.actionType === "CREATE_SESSION"} style={{ borderTop: "1px solid #fdba74", paddingTop: 10 }}>
-                            <summary style={{ cursor: "pointer", color: "#9a3412", fontWeight: 800 }}>
-                              {t(lang, "Already processed elsewhere? Link the result", "已在其他页面处理？关联已有结果")}
-                            </summary>
-                            <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
-                              <div style={{ color: "#7c2d12", fontSize: 12 }}>
-                                {t(lang, "Use this after the formal schedule has been updated. The system records the operator, lesson and verification notes. Unfinished changes cannot be marked complete.", "仅当正式课表已经完成对应操作时使用。系统会记录操作者、课程和核验备注；尚未执行的改课或取消不能标记完成。")}
-                              </div>
-                              {action.actionType === "CANCEL_SESSION" ? (
-                                <div role="note" style={{ background: "#eff6ff", color: "#1e3a8a", border: "1px solid #bfdbfe", borderRadius: 8, padding: 12, fontSize: 13, display: "grid", gap: 8 }}>
-                                  <strong>{t(lang, "Cancellation requires ledger verification", "取消结果需核对实际课时流水")}</strong>
-                                  <span>{t(lang, "Attendance shows the recorded decision. Verification also checks deductions and reversals for this student and lesson. Notes cannot override a mismatch or unclear ownership. Verification itself does not deduct or return hours.", "出勤显示的是已登记的处理决定；核验还会检查该学生、本节课的实际扣退流水。备注不能跳过流水不一致或归属不明。核验本身不会扣课或退课时。")}</span>
-                                  {row.studentId ? <a href={`/admin/students/${row.studentId}#session-${action.sourceSessionId ?? ""}`}>{t(lang, "Review the lesson and its package records", "查看本节课程及关联课包记录")} →</a> : null}
-                                </div>
-                              ) : null}
-                              {action.actionType === "CREATE_SESSION" ? (
-                                <div>
-                                  实际新增课程
-                                  {action.resultSessionIds.length > 0 ? <div>已关联 {action.resultSessionIds.length} 节，本次需求 {explicitLessonCount(action.notes)} 节</div> : null}
-                                  <TicketLessonPicker ticketId={row.id} actionId={action.id} name="existingResultSessionId" multiple />
-                                </div>
-                              ) : (
-                                <div style={{ color: "#57534e", fontSize: 13 }}>
-                                  {t(lang, "Verification uses the original lesson above. Other lessons cannot be substituted.", "核验对象固定为上方原课程，不能改选该学生的其他课程。")}
-                                </div>
-                              )}
-                              <label>
-                                {t(lang, "Notes (exceptions or confirmed changes only)", "备注（仅异常或需求变更时填写）")}
-                                <textarea
-                                  name="existingResultNote"
-                                  rows={3}
-                                  placeholder={t(lang, "If arrangements changed, record who confirmed them and the supporting evidence", "实际安排与原需求不同时，填写确认人及变更依据")}
-                                  style={{ width: "100%", boxSizing: "border-box" }}
-                                />
-                              </label>
-                              <label><input type="checkbox" name="existingResultChanged" value="1" /> {t(lang, "The request has a confirmed change (evidence required)", "需求已有确认的变更（需填写依据）")}</label>
-                              <label style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                                <input name="existingResultVerified" type="checkbox" value="1" style={{ marginTop: 3 }} />
-                                <span>{t(lang, "I have checked the formal schedule and confirmed the action is complete, without duplicating a booking, cancellation or change.", "我已核对正式课表，确认该动作已经实际完成，不会造成重复排课、重复取消或重复改课。")}</span>
-                              </label>
-                              <ResultSubmitButton action={linkExistingSchedulingResultAction} lang={lang} />
-                            </div>
-                          </details>
+                          <a href="#ticket-existing-results" style={{ color: "#0f766e", fontWeight: 800 }}>
+                            {t(lang, "Already updated? Verify the actual result above", "已处理完成？到上方核验实际结果")} →
+                          </a>
                         ) : null}
                       </div>
                     ) : (
@@ -2057,7 +2030,7 @@ export default async function AdminTicketDetailPage({
               <div style={{ display: "grid", gap: 8 }}>
                 <div style={{ color: row.status === "Cancelled" ? "#b45309" : "#166534", fontWeight: 700 }}>
                   {row.status === "Cancelled"
-                    ? "已取消（可归档）/ Cancelled (Archivable)"
+                    ? "已撤回／无需执行（可归档）/ Withdrawn or not required (Archivable)"
                     : "已完成（锁定，可归档）/ Completed (Locked, Archivable)"}
                 </div>
                 <form action={archiveTicketAction} style={{ display: "grid", gap: 8 }}>

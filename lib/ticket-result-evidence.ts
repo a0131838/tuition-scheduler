@@ -1,3 +1,4 @@
+import { formatBusinessDateTime } from "./date-only";
 import type { CancellationLedgerEvidence } from "./cancellation-ledger-evidence";
 
 export type ResultAction = {
@@ -64,25 +65,25 @@ export function checkResultEvidence(action: ResultAction, lessons: ResultLesson[
     }
     if (lesson.cancelled) errors.push("已取消课程不能作为排课或改课的完成结果。");
     if (action.requestedStartAt && businessDay(lesson.startAt) !== businessDay(action.requestedStartAt) && explicitLessonCount(action.notes) === 1) {
-      differences.push("实际日期与工单日期不同");
+      differences.push(`实际日期与工单日期不同：要求 ${businessDay(action.requestedStartAt)}，实际 ${businessDay(lesson.startAt)}`);
     }
     if (action.actionType === "RESCHEDULE_SESSION") {
       if (!action.requestedStartAt) errors.push("请先补充目标时间，再核验改课结果。");
-      else if (lesson.startAt.getTime() !== action.requestedStartAt.getTime()) differences.push("实际时间与目标时间不同");
+      else if (lesson.startAt.getTime() !== action.requestedStartAt.getTime()) differences.push(`实际时间与目标时间不同：要求 ${formatBusinessDateTime(action.requestedStartAt)}，实际 ${formatBusinessDateTime(lesson.startAt)}`);
     }
     if (action.actionType === "REPLACE_TEACHER" && !action.requestedTeacherId) errors.push("请先补充目标老师，再核验换老师结果。");
     if (action.requestedTeacherId && lesson.teacherId !== action.requestedTeacherId) differences.push("实际老师与目标老师不同");
     const requestedParts = (action.courseLabel ?? "").split(/\s*\/\s*/).filter(Boolean);
-    if (requestedParts.length && requestedParts.some((part) => !lesson.courseLabel.toLowerCase().includes(part.toLowerCase()))) differences.push("实际科目或级别与工单不同");
-    if (action.durationMin && Math.round((lesson.endAt.getTime() - lesson.startAt.getTime()) / 60000) !== action.durationMin) differences.push("实际单节时长与工单不同");
+    if (requestedParts.length && requestedParts.some((part) => !lesson.courseLabel.toLowerCase().includes(part.toLowerCase()))) differences.push(`实际科目或级别与工单不同：要求 ${action.courseLabel}，实际 ${lesson.courseLabel}`);
+    if (action.durationMin && Math.round((lesson.endAt.getTime() - lesson.startAt.getTime()) / 60000) !== action.durationMin) differences.push(`实际单节时长与工单不同：要求 ${action.durationMin} 分钟，实际 ${Math.round((lesson.endAt.getTime() - lesson.startAt.getTime()) / 60000)} 分钟`);
   }
   const original = (action.notes ?? "").split(/\n\n\[/)[0];
   const totalMatch = original.match(/(?:总(?:时长)?|共)\s*(\d+(?:\.\d+)?)\s*(分钟|小时)/);
   const totalMinutes = lessons.reduce((sum, row) => sum + Math.round((row.endAt.getTime() - row.startAt.getTime()) / 60000), 0);
-  if (action.actionType === "CREATE_SESSION" && lessons.length > explicitLessonCount(action.notes)) differences.push("实际关联节数超过本次明确范围");
+  if (action.actionType === "CREATE_SESSION" && lessons.length > explicitLessonCount(action.notes)) differences.push(`实际关联节数超过本次明确范围：要求 ${explicitLessonCount(action.notes)} 节，实际 ${lessons.length} 节`);
   if (action.actionType === "CREATE_SESSION" && totalMatch && lessons.length >= explicitLessonCount(action.notes)) {
     const required = Number(totalMatch[1]) * (totalMatch[2] === "小时" ? 60 : 1);
-    if (totalMinutes !== required) differences.push("实际总时长与原需求不同");
+    if (totalMinutes !== required) differences.push(`实际总时长与原需求不同：要求 ${required} 分钟，实际 ${totalMinutes} 分钟`);
   }
   if (differences.length && !confirmedChange) errors.push(`${[...new Set(differences)].join("；")}。请核对，若需求已变更，填写确认依据。`);
   return { errors: [...new Set(errors)], differences: [...new Set(differences)], totalMinutes,

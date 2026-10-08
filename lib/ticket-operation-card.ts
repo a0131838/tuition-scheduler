@@ -42,8 +42,8 @@ export function buildTicketOperationCard(input: TicketOperationCardInput): Ticke
     return {
       lane: "DONE",
       laneLabel: "已结束",
-      statusLabel: input.isArchived ? "已归档" : cancelled ? "已取消" : "已完成",
-      stepTitle: cancelled ? "工单已取消" : "工单已完成",
+      statusLabel: input.isArchived ? "已归档" : cancelled ? "已撤回／无需执行" : "已完成",
+      stepTitle: cancelled ? "工单已撤回／无需执行" : "工单已完成",
       stepDescription: "如需核对处理记录，可查看完整资料与审计历史。",
       actionLabel: "查看处理记录",
       actionAnchor: "ticket-advanced",
