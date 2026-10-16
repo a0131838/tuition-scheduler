@@ -24,11 +24,43 @@ import {
   type AcademicAssessmentStoredAnswer,
 } from "../lib/school-guide-academic-assessment";
 
-test("assessment bank is a controlled pathway V5 pilot with five age bands", () => {
-  assert.equal(ACADEMIC_ASSESSMENT_VERSION, "V1.4-20260805-pathway-v5-itep-aligned");
+test("assessment bank is an English-first pathway V6 pilot with five age bands", () => {
+  assert.equal(ACADEMIC_ASSESSMENT_VERSION, "V1.4-20260805-pathway-v6-english-first");
   assert.equal(ACADEMIC_ASSESSMENT_STATUS, "pilot");
   assert.equal(ACADEMIC_ASSESSMENT_AGE_BANDS.length, 5);
-  assert.deepEqual(ACADEMIC_ASSESSMENT_PRODUCTS, ["INTERNATIONAL_ENGLISH", "AEIS_PRIMARY", "AEIS_SECONDARY"]);
+  assert.deepEqual(ACADEMIC_ASSESSMENT_PRODUCTS, ["INTERNATIONAL_ENGLISH", "AEIS_PRIMARY_ENGLISH", "AEIS_PRIMARY_MATH", "AEIS_SECONDARY_ENGLISH", "AEIS_SECONDARY_MATH", "AEIS_PRIMARY", "AEIS_SECONDARY"]);
+});
+
+test("new AEIS sessions use independent English and maths papers", () => {
+  for (const [level, formId, englishPath, mathPath, englishDomain] of [
+    ["primary", "CORE-A911-A", "AEIS_PRIMARY_ENGLISH", "AEIS_PRIMARY_MATH", "CEQ英语准备"],
+    ["secondary", "CORE-A1214-A", "AEIS_SECONDARY_ENGLISH", "AEIS_SECONDARY_MATH", "英语"],
+  ]) {
+    const english = productQuestionIds(formId, englishPath);
+    const math = productQuestionIds(formId, mathPath);
+    assert.equal(english.length, level === "primary" ? 13 : 15);
+    assert.equal(math.length, level === "primary" ? 12 : 14);
+    assert.deepEqual(new Set(english.map((id) => publicQuestion(formId, id).domain)), new Set([englishDomain]));
+    assert.deepEqual(new Set(math.map((id) => publicQuestion(formId, id).domain)), new Set(["数学"]));
+    assert.equal(english.some((id) => math.includes(id)), false);
+    const answers: Record<string, AcademicAssessmentStoredAnswer> = Object.fromEntries(english.map((id) => [id, {
+      value: "A", durationSeconds: 60, updatedAt: new Date().toISOString(), autoScore: scoreAnswer(formId, id, "A"),
+      manualScore: publicQuestion(formId, id).requiresReviewer ? 6 : undefined,
+    }]));
+    const result = calculateAssessmentResult({ formId, questionIds: english, answers, durationSeconds: 20 * 60, targetPath: englishPath, bankVersion: ACADEMIC_ASSESSMENT_VERSION });
+    assert.equal(result.report.scorecards.length, 1);
+    assert.equal(result.report.scorecards[0].cefrReference, null);
+    assert.equal(result.overallScore, null);
+    assert.equal(result.confidence, "初步诊断");
+  }
+});
+
+test("younger international English uses age-specific short questions", () => {
+  const younger = productQuestionIds("CORE-A68-A", "INTERNATIONAL_ENGLISH");
+  const older = productQuestionIds("CORE-A1214-A", "INTERNATIONAL_ENGLISH");
+  assert.equal(younger.length, 17);
+  assert.equal(older.length, 51);
+  assert.equal(younger.some((id) => publicQuestion("CORE-A68-A", id).section === "LISTENING"), false);
 });
 
 test("new products select only their intended subjects", () => {
@@ -99,7 +131,7 @@ test("new product reports never blend AEIS subjects into one total", () => {
   assert.deepEqual(result.report.improvementPlan.map((row) => row.stage), ["第1–2周", "第3–6周", "第7–8周"]);
 });
 
-test("international English report labels CEFR as provisional", () => {
+test("new international English report does not infer CEFR from the internal score", () => {
   const formId = "CORE-A1214-B";
   const ids = productQuestionIds(formId, "INTERNATIONAL_ENGLISH");
   const answers: Record<string, AcademicAssessmentStoredAnswer> = Object.fromEntries(ids.map((id) => [id, {
@@ -109,14 +141,14 @@ test("international English report labels CEFR as provisional", () => {
     autoScore: scoreAnswer(formId, id, "A"),
     manualScore: publicQuestion(formId, id).requiresReviewer ? 3 : undefined,
   }]));
-  const result = calculateAssessmentResult({ formId, questionIds: ids, answers, durationSeconds: 75 * 60, targetPath: "INTERNATIONAL_ENGLISH" });
+  const result = calculateAssessmentResult({ formId, questionIds: ids, answers, durationSeconds: 75 * 60, targetPath: "INTERNATIONAL_ENGLISH", bankVersion: ACADEMIC_ASSESSMENT_VERSION });
   assert.equal(typeof result.overallScore, "number");
-  assert.match(result.report.standard, /CEFR.*初步参考/);
-  assert.ok(result.report.scorecards[0].cefrReference);
+  assert.match(result.report.standard, /不是官方考试或成绩/);
+  assert.equal(result.report.scorecards[0].cefrReference, null);
   assert.ok(result.report.evidence);
   assert.equal(result.report.evidence?.totalItems, 51);
-  assert.equal(result.report.evidence?.ageBandSpecific, true);
-  assert.equal(result.report.scoreModelVersion, "PATHWAY_V5_ITEP_ALIGNED");
+  assert.equal(result.report.evidence?.ageBandSpecific, false);
+  assert.equal(result.report.scoreModelVersion, "PATHWAY_V6_ENGLISH_FIRST");
   assert.deepEqual(Object.keys(result.report.moduleScores), ["语法", "听力", "阅读", "写作"]);
   assert.deepEqual(result.report.unmeasuredSkills, ["口语"]);
   assert.equal(result.report.improvementPlan[2].title, "模拟与复测");

@@ -277,7 +277,15 @@ function mathQuestions(product: string, ageBand: string, variant: Variant, count
 export function productQuestions(formId: string, targetPath: string, ageBand: string): ProductQuestion[] {
   const variant = (formId.slice(-1) as Variant) || "A";
   if (!(variant in READING) || !(ageBand in AGE_LEVEL)) return [];
-  if (targetPath === "INTERNATIONAL_ENGLISH") return itepAlignedQuestions(formId, ageBand);
+  if (targetPath === "INTERNATIONAL_ENGLISH") {
+    return ["6–8岁", "9–11岁"].includes(ageBand)
+      ? englishQuestions("INT", ageBand, variant, 16, true)
+      : itepAlignedQuestions(formId, ageBand);
+  }
+  if (targetPath === "AEIS_PRIMARY_ENGLISH") return englishQuestions("AEP", ageBand, variant, 12, true).map((item) => ({ ...item, domain: "CEQ英语准备" }));
+  if (targetPath === "AEIS_PRIMARY_MATH") return mathQuestions("AEP", ageBand, variant, 12);
+  if (targetPath === "AEIS_SECONDARY_ENGLISH") return englishQuestions("AES", ageBand, variant, 14, true);
+  if (targetPath === "AEIS_SECONDARY_MATH") return mathQuestions("AES", ageBand, variant, 14);
   if (targetPath === "AEIS_PRIMARY") {
     return [
       ...englishQuestions("AEP", ageBand, variant, 12, true).map((item) => ({ ...item, domain: "CEQ英语准备" })),

@@ -10,7 +10,7 @@
   </view>
   <view class="guide-section">
     <view class="guide-section-title">我们收集什么</view>
-    <view class="guide-section-note">家长主动提交的称呼、孩子称呼或昵称、微信号、择校需求；参加入学准备度测评时，还会保存年龄段、在读年级、目标路径、语言背景、题目作答、每题用时、分卷与答题路线、老师评分、报告及必要操作日志。</view>
+    <view class="guide-section-note">家长主动提交的称呼、孩子称呼或昵称、微信号、择校需求；参加入学准备度测评时，还会保存年龄段、在读年级、目标路径、语言背景、题目作答、每题用时、分卷与答题路线、老师评分、报告、入口来源及必要操作日志。</view>
   </view>
   <view class="guide-section">
     <view class="guide-section-title">为什么收集</view>
@@ -21,9 +21,13 @@
     <view class="guide-section-note">邮箱：zhaohongwei0880@163.com</view>
   </view>
   <view class="guide-section">
+    <view class="guide-section-title">合作方入口</view>
+    <view class="guide-section-note">通过合作方专属入口开始测评时，我们会记录入口来源，用于统计测评次数和衔接后续咨询。合作方不会通过该入口直接获得孩子的答卷、报告或联系方式。</view>
+  </view>
+  <view class="guide-section">
     <view class="guide-section-title">儿童资料</view>
     <view class="guide-section-note">请勿提交证件号码、护照或医疗资料。</view>
   </view>
-  <view class="guide-notice">更新日期：2026年8月6日</view>
+  <view class="guide-notice">更新日期：2026年10月16日</view>
 </view>
 <guide-nav active="home" />

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { allocateLeadNo, normalizeLeadText } from "@/lib/leads";
 import { prisma } from "@/lib/prisma";
+import { sha256 } from "@/lib/school-guide-academic-assessment";
 
 const inquiryHits = new Map<string, number[]>();
 const DEFAULT_OWNER_EMAIL = "zhaohongwei0880@gmail.com";
@@ -36,13 +37,22 @@ export async function POST(req: NextRequest) {
   const parentPhone = "";
   const needs = text(body.needs, 1800);
   const assessmentSummary = text(body.assessmentSummary, 500);
+  const assessmentSessionToken = text(body.assessmentSessionToken, 128);
   const consent = text(body.consent, 10);
   if (!parentName || !studentName || !needs || !parentWechat || consent !== "yes") {
     return NextResponse.json({ ok: false, message: "请填写家长、孩子、微信号和需求，并确认授权。" }, { status: 400 });
   }
 
+  const assessmentSession = assessmentSessionToken
+    ? await prisma.schoolGuideAssessmentSession.findUnique({
+        where: { sessionTokenHash: sha256(assessmentSessionToken) },
+        select: { studentCode: true, partnerLink: { select: { name: true } } },
+      })
+    : null;
+  const partnerName = assessmentSession?.partnerLink?.name || "";
   const content = [
     "[新加坡学校指南公开咨询]",
+    partnerName ? `合作方测评来源：${partnerName}（${assessmentSession?.studentCode}）` : "",
     assessmentSummary ? `测评摘要：${assessmentSummary}` : "",
     `家长需求：${needs}`,
   ].filter(Boolean).join("\n");
@@ -96,7 +106,7 @@ export async function POST(req: NextRequest) {
         leadNo,
         sourceType: "官网/表单",
         sourcePlatform: "新加坡学校指南",
-        sourceDetail: "公开网页或微信小程序学校指南",
+        sourceDetail: partnerName ? `合作方测评：${partnerName}` : "公开网页或微信小程序学校指南",
         parentName,
         parentWechat: parentWechat || null,
         parentPhone: parentPhone || null,

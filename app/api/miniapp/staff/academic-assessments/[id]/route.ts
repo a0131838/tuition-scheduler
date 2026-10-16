@@ -81,7 +81,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
       reviewerNote: String(scores[questionId]?.note ?? "").trim().slice(0, 500) || null,
     };
   }
-  const result = calculateAssessmentResult({ formId: session.formId, questionIds: ids, answers, durationSeconds: session.durationSeconds, targetPath: session.targetPath });
+  const result = calculateAssessmentResult({ formId: session.formId, questionIds: ids, answers, durationSeconds: session.durationSeconds, targetPath: session.targetPath, bankVersion: session.bankVersion });
   const reviewerNote = String(body?.reviewerNote ?? "").trim().slice(0, 1200);
   const updated = await prisma.$transaction(async (tx) => {
     const row = await tx.schoolGuideAssessmentSession.update({

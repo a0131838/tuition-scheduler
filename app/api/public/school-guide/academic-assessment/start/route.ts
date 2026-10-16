@@ -34,7 +34,9 @@ function allowed(ip: string) {
 function lockedPathMatches(codePath: string | null, requestedPath: string) {
   if (!codePath || codePath === requestedPath) return true;
   if (codePath === "INTERNATIONAL" && requestedPath === "INTERNATIONAL_ENGLISH") return true;
-  if (codePath === "MOE_AEIS" && ["AEIS_PRIMARY", "AEIS_SECONDARY"].includes(requestedPath)) return true;
+  if (codePath === "MOE_AEIS" && requestedPath.startsWith("AEIS_")) return true;
+  if (codePath === "AEIS_PRIMARY" && requestedPath.startsWith("AEIS_PRIMARY_")) return true;
+  if (codePath === "AEIS_SECONDARY" && requestedPath.startsWith("AEIS_SECONDARY_")) return true;
   return false;
 }
 
@@ -47,6 +49,7 @@ export async function POST(req: NextRequest) {
   const retestSessionToken = cleanText(body?.retestSessionToken, 128);
   const requestedAgeBand = cleanText(body?.ageBand, 20);
   const requestedTargetPath = cleanText(body?.targetPath, 30);
+  const partnerCode = cleanText(body?.partnerCode, 64);
   const directSelfServe = !rawCode && !requestToken && !retestSessionToken;
   const requestedStudentNickname = cleanText(body?.studentNickname, 60);
   if (cleanText(body?.consent, 10) !== "yes") {
@@ -73,12 +76,16 @@ export async function POST(req: NextRequest) {
 
   try {
     const result = await prisma.$transaction(async (tx) => {
+      const partnerLink = partnerCode && /^[a-f0-9]{32}$/.test(partnerCode)
+        ? await tx.schoolGuideAssessmentPartnerLink.findUnique({ where: { slug: partnerCode }, select: { id: true, isActive: true, name: true } })
+        : null;
+      if (partnerCode && !partnerLink?.isActive) throw new Error("INVALID_PARTNER_LINK");
       const retestSource = retestSessionToken
         ? await tx.schoolGuideAssessmentSession.findUnique({
           where: { sessionTokenHash: sha256(retestSessionToken) },
           select: {
             id: true, status: true, studentNickname: true, ageBand: true, currentGrade: true,
-            targetPath: true, languageBackground: true, formId: true, createdAt: true,
+            targetPath: true, languageBackground: true, formId: true, createdAt: true, partnerLinkId: true,
           },
         })
         : null;
@@ -165,6 +172,7 @@ export async function POST(req: NextRequest) {
       const session = await tx.schoolGuideAssessmentSession.create({
         data: {
           accessCodeId: code.id,
+          partnerLinkId: partnerLink?.id ?? retestSource?.partnerLinkId ?? null,
           sessionTokenHash: sha256(sessionToken),
           studentCode: generateStudentCode(),
           studentNickname: studentNickname || null,
@@ -208,7 +216,7 @@ export async function POST(req: NextRequest) {
           action: "START",
           entityType: "SchoolGuideAssessmentSession",
           entityId: session.id,
-          meta: { ageBand: requestedAgeBand, targetPath: requestedTargetPath, formId, bankVersion: ACADEMIC_ASSESSMENT_VERSION, sourceStatus: ACADEMIC_ASSESSMENT_STATUS, sourceMode: retestSource ? "PARALLEL_RETEST" : directSelfServe ? "DIRECT_SELF_SERVE" : "CONTROLLED_CODE", assessmentRequestId: code.assessmentRequestId || null, isRetest: Boolean(previousSession), previousSessionId: previousSession?.id || null, recommendedIntervalDays: 30 },
+          meta: { ageBand: requestedAgeBand, targetPath: requestedTargetPath, formId, bankVersion: ACADEMIC_ASSESSMENT_VERSION, sourceStatus: ACADEMIC_ASSESSMENT_STATUS, sourceMode: retestSource ? "PARALLEL_RETEST" : directSelfServe ? "DIRECT_SELF_SERVE" : "CONTROLLED_CODE", partnerLinkId: partnerLink?.id ?? retestSource?.partnerLinkId ?? null, assessmentRequestId: code.assessmentRequestId || null, isRetest: Boolean(previousSession), previousSessionId: previousSession?.id || null, recommendedIntervalDays: 30 },
         },
       });
       return { session, sessionToken };
@@ -223,6 +231,7 @@ export async function POST(req: NextRequest) {
       AGE_MISMATCH: "所选年龄段与评估码不一致，请联系发码员工核对。",
       PATH_MISMATCH: "所选目标路径与评估码不一致，请联系发码员工核对。",
       PRODUCT_QUESTIONS_MISSING: "当前测评产品的试题配置不完整，请联系老师。",
+      INVALID_PARTNER_LINK: "合作方测评入口已失效，请联系提供入口的老师。",
       INVALID_RETEST: "这次测评尚未提交，或原记录已经失效，暂时不能开始平行卷复测。",
       RETEST_MISMATCH: "复测必须沿用同一学生、年龄段和测评方向。",
       RETEST_LIMIT: "24小时内已完成或开始3套平行卷。为避免记忆题目影响结果，请等待老师复核或次日再测。",

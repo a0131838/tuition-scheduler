@@ -1,4 +1,18 @@
 # RELEASE BOARD
+## 2026-10-16-r480
+
+- Release ID: `2026-10-16-r480`
+- Date/Time (Asia/Singapore): `2026-10-16`
+- Deployment status: `READY`; verify server commit and migration after deployment. Miniapp development/experience and formal publication are separate steps.
+- Scope: English-first school-guide assessment, separate optional AEIS Mathematics papers, conservative report wording, and source-bound partner entries.
+- Operator action: create one entry per named partner at `/admin/assessment-partners`; after the new miniapp page is formally published, generate its WeChat URL Link, complete real-device trial, then share it. Stop a partner's new assessments by disabling that entry.
+- Validation: Prisma schema validation; TypeScript; production build; 85 related tests; miniapp release audit; JS syntax/diff checks.
+- Open risk: the short AEIS English papers do not replace CEQ or SEAB tests; Mathematics has only multiple-choice items and cannot assess working steps. Writing requires teacher scoring. Teacher review and a real-device trial remain prerequisites for external use.
+- Rollback reference: `228af28c`; do not delete the additive partner attribution data.
+- Task: `docs/tasks/TASK-20261016-partner-assessment-english-first.md`.
+
+---
+
 ## 2026-10-08-r479
 
 - Release ID: `2026-10-08-r479`

@@ -41,6 +41,10 @@ Page({
   data: {
     phase: "hub",
     loading: false,
+    partnerCode: "",
+    partnerName: "",
+    partnerInvalid: false,
+    canStartMath: false,
     code: "",
     studentNickname: "",
     currentGrade: "",
@@ -48,8 +52,8 @@ Page({
     consent: false,
     ageOptions: ["3–5岁", "6–8岁", "9–11岁", "12–14岁", "15–17岁"],
     ageIndex: 1,
-    pathLabels: ["国际学校英语入学准备度", "AEIS小学入学准备度", "AEIS中学入学准备度"],
-    pathValues: ["INTERNATIONAL_ENGLISH", "AEIS_PRIMARY", "AEIS_SECONDARY"],
+    pathLabels: ["国际学校英语", "AEIS小学英语（先测）", "AEIS中学英语（先测）", "AEIS小学数学（单独测）", "AEIS中学数学（单独测）"],
+    pathValues: ["INTERNATIONAL_ENGLISH", "AEIS_PRIMARY_ENGLISH", "AEIS_SECONDARY_ENGLISH", "AEIS_PRIMARY_MATH", "AEIS_SECONDARY_MATH"],
     pathIndex: 0,
     sessionToken: "",
     session: null,
@@ -96,6 +100,14 @@ Page({
     const history = wx.getStorageSync(HISTORY_KEY);
     const intent = options && options.intent;
     this.setData({ sessionToken, requestToken, hasSession: Boolean(sessionToken), hasRequest: Boolean(requestToken), history: Array.isArray(history) ? history : [] });
+    const partnerCode = String(options && options.partner || "");
+    if (partnerCode) {
+      this.setData({ partnerCode, phase: "setup", loading: true });
+      return api.request("/api/public/school-guide/academic-assessment/partner-link?code=" + encodeURIComponent(partnerCode), { timeout: 15000 })
+        .then((data) => this.setData({ partnerName: data.name || "" }))
+        .catch((err) => { this.setData({ partnerInvalid: true, phase: "partnerInvalid" }); api.toast(err.message); })
+        .finally(() => this.setData({ loading: false }));
+    }
     if (intent === "request") return this.openCodeSetup();
     if (intent === "code") return this.openCodeSetup();
     if (sessionToken) {
@@ -157,7 +169,7 @@ Page({
   playListeningAudio() {
     const question = this.data.session && this.data.session.question;
     const audioUrl = question && question.audioUrl;
-    if (!audioUrl || this.data.audioPlaying || this.data.audioPlayedUrls[audioUrl]) return;
+    if (!audioUrl || this.data.audioPlaying) return;
     if (!this.assessmentAudio) {
       this.assessmentAudio = wx.createInnerAudioContext();
       this.assessmentAudio.onPlay(() => this.setData({ audioPlaying: true }));
@@ -185,22 +197,39 @@ Page({
   setNickname(event) { this.setData({ studentNickname: event.detail.value }); },
   setGrade(event) { this.setData({ currentGrade: event.detail.value }); },
   setLanguage(event) { this.setData({ languageBackground: event.detail.value }); },
-  setAge(event) { this.setData({ ageIndex: Number(event.detail.value) }); },
-  setPath(event) { this.setData({ pathIndex: Number(event.detail.value) }); },
+  setAge(event) {
+    const ageIndex = Number(event.detail.value);
+    const pathIndex = ageIndex >= 3 && [1, 3].includes(this.data.pathIndex) ? 2 : ageIndex > 0 && ageIndex <= 2 && [2, 4].includes(this.data.pathIndex) ? 1 : this.data.pathIndex;
+    this.setData({ ageIndex, pathIndex });
+  },
+  setPath(event) {
+    const pathIndex = Number(event.detail.value);
+    const ageIndex = [2, 4].includes(pathIndex) && this.data.ageIndex < 3 ? 3 : [1, 3].includes(pathIndex) && this.data.ageIndex >= 3 ? 2 : this.data.ageIndex;
+    this.setData({ pathIndex, ageIndex });
+  },
   toggleConsent(event) { this.setData({ consent: (event.detail.value || []).includes("yes") }); },
   openPrivacy() { wx.navigateTo({ url: "/pages/guide-privacy/guide-privacy" }); },
   setAnswer(event) { this.setData({ answerInput: event.detail.value }); },
   chooseOption(event) { this.setData({ answerInput: event.currentTarget.dataset.key }); },
   setRequestField(event) { this.setData({ ["requestForm." + event.currentTarget.dataset.key]: event.detail.value || "" }); },
-  setRequestAge(event) { this.setData({ requestAgeIndex: Number(event.detail.value) }); },
-  setRequestPath(event) { this.setData({ requestPathIndex: Number(event.detail.value) }); },
+  setRequestAge(event) {
+    const requestAgeIndex = Number(event.detail.value);
+    const requestPathIndex = requestAgeIndex >= 3 && [1, 3].includes(this.data.requestPathIndex) ? 2 : requestAgeIndex > 0 && requestAgeIndex <= 2 && [2, 4].includes(this.data.requestPathIndex) ? 1 : this.data.requestPathIndex;
+    this.setData({ requestAgeIndex, requestPathIndex });
+  },
+  setRequestPath(event) {
+    const requestPathIndex = Number(event.detail.value);
+    const requestAgeIndex = [2, 4].includes(requestPathIndex) && this.data.requestAgeIndex < 3 ? 3 : [1, 3].includes(requestPathIndex) && this.data.requestAgeIndex >= 3 ? 2 : this.data.requestAgeIndex;
+    this.setData({ requestPathIndex, requestAgeIndex });
+  },
   setRequestNeed(event) { this.setData({ needIndex: Number(event.detail.value) }); },
   setRequestDate(event) { this.setData({ "requestForm.preferredTestDate": event.detail.value || "" }); },
   toggleRequestConsent(event) { this.setData({ requestConsent: (event.detail.value || []).includes("yes") }); },
 
   applyRequest(request) {
     const ageIndex = Math.max(0, this.data.ageOptions.indexOf(request.ageBand));
-    const pathIndex = Math.max(0, this.data.pathValues.indexOf(request.targetPath));
+    const legacyPath = request.targetPath === "AEIS_PRIMARY" ? "AEIS_PRIMARY_ENGLISH" : request.targetPath === "AEIS_SECONDARY" ? "AEIS_SECONDARY_ENGLISH" : request.targetPath;
+    const pathIndex = Math.max(0, this.data.pathValues.indexOf(legacyPath));
     this.setData({
       request,
       hasRequest: true,
@@ -283,7 +312,7 @@ Page({
     const retestDateText = formatDate(session.retestRecommendedAt);
     this.sectionReceivedAt = Date.now();
     const currentAudioUrl = session.question && session.question.audioUrl;
-    this.setData({ session: { ...session, retestDateText, evidenceText }, phase, hasSession: true, answerInput: session.currentAnswer || "", domainRows, skillRows, moduleRows, improvementPlan, comparisonRows, unmeasuredText, scorecards, detailsExpanded: false, currentAudioPlayed: Boolean(currentAudioUrl && this.data.audioPlayedUrls[currentAudioUrl]), questionStartedAt: Date.now() }, () => this.startSectionTimer());
+    this.setData({ session: { ...session, retestDateText, evidenceText }, phase, hasSession: true, canStartMath: ["AEIS_PRIMARY_ENGLISH", "AEIS_SECONDARY_ENGLISH"].includes(session.targetPath), answerInput: session.currentAnswer || "", domainRows, skillRows, moduleRows, improvementPlan, comparisonRows, unmeasuredText, scorecards, detailsExpanded: false, currentAudioPlayed: Boolean(currentAudioUrl && this.data.audioPlayedUrls[currentAudioUrl]), questionStartedAt: Date.now() }, () => this.startSectionTimer());
     if (["AWAITING_REVIEW", "COMPLETED"].includes(session.status) && this.data.sessionToken) this.rememberSession(session, retestDateText);
   },
 
@@ -308,6 +337,14 @@ Page({
     wx.removeStorageSync(SESSION_KEY);
     this.stopSectionTimer();
     this.setData({ sessionToken: "", session: null, hasSession: false, phase: "setup", consent: false, answerInput: "", domainRows: [], skillRows: [], moduleRows: [], improvementPlan: [], comparisonRows: [], scorecards: [], detailsExpanded: false, audioPlayedUrls: {} });
+  },
+
+  startMathAssessment() {
+    const source = this.data.session;
+    if (!source || !this.data.canStartMath) return;
+    const pathIndex = source.targetPath === "AEIS_PRIMARY_ENGLISH" ? 3 : 4;
+    this.resetForNewProduct();
+    this.setData({ pathIndex, ageIndex: Math.max(0, this.data.ageOptions.indexOf(source.ageBand)), studentNickname: source.studentNickname || "", currentGrade: source.currentGrade || "" });
   },
 
   startParallelRetest() {
@@ -355,6 +392,8 @@ Page({
   startAssessment(requestToken) {
     if (!requestToken && !this.data.studentNickname.trim()) return api.toast("请填写学生昵称");
     if (!requestToken && !this.data.consent) return api.toast("请由家长或监护人确认资料使用授权");
+    if (this.data.partnerCode && (this.data.loading || this.data.partnerInvalid || !this.data.partnerName)) return api.toast("合作方测评入口尚未验证，请稍后重试");
+    if (this.data.ageIndex === 0) return api.toast("3–5岁请联系老师安排一对一观察评估");
     this.setData({ loading: true });
     api.request("/api/public/school-guide/academic-assessment/start", {
       method: "POST",
@@ -366,6 +405,7 @@ Page({
         languageBackground: this.data.languageBackground,
         ageBand: this.data.ageOptions[this.data.ageIndex],
         targetPath: this.data.pathValues[this.data.pathIndex],
+        partnerCode: this.data.partnerCode,
         consent: "yes"
       },
       timeout: 20000
@@ -404,7 +444,7 @@ Page({
     const summary = session
       ? `希望规划老师制定学习方案：${session.studentCode}；${session.ageBand}；${scoreSummary || session.overallBand || "待评分"}；优先提升：${prioritySummary || "待老师结合报告确认"}`
       : "希望规划老师结合入学准备度测评制定学习方案";
-    wx.navigateTo({ url: "/pages/guide-consult/guide-consult?summary=" + encodeURIComponent(summary) });
+    wx.navigateTo({ url: "/pages/guide-consult/guide-consult?summary=" + encodeURIComponent(summary) + "&assessmentSessionToken=" + encodeURIComponent(this.data.sessionToken || "") });
   },
-  onShareAppMessage() { return { title: "新加坡学校指南｜入学准备度测评", path: "/pages/guide-academic-assessment/guide-academic-assessment" }; }
+  onShareAppMessage() { return { title: this.data.partnerName ? `${this.data.partnerName}｜英语入学准备度测评` : "新加坡学校指南｜英语入学准备度测评", path: "/pages/guide-academic-assessment/guide-academic-assessment" + (this.data.partnerCode ? `?partner=${encodeURIComponent(this.data.partnerCode)}` : "") }; }
 });

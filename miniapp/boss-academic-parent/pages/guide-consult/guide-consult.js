@@ -3,12 +3,13 @@ const api = require("../../utils/api");
 Page({
   data: {
     summary: "",
+    assessmentSessionToken: "",
     consent: false,
     loading: false
   },
 
   onLoad(options) {
-    this.setData({ summary: decodeURIComponent(options.summary || "") });
+    this.setData({ summary: decodeURIComponent(options.summary || ""), assessmentSessionToken: decodeURIComponent(options.assessmentSessionToken || "") });
   },
 
   toggleConsent(event) {
@@ -46,6 +47,7 @@ Page({
         parentWechat: values.parentWechat,
         needs: values.needs,
         assessmentSummary: this.data.summary,
+        assessmentSessionToken: this.data.assessmentSessionToken,
         consent: "yes",
         website: ""
       }

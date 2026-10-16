@@ -1,4 +1,18 @@
 # CHANGELOG LIVE
+## 2026-10-16-r480
+
+- Release ID: `2026-10-16-r480`
+- Date/Time (Asia/Singapore): `2026-10-16`
+- Deployment status: `READY`; server deployment and WeChat client publication must be verified separately.
+- Problem: existing AEIS assessment mixed English and Mathematics in one sitting, the international English long form was shown to younger children, and the result implied unvalidated CEFR precision. Partners had no source-bound assessment entry.
+- Change: offer international English plus separate AEIS primary/secondary English and optional Mathematics papers. Use shorter age-specific international English questions for ages 6–11, allow listening replay, remove CEFR inference for new sessions, and retain old session scoring. Add admin-created partner entry codes, server-side source attribution for sessions and consulting leads, and an official WeChat URL Link generation action for a published miniapp page.
+- Business boundary: the new papers are internal learning diagnostics, not official or full mock exams. The additive partner-link table does not modify historical assessments, leads, billing, attendance, scheduling or payroll. Partners see aggregate counts only; report access is unchanged. Formal WeChat publication and external distribution require teacher question review and real-device end-to-end trial.
+- Validation: Prisma schema validation; TypeScript type checking; production build; 85 school-guide tests; 69-page miniapp release audit; JavaScript syntax and diff checks.
+- Rollback reference: `228af28c`; preserve partner-link/session attribution records if rolling back the application.
+- Task: `docs/tasks/TASK-20261016-partner-assessment-english-first.md`.
+
+---
+
 ## 2026-10-08-r479
 
 - Release ID: `2026-10-08-r479`

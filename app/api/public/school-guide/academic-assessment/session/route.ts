@@ -155,6 +155,7 @@ export async function POST(req: Request) {
       answers,
       durationSeconds: session.durationSeconds,
       targetPath: session.targetPath,
+      bankVersion: session.bankVersion,
     });
     const previous = await prisma.schoolGuideAssessmentSession.findFirst({
       where: { id: { not: session.id }, studentNickname: session.studentNickname, ageBand: session.ageBand, targetPath: session.targetPath, status: "COMPLETED" },

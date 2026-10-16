@@ -1,4 +1,5 @@
 <view class="guide-page assessment-page">
+  <view class="guide-section" wx:if="{{phase === 'partnerInvalid'}}"><view class="assessment-section-title">测评入口已失效</view><view class="assessment-form-note">请联系提供入口的合作方或老师，获取新的入口。</view></view>
   <block wx:if="{{phase === 'hub'}}">
     <view class="assessment-hero">
       <view class="guide-kicker">免费测评</view>
@@ -36,17 +37,18 @@
 
   <block wx:if="{{phase === 'setup'}}">
     <view class="assessment-nav" bindtap="backToHub">‹ 返回测评首页</view>
+    <view class="assessment-form-note" wx:if="{{partnerName}}">{{partnerName}}专属测评入口 · 建议先测英语</view>
     <view class="assessment-form-head"><view class="guide-kicker">开始前</view><view class="assessment-section-title">填写孩子信息</view><view class="assessment-form-note">用于保存本次进度</view></view>
     <view class="guide-field"><view class="guide-label">怎么称呼孩子 *</view><input class="guide-input" maxlength="60" placeholder="孩子昵称" value="{{studentNickname}}" bindinput="setNickname" /></view>
     <view class="assessment-form-grid">
       <view class="guide-field"><view class="guide-label">年龄段</view><picker range="{{ageOptions}}" value="{{ageIndex}}" bindchange="setAge"><view class="guide-picker">{{ageOptions[ageIndex]}}</view></picker></view>
       <view class="guide-field"><view class="guide-label">当前年级</view><input class="guide-input" maxlength="40" placeholder="如 P4 / Grade 4" value="{{currentGrade}}" bindinput="setGrade" /></view>
     </view>
-    <view class="guide-field"><view class="guide-label">测评方向</view><picker range="{{pathLabels}}" value="{{pathIndex}}" bindchange="setPath"><view class="guide-picker">{{pathLabels[pathIndex]}}</view></picker></view>
+    <view class="guide-field"><view class="guide-label">测评方向</view><picker range="{{pathLabels}}" value="{{pathIndex}}" bindchange="setPath"><view class="guide-picker">{{pathLabels[pathIndex]}}</view></picker><view class="assessment-form-note">建议先测英语；数学使用独立卷，分别查看结果。3–5岁请联系老师做一对一观察。</view></view>
     <view class="guide-field"><view class="guide-label">语言背景（可选）</view><input class="guide-input" maxlength="160" placeholder="如 中文为主，英文学习3年" value="{{languageBackground}}" bindinput="setLanguage" /></view>
-    <checkbox-group class="guide-check" bindchange="toggleConsent"><checkbox value="yes" color="#ec5e0a"/><text>我同意保存本次测评记录</text></checkbox-group>
+    <checkbox-group class="guide-check" bindchange="toggleConsent"><checkbox value="yes" color="#ec5e0a"/><text>我同意保存本次测评记录及入口来源</text></checkbox-group>
     <view class="guide-text-link" bindtap="openPrivacy">查看隐私说明</view>
-    <button class="assessment-primary sticky-action" loading="{{loading}}" bindtap="start">下一步</button>
+    <button class="assessment-primary sticky-action" loading="{{loading}}" disabled="{{loading || partnerInvalid}}" bindtap="start">下一步</button>
   </block>
 
   <block wx:if="{{phase === 'test'}}">
@@ -54,11 +56,11 @@
     <view class="assessment-section-status" wx:if="{{session.section}}"><view><text>{{session.section.answered}} / {{session.section.total}}</text></view><view class="assessment-section-time">{{sectionTimerText}}</view></view>
     <view class="assessment-section-instructions" wx:if="{{session.section && session.section.instructions}}">{{session.section.instructions}}</view>
     <view class="assessment-progress"><view class="assessment-progress-track"><view class="assessment-progress-fill" style="width: {{session.progressPercent}}%;"></view></view><view class="assessment-progress-text">{{session.answeredCount}} / {{session.totalQuestions}}</view></view>
-    <view class="assessment-card" wx:if="{{session.question}}"><view class="assessment-domain">第 {{session.currentIndex + 1}} 题</view><view class="assessment-stimulus" wx:if="{{session.question.stimulus}}">{{session.question.stimulus}}</view><view class="assessment-audio" wx:if="{{session.question.audioUrl}}"><view><b>听力</b><text>{{currentAudioPlayed ? '请根据听到的内容作答' : '准备好后开始播放'}}</text></view><button size="mini" disabled="{{audioPlaying || currentAudioPlayed}}" bindtap="playListeningAudio">{{audioPlaying ? '播放中…' : (currentAudioPlayed ? '已播放' : '播放')}}</button></view><view class="assessment-prompt">{{session.question.prompt}}</view><view wx:if="{{session.question.options.length}}"><view class="assessment-option {{answerInput === item.key ? 'active' : ''}}" wx:for="{{session.question.options}}" wx:key="key" data-key="{{item.key}}" bindtap="chooseOption">{{item.key}}. {{item.text}}</view></view><textarea wx:else class="assessment-textarea" maxlength="8000" value="{{answerInput}}" bindinput="setAnswer" placeholder="请输入答案"/><view class="guide-section-note" wx:if="{{session.question.requiresReviewer}}">请用自己的话完整作答</view><button class="assessment-primary" loading="{{loading || sectionExpiring}}" bindtap="saveAnswer">下一题</button></view>
+    <view class="assessment-card" wx:if="{{session.question}}"><view class="assessment-domain">第 {{session.currentIndex + 1}} 题</view><view class="assessment-stimulus" wx:if="{{session.question.stimulus}}">{{session.question.stimulus}}</view><view class="assessment-audio" wx:if="{{session.question.audioUrl}}"><view><b>听力</b><text>一段音频可能对应多道题，可以按需重听</text></view><button size="mini" disabled="{{audioPlaying}}" bindtap="playListeningAudio">{{audioPlaying ? '播放中…' : (currentAudioPlayed ? '重新播放' : '播放')}}</button></view><view class="assessment-prompt">{{session.question.prompt}}</view><view wx:if="{{session.question.options.length}}"><view class="assessment-option {{answerInput === item.key ? 'active' : ''}}" wx:for="{{session.question.options}}" wx:key="key" data-key="{{item.key}}" bindtap="chooseOption">{{item.key}}. {{item.text}}</view></view><textarea wx:else class="assessment-textarea" maxlength="8000" value="{{answerInput}}" bindinput="setAnswer" placeholder="请输入答案"/><view class="guide-section-note" wx:if="{{session.question.requiresReviewer}}">请用自己的话完整作答</view><button class="assessment-primary" loading="{{loading || sectionExpiring}}" bindtap="saveAnswer">下一题</button></view>
     <button wx:if="{{session.canSubmit}}" class="assessment-primary" loading="{{loading}}" bindtap="submitAssessment">全部完成，提交测评</button>
   </block>
 
-  <block wx:if="{{phase === 'awaiting'}}"><view class="assessment-result"><view class="guide-kicker">已提交</view><view class="assessment-section-title">正在生成结果</view><view class="assessment-form-note">完成后会显示能力结果和提升建议</view><button class="assessment-primary" loading="{{loading}}" bindtap="refresh">刷新结果</button><button class="assessment-secondary" loading="{{loading}}" bindtap="startNewRound">开始新一轮</button><button class="assessment-text-button" bindtap="startForAnotherChild">为另一个孩子测评</button></view></block>
+  <block wx:if="{{phase === 'awaiting'}}"><view class="assessment-result"><view class="guide-kicker">已提交</view><view class="assessment-section-title">正在生成结果</view><view class="assessment-form-note">完成后会显示能力结果和提升建议</view><button class="assessment-primary" loading="{{loading}}" bindtap="refresh">刷新结果</button><button class="assessment-secondary" wx:if="{{canStartMath}}" bindtap="startMathAssessment">另开数学卷（可选）</button><button class="assessment-secondary" loading="{{loading}}" bindtap="startNewRound">开始新一轮</button><button class="assessment-text-button" bindtap="startForAnotherChild">为另一个孩子测评</button></view></block>
 
   <block wx:if="{{phase === 'report'}}">
     <view class="assessment-result action-report">
@@ -67,8 +69,9 @@
 
       <view class="action-report-section">
         <view class="action-report-number">01</view><view class="action-report-heading">测评结果</view>
-        <view wx:if="{{scorecards.length}}"><view class="assessment-scorecard" wx:for="{{scorecards}}" wx:key="key"><view class="guide-kicker">{{item.label}}</view><view class="assessment-report-score">{{item.scoreLabel}}</view><view class="assessment-form-note">{{item.band}}</view><view class="assessment-cefr" wx:if="{{item.cefrReference}}">能力阶段：{{item.cefrReference}}</view></view></view>
+        <view wx:if="{{scorecards.length}}"><view class="assessment-scorecard" wx:for="{{scorecards}}" wx:key="key"><view class="guide-kicker">{{item.label}}</view><view class="assessment-report-score">{{item.scoreLabel}}</view><view class="assessment-form-note">{{item.band}}</view><view class="assessment-cefr" wx:if="{{item.cefrReference}}">{{item.cefrReference}} · 待外部成绩校准的初步参考</view></view></view>
         <view class="assessment-scorecard" wx:else><view class="assessment-report-score">{{session.overallScore}} / 100</view><view class="assessment-form-note">{{session.overallBand}}</view></view>
+        <view class="assessment-form-note">博思内部学习诊断；不是官方考试成绩，也不能预测录取。</view>
       </view>
 
       <view class="action-report-section">
@@ -94,6 +97,7 @@
       </view>
 
       <view class="report-secondary-actions">
+        <button class="assessment-secondary" wx:if="{{canStartMath}}" bindtap="startMathAssessment">另开数学卷（可选）</button>
         <button class="assessment-text-button" loading="{{loading}}" bindtap="startNewRound">再测一次</button>
         <button class="assessment-text-button" bindtap="resetForNewProduct">改测其他方向</button>
         <button class="assessment-text-button" bindtap="startForAnotherChild">为另一个孩子测评</button>

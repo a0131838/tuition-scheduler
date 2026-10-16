@@ -2365,6 +2365,7 @@ model SchoolGuideAssessmentRequest {
 model SchoolGuideAssessmentSession {
   id                 String    @id @default(uuid())
   accessCodeId       String
+  partnerLinkId      String?
   sessionTokenHash   String    @unique
   studentCode        String    @unique
   studentNickname    String?
@@ -2399,10 +2400,26 @@ model SchoolGuideAssessmentSession {
   updatedAt          DateTime  @updatedAt
 
   accessCode SchoolGuideAssessmentCode @relation(fields: [accessCodeId], references: [id], onDelete: Restrict)
+  partnerLink SchoolGuideAssessmentPartnerLink? @relation(fields: [partnerLinkId], references: [id], onDelete: SetNull)
 
   @@index([status, updatedAt])
   @@index([accessCodeId, createdAt])
+  @@index([partnerLinkId, createdAt])
   @@index([ageBand, formVariant, createdAt])
+}
+
+model SchoolGuideAssessmentPartnerLink {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  slug      String   @unique
+  urlLink   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions SchoolGuideAssessmentSession[]
+
+  @@index([isActive, createdAt])
 }
 
 model ManagerAcl {

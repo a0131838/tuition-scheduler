@@ -185,6 +185,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         ...(canSeeCare ? [{ href: "/admin/care", label: t(lang, "Full Care", "全托管"), tone: "success" as const }] : []),
         ...((user.role === "ADMIN" || user.role === "SALES" || user.role === "CS" || user.operationsAdmin) ? [{ href: "/admin/relationships", label: t(lang,"Relationships & Referrals","关系与转介"), tone: "accent" as const }] : []),
         { href: "/admin/leads", label: t(lang, "Resource Follow-up", "资源跟进"), tone: "accent" as const },
+        ...(user.role === "ADMIN" ? [{ href: "/admin/assessment-partners", label: t(lang, "Assessment Partner Links", "合作方测评入口"), tone: "accent" as const }] : []),
         { href: "/admin/school-applications", label: t(lang, "School Applications", "学校申请服务"), tone: "accent" as const },
         { href: "/admin/enrollments", label: t(lang, "Enrollments", "报名"), tone: "success" as const },
         { href: "/admin/packages", label: t(lang, "Packages", "课时包"), tone: "success" as const },
