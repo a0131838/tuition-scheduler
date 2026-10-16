@@ -31,3 +31,7 @@ The parent miniapp had three nominal assessment choices, but AEIS primary/second
 ## Risk
 
 Medium: assessment content and score interpretation need teacher validation, and a WeChat formal release is required for an external URL Link. Database migration is additive; existing sessions and lead ownership remain intact.
+
+## 2026-10-16 scoring follow-up (r481)
+
+Simulated answer review showed that Mathematics topics often have one question each, so topic scores of 0 or 100 and an automatic weakest-three ranking would overstate the evidence. New Math reports now show only the overall multiple-choice result and ask the teacher to review each error and written method. New English priorities use only subskills represented by at least three questions; single-question writing or vocabulary observations remain visible as raw detail where relevant, without driving an automatic ranked plan. The primary English scorecard uses an internal diagnosis label. The report details display the standard and limitations. No historical assessment is rewritten.

@@ -49,9 +49,18 @@ test("new AEIS sessions use independent English and maths papers", () => {
     }]));
     const result = calculateAssessmentResult({ formId, questionIds: english, answers, durationSeconds: 20 * 60, targetPath: englishPath, bankVersion: ACADEMIC_ASSESSMENT_VERSION });
     assert.equal(result.report.scorecards.length, 1);
+    if (level === "primary") assert.equal(result.report.scorecards[0].label, "小学英语学习诊断");
     assert.equal(result.report.scorecards[0].cefrReference, null);
     assert.equal(result.overallScore, null);
     assert.equal(result.confidence, "初步诊断");
+    const mathAnswers: Record<string, AcademicAssessmentStoredAnswer> = Object.fromEntries(math.map((id) => [id, {
+      value: "A", durationSeconds: 60, updatedAt: new Date().toISOString(), autoScore: scoreAnswer(formId, id, "A"),
+    }]));
+    const mathResult = calculateAssessmentResult({ formId, questionIds: math, answers: mathAnswers, durationSeconds: 15 * 60, targetPath: mathPath, bankVersion: ACADEMIC_ASSESSMENT_VERSION });
+    assert.equal(mathResult.report.priorities.length, 1);
+    assert.match(mathResult.report.priorities[0], /逐题核对/);
+    assert.deepEqual(mathResult.report.skillScores, {});
+    assert.equal(mathResult.overallScore, null);
   }
 });
 

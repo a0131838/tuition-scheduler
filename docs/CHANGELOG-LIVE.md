@@ -1,4 +1,17 @@
 # CHANGELOG LIVE
+## 2026-10-16-r481
+
+- Release ID: `2026-10-16-r481`
+- Date/Time (Asia/Singapore): `2026-10-16`
+- Deployment status: `READY`.
+- Problem: simulation exposed overconfident Mathematics "weakest skill" rankings built from only one question per topic, and the new primary English scorecard sounded like a CEQ qualification result.
+- Change: rank new English priorities only from skills with at least three questions; give Mathematics one broad item-level review recommendation and suppress single-question topic percentages. Label the primary English scorecard as an internal learning diagnosis, show the report standard in details, and mark the largely shared secondary Mathematics form as not age-specific.
+- Validation: focused school-guide tests, TypeScript, production build and miniapp release audit. No schema or historical record changes.
+- Rollback reference: `4423b0bd`.
+- Task: `docs/tasks/TASK-20261016-partner-assessment-english-first.md`.
+
+---
+
 ## 2026-10-16-r480
 
 - Release ID: `2026-10-16-r480`

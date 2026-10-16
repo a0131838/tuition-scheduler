@@ -385,6 +385,7 @@ export function calculateAssessmentResult(input: {
 }) {
   const domains: Record<string, { score: number; max: number }> = {};
   const skills: Record<string, { score: number; max: number }> = {};
+  const skillCounts: Record<string, number> = {};
   const modules: Record<string, { score: number; max: number }> = {};
   let answered = 0;
   let pendingManual = 0;
@@ -399,6 +400,7 @@ export function calculateAssessmentResult(input: {
     bucket.score += typeof score === "number" ? Math.max(0, Math.min(question.maxScore, score)) : 0;
     domains[question.domain] = bucket;
     const skillName = String(question.subskill || question.domain);
+    skillCounts[skillName] = (skillCounts[skillName] ?? 0) + 1;
     const skillBucket = skills[skillName] ?? { score: 0, max: 0 };
     skillBucket.max += question.maxScore;
     skillBucket.score += typeof score === "number" ? Math.max(0, Math.min(question.maxScore, score)) : 0;
@@ -434,10 +436,18 @@ export function calculateAssessmentResult(input: {
     : completionRate < 0.9 || input.questionIds.length < evidenceThreshold
       ? "低"
       : isNewModel ? "初步诊断" : input.durationSeconds / 60 >= (isItepAligned ? 50 : 20) && input.durationSeconds / 60 <= (isItepAligned ? 100 : 60) ? "高" : "中";
-  const ranked = Object.entries(isNewModel ? isItepAligned ? moduleScores : skillScores : domainScores).sort((a, b) => b[1] - a[1]);
-  const strengths = ranked.slice(0, 3).map(([name, score]) => `${name}：本次内部任务得分 ${score}`);
-  const priorities = [...ranked].reverse().slice(0, 3).map(([name, score]) => `${name}：建议优先复核与训练（本次 ${score}）`);
-  const priorityDomains = [...ranked].reverse().slice(0, 3).map(([name]) => name);
+  const reliableSkills = Object.fromEntries(Object.entries(skillScores).filter(([name]) => (skillCounts[name] ?? 0) >= 3));
+  const rankingScores = isNewModel ? isItepAligned ? moduleScores : Object.keys(reliableSkills).length ? reliableSkills : domainScores : domainScores;
+  const ranked = Object.entries(rankingScores).sort((a, b) => b[1] - a[1]);
+  const isNewMath = isNewModel && input.targetPath.endsWith("MATH");
+  const reportedSkillScores = isNewMath ? {} : skillScores;
+  const strengths = isNewMath
+    ? [`数学选择题：本卷得分 ${domainScores["数学"] ?? 0}，单一知识点题量不足，需结合错题复核`]
+    : ranked.slice(0, 3).map(([name, score]) => `${name}：本次内部任务得分 ${score}`);
+  const priorities = isNewMath
+    ? ["数学基础：请老师逐题核对错因与书面解题步骤；单题失分不等于整项能力不足"]
+    : [...ranked].reverse().slice(0, 3).map(([name, score]) => `${name}：建议优先复核与训练（本次 ${score}）`);
+  const priorityDomains = isNewMath ? ["数学基础"] : [...ranked].reverse().slice(0, 3).map(([name]) => name);
   const primaryPriority = priorityDomains[0] || "当前薄弱项";
   const secondaryPriorities = priorityDomains.slice(1).join("、") || "已掌握内容";
   const improvementPlan = [
@@ -448,12 +458,12 @@ export function calculateAssessmentResult(input: {
   const scorecards = product ? product.domains.map((rule) => {
     const score = domainScores[rule.domain] ?? 0;
     const label = input.targetPath.startsWith("AEIS_PRIMARY") && rule.domain === "CEQ英语准备"
-      ? "CEQ英语资格准备"
+      ? isNewModel ? "小学英语学习诊断" : "CEQ英语资格准备"
       : input.targetPath.startsWith("AEIS_PRIMARY")
         ? "AEIS小学数学准备"
         : input.targetPath.startsWith("AEIS_SECONDARY")
           ? `AEIS中学${rule.domain}准备`
-          : "国际学校英语准备度";
+      : "国际学校英语准备度";
     return {
       key: rule.domain.includes("英语") ? "english" : "math",
       label,
@@ -474,22 +484,22 @@ export function calculateAssessmentResult(input: {
       scoreModelVersion: product ? isNewModel ? "PATHWAY_V6_ENGLISH_FIRST" : isItepAligned ? "PATHWAY_V5_ITEP_ALIGNED" : "PATHWAY_V4" : "LEGACY_V1",
       productTitle: product?.title ?? (pathLabel(input.targetPath) || "入学准备度"),
       scorecards,
-      skillScores,
+      skillScores: reportedSkillScores,
       moduleScores,
-      measuredSkills: Object.keys(skillScores),
+      measuredSkills: isNewMath ? ["数学选择题"] : Object.keys(reportedSkillScores),
       unmeasuredSkills: product ? (input.targetPath.includes("MATH") ? ["英语"] : isItepAligned ? ["口语"] : ["听力", "口语"]) : [],
       evidence: product ? {
         totalItems: input.questionIds.length,
         objectiveItems: objectiveItemCount,
         reviewedItems: manualItemCount,
-        skillCoverage: Object.keys(skillScores),
-        ageBandSpecific: !isItepAligned || !isNewModel,
+        skillCoverage: isNewMath ? ["数学选择题"] : Object.keys(reportedSkillScores),
+        ageBandSpecific: !isNewModel || (!isItepAligned && input.targetPath !== "AEIS_SECONDARY_MATH"),
         parallelForm: input.formId.slice(-1),
       } : null,
       standard: product
         ? isItepAligned
           ? isNewModel ? "博思原创英语学习诊断，按iTEP Academic公开的语法、听力、阅读和写作结构组织，未测口语；不是官方考试或成绩，不用于录取预测。听力为AI合成的原创材料。" : "博思原创内部英语诊断，按iTEP Academic公开的语法、听力、阅读和写作结构组织，暂不含口语；不是iTEP官方考试或官方成绩。内部/100与CEFR仅为待对照样本校准的初步参考，不用于录取承诺。听力音频为AI合成的原创练习材料。"
-          : isNewModel ? "博思内部单科学习诊断，不是学校、CEQ、MOE或AEIS官方成绩，不用于录取预测。数学仅覆盖选择题，不评价解题步骤；本卷未测能力不据此推断。" : "博思内部诊断，不是学校、iTEP、CEQ、MOE或AEIS官方成绩。CEFR为按年龄分层、基于阅读、语言运用与写作的初步参考区间（待对照样本校准）；本轮未测听力和口语，不据此推断录取。"
+          : isNewModel ? "博思内部单科学习诊断，不是学校、CEQ、MOE或AEIS官方成绩，不用于录取预测。数学仅覆盖选择题，不评价解题步骤；单题分项不能独立判断整项能力。" : "博思内部诊断，不是学校、iTEP、CEQ、MOE或AEIS官方成绩。CEFR为按年龄分层、基于阅读、语言运用与写作的初步参考区间（待对照样本校准）；本轮未测听力和口语，不据此推断录取。"
         : "博思内部入学准备度标准，不是学校、MOE、AEIS官方分数、百分位或录取预测。",
       strengths,
       priorities,

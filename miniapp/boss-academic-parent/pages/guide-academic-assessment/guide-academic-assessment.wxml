@@ -93,7 +93,7 @@
         <view class="report-section" wx:if="{{moduleRows.length}}"><b>分项结果</b><view class="assessment-module-grid"><view class="assessment-module" wx:for="{{moduleRows}}" wx:key="name"><text>{{item.name}}</text><b>{{item.score}}</b></view></view></view>
         <view class="report-section" wx:if="{{skillRows.length}}"><b>能力表现</b><view class="assessment-report-row" wx:for="{{skillRows}}" wx:key="name">{{item.name}}：{{item.score}} / 100</view><view class="assessment-form-note" wx:if="{{unmeasuredText}}">本次未测：{{unmeasuredText}}</view></view>
         <view class="report-section" wx:if="{{comparisonRows.length}}"><b>与上一次相比</b><view class="assessment-report-row" wx:for="{{comparisonRows}}" wx:key="name">{{item.name}}：{{item.label}}</view></view>
-        <view class="report-section"><b>结果说明</b><text>{{session.report.nextStep}}</text></view>
+        <view class="report-section"><b>结果说明</b><text>{{session.report.nextStep}}</text><text>{{session.report.standard}}</text></view>
       </view>
 
       <view class="report-secondary-actions">

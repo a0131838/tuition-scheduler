@@ -1,4 +1,17 @@
 # RELEASE BOARD
+## 2026-10-16-r481
+
+- Release ID: `2026-10-16-r481`
+- Date/Time (Asia/Singapore): `2026-10-16`
+- Deployment status: `READY`; verify standard release result.
+- Scope: conservative scoring interpretation for the new independent papers. Mathematics no longer presents one-question topic scores as a ranked weakness; English priority ranking uses skill groups with at least three questions. Primary English no longer has a CEQ-like scorecard title.
+- Business boundary: scoring changes apply only to V6 sessions; legacy reports, assessment answers, partner attribution, school guide leads and all financial/teaching operations are unchanged. External miniapp distribution still waits for teacher review and WeChat formal release.
+- Validation: 85 school-guide tests, TypeScript, production build, 69-page miniapp release audit.
+- Rollback reference: `4423b0bd`.
+- Task: `docs/tasks/TASK-20261016-partner-assessment-english-first.md`.
+
+---
+
 ## 2026-10-16-r480
 
 - Release ID: `2026-10-16-r480`
