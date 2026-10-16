@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export default function ConsultForm({ assessmentSummary }: { assessmentSummary: string }) {
+export default function ConsultForm({ assessmentSummary, assessmentSessionToken = "" }: { assessmentSummary: string; assessmentSessionToken?: string }) {
   const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
 
@@ -32,6 +32,7 @@ export default function ConsultForm({ assessmentSummary }: { assessmentSummary: 
     <form className="sg-assessment" onSubmit={submit}>
       <input type="text" name="website" tabIndex={-1} autoComplete="off" style={{ display: "none" }} />
       <input type="hidden" name="assessmentSummary" value={assessmentSummary} />
+      <input type="hidden" name="assessmentSessionToken" value={assessmentSessionToken} />
       <div className="sg-form-grid">
         <label className="sg-field">家长称呼<input name="parentName" required maxLength={80} /></label>
         <label className="sg-field">孩子称呼或昵称<input name="studentName" required maxLength={80} /></label>

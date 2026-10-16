@@ -1,4 +1,18 @@
 # RELEASE BOARD
+## 2026-10-16-r482
+
+- Release ID: `2026-10-16-r482`
+- Date/Time (Asia/Singapore): `2026-10-16`
+- Deployment status: `READY`; verify standard release result.
+- Scope: parent-facing web academic-assessment flow and named partner web links. The existing two-minute school selector remains separate.
+- Operator action: create a named partner entry at `/admin/assessment-partners`, copy its `https://sgtmanage.com/school-guide/academic-assessment?partner=...` URL, complete a browser trial and teacher content review, then share. The generic entry is `/school-guide/academic-assessment`.
+- Business boundary: partner sees only a source-bound entry and aggregate count, not student answers or reports. Assessment scores are internal diagnostics. The WeChat miniapp still requires its own formal publication.
+- Validation: 85 school-guide regression tests, TypeScript and production build. No database migration.
+- Rollback reference: `ade5b809`.
+- Task: `docs/tasks/TASK-20261016-partner-assessment-english-first.md`.
+
+---
+
 ## 2026-10-16-r481
 
 - Release ID: `2026-10-16-r481`

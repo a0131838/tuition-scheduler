@@ -24,7 +24,7 @@ async function createLink(formData: FormData) {
     redirect(`${PAGE}?err=${encodeURIComponent("创建失败；请检查名称是否重复")}`);
   }
   revalidatePath(PAGE);
-  redirect(`${PAGE}?msg=${encodeURIComponent("入口已创建。正式版小程序发布后，可生成微信链接并试测。")}`);
+  redirect(`${PAGE}?msg=${encodeURIComponent("入口已创建。可复制下方网页链接进行受控试测。")}`);
 }
 
 async function setActive(formData: FormData) {
@@ -71,10 +71,11 @@ export default async function AssessmentPartnersPage({ searchParams }: { searchP
       <input name="name" required maxLength={80} placeholder="合作方名称" style={{ flex: 1, padding: 10 }} />
       <button type="submit">创建专属入口</button>
     </form>
-    <p>先发布包含本功能的小程序正式版，再生成微信 URL Link。生成后把链接发给合作方或家长，先用真机完整试测一次。若暂未发布，可用下方页面路径在微信开发者工具中验证。</p>
+    <p>网页链接现在可直接在手机浏览器打开，用于受控试测。正式对外推广前，请老师审阅题目、评分和报告，并走完一遍真实答题。微信 URL Link 仍需新小程序正式发布后生成。</p>
     {links.map((link) => <section key={link.id} style={{ border: "1px solid #ddd", borderRadius: 10, padding: 16, margin: "16px 0" }}>
       <h2 style={{ marginTop: 0 }}>{link.name} <small>{link.isActive ? "启用中" : "已停用"}</small></h2>
       <p>已开始测评：{link._count.sessions} 次</p>
+      <p>网页测评链接：<a href={`https://sgtmanage.com/school-guide/academic-assessment?partner=${link.slug}`} target="_blank" rel="noopener noreferrer" style={{ overflowWrap: "anywhere" }}>{`https://sgtmanage.com/school-guide/academic-assessment?partner=${link.slug}`}</a></p>
       <p>小程序页面路径：<code style={{ overflowWrap: "anywhere" }}>{assessmentPartnerMiniappPath(link.slug)}</code></p>
       {link.urlLink && <p>可发送的微信链接：<a href={link.urlLink} target="_blank" rel="noopener noreferrer">{link.urlLink}</a></p>}
       {!link.urlLink && link.isActive && <form action={createUrlLink}><input type="hidden" name="id" value={link.id} /><button type="submit">正式版已发布，生成微信链接</button></form>}

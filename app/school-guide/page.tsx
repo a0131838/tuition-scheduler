@@ -35,7 +35,7 @@ export default function SchoolGuideHomePage() {
             {[
               ["01", "找学校", "按教育阶段、课程和学校类型查找", "/school-guide/schools"],
               ["02", "查入学考试", "查看AEIS与国际学校申请和例题", "/school-guide/pathways/aeis-primary"],
-              ["03", "测学习水平", "无需评估码，在小程序直接完成30–45分钟测评", "/school-guide/assessment"],
+              ["03", "英语优先学习测评", "网页直接答题；AEIS 英语和数学使用独立试卷", "/school-guide/academic-assessment"],
             ].map(([index, title, summary, href]) => (
               <Link className="sg-path-row" key={href} href={href}>
                 <span className="sg-path-index">{index}</span>

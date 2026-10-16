@@ -1,4 +1,17 @@
 # CHANGELOG LIVE
+## 2026-10-16-r482
+
+- Release ID: `2026-10-16-r482`
+- Date/Time (Asia/Singapore): `2026-10-16`
+- Deployment status: `READY`.
+- Problem: the published website's `/school-guide/assessment` is a two-minute school selector, so parents could not complete the new English-first academic paper while the WeChat miniapp version remained unpublished.
+- Change: add a responsive public academic-assessment page using the existing start/session APIs, partner validation, independent English and Mathematics papers, timed sections, audio, pending-review status, conservative reports and consultation attribution. Show each partner's direct web URL in the admin console; correct the website's assessment navigation and expand the privacy notice.
+- Validation: school-guide regression tests, TypeScript and production build. No schema or historical record changes; external distribution still requires teacher content review and a controlled browser end-to-end trial.
+- Rollback reference: `ade5b809`.
+- Task: `docs/tasks/TASK-20261016-partner-assessment-english-first.md`.
+
+---
+
 ## 2026-10-16-r481
 
 - Release ID: `2026-10-16-r481`
