@@ -1,4 +1,18 @@
 # RELEASE BOARD
+## 2026-10-19-r483
+
+- Release ID: `2026-10-19-r483`
+- Date/Time (Asia/Singapore): `2026-10-19`
+- Deployment status: `READY`; exact release evidence is stored in the payslip self-download acceptance folder.
+- Problem: operations-restricted staff could view their approved payslip in self-service, but the global operations allowlist rejected the individual PDF route as company finance before its owner check ran.
+- Change: allow only `/api/hr/payslips/<id>/pdf` through the operations route guard. The existing PDF handler, ownership/approved-status and privileged HR checks, PDF rendering and download audit are unchanged.
+- Boundary: no other API family is added, no role/workspace grants, no payroll calculations, approvals, amounts, schema or production record corrections.
+- Verification: 47 focused route/navigation checks passed; production build and isolated signed-operations-session HTTP verification are recorded in the task.
+- Rollback reference: `60d007be5c70f7bfcfb74e1cf4b6dfaf239a549e`.
+- Task: `docs/tasks/TASK-20261019-payslip-self-download.md`.
+
+---
+
 ## 2026-10-16-r482
 
 - Release ID: `2026-10-16-r482`

@@ -83,6 +83,8 @@ export function isOperationsAdminPathAllowed(pathnameRaw: string) {
   if (pathname === "/admin" || pathname === "/admin/logout") return true;
   if (/^\/api\/exports\/student-schedule\/[^/]+$/.test(pathname)) return true;
   if (pathname === "/staff/hr") return true;
+  // The PDF handler checks ownership and approved status before serving a payslip.
+  if (/^\/api\/hr\/payslips\/[^/]+\/pdf$/.test(pathname)) return true;
   if (pathname.startsWith("/teacher") || pathname.startsWith("/training")) return true;
   if (pathname === "/api/admin/auth/login" || pathname === "/api/miniapp/staff/auth/logout") return true;
   if (pathname.startsWith("/api/teacher") || pathname.startsWith("/api/training")) return true;
