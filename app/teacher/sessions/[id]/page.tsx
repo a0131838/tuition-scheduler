@@ -403,7 +403,7 @@ export default async function TeacherSessionDetailPage({
           classPerformance: feedback?.classPerformance ?? "",
           homework: feedback?.homework ?? "",
           previousHomeworkDone:
-            feedback?.previousHomeworkDone === true ? "yes" : feedback?.previousHomeworkDone === false ? "no" : "",
+            feedback?.previousHomeworkNotAssigned ? "not_assigned" : feedback?.previousHomeworkDone === true ? "yes" : feedback?.previousHomeworkDone === false ? "no" : "",
         }}
         completionGuide={{
           title: t(lang, "Feedback saved. This session record is up to date.", "反馈已保存，这节课的记录已更新。"),

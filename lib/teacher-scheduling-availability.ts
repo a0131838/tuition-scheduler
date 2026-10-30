@@ -1,3 +1,4 @@
+import { teachingBreakError } from "./teacher-teaching-rule-service";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {formatBusinessDateOnly, formatBusinessTimeOnly, parseBusinessDateStart, parseBusinessDateEnd} from "./date-only";
@@ -11,17 +12,19 @@ function fmtSlotRange(startMin:number,endMin:number){
   return `${fmt(startMin)}-${fmt(endMin)}`;
 }
 
-export async function inspectTeacherSchedulingAvailability(db:DbClient,teacherId:string,startAt:Date,endAt:Date){
+export async function inspectTeacherSchedulingAvailability(db:DbClient,teacherId:string,startAt:Date,endAt:Date,excludeSessionIds:string[]=[]){
   const dateKey=formatBusinessDateOnly(startAt);
   if(!Number.isFinite(+startAt)||!Number.isFinite(+endAt)||endAt<=startAt||dateKey!==formatBusinessDateOnly(endAt))
     return {error:"课程须在同一自然日内，结束时间晚于开始时间 / Lesson must end after it starts within one Singapore day",source:sourceNull};
+  const breakError=await teachingBreakError(db,teacherId,startAt,endAt,excludeSessionIds);
+  if(breakError)return {error:breakError,source:sourceNull};
   const dayStart=parseBusinessDateStart(dateKey)!,dayEnd=parseBusinessDateEnd(dateKey)!;
   const weekday=new Date(dayStart.getTime()+8*3600000).getUTCDay();
   const [dateSlots,weeklySlots,blocks,approvedLeave]=await Promise.all([
     db.teacherAvailabilityDate.findMany({where:{teacherId,date:{gte:dayStart,lte:dayEnd}},select:{startMin:true,endMin:true},orderBy:{startMin:"asc"}}),
     db.teacherAvailability.findMany({where:{teacherId,weekday},select:{startMin:true,endMin:true},orderBy:{startMin:"asc"}}),
     db.teacherAvailabilityBlock.findMany({where:{teacherId,date:{gte:dayStart,lte:dayEnd}},select:{startMin:true,endMin:true}}),
-    db.hrLeaveRequest.findFirst({where:{status:"APPROVED",startAt:{lt:endAt},endAt:{gt:startAt},employee:{teacherId}},select:{leaveType:true}}),
+    db.hrLeaveRequest.findFirst({where:{status: "APPROVED",startAt:{lt:endAt},endAt:{gt:startAt},employee:{teacherId}},select:{leaveType:true}}),
   ]);
   if(approvedLeave)return {error:`老师在该时段已有已批准假期（${approvedLeave.leaveType}），请更换老师或时间 / Approved leave overlaps this lesson; choose another time or teacher`,source:sourceNull};
   const minutes=(d:Date)=>{const shifted=new Date(+d+8*3600000);return shifted.getUTCHours()*60+shifted.getUTCMinutes();};
@@ -37,6 +40,6 @@ export async function inspectTeacherSchedulingAvailability(db:DbClient,teacherId
   return {error:null as string|null,source:"date" as const};
 }
 
-export async function checkTeacherSchedulingAvailability(db:DbClient,teacherId:string,startAt:Date,endAt:Date){
-  return (await inspectTeacherSchedulingAvailability(db,teacherId,startAt,endAt)).error;
+export async function checkTeacherSchedulingAvailability(db:DbClient,teacherId:string,startAt:Date,endAt:Date,excludeSessionIds:string[]=[]){
+  return (await inspectTeacherSchedulingAvailability(db,teacherId,startAt,endAt,excludeSessionIds)).error;
 }

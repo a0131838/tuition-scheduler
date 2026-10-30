@@ -1,3 +1,4 @@
+import RoomReservationPanel from "./RoomReservationPanel";
 import { requireTeacherLead } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly, parseBusinessDateEnd, parseBusinessDateStart } from "@/lib/date-only";
@@ -139,6 +140,7 @@ export default async function TeacherLeadPage({
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
+      <RoomReservationPanel from={weekStart} to={weekEndExclusive} date={date}/>
       <TeacherWorkspaceHero
         title={t(lang, "Teacher Lead Desk", "老师主管工作台")}
         subtitle={t(

@@ -184,6 +184,7 @@ export const OPERATION_AREAS: OperationArea[] = [
     owners: ["教务", "老师"],
     level: "DETAILED_SOP",
     routePrefixes: [
+      "/calendar/teacher",
       "/admin/schedule",
       "/admin/monthly-scheduling",
       "/admin/classes",

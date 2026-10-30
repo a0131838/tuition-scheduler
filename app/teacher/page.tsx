@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import TeacherConfirmCoursesButton from "./TeacherConfirmCoursesButton";
 import { getVisibleSessionStudentNames } from "@/lib/session-students";
-import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
+import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 import { ExpenseClaimStatus } from "@prisma/client";
 import { getTeacherPayrollPublishForTeacher } from "@/lib/teacher-payroll";
 import { getTeacherNoticeState } from "@/lib/teacher-notices";
@@ -366,6 +366,7 @@ export default async function TeacherHomePage({
       <section style={{ display: "grid", gap: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <h3 style={{ margin: 0 }}>{t(lang, "Schedule", "课表安排")}</h3>
+          <a href={`/calendar/teacher?teacherId=${teacher.id}&month=${formatBusinessDateOnly(new Date()).slice(0,7)}`}>{t(lang,"Download / print my calendar","下载／打印我的课表")}</a>
           <div style={{ color: "#64748b", fontSize: 12 }}>
             {t(lang, "Review your classes and availability from one place.", "从一个地方查看你的课次和可上课时间。")}
           </div>

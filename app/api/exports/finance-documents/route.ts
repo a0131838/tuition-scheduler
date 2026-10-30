@@ -1,9 +1,10 @@
+import { summarizeInvoiceRows } from "@/lib/finance-document-summary";
 import { getLang, t } from "@/lib/i18n";
 import { exportDisplayLabel } from "@/lib/export-display-labels";
 import { requireAdmin } from "@/lib/auth";
 import {
   financeDocumentGeneratedAt,
-  listFilteredFinanceDocumentRows,
+  listFinanceDocumentRows, filterFinanceDocumentRows,
 } from "@/lib/finance-documents";
 import ExcelJS from "exceljs";
 
@@ -49,7 +50,9 @@ export async function GET(req: Request) {
   await requireAdmin();
   const lang = await getLang();
   const { searchParams } = new URL(req.url);
-  const rows = await listFilteredFinanceDocumentRows({
+  const allRows = await listFinanceDocumentRows();
+  const filters = {
+    studentId: searchParams.get("studentId"),
     channel: searchParams.get("channel"),
     type: searchParams.get("type"),
     paymentStatus: searchParams.get("paymentStatus"),
@@ -57,7 +60,9 @@ export async function GET(req: Request) {
     q: searchParams.get("q"),
     dateFrom: searchParams.get("dateFrom"),
     dateTo: searchParams.get("dateTo"),
-  });
+  };
+  const rows = filterFinanceDocumentRows(allRows, filters);
+  const totals = summarizeInvoiceRows(filterFinanceDocumentRows(allRows, { ...filters, type: "INVOICE" }));
 
   const generatedAt = financeDocumentGeneratedAt();
   const workbook = new ExcelJS.Workbook();
@@ -128,6 +133,12 @@ export async function GET(req: Request) {
   sheet.autoFilter = { from: "A5", to: "T5" };
   applyDataBorders(sheet, 6);
 
+  const summary = workbook.addWorksheet(t(lang, "Invoice summary", "发票汇总").replace(/\//g,"·"));
+  summary.addRow([t(lang,"Currency","币种"),"SGD"]);
+  summary.addRow([t(lang,"Scope","统计口径"),t(lang,"Matching invoices; document type ignored; shared-package invoices counted whole","按匹配发票汇总，不受单据类型影响；共享课包发票不分摊")]);
+  summary.addRow(["Filters", JSON.stringify(filters)]);
+  for (const [label,value] of [[t(lang,"Receivable","应收"),totals.receivable],[t(lang,"Received","已收"),totals.received],[t(lang,"Unpaid","未收"),totals.unpaid],[t(lang,"Pending approval","待审收款"),totals.pending]]) summary.addRow([label,value]);
+  summary.getColumn(1).width=28; summary.getColumn(2).width=100;
   const buffer = await workbook.xlsx.writeBuffer();
   const fileName = safeFileName(`finance-documents-${new Date().toISOString().slice(0, 10)}.xlsx`);
   const fileNameUtf8 = encodeURIComponent(fileName);

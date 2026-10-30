@@ -1,3 +1,4 @@
+import { roomReservationConflict } from "@/lib/room-reservation-conflict";
 import crypto from "crypto";
 import { Prisma } from "@prisma/client";
 import { campusRequiresRoom } from "@/lib/campus";
@@ -224,6 +225,7 @@ async function validate(db: DbClient, input: TicketNewSessionInput) {
   if (appointment) throw new TicketNewSessionError("老师与已有预约时间冲突。", 409, "APPOINTMENT_CONFLICT");
 
   if (room) {
+    const external=await roomReservationConflict(db,room.id,input.startAt,endAt);if(external)throw new TicketNewSessionError(external,409,"ROOM_RESERVED");
     const roomConflicts = await db.session.findMany({
       where: { class: { roomId: room.id }, startAt: { lt: endAt }, endAt: { gt: input.startAt } },
       select: conflictSelect(),

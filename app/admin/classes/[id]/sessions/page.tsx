@@ -1,3 +1,4 @@
+import { roomReservationConflict } from "@/lib/room-reservation-conflict";
 import {deleteEmptySession} from '@/lib/session-deletion';
 import {requireSessionDeletionActor} from '@/lib/session-deletion-auth';
 import { prisma } from "@/lib/prisma";
@@ -226,6 +227,7 @@ async function findConflictForSession(opts: {
   if (teacherApptConflict) return `Teacher conflict / 老师冲突: ${formatAppointmentConflictLabel(teacherApptConflict)}`;
 
   if (roomId) {
+    const external = await roomReservationConflict(prisma,roomId,startAt,endAt); if(external)return external;
     const roomSessionConflicts = await prisma.session.findMany({
       where: {
         class: { roomId },

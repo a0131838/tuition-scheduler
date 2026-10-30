@@ -1,3 +1,4 @@
+import { previousHomeworkInput, previousHomeworkLabel } from "@/lib/homework-status";
 import {resolveAttendanceRoster} from '@/lib/session-attendance-roster';
 import {feedbackPolicyState} from "@/lib/session-feedback-policy";
 import {saveTeacherFeedbackReviewed} from "@/lib/teacher-feedback-save";
@@ -59,7 +60,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ sessionId: stri
       focusStudentName: feedback?.focusStudentName ?? "",
       parentFeedbackSections: parseParentFeedbackSections(feedback?.classPerformance ?? ""),
       homework: feedback?.homework ?? "",
-      previousHomeworkDone: previousHomeworkValue(feedback?.previousHomeworkDone),
+      previousHomeworkDone: feedback?.previousHomeworkNotAssigned ? "not_assigned" : previousHomeworkValue(feedback?.previousHomeworkDone),
       status: feedback?.status ?? null,
       submittedAt: feedback?.submittedAt?.toISOString() ?? null,
       reviewStatus: feedback?.reviewStatus ?? null,
@@ -96,9 +97,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ sessionId: str
       : parseParentFeedbackSections(String(body?.classPerformance ?? "").trim());
   const classPerformance = buildParentFeedbackText(parentFeedbackSections);
   const homework = String(body?.homework ?? "").trim();
-  const previousHomeworkDoneRaw = String(body?.previousHomeworkDone ?? "").trim();
-  const previousHomeworkDone =
-    previousHomeworkDoneRaw === "yes" ? true : previousHomeworkDoneRaw === "no" ? false : null;
+  const previousHomework = previousHomeworkInput(body?.previousHomeworkDone);
+  const { previousHomeworkDone, previousHomeworkNotAssigned } = previousHomework;
 
   const missingParentSections = getMissingParentFeedbackSectionLabels(parentFeedbackSections);
   if (missingParentSections.length > 0) {
@@ -107,7 +107,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sessionId: str
     });
   }
   if (!homework) return bad("Homework is required", 409);
-  if (previousHomeworkDone === null) return bad("Previous homework completion is required", 409);
+  if (!previousHomework.valid) return bad("Previous homework completion is required", 409);
 
   const now = new Date();
   const deadline = getFeedbackDueAt(session.endAt);
@@ -115,8 +115,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sessionId: str
   const subjectName = session.class.subject?.name || session.class.course.name;
   const plannedStart = formatBusinessDateTime(session.startAt);
   const plannedEnd = formatBusinessTimeOnly(session.endAt);
-  const previousHomeworkText =
-    previousHomeworkDone === true ? "yes" : previousHomeworkDone === false ? "no" : "not set";
+  const previousHomeworkText = previousHomeworkLabel(previousHomework);
   const feedbackTitle = focusStudentName || "Whole Class";
   const content = [
     `[Parent-facing Feedback / 家长视角课后反馈 - ${feedbackTitle}]`,
@@ -138,6 +137,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sessionId: str
       classPerformance,
       homework,
       previousHomeworkDone,
+      previousHomeworkNotAssigned,
       status,
       dueAt: deadline,
       submittedByRole: "TEACHER",
@@ -156,6 +156,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sessionId: str
       classPerformance,
       homework,
       previousHomeworkDone,
+      previousHomeworkNotAssigned,
       status,
       dueAt: deadline,
       submittedByRole: "TEACHER",

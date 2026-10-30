@@ -1,3 +1,4 @@
+import { roomReservationConflict } from "@/lib/room-reservation-conflict";
 import crypto from "crypto";
 import { Prisma } from "@prisma/client";
 import { campusRequiresRoom } from "@/lib/campus";
@@ -267,7 +268,7 @@ async function validateScheduling(db: DbClient, input: SchedulingInput) {
   }
   const locationChanged = campus.id !== session.class.campusId || (room?.id ?? null) !== session.class.roomId;
 
-  const availabilityError = await checkTeacherSchedulingAvailability(db, teacherId, input.startAt, endAt);
+  const availabilityError = await checkTeacherSchedulingAvailability(db, teacherId, input.startAt, endAt, excludeSessionIds);
   if (availabilityError) {
     throw new MiniappSchedulingError(`老师 availability 不匹配：${availabilityError}`, 409, "AVAIL_CONFLICT");
   }
@@ -342,6 +343,7 @@ async function validateScheduling(db: DbClient, input: SchedulingInput) {
   }
 
   if (roomId) {
+    const external=await roomReservationConflict(db,roomId,input.startAt,endAt);if(external)throw new MiniappSchedulingError(external,409,"ROOM_RESERVED");
     const roomConflicts = await db.session.findMany({
       where: {
         id: excludeSessionIds.length ? { notIn: excludeSessionIds } : undefined,

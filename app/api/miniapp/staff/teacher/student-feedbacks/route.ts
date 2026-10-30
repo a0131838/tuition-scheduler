@@ -130,7 +130,7 @@ export async function GET(req: Request) {
       courseLabel: [row.session.class.course.name, row.session.class.subject?.name, row.session.class.level?.name].filter(Boolean).join(" / "),
       sections: parseParentFeedbackSections(row.classPerformance || row.content),
       homework: row.homework || "",
-      previousHomeworkDone: row.previousHomeworkDone === true ? "已完成" : row.previousHomeworkDone === false ? "未完成" : "未记录",
+      previousHomeworkDone: row.previousHomeworkNotAssigned ? "上次未布置或首次课" : row.previousHomeworkDone === true ? "已完成" : row.previousHomeworkDone === false ? "未完成" : "未记录",
       summary: summaryText(row.content),
     }));
   }

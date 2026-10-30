@@ -82,6 +82,7 @@ export function isOperationsAdminPathAllowed(pathnameRaw: string) {
   if (/^\/api\/admin\/students\/[^/]+\/package-balance-preview(?:\/|$)/.test(pathname)) return false;
   if (pathname === "/admin" || pathname === "/admin/logout") return true;
   if (/^\/api\/exports\/student-schedule\/[^/]+$/.test(pathname)) return true;
+  if (/^\/api\/exports\/teacher-calendar\/[^/]+$/.test(pathname)) return true;
   if (pathname === "/staff/hr") return true;
   // The PDF handler checks ownership and approved status before serving a payslip.
   if (/^\/api\/hr\/payslips\/[^/]+\/pdf$/.test(pathname)) return true;

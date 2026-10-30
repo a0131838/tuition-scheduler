@@ -1,3 +1,4 @@
+import { roomReservationConflict } from "@/lib/room-reservation-conflict";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { pickTeacherSessionConflict } from "@/lib/session-conflict";
@@ -27,8 +28,8 @@ function fmtHHMM(d: Date) {
   return `${h}:${m}`;
 }
 
-async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt: Date) {
-  return checkTeacherSchedulingAvailability(prisma, teacherId, startAt, endAt);
+async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt: Date, excludeSessionIds: string[] = []) {
+  return checkTeacherSchedulingAvailability(prisma, teacherId, startAt, endAt, excludeSessionIds);
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -104,7 +105,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const roomId = s.class.roomId ?? null;
     const schedulingStudentId = s.studentId ?? null;
 
-    const availErr = await checkTeacherAvailability(effectiveTeacherId, item.startAt, item.endAt);
+    const availErr = await checkTeacherAvailability(effectiveTeacherId, item.startAt, item.endAt, targetIds);
     if (availErr) {
       return bad(`Availability conflict on ${ymd(item.startAt)} ${fmtHHMM(item.startAt)}-${fmtHHMM(item.endAt)}: ${availErr}`, 409, {
         code: "AVAIL_CONFLICT",
@@ -171,6 +172,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     if (roomId) {
+      const external = await roomReservationConflict(prisma,roomId,item.startAt,item.endAt); if(external)return bad(external,409,{code:"ROOM_RESERVED"});
       const roomSessionConflicts = await prisma.session.findMany({
         where: {
           id: { notIn: targetIds },

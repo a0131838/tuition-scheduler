@@ -1,3 +1,4 @@
+import { roomReservationConflict } from "@/lib/room-reservation-conflict";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
@@ -207,6 +208,7 @@ async function validateQuickScheduleRow(
   }
 
   if (!reason && roomId) {
+    const external=await roomReservationConflict(db,roomId,startAt,endAt);if(external)reason=external;
     const roomConflicts = await db.session.findMany({
       where: {
         class: { roomId },

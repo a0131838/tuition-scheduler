@@ -1,3 +1,5 @@
+import { getCurrentUser, isManagerUser, isStrictSuperAdmin } from "@/lib/auth";
+import TeachingRuleEditor from "../../_components/TeachingRuleEditor";
 ﻿import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import {effectiveDateAvailability} from "@/lib/teacher-availability-ranges";
@@ -77,6 +79,9 @@ export default async function TeacherCalendarPage({
   const { id: teacherId } = await params;
   const sp = await searchParams;
 
+  const ruleActor=await getCurrentUser();
+  const canEditRule=Boolean(ruleActor && !ruleActor.isObserver && (isStrictSuperAdmin(ruleActor)||await isManagerUser(ruleActor)));
+  const teachingRule=await prisma.teacherTeachingRule.findUnique({where:{teacherId}});
   const teacher = await prisma.teacher.findUnique({
     where: { id: teacherId },
     select: { id: true, name: true },
@@ -170,6 +175,14 @@ export default async function TeacherCalendarPage({
 
   return (
     <div>
+      <TeachingRuleEditor teacherId={teacherId} canEdit={canEditRule} initial={teachingRule?{...teachingRule,updatedAt:teachingRule.updatedAt.toISOString()}:null}/>
+      <form action={`/api/exports/teacher-calendar/${teacherId}`} method="get" style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+        <input type="hidden" name="month" value={month}/><label>View / 版式 <select name="view"><option value="month">Month / 月历</option><option value="week">Week list / 周清单</option></select></label>
+        <label>Week starts / 周起始 <input type="date" name="week" defaultValue={month+"-01"}/></label><label><input type="checkbox" name="availability" value="1"/>Availability / 包含已录可用及不可用时间</label>
+        <button type="submit">Download PDF / 下载PDF</button>
+        <button type="submit" formAction="/calendar/teacher" name="teacherId" value={teacherId}>Print version / 打印版</button>
+      </form>
+
       <div
         style={{
           border: "1px solid #dbeafe",

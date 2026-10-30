@@ -309,7 +309,7 @@
     <view class="field">
       <view class="label">之前作业完成情况</view>
       <view class="hint">必须明确选择，避免把“未填写”误认为“未完成”</view>
-      <radio-group class="homework-choice" bindchange="changePreviousHomework"><label><radio value="yes" checked="{{previousHomeworkDone === 'yes'}}" color="#ec5e0a" />已完成</label><label><radio value="no" checked="{{previousHomeworkDone === 'no'}}" color="#ec5e0a" />未完成</label></radio-group>
+      <radio-group class="homework-choice" bindchange="changePreviousHomework"><label><radio value="yes" checked="{{previousHomeworkDone === 'yes'}}" color="#ec5e0a" />已完成</label><label><radio value="no" checked="{{previousHomeworkDone === 'no'}}" color="#ec5e0a" />未完成</label><label><radio value="not_assigned" checked="{{previousHomeworkDone === 'not_assigned'}}"/>Not Set / 上次未布置或首次课</label></radio-group>
     </view>
     <view class="attachment-area">
       <view class="section-title">作业与课堂附件</view>

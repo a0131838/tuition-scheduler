@@ -352,7 +352,7 @@ export async function ensureFeedbackCommunicationTasks(feedbackId: string, db: P
       parentName: link?.parent.name || "家长", studentName: student.name || "孩子", courseName: courseLabel(feedback.session),
       sessionTime: formatBusinessDateTime(feedback.session.startAt), teacherName: feedback.teacher.name, feedbackSummary: messageContent.trim(),
     }, db);
-    const sourceFingerprint = fingerprint(JSON.stringify({content: messageContent, homework: feedback.homework, performance: feedback.classPerformance, previousHomeworkDone: feedback.previousHomeworkDone, actualStartAt: feedback.actualStartAt, actualEndAt: feedback.actualEndAt}));
+    const sourceFingerprint = fingerprint(JSON.stringify({content: messageContent, homework: feedback.homework, performance: feedback.classPerformance, previousHomeworkDone: feedback.previousHomeworkDone, previousHomeworkNotAssigned: feedback.previousHomeworkNotAssigned, actualStartAt: feedback.actualStartAt, actualEndAt: feedback.actualEndAt}));
     rendered.messageText = formatFullFeedbackMessage(rendered.messageText);
     const legacyMessage = renderCommunicationTemplate(rendered.template.content, { ...rendered.variables, feedbackSummary: compact(messageContent) });
     const current = await upsertCommunicationTask({
@@ -802,7 +802,7 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
     prisma.student.findMany({ where: { id: { in: studentIds } }, select: { id: true, name: true, school: true, grade: true } }),
     prisma.teacher.findMany({ where: { id: { in: teacherIds } }, select: { id: true, name: true } }),
     prisma.session.findMany({ where: { id: { in: sessionIds } }, select: { id: true, startAt: true, endAt: true } }),
-    prisma.sessionFeedback.findMany({ where: { id: { in: feedbackIds } }, select: { id: true, updatedAt: true, sessionId: true, content: true, parentContent: true, classPerformance: true, homework: true, previousHomeworkDone: true, actualStartAt: true, actualEndAt: true, reviewStatus: true, reviewNote: true, publishedAt: true, submittedAt: true, attachments: { orderBy: { createdAt: "asc" } } } }),
+    prisma.sessionFeedback.findMany({ where: { id: { in: feedbackIds } }, select: { id: true, updatedAt: true, sessionId: true, content: true, parentContent: true, classPerformance: true, homework: true, previousHomeworkDone: true, previousHomeworkNotAssigned: true, actualStartAt: true, actualEndAt: true, reviewStatus: true, reviewNote: true, publishedAt: true, submittedAt: true, attachments: { orderBy: { createdAt: "asc" } } } }),
     prisma.auditLog.findMany({ where: { entityType: "ParentCommunicationTask", entityId: { in: rows.map((row) => row.id) } }, select: { entityId: true, action: true, actorName: true, actorEmail: true, actorRole: true, createdAt: true, meta: true }, orderBy: { createdAt: "desc" }, take: 1500 }),
     communicationDeliveryEvidence(rows),
   ]);
@@ -843,7 +843,7 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
       const sections = feedback ? parseParentFeedbackSections(feedback.classPerformance || feedback.content) : null;
       const missingSections = feedback ? getMissingParentFeedbackSections(feedback.parentContent || feedback.content) : [];
       const homeworkMissing = Boolean(feedback && !String(feedback.homework ?? "").trim());
-      const previousHomeworkMissing = Boolean(feedback && feedback.previousHomeworkDone === null);
+      const previousHomeworkMissing = Boolean(feedback && feedback.previousHomeworkDone === null && !feedback.previousHomeworkNotAssigned);
       const correctionSource = row.correctionOfTaskId ? correctionSourceMap.get(row.correctionOfTaskId) ?? null : null;
       const parsedChangeType = row.kind === "COURSE_CHANGE" ? extractCourseChangeType(row.messageText) : null;
       const correctionAudit = correctionSource?.sessionId ? correctionSourceAuditMap.get(correctionSource.sessionId) ?? null : null;
@@ -1065,7 +1065,7 @@ async function reviewCommunicationFeedback(input: CommunicationUpdateInput) {
       if (!parentContent) throw new Error("Parent-facing feedback is required / 请填写家长展示版反馈");
       const missing = getMissingParentFeedbackSections(parentContent);
       if (missing.length) throw new Error(`Missing parent feedback sections / 家长展示版缺少：${missing.join("、")}`);
-      if (!feedback.homework?.trim() || feedback.previousHomeworkDone === null) throw new Error("Homework and previous homework review are required / 请补齐课后作业和上次作业完成情况");
+      if (!feedback.homework?.trim() || (feedback.previousHomeworkDone === null && !feedback.previousHomeworkNotAssigned)) throw new Error("Homework and previous homework review are required / 请补齐课后作业和上次作业完成情况");
       if (feedback.reviewStatus === "PUBLISHED" && feedback.parentContent === parentContent) return selected;
       await tx.sessionFeedback.update({where:{id:feedback.id},data:{parentContent,reviewStatus:"PUBLISHED",reviewNote:null,reviewedAt:now,reviewedByUserId:actor.id,reviewedByName:actor.name,publishedAt:feedback.publishedAt??now,publishedByUserId:actor.id,publishedByName:actor.name}});
       // Never revive invalidated or stale revisions. Create a fresh notification identity.

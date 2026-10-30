@@ -1,3 +1,4 @@
+import { NO_HOMEWORK_TEXT } from "./homework-status";
 import { parseParentFeedbackSections } from "@/lib/parent-feedback-format";
 
 export type LearningEvidenceRecord = {
@@ -9,6 +10,7 @@ export type LearningEvidenceRecord = {
   feedbackContent: string;
   homework: string | null;
   previousHomeworkDone: boolean | null;
+  previousHomeworkNotAssigned?: boolean;
   attendanceStatus: string | null;
 };
 
@@ -67,7 +69,7 @@ export function buildLearningEvidenceSnapshot(input: {
     attendance[status] = (attendance[status] ?? 0) + 1;
   }
 
-  const homeworkAssignedCount = input.feedbacks.filter((row) => String(row.homework ?? "").trim()).length;
+  const homeworkAssignedCount = input.feedbacks.filter((row) => String(row.homework ?? "").trim() && row.homework !== NO_HOMEWORK_TEXT).length;
   const homeworkTrackingCount = input.feedbacks.filter((row) => row.previousHomeworkDone !== null).length;
   const homeworkDoneCount = input.feedbacks.filter((row) => row.previousHomeworkDone === true).length;
   const homeworkNotDoneCount = input.feedbacks.filter((row) => row.previousHomeworkDone === false).length;
@@ -84,7 +86,7 @@ export function buildLearningEvidenceSnapshot(input: {
   if ((attendance.UNMARKED ?? 0) > 0) {
     gaps.push({ key: "attendance", label: "Attendance needs completion", detail: `${attendance.UNMARKED} lesson(s) are still unmarked.` });
   }
-  if (input.feedbacks.length > 0 && homeworkTrackingCount === 0) {
+  if (input.feedbacks.some(row => !row.previousHomeworkNotAssigned) && homeworkTrackingCount === 0) {
     gaps.push({ key: "homework", label: "Homework follow-through is not recorded", detail: "Add homework completion evidence before judging independent practice." });
   }
   if (!input.hasBaseline) {

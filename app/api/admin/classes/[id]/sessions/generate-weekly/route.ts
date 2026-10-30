@@ -1,3 +1,4 @@
+import { roomReservationConflict } from "@/lib/room-reservation-conflict";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
@@ -105,6 +106,7 @@ async function findConflictForSession(opts: {
   }
 
   if (roomId) {
+    const external = await roomReservationConflict(db,roomId,startAt,endAt); if(external)return external;
     const roomSessionConflicts = await db.session.findMany({
       where: {
         class: { roomId },

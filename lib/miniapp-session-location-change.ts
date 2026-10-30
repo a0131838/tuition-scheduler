@@ -1,3 +1,4 @@
+import { roomReservationConflict } from "./room-reservation-conflict";
 import crypto from "crypto";
 import { Prisma } from "@prisma/client";
 import { campusRequiresRoom } from "@/lib/campus";
@@ -108,6 +109,7 @@ async function validate(db: DbClient, input: MiniappLocationChangeInput) {
   });
   if (travelBufferError) throw new MiniappLocationChangeError(travelBufferError, 409, "TRAVEL_BUFFER_CONFLICT");
   if (room) {
+    const external=await roomReservationConflict(db,room.id,session.startAt,session.endAt);if(external)throw new MiniappLocationChangeError(external,409,"ROOM_RESERVED");
     const conflicts = await db.session.findMany({
       where: {
         id: { not: session.id },

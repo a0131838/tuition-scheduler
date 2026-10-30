@@ -1,4 +1,5 @@
 "use client";
+import { NO_HOMEWORK_TEXT } from "@/lib/homework-status";
 
 import { useState } from "react";
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
@@ -23,7 +24,7 @@ export default function TeacherFeedbackClient({
     actualEndAt: string;
     classPerformance: string;
     homework: string;
-    previousHomeworkDone: "" | "yes" | "no";
+    previousHomeworkDone: "" | "yes" | "no" | "not_assigned";
   };
   labels: {
     submit: string;
@@ -239,6 +240,7 @@ export default function TeacherFeedbackClient({
         </section>
         <label>
           {labels.homework}
+          <button type="button" onClick={() => setHomework(NO_HOMEWORK_TEXT)}>Not Set / 本节未布置作业</button>
           <textarea
             value={homework}
             onChange={(e) => setHomework(e.target.value)}
@@ -253,6 +255,7 @@ export default function TeacherFeedbackClient({
             <option value="">{labels.notSet}</option>
             <option value="yes">{labels.yes}</option>
             <option value="no">{labels.no}</option>
+            <option value="not_assigned">Not Set / 上次未布置或首次课</option>
           </select>
         </label>
       </div>

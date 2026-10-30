@@ -6,6 +6,7 @@ type ForwardFeedbackRow = {
   classPerformance?: string | null;
   homework?: string | null;
   previousHomeworkDone?: boolean | null;
+  previousHomeworkNotAssigned?: boolean;
   teacher?: { name?: string | null } | null;
   session: {
     startAt: Date;
@@ -44,7 +45,7 @@ export function buildWeChatFeedbackText(row: ForwardFeedbackRow, studentNames: s
   const body = parentContent || `课堂反馈 / Lesson feedback：\n${source || "暂无反馈内容 / No feedback content"}`;
   const homework = parentContent ? "" : cleanLine(row.homework);
   const previousHomework =
-    parentContent ? "" : row.previousHomeworkDone === true ? "已完成" : row.previousHomeworkDone === false ? "未完成/未完全完成" : "";
+    parentContent ? "" : row.previousHomeworkNotAssigned ? "上次未布置或首次课" : row.previousHomeworkDone === true ? "已完成" : row.previousHomeworkDone === false ? "未完成/未完全完成" : "";
   const lines = [
     `【${studentLabel} 课后反馈】`,
     `课程：${classLine(row)}`,

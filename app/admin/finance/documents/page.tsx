@@ -1,3 +1,5 @@
+import { prisma } from "@/lib/prisma";
+import { summarizeInvoiceRows } from "@/lib/finance-document-summary";
 import { requireAdmin } from "@/lib/auth";
 import {
   filterFinanceDocumentRows,
@@ -80,6 +82,7 @@ export default async function FinanceDocumentsPage({
   searchParams,
 }: {
   searchParams?: Promise<{
+    studentId?: string;
     channel?: string;
     type?: string;
     q?: string;
@@ -99,8 +102,10 @@ export default async function FinanceDocumentsPage({
   const packageIdFilter = String(sp?.packageId ?? "").trim();
   const dateFromFilter = normalizeDateOnly(String(sp?.dateFrom ?? "").trim()) ?? "";
   const dateToFilter = normalizeDateOnly(String(sp?.dateTo ?? "").trim()) ?? "";
-  const rows = await listFinanceDocumentRows();
+  const studentIdFilter = String(sp?.studentId ?? "").trim();
+  const [rows, students] = await Promise.all([listFinanceDocumentRows(), prisma.student.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } })]);
   const filteredRows = filterFinanceDocumentRows(rows, {
+    studentId: studentIdFilter,
     channel: channelFilter,
     type: typeFilter,
     paymentStatus: paymentStatusFilter,
@@ -110,6 +115,7 @@ export default async function FinanceDocumentsPage({
     dateTo: dateToFilter,
   });
   const exportQuery = buildDocumentQuery({
+    studentId: studentIdFilter,
     channel: channelFilter,
     type: typeFilter,
     paymentStatus: paymentStatusFilter,
@@ -120,6 +126,7 @@ export default async function FinanceDocumentsPage({
   });
   const exportHref = `/api/exports/finance-documents${exportQuery ? `?${exportQuery}` : ""}`;
 
+  const totals = summarizeInvoiceRows(filterFinanceDocumentRows(rows, { studentId: studentIdFilter, channel: channelFilter, type: "INVOICE", paymentStatus: paymentStatusFilter, q, packageId: packageIdFilter, dateFrom: dateFromFilter, dateTo: dateToFilter }));
   const countInvoices = filteredRows.filter((x) => x.type === "INVOICE").length;
   const countReceipts = filteredRows.filter((x) => x.type === "RECEIPT").length;
   const countCreditNotes = filteredRows.filter((x) => x.type === "CREDIT_NOTE").length;
@@ -202,7 +209,8 @@ export default async function FinanceDocumentsPage({
             <span>{t(lang, "Date to", "结束日期")}</span>
             <input type="date" name="dateTo" defaultValue={dateToFilter} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
           </label>
-          <label style={{ display: "grid", gap: 6 }}>
+          <label>{t(lang, "Exact student", "指定学生")}<select name="studentId" defaultValue={studentIdFilter} style={{maxWidth:"100%"}}><option value="">{t(lang,"All students","全部学生")}</option>{students.map(student => <option key={student.id} value={student.id}>{student.name} · {student.id.slice(0,8)}</option>)}</select></label>
+        <label style={{ display: "grid", gap: 6 }}>
             <span>{t(lang, "Keyword", "关键词")}</span>
             <input name="q" defaultValue={q} placeholder={t(lang, "Invoice no., student, bill to...", "发票号、学生名、开票对象...")} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
           </label>
@@ -214,6 +222,14 @@ export default async function FinanceDocumentsPage({
         </div>
       </form>
 
+      <section style={{ padding: 14, border: "1px solid #bfdbfe", borderRadius: 12 }}>
+        <strong>{t(lang, "Invoice amounts · SGD", "发票金额汇总 · SGD")}</strong>
+        <p>{t(lang, "Based on matching invoices, student, dates, channel and payment state. Document type does not change these invoice totals. Approved receipts are counted once; void invoices excluded.", "按匹配发票的学生、日期、渠道及付款状态统计，单据类型不改变此汇总。有效收款只计一次，排除作废发票。")}</p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 24 }}>
+          {[[t(lang,"Receivable","应收"),totals.receivable],[t(lang,"Received","已收"),totals.received],[t(lang,"Unpaid","未收"),totals.unpaid],[t(lang,"Pending approval","待审收款"),totals.pending]].map(([label, value]) => <div key={String(label)}>{label}<div style={{fontSize:22,fontWeight:800}}>{money(Number(value))}</div></div>)}
+        </div>
+        {totals.sharedPackageCount ? <p>{t(lang, "Includes shared-package invoices at full invoice value, not an allocation to this student.", "含共享课包发票，显示整张发票金额，不代表分摊给该学生的金额。")}</p> : null}
+      </section>
       <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
         <div style={{ border: "1px solid #dbe4f0", borderRadius: 14, padding: 14, background: "#f8fafc" }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b" }}>{t(lang, "Visible rows", "当前可见")}</div>

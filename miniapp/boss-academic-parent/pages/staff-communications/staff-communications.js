@@ -108,7 +108,7 @@ Page({
           const feedbackSectionRows = feedbackSectionLabels.map(([key, label]) => ({ key, label, value: sections[key] || "未填写" }));
           if (item.feedback) {
             feedbackSectionRows.push({ key: "homework", label: "本次作业", value: item.feedback.homework || "未填写" });
-            feedbackSectionRows.push({ key: "previousHomework", label: "上次作业完成情况", value: item.feedback.previousHomeworkDone === true ? "已完成" : item.feedback.previousHomeworkDone === false ? "未完成" : "未填写" });
+            feedbackSectionRows.push({ key: "previousHomework", label: "上次作业完成情况", value: item.feedback.previousHomeworkNotAssigned ? "上次未布置或首次课" : item.feedback.previousHomeworkDone === true ? "已完成" : item.feedback.previousHomeworkDone === false ? "未完成" : "未填写" });
           }
           return Object.assign({}, item, shareInfo(item), {
             kindLabel: kindLabels[item.kind] || item.kind,

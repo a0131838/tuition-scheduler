@@ -54,6 +54,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
         sections,
         homework: feedback.homework,
         previousHomeworkDone: feedback.previousHomeworkDone,
+        previousHomeworkNotAssigned: feedback.previousHomeworkNotAssigned,
         attachments: feedback.attachments.map((row) => feedbackAttachmentDto(
           row,
           `/api/miniapp/students/${encodeURIComponent(studentId)}/feedbacks/${encodeURIComponent(feedback.id)}/attachments/${encodeURIComponent(row.id)}`,

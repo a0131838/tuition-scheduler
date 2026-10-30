@@ -148,7 +148,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     setPdfBoldFont(doc);
     doc.fontSize(8.8).text("Previous homework completed / 上次作业完成: ", { continued: true });
     setPdfFont(doc);
-    doc.fontSize(8.8).text(row.previousHomeworkDone === null ? "Not recorded / 未记录" : row.previousHomeworkDone ? "Yes / 是" : "No / 否");
+    doc.fontSize(8.8).text(row.previousHomeworkNotAssigned ? "Not assigned / 上次未布置或首次课" : row.previousHomeworkDone === null ? "Not recorded / 未记录" : row.previousHomeworkDone ? "Yes / 是" : "No / 否");
     doc.moveDown(0.55);
     divider(doc);
   }

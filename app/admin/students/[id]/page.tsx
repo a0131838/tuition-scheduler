@@ -1,3 +1,4 @@
+import { roomReservationConflict } from "@/lib/room-reservation-conflict";
 import { hasGeneralCareAccess } from "@/lib/care-access";
 ﻿﻿import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -836,6 +837,7 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
     }
 
     if (roomId) {
+      const external=await roomReservationConflict(prisma,roomId,startAt,endAt);if(external)redirect(backWithQuickParams({err:external}));
       const roomConflicts = await prisma.session.findMany({
         where: {
           class: { roomId },

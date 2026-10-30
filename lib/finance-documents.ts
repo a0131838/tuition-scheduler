@@ -21,6 +21,7 @@ export type FinanceDocumentPaymentStatus =
 export type FinanceDocumentCreditNoteStatus = "ISSUED" | "VOID";
 
 export type FinanceDocumentFilters = {
+  studentId?: string | null;
   channel?: string | null;
   type?: string | null;
   paymentStatus?: string | null;
@@ -32,6 +33,8 @@ export type FinanceDocumentFilters = {
 
 export type FinanceDocumentRow = {
   id: string;
+  studentIds?: string[];
+  sharedPackage?: boolean;
   channel: FinanceDocumentChannel;
   type: FinanceDocumentType;
   docNo: string;
@@ -149,6 +152,7 @@ export function filterFinanceDocumentRows(rows: FinanceDocumentRow[], filters: F
   const dateTo = normalizeDateFilter(filters.dateTo);
 
   return rows.filter((row) => {
+    if (filters.studentId && !row.studentIds?.includes(filters.studentId)) return false;
     if (channel && row.channel !== channel) return false;
     if (type && row.type !== type) return false;
     if (paymentStatus && (row.type === "CREDIT_NOTE" || row.paymentStatus !== paymentStatus)) return false;
@@ -301,7 +305,7 @@ export async function listFinanceDocumentRows() {
   const packages = packageIds.length
     ? await prisma.coursePackage.findMany({
         where: { id: { in: packageIds } },
-        include: { student: true, course: true },
+        include: { student: true, course: true, sharedStudents: { select: { studentId: true } } },
       })
     : [];
   const packageMap = new Map(packages.map((pkg) => [pkg.id, pkg] as const));
@@ -418,6 +422,8 @@ export async function listFinanceDocumentRows() {
         : "Linked contract active";
     rows.push({
       id: invoice.id,
+      studentIds: pkg ? [...new Set([invoice.studentId, pkg.studentId, ...pkg.sharedStudents.map(x => x.studentId)])] : [invoice.studentId],
+      sharedPackage: Boolean(pkg?.sharedStudents.length),
       channel: "PARENT",
       type: "INVOICE",
       docNo: invoice.invoiceNo,
@@ -455,6 +461,8 @@ export async function listFinanceDocumentRows() {
     const amountReceived = roundMoney(normalizeAmount(receipt.amountReceived));
     rows.push({
       id: receipt.id,
+      studentIds: pkg ? [...new Set([receipt.studentId, pkg.studentId, ...pkg.sharedStudents.map(x => x.studentId)])] : [receipt.studentId],
+      sharedPackage: Boolean(pkg?.sharedStudents.length),
       channel: "PARENT",
       type: "RECEIPT",
       docNo: receipt.receiptNo,

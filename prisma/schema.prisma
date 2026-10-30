@@ -945,6 +945,7 @@ model SessionFeedback {
   classPerformance     String?
   homework             String?
   previousHomeworkDone Boolean?
+  previousHomeworkNotAssigned Boolean @default(false)
   forwardedAt          DateTime?
   forwardedBy          String?
   forwardChannel       String?
@@ -3855,4 +3856,29 @@ model PackageEntitlementCorrection {
   adjustmentTxn PackageTxn @relation("CorrectionAdjustment", fields: [adjustmentTxnId], references: [id], onDelete: Restrict)
   @@index([packageId, createdAt])
   @@index([sourceTxnId])
+}
+
+model RoomReservation {
+  id String @id @default(uuid())
+  roomId String
+  organization String
+  contact String?
+  responsibleUserId String
+  startAt DateTime
+  endAt DateTime
+  status String @default("CONFIRMED")
+  note String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([roomId, startAt, endAt])
+  @@index([startAt, status])
+}
+
+model TeacherTeachingRule {
+  teacherId String @id
+  maxContinuousMinutes Int @default(240)
+  minBreakMinutes Int @default(15)
+  reason String
+  confirmedBy String
+  updatedAt DateTime @updatedAt
 }

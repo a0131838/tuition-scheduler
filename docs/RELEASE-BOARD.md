@@ -1,4 +1,19 @@
 # RELEASE BOARD
+## 2026-10-30-r484
+
+- Release ID: `2026-10-30-r484`
+- Date/Time (Asia/Singapore): `2026-10-30`
+- Deployment status: `READY`; guarded release output is authoritative for live completion.
+- Scope: external classroom reservations in Lead Desk; explicit no-homework feedback; exact-student invoice received/unpaid totals and Excel summary; individual continuous-teaching/rest rules; authenticated month/week calendar PDF and print.
+- Teaching policy: inherited maximum 240 taught minutes per continuous block, reset after at least 15 minutes rest. Only owner/authorized manager can confirm a finite individual limit with reason and audit. Jasmine has no seeded exception; her limit awaits confirmation. Existing schedules are not rewritten; future scheduling/restoration writes are checked across entry points.
+- Data boundary: add one feedback Boolean (default false), empty reservation/rule tables, and resource-conflict database guards. No historical homework reclassification, financial amount correction, package deduction, payroll calculation or automatic external messaging.
+- Verification: production build; 806 unit tests; fresh isolated PostgreSQL migration and resource/concurrency UAT; actual Web/Mini Program feedback HTTP, booking server action, rule ACL/stale update, calendar ACL/PDF/print and invoice/Excel agreement; browser/PDF visual checks.
+- Risk: new database guards reject future conflicts. Mini Program source update requires a separate WeChat client publication; website and backend deployment do not publish it. Shared-package student summaries display the whole matching invoice once, with an explicit warning.
+- Rollback reference: `512e46b4c036775b5bdb3f36ffcfac2784e988da`; preserve additive records and explicitly review/drop new guard triggers if rolling back scheduling enforcement.
+- Task: `docs/tasks/TASK-20261030-staff-feedback-improvements.md`.
+
+---
+
 ## 2026-10-19-r483
 
 - Release ID: `2026-10-19-r483`

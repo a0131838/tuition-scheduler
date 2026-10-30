@@ -73,6 +73,7 @@ export async function loadStudentLearningEvidence(input: {
       feedbackContent: feedback.parentContent?.trim() || feedback.content,
       homework: feedback.homework,
       previousHomeworkDone: feedback.previousHomeworkDone,
+      previousHomeworkNotAssigned: feedback.previousHomeworkNotAssigned,
       attendanceStatus: session.attendances[0]?.status ?? null,
     }))
   );
