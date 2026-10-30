@@ -28,3 +28,10 @@ test('invoice summary never double counts receipts, credit notes, duplicates or 
  assert.deepEqual(result,{invoiceCount:1,receivable:900,received:300,unpaid:600,pending:50,sharedPackageCount:1});
  assert.equal(filterFinanceDocumentRows([invoice],{studentId:'b'}).length,1);assert.equal(filterFinanceDocumentRows([invoice],{studentId:'unknown'}).length,0);
 });
+
+test('explicit personal exemption permits continuous teaching without changing default teachers',()=>{
+ const lessons=[period('06:00','18:00'),period('18:00','23:00',true)];
+ assert.equal(inspectContinuousTeaching(lessons,{maxContinuousMinutes:240,minBreakMinutes:15,exemptFromBreakRule:true}).blocked,false);
+ assert.equal(inspectContinuousTeaching(lessons).blocked,true);
+ assert.equal(inspectContinuousTeaching(lessons,{maxContinuousMinutes:240,minBreakMinutes:15,exemptFromBreakRule:false}).blocked,true);
+});

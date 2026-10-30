@@ -3876,6 +3876,7 @@ model RoomReservation {
 
 model TeacherTeachingRule {
   teacherId String @id
+  exemptFromBreakRule Boolean @default(false)
   maxContinuousMinutes Int @default(240)
   minBreakMinutes Int @default(15)
   reason String

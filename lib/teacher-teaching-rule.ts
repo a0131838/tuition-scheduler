@@ -1,6 +1,8 @@
 export const DEFAULT_TEACHING_RULE = { maxContinuousMinutes: 240, minBreakMinutes: 15 };
+export type TeachingRule = { maxContinuousMinutes:number; minBreakMinutes:number; exemptFromBreakRule?:boolean };
 export type TeachingInterval = { startAt: Date; endAt: Date; candidate?: boolean };
-export function inspectContinuousTeaching(intervals: TeachingInterval[], rule = DEFAULT_TEACHING_RULE) {
+export function inspectContinuousTeaching(intervals: TeachingInterval[], rule: TeachingRule = DEFAULT_TEACHING_RULE) {
+  if(rule.exemptFromBreakRule) return { blocked:false, minutes:0, ...rule };
   let end = -Infinity, minutes = 0, includesCandidate = false;
   for (const row of [...intervals].sort((a,b)=>+a.startAt-+b.startAt)) {
     const start=+row.startAt, finish=+row.endAt;

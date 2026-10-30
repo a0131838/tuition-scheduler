@@ -1,4 +1,19 @@
 # CHANGELOG LIVE
+## 2026-10-30-r485
+
+- Release ID: `2026-10-30-r485`
+- Date/Time (Asia/Singapore): `2026-10-30`
+- Deployment status: `READY`; deployment and audited Jasmine configuration evidence are stored in the exception acceptance folder.
+- Request: owner explicitly confirmed Jasmine should be exempt from the continuous-teaching/minimum-break rule; all other teachers retain the default 240 minutes / 15 minutes.
+- Change: add a teacher-ID-bound `exemptFromBreakRule` Boolean (default false), honor it in the shared preview and PostgreSQL enforcement, and expose the explicit exemption in the owner/manager-only audited rule editor. No name-based bypass or artificial large time limit.
+- Configuration: after deployment, set only Jasmine (`aad58934-c4b3-4e30-b207-e7026af12f22`) to exempt, verify her exact identity, save the owner authorization reason and audit, and compare all other rule records before/after. The migration itself exempts nobody.
+- Boundary: ordinary default rules, teacher availability/leave, teacher/room conflicts, billing, feedback and payroll remain unchanged. Reversing the Boolean restores the rule for future writes.
+- Verification: 807 unit tests; isolated PostgreSQL tests for exempt Session/Appointment writes, ordinary defaults, retained classroom conflict rejection and re-enabling enforcement; manager-only/reversible HTTP checks; production build.
+- Rollback reference: `5180b21fc810e4210ffe083fe532c563a86bdf25`; to reverse the individual exception explicitly turn off Jasmine's Boolean and audit the change.
+- Task: `docs/tasks/TASK-20261030-jasmine-teaching-break-exemption.md`.
+
+---
+
 ## 2026-10-30-r484
 
 - Release ID: `2026-10-30-r484`
