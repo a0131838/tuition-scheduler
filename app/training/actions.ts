@@ -70,6 +70,27 @@ export async function submitTrainingPractical(formData: FormData) {
   revalidatePath("/training/manage");
 }
 
+// Keep expected validation failures inside the practical form; do not expose server details.
+export async function submitTrainingPracticalForm(formData: FormData) {
+  try {
+    await submitTrainingPractical(formData);
+    return {ok:true,message:"Submitted for manager sign-off / 已提交主管验收。"};
+  } catch(error) {
+    const messages:Record<string,string>={
+      "Unauthorized":"Please sign in with an authorized staff account. / 请使用有权限的员工账号重新登录。",
+      "Training module not available":"This training module is not available. Refresh the page or contact your manager. / 此培训模块暂不可用，请刷新页面或联系主管核对权限。",
+      "Complete reading and pass the quiz before submitting practical evidence":"Complete reading and pass the quiz before submitting practical evidence. / 请先确认阅读并通过测验，再提交实操。",
+      "Training-data reference is required":"Training-data reference is required (at least 3 characters). / 请填写培训数据名称或编号，至少3个字符。",
+      "Final result must explain the verified system state":"Explain the verified final result (at least 10 characters). / 请填写核对后的最终结果，至少10个字符。",
+      "Self-check must address the manager rubric":"Complete the self-check against the manager rubric (at least 20 characters). / 请按主管验收标准填写自查，至少20个字符。",
+    };
+    const message=error instanceof Error?messages[error.message]:undefined;
+    if(message)return {ok:false,message};
+    console.error("Training practical submission failed",error);
+    return {ok:false,message:"Unable to confirm submission. Your entries are still here; refresh and check the saved status before trying again. / 暂时无法确认提交结果，填写内容已保留；请刷新核对保存状态后再决定是否重试。"};
+  }
+}
+
 export async function reviewTrainingPractical(formData: FormData) {
   const reviewer = await requireStaff();
   const progressId = String(formData.get("progressId") ?? "");

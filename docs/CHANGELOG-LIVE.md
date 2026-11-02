@@ -1,4 +1,18 @@
 # CHANGELOG LIVE
+## 2026-11-02-r486
+
+- Release ID: `2026-11-02-r486`
+- Date/Time (Asia/Singapore): `2026-11-02`
+- Deployment status: `READY`; standard release output is authoritative for live completion.
+- Problem: the training practical-evidence form omitted `moduleCode`. The submit action rejected every such form as Training module not available, producing a whole-page exception. Production digest `1194006139` matches this action failure.
+- Change: render a module-bound practical form with the missing hidden identifier; retain the existing action for non-JavaScript submission. Hydrated submission shows allowlisted bilingual validation messages inline, preserves inputs on failure, disables duplicate submission while pending, and uses a generic safe message for unexpected failures.
+- Boundary: module/role access, reading and quiz prerequisites, evidence requirements, current-version progress, manager sign-off, financial permissions and business records are unchanged. No schema migration or production training-record correction.
+- Verification: baseline browser reproduction; 808 unit tests; production build; isolated finance-account real browser submission with and without JavaScript; saved SUBMITTED evidence with unchanged reading/quiz and no approval; inline stale-prerequisite and unauthorized-module rejection with retained inputs/evidence.
+- Rollback reference: `a5897adfd58bc3958173399f03a5664dd4e69b1f`.
+- Task: `docs/tasks/TASK-20261102-training-practical-submission.md`.
+
+---
+
 ## 2026-10-30-r485
 
 - Release ID: `2026-10-30-r485`

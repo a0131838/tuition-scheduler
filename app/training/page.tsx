@@ -3,7 +3,8 @@ import { getCurrentUser, isManagerUser, isTeacherLeadUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { trainingModulesForUser, trainingRolesForUser } from "@/lib/training-center";
 import { redirect } from "next/navigation";
-import { acknowledgeTrainingRead, submitTrainingPractical, submitTrainingQuiz } from "./actions";
+import TrainingPracticalForm from "./TrainingPracticalForm";
+import { acknowledgeTrainingRead, submitTrainingQuiz } from "./actions";
 import { getLang, t } from "@/lib/i18n";
 
 const card = { border: "1px solid #dbe5ef", borderRadius: 18, padding: 18, background: "#fff" };
@@ -104,7 +105,7 @@ export default async function TrainingPage() {
                   ))}
                   <button type="submit">{moduleText("Submit Quiz", "提交测验")}</button>
                 </form>
-                <form action={submitTrainingPractical} style={{ display: "grid", gap: 8 }}>
+                <TrainingPracticalForm moduleCode={item.code}>
                   <strong>{moduleText("Step 3: Practical Task", "步骤三：实操任务")}</strong>
                   {!practicalReady ? (
                     <p style={{ margin: 0, color: "#b45309" }}>
@@ -133,7 +134,7 @@ export default async function TrainingPage() {
                   </div>
                   <button type="submit" disabled={!practicalReady}>{moduleText("Submit for Manager Sign-off", "提交主管验收")}</button>
                   <small>{moduleText("Status", "状态")}：{progress?.practicalStatus ?? "NOT_STARTED"} {progress?.approvalNote ? `· ${progress.approvalNote}` : ""}</small>
-                </form>
+                </TrainingPracticalForm>
               </div>
             </details>
           );
