@@ -137,13 +137,18 @@ function trainingQuestions(input: TrainingModuleInput, en: { title: string; prac
   ];
 }
 
+const correctedGuideCodes = new Set([
+  "ACADEMIC_DAILY_STUDENT_RECORDS", "FINANCE_MASTER",
+  "CONTRACT_PACKAGE_GATE_MASTER", "MANAGEMENT_CONTROL_MASTER",
+]);
+
 function module(input: TrainingModuleInput): TrainingModule {
   const en = englishContent[input.code];
   if (!en) throw new Error(`Missing English training content for ${input.code}`);
   const phase = foundationCodes.has(input.code) ? "FOUNDATION" : coreCodes.has(input.code) ? "CORE" : "SPECIALIST";
   return {
     ...input,
-    pdfFile: input.pdfFile.replace(/2026\d{4}(?=\.pdf$)/, "20260803"),
+    pdfFile: input.pdfFile.replace(/2026\d{4}(?=\.pdf$)/, correctedGuideCodes.has(input.code) ? "20261102" : "20260803"),
     version: input.code === "ACADEMIC_SCHEDULING_MASTER" ? ACADEMIC_SCHEDULING_TRAINING_VERSION : TRAINING_RELEASE_VERSION,
     platform: input.code.includes("MINIAPP") ? "MINIAPP" : "WEB",
     titleEn: en.title,

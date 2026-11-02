@@ -1,4 +1,16 @@
 # CHANGELOG LIVE
+## 2026-11-02-r490
+
+- Release ID: `2026-11-02-r490`
+- Date/Time (Asia/Singapore): `2026-11-02`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: partially correct four legacy student-record, finance, contract/package and management manuals. Remove unverified illustrations, explicitly mark remaining screenshot checks and keep the guides in review-needed status. Correct student search and creation wording against current UI.
+- Prevention: stop the generator from repeating an insufficient screenshot set across steps. Training assessment versions and existing records are unchanged. Thirty-five legacy modules still require individual full review; automated candidates are not proof of mismatch.
+- Verification and remaining work: `docs/tasks/TASK-20261102-sop-legacy-corrections.md`.
+- Rollback: revert application commit, preserving training and SOP records.
+
+---
+
 ## 2026-11-02-r489
 
 - Release ID: `2026-11-02-r489`

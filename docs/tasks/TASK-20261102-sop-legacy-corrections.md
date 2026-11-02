@@ -1,0 +1,7 @@
+# Legacy training guide corrections — 2026-11-02
+
+- Audited the structure of 35 legacy guides (690 PDF pages). An automated, privacy-filtered review produced candidate screenshot/step mismatches; candidates are not verified findings.
+- Partially corrected student records, finance, contracts/packages, and management guides with current screenshots from synthetic local test data. Removed known misleading or unconfirmed images and marked those sections for review. Student creation and search instructions were corrected against current source/UI. Other guide content still needs individual verification; none of the 35 guides is declared fully reviewed by this change.
+- Fixed the guide generator so it no longer cycles an inadequate screenshot set across unrelated steps. Existing versions, assessment keys and historical records are preserved. Replaced PDFs carry an explicit review warning; prior files remain available in the repository.
+- Remaining work: individually verify every remaining step, permissions and screenshot, including mini-program workflows, with representative synthetic data; replace pending images and simplify instructions; only then mark each module current. AI candidate CSV is a triage aid, not verification.
+- Verification: 822 unit tests passed; production build passed; see guarded release output for deployment. PDF text bounds checked on every page of all four revised guides and sample pages inspected visually.

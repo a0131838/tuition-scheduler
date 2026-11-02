@@ -649,13 +649,16 @@ function buildHtml(code, zhTitle, enTitle, sourceRelative, steps, explicitImages
     const mini = /miniapp|小程序/i.test(image);
     return platform === "MINIAPP" ? mini : !mini;
   });
-  const images = platformImages.length ? platformImages : allImages;
+  // A screenshot may only be attached when every step has an explicit,
+  // platform-correct screenshot. Cycling unrelated images misleads staff.
+  const images = explicitImages && platformImages.length === steps.length && allImages.length === steps.length
+    ? platformImages : [];
   const overviewChunks = steps.length > 8 ? [steps.slice(0, 8), steps.slice(8)] : [steps];
   const overviewCount = overviewChunks.length;
   const workflow = (language, chunk, offset) => chunk.map(([zh, en], index) => `<div class="step"><b>${offset + index + 1}</b><span>${escapeHtml(language === "zh" ? zh : en)}</span></div>`).join("");
   const stepPages = (language) => steps.map(([zh, en, detail = {}], index) => {
     const text = language === "zh" ? zh : en;
-    const image = images.length ? images[index % images.length] : null;
+    const image = images[index] ?? null;
     const actions = language === "zh" ? detail.zhActions : detail.enActions;
     const complete = language === "zh" ? detail.zhComplete : detail.enComplete;
     const stop = language === "zh" ? detail.zhStop : detail.enStop;

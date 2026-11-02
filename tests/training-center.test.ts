@@ -355,3 +355,14 @@ test("login and mobile language controls keep native and narrow-screen semantics
   assert.match(responsive, /white-space: nowrap !important/);
   assert.match(favicon, /image\/svg\+xml/);
 });
+
+test("partially corrected guides retain existing progress versions and mark unchecked images", () => {
+  for (const code of ["ACADEMIC_DAILY_STUDENT_RECORDS", "FINANCE_MASTER", "CONTRACT_PACKAGE_GATE_MASTER", "MANAGEMENT_CONTROL_MASTER"]) {
+    const item = findTrainingModule(code)!;
+    assert.equal(item.version, TRAINING_RELEASE_VERSION);
+    assert.match(item.pdfFile, /20261102\.pdf$/);
+    const source = fs.readFileSync(path.join(process.cwd(), "docs", item.pdfFile.replace(/\.pdf$/, ".html")), "utf8");
+    assert.match(source, /Remaining content is still under review/);
+    assert.match(source, /Screenshot under review/);
+  }
+});
