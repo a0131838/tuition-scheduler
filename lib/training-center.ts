@@ -139,7 +139,7 @@ function trainingQuestions(input: TrainingModuleInput, en: { title: string; prac
 
 const correctedGuideCodes = new Set([
   "ACADEMIC_DAILY_STUDENT_RECORDS", "FINANCE_MASTER",
-  "CONTRACT_PACKAGE_GATE_MASTER", "MANAGEMENT_CONTROL_MASTER", "TEACHER_REPORTS_ASSESSMENTS",
+  "CONTRACT_PACKAGE_GATE_MASTER", "MANAGEMENT_CONTROL_MASTER", "TEACHER_REPORTS_ASSESSMENTS", "TEACHER_EXPENSES_PAYROLL",
 ]);
 
 function module(input: TrainingModuleInput): TrainingModule {

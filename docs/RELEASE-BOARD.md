@@ -1,4 +1,16 @@
 # RELEASE BOARD
+## 2026-11-02-r493
+
+- Release ID: `2026-11-02-r493`
+- Date/Time (Asia/Singapore): `2026-11-02`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: partially refresh teacher expense, payroll and payment-detail training screenshots using synthetic data, including a rejected claim and payroll-confirmation example. Existing training version and completion records remain unchanged.
+- Scope: this guide and the remaining legacy modules are still under review; this is not a full end-to-end review. No production business data is changed.
+- Verification and remaining work: `docs/tasks/TASK-20261102-teacher-finance-guide-update.md`.
+- Rollback: revert application commit while retaining SOP and training records.
+
+---
+
 ## 2026-11-02-r492
 
 - Release ID: `2026-11-02-r492`
