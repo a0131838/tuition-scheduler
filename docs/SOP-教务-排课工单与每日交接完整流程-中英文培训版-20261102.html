@@ -1,0 +1,624 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>教务网页端排课：首次排课、续排、调课与异常闭环 · Academic Web Scheduling: First Lessons, Continuation, Rescheduling, and Exceptions</title><style>
+@page{size:A4 landscape;margin:13mm 12mm}*{box-sizing:border-box}body{margin:0;color:#172033;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}.page{height:184mm;page-break-after:always;position:relative;overflow:hidden;padding:3mm}.page:last-child{page-break-after:auto}.cover{display:grid;align-content:center;background:linear-gradient(135deg,#ecfdf5,#eff6ff);border-radius:7mm;padding:17mm}.eyebrow{font-size:10px;font-weight:900;color:#0f766e;letter-spacing:.08em}h1{font-size:25px;margin:4mm 0 3mm;color:#102a43;line-height:1.25}.cover h1{font-size:30px}.english-title{font-size:22px;color:#334e68;margin-top:10mm}.meta{margin-top:8mm;font-size:13px;line-height:1.8}.banner{margin-top:7mm;padding:4mm;border-left:2mm solid #0f766e;background:#fff}.steps{display:grid;gap:3mm;margin-top:5mm}.step{display:grid;grid-template-columns:9mm 1fr;gap:3mm;align-items:start;border:1px solid #d7e2ec;border-radius:3mm;padding:3mm;background:#f8fbfd}.step>b{display:grid;place-items:center;width:7mm;height:7mm;border-radius:50%;background:#0f766e;color:#fff}.step span{font-size:11px;line-height:1.48}.check{display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin-top:6mm}.box{border:1px solid #d7e2ec;border-radius:4mm;padding:5mm;background:#f8fbfd}.danger{border-color:#fca5a5;background:#fef2f2}.box h2{font-size:16px;margin:0 0 3mm}.box li{font-size:11px;line-height:1.55;margin:2.5mm 0}.lesson{display:grid;grid-template-columns:1.12fr 1fr;gap:5mm;margin-top:4mm;height:145mm}.shot{border:1px solid #d7e2ec;border-radius:4mm;background:#f8fafc;overflow:hidden;display:grid;grid-template-rows:1fr auto}.shot img{width:100%;height:130mm;object-fit:contain;display:block}.caption{padding:2mm 3mm;color:#475569;font-size:9px;border-top:1px solid #d7e2ec}.empty-shot{display:grid;place-items:center;text-align:center;color:#64748b;font-size:14px;padding:10mm}.beginner{border:1px solid #d7e2ec;border-radius:4mm;padding:4mm;background:#fff}.beginner h2{font-size:15px;margin:0 0 2mm}.beginner ol{margin:0;padding-left:6mm}.beginner li{font-size:9.7px;line-height:1.4;margin:1.8mm 0}.complete,.stop{font-size:9.7px;line-height:1.4;padding:2.5mm;border-radius:2mm;margin-top:2mm}.complete{border:1px solid #86efac;background:#f0fdf4}.stop{border:1px solid #fca5a5;background:#fef2f2}.divider{display:grid;place-items:center;text-align:center;background:#eff6ff;border:2px solid #93c5fd;border-radius:7mm}.divider h1{font-size:34px}footer{position:absolute;bottom:2mm;left:3mm;right:3mm;display:flex;justify-content:space-between;color:#64748b;font-size:9px}
+</style></head><body>
+<section class="page cover"><div class="eyebrow">SGT MANAGE · 网页端 WEB</div><h1>教务网页端排课：首次排课、续排、调课与异常闭环</h1><div class="english-title">Academic Web Scheduling: First Lessons, Continuation, Rescheduling, and Exceptions</div><div class="meta">功能编号：ACADEMIC_SCHEDULING_MASTER<br>版本：20261102A<br>排版顺序：先完整中文版，再完整英文版<br>Layout: Complete Chinese section first, followed by the complete English section</div><div class="banner"><b>截图使用隔离培训数据并对应当前操作入口；不同账号的菜单和权限可能不同。涉及合同、财务、正式排课或家长发送时，先核对对象与系统状态。 / Screenshots use isolated training data and current workflow entries. Menus and permissions vary by account. Verify the target and system state before contracts, finance actions, formal scheduling or parent publication.</b><br><b>一份文档只讲一个功能。</b> 网页端与小程序端分开；员工按编号一步一步操作。<br><b>One document covers one function only.</b> Web and Mini Program guides are separate.</div></section>
+<section class="page zh"><div class="eyebrow">中文版 · 操作前准备</div><h1>点击任何按钮前，先完成这四项准备</h1><div class="check"><div class="box"><h2>准备</h2><ul><li>使用本人账号和岗位对应工作台。</li><li>除非主管明确授权，否则只使用培训数据。</li><li>准备正确的对象、日期、负责人和所需资料。</li><li>把 PDF 与系统并排打开，每次只做一个编号步骤。</li></ul></div><div class="box danger"><h2>禁止</h2><ul><li>不使用同事账号。</li><li>不猜测姓名、金额、日期、状态或缺失字段。</li><li>结果不明确时不重复点击保存、应用、批准、发布或发送。</li><li>页面不一致时立即停止并询问负责人。</li></ul></div></div><footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>2</span></footer></section><section class="page zh"><div class="eyebrow">中文版 · 完整步骤总览 · 1/2</div><h1>教务网页端排课：首次排课、续排、调课与异常闭环</h1><div class="steps"><div class="step"><b>1</b><span>确认使用本人管理工作台。</span></div><div class="step"><b>2</b><span>先判断业务请求类型。</span></div><div class="step"><b>3</b><span>首次排课或续排进入学生页面。</span></div><div class="step"><b>4</b><span>打开完整学生列表或使用搜索。</span></div><div class="step"><b>5</b><span>搜索并核对学生。</span></div><div class="step"><b>6</b><span>打开学生详情。</span></div><div class="step"><b>7</b><span>打开快速排课。</span></div><div class="step"><b>8</b><span>已有请求进入排课执行工单。</span></div></div><footer><span>网页端培训</span><span>3</span></footer></section><section class="page zh"><div class="eyebrow">中文版 · 完整步骤总览 · 2/2</div><h1>教务网页端排课：首次排课、续排、调课与异常闭环</h1><div class="steps"><div class="step"><b>9</b><span>检查目标工单和负责人。</span></div><div class="step"><b>10</b><span>核对课包余额和财务门禁。</span></div><div class="step"><b>11</b><span>记录家长可上课时间。</span></div><div class="step"><b>12</b><span>核对老师可用时间与例外。</span></div><div class="step"><b>13</b><span>确认候选时间并跟进家长。</span></div><div class="step"><b>14</b><span>填写快速排课字段。</span></div><div class="step"><b>15</b><span>查找老师并先预览。</span></div><div class="step"><b>16</b><span>确认后使用 Schedule 排课。</span></div><div class="step"><b>17</b><span>特殊单次课程按类型创建。</span></div><div class="step"><b>18</b><span>调课时明确原课次和范围。</span></div><div class="step"><b>19</b><span>取消、请假和换老师关联原课次。</span></div><div class="step"><b>20</b><span>处理冲突。</span></div><div class="step"><b>21</b><span>核对正式课表并记录结果。</span></div><div class="step"><b>22</b><span>未完成事项进入交接。</span></div></div><footer><span>网页端培训</span><span>4</span></footer></section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 1 步，共 22 步</div>
+      <h1>确认使用本人管理工作台。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-corrections-20261102/annotated/admin-home.png"><div class="caption">本人管理工作台入口。 / Own admin workspace.</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>登录本人账号，核对页面显示 Admin Workspace / 管理工作台。</li><li>菜单与权限不一致时联系管理员。</li></ol>
+          <div class="complete"><b>完成标志：</b> 看到管理工作台、左侧菜单和本人账号。</div>
+          <div class="stop"><b>立即停止：</b> 登录后进入老师端、家长端或没有左侧菜单时停止。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>5</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 2 步，共 22 步</div>
+      <h1>先判断业务请求类型。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-readable-20261102/ticket-dcd9b09464-zoom.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface. 分段放大同一真实截图，按 1→2→3 阅读。 / Enlarged parts of one real screenshot, in order.</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>区分新排、续排、调课、取消、请假和换老师。</li><li>已有协调工单时优先从对应工单进入，避免重复处理。</li></ol>
+          <div class="complete"><b>完成标志：</b> 你能明确说出本次使用哪条入口路线。</div>
+          <div class="stop"><b>立即停止：</b> 无法确认学生、课程或请求类型时停止。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>6</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 3 步，共 22 步</div>
+      <h1>首次排课或续排进入学生页面。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-scheduling-update-20261102/nav-students.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface.</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>在工作台打开 Students / 学生。</li><li>准备好学生姓名和课程；不要凭相似姓名选择。</li></ol>
+          <div class="complete"><b>完成标志：</b> 页面标题显示 Students / 学生。</div>
+          <div class="stop"><b>立即停止：</b> 点击后进入新增家长链接或其他页面时停止并返回管理首页。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>7</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 4 步，共 22 步</div>
+      <h1>打开完整学生列表或使用搜索。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-scheduling-update-20261102/full-list.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface.</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>如首页展示的是队列视图，可选择 Show full list / 查看完整列表。</li><li>也可以使用页面筛选定位学生；按实际显示的入口操作。</li></ol>
+          <div class="complete"><b>完成标志：</b> Full List / 完整列表被选中。</div>
+          <div class="stop"><b>立即停止：</b> 完整列表仍显示 0 人或页面报错时停止。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>8</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 5 步，共 22 步</div>
+      <h1>搜索并核对学生。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-readable-20261102/filter-a5577a9627-zoom.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface. 分段放大同一真实截图，按 1→2→3 阅读。 / Enlarged parts of one real screenshot, in order.</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>输入学生姓名，点击 Apply / 应用。</li><li>多位同名时核对学生编号及档案，不要猜测。</li></ol>
+          <div class="complete"><b>完成标志：</b> 结果区显示目标学生且姓名完全一致。</div>
+          <div class="stop"><b>立即停止：</b> 出现同名学生时不要猜，先用学校、年级、家长或 ID 核对。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>9</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 6 步，共 22 步</div>
+      <h1>打开学生详情。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-readable-20261102/student-930f949350-zoom.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface. 分段放大同一真实截图，按 1→2→3 阅读。 / Enlarged parts of one real screenshot, in order.</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>点击正确学生进入 Student Detail / 学生详情。</li><li>确认学生、课程和负责人。</li></ol>
+          <div class="complete"><b>完成标志：</b> 页面顶部显示正确学生姓名和 Student Detail / 学生详情。</div>
+          <div class="stop"><b>立即停止：</b> 姓名、学校、年级或 ID 不一致时立即返回学生列表。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>10</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 7 步，共 22 步</div>
+      <h1>打开快速排课。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-scheduling-update-20261102/quick-dialog.png"><div class="caption">学生页面的快速排课弹窗。 / Quick Schedule dialog on the student page.</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>在学生页找到 Quick Schedule / 快速排课并打开弹窗。</li><li>核对弹窗上的学生姓名。</li></ol>
+          <div class="complete"><b>完成标志：</b> 页面滚动到 Quick Schedule 区域或打开快速排课表单。</div>
+          <div class="stop"><b>立即停止：</b> 系统推荐先协调、存在未付款课包或门禁时不要强行排课。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>11</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 8 步，共 22 步</div>
+      <h1>已有请求进入排课执行工单。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-scheduling-update-20261102/nav-orders.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface.</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>打开 Scheduling Work Orders / 排课执行工单，找到对应请求。</li><li>工单与学生页面是不同入口，按当前任务选择。</li></ol>
+          <div class="complete"><b>完成标志：</b> 页面标题显示排课执行工单。</div>
+          <div class="stop"><b>立即停止：</b> 不要误点 Ticket Center / 工单中心或 Weekly Schedule / 周课表。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>12</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 9 步，共 22 步</div>
+      <h1>检查目标工单和负责人。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-readable-20261102/ticket-dcd9b09464-zoom.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface. 分段放大同一真实截图，按 1→2→3 阅读。 / Enlarged parts of one real screenshot, in order.</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>打开工单，核对学生、要求、当前状态和负责人。</li><li>已有他人负责时先协调，避免重复排课。</li></ol>
+          <div class="complete"><b>完成标志：</b> 目标工单已打开，负责人和截止时间明确。</div>
+          <div class="stop"><b>立即停止：</b> 同一请求存在两张工单或负责人冲突时停止并合并判断。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>13</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 10 步，共 22 步</div>
+      <h1>核对课包余额和财务门禁。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-scheduling-update-20261102/form-top.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface.</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>在学生档案和快速排课弹窗核对课程、余额、有效期与可排状态。</li><li>有阻塞时按提示联系教务或财务，不要绕过门禁。</li></ol>
+          <div class="complete"><b>完成标志：</b> 正确课包显示可排课且余额足够。</div>
+          <div class="stop"><b>立即停止：</b> 缺少有效课包、余额不足、过期或财务门禁未通过时停止。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>14</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 11 步，共 22 步</div>
+      <h1>记录家长可上课时间。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-teacher-coordination-update-20261102/reply-confirmed.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface.</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>在协调工单记录可用日期、时间范围、地点和课程需求。</li><li>不确定的时间先向家长确认，保留下一次跟进时间。</li></ol>
+          <div class="complete"><b>完成标志：</b> 当前工单显示家长时间和下一次跟进日期。</div>
+          <div class="stop"><b>立即停止：</b> 家长时间只有聊天截图但没有结构化记录时停止正式排课。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>15</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 12 步，共 22 步</div>
+      <h1>核对老师可用时间与例外。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-teacher-coordination-update-20261102/admin-availability.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface.</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>查看老师日期可用时段；未提交时段不等于老师拒绝。</li><li>特殊时间按工单发起例外确认；回复不会自动创建课次。</li></ol>
+          <div class="complete"><b>完成标志：</b> 候选老师有有效 Availability 或已明确接受例外时间。</div>
+          <div class="stop"><b>立即停止：</b> 老师尚未确认特殊时间时停止 Apply。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>16</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 13 步，共 22 步</div>
+      <h1>确认候选时间并跟进家长。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-teacher-coordination-update-20261102/reply-confirmed.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface.</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>根据家长和老师的时间生成或整理候选，并记录发送与回复。</li><li>截图为工单沟通示例；具体候选以实际记录为准。</li></ol>
+          <div class="complete"><b>完成标志：</b> 工单阶段显示候选已发送，并有下一次跟进时间。</div>
+          <div class="stop"><b>立即停止：</b> 系统没有候选时间时保留工单，不强行创建课次。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>17</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 14 步，共 22 步</div>
+      <h1>填写快速排课字段。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-scheduling-update-20261102/form-time.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface.</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>选择课程、科目、校区、教室、开始时间、时长、重复周数和冲突处理。</li><li>线下地点按系统要求选择教室；核对余额和日期。</li></ol>
+          <div class="complete"><b>完成标志：</b> 字段完整，课包余额预览显示可排课。</div>
+          <div class="stop"><b>立即停止：</b> 课程、地点、日期或时长与家长确认不一致时停止。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>18</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 15 步，共 22 步</div>
+      <h1>查找老师并先预览。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-readable-20261102/preview-box-b2229986d6-zoom.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface. 分段放大同一真实截图，按 1→2→3 阅读。 / Enlarged parts of one real screenshot, in order.</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>点击 Find Available Teachers / 查找可用老师，在候选老师行点击 Preview / 预览。</li><li>逐行核对可排或冲突结果，包括重复周数。</li></ol>
+          <div class="complete"><b>完成标志：</b> 预览中所有冲突检查通过，老师、地点和课包正确。</div>
+          <div class="stop"><b>立即停止：</b> 出现任何冲突、旧预览或老师不匹配时停止。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>19</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 16 步，共 22 步</div>
+      <h1>确认后使用 Schedule 排课。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-readable-20261102/teacher-2df444e7ec-zoom.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface. 分段放大同一真实截图，按 1→2→3 阅读。 / Enlarged parts of one real screenshot, in order.</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>预览无误且获得授权后，点击目标老师行的 Schedule / 排课一次。</li><li>查看创建和跳过数量；结果不明确时先查课表，勿重复点击。</li></ol>
+          <div class="complete"><b>完成标志：</b> 页面返回成功结果，且预期课次数量一致。</div>
+          <div class="stop"><b>立即停止：</b> 页面无明确成功结果、网络中断或数量不一致时停止重复提交。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>20</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 17 步，共 22 步</div>
+      <h1>特殊单次课程按类型创建。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-readable-20261102/single-entry-cbddaf5ede-zoom.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface. 分段放大同一真实截图，按 1→2→3 阅读。 / Enlarged parts of one real screenshot, in order.</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>从 New (Single) / 新建单次入口选择正确页签及对象。</li><li>确认课次、约课或教室预约的用途；提交前检查冲突。</li></ol>
+          <div class="complete"><b>完成标志：</b> 单节课出现在正确班级/学生的正式课表。</div>
+          <div class="stop"><b>立即停止：</b> 不清楚班课与一对一差别时停止，不试错提交。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>21</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 18 步，共 22 步</div>
+      <h1>调课时明确原课次和范围。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-scheduling-update-20261102/reschedule.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface.</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>在 Quick Schedule 选择 Reschedule Existing Session / 调整已有课次。</li><li>选择目标课次、新时间、时长及“仅本次”或“本次+后续”；核对后再提交。</li></ol>
+          <div class="complete"><b>完成标志：</b> 原课次已按授权范围更新，其他课次未被误改。</div>
+          <div class="stop"><b>立即停止：</b> 找不到原课次、范围不明确或课已发生时停止。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>22</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 19 步，共 22 步</div>
+      <h1>取消、请假和换老师关联原课次。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-readable-20261102/result-7ed679043e-zoom.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface. 分段放大同一真实截图，按 1→2→3 阅读。 / Enlarged parts of one real screenshot, in order.</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>先打开原课次或对应工单的结构化操作。</li><li>核对学生、日期、扣课与通知影响；执行前按机构流程取得授权。</li></ol>
+          <div class="complete"><b>完成标志：</b> 工单动作显示 Applied，正式课表与授权结果一致。</div>
+          <div class="stop"><b>立即停止：</b> 扣费口径、补课要求或替代老师不明确时停止并升级主管。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>23</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 20 步，共 22 步</div>
+      <h1>处理冲突。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-readable-20261102/conflicts-097b859104-zoom.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface. 分段放大同一真实截图，按 1→2→3 阅读。 / Enlarged parts of one real screenshot, in order.</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>打开 Conflict Center / 冲突处理中心检查冲突原因。</li><li>逐项核对老师、学生和教室占用；不清楚时停止并联系负责人。</li></ol>
+          <div class="complete"><b>完成标志：</b> 目标冲突消失，相关正式课次均符合最终安排。</div>
+          <div class="stop"><b>立即停止：</b> 无法判断应保留哪一节课时停止并联系负责人。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>24</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 21 步，共 22 步</div>
+      <h1>核对正式课表并记录结果。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-readable-20261102/result-7ed679043e-zoom.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface. 分段放大同一真实截图，按 1→2→3 阅读。 / Enlarged parts of one real screenshot, in order.</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>返回学生或正式课表，逐节核对日期、时间、老师、地点及状态。</li><li>将已完成或部分跳过结果写回工单，并通知相关负责人。</li></ol>
+          <div class="complete"><b>完成标志：</b> 正式课表与工单完成结果一致，刷新后仍存在。</div>
+          <div class="stop"><b>立即停止：</b> 只看到聊天确认但正式课表没有课次时不得完成工单。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>25</span></footer>
+    </section><section class="page zh">
+      <div class="eyebrow">中文流程 · 第 22 步，共 22 步</div>
+      <h1>未完成事项进入交接。</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-teacher-coordination-update-20261102/reply-confirmed.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface.</div>
+        </div>
+        <div class="beginner">
+          <h2>请按顺序完成</h2>
+          <ol><li>在工单记录负责人、阻塞原因、等待对象、下一步及跟进时间。</li><li>交接人重新打开工单确认，不用聊天记录代替系统状态。</li></ol>
+          <div class="complete"><b>完成标志：</b> 交接卡包含六要素，下一班能直接继续执行。</div>
+          <div class="stop"><b>立即停止：</b> 不得用“已沟通”“跟进中”代替负责人、期限和下一步。</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>26</span></footer>
+    </section><section class="page zh"><div class="eyebrow">中文版 · 最终验收</div><h1>以下项目全部确认后才能报告完成</h1><div class="check"><div class="box"><h2>员工自查</h2><ul><li>账号、平台、岗位和目标记录正确。</li><li>全部步骤按顺序完成。</li><li>刷新后仍看到预期最终状态。</li><li>已保存不含敏感信息的结果证据。</li><li>能说明出现异常时找谁处理。</li></ul></div><div class="box danger"><h2>停止并升级</h2><ul><li>缺少必要资料或权限。</li><li>页面、按钮或状态与教程不同。</li><li>未获授权却会影响财务、合同、课包、工资、真实课次或家长可见内容。</li><li>无法确认最终状态。</li></ul></div></div><footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>27</span></footer></section>
+<section class="page divider"><div><div class="eyebrow">LANGUAGE DIVIDER</div><h1>中文版到此结束</h1><div class="english-title">English section starts on the next page</div></div><footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>28</span></footer></section>
+<section class="page en"><div class="eyebrow">ENGLISH SECTION · BEFORE YOU START</div><h1>Complete these four checks before clicking</h1><div class="check"><div class="box"><h2>Prepare</h2><ul><li>Use your own account and role workspace.</li><li>Use training data unless a manager authorises real data.</li><li>Prepare the correct target, date, owner, and source records.</li><li>Keep this PDF beside the system and complete one numbered step at a time.</li></ul></div><div class="box danger"><h2>Never</h2><ul><li>Do not use another employee's account.</li><li>Do not guess names, amounts, dates, statuses, or missing fields.</li><li>Do not repeat Save, Apply, Approve, Publish, or Send when the result is unclear.</li><li>Stop and ask the owner when the page differs.</li></ul></div></div><footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>27</span></footer></section><section class="page en"><div class="eyebrow">ENGLISH SECTION · WORKFLOW OVERVIEW · 1/2</div><h1>Academic Web Scheduling: First Lessons, Continuation, Rescheduling, and Exceptions</h1><div class="steps"><div class="step"><b>1</b><span>Confirm your Admin Workspace.</span></div><div class="step"><b>2</b><span>Identify the request type.</span></div><div class="step"><b>3</b><span>Open Students for new or continuation scheduling.</span></div><div class="step"><b>4</b><span>Open the full list or search.</span></div><div class="step"><b>5</b><span>Search and verify the student.</span></div><div class="step"><b>6</b><span>Open the student record.</span></div><div class="step"><b>7</b><span>Open Quick Schedule.</span></div><div class="step"><b>8</b><span>Open Scheduling Work Orders for existing requests.</span></div></div><footer><span>Web training</span><span>30</span></footer></section><section class="page en"><div class="eyebrow">ENGLISH SECTION · WORKFLOW OVERVIEW · 2/2</div><h1>Academic Web Scheduling: First Lessons, Continuation, Rescheduling, and Exceptions</h1><div class="steps"><div class="step"><b>9</b><span>Check the ticket and owner.</span></div><div class="step"><b>10</b><span>Check package balance and finance gate.</span></div><div class="step"><b>11</b><span>Record parent availability.</span></div><div class="step"><b>12</b><span>Check teacher availability and exceptions.</span></div><div class="step"><b>13</b><span>Confirm candidate times and follow up.</span></div><div class="step"><b>14</b><span>Complete Quick Schedule.</span></div><div class="step"><b>15</b><span>Find a teacher and preview.</span></div><div class="step"><b>16</b><span>Use Schedule after confirmation.</span></div><div class="step"><b>17</b><span>Create a special one-off item using the correct tab.</span></div><div class="step"><b>18</b><span>Choose the original lesson and reschedule scope.</span></div><div class="step"><b>19</b><span>Link cancellations, leave and teacher replacement to the original lesson.</span></div><div class="step"><b>20</b><span>Resolve conflicts.</span></div><div class="step"><b>21</b><span>Verify the official timetable and record the outcome.</span></div><div class="step"><b>22</b><span>Hand over unfinished work.</span></div></div><footer><span>Web training</span><span>31</span></footer></section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 1 OF 22</div>
+      <h1>Confirm your Admin Workspace.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-corrections-20261102/annotated/admin-home.png"><div class="caption">本人管理工作台入口。 / Own admin workspace.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Sign in with your own account and verify Admin Workspace.</li><li>Ask an administrator if the menu or permission differs.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The Admin Workspace, sidebar, and your own account are visible.</div>
+          <div class="stop"><b>STOP:</b> Stop if login opens the teacher portal, parent portal, or a page without the admin sidebar.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>32</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 2 OF 22</div>
+      <h1>Identify the request type.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-readable-20261102/ticket-dcd9b09464-zoom.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface. 分段放大同一真实截图，按 1→2→3 阅读。 / Enlarged parts of one real screenshot, in order.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Distinguish new, continuation, reschedule, cancellation, leave and teacher replacement.</li><li>Use the existing coordination ticket where applicable to avoid duplicates.</li></ol>
+          <div class="complete"><b>Completion signal:</b> You can state which entry route this request requires.</div>
+          <div class="stop"><b>STOP:</b> Stop if the student, course, or request type is unclear.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>33</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 3 OF 22</div>
+      <h1>Open Students for new or continuation scheduling.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-scheduling-update-20261102/nav-students.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Open Students from the workspace.</li><li>Prepare the student name and course; do not rely on a similar name.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The page title says Students.</div>
+          <div class="stop"><b>STOP:</b> Stop and return to the dashboard if another page opens.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>34</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 4 OF 22</div>
+      <h1>Open the full list or search.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-scheduling-update-20261102/full-list.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>If the page shows a queue, select Show full list.</li><li>Alternatively use the filters shown on your page.</li></ol>
+          <div class="complete"><b>Completion signal:</b> Full List is selected.</div>
+          <div class="stop"><b>STOP:</b> Stop if the full list still shows zero students or the page errors.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>35</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 5 OF 22</div>
+      <h1>Search and verify the student.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-readable-20261102/filter-a5577a9627-zoom.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface. 分段放大同一真实截图，按 1→2→3 阅读。 / Enlarged parts of one real screenshot, in order.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Enter the name and select Apply.</li><li>For duplicate names verify the student identifier and record.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The exact target student appears in the results.</div>
+          <div class="stop"><b>STOP:</b> For duplicate names, stop and verify school, grade, parent, or ID.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>36</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 6 OF 22</div>
+      <h1>Open the student record.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-readable-20261102/student-930f949350-zoom.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface. 分段放大同一真实截图，按 1→2→3 阅读。 / Enlarged parts of one real screenshot, in order.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Select the correct student to open Student Detail.</li><li>Verify the student, course and owner.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The correct name and Student Detail appear at the top.</div>
+          <div class="stop"><b>STOP:</b> Return to the student list immediately if the name, school, grade, or ID differs.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>37</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 7 OF 22</div>
+      <h1>Open Quick Schedule.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-scheduling-update-20261102/quick-dialog.png"><div class="caption">学生页面的快速排课弹窗。 / Quick Schedule dialog on the student page.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Find Quick Schedule on the student page and open its dialog.</li><li>Verify the student name in the dialog.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The page moves to the Quick Schedule section or opens its form.</div>
+          <div class="stop"><b>STOP:</b> Do not force scheduling when coordination, an unpaid package, or a gate is shown first.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>38</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 8 OF 22</div>
+      <h1>Open Scheduling Work Orders for existing requests.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-scheduling-update-20261102/nav-orders.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Open Scheduling Work Orders and locate the request.</li><li>Choose the ticket or student entry point according to the task.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The page title says Scheduling Work Orders.</div>
+          <div class="stop"><b>STOP:</b> Do not click Ticket Center or Weekly Schedule by mistake.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>39</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 9 OF 22</div>
+      <h1>Check the ticket and owner.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-readable-20261102/ticket-dcd9b09464-zoom.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface. 分段放大同一真实截图，按 1→2→3 阅读。 / Enlarged parts of one real screenshot, in order.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Open the ticket and verify student, request, status and owner.</li><li>Coordinate with an existing owner before acting.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The target ticket is open with a clear owner and deadline.</div>
+          <div class="stop"><b>STOP:</b> Stop when duplicate tickets or conflicting owners exist.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>40</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 10 OF 22</div>
+      <h1>Check package balance and finance gate.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-scheduling-update-20261102/form-top.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Verify course, balance, validity and schedulability in the student record and dialog.</li><li>If blocked, follow the message and contact Academic or Finance.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The correct package is schedulable with enough balance.</div>
+          <div class="stop"><b>STOP:</b> Stop for no active package, insufficient balance, expiry, or an uncleared finance gate.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>41</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 11 OF 22</div>
+      <h1>Record parent availability.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-teacher-coordination-update-20261102/reply-confirmed.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Record available dates, time ranges, location and course in the coordination ticket.</li><li>Confirm uncertain information and retain a follow-up time.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The ticket shows parent availability and the next follow-up date.</div>
+          <div class="stop"><b>STOP:</b> Stop before scheduling if availability exists only in chat and is not recorded.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>42</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 12 OF 22</div>
+      <h1>Check teacher availability and exceptions.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-teacher-coordination-update-20261102/admin-availability.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Inspect date-specific teacher slots; missing availability is not a refusal.</li><li>Use the ticket exception process for special times; a reply does not create a lesson.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The candidate has valid availability or explicitly accepted an exception.</div>
+          <div class="stop"><b>STOP:</b> Stop before Apply until the teacher confirms an exceptional time.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>43</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 13 OF 22</div>
+      <h1>Confirm candidate times and follow up.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-teacher-coordination-update-20261102/reply-confirmed.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Prepare candidate times based on parent and teacher availability and record messages and replies.</li><li>The screenshot is a ticket example; use the actual candidate records.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The ticket shows options sent and a next follow-up time.</div>
+          <div class="stop"><b>STOP:</b> Keep the ticket open and do not force a session when no slot is available.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>44</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 14 OF 22</div>
+      <h1>Complete Quick Schedule.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-scheduling-update-20261102/form-time.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Choose course, subject, campus, room, start time, duration, repeat weeks and conflict handling.</li><li>Choose a room when required and check the balance and dates.</li></ol>
+          <div class="complete"><b>Completion signal:</b> All fields are complete and the package preview is schedulable.</div>
+          <div class="stop"><b>STOP:</b> Stop if course, location, date, or duration differs from the parent's confirmation.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>45</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 15 OF 22</div>
+      <h1>Find a teacher and preview.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-readable-20261102/preview-box-b2229986d6-zoom.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface. 分段放大同一真实截图，按 1→2→3 阅读。 / Enlarged parts of one real screenshot, in order.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Select Find Available Teachers, then Preview on the intended teacher row.</li><li>Review every available or conflicting occurrence, including repeated weeks.</li></ol>
+          <div class="complete"><b>Completion signal:</b> All preview checks pass with the correct teacher, location, and package.</div>
+          <div class="stop"><b>STOP:</b> Stop for any conflict, stale preview, or teacher mismatch.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>46</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 16 OF 22</div>
+      <h1>Use Schedule after confirmation.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-readable-20261102/teacher-2df444e7ec-zoom.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface. 分段放大同一真实截图，按 1→2→3 阅读。 / Enlarged parts of one real screenshot, in order.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Once authorised and the preview is correct, select Schedule once on the teacher row.</li><li>Check created and skipped counts; if uncertain, inspect the timetable before repeating.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The page returns success and the expected session count matches.</div>
+          <div class="stop"><b>STOP:</b> Do not resubmit after an unclear result, network interruption, or count mismatch.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>47</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 17 OF 22</div>
+      <h1>Create a special one-off item using the correct tab.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-readable-20261102/single-entry-cbddaf5ede-zoom.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface. 分段放大同一真实截图，按 1→2→3 阅读。 / Enlarged parts of one real screenshot, in order.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Open New (Single) and choose the correct tab and object.</li><li>Confirm whether the item is a session, appointment or room reservation and check conflicts.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The single lesson appears on the correct class/student schedule.</div>
+          <div class="stop"><b>STOP:</b> Stop instead of trial submissions if class and one-to-one modes are unclear.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>48</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 18 OF 22</div>
+      <h1>Choose the original lesson and reschedule scope.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-scheduling-update-20261102/reschedule.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>In Quick Schedule select Reschedule Existing Session.</li><li>Choose target session, new time, duration and This Session Only or This + Future Sessions; review before submitting.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The original session changed within the authorised scope and no other sessions were altered.</div>
+          <div class="stop"><b>STOP:</b> Stop if the original session is missing, scope is unclear, or the lesson already occurred.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>49</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 19 OF 22</div>
+      <h1>Link cancellations, leave and teacher replacement to the original lesson.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-readable-20261102/result-7ed679043e-zoom.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface. 分段放大同一真实截图，按 1→2→3 阅读。 / Enlarged parts of one real screenshot, in order.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Open the original session or the corresponding structured ticket action.</li><li>Verify student, date, deduction and notification effects; obtain the required authorisation.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The ticket action is Applied and the official schedule matches the authorised result.</div>
+          <div class="stop"><b>STOP:</b> Stop and escalate if charge treatment, replacement need, or teacher is unclear.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>50</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 20 OF 22</div>
+      <h1>Resolve conflicts.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-readable-20261102/conflicts-097b859104-zoom.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface. 分段放大同一真实截图，按 1→2→3 阅读。 / Enlarged parts of one real screenshot, in order.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Open Conflict Center and inspect the reason.</li><li>Check teacher, student and room occupancy; escalate uncertainty.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The target conflict is gone and all related sessions match the final arrangement.</div>
+          <div class="stop"><b>STOP:</b> Stop and contact the owner if you cannot determine which session should remain.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>51</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 21 OF 22</div>
+      <h1>Verify the official timetable and record the outcome.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-readable-20261102/result-7ed679043e-zoom.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface. 分段放大同一真实截图，按 1→2→3 阅读。 / Enlarged parts of one real screenshot, in order.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Return to the student record or timetable and verify each date, time, teacher, location and status.</li><li>Record completed or skipped results on the ticket and notify the responsible staff.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The official schedule and ticket result match and remain after refresh.</div>
+          <div class="stop"><b>STOP:</b> Do not complete the ticket when chat confirms it but no official session exists.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>52</span></footer>
+    </section><section class="page en">
+      <div class="eyebrow">ENGLISH WORKFLOW · STEP 22 OF 22</div>
+      <h1>Hand over unfinished work.</h1>
+      <div class="lesson">
+        <div class="shot"><img src="assets/sop-teacher-coordination-update-20261102/reply-confirmed.png"><div class="caption">隔离环境示例；截图展示相关页面，具体操作以文字及当前界面为准。 / Isolated training example; screenshot provides context. Follow the text and current interface.</div>
+        </div>
+        <div class="beginner">
+          <h2>Complete in this order</h2>
+          <ol><li>Record ticket owner, blocker, waiting party, next action and follow-up time.</li><li>The receiving staff member should reopen the ticket; chat alone is not system status.</li></ol>
+          <div class="complete"><b>Completion signal:</b> The handover contains all six elements and the next shift can act immediately.</div>
+          <div class="stop"><b>STOP:</b> Do not replace owner, deadline, and next action with vague notes such as 'communicated' or 'following up'.</div>
+        </div>
+      </div>
+      <footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>53</span></footer>
+    </section><section class="page en"><div class="eyebrow">ENGLISH SECTION · FINAL CHECK</div><h1>Report completion only when every item is true</h1><div class="check"><div class="box"><h2>Employee self-check</h2><ul><li>The account, platform, role, and target record are correct.</li><li>Every step was completed in order.</li><li>The expected final status remains after refresh.</li><li>Non-sensitive evidence of the result was saved.</li><li>You can explain who handles an exception.</li></ul></div><div class="box danger"><h2>Stop and escalate</h2><ul><li>Required data or permission is missing.</li><li>The page, button, or status differs from the guide.</li><li>An unauthorised action would affect finance, contracts, packages, payroll, live sessions, or parent-visible content.</li><li>The final state cannot be verified.</li></ul></div></div><footer><span>ACADEMIC_SCHEDULING_MASTER · WEB</span><span>54</span></footer></section>
+</body></html>

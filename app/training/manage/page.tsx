@@ -2,7 +2,7 @@ import { getCurrentUser, isManagerUser, isTeacherLeadUser } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import {
-  TRAINING_RELEASE_VERSION,
+  TRAINING_MODULES,
   trainingModuleProgressState,
   trainingModulesForUser,
   trainingRolesForUser,
@@ -44,7 +44,7 @@ export default async function TrainingManagePage() {
         orderBy: { role: "asc" },
       },
       trainingProgresses: {
-        where: { moduleVersion: TRAINING_RELEASE_VERSION },
+        where: { moduleVersion: { in: [...new Set(TRAINING_MODULES.map((module) => module.version))] } },
         include: { approvedBy: { select: { name: true } } },
       },
     },
@@ -60,9 +60,9 @@ export default async function TrainingManagePage() {
   const staffRows = users.map((user) => {
     const assignedRoles = user.trainingRoleAssignments.map((item) => item.role);
     const modules = trainingModulesForUser(user.role as SystemUserRole, assignedRoles);
-    const progressByModule = new Map(user.trainingProgresses.map((progress) => [progress.moduleCode, progress]));
+    const progressByModule = new Map(user.trainingProgresses.map((progress) => [`${progress.moduleCode}:${progress.moduleVersion}`, progress]));
     const moduleRows = modules.map((module) => {
-      const progress = progressByModule.get(module.code);
+      const progress = progressByModule.get(`${module.code}:${module.version}`);
       return { module, progress, state: trainingModuleProgressState(progress) };
     });
     const counts = moduleRows.reduce(

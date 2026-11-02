@@ -1,4 +1,16 @@
 # RELEASE BOARD
+## 2026-11-02-r495
+
+- Release ID: `2026-11-02-r495`
+- Date/Time (Asia/Singapore): `2026-11-02`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: replace the 28 remaining legacy training manuals with bilingual 2026-11-02 PDFs and current synthetic-account web/mini-program screenshots; all 35 catalogue links now open 2026-11-02 PDFs.
+- Training impact: assessment versions and existing completion records are preserved; management progress lookup covers both existing module versions. No finance, package, attendance or scheduling data is changed.
+- Review risk: screenshots cover representative training scenarios; owner walkthrough sign-off remains required in the SOP governance inventory.
+- Verification and rollback: `docs/tasks/TASK-20261102-refresh-28-sops.md`.
+
+---
+
 ## 2026-11-02-r494
 
 - Release ID: `2026-11-02-r494`

@@ -59,7 +59,7 @@ const englishContent: Record<string, { title: string; category: string; practica
   RESOURCE_HANDOFF_MASTER: { title: "Lead Follow-up, School Guide Enquiries, and Sales Handover", category: "Lead Management Core", practicalTask: "Create a training lead and practise duplicate checking, owner assignment, follow-up, assessment, conversion, and handover." },
   MANAGEMENT_CONTROL_MASTER: { title: "Accounts, Permissions, Approval Quality, and Training Sign-off", category: "Management Core", practicalTask: "Review a training account's permissions, approvals, and communication audit, then sign off one employee practical task." },
   ATTENDANCE_EXCEPTION_MASTER: { title: "Attendance, Feedback, Leave, Rescheduling, and Exceptions", category: "Teaching Core", practicalTask: "Complete attendance and feedback for a training session and explain the boundaries for leave, cancellation, rescheduling, and correction." },
-  ACADEMIC_MINIAPP: { title: "Academic Staff Mini Program — Complete Operations", category: "Academic", practicalTask: "Using a training student, complete one to-do, one ticket follow-up, and one scheduling preview." },
+  ACADEMIC_MINIAPP: { title: "Academic Staff Mini Program — Complete Operations", category: "Academic", practicalTask: "Using a training student, review a parent request, check scheduling eligibility, and create a coordination ticket when direct scheduling is unavailable." },
   PARENT_COMMUNICATION: { title: "Parent Communication and Notification Centre", category: "Academic", practicalTask: "Review a training feedback item, publish the parent-facing version, record forwarding, and practise a correction." },
   FULL_CARE: { title: "Full Care — Complete Operations", category: "Full Care", practicalTask: "Create a training project and complete its plan, activities, tasks, risks, and report draft." },
   SHARED_PACKAGE_COURSE: { title: "Change a Course for One Student in a Shared Package", category: "Packages", practicalTask: "In a training shared package, change only the selected student's course and verify that other students are unaffected." },
@@ -71,7 +71,7 @@ const englishContent: Record<string, { title: string; category: string; practica
   TEACHER_DAILY: { title: "Teacher Schedule, Feedback, Payroll, and Student History", category: "Teacher", practicalTask: "Open a training session from the schedule, submit feedback, and locate that student's history." },
   TEACHER_PAYMENT: { title: "Teacher Payment Details Submission", category: "Teacher Finance", practicalTask: "Choose the correct payment method for a local or overseas profile and complete the field checks." },
   TEACHER_ONBOARDING_PROFILE: { title: "Teacher Account, Profile, Notices, and Daily Start", category: "Teacher Foundation", practicalTask: "Verify the linked teacher identity, complete the daily course check, review required notices and alerts, and confirm the public teacher profile is ready." },
-  TEACHER_AVAILABILITY_SCHEDULING: { title: "Teacher Availability, Scheduling Exceptions, and Tickets", category: "Teacher Scheduling", practicalTask: "Maintain 30-day availability, respond to an assigned scheduling exception, and close an assigned teacher ticket with a verifiable completion note." },
+  TEACHER_AVAILABILITY_SCHEDULING: { title: "Teacher Availability, Scheduling Exceptions, and Tickets", category: "Teacher Scheduling", practicalTask: "Maintain upcoming availability, respond to an assigned scheduling exception, and close an assigned teacher ticket with a verifiable completion note." },
   TEACHER_REPORTS_ASSESSMENTS: { title: "Teacher Assessments, Midterm Reports, and Final Reports", category: "Teacher Academic Records", practicalTask: "Complete one training assessment or report using session evidence, verify its submission status, and explain the correction and escalation path." },
   TEACHER_EXPENSES_PAYROLL: { title: "Teacher Expense Claims, Payroll, and Payment Follow-up", category: "Teacher Finance", practicalTask: "Prepare a training expense claim with evidence, trace its approval state, reconcile a payroll statement, and identify the correct payment-detail path." },
   FINANCE_PAYMENT_PROFILE: { title: "Verify and Export Teacher Payment Details", category: "Finance", practicalTask: "Verify one training teacher's payment details and explain how exceptions must be handled." },
@@ -81,7 +81,7 @@ const englishContent: Record<string, { title: string; category: string; practica
   MANAGER_FEEDBACK: { title: "Manager Feedback and Teacher Acknowledgement", category: "Management", practicalTask: "A manager sends training feedback; the teacher account acknowledges it as read." },
   MINIAPP_STARTER: { title: "Staff Mini Program Login, Manager Code Issue, and Self-Binding", category: "Mini Program Foundation", practicalTask: "A manager issues a one-time code to the correct training employee; the employee binds their own WeChat, verifies identity, and practises safe account switching." },
   PARENT_MINIAPP_BINDING: { title: "Academic Parent Invitation and Parent Mini Program Binding", category: "Academic & Parent Mini Program", practicalTask: "Using a training student, issue one parent invite, complete parent binding, then verify the ACTIVE parent relationship and visibility permissions." },
-  SALES_MINIAPP: { title: "Sales Mini Program Lead Follow-up and Web Conversion Handover", category: "Sales Mini Program", practicalTask: "Using a training lead, complete mobile duplicate checking and follow-up, then explain the required web conversion and owner handover." },
+  SALES_MINIAPP: { title: "Sales Mini Program Enquiry Capture and Web Conversion Handover", category: "Sales Mini Program", practicalTask: "Search for an existing enquiry, capture a training lead or create a scheduling ticket, then complete detailed follow-up and owner handover on the web." },
   FINANCE_MINIAPP: { title: "Finance Mini Program Access Boundary and Web Finance Handover", category: "Finance Mini Program Boundary", practicalTask: "Demonstrate staff binding, identify that Finance operations are not available in the current mini program, and route a training finance item to the correct web workbench." },
   FULL_CARE_MINIAPP: { title: "Full Care Mini Program Support Boundary and Web Handover", category: "Full Care Mini Program Boundary", practicalTask: "Classify what can be viewed in the mini program, create an owned request ticket, and route project, task, risk, and report updates to the web Full Care workspace." },
   PARENT_STUDENT_SUPPORT_MINIAPP: { title: "Parent and Student Mini Program Binding Support and Troubleshooting", category: "Customer Support Mini Program", practicalTask: "Troubleshoot a training invite, verify the ACTIVE relationship and permissions, then record an owned follow-up for any remaining issue." },
@@ -137,9 +137,22 @@ function trainingQuestions(input: TrainingModuleInput, en: { title: string; prac
   ];
 }
 
+const refreshedGuideCodes = new Set([
+  "SYSTEM_OPERATION_MAP", "ACADEMIC_SCHEDULING_MASTER", "ACADEMIC_TEACHER_COORDINATION",
+  "RESOURCE_HANDOFF_MASTER", "ATTENDANCE_EXCEPTION_MASTER", "ACADEMIC_MINIAPP",
+  "PARENT_COMMUNICATION", "FULL_CARE", "SHARED_PACKAGE_COURSE", "XZS_PACKAGE",
+  "XZS_SETTLEMENT", "SCHOOL_APPLICATION", "EDUTRUST_SSG", "TEACHER_MINIAPP",
+  "TEACHER_DAILY", "TEACHER_ONBOARDING_PROFILE", "TEACHER_AVAILABILITY_SCHEDULING",
+  "FINANCE_PAYMENT_PROFILE", "PARTNER_CREDIT_NOTE", "MANAGEMENT_MINIAPP",
+  "MANAGEMENT_COMMUNICATION", "MANAGER_FEEDBACK", "MINIAPP_STARTER",
+  "PARENT_MINIAPP_BINDING", "SALES_MINIAPP", "FINANCE_MINIAPP",
+  "FULL_CARE_MINIAPP", "PARENT_STUDENT_SUPPORT_MINIAPP",
+]);
+
 const correctedGuideCodes = new Set([
   "ACADEMIC_DAILY_STUDENT_RECORDS", "FINANCE_MASTER",
   "CONTRACT_PACKAGE_GATE_MASTER", "MANAGEMENT_CONTROL_MASTER", "TEACHER_REPORTS_ASSESSMENTS", "TEACHER_EXPENSES_PAYROLL", "TEACHER_PAYMENT",
+  ...refreshedGuideCodes,
 ]);
 
 function module(input: TrainingModuleInput): TrainingModule {
@@ -192,7 +205,7 @@ export const TRAINING_MODULES: TrainingModule[] = [
   module({ code: "RESOURCE_HANDOFF_MASTER", title: "资源跟进、学校指南咨询与成交交接", version: "20260728", roles: ["SALES", "CS", "ADMIN"], category: "资源必修", pdfFile: "SOP-客服销售-资源跟进学校指南咨询与成交交接-中英文培训版-20260728.pdf", practicalTask: "建立培训资源，完成查重、负责人、跟进、评估和成交交接演练。" }),
   module({ code: "MANAGEMENT_CONTROL_MASTER", title: "账号权限、审批质量与培训验收", version: "20260728", roles: ["ADMIN"], category: "管理必修", pdfFile: "SOP-管理-账号权限审批质量与培训验收-中英文培训版-20260728.pdf", practicalTask: "检查培训账号权限、审批、沟通审计，并验收一项员工实操。" }),
   module({ code: "ATTENDANCE_EXCEPTION_MASTER", title: "点名、反馈、请假调课与异常处理", version: "20260728", roles: ["TEACHER", "ADMIN", "CS"], category: "教学必修", pdfFile: "SOP-教务老师-点名反馈请假调课与异常处理-中英文培训版-20260728.pdf", practicalTask: "使用培训课次完成点名和反馈，并说明请假、取消、调课和错误更正边界。" }),
-  module({ code: "ACADEMIC_MINIAPP", title: "教务小程序完整操作", version: "20260718", roles: ["ADMIN", "CS"], category: "教务", pdfFile: "SOP-小程序-教务-完整操作-中英文培训版-20260718.pdf", practicalTask: "使用培训学生完成一项待办、一次工单跟进和一次排课预览。" }),
+  module({ code: "ACADEMIC_MINIAPP", title: "教务小程序完整操作", version: "20260718", roles: ["ADMIN", "CS"], category: "教务", pdfFile: "SOP-小程序-教务-完整操作-中英文培训版-20260718.pdf", practicalTask: "使用培训学生核对家长请求与排课条件；不满足直接排课条件时创建协调工单。" }),
   module({ code: "PARENT_COMMUNICATION", title: "家长沟通与通知中心", version: "20260718", roles: ["ADMIN", "CS"], category: "教务", pdfFile: "SOP-教务-家长沟通与通知中心-中英文培训版-20260718.pdf", practicalTask: "完成一条培训反馈的审核、家长版发布、转发留痕和更正演练。" }),
   module({ code: "FULL_CARE", title: "全托管完整操作", version: "20260717", roles: ["ADMIN", "CS"], category: "全托管", pdfFile: "全托管完整操作SOP-中英文培训版-20260728.pdf", practicalTask: "建立培训项目，完成计划、活动、任务、风险和报告草稿。" }),
   module({ code: "SHARED_PACKAGE_COURSE", title: "共享课包按学生修改课程", version: "20260723", roles: ["ADMIN", "CS"], category: "课包", pdfFile: "SGT教务SOP-共享课包按学生修改课程-中英文培训版-20260728.pdf", practicalTask: "在培训共享课包中只修改指定学生课程并核对其他学生不受影响。" }),
@@ -204,7 +217,7 @@ export const TRAINING_MODULES: TrainingModule[] = [
   module({ code: "TEACHER_DAILY", title: "老师课表、反馈、工资与学生历史", version: "20260718", roles: ["TEACHER"], category: "老师", pdfFile: "SOP-老师-课表反馈工资与学生历史-中英文培训版-20260718.pdf", practicalTask: "从课表进入培训课次，完成反馈并查到该学生历史记录。" }),
   module({ code: "TEACHER_PAYMENT", title: "老师收款资料填写", version: "20260529", roles: ["TEACHER"], category: "老师财务", pdfFile: "SOP-老师-收款资料填写流程-中英文培训版-20260728.pdf", practicalTask: "根据本地或海外身份选择正确收款方式并完成字段检查。" }),
   module({ code: "TEACHER_ONBOARDING_PROFILE", title: "老师账号、个人资料、通知与每日开工", version: "20260729C", roles: ["TEACHER"], category: "老师基础", pdfFile: "SOP-老师-账号资料通知与每日开工-中英文培训版-20260729.pdf", practicalTask: "核对关联的老师身份，完成每日课程检查，处理必须确认的通知和警示，并确认对外教师资料可用。" }),
-  module({ code: "TEACHER_AVAILABILITY_SCHEDULING", title: "老师可用时间、排课例外与工单", version: "20260729C", roles: ["TEACHER"], category: "老师排课", pdfFile: "SOP-老师-可用时间排课例外与工单-中英文培训版-20260729.pdf", practicalTask: "维护未来30天可用时间，回复一项分配给自己的排课例外，并以可核对的完成说明关闭老师工单。" }),
+  module({ code: "TEACHER_AVAILABILITY_SCHEDULING", title: "老师可用时间、排课例外与工单", version: "20260729C", roles: ["TEACHER"], category: "老师排课", pdfFile: "SOP-老师-可用时间排课例外与工单-中英文培训版-20260729.pdf", practicalTask: "维护未来可用时间，回复一项分配给自己的排课例外，并以可核对的完成说明关闭老师工单。" }),
   module({ code: "TEACHER_REPORTS_ASSESSMENTS", title: "老师评估、中期报告与结课报告", version: "20260729C", roles: ["TEACHER"], category: "老师教学记录", pdfFile: "SOP-老师-评估中期报告与结课报告-中英文培训版-20260729.pdf", practicalTask: "根据课次证据完成一项培训评估或报告，核对提交状态，并说明更正和升级路径。" }),
   module({ code: "TEACHER_EXPENSES_PAYROLL", title: "老师报销、工资与付款跟进", version: "20260729C", roles: ["TEACHER"], category: "老师财务", pdfFile: "SOP-老师-报销工资与付款跟进-中英文培训版-20260729.pdf", practicalTask: "用培训数据准备含凭证的报销，追踪审批状态，核对一张工资单，并找到正确的收款资料入口。" }),
   module({ code: "FINANCE_PAYMENT_PROFILE", title: "老师收款资料核验与导出", version: "20260529", roles: ["FINANCE", "ADMIN"], category: "财务", pdfFile: "SOP-财务-老师收款资料核验与导出流程-中英文培训版-20260728.pdf", practicalTask: "核验一名培训老师的收款资料并说明异常处理。" }),
@@ -214,7 +227,7 @@ export const TRAINING_MODULES: TrainingModule[] = [
   module({ code: "MANAGER_FEEDBACK", title: "管理反馈发送与老师确认", version: "20260623", roles: ["ADMIN", "TEACHER"], category: "管理", pdfFile: "SOP-管理老师-管理反馈查看确认流程-中英文培训版-20260728.pdf", practicalTask: "管理者发送培训反馈；老师账号完成确认已读。" }),
   module({ code: "MINIAPP_STARTER", title: "员工小程序登录、主管发码与本人绑定", version: "20260729B", roles: ["ADMIN", "FINANCE", "SALES", "CS", "TEACHER"], category: "小程序共同必修", pdfFile: "SOP-小程序-全员工-登录绑定与账号切换-中英文培训版-20260729.pdf", practicalTask: "主管向正确培训员工生成一次性绑定码；员工绑定本人微信、核对身份并演练安全切换账号。" }),
   module({ code: "PARENT_MINIAPP_BINDING", title: "教务邀请家长与家长完成小程序绑定", version: "20260729B", roles: ["CS", "ADMIN"], category: "教务家长小程序", pdfFile: "SOP-小程序-教务家长-邀请与绑定-中英文培训版-20260729.pdf", practicalTask: "使用培训学生生成一次家长邀请，完成家长绑定，并核对 ACTIVE 关系及可见权限。" }),
-  module({ code: "SALES_MINIAPP", title: "销售小程序资源跟进与网页版成交交接", version: "20260729B", roles: ["SALES", "CS", "ADMIN"], category: "销售小程序", pdfFile: "SOP-小程序-销售-资源跟进与成交交接-中英文培训版-20260729.pdf", practicalTask: "使用培训资源完成移动端查重和跟进，并说明正式成交与负责人交接必须回网页版完成的步骤。" }),
+  module({ code: "SALES_MINIAPP", title: "销售小程序新咨询录入与网页成交交接", version: "20260729B", roles: ["SALES", "CS", "ADMIN"], category: "销售小程序", pdfFile: "SOP-小程序-销售-资源跟进与成交交接-中英文培训版-20260729.pdf", practicalTask: "查找已有咨询，录入培训资源或创建排课工单，再到网页版完成详细跟进与负责人交接。" }),
   module({ code: "FINANCE_MINIAPP", title: "财务小程序登录边界与网页版财务交接", version: "20260729B", roles: ["FINANCE", "ADMIN"], category: "财务小程序边界", pdfFile: "SOP-小程序-财务-审批工资报销与异常-中英文培训版-20260729.pdf", practicalTask: "演练员工绑定，识别当前小程序没有财务操作工作台，并把培训财务事项转到正确网页版入口。" }),
   module({ code: "FULL_CARE_MINIAPP", title: "全托管小程序支持边界与网页版交接", version: "20260729B", roles: ["CS", "ADMIN"], category: "全托管小程序边界", pdfFile: "SOP-小程序-全托管-学生进度风险与交接-中英文培训版-20260729.pdf", practicalTask: "区分小程序可查看内容，建立有负责人的请求工单，并把项目、任务、风险和报告更新转到网页版全托管工作台。" }),
   module({ code: "PARENT_STUDENT_SUPPORT_MINIAPP", title: "家长学生小程序绑定与客服排障", version: "20260729B", roles: ["CS", "SALES", "ADMIN"], category: "客服小程序", pdfFile: "SOP-小程序-客服-家长学生端支持-中英文培训版-20260729.pdf", practicalTask: "排查一个培训邀请码，核对 ACTIVE 关系和权限，并为未解决问题记录负责人及跟进时间。" }),

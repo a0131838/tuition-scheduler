@@ -24,6 +24,7 @@ test("training module codes and versions are unique", () => {
   assert.equal(ACADEMIC_SCHEDULING_TRAINING_VERSION, "20260803C");
   assert.equal(findTrainingModule("ACADEMIC_SCHEDULING_MASTER")?.version, ACADEMIC_SCHEDULING_TRAINING_VERSION);
   assert.ok(TRAINING_MODULES.filter((item) => item.code !== "ACADEMIC_SCHEDULING_MASTER").every((item) => item.version === TRAINING_RELEASE_VERSION));
+  assert.ok(TRAINING_MODULES.every((item) => item.pdfFile.endsWith("20261102.pdf")));
   assert.equal(TRAINING_MODULES.filter((item) => item.platform === "WEB").length, 26);
   assert.equal(TRAINING_MODULES.filter((item) => item.platform === "MINIAPP").length, 9);
   assert.equal(new Set(TRAINING_MODULES.map((item) => item.questions[0].prompt)).size, TRAINING_MODULES.length);

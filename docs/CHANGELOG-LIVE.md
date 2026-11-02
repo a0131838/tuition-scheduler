@@ -1,4 +1,17 @@
 # CHANGELOG LIVE
+## 2026-11-02-r495
+
+- Release ID: `2026-11-02-r495`
+- Date/Time (Asia/Singapore): `2026-11-02`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: publish the 28 remaining refreshed bilingual training manuals (19 web, 9 mini program) with current synthetic-account screenshots, and route all 35 built-in catalogue entries to 2026-11-02 PDFs.
+- Training: retain assessment versions and prior completion records; correct management-page progress lookup across existing module versions. No business transaction logic or production records are changed.
+- Governance: keep the review-needed state until an authorised owner completes live walkthrough sign-off.
+- Verification and scope: `docs/tasks/TASK-20261102-refresh-28-sops.md`; PDF audit, training tests and production build.
+- Rollback: revert application commit while retaining SOP and training records.
+
+---
+
 ## 2026-11-02-r494
 
 - Release ID: `2026-11-02-r494`
