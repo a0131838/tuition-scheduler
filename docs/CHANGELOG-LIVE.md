@@ -1,4 +1,16 @@
 # CHANGELOG LIVE
+## 2026-11-02-r491
+
+- Release ID: `2026-11-02-r491`
+- Date/Time (Asia/Singapore): `2026-11-02`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: add manager-only per-page screenshot review clues for bundled training modules, linking to the relevant PDF pages. Detect missing/pending screenshots and reuse across different step titles. Clues are not proof of an error or of correctness and cannot approve or publish a guide. Some legacy formats cannot be parsed; all old modules still require individual review.
+- Privacy: no images or business records are sent to AI; existing AI drafting and source-change monitoring remain separate. This is not visual AI or a deleted-button detector.
+- Verification and remaining work: `docs/tasks/TASK-20261102-sop-screening-queue.md`.
+- Rollback: revert application commit; preserve all SOP and training records.
+
+---
+
 ## 2026-11-02-r490
 
 - Release ID: `2026-11-02-r490`

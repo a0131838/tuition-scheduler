@@ -27,3 +27,13 @@ test('AI assistant accepts bounded facts, requires complete JSON, and treats sou
  await assert.rejects(()=>draftSop('Verified sample steps with more than thirty characters.',async()=>new Response(JSON.stringify({choices:[{finish_reason:'length',message:{content:'{}'}}]}))),/AI_INCOMPLETE/);
  }finally{process.env=old;}
 });
+
+test('guide screenshot triage reports only missing or reused screenshots and preserves page numbers', async()=>{
+ const {inspectGuideHtml,guideScreenshotChecks}=await import('../lib/sop-guide-check');
+ const page=(n:number,title:string,shot:string)=>`<section class="page zh"><div>中文流程 · 第 ${n} 步</div><h1>${title}</h1><div class="shot">${shot}</div><footer><span>CODE · WEB</span><span>${n+3}</span></footer></section>`;
+ const result=inspectGuideHtml(page(1,'First','<img src="one.png">')+page(2,'Second','<img src="one.png">')+page(3,'Third','<div class="empty-shot">pending</div>')+page(4,'Fourth','<img src="unique.png">'));
+ assert.deepEqual(result.map(x=>[x.page,x.reason]),[[4,'REUSED_IMAGE'],[5,'REUSED_IMAGE'],[6,'MISSING_IMAGE']]);
+ assert.equal(await guideScreenshotChecks('DOES_NOT_EXIST'),null);
+ const actual=await guideScreenshotChecks('CONTRACT_PACKAGE_GATE_MASTER');
+ assert(actual?.some(x=>x.reason==='MISSING_IMAGE'));
+});
