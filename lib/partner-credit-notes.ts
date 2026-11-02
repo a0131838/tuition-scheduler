@@ -263,6 +263,7 @@ export async function issuePartnerCreditNote(input: {
   if (!current.customerAddress?.trim()) throw new Error("Customer address is required before issuing the credit note");
   const invoice = await loadPartnerInvoiceOrThrow(current.sourceInvoiceId);
   const issued = await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('partner-receipt-balance-v1'))`;
     const locked = await tx.creditNote.findUnique({ where: { id: current.id }, include: { lines: true } });
     if (!locked || locked.status !== "DRAFT") throw new Error("Only draft credit notes can be issued");
     const usage = await tx.creditNoteLine.findMany({

@@ -1,7 +1,9 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit-log";
-import { loadJsonAppSettingForDb, mutateJsonAppSetting } from "@/lib/app-setting-lock";
+import { loadJsonAppSettingForDb, mutateJsonAppSetting, mutateJsonAppSettingForDb } from "@/lib/app-setting-lock";
+
+import { assertPartnerReceiptCanReactivate, withPartnerReceiptLock } from './partner-receipt-balance';
 
 const PARTNER_RECEIPT_APPROVAL_KEY = "partner_receipt_approval_v1";
 
@@ -96,18 +98,26 @@ export async function getPartnerReceiptApprovalMap(receiptIds: string[], db: Pri
   return out;
 }
 
-export async function managerApprovePartnerReceipt(receiptId: string, approverEmail: string) {
-  await mutateJsonAppSetting({
-    key: PARTNER_RECEIPT_APPROVAL_KEY,
-    fallback: [] as PartnerReceiptApprovalItem[],
-    sanitize: parseItems,
-    mutate(items) {
-      const item = ensureItem(items, receiptId);
-      item.managerApprovedBy = Array.from(new Set([...item.managerApprovedBy, normalizeEmail(approverEmail)]));
-      item.managerRejectedAt = null;
-      item.managerRejectedBy = null;
-      item.managerRejectReason = null;
-    },
+export async function managerApprovePartnerReceipt(
+  receiptId: string,
+  approverEmail: string,
+) {
+  await withPartnerReceiptLock(async (tx) => {
+    await assertPartnerReceiptCanReactivate(tx, receiptId);
+    await mutateJsonAppSettingForDb(tx as any, {
+      key: PARTNER_RECEIPT_APPROVAL_KEY,
+      fallback: [] as PartnerReceiptApprovalItem[],
+      sanitize: parseItems,
+      mutate(items) {
+        const item = ensureItem(items, receiptId);
+        item.managerApprovedBy = Array.from(
+          new Set([...item.managerApprovedBy, normalizeEmail(approverEmail)]),
+        );
+        item.managerRejectedAt = null;
+        item.managerRejectedBy = null;
+        item.managerRejectReason = null;
+      },
+    });
   });
   await logAudit({
     actor: { email: approverEmail, role: "ADMIN" },
@@ -138,18 +148,26 @@ export async function managerRejectPartnerReceipt(receiptId: string, approverEma
   });
 }
 
-export async function financeApprovePartnerReceipt(receiptId: string, approverEmail: string) {
-  await mutateJsonAppSetting({
-    key: PARTNER_RECEIPT_APPROVAL_KEY,
-    fallback: [] as PartnerReceiptApprovalItem[],
-    sanitize: parseItems,
-    mutate(items) {
-      const item = ensureItem(items, receiptId);
-      item.financeApprovedBy = Array.from(new Set([...item.financeApprovedBy, normalizeEmail(approverEmail)]));
-      item.financeRejectedAt = null;
-      item.financeRejectedBy = null;
-      item.financeRejectReason = null;
-    },
+export async function financeApprovePartnerReceipt(
+  receiptId: string,
+  approverEmail: string,
+) {
+  await withPartnerReceiptLock(async (tx) => {
+    await assertPartnerReceiptCanReactivate(tx, receiptId);
+    await mutateJsonAppSettingForDb(tx as any, {
+      key: PARTNER_RECEIPT_APPROVAL_KEY,
+      fallback: [] as PartnerReceiptApprovalItem[],
+      sanitize: parseItems,
+      mutate(items) {
+        const item = ensureItem(items, receiptId);
+        item.financeApprovedBy = Array.from(
+          new Set([...item.financeApprovedBy, normalizeEmail(approverEmail)]),
+        );
+        item.financeRejectedAt = null;
+        item.financeRejectedBy = null;
+        item.financeRejectReason = null;
+      },
+    });
   });
 }
 
@@ -184,24 +202,31 @@ export async function deletePartnerReceiptApproval(receiptId: string) {
   });
 }
 
-export async function revokePartnerReceiptApprovalForRedo(receiptId: string, actorEmail: string, reason?: string) {
+export async function revokePartnerReceiptApprovalForRedo(
+  receiptId: string,
+  actorEmail: string,
+  reason?: string,
+) {
   const id = String(receiptId ?? "").trim();
   if (!id) return;
-  await mutateJsonAppSetting({
-    key: PARTNER_RECEIPT_APPROVAL_KEY,
-    fallback: [] as PartnerReceiptApprovalItem[],
-    sanitize: parseItems,
-    mutate(items) {
-      const item = ensureItem(items, id);
-      item.managerApprovedBy = [];
-      item.financeApprovedBy = [];
-      item.managerRejectedAt = null;
-      item.managerRejectedBy = null;
-      item.managerRejectReason = null;
-      item.financeRejectedAt = null;
-      item.financeRejectedBy = null;
-      item.financeRejectReason = null;
-    },
+  await withPartnerReceiptLock(async (tx) => {
+    await assertPartnerReceiptCanReactivate(tx, receiptId);
+    await mutateJsonAppSettingForDb(tx as any, {
+      key: PARTNER_RECEIPT_APPROVAL_KEY,
+      fallback: [] as PartnerReceiptApprovalItem[],
+      sanitize: parseItems,
+      mutate(items) {
+        const item = ensureItem(items, id);
+        item.managerApprovedBy = [];
+        item.financeApprovedBy = [];
+        item.managerRejectedAt = null;
+        item.managerRejectedBy = null;
+        item.managerRejectReason = null;
+        item.financeRejectedAt = null;
+        item.financeRejectedBy = null;
+        item.financeRejectReason = null;
+      },
+    });
   });
   await logAudit({
     actor: { email: actorEmail, role: "ADMIN" },

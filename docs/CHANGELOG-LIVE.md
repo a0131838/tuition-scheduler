@@ -1,4 +1,22 @@
 # CHANGELOG LIVE
+## 2026-11-02-r487
+
+- Release ID: `2026-11-02-r487`
+- Date/Time (Asia/Singapore): `2026-11-02`
+- Deployment status: `READY`; guarded release output is authoritative for live completion.
+- Current release line on this branch: partner invoice partial receipts, actual payer and receiving entity.
+- Problem: a partner receipt previously took the entire invoice net and excluded invoices with any existing receipt. Finance needs Beijing SGD 3,690 plus Singapore SGD 1,890 against one unchanged SGD 5,580 invoice.
+- Change: accept positive cent-precise actual payment amounts; allocate subtotal/GST on the server; show approved, pending, outstanding and available balance separately; reserve pending receipts. Serialize creation, reactivation and Credit Note issue; make repeated form submission idempotent and reject cumulative overpayment. Preserve legacy receipt numbers and issue numbered instalments without reusing deleted sequence numbers. Approved receipts require the existing owner reopen flow before deletion.
+- Documents: receipt list, approval review and PDF identify actual payer and GTEI receiving entity. Approval review evaluates cumulative invoice allocation instead of flagging a valid partial receipt as a mismatch. Existing Finance Documents totals reconcile both receipts. PDF remains gated on completed finance approval.
+- Boundary: no invoice amount/customer rewrite, no schema migration, no automatic receipt/payment entry, no additional entity issuer and no changes to unrelated modules. Receiving entity remains GT Educational Institute Pte. Ltd.; another receiving company requires a separate confirmed issuer configuration.
+- Verification: 812 unit tests; production build; isolated PostgreSQL service/concurrency UAT; finance-account browser creation and approval of 3,690 and 1,890; pending PDF 403 and approved PDFs 200; both one-page PDFs rendered and inspected; central invoice PAID, 5,580 approved and zero outstanding.
+- Open risk: finance must verify actual arrival, payer, evidence and receiving entity before creating each receipt. Do not enter the Singapore payment before it arrives. Historical records are preserved.
+- Production read-only baseline: RGT-202609-0008 remains SGD 5,580, billed to 北京新东方前途出国咨询有限公司, no receipts and no issued Credit Notes. No production financial data mutation is authorized by this release.
+- Rollback reference: `e8fae66af32e47b184539b9f1b475cf52c078e95`; review any receipts created after deployment before reverting code that assumes one full receipt.
+- Task: `docs/tasks/TASK-20261102-partner-partial-receipts.md`.
+
+---
+
 ## 2026-11-02-r486
 
 - Release ID: `2026-11-02-r486`

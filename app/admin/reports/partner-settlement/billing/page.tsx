@@ -2,10 +2,10 @@
 import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { BUSINESS_UPLOAD_PREFIX, deleteStoredBusinessFile, storeBusinessUpload } from "@/lib/business-file-storage";
 import {
   addPartnerPaymentRecord,
-  buildPartnerReceiptNoForInvoice,
   createPartnerInvoice,
   createPartnerReceipt,
   deletePartnerInvoice,
@@ -32,8 +32,8 @@ import {
   updatePartnerCreditNoteDraft,
   voidPartnerCreditNote,
 } from "@/lib/partner-credit-notes";
+import { PARTNER_RECEIVING_ENTITY, partnerReceiptBalance, parseReceiptAmount } from '@/lib/partner-receipt-balance';
 import {
-  buildPartnerReceiptAdjustmentNote,
   calculatePartnerReceiptNet,
 } from "@/lib/partner-receipt-net";
 import {
@@ -41,7 +41,7 @@ import {
   getPartnerReceiptApprovalMap,
 } from "@/lib/partner-receipt-approval";
 import { getApprovalRoleConfig } from "@/lib/approval-flow";
-import { isReceiptFinanceApproved } from "@/lib/receipt-approval-policy";
+import { getReceiptApprovalStatus } from "@/lib/receipt-approval-policy";
 import { getPartnerByIdOrDefault, listActivePartners } from "@/lib/partners";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatDateOnly, normalizeDateOnly } from "@/lib/date-only";
 import {
@@ -345,45 +345,44 @@ async function createReceiptAction(formData: FormData) {
   const partner = await getPartnerByIdOrDefault(partnerIdInput);
   if (!partner) redirect(withQuery("/admin/reports/partner-settlement/billing?err=partner-not-found", mode, month, null, partnerIdInput));
   const invoiceId = String(formData.get("invoiceId") ?? "").trim();
-  if (!invoiceId) redirect(withQuery("/admin/reports/partner-settlement/billing?err=choose-invoice", mode, month, null, partner.id));
+  if (!invoiceId) redirect(withQuery("/admin/reports/partner-settlement/billing?err=choose-invoice", mode, month, "receipt", partner.id));
   const linkedInvoice = await getPartnerInvoiceById(invoiceId);
-  if (!linkedInvoice || (linkedInvoice.partnerId && linkedInvoice.partnerId !== partner.id)) redirect(withQuery("/admin/reports/partner-settlement/billing?err=invoice-not-found", mode, month, null, partner.id));
+  if (!linkedInvoice || (linkedInvoice.partnerId && linkedInvoice.partnerId !== partner.id)) redirect(withQuery("/admin/reports/partner-settlement/billing?err=invoice-not-found", mode, month, "receipt", partner.id));
   const latestCreditNotes = await listPartnerCreditNotes([invoiceId]);
   const receiptNet = calculatePartnerReceiptNet(linkedInvoice, latestCreditNotes);
   if (receiptNet.adjustedTotalAmount <= 0) {
-    redirect(withQuery("/admin/reports/partner-settlement/billing?err=invoice-has-no-net-balance", mode, month, null, partner.id));
+    redirect(withQuery("/admin/reports/partner-settlement/billing?err=invoice-has-no-net-balance", mode, month, "receipt", partner.id));
   }
   const receiptNoInput = String(formData.get("receiptNo") ?? "").trim();
-  const receiptNo = receiptNoInput || (await buildPartnerReceiptNoForInvoice(invoiceId));
+  const receiptNo = receiptNoInput;
   const receivedFrom = String(formData.get("receivedFrom") ?? "").trim();
   const paidBy = String(formData.get("paidBy") ?? "").trim();
   const operatorNote = String(formData.get("note") ?? "").trim();
-  const adjustmentNote = buildPartnerReceiptAdjustmentNote(linkedInvoice.invoiceNo, receiptNet);
-  const receiptNote = [adjustmentNote, operatorNote].filter(Boolean).join(" ");
-  if (!receivedFrom) redirect(withQuery("/admin/reports/partner-settlement/billing?err=received-from-required", mode, month, null, partner.id));
-  if (!paidBy) redirect(withQuery("/admin/reports/partner-settlement/billing?err=paid-by-required", mode, month, null, partner.id));
+  const receiptNote = operatorNote;
+  if (!receivedFrom) redirect(withQuery("/admin/reports/partner-settlement/billing?err=received-from-required", mode, month, "receipt", partner.id));
+  if (!paidBy) redirect(withQuery("/admin/reports/partner-settlement/billing?err=paid-by-required", mode, month, "receipt", partner.id));
   try {
     await createPartnerReceipt({
       invoiceId,
+      submissionId: String(formData.get("submissionId") || ""),
       paymentRecordId: String(formData.get("paymentRecordId") ?? "").trim() || null,
       receiptNo,
-      receiptDate: normalizeDateOnly(String(formData.get("receiptDate") ?? "").trim(), new Date()) ?? formatDateOnly(new Date()),
+      receiptDate: String(formData.get("receiptDate") ?? "").trim(),
       receivedFrom,
+      receivingEntity: String(formData.get("receivingEntity") || PARTNER_RECEIVING_ENTITY),
       paidBy,
       quantity: Math.max(1, Math.floor(parseNum(formData.get("quantity"), 1))),
       description: `For Invoice no. ${linkedInvoice.invoiceNo}`,
-      amount: receiptNet.adjustedAmount,
-      gstAmount: receiptNet.adjustedGstAmount,
-      totalAmount: receiptNet.adjustedTotalAmount,
-      amountReceived: receiptNet.adjustedTotalAmount,
+      amountReceived: parseReceiptAmount(formData.get("amountReceived")),
       note: receiptNote || null,
       createdBy: admin.email,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Create receipt failed";
-    redirect(withQuery(`/admin/reports/partner-settlement/billing?err=${encodeURIComponent(msg)}`, mode, month, null, partner.id));
+    redirect(withQuery(`/admin/reports/partner-settlement/billing?err=${encodeURIComponent(msg)}`, mode, month, "receipt", partner.id));
   }
-  redirect(withQuery("/admin/reports/partner-settlement/billing?msg=receipt-created", mode, month, null, partner.id));
+  revalidatePath("/admin/reports/partner-settlement/billing");
+  redirect(withQuery("/admin/reports/partner-settlement/billing?msg=receipt-created", mode, month, "receipt", partner.id));
 }
 
 async function deleteInvoiceAction(formData: FormData) {
@@ -628,8 +627,7 @@ export default async function PartnerBillingPage({
   const candidatesAmount = candidates.reduce((a, b) => a + Number(b.amount || 0), 0);
   const selectedCandidatesAmount = selectedCandidates.reduce((a, b) => a + Number(b.amount || 0), 0);
   const defaultInvoiceNo = await getNextGlobalInvoiceNo(today);
-  const usedInvoiceIds = new Set(billing.receipts.map((x) => x.invoiceId));
-  const availableInvoices = billing.invoices.filter((x) => !usedInvoiceIds.has(x.id));
+  const availableInvoices = billing.invoices;
   const invoiceMap = new Map(billing.invoices.map((x) => [x.id, x]));
   const paymentRecordMap = new Map(billing.paymentRecords.map((x) => [x.id, x]));
   const approvalMap = await getPartnerReceiptApprovalMap(billing.receipts.map((x) => x.id));
@@ -645,6 +643,7 @@ export default async function PartnerBillingPage({
         id: invoice.id,
         invoiceNo: invoice.invoiceNo,
         billTo: invoice.billTo,
+        ...partnerReceiptBalance(calculated.adjustedTotalAmount,billing.receipts.filter(r=>r.invoiceId===invoice.id),approvalMap,roleCfg),
         originalTotalAmount: calculated.originalTotalAmount,
         creditTotalAmount: calculated.creditTotalAmount,
         adjustedAmount: calculated.adjustedAmount,
@@ -653,7 +652,7 @@ export default async function PartnerBillingPage({
         creditNoteNos: calculated.creditNoteNos,
       };
     })
-    .filter((invoice) => invoice.adjustedTotalAmount > 0);
+    .filter((invoice) => invoice.availableAmount > 0);
   const requestedEditCreditNote = creditNotes.find((note) => note.id === String(sp?.editCreditNoteId ?? "").trim() && note.status === "DRAFT") ?? null;
   const selectedCreditInvoiceId = requestedEditCreditNote?.sourceInvoiceId || String(sp?.creditInvoiceId ?? "").trim() || billing.invoices[0]?.id || "";
   const selectedCreditInvoice = invoiceMap.get(selectedCreditInvoiceId) ?? null;
@@ -962,9 +961,11 @@ export default async function PartnerBillingPage({
       {activeTab === "receipt" ? (
       <div id="partner-billing-receipt-create" style={cardStyle}>
       <h3 style={{ marginTop: 0 }}>{t(lang, "Create Receipt", "创建收据")}</h3>
+      <div style={{overflowX:'auto',marginBottom:12}}><table cellPadding={8} style={{width:'100%',borderCollapse:'collapse'}}><thead><tr><th>{t(lang,'Invoice','发票')}</th><th>{t(lang,'Net receivable','净应收')}</th><th>{t(lang,'Approved received','已审批收款')}</th><th>{t(lang,'Pending approval','待审收款')}</th><th>{t(lang,'Outstanding','未收余额')}</th><th>{t(lang,'Available for next receipt','可新增收据金额')}</th></tr></thead><tbody>{billing.invoices.map(invoice=>{const net=calculatePartnerReceiptNet(invoice,creditNotes.filter(c=>c.sourceInvoiceId===invoice.id));const balance=partnerReceiptBalance(net.adjustedTotalAmount,billing.receipts.filter(r=>r.invoiceId===invoice.id),approvalMap,roleCfg);return <tr key={invoice.id}><td>{invoice.invoiceNo}</td><td>SGD {money(net.adjustedTotalAmount)}</td><td>SGD {money(balance.approvedAmount)}</td><td>SGD {money(balance.pendingAmount)}</td><td>SGD {money(balance.remainingAmount)}</td><td>SGD {money(balance.availableAmount)}</td></tr>;})}</tbody></table><p style={{fontSize:12}}>{t(lang,'Outstanding excludes pending receipts; pending receipts reserve the amount and prevent duplicate collection.','未收余额尚未扣除待审收据；待审收据已占用可新增金额，防止重复收款。')}</p></div>
       {financeOpsEnabled ? (
         <form action={createReceiptAction} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 0 }}>
           <input type="hidden" name="partnerId" value={partnerId} /><input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} />
+          <input type="hidden" name="submissionId" value={crypto.randomUUID()}/>
           <PartnerReceiptFields
             lang={lang}
             today={today}
@@ -1335,6 +1336,7 @@ export default async function PartnerBillingPage({
             <th align="left" style={thCell}>{t(lang, "Receipt No.", "收据号")}</th>
             <th align="left" style={thCell}>{t(lang, "Date", "日期")}</th>
             <th align="left" style={thCell}>{t(lang, "Invoice No.", "发票号")}</th>
+            <th align="left" style={thCell}>{t(lang, "Actual payer / receiving entity", "实际付款方／收款主体")}</th>
             <th align="left" style={thCell}>{t(lang, "Payment Record", "付款记录")}</th>
             <th align="left" style={thCell}>{t(lang, "Amount", "金额")}</th>
             <th align="left" style={thCell}>{t(lang, "Finance", "财务")}</th>
@@ -1348,12 +1350,13 @@ export default async function PartnerBillingPage({
             const inv = invoiceMap.get(r.invoiceId);
             const paymentRecord = r.paymentRecordId ? paymentRecordMap.get(r.paymentRecordId) : null;
             const approval = approvalMap.get(r.id) ?? { managerApprovedBy: [], financeApprovedBy: [] };
-            const exportReady = isReceiptFinanceApproved(approval, roleCfg);
+            const exportReady = getReceiptApprovalStatus(approval, roleCfg) === "COMPLETED";
             return (
               <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
                 <td>{r.receiptNo}</td>
                 <td>{normalizeDateOnly(r.receiptDate) ?? "-"}</td>
                 <td>{inv?.invoiceNo ?? "-"}</td>
+                <td>{r.receivedFrom}<br/>{r.receivingEntity || PARTNER_RECEIVING_ENTITY}{r.note?<div style={{fontSize:12}}>{r.note}</div>:null}</td>
                 <td>
                   {paymentRecord ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -1379,13 +1382,13 @@ export default async function PartnerBillingPage({
                   )}
                 </td>
                 <td>
-                  <form action={deleteReceiptAction}>
+                  {!exportReady?<form action={deleteReceiptAction}>
                     <input type="hidden" name="partnerId" value={partnerId} />
                     <input type="hidden" name="mode" value={mode} />
                     <input type="hidden" name="month" value={month} />
                     <input type="hidden" name="receiptId" value={r.id} />
                     <button type="submit" style={dangerBtn}>{t(lang, "Delete", "删除")}</button>
-                  </form>
+                  </form>:<span>{t(lang,"Approved; correction via approval centre","已批准；更正请经审批中心处理")}</span>}
                 </td>
               </tr>
             );

@@ -24,6 +24,8 @@ import {
   updateParentPaymentRecordAmount,
   updateParentReceiptDirect,
 } from "@/lib/student-parent-billing";
+import { partnerReceiptBalance, PARTNER_RECEIVING_ENTITY } from '@/lib/partner-receipt-balance';
+import { calculatePartnerReceiptNet } from '@/lib/partner-receipt-net';
 import { listPartnerBilling } from "@/lib/partner-billing";
 import {
   financeApproveParentReceipt,
@@ -955,7 +957,11 @@ async function financeApprovePartnerReceiptAction(formData: FormData) {
   if (!receiptId || !isRoleApprover(actorEmail, cfg.financeApproverEmails)) {
     redirect(appendResultParam(resolveActionHref(formData, "/admin/receipts-approvals"), "err", "Not allowed"));
   }
-  await financeApprovePartnerReceipt(receiptId, actorEmail);
+  try {
+    await financeApprovePartnerReceipt(receiptId, actorEmail);
+  } catch {
+    redirect(appendResultParam(resolveActionHref(formData, "/admin/receipts-approvals"), "err", "Receipt balance changed or could not be verified. Refresh and review the invoice balance before retrying. / 收据余额已变动或无法核实，请刷新并核对发票余额后重试。"));
+  }
   redirect(appendResultParam(resolveActionHref(formData, "/admin/receipts-approvals"), "msg", "Partner finance approved"));
 }
 
@@ -984,7 +990,11 @@ async function revokePartnerReceiptForRedoAction(formData: FormData) {
   if (actorEmail !== SUPER_ADMIN_EMAIL || !receiptId) {
     redirect(appendResultParam(resolveActionHref(formData, "/admin/receipts-approvals"), "err", "Not allowed"));
   }
-  await revokePartnerReceiptApprovalForRedo(receiptId, actorEmail, reason || "Super admin revoke to redo");
+  try {
+    await revokePartnerReceiptApprovalForRedo(receiptId, actorEmail, reason || "Super admin revoke to redo");
+  } catch {
+    redirect(appendResultParam(resolveActionHref(formData, "/admin/receipts-approvals"), "err", "Receipt balance changed or could not be verified. Refresh and review the invoice balance before retrying. / 收据余额已变动或无法核实，请刷新并核对发票余额后重试。"));
+  }
   redirect(appendResultParam(resolveActionHref(formData, "/admin/receipts-approvals"), "msg", "Partner receipt reopened for redo"));
 }
 
@@ -1173,7 +1183,8 @@ export async function ReceiptsApprovalsPageContent({
   partnerRows = partnerRows.sort((a, b) => (normalizeDateOnly(b.receiptDate) ?? "").localeCompare(normalizeDateOnly(a.receiptDate) ?? ""));
   const partnerInvoiceMap = new Map(partnerAll.invoices.map((x) => [x.id, x]));
   const partnerPaymentRecordMap = new Map(partnerAll.paymentRecords.map((x) => [x.id, x]));
-  const partnerApprovalMap = await getPartnerReceiptApprovalMap(partnerRows.map((x) => x.id));
+  const partnerApprovalMap = await getPartnerReceiptApprovalMap(partnerAll.receipts.map((x) => x.id));
+  const partnerCreditNotes = await prisma.creditNote.findMany({where:{sourceType:"PARTNER_INVOICE",sourceInvoiceId:{in:partnerAll.invoices.map(i=>i.id)},status:"ISSUED"}});
   const selectedPackage = packageIdFilter
     ? await prisma.coursePackage.findUnique({
         where: { id: packageIdFilter },
@@ -1475,22 +1486,24 @@ export async function ReceiptsApprovalsPageContent({
       financeRejectReason: null,
     };
     const status = getReceiptApprovalStatus(approval, roleCfg);
-    const amountDiff = Math.abs((Number(r.amountReceived) || 0) - (Number(inv?.totalAmount ?? 0) || 0));
-    const riskCount = (pay ? 0 : 1) + (amountDiff > 0.01 ? 1 : 0);
+    const invoiceReceipts=partnerAll.receipts.filter(item=>item.invoiceId===r.invoiceId);
+    const net=calculatePartnerReceiptNet(inv||{amount:0,gstAmount:0,totalAmount:0},partnerCreditNotes.filter(c=>c.sourceInvoiceId===r.invoiceId));
+    const balance=partnerReceiptBalance(net.adjustedTotalAmount,invoiceReceipts,partnerApprovalMap,roleCfg);
+    const riskCount = (pay ? 0 : 1) + (balance.overAllocatedAmount > 0.01 ? 1 : 0);
     return {
       id: r.id,
       type: "PARTNER" as const,
       receiptNo: r.receiptNo,
       receiptDate: r.receiptDate,
       invoiceNo: inv?.invoiceNo ?? "-",
-      partyName: inv?.billTo || "Partner",
+      partyName: r.receivedFrom || inv?.billTo || "Partner",
       mode: r.mode,
       amountReceived: r.amountReceived,
-      invoiceTotalAmount: Number(inv?.totalAmount ?? 0) || 0,
-      invoiceReceiptedAmount: Number(r.amountReceived ?? 0) || 0,
-      invoiceRemainingAmount: 0,
-      invoiceOverReceivedAmount: amountDiff > 0.01 ? amountDiff : 0,
-      receiptCountForInvoice: 1,
+      invoiceTotalAmount: net.adjustedTotalAmount,
+      invoiceReceiptedAmount: balance.approvedAmount+balance.pendingAmount,
+      invoiceRemainingAmount: balance.availableAmount,
+      invoiceOverReceivedAmount: balance.overAllocatedAmount,
+      receiptCountForInvoice: invoiceReceipts.length,
       approval,
       status,
       paymentRecord: pay ? { id: pay.id, name: pay.originalFileName, path: pay.relativePath, date: pay.paymentDate, amount: null } : null,
@@ -3742,6 +3755,7 @@ export async function ReceiptsApprovalsPageContent({
               <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fff" }}>
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Type", "类型")}</div>
                 <div style={{ fontWeight: 700, marginTop: 4 }}>{queueTypeLabel(lang, selectedRow.type)}</div>
+                {selectedRow.type==="PARTNER"?<div style={{fontSize:12}}>{t(lang,"Receiving entity","收款主体")}: {partnerAll.receipts.find(r=>r.id===selectedRow.id)?.receivingEntity || PARTNER_RECEIVING_ENTITY}</div>:null}
                 <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>{selectedRow.invoiceNo}</div>
               </div>
               <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fff" }}>
@@ -3752,10 +3766,10 @@ export async function ReceiptsApprovalsPageContent({
               <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fff" }}>
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Invoice total", "发票总额")}</div>
                 <div style={{ fontWeight: 800, marginTop: 4, color: "#0f172a" }}>{money(selectedRow.invoiceTotalAmount)}</div>
-                <div style={{ fontSize: 12, color: selectedRowInvoiceOverReceived > 0.01 ? "#b91c1c" : selectedRow.type === "PARENT" && selectedRow.invoiceRemainingAmount > 0.01 ? "#b45309" : "#166534", marginTop: 2 }}>
+                <div style={{ fontSize: 12, color: selectedRowInvoiceOverReceived > 0.01 ? "#b91c1c" : selectedRow.invoiceRemainingAmount > 0.01 ? "#b45309" : "#166534", marginTop: 2 }}>
                   {selectedRowInvoiceOverReceived > 0.01
                     ? t(lang, "Over receipted", "累计收据超额")
-                    : selectedRow.type === "PARENT" && selectedRow.invoiceRemainingAmount > 0.01
+                    : selectedRow.invoiceRemainingAmount > 0.01
                       ? t(lang, "Partially receipted", "部分已开收据")
                       : t(lang, "Fully receipted", "已全部开收据")}
                 </div>

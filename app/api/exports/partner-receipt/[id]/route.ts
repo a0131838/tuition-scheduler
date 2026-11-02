@@ -1,12 +1,13 @@
 ﻿import { requireAdmin } from "@/lib/auth";
 import { getPartnerInvoiceById, getPartnerReceiptById } from "@/lib/partner-billing";
 import { getApprovalRoleConfig } from "@/lib/approval-flow";
-import { isReceiptFinanceApproved } from "@/lib/receipt-approval-policy";
+import { getReceiptApprovalStatus } from "@/lib/receipt-approval-policy";
 import { getPartnerReceiptApprovalMap } from "@/lib/partner-receipt-approval";
 import PDFDocument from "pdfkit";
 import { PassThrough } from "stream";
 import path from "path";
 import { setPdfBoldFont, setPdfFont } from "@/lib/pdf-font";
+import { PARTNER_RECEIVING_ENTITY } from '@/lib/partner-receipt-calculation';
 import { normalizeDateOnly } from "@/lib/date-only";
 
 type PDFDoc = InstanceType<typeof PDFDocument>;
@@ -52,7 +53,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     getPartnerReceiptApprovalMap([id]),
   ]);
   const approval = approvalMap.get(id) ?? { managerApprovedBy: [], financeApprovedBy: [] };
-  const financeReady = isReceiptFinanceApproved(approval, cfg);
+  const financeReady = getReceiptApprovalStatus(approval, cfg) === "COMPLETED";
   if (!financeReady) {
     return new Response("Receipt export requires finance approval", { status: 403 });
   }
@@ -68,7 +69,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const w = 554;
   const h = 520;
 
-  doc.lineWidth(1).strokeColor("#111827").rect(x, y, w, h).stroke();
+  doc.lineWidth(1).strokeColor("#111827");
 
   try {
     doc.image(LOGO_PATH, x + 14, y + 10, { width: 155 });
@@ -88,9 +89,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   text(doc, "Company Reg No. 202303312G", x + 8, companyY + 80, 9, true, "#111827", leftInfoW, "left");
 
   const rightPadding = 12;
-  const rightValueW = 96;
+  const rightValueW = 135;
   const rightGap = 4;
-  const rightLabelW = 96;
+  const rightLabelW = 75;
   const rightValueX = x + w - rightPadding - rightValueW;
   const rightLabelX = rightValueX - rightGap - rightLabelW;
   const rightY = companyY - 2;
@@ -110,10 +111,13 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   const billY = y + 180;
   doc.fillColor(ORANGE).rect(x, billY, w, 18).fill();
-  text(doc, "Bill To:", x + 8, billY + 4, 10, true, "#ffffff");
-  text(doc, `Received From :   ${receipt.receivedFrom}`, x + 8, billY + 36, 10, true);
+  text(doc, "Payment details / 收款信息", x + 8, billY + 4, 10, true, "#ffffff");
+  setPdfFont(doc);doc.fillColor('#111827').fontSize(9).text(`Invoice customer / 原发票客户: ${invoice.billTo}`,x+8,billY+26,{width:w-16});
+  doc.text(`Received From / 实际付款方: ${receipt.receivedFrom}`,x+8,doc.y+4,{width:w-16});
+  doc.text(`Receiving entity / 收款主体: ${receipt.receivingEntity || PARTNER_RECEIVING_ENTITY}`,x+8,doc.y+4,{width:w-16});
+  const detailsEnd=doc.y;
 
-  const tableY = y + 258;
+  const tableY = Math.max(y + 258, detailsEnd + 16);
   const colX = [x + 16, x + 76, x + 274, x + 354, x + 432];
   const colW = [58, 196, 80, 78, 122];
   text(doc, "Quantity", colX[0], tableY, 10, true);
@@ -130,7 +134,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   text(doc, money(receipt.totalAmount), colX[4], rowY, 10);
 
   const totalBoxX = x + 338;
-  const totalBoxY = y + 442;
+  const totalBoxY = Math.max(y + 442,rowY+100);
   const totalLabelW = 94;
   const totalValueW = 84;
   const totalRows: Array<[string, string]> = [
@@ -145,6 +149,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     text(doc, r[1], totalBoxX + totalLabelW + 4, yy + 5, 9, false, "#111827", totalValueW - 8, "right");
   });
 
+  doc.lineWidth(1).strokeColor("#111827").rect(x,y,w,Math.max(h,totalBoxY+80-y)).stroke();
   const stream = streamPdf(doc);
   const fileName = `partner_receipt_${safeName(receipt.receiptNo)}.pdf`;
   const fileNameAscii = fileName.replace(/[^\x20-\x7E]/g, "_");

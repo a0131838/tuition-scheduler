@@ -43,8 +43,20 @@ test("draft and void credit notes do not reduce a receipt", () => {
   const calculated = calculatePartnerReceiptNet(
     { amount: 1000, gstAmount: 90, totalAmount: 1090 },
     [
-      { status: "DRAFT", creditNoteNo: "DRAFT-1", amount: 100, gstAmount: 9, totalAmount: 109 },
-      { status: "VOID", creditNoteNo: "VOID-1", amount: 200, gstAmount: 18, totalAmount: 218 },
+      {
+        status: "DRAFT",
+        creditNoteNo: "DRAFT-1",
+        amount: 100,
+        gstAmount: 9,
+        totalAmount: 109,
+      },
+      {
+        status: "VOID",
+        creditNoteNo: "VOID-1",
+        amount: 200,
+        gstAmount: 18,
+        totalAmount: 218,
+      },
     ],
   );
 
@@ -59,21 +71,36 @@ test("GST credit note keeps subtotal, GST and total internally consistent", () =
   const calculated = calculatePartnerReceiptNet(
     { amount: 1000, gstAmount: 90, totalAmount: 1090 },
     [
-      { status: "ISSUED", creditNoteNo: "CN-1", amount: 100, gstAmount: 9, totalAmount: 109 },
+      {
+        status: "ISSUED",
+        creditNoteNo: "CN-1",
+        amount: 100,
+        gstAmount: 9,
+        totalAmount: 109,
+      },
     ],
   );
 
   assert.equal(calculated.adjustedAmount, 900);
   assert.equal(calculated.adjustedGstAmount, 81);
   assert.equal(calculated.adjustedTotalAmount, 981);
-  assert.equal(calculated.adjustedAmount + calculated.adjustedGstAmount, calculated.adjustedTotalAmount);
+  assert.equal(
+    calculated.adjustedAmount + calculated.adjustedGstAmount,
+    calculated.adjustedTotalAmount,
+  );
 });
 
 test("credit amounts are clamped so malformed history cannot create a negative receipt", () => {
   const calculated = calculatePartnerReceiptNet(
     { amount: 100, gstAmount: 0, totalAmount: 100 },
     [
-      { status: "ISSUED", creditNoteNo: "CN-OVER", amount: 150, gstAmount: 0, totalAmount: 150 },
+      {
+        status: "ISSUED",
+        creditNoteNo: "CN-OVER",
+        amount: 150,
+        gstAmount: 0,
+        totalAmount: 150,
+      },
     ],
   );
 
@@ -82,23 +109,21 @@ test("credit amounts are clamped so malformed history cannot create a negative r
   assert.equal(calculated.adjustedTotalAmount, 0);
 });
 
-test("partner receipt creation uses server-calculated net values", () => {
-  const source = readFileSync("app/admin/reports/partner-settlement/billing/page.tsx", "utf8");
+test("partner receipts accept only received amount; server derives partial subtotal and tax", () => {
+  const source = readFileSync(
+    "app/admin/reports/partner-settlement/billing/page.tsx",
+    "utf8",
+  );
   const action = source.slice(
     source.indexOf("async function createReceiptAction"),
     source.indexOf("async function deleteInvoiceAction"),
   );
-  const fields = readFileSync(
-    "app/admin/reports/partner-settlement/billing/PartnerReceiptFields.tsx",
-    "utf8",
+  assert.match(action, /amountReceived: parseReceiptAmount/);
+  assert.doesNotMatch(action, /amount: (?:parseNum|receiptNet)/);
+  const service = readFileSync("lib/partner-billing.ts", "utf8");
+  assert.match(
+    service,
+    /allocatePartnerReceipt\(\s*current\.net,\s*current\.activeReceipts,\s*input\.amountReceived,?\s*\)/,
   );
-
-  assert.match(action, /listPartnerCreditNotes\(\[invoiceId\]\)/);
-  assert.match(action, /amount: receiptNet\.adjustedAmount/);
-  assert.match(action, /gstAmount: receiptNet\.adjustedGstAmount/);
-  assert.match(action, /totalAmount: receiptNet\.adjustedTotalAmount/);
-  assert.match(action, /amountReceived: receiptNet\.adjustedTotalAmount/);
-  assert.doesNotMatch(action, /parseNum\(formData\.get\("(?:amount|gstAmount|totalAmount|amountReceived)"/);
-  assert.match(fields, /onChange=\{\(event\) => selectInvoice\(event\.target\.value\)\}/);
-  assert.match(fields, /name="amountReceived"[\s\S]*?readOnly/);
+  assert.match(service, /withPartnerReceiptLock/);
 });

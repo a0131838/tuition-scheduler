@@ -3,8 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit-log";
 import crypto from "crypto";
 import { formatDateOnly, monthKeyFromDateOnly, normalizeDateOnly, normalizeNullableDateOnly } from "@/lib/date-only";
-import { loadJsonAppSettingForDb, mutateJsonAppSetting } from "@/lib/app-setting-lock";
+import { loadJsonAppSettingForDb, mutateJsonAppSetting, mutateJsonAppSettingForDb } from "@/lib/app-setting-lock";
 
+import { PARTNER_RECEIVING_ENTITY, nextPartnerReceiptNumber, allocatePartnerReceipt, loadPartnerReceiptBalance, withPartnerReceiptLock } from './partner-receipt-balance';
+import { buildPartnerReceiptAdjustmentNote } from './partner-receipt-net';
+import { getReceiptApprovalStatus } from './receipt-approval-policy';
 const PARTNER_BILLING_KEY = "partner_billing_v1";
 const LEGACY_XDF_PARTNER_ID = "legacy-xdf-partner";
 
@@ -63,6 +66,8 @@ export type PartnerPaymentRecordItem = {
 };
 
 export type PartnerReceiptItem = {
+  submissionId?: string;
+  receivingEntity?: string;
   id: string;
   partnerId: string | null;
   mode: PartnerBillingMode;
@@ -86,6 +91,7 @@ export type PartnerReceiptItem = {
 };
 
 type PartnerBillingStore = {
+  receiptSequenceByInvoice?: Record<string, number>;
   invoices: PartnerInvoiceItem[];
   paymentRecords: PartnerPaymentRecordItem[];
   receipts: PartnerReceiptItem[];
@@ -150,6 +156,7 @@ function sanitizeStore(input: unknown): PartnerBillingStore {
   const today = formatDateOnly(new Date());
   if (!input || typeof input !== "object") return out;
   const root = input as Record<string, unknown>;
+  out.receiptSequenceByInvoice = Object.fromEntries(Object.entries((root.receiptSequenceByInvoice || {}) as Record<string,unknown>).filter(([,v])=>Number.isSafeInteger(v)&&Number(v)>=0).map(([k,v])=>[k,Number(v)]));
 
   const invoicesRaw = Array.isArray(root.invoices) ? root.invoices : [];
   for (const row of invoicesRaw) {
@@ -232,6 +239,8 @@ function sanitizeStore(input: unknown): PartnerBillingStore {
       paymentRecordId: String(x.paymentRecordId ?? "").trim() || null,
       receiptNo,
       receiptDate: normalizeDateOnly(x.receiptDate as string | Date | null | undefined, new Date()) ?? today,
+      submissionId: String(x.submissionId || "").trim() || undefined,
+      receivingEntity: String(x.receivingEntity || PARTNER_RECEIVING_ENTITY).trim(),
       receivedFrom: String(x.receivedFrom ?? "").trim(),
       paidBy: String(x.paidBy ?? "").trim(),
       quantity: Math.max(1, Math.floor(parseNumber(x.quantity, 1))),
@@ -343,7 +352,7 @@ function ensureUniqueInvoiceNo(store: PartnerBillingStore, invoiceNo: string) {
 function ensureUniqueReceiptNo(store: PartnerBillingStore, receiptNo: string) {
   const key = receiptNo.trim().toLowerCase();
   if (!key) throw new Error("Receipt No. is required");
-  if (!/^rgt-\d{6}-\d{4}-rc$/i.test(key)) throw new Error("Receipt No. format must be RGT-yyyymm-xxxx-RC");
+  if (!/^rgt-\d{6}-\d{4}-rc(?:-\d{2,})?$/i.test(key)) throw new Error("Receipt No. format must be RGT-yyyymm-xxxx-RC-NN");
   if (store.receipts.some((x) => x.receiptNo.trim().toLowerCase() === key)) {
     throw new Error(`Receipt No. already exists: ${receiptNo}`);
   }
@@ -619,87 +628,163 @@ export async function deletePartnerPaymentRecord(input: { recordId: string; acto
 
 export async function createPartnerReceipt(input: {
   invoiceId: string;
+  submissionId?: string;
   paymentRecordId?: string | null;
   receiptNo: string;
   receiptDate: string;
   receivedFrom: string;
+  receivingEntity?: string;
   paidBy: string;
   quantity: number;
   description: string;
-  amount: number;
-  gstAmount: number;
-  totalAmount: number;
+  amount?: number;
+  gstAmount?: number;
+  totalAmount?: number;
   amountReceived: number;
   note?: string | null;
   createdBy: string;
 }) {
-  const now = new Date().toISOString();
-  const invoiceId = input.invoiceId.trim();
-  const normalizedReceiptNo = input.receiptNo.trim();
-  let item: PartnerReceiptItem | null = null;
-  await mutateJsonAppSetting({
-    key: PARTNER_BILLING_KEY,
-    fallback: EMPTY_PARTNER_BILLING_STORE,
-    sanitize: sanitizeStore,
-    mutate(store) {
-      const invoice = store.invoices.find((x) => x.id === invoiceId);
-      if (!invoice) throw new Error("Invoice not found");
-      if (store.receipts.some((x) => x.invoiceId === invoiceId)) {
-        throw new Error("This invoice already has a receipt");
+  const now = new Date().toISOString(),
+    invoiceId = input.invoiceId.trim();
+  const receiptDate = normalizeDateOnly(input.receiptDate);
+  if (!receiptDate || receiptDate !== input.receiptDate)
+    throw new Error("Valid receipt date is required / 请填写有效的收据日期");
+  if (input.receivedFrom.length > 300 || (input.note?.length || 0) > 2000)
+    throw new Error("Payer or note is too long / 付款方或备注过长");
+  if (!input.receivedFrom.trim() || !input.paidBy.trim())
+    throw new Error(
+      "Actual payer and payment method are required / 请填写实际付款方和付款方式",
+    );
+  const receivingEntity = (
+    input.receivingEntity || PARTNER_RECEIVING_ENTITY
+  ).trim();
+  if (receivingEntity !== PARTNER_RECEIVING_ENTITY)
+    throw new Error(
+      "Receiving entity must match the receipt issuer / 收款主体须与开具收据的公司一致",
+    );
+  return withPartnerReceiptLock(async (tx) => {
+    const previous = await loadPartnerReceiptBalance(tx, invoiceId);
+    if (input.submissionId) {
+      if (!/^[0-9a-f-]{36}$/i.test(input.submissionId))
+        throw new Error(
+          "Invalid receipt submission reference / 请刷新收据页面",
+        );
+      const duplicate = (previous.store.receipts || []).find(
+        (r: PartnerReceiptItem) => r.submissionId === input.submissionId,
+      );
+      if (duplicate) {
+        if (
+          duplicate.invoiceId !== invoiceId ||
+          duplicate.amountReceived !== input.amountReceived ||
+          duplicate.receivedFrom !== input.receivedFrom.trim() ||
+          duplicate.receivingEntity !== receivingEntity ||
+          duplicate.paymentRecordId !==
+            (input.paymentRecordId?.trim() || null) ||
+          duplicate.paidBy !== input.paidBy.trim() ||
+          duplicate.receiptDate !== normalizeDateOnly(input.receiptDate)
+        )
+          throw new Error(
+            "This form was already submitted; refresh before creating another receipt / 本表单已提交，请刷新后创建下一笔收据",
+          );
+        return duplicate as PartnerReceiptItem;
       }
-      const paymentRecordId = input.paymentRecordId?.trim() || null;
-      if (paymentRecordId) {
-        const paymentRecord = store.paymentRecords.find((x) => x.id === paymentRecordId);
-        if (!paymentRecord) throw new Error("Payment record not found");
-        if (!partnerMatches(paymentRecord.partnerId, invoice.partnerId)) {
-          throw new Error("Payment record partner mismatch");
+    }
+    let item: PartnerReceiptItem | null = null;
+    await mutateJsonAppSettingForDb(tx as any, {
+      key: PARTNER_BILLING_KEY,
+      fallback: EMPTY_PARTNER_BILLING_STORE,
+      sanitize: sanitizeStore,
+      maxRetries: 0,
+      async mutate(store) {
+        const current = await loadPartnerReceiptBalance(tx, invoiceId),
+          invoice = store.invoices.find((i) => i.id === invoiceId);
+        if (!invoice) throw new Error("Invoice not found");
+        const amounts = allocatePartnerReceipt(
+          current.net,
+          current.activeReceipts,
+          input.amountReceived,
+        );
+        const next = nextPartnerReceiptNumber(
+          invoice.invoiceNo,
+          store.receipts.filter((r) => r.invoiceId === invoiceId),
+          store.receiptSequenceByInvoice?.[invoiceId] || 0,
+        );
+        const receiptNo = input.receiptNo.trim() || next.receiptNo;
+        if (receiptNo.toLowerCase() !== next.receiptNo.toLowerCase())
+          throw new Error(
+            `Receipt No. must be ${next.receiptNo}; refresh and retry / 请刷新后使用最新收据号`,
+          );
+        ensureUniqueReceiptNo(store, receiptNo);
+        const paymentRecordId = input.paymentRecordId?.trim() || null;
+        if (paymentRecordId) {
+          const payment = store.paymentRecords.find(
+            (r) => r.id === paymentRecordId,
+          );
+          if (!payment || !partnerMatches(payment.partnerId, invoice.partnerId))
+            throw new Error("Payment record partner mismatch");
         }
-      }
-
-      ensureUniqueReceiptNo(store, normalizedReceiptNo);
-      const expectedReceiptNo = `${invoice.invoiceNo}-RC`;
-      if (normalizedReceiptNo.toLowerCase() !== expectedReceiptNo.toLowerCase()) {
-        throw new Error(`Receipt No. must match linked invoice: ${expectedReceiptNo}`);
-      }
-
-      item = {
-        id: crypto.randomUUID(),
-        partnerId: invoice.partnerId,
-        mode: invoice.mode,
-        monthKey: invoice.monthKey,
-        invoiceId,
-        paymentRecordId,
-        receiptNo: normalizedReceiptNo,
-        receiptDate: normalizeDateOnly(input.receiptDate, new Date()) ?? formatDateOnly(new Date()),
-        receivedFrom: input.receivedFrom.trim(),
-        paidBy: input.paidBy.trim(),
-        quantity: Math.max(1, Math.floor(input.quantity || 1)),
-        description: input.description.trim(),
-        amount: Number(input.amount) || 0,
-        gstAmount: Number(input.gstAmount) || 0,
-        totalAmount: Number(input.totalAmount) || 0,
-        amountReceived: Number(input.amountReceived) || 0,
-        note: input.note?.trim() || null,
-        createdBy: normalizeEmail(input.createdBy),
-        createdAt: now,
-        updatedAt: now,
-      };
-      store.receipts.push(item);
-    },
+        item = {
+          id: crypto.randomUUID(),
+          submissionId: input.submissionId,
+          partnerId: invoice.partnerId,
+          mode: invoice.mode,
+          monthKey: invoice.monthKey,
+          invoiceId,
+          paymentRecordId,
+          receiptNo,
+          receiptDate,
+          receivedFrom: input.receivedFrom.trim(),
+          receivingEntity,
+          paidBy: input.paidBy.trim(),
+          quantity: Math.max(1, Math.floor(input.quantity || 1)),
+          description: `For Invoice no. ${invoice.invoiceNo}`,
+          ...amounts,
+          note:
+            [
+              current.net.creditTotalAmount > 0
+                ? buildPartnerReceiptAdjustmentNote(
+                    invoice.invoiceNo,
+                    current.net,
+                  ).replace("net amount received", "invoice net amount")
+                : "",
+              input.note?.trim(),
+            ]
+              .filter(Boolean)
+              .join(" ") || null,
+          createdBy: normalizeEmail(input.createdBy),
+          createdAt: now,
+          updatedAt: now,
+        };
+        store.receipts.push(item);
+        store.receiptSequenceByInvoice = {
+          ...store.receiptSequenceByInvoice,
+          [invoiceId]: next.sequence,
+        };
+      },
+    });
+    await tx.auditLog.create({
+      data: {
+        actorEmail: input.createdBy,
+        module: "PARTNER_BILLING",
+        action: "CREATE_PARTIAL_RECEIPT",
+        entityType: "PartnerReceipt",
+        entityId: item!.id,
+        meta: { after: item! as any },
+      },
+    });
+    return item!;
   });
-  return item!;
 }
 
 export async function buildPartnerReceiptNoForInvoice(invoiceId: string) {
-  const store = await loadStore();
-  const invoice = store.invoices.find((x) => x.id === invoiceId.trim());
+  const store = await loadStore(),
+    invoice = store.invoices.find((i) => i.id === invoiceId.trim());
   if (!invoice) throw new Error("Invoice not found");
-  const receiptNo = `${invoice.invoiceNo}-RC`;
-  if (store.receipts.some((x) => x.invoiceId === invoice.id)) throw new Error("This invoice already has a receipt");
-  if (store.receipts.some((x) => x.receiptNo.trim().toLowerCase() === receiptNo.toLowerCase())) {
-    throw new Error(`Receipt No. already exists: ${receiptNo}`);
-  }
-  return receiptNo;
+  return nextPartnerReceiptNumber(
+    invoice.invoiceNo,
+    store.receipts.filter((r) => r.invoiceId === invoice.id),
+    store.receiptSequenceByInvoice?.[invoice.id] || 0,
+  ).receiptNo;
 }
 
 export async function deletePartnerInvoice(input: { invoiceId: string; actorEmail: string }) {
@@ -822,17 +907,45 @@ export async function applyPartnerInvoiceNumberAssignments(
   return changed;
 }
 
-export async function deletePartnerReceipt(input: { receiptId: string; actorEmail: string }) {
-  await mutateJsonAppSetting({
-    key: PARTNER_BILLING_KEY,
-    fallback: EMPTY_PARTNER_BILLING_STORE,
-    sanitize: sanitizeStore,
-    mutate(store) {
-      const receiptId = input.receiptId.trim();
-      const row = store.receipts.find((x) => x.id === receiptId);
-      if (!row) throw new Error("Receipt not found");
-      store.receipts = store.receipts.filter((x) => x.id !== receiptId);
-    },
+export async function deletePartnerReceipt(input: {
+  receiptId: string;
+  actorEmail: string;
+}) {
+  await withPartnerReceiptLock(async (tx) => {
+    const raw = await tx.appSetting.findUnique({
+      where: { key: PARTNER_BILLING_KEY },
+    });
+    const row = (JSON.parse(raw?.value || "{}").receipts || []).find(
+      (r: PartnerReceiptItem) => r.id === input.receiptId,
+    );
+    if (!row) throw new Error("Receipt not found");
+    const current = await loadPartnerReceiptBalance(tx, row.invoiceId);
+    if (
+      getReceiptApprovalStatus(current.approvals.get(row.id), current.cfg) ===
+      "COMPLETED"
+    )
+      throw new Error(
+        "Approved receipts must be reopened through the approval centre before correction / 已批准收据须先经审批中心撤回处理，不能直接删除",
+      );
+    await mutateJsonAppSettingForDb(tx as any, {
+      key: PARTNER_BILLING_KEY,
+      fallback: EMPTY_PARTNER_BILLING_STORE,
+      sanitize: sanitizeStore,
+      maxRetries: 0,
+      mutate(store) {
+        store.receipts = store.receipts.filter((r) => r.id !== row.id);
+      },
+    });
+    await tx.auditLog.create({
+      data: {
+        actorEmail: input.actorEmail,
+        module: "PARTNER_BILLING",
+        action: "DELETE_UNAPPROVED_RECEIPT",
+        entityType: "PartnerReceipt",
+        entityId: row.id,
+        meta: { before: row },
+      },
+    });
   });
 }
 
