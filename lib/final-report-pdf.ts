@@ -384,40 +384,10 @@ export async function renderFinalCardPdf(draft: ReturnType<typeof parseFinalRepo
   return finishCardReport(doc, completed, lang === "ZH" ? "结课报告" : lang === "EN" ? "Final Report" : "Final Report / 结课报告");
 }
 
-export async function buildFinalReportPdfResponse(id: string, lang: "BILINGUAL" | "ZH" | "EN" = "BILINGUAL") {
-  const report = await prisma.finalReport.findUnique({
-    where: { id },
-    include: { student: true, teacher: true, course: true, subject: true, package: true, deliveredByUser: { select: { name: true } } },
-  });
-  if (!report) return new Response("Report not found", { status: 404 });
-  if (report.status !== "SUBMITTED" && report.status !== "FORWARDED") {
-    return new Response("Parent-facing PDF is available after the report is submitted.", { status: 409 });
-  }
-
-  const draft = parseFinalReportDraft({
-    ...(report.reportJson && typeof report.reportJson === "object" ? report.reportJson : {}),
-    recommendedNextStep: report.recommendation ?? (report.reportJson as any)?.recommendedNextStep,
-  });
-  const attendanceSnapshot =
-    parseLearningReportAttendanceSnapshot(report.reportJson) ??
-    (await createLearningReportAttendanceSnapshot({
-      packageId: report.packageId,
-      studentId: report.studentId,
-      subjectId: report.subjectId,
-      teacherId: report.teacherId,
-      throughAt: report.submittedAt ?? new Date(),
-    }));
-  const bytes = await renderFinalCardPdf(draft, report,
-    learningReportPeriodLabel(attendanceSnapshot, report.reportPeriodLabel, lang),
-    finalReportStageProgressLabel(attendanceSnapshot, lang), lang);
-  const filename = `final-report-${safeName(report.student.name)}-${safeName(report.course.name)}.pdf`;
-  const filenameAscii = filename.replace(/[^\x20-\x7E]/g, "_");
-  const filenameUtf8 = encodeURIComponent(filename);
-
-  return new Response(new Uint8Array(bytes), {
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename=\"${filenameAscii}\"; filename*=UTF-8''${filenameUtf8}`,
-    },
-  });
+export async function buildFinalReportPdfResponse(id:string,lang:'BILINGUAL'|'ZH'|'EN'='BILINGUAL'){
+ const report=await prisma.finalReport.findUnique({where:{id},select:{status:true}});
+ if(!report)return new Response('Report not found',{status:404});
+ if(report.status!=='SUBMITTED'&&report.status!=='FORWARDED')return new Response('Parent-facing PDF is available after the report is submitted.',{status:409});
+ const {buildCurrentParentReportPdfResponse}=await import('./learning-report-parent-pdf');
+ return buildCurrentParentReportPdfResponse('FINAL',id,lang);
 }

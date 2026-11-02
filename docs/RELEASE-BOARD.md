@@ -1,4 +1,24 @@
 # RELEASE BOARD
+## 2026-11-02-r488
+
+- Release ID: `2026-11-02-r488`
+- Date/Time (Asia/Singapore): `2026-11-02`
+- Deployment status: `READY`; standard release output is authoritative for live completion.
+- Current release line on this branch: automated parent-readable midterm and final learning reports.
+- Problem: fixed-height report cards turn long teacher comments into Full text appendix references. Teachers lack reusable contextual Chinese translations and a complete parent-oriented download workflow.
+- Change: add Save, submit and generate parent report to both teacher forms, plus academic report-list entry points. A leased asynchronous job prepares full education-context Chinese translations and evidence-linked family summaries using the configured Singapore Qwen service. Original scores and CEFR tokens are checked; missing, malformed or incomplete output is not published. Teacher comments remain authoritative. Final teacher internal notes are excluded before any AI call or parent snapshot.
+- Parent reading: portrait flow layout, complete paragraphs, Chinese before original text, clear current results versus next-stage targets, visible strengths/difficulties/next steps and no Full text appendix. Confirmed content also appears through existing valid final-report share links, with original text available for comparison.
+- Versions: source-hashed editions; retry/lease recovery and concurrent generation reuse; stale-source review rejection; a review checkbox; three stored, byte-identical downloadable PDF snapshots (bilingual, Chinese, full original). Confirmed versions cannot be regenerated in place. Source edits require a new edition. Report deletion cascades to its editions and PDFs.
+- Compatibility: existing authenticated admin and Mini Program PDF URLs now serve the complete layout; before a translation is confirmed they provide the complete original, without calling AI on download. Existing report writing, academic approval, delivery and share-token rules are retained. New API generation/read access is restricted to the assigned teacher or authorized academic/admin users; finance alone does not grant access to this new workspace.
+- Data changes: additive parent-edition table, three PDF byte columns and cascading report relations (three incremental migrations); no existing report/comment/grade rewrite. Report-only Singapore AI settings are configured in ignored server environment; no credentials are committed.
+- Verification: 818 unit tests; production build; guarded isolated PostgreSQL service/concurrency/stale-source/failure/cascade tests; real-model full 29-field translation; three-language PDF text completeness and visual review; teacher save/submit/generate/confirm browser flow; HTTP role/CSRF/share/privacy and PDF snapshot checks. Asynchronous HTTP completion is recorded in the task acceptance evidence.
+- Open risks: AI wording still requires teacher/academic confirmation. Provider failures remain retryable; no partial output is used. Translation limits are 50,000 total source characters and 18,000 per field; larger reports retain full original PDF access and need administrator handling. No automatic parent notification or historical batch translation.
+- Guide: `docs/guides/parent-report-workflow-20261102.pdf` (Chinese and English staff instructions, plus parent-reading principles).
+- Task: `docs/tasks/TASK-20261102-parent-report-automation.md`.
+- Rollback reference: `2d138b134e32981ef994fa04323e9b8476548ab8`; retain the additive edition table and PDF history when rolling back application code.
+
+---
+
 ## 2026-11-02-r487
 
 - Release ID: `2026-11-02-r487`

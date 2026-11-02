@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+﻿import { requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import {
   calculateMidtermSubjectProgress,
@@ -706,7 +706,7 @@ export default async function AdminMidtermReportCenterPage({
                     </td>
                     <td style={{ padding: 6 }}>
                       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                        {r.status !== "EXEMPT" ? <a href={`/api/admin/midterm-reports/${encodeURIComponent(r.id)}/pdf`}>{t(lang, "Download PDF", "下载PDF")}</a> : null}
+                        {r.status !== "EXEMPT" ? <><a href={`/api/admin/midterm-reports/${encodeURIComponent(r.id)}/pdf`}>{t(lang, "Download PDF", "下载PDF")}</a> <a href={`/admin/reports/midterm/${encodeURIComponent(r.id)}/parent-edition`}>{t(lang, "Parent bilingual report", "家长双语报告")}</a></> : null}
                         {r.archivedAt ? (
                           <form action={restoreMidtermReport}>
                             <input type="hidden" name="reportId" value={r.id} />

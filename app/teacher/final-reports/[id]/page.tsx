@@ -1,3 +1,4 @@
+import ParentReportEditionPanel from "@/app/_components/ParentReportEditionPanel";
 import { requireTeacherProfile } from "@/lib/auth";
 import { formatBusinessDateOnly } from "@/lib/date-only";
 import {
@@ -199,6 +200,7 @@ export default async function TeacherFinalReportDetailPage({
     }
 
     const intent = String(formData.get("intent") ?? "save");
+    const shouldSubmit = intent === "submit" || intent === "prepare";
     const draft = parseFinalDraftFromFormData(formData);
     const periodLabel = String(formData.get("reportPeriodLabel") ?? "").trim();
     const finalLevel = String(formData.get("finalLevel") ?? "").trim();
@@ -206,7 +208,7 @@ export default async function TeacherFinalReportDetailPage({
     const submittedAt = latest.submittedAt ?? new Date();
     const existingSnapshot = parseLearningReportAttendanceSnapshot(latest.reportJson);
     const attendanceSnapshot =
-      intent === "submit" && !existingSnapshot
+      shouldSubmit && !existingSnapshot
         ? await createLearningReportAttendanceSnapshot({
             packageId: latest.packageId,
             studentId: latest.studentId,
@@ -224,15 +226,15 @@ export default async function TeacherFinalReportDetailPage({
         finalLevel: finalLevel || null,
         overallScore: score,
         recommendation: draft.recommendedNextStep || null,
-        status: intent === "submit" ? "SUBMITTED" : latest.status,
-        submittedAt: intent === "submit" ? submittedAt : latest.submittedAt,
+        status: shouldSubmit ? "SUBMITTED" : latest.status,
+        submittedAt: shouldSubmit ? submittedAt : latest.submittedAt,
       },
     });
 
     revalidatePath("/teacher/final-reports");
     revalidatePath(`/teacher/final-reports/${reportId}`);
     revalidatePath("/admin/reports/final");
-    redirect(`/teacher/final-reports/${encodeURIComponent(reportId)}?ok=${intent === "submit" ? "submitted" : "saved"}`);
+    redirect(`/teacher/final-reports/${encodeURIComponent(reportId)}?ok=${intent === "prepare" ? "prepared" : intent === "submit" ? "submitted" : "saved"}`);
   }
 
   const draft = parseFinalReportDraft({
@@ -287,6 +289,8 @@ export default async function TeacherFinalReportDetailPage({
           {t(lang, "This final report has already been forwarded by operations and is now read-only.", "该结课报告已由教务转发，当前为只读不可修改。")}
         </div>
       ) : null}
+
+      <ParentReportEditionPanel key={report.updatedAt.toISOString()} kind="FINAL" id={report.id} lang={lang} autoPrepare={ok === "prepared"} />
 
       <form action={saveReport} style={{ display: "grid", gap: 10 }}>
         <fieldset disabled={isLocked} style={{ border: "none", margin: 0, padding: 0, display: "grid", gap: 10 }}>
@@ -379,7 +383,8 @@ export default async function TeacherFinalReportDetailPage({
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           {!isLocked ? (
             <>
-              <button type="submit" name="intent" value="save" style={secondaryButtonStyle}>
+              <button type="submit" name="intent" value="prepare" disabled={isLocked} style={primaryButtonStyle}>{t(lang, "Save, submit and generate parent report", "保存、提交并生成家长版")}</button>
+          <button type="submit" name="intent" value="save" style={secondaryButtonStyle}>
                 {t(lang, "Save draft", "保存草稿")}
               </button>
               <button type="submit" name="intent" value="submit" style={primaryButtonStyle}>

@@ -1,3 +1,4 @@
+import ParentReportEditionPanel from "@/app/_components/ParentReportEditionPanel";
 import { requireTeacherProfile } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { EMPTY_REPORT_DRAFT, formatMinutesToHours, parseDraftFromFormData, parseReportDraft } from "@/lib/midterm-report";
@@ -216,6 +217,7 @@ export default async function TeacherMidtermReportDetailPage({
     }
 
     const intent = String(formData.get("intent") ?? "save");
+    const shouldSubmit = intent === "submit" || intent === "prepare";
     const draft = parseDraftFromFormData(formData);
     const estimatedCefr = String(formData.get("examTargetStatus") ?? "").trim();
     const periodLabel = String(formData.get("reportPeriodLabel") ?? "").trim();
@@ -223,7 +225,7 @@ export default async function TeacherMidtermReportDetailPage({
     const submittedAt = latest.submittedAt ?? new Date();
     const existingSnapshot = parseLearningReportAttendanceSnapshot(latest.reportJson);
     const snapshot =
-      intent === "submit" && !existingSnapshot
+      shouldSubmit && !existingSnapshot
         ? await createLearningReportAttendanceSnapshot({
             packageId: latest.packageId,
             studentId: latest.studentId,
@@ -240,15 +242,15 @@ export default async function TeacherMidtermReportDetailPage({
         examTargetStatus: estimatedCefr || null,
         reportPeriodLabel: periodLabel || null,
         overallScore: score,
-        status: intent === "submit" ? "SUBMITTED" : latest.status,
-        submittedAt: intent === "submit" ? submittedAt : latest.submittedAt,
+        status: shouldSubmit ? "SUBMITTED" : latest.status,
+        submittedAt: shouldSubmit ? submittedAt : latest.submittedAt,
       },
     });
 
     revalidatePath("/teacher/midterm-reports");
     revalidatePath(`/teacher/midterm-reports/${reportId}`);
     revalidatePath("/admin/reports/midterm");
-    redirect(`/teacher/midterm-reports/${encodeURIComponent(reportId)}?ok=${intent === "submit" ? "submitted" : "saved"}`);
+    redirect(`/teacher/midterm-reports/${encodeURIComponent(reportId)}?ok=${intent === "prepare" ? "prepared" : intent === "submit" ? "submitted" : "saved"}`);
   }
 
   const draft = parseReportDraft(report.reportJson ?? EMPTY_REPORT_DRAFT);
@@ -301,6 +303,8 @@ export default async function TeacherMidtermReportDetailPage({
           {t(lang, "This report has been forwarded by admin and is now locked (read-only).", "该报告已由教务转发并锁定，当前为只读不可修改。")}
         </div>
       ) : null}
+
+      <ParentReportEditionPanel key={report.updatedAt.toISOString()} kind="MIDTERM" id={report.id} lang={lang} autoPrepare={ok === "prepared"} />
 
       <form action={saveReport} style={{ display: "grid", gap: 10 }}>
         <fieldset disabled={isLocked} style={{ border: "none", margin: 0, padding: 0, display: "grid", gap: 10 }}>
@@ -475,6 +479,7 @@ export default async function TeacherMidtermReportDetailPage({
         </fieldset>
 
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <button type="submit" name="intent" value="prepare" disabled={isLocked} style={primaryButtonStyle}>{t(lang, "Save, submit and generate parent report", "保存、提交并生成家长版")}</button>
           <button type="submit" name="intent" value="save" disabled={isLocked} style={secondaryButtonStyle}>
             {t(lang, "Save Draft", "保存草稿")}
           </button>

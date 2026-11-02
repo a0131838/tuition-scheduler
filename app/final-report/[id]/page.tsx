@@ -1,3 +1,6 @@
+import ParentReportReadView from '@/app/_components/ParentReportReadView';
+import {currentParentEdition} from '@/lib/learning-report-parent-editions';
+import {validateParentReportContent} from '@/lib/learning-report-parent-content';
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
 import { parseFinalReportDraft } from "@/lib/final-report";
 import { getLang, t } from "@/lib/i18n";
@@ -153,6 +156,10 @@ export default async function FinalReportSharePage({
     },
   });
 
+  const parentEdition=report.status==='EXEMPT'?null:await currentParentEdition('FINAL',id);
+  const parentContent=parentEdition?.edition?.status==='READY'&&parentEdition.edition.reviewedAt
+    ? validateParentReportContent(parentEdition.edition.contentJson,parentEdition.source.fields):null;
+
   return (
     <main style={{ maxWidth: 980, margin: "0 auto", padding: "28px 16px 40px", display: "grid", gap: 18 }}>
       <section style={cardStyle("#bfdbfe", "#f8fbff")}>
@@ -197,6 +204,7 @@ export default async function FinalReportSharePage({
         </div>
       </section>
 
+      {parentContent?<ParentReportReadView source={parentEdition!.source} content={parentContent}/>:<>
       {section(t(lang, "Initial goals", "开始目标"), draft.initialGoals)}
       {section(t(lang, "Final outcome summary", "最终结果总结"), draft.finalSummary)}
 
@@ -211,6 +219,8 @@ export default async function FinalReportSharePage({
       </section>
 
       {section(t(lang, "Message for parents", "给家长的话"), draft.parentNote)}
+      </>}
+
     </main>
   );
 }

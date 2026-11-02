@@ -433,37 +433,9 @@ async function renderMidtermCards(draft: ReturnType<typeof parseReportDraft>, ov
   return finishCardReport(doc, completed, ZH.title);
 }
 
-export async function buildMidtermReportPdfResponse(id: string, lang: ReportPdfLang = "ZH") {
-  const report = await prisma.midtermReport.findUnique({
-    where: { id },
-    include: { student: true, teacher: true, course: true, subject: true },
-  });
-  if (!report) return new Response("Report not found", { status: 404 });
-
-  const draft = parseReportDraft(report.reportJson);
-  const attendanceSnapshot =
-    parseLearningReportAttendanceSnapshot(report.reportJson) ??
-    (await createLearningReportAttendanceSnapshot({
-      packageId: report.packageId,
-      studentId: report.studentId,
-      subjectId: report.subjectId,
-      teacherId: report.teacherId,
-      throughAt: report.submittedAt ?? new Date(),
-    }));
-
-  const bytes = await renderMidtermCardPdf(draft, {
-    name: report.student.name, date: formatBusinessDateOnly(new Date()),
-    period: learningReportPeriodLabel(attendanceSnapshot, report.reportPeriodLabel, lang),
-    score: String(report.overallScore ?? "-"), cefr: report.examTargetStatus || "-",
-  }, lang);
-  const filename = `midterm-report-${safeName(report.student.name)}-${safeName(report.course.name)}.pdf`;
-  const filenameAscii = filename.replace(/[^\x20-\x7E]/g, "_");
-  const filenameUtf8 = encodeURIComponent(filename);
-
-  return new Response(new Uint8Array(bytes), {
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filenameAscii}"; filename*=UTF-8''${filenameUtf8}`,
-    },
-  });
+export async function buildMidtermReportPdfResponse(id:string,lang:ReportPdfLang='BILINGUAL'){
+ const report=await prisma.midtermReport.findUnique({where:{id},select:{id:true,status:true}});
+ if(!report||report.status==='EXEMPT')return new Response('Report not found',{status:404});
+ const {buildCurrentParentReportPdfResponse}=await import('./learning-report-parent-pdf');
+ return buildCurrentParentReportPdfResponse('MIDTERM',id,lang);
 }

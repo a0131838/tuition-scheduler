@@ -2,7 +2,7 @@ import PDFDocument from "pdfkit";
 import { setPdfBoldFont, setPdfFont } from "./pdf-font";
 
 export type ReportPdfLang = "ZH" | "EN" | "BILINGUAL";
-export type ReportPdfField = { label: string; value: string };
+export type ReportPdfField = { label: string; value: string; original?: string };
 export type ReportPdfSection = { title: string; fields: ReportPdfField[]; table?: boolean };
 export function reportPdfLabel(lang: ReportPdfLang, en: string, zh: string) {
   return lang === "ZH" ? zh : lang === "EN" ? en : `${en} / ${zh}`;
@@ -28,7 +28,11 @@ export async function renderLearningReportPdf(title: string, sections: ReportPdf
   };
   const field = (item: ReportPdfField) => {
     body();
-    const bodyHeight = measure(item.value);
+    const mainHeight = measure(item.value);
+    let originalHeight=0;
+    if(item.original){setPdfFont(doc);doc.fontSize(9.4);originalHeight=doc.heightOfString(text(item.original),{width,lineGap:1.5})+6;}
+    body();
+    const bodyHeight = mainHeight+originalHeight;
     setPdfBoldFont(doc); doc.fontSize(10.5);
     const labelHeight = item.label ? measure(item.label) + 4 : 0;
     const fullHeight = labelHeight + bodyHeight + 12;
@@ -40,6 +44,7 @@ export async function renderLearningReportPdf(title: string, sections: ReportPdf
     }
     body();
     doc.text(text(item.value), left, doc.y, { width, lineGap: 2 });
+    if(item.original){doc.y+=6;setPdfFont(doc);doc.fontSize(9.4).fillColor('#596B77').text(text(item.original),left,doc.y,{width,lineGap:1.5});}
     doc.y += 12;
   };
   let currentSection = "";
@@ -53,7 +58,7 @@ export async function renderLearningReportPdf(title: string, sections: ReportPdf
     const first = section.fields[0];
     const firstHeight = first ? (section.table
       ? Math.max(measure(first.label, width * 0.38 - 16), measure(first.value, width * 0.62 - 24)) + 16
-      : measure(first.value) + (first.label ? measure(first.label) + 4 : 0) + 12) : 0;
+      : measure(first.value) + (first.original?measure(first.original)+6:0) + (first.label ? measure(first.label) + 4 : 0) + 12) : 0;
     const firstReserve = firstHeight + headingHeight + 10 <= bottom() - doc.page.margins.top ? firstHeight : 85;
     ensure(headingHeight + 10 + firstReserve);
     setPdfBoldFont(doc); doc.fontSize(12);

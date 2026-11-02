@@ -1039,6 +1039,8 @@ model MidtermReport {
   @@index([packageId, createdAt])
   @@index([exemptedAt, createdAt])
   @@index([archivedAt, createdAt])
+  parentEditions LearningReportParentEdition[]
+
 }
 
 model FinalReport {
@@ -1094,6 +1096,8 @@ model FinalReport {
   @@index([deliveredAt, createdAt])
   @@index([exemptedAt, createdAt])
   @@index([archivedAt, createdAt])
+  parentEditions LearningReportParentEdition[]
+
 }
 
 model SessionTeacherChange {
@@ -3882,4 +3886,36 @@ model TeacherTeachingRule {
   reason String
   confirmedBy String
   updatedAt DateTime @updatedAt
+}
+
+// Immutable source versions for reusable parent-facing course reports.
+model LearningReportParentEdition {
+  id             String   @id @default(uuid())
+  kind           String
+  reportId       String
+  midtermReportId String?
+  finalReportId   String?
+  sourceHash     String
+  status         String   @default("GENERATING")
+  sourceJson     Json
+  contentJson    Json?
+  pdfZh          Bytes?
+  pdfEn          Bytes?
+  pdfBilingual   Bytes?
+  model          String?
+  generationId   String
+  generatedBy    String
+  reviewedBy     String?
+  reviewedAt     DateTime?
+  errorCode      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  midtermReport MidtermReport? @relation(fields: [midtermReportId], references: [id], onDelete: Cascade)
+  finalReport FinalReport? @relation(fields: [finalReportId], references: [id], onDelete: Cascade)
+
+  @@index([midtermReportId])
+  @@index([finalReportId])
+  @@unique([kind, reportId, sourceHash])
+  @@index([kind, reportId, createdAt])
 }

@@ -1,4 +1,4 @@
-import crypto from "crypto";
+﻿import crypto from "crypto";
 import { requireAdmin } from "@/lib/auth";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import {
@@ -968,7 +968,7 @@ export default async function AdminFinalReportCenterPage({
                       <div style={{ display: "grid", gap: 8 }}>
                         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                           {report.status === "SUBMITTED" || report.status === "FORWARDED" ? (
-                            <a href={`/api/admin/final-reports/${encodeURIComponent(report.id)}/pdf`}>{t(lang, "Download PDF", "下载PDF")}</a>
+                            <><a href={`/api/admin/final-reports/${encodeURIComponent(report.id)}/pdf`}>{t(lang, "Download PDF", "下载PDF")}</a> <a href={`/admin/reports/final/${encodeURIComponent(report.id)}/parent-edition`}>{t(lang, "Parent bilingual report", "家长双语报告")}</a></>
                           ) : null}
                           {report.archivedAt ? (
                             <form action={restoreFinalReport}>
