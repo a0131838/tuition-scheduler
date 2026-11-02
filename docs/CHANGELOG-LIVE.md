@@ -1,4 +1,16 @@
 # CHANGELOG LIVE
+## 2026-11-02-r494
+
+- Release ID: `2026-11-02-r494`
+- Date/Time (Asia/Singapore): `2026-11-02`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: partially refresh the teacher payment-details manual with current synthetic-account screenshots for PayNow, Wise, historical bank details and save. Existing training version and completion records remain unchanged.
+- Scope: guide content and remaining legacy modules still require full review. No production business data is changed.
+- Verification and remaining work: `docs/tasks/TASK-20261102-teacher-payment-guide-update.md`.
+- Rollback: revert application commit while retaining SOP and training records.
+
+---
+
 ## 2026-11-02-r493
 
 - Release ID: `2026-11-02-r493`

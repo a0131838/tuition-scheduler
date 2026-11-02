@@ -385,3 +385,12 @@ test('teacher expense and payroll guide keeps progress and current example scree
   assert.match(source, /Remaining content requires review/);
   for (const name of ['claims-new', 'claims-history', 'payroll-confirm', 'payment-details']) assert.ok(source.includes(`sop-teacher-finance-update-20261102/${name}.png`));
 });
+
+test('teacher payment details guide retains completion progress and points to new images', () => {
+  const guide = findTrainingModule('TEACHER_PAYMENT')!;
+  assert.equal(guide.version, TRAINING_RELEASE_VERSION);
+  assert.match(guide.pdfFile, /20261102\.pdf$/);
+  const source = fs.readFileSync(path.join(process.cwd(), 'docs', guide.pdfFile.replace(/\.pdf$/, '.html')), 'utf8');
+  assert.match(source, /Remaining content requires review/);
+  for (const name of ['paynow', 'wise', 'legacy', 'save']) assert.ok(source.includes(`sop-teacher-payment-update-20261102/${name}.png`));
+});
