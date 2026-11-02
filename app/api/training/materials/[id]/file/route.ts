@@ -11,8 +11,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const user = await getCurrentUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
   const { id } = await params;
+  const oldDocument = await prisma.sharedDocument.findUnique({where:{id},select:{category:{select:{name:true}}}});
+  const review = await prisma.sopReview.findUnique({where:{key:"MATERIAL:"+id}});
+  if(review?.status === "WITHDRAWN" && oldDocument && user.role!=="STUDENT" && (oldDocument.category.name === "运营操作SOP" || oldDocument.category.name === "老师培训材料" && user.role === "TEACHER" || await canReadTeacherTrainingMaterial(user,id))) return Response.redirect(new URL("/training/sop-review?key="+encodeURIComponent(review.replacementKey||"MATERIAL:"+id),req.url),303);
   if (!(await canReadTeacherTrainingMaterial(user, id))) return new Response("Forbidden", { status: 403 });
-
   const row = await prisma.sharedDocument.findUnique({
     where: { id },
     select: { filePath: true, originalFileName: true, mimeType: true },

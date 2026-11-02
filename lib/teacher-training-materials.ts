@@ -2,6 +2,12 @@ import { getCurrentUser, isManagerUser, isOwnerManager, isTeacherLeadUser } from
 import { prisma } from "@/lib/prisma";
 
 export const TEACHER_TRAINING_CATEGORY = "老师培训材料";
+export const OPERATIONS_SOP_CATEGORY = "运营操作SOP";
+export const TRAINING_CATEGORIES = [TEACHER_TRAINING_CATEGORY, OPERATIONS_SOP_CATEGORY];
+export async function isOperationsSopAuthor(user: TrainingMaterialUser | null | undefined) {
+  if (!user || user.role === "STUDENT") return false;
+  return isOwnerManager(user) || (await isManagerUser(user)) || !!(await prisma.sopAuthorAccess.findUnique({where:{userId:user.id}}));
+}
 export const TRAINING_MATERIAL_ACTION = Object.freeze({
   DRAFT: "TRAINING_DRAFT_CREATED",
   DRAFT_UPDATED: "TRAINING_DRAFT_UPDATED",
@@ -42,18 +48,18 @@ export function teacherTrainingMaterialTransitionAllowed(input: {
 
 export async function isTeacherTrainingMaterialOperator(user: TrainingMaterialUser | null | undefined) {
   if (!user) return false;
-  return (await isManagerUser(user)) || (await isTeacherLeadUser(user));
+  return isOwnerManager(user) || (await isManagerUser(user)) || (await isTeacherLeadUser(user));
 }
 
 export function isTeacherTrainingMaterialPublisher(user: TrainingMaterialUser | null | undefined) {
   return isOwnerManager(user);
 }
 
-export async function getTeacherTrainingMaterials(user: TrainingMaterialUser) {
-  const operator = await isTeacherTrainingMaterialOperator(user);
+export async function getTeacherTrainingMaterials(user: TrainingMaterialUser, category = TEACHER_TRAINING_CATEGORY) {
+  const operator = category === OPERATIONS_SOP_CATEGORY ? await isOperationsSopAuthor(user) : await isTeacherTrainingMaterialOperator(user);
   const documents = await prisma.sharedDocument.findMany({
     where: {
-      category: { name: TEACHER_TRAINING_CATEGORY },
+      category: { name: category },
     },
     include: {
       uploader: { select: { name: true, email: true } },
@@ -78,14 +84,16 @@ export async function getTeacherTrainingMaterials(user: TrainingMaterialUser) {
 
 export async function canReadTeacherTrainingMaterial(user: TrainingMaterialUser, documentId: string) {
   const document = await prisma.sharedDocument.findFirst({
-    where: { id: documentId, category: { name: TEACHER_TRAINING_CATEGORY } },
+    where: { id: documentId, category: { name: {in: TRAINING_CATEGORIES} } },
     select: {
       status: true,
+      category: {select:{name:true}},
       audits: { orderBy: { createdAt: "desc" }, select: { action: true } },
     },
   });
   if (!document) return false;
-  if (await isTeacherTrainingMaterialOperator(user)) return true;
-  if (user.role !== "TEACHER" || document.status !== "ACTIVE") return false;
+  const operations = document.category.name === OPERATIONS_SOP_CATEGORY;
+  if (operations ? await isOperationsSopAuthor(user) : await isTeacherTrainingMaterialOperator(user)) return true;
+  if (user.role === "STUDENT" || (!operations && user.role !== "TEACHER") || document.status !== "ACTIVE") return false;
   return teacherTrainingMaterialState(document.audits.map((audit) => audit.action)) === "PUBLISHED";
 }

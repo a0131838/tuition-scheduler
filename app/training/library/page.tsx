@@ -1,3 +1,5 @@
+import { prisma } from "@/lib/prisma";
+import { sopInventory, sopNeedsReview } from "@/lib/sop-governance";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
@@ -19,7 +21,12 @@ export default async function TrainingPdfLibraryPage() {
   const lang = await getLang();
   const text = (en: string, zh: string) => t(lang, en, zh);
   const roles = trainingRolesForUser(user.role, user.trainingRoles);
-  const modules = trainingModulesForUser(user.role, user.trainingRoles);
+  const assigned = trainingModulesForUser(user.role, user.trainingRoles);
+  const inventory = await sopInventory(user);
+  const reviewMap = new Map(inventory.map(e=>[e.key,e.review]));
+  const ownerMap = new Map(inventory.map(e=>[e.key,e.defaultOwner]));
+  const modules = assigned.filter(m=>reviewMap.get("MODULE:"+m.code)?.status!=="WITHDRAWN");
+  const currentGuides = inventory.filter(e=>e.kind==="GUIDE"&&e.review?.status!=="WITHDRAWN");
   const platformSections = (["WEB", "MINIAPP"] as const).map((platform) => {
     const platformModules = modules.filter((item) => item.platform === platform);
     const categories = new Map<string, typeof modules>();
@@ -48,6 +55,8 @@ export default async function TrainingPdfLibraryPage() {
             : ""}
         </p>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <Link href="/training/sop-review">SOP inventory &amp; feedback</Link>
+          <Link href="/training/materials?category=%E8%BF%90%E8%90%A5%E6%93%8D%E4%BD%9CSOP">Operational SOP</Link>
           <Link href="/training">{text("Back to My Training", "返回我的培训")}</Link>
           <a href="/api/training/catalogs/web?download=1" download>
             {text("Download Web Catalogue", "下载网页端目录")}
@@ -68,6 +77,7 @@ export default async function TrainingPdfLibraryPage() {
         </p>
       </section>
 
+      <section style={{...card,marginBottom:18}}><h2>Latest workflow guides / 最新操作指引</h2>{currentGuides.map(g=><p key={g.key}><a href={g.url} target="_blank" rel="noreferrer">{g.titleEn} / {g.title}</a> · {g.version} · <Link href={"/training/sop-review?key="+encodeURIComponent(g.key)}>Review &amp; feedback / 复核与反馈</Link></p>)}</section>
       <div style={{ display: "grid", gap: 28 }}>
         {platformSections.map(({ platform, platformModules, categories }) => (
           <section key={platform} style={{ border: "2px solid #cbd5e1", borderRadius: 20, padding: 18, background: platform === "WEB" ? "#f8fbff" : "#fffaf5" }}>
@@ -91,6 +101,8 @@ export default async function TrainingPdfLibraryPage() {
                         <div style={{ color: "#0f766e", fontWeight: 800, fontSize: 12 }}>{item.code}</div>
                         <h3 style={{ margin: "7px 0" }}>{text(item.titleEn, item.title)}</h3>
                         <p style={{ color: "#64748b", fontSize: 13 }}>v{item.version} · {text("For", "适用岗位")}：{item.roles.join(" / ")}</p>
+                        <p style={{fontSize:13}}>Owner: {reviewMap.get("MODULE:"+item.code)?.ownerName||ownerMap.get("MODULE:"+item.code)||"Pending"} / {sopNeedsReview(reviewMap.get("MODULE:"+item.code))?"Review due":"Current"}<br/>Last checked: {reviewMap.get("MODULE:"+item.code)?.reviewedAt?.toISOString().slice(0,10)||"Not recorded"} / Next review: {reviewMap.get("MODULE:"+item.code)?.nextReviewAt?.toISOString().slice(0,10)||"Pending"}</p>
+                        <Link href={`/training/sop-review?key=${encodeURIComponent("MODULE:"+item.code)}`}>Report an unclear step</Link>
                         <p style={{ fontSize: 13 }}>{text("One function only: complete Chinese section, language divider, then complete English section.", "只讲一个功能：完整中文版、语言分隔页、完整英文版。")}</p>
                         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                           <a href={`/api/training/sops/${item.code}`} target="_blank" rel="noreferrer">{text("View PDF", "查看 PDF")}</a>

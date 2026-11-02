@@ -1,4 +1,22 @@
 # RELEASE BOARD
+## 2026-11-02-r489
+
+- Release ID: `2026-11-02-r489`
+- Date/Time (Asia/Singapore): `2026-11-02`
+- Deployment status: `READY`; guarded release output is authoritative for live completion.
+- Problem: the PDF training catalogue could become stale after interface changes; teacher-training uploads lacked a separate operational SOP workflow. Staff could not report a mismatched step in the library.
+- Change: role-scoped operational SOP drafting and owner review; topic-linked uploaded versions automatically archive their predecessor on publication. Existing manager Jasmine account has operational SOP access through its verified manager role. The owner can separately grant and revoke operational SOP author access without changing other business roles. Existing teacher material workflow is preserved, and its decision form is fixed to submit reliably.
+- Governance: role-filtered inventory covering built-in modules, uploaded materials and new guides; owner, current/review-needed/withdrawn states, audit trail, review notes, next review, feedback submission and resolution. A withdrawn version is hidden from normal lists and old links lead to an authorised replacement when available. Existing training progress and audit records are retained. No historical SOP is falsely marked verified: legacy modules show review needed until checked.
+- Monitoring: a defined map fingerprints associated system paths and guide files after deployment; changed mapped sources return confirmed items to the review queue. A scheduled Singapore-time monthly inventory snapshot and downloadable historical CSV complement the live catalogue. The map is an aid, not a complete proof of interface correctness; reviews are still required for unmapped changes and human usability.
+- New bilingual guides: SOP management, parent report downloads, partner partial receipts, classroom booking, teacher breaks, and calendar print/download. Real role-specific screenshots use synthetic training data, with marked controls. The original 35 training modules have not all been individually refreshed or visually revalidated; flagged status remains visible until reviewed. New guides supplement rather than replace broader legacy modules where coverage differs.
+- AI assistance: authorised SOP authors can use the configured Singapore model to prepare and save editable bilingual plain-language drafts and screenshot checklists from supplied verified steps. Drafts are not automatically published or automatically treated as evidence of a screenshot check. Do not input student, salary or banking data; owner approval remains required.
+- Data: additive SOP author grants, review and feedback tables plus monthly inventory snapshots in AppSetting. No bulk deletion, historical training reset, or business ledger mutation.
+- Verification: isolated PostgreSQL/browser UAT for author access, draft/submit/owner approval, archive and redirects, review feedback, revocation and role restrictions; actual asynchronous Singapore-model draft generation/edit; PDF extraction and visual checks for six guides. Full unit test and production build results are recorded in the task file and release output.
+- Rollback: revert application code to `8584e5a371f013678f30619a24fdb6872d68fb92`; preserve SOP tables, uploaded documents and snapshots for audit. Remove the SOP cron block if rolling back the application.
+- Task: `docs/tasks/TASK-20261102-sop-governance.md`.
+
+---
+
 ## 2026-11-02-r488
 
 - Release ID: `2026-11-02-r488`

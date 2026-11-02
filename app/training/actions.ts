@@ -16,6 +16,7 @@ export async function acknowledgeTrainingRead(formData: FormData) {
   const code = String(formData.get("moduleCode") ?? "");
   const item = findTrainingModule(code);
   if (!item || !canAccessTrainingModule(user.role, user.trainingRoles, code)) throw new Error("Training module not available");
+  if ((await prisma.sopReview.findUnique({where:{key:"MODULE:"+code},select:{status:true}}))?.status === "WITHDRAWN") throw new Error("Training module not available");
   await prisma.staffTrainingProgress.upsert({
     where: { userId_moduleCode_moduleVersion: { userId: user.id, moduleCode: item.code, moduleVersion: item.version } },
     create: { userId: user.id, moduleCode: item.code, moduleVersion: item.version, readAt: new Date() },
@@ -29,6 +30,7 @@ export async function submitTrainingQuiz(formData: FormData) {
   const code = String(formData.get("moduleCode") ?? "");
   const item = findTrainingModule(code);
   if (!item || !canAccessTrainingModule(user.role, user.trainingRoles, code)) throw new Error("Training module not available");
+  if ((await prisma.sopReview.findUnique({where:{key:"MODULE:"+code},select:{status:true}}))?.status === "WITHDRAWN") throw new Error("Training module not available");
   const answers = item.questions.map((_, index) => Number(formData.get(`answer-${index}`)));
   const score = gradeTrainingQuiz(code, answers);
   if (score === null) throw new Error("Complete every question");
@@ -48,6 +50,7 @@ export async function submitTrainingPractical(formData: FormData) {
   const selfCheck = String(formData.get("selfCheck") ?? "").trim();
   const item = findTrainingModule(code);
   if (!item || !canAccessTrainingModule(user.role, user.trainingRoles, code)) throw new Error("Training module not available");
+  if ((await prisma.sopReview.findUnique({where:{key:"MODULE:"+code},select:{status:true}}))?.status === "WITHDRAWN") throw new Error("Training module not available");
   const existing = await prisma.staffTrainingProgress.findUnique({
     where: { userId_moduleCode_moduleVersion: { userId: user.id, moduleCode: item.code, moduleVersion: item.version } },
     select: { readAt: true, quizPassedAt: true },

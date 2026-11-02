@@ -1,3 +1,4 @@
+import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { canAccessTrainingModule, findTrainingModule } from "@/lib/training-center";
 import { readFile } from "node:fs/promises";
@@ -12,6 +13,8 @@ export async function GET(request: Request, context: { params: Promise<{ code: s
   const { code } = await context.params;
   const item = findTrainingModule(code);
   if (!item || !canAccessTrainingModule(user.role, user.trainingRoles, code)) return new Response("Forbidden", { status: 403 });
+  const review = await prisma.sopReview.findUnique({where:{key:"MODULE:"+code}});
+  if(review?.status === "WITHDRAWN") return Response.redirect(new URL("/training/sop-review?key="+encodeURIComponent(review.replacementKey||"MODULE:"+code),request.url),303);
   const file = await readFile(path.join(process.cwd(), "output", "pdf", item.pdfFile));
   const disposition = new URL(request.url).searchParams.get("download") === "1" ? "attachment" : "inline";
   const etag = `"training-${encodeURIComponent(item.version)}-${file.byteLength}"`;
@@ -19,7 +22,7 @@ export async function GET(request: Request, context: { params: Promise<{ code: s
     "content-type": "application/pdf",
     "content-disposition": `${disposition}; filename*=UTF-8''${encodeURIComponent(item.pdfFile)}`,
     "content-length": String(file.byteLength),
-    "cache-control": "private, max-age=3600, must-revalidate",
+    "cache-control": "private, no-store",
     "x-content-type-options": "nosniff",
     etag,
   };

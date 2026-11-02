@@ -16,6 +16,7 @@
         "communications:sync": "tsx scripts/sync-parent-communication-tasks.ts",
         "renewals:sync": "tsx scripts/sync-renewal-tasks.ts",
         "scheduling:monthly-sync": "tsx scripts/sync-monthly-scheduling.ts",
+        "sop:monthly-snapshot": "tsx scripts/sop-monthly-snapshot.ts",
     "hr:bootstrap": "tsx scripts/bootstrap-hris.ts",
     "hr:import-legacy": "tsx scripts/import-legacy-hr-documents.ts",
         "miniapp:audit-release": "tsx scripts/audit-miniapp-release.ts",

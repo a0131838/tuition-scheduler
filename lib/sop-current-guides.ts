@@ -1,0 +1,8 @@
+export const SOP_CURRENT_GUIDES = [
+ {code:'SOP_WORKSPACE', title:'SOP编写、更新、反馈与月度复核',titleEn:'Create, update and review operational SOPs',roles:['ADMIN','TEACHER','FINANCE','CS','SALES'],pdfFile:'SGT-SOP-workspace-20261102.pdf',dependencies:['app/training','lib/sop-governance.ts','lib/training-material-write.ts']},
+ {code:'PARENT_REPORT_DOWNLOAD',title:'生成及下载完整家长版报告',titleEn:'Prepare and download complete parent reports',roles:['ADMIN','TEACHER','CS'],pdfFile:'SGT-parent-reports-20261102.pdf',dependencies:['app/teacher/midterm-reports','app/teacher/final-reports','app/_components/ParentReportEditionPanel.tsx','lib/learning-report-parent-pdf.ts']},
+ {code:'PARTIAL_PARTNER_RECEIPTS',title:'合作方分次收款与未收余额',titleEn:'Partial partner receipts and outstanding balances',roles:['ADMIN','FINANCE'],pdfFile:'SGT-partial-receipts-20261102.pdf',dependencies:['app/admin/reports/partner-settlement','lib/partner-billing.ts']},
+ {code:'CLASSROOM_BOOKINGS',title:'XDF及2B教室预约与使用追踪',titleEn:'Track XDF and 2B classroom bookings',roles:['ADMIN','TEACHER','CS'],pdfFile:'SGT-classroom-bookings-20261102.pdf',dependencies:['app/teacher/lead/rooms','lib/room-reservations.ts']},
+ {code:'TEACHER_BREAK_RULES',title:'老师连续授课及休息规则',titleEn:'Teacher teaching limits and rest breaks',roles:['ADMIN','TEACHER','CS'],pdfFile:'SGT-teacher-breaks-20261102.pdf',dependencies:['app/admin/teachers','lib/teacher-teaching-rule.ts','lib/teacher-teaching-rule-service.ts']},
+ {code:'TEACHER_CALENDAR_EXPORT',title:'下载和打印老师课表',titleEn:'Download and print the teacher calendar',roles:['ADMIN','TEACHER','CS'],pdfFile:'SGT-teacher-calendar-20261102.pdf',dependencies:['app/calendar/teacher','app/api/exports/teacher-calendar']},
+] as const;

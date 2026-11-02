@@ -306,14 +306,14 @@ test("teacher portal blocks unlinked accounts without guessing a profile", () =>
   assert.match(updateUserRoute, /Teacher role requires a linked teacher profile/);
 });
 
-test("training PDF delivery supports length and private revalidation", () => {
+test("training PDF delivery supports length and prevents stale caching", () => {
   const route = fs.readFileSync(
     path.join(process.cwd(), "app", "api", "training", "sops", "[code]", "route.ts"),
     "utf8"
   );
 
   assert.match(route, /"content-length": String\(file\.byteLength\)/);
-  assert.match(route, /private, max-age=3600, must-revalidate/);
+  assert.match(route, /private, no-store/);
   assert.match(route, /if-none-match/);
   assert.match(route, /status: 304/);
   assert.match(route, /canAccessTrainingModule/);
@@ -332,9 +332,11 @@ test("training centre separates web and mini program libraries and serves both c
   assert.match(libraryPage, /api\/training\/catalogs\/web/);
   assert.match(libraryPage, /api\/training\/catalogs\/miniapp/);
   assert.match(libraryPage, /item\.platform === platform/);
-  assert.match(catalogueRoute, /00-SGT网页端逐功能培训目录/);
-  assert.match(catalogueRoute, /00-SGT小程序逐功能培训目录/);
-  assert.match(catalogueRoute, /user\.role === "STUDENT"/);
+  assert.match(catalogueRoute, /inventory/);
+  assert.match(catalogueRoute, /platform\.toUpperCase/);
+  const inventoryRoute = fs.readFileSync(path.join(process.cwd(), "app", "api", "training", "inventory", "route.ts"), "utf8");
+  assert.match(inventoryRoute, /user\.role==='STUDENT'/);
+  assert.match(inventoryRoute, /WITHDRAWN/);
 });
 
 test("login and mobile language controls keep native and narrow-screen semantics", () => {

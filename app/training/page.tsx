@@ -3,6 +3,7 @@ import { getCurrentUser, isManagerUser, isTeacherLeadUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { trainingModulesForUser, trainingRolesForUser } from "@/lib/training-center";
 import { redirect } from "next/navigation";
+import { sopInventory, sopNeedsReview } from "@/lib/sop-governance";
 import TrainingPracticalForm from "./TrainingPracticalForm";
 import { acknowledgeTrainingRead, submitTrainingQuiz } from "./actions";
 import { getLang, t } from "@/lib/i18n";
@@ -18,6 +19,8 @@ export default async function TrainingPage() {
   const modules = [...trainingModulesForUser(user.role, user.trainingRoles)].sort(
     (a, b) => a.platform.localeCompare(b.platform) || phaseRank[a.phase] - phaseRank[b.phase] || a.category.localeCompare(b.category) || a.title.localeCompare(b.title)
   );
+  const inventory = await sopInventory(user);
+  const reviewMap = new Map(inventory.map(e=>[e.key,e.review]));
   const progresses = await prisma.staffTrainingProgress.findMany({ where: { userId: user.id } });
   const byKey = new Map(progresses.map((item) => [`${item.moduleCode}:${item.moduleVersion}`, item]));
   const manager = await isManagerUser(user);
@@ -34,6 +37,8 @@ export default async function TrainingPage() {
         <p style={{ color: "#475569" }}>{moduleText("Current training roles", "当前培训岗位")}：{trainingRoles.join(" / ") || moduleText("No staff training role", "无员工培训岗位")}（{moduleText("the primary role is included automatically; managers assign additional training roles", "主角色自动包含，附加岗位由管理者分配")}）</p>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <Link href={user.role === "TEACHER" ? "/teacher" : "/admin"}>{moduleText("Back to Workspace", "返回工作台")}</Link>
+          <Link href="/training/sop-review">SOP inventory &amp; feedback</Link>
+          <Link href="/training/materials?category=%E8%BF%90%E8%90%A5%E6%93%8D%E4%BD%9CSOP">Operational SOP</Link>
           <Link href="/training/library">{moduleText("PDF Download Centre", "PDF 下载中心")}</Link>
           {user.role === "TEACHER" || manager ? <Link href="/training/materials">{moduleText("Teacher Materials", "老师培训材料")}</Link> : null}
           {manager || teacherLead ? <Link href="/training/manage">{moduleText("Training Sign-off", "培训验收台")}</Link> : null}
@@ -54,7 +59,7 @@ export default async function TrainingPage() {
               <h2 style={{ margin: "5px 0" }}>{platform === "WEB" ? moduleText("Web System Training", "网页端功能培训") : moduleText("WeChat Mini Program Training", "微信小程序功能培训")}</h2>
               <p style={{ margin: 0, color: "#64748b" }}>{moduleText("Complete this platform separately. Do not switch between Web and Mini Program during one module.", "本平台单独学习；完成一个模块期间不要在网页端和小程序之间来回切换。")}</p>
             </div>
-            {modules.filter((item) => item.platform === platform).map((item) => {
+            {modules.filter((item) => item.platform === platform && reviewMap.get("MODULE:"+item.code)?.status !== "WITHDRAWN").map((item) => {
           const progress = byKey.get(`${item.code}:${item.version}`);
           const complete = Boolean(progress?.readAt && progress?.quizPassedAt && progress?.practicalStatus === "APPROVED");
           const practicalReady = Boolean(progress?.readAt && progress?.quizPassedAt);
@@ -80,8 +85,11 @@ export default async function TrainingPage() {
                 </section>
                 <section>
                   <strong>{moduleText("Step 1: Read", "步骤一：阅读")}</strong>
+                  {sopNeedsReview(reviewMap.get("MODULE:"+item.code)) ? <p style={{color:"#a16207"}}>{moduleText("This guide is due for review. If steps differ from the live system, stop and report the issue.","本指引待复核；若步骤与系统不一致，请停止操作并反馈。")}</p> : null}
+                  <Link href={`/training/sop-review?key=${encodeURIComponent("MODULE:"+item.code)}`}>{moduleText("Review status and report a problem", "复核状态及问题反馈")}</Link>
+                  {({TEACHER_REPORTS_ASSESSMENTS:"PARENT_REPORT_DOWNLOAD",FINANCE_MASTER:"PARTIAL_PARTNER_RECEIPTS",XZS_SETTLEMENT:"PARTIAL_PARTNER_RECEIPTS",ACADEMIC_SCHEDULING_MASTER:"TEACHER_BREAK_RULES",TEACHER_AVAILABILITY_SCHEDULING:"TEACHER_BREAK_RULES",TEACHER_DAILY:"TEACHER_CALENDAR_EXPORT"} as Record<string,string>)[item.code] ? <p><a href={`/api/training/guides/${({TEACHER_REPORTS_ASSESSMENTS:"PARENT_REPORT_DOWNLOAD",FINANCE_MASTER:"PARTIAL_PARTNER_RECEIPTS",XZS_SETTLEMENT:"PARTIAL_PARTNER_RECEIPTS",ACADEMIC_SCHEDULING_MASTER:"TEACHER_BREAK_RULES",TEACHER_AVAILABILITY_SCHEDULING:"TEACHER_BREAK_RULES",TEACHER_DAILY:"TEACHER_CALENDAR_EXPORT"} as Record<string,string>)[item.code]}`} target="_blank" rel="noreferrer">{moduleText("Open latest related workflow guide", "打开相关最新流程指引")}</a></p> : null}
                   <p>
-                    <a href={`/api/training/sops/${item.code}`} target="_blank" rel="noreferrer">{moduleText("Open Current Bilingual PDF", "打开当前中英双语 PDF")}</a>
+                    <a href={`/api/training/sops/${item.code}`} target="_blank" rel="noreferrer">{moduleText("Open Bilingual PDF", "打开中英双语 PDF")}</a>
                     {" · "}
                     <a href={`/api/training/sops/${item.code}?download=1`} download>{moduleText("Download PDF", "下载 PDF")}</a>
                   </p>

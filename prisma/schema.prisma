@@ -3919,3 +3919,37 @@ model LearningReportParentEdition {
   @@unique([kind, reportId, sourceHash])
   @@index([kind, reportId, createdAt])
 }
+
+// SOP governance uses stable module/material keys; training completion history is untouched.
+model SopAuthorAccess {
+  userId String @id
+  grantedBy String
+  createdAt DateTime @default(now())
+}
+model SopReview {
+  key String @id
+  sourceHash String?
+  topicKey String?
+  status String @default("REVIEW_REQUIRED")
+  ownerName String
+  reviewedAt DateTime?
+  nextReviewAt DateTime?
+  replacementKey String?
+  note String?
+  updatedAt DateTime @updatedAt
+}
+model SopFeedback {
+  id String @id @default(uuid())
+  key String
+  reporterId String
+  reporterName String
+  step String
+  message String
+  status String @default("OPEN")
+  resolution String?
+  resolvedBy String?
+  createdAt DateTime @default(now())
+  resolvedAt DateTime?
+  @@index([status, createdAt])
+  @@index([key, createdAt])
+}
