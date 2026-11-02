@@ -1,4 +1,16 @@
 # CHANGELOG LIVE
+## 2026-11-02-r496
+
+- Release ID: `2026-11-02-r496`
+- Date/Time (Asia/Singapore): `2026-11-02`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: finish the seven previously partial built-in manuals with complete bilingual workflow steps and corresponding training screenshots, removing placeholder images. All 35 built-in manuals now have revised 2026-11-02 PDF content.
+- Training and governance: existing assessment versions and completion records remain intact; independent owner walkthrough sign-off is still required before changing the SOP review-needed state.
+- Verification and scope: `docs/tasks/TASK-20261102-complete-seven-sops.md`; 35-guide PDF audit, training tests and production build. No business data or transaction logic changes.
+- Rollback: revert application commit while retaining SOP and training records.
+
+---
+
 ## 2026-11-02-r495
 
 - Release ID: `2026-11-02-r495`

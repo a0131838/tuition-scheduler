@@ -357,14 +357,15 @@ test("login and mobile language controls keep native and narrow-screen semantics
   assert.match(favicon, /image\/svg\+xml/);
 });
 
-test("partially corrected guides retain existing progress versions and mark unchecked images", () => {
-  for (const code of ["ACADEMIC_DAILY_STUDENT_RECORDS", "FINANCE_MASTER", "CONTRACT_PACKAGE_GATE_MASTER", "MANAGEMENT_CONTROL_MASTER"]) {
+test("all seven previously partial guides now have complete screenshots without resetting training progress", () => {
+  for (const code of ["ACADEMIC_DAILY_STUDENT_RECORDS", "FINANCE_MASTER", "CONTRACT_PACKAGE_GATE_MASTER", "MANAGEMENT_CONTROL_MASTER", "TEACHER_PAYMENT", "TEACHER_REPORTS_ASSESSMENTS", "TEACHER_EXPENSES_PAYROLL"]) {
     const item = findTrainingModule(code)!;
     assert.equal(item.version, TRAINING_RELEASE_VERSION);
     assert.match(item.pdfFile, /20261102\.pdf$/);
     const source = fs.readFileSync(path.join(process.cwd(), "docs", item.pdfFile.replace(/\.pdf$/, ".html")), "utf8");
-    assert.match(source, /Remaining content is still under review/);
-    assert.match(source, /Screenshot under review/);
+    assert.match(source, /版本：20261102A/);
+    assert.doesNotMatch(source, /<div class="empty-shot">|Screenshot under review|Remaining content requires review|Other steps remain under review/);
+    assert.ok((source.match(/<img src=/g) ?? []).length >= 10);
   }
 });
 
@@ -373,7 +374,6 @@ test('teacher report guide points to the updated parent report appendix without 
   assert.equal(guide.version, TRAINING_RELEASE_VERSION);
   assert.match(guide.pdfFile, /20261102\.pdf$/);
   const source = fs.readFileSync(path.join(process.cwd(), 'docs', guide.pdfFile.replace(/\.pdf$/, '.html')), 'utf8');
-  assert.match(source, /Other steps remain under review/);
   assert.match(source, /sop-teacher-report-update-20261102\/midterm-form\.png/);
   assert.match(source, /sop-teacher-report-update-20261102\/final\.png/);
 });
@@ -383,7 +383,6 @@ test('teacher expense and payroll guide keeps progress and current example scree
   assert.equal(guide.version, TRAINING_RELEASE_VERSION);
   assert.match(guide.pdfFile, /20261102\.pdf$/);
   const source = fs.readFileSync(path.join(process.cwd(), 'docs', guide.pdfFile.replace(/\.pdf$/, '.html')), 'utf8');
-  assert.match(source, /Remaining content requires review/);
   for (const name of ['claims-new', 'claims-history', 'payroll-confirm', 'payment-details']) assert.ok(source.includes(`sop-teacher-finance-update-20261102/${name}.png`));
 });
 
@@ -392,6 +391,5 @@ test('teacher payment details guide retains completion progress and points to ne
   assert.equal(guide.version, TRAINING_RELEASE_VERSION);
   assert.match(guide.pdfFile, /20261102\.pdf$/);
   const source = fs.readFileSync(path.join(process.cwd(), 'docs', guide.pdfFile.replace(/\.pdf$/, '.html')), 'utf8');
-  assert.match(source, /Remaining content requires review/);
   for (const name of ['paynow', 'wise', 'legacy', 'save']) assert.ok(source.includes(`sop-teacher-payment-update-20261102/${name}.png`));
 });

@@ -1,4 +1,16 @@
 # RELEASE BOARD
+## 2026-11-02-r496
+
+- Release ID: `2026-11-02-r496`
+- Date/Time (Asia/Singapore): `2026-11-02`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: complete the seven earlier partial manuals, remove all screenshot placeholders and rewrite each Chinese/English workflow step. All 35 built-in catalogue PDFs now contain the revised 2026-11-02 content.
+- Training impact: assessment versions and existing completion records stay unchanged. No finance, package, attendance, payroll or scheduling records change.
+- Review risk: owner sign-off on a live walkthrough remains pending in the SOP governance inventory; users can report a role-specific mismatch through existing feedback.
+- Verification and rollback: `docs/tasks/TASK-20261102-complete-seven-sops.md`.
+
+---
+
 ## 2026-11-02-r495
 
 - Release ID: `2026-11-02-r495`
