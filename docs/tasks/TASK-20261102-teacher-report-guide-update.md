@@ -1,0 +1,6 @@
+# Teacher report guide partial refresh — 2026-11-02
+
+- Refresh current teacher assessment, student-feedback, midterm and final-report screenshots using isolated synthetic training accounts. Include the previously verified bilingual six-page guide to generating, checking and downloading parent reports as a PDF appendix. The overall report/assessment module remains under review: not every task, exception, permission or sentence has been verified.
+- Source: `docs/SOP-老师-评估中期报告与结课报告-中英文培训版-20261102.html`; appendix source: `docs/SGT-parent-reports-20261102.html`. Render main HTML to A4 landscape PDF using Playwright, then append the existing `output/pdf/SGT-parent-reports-20261102.pdf` in order. Preserve the prior PDF and assessment version/progress.
+- Remaining work: full walkthrough of this and all other old modules, including mini-program flows, all exceptional cases, permissions, and appropriate screenshots. The refreshed module must not be marked current solely because this partial update was published.
+- Validation: screenshots captured against current role pages with fictional accounts/data; PDF page count and text bounds and sample page images checked; unit and build outputs are authoritative.

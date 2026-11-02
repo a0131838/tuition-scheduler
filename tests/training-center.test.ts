@@ -366,3 +366,13 @@ test("partially corrected guides retain existing progress versions and mark unch
     assert.match(source, /Screenshot under review/);
   }
 });
+
+test('teacher report guide points to the updated parent report appendix without resetting progress', () => {
+  const guide = findTrainingModule('TEACHER_REPORTS_ASSESSMENTS')!;
+  assert.equal(guide.version, TRAINING_RELEASE_VERSION);
+  assert.match(guide.pdfFile, /20261102\.pdf$/);
+  const source = fs.readFileSync(path.join(process.cwd(), 'docs', guide.pdfFile.replace(/\.pdf$/, '.html')), 'utf8');
+  assert.match(source, /Other steps remain under review/);
+  assert.match(source, /sop-teacher-report-update-20261102\/midterm-form\.png/);
+  assert.match(source, /sop-teacher-report-update-20261102\/final\.png/);
+});

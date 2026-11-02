@@ -1,4 +1,16 @@
 # RELEASE BOARD
+## 2026-11-02-r492
+
+- Release ID: `2026-11-02-r492`
+- Date/Time (Asia/Singapore): `2026-11-02`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: partially refresh the teacher assessments/midterm/final reports training PDF with current synthetic teacher screen captures and append the bilingual parent-report generation and download guide. Preserve prior PDF files, training version and completion records.
+- Scope: the guide and all other legacy modules remain under review; this partial refresh is not a full end-to-end review. No business data is changed.
+- Verification and remaining work: `docs/tasks/TASK-20261102-teacher-report-guide-update.md`.
+- Rollback: revert application commit and retain SOP/training records.
+
+---
+
 ## 2026-11-02-r491
 
 - Release ID: `2026-11-02-r491`
