@@ -2,7 +2,8 @@ import { HrLeaveType } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireCurrentEmployee } from "@/lib/hr-access";
-import { cancelLeaveRequest, getEmployeeLeaveBalances, hrLeaveTypeLabel, submitLeaveRequest } from "@/lib/hr-leave";
+import { cancelLeaveRequest, getEmployeeLeaveSummary, hrLeaveTypeLabel, submitLeaveRequest } from "@/lib/hr-leave";
+import HrLeaveSummaryCards from "@/app/_components/HrLeaveSummaryCards";
 import { storePrivateHrFile } from "@/lib/hr-private-files";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
@@ -63,13 +64,11 @@ export default async function HrSelfService({ returnPath, searchParams }: { retu
     redirect(`${returnPath}?msg=${encodeURIComponent(t(lang,"Leave request cancelled","请假申请已取消"))}`);
   }
 
-  const [requests, balances, policies, payslips] = await Promise.all([
+  const [requests, summary, payslips] = await Promise.all([
     prisma.hrLeaveRequest.findMany({ where: { employeeId: employee.id }, include: { approver: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 50 }),
-    getEmployeeLeaveBalances(employee.id),
-    prisma.hrLeavePolicy.findMany({ where: { legalEntityId: employee.legalEntityId, isActive: true } }),
+    getEmployeeLeaveSummary(employee.id),
     prisma.hrPayslip.findMany({ where: { employeeId: employee.id, status: { in: ["DIRECTOR_APPROVED", "PAID"] } }, orderBy: { month: "desc" }, take: 24 }),
   ]);
-  const policyMap = new Map(policies.map(policy => [policy.leaveType, policy]));
   const homePath = user.role === "TEACHER" ? "/teacher" : "/admin";
 
   return <main style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", minWidth: 0, gap: 18 }}>
@@ -84,7 +83,7 @@ export default async function HrSelfService({ returnPath, searchParams }: { retu
     </section>
     {sp?.msg ? <div style={{ padding: 12, background: "#ecfdf5", color: "#166534" }}>{sp.msg}</div> : null}
     {sp?.err ? <div style={{ padding: 12, background: "#fff1f2", color: "#be123c" }}>{sp.err}</div> : null}
-    <section><h2>{t(lang,"Leave balance","假期余额")}</h2><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 }}>{Object.values(HrLeaveType).map(type => <div key={type} style={{ border: "1px solid #dbe4f0", borderRadius: 6, padding: 12 }}><b>{hrLeaveTypeLabel(type,lang)}</b><div style={{ fontSize: 26, fontWeight: 900 }}>{((balances.get(type) || 0) / 480).toFixed(1)}</div><div>{t(lang,"days (8h/day)","天（8小时/天）")}</div><small>{policyMap.has(type) ? t(lang,"Policy active","政策已配置") : t(lang,"No balance policy","未配置余额政策")}</small></div>)}</div></section>
+    <section><h2>{t(lang,"Leave balance","假期余额")}</h2><HrLeaveSummaryCards summary={summary} lang={lang}/></section>
     {!user.isObserver && <section style={{ borderTop: "1px solid #cbd5e1", paddingTop: 16 }}>
       <h2>{t(lang,"Apply for leave","提交请假")}</h2>
       <form action={submit} encType="multipart/form-data" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10 }}>

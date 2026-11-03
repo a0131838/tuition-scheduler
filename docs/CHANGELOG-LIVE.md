@@ -1,4 +1,16 @@
 # CHANGELOG LIVE
+## 2026-11-03-r497
+
+- Release ID: `2026-11-03-r497`
+- Date/Time (Asia/Singapore): `2026-11-03`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: show a single leave summary on employee web, HR manager and mini-program API: 1 January opening ledger balance, current-year credits/adjustments/expiry, approved leave already taken/in progress/upcoming, pending approval, available balance and projection if all pending requests are approved. Unpaid/other leave explicitly has no controlled balance.
+- Scope: read-only presentation and calculation; no leave grants, request status, policy, payroll or other business records change. Native mini-program screen needs a separate WeChat client upload before users see it.
+- Verification and risk: `docs/tasks/TASK-20261103-leave-balance-summary.md`; focused summary tests, TypeScript, production build, read-only Sharilyn reconciliation and mini-program release audit. Remaining risk: historical manual ledger entries require HR review if a mismatch warning appears.
+- Rollback: revert this application commit; retain all HR data and approvals.
+
+---
+
 ## 2026-11-02-r496
 
 - Release ID: `2026-11-02-r496`

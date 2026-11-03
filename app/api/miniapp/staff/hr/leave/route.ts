@@ -1,7 +1,8 @@
 import { HrLeaveType } from "@prisma/client";
 import { bad, ok } from "@/app/api/miniapp/_lib";
 import { requireMiniappStaff } from "@/app/api/miniapp/staff/_lib";
-import { cancelLeaveRequest, getEmployeeLeaveBalances, hrLeaveTypeLabel, submitLeaveRequest } from "@/lib/hr-leave";
+import { cancelLeaveRequest, getEmployeeLeaveSummary, hrLeaveTypeLabel, submitLeaveRequest } from "@/lib/hr-leave";
+import { leaveDays } from "@/lib/hr-leave-summary";
 import { prisma } from "@/lib/prisma";
 
 function dateOnly(value: Date) { return value.toLocaleDateString("en-CA", { timeZone: "Asia/Singapore" }); }
@@ -10,12 +11,15 @@ export async function GET(req: Request) {
   const access = await requireMiniappStaff(req); if (!access.ok) return access.response;
   const employee = await prisma.employeeProfile.findUnique({ where: { userId: access.user.id }, include: { legalEntity: true, manager: { select: { name: true } } } });
   if (!employee) return ok({ configured: false, message: "HR 员工档案尚未建立，请联系 HR。" });
-  const [requests, balances, policies] = await Promise.all([
+  const [requests, summary, policies] = await Promise.all([
     prisma.hrLeaveRequest.findMany({ where: { employeeId: employee.id }, include: { approver: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 30 }),
-    getEmployeeLeaveBalances(employee.id),
+    getEmployeeLeaveSummary(employee.id),
     prisma.hrLeavePolicy.findMany({ where: { legalEntityId: employee.legalEntityId, isActive: true } }),
   ]);
-  return ok({ configured: true, employee: { name: access.user.name, legalEntity: employee.legalEntity.name, managerName: employee.manager?.name || "HR", leaveEligible: employee.leaveEligible }, leaveTypes: Object.values(HrLeaveType).map(type => ({ value: type, label: hrLeaveTypeLabel(type), balanceDays: Number(((balances.get(type) || 0) / 480).toFixed(1)), requiresAttachment: Boolean(policies.find(policy => policy.leaveType === type)?.requiresAttachment) })), requests: requests.map(row => ({ id: row.id, leaveType: row.leaveType, leaveTypeLabel: hrLeaveTypeLabel(row.leaveType), startDate: dateOnly(row.startAt), endDate: dateOnly(new Date(row.endAt.getTime() - 1)), durationDays: Number((row.durationMinutes / 480).toFixed(1)), status: row.status, approverName: row.approver?.name || "HR", scheduleConflictCount: row.scheduleConflictCount, decisionNote: row.decisionNote || "", cancellable: row.status === "SUBMITTED" || row.status === "APPROVED" })) });
+  return ok({ configured: true, employee: { name: access.user.name, legalEntity: employee.legalEntity.name, managerName: employee.manager?.name || "HR", leaveEligible: employee.leaveEligible }, leaveTypes: Object.values(HrLeaveType).map(type => {
+    const row = summary.get(type)!;
+    return { value: type, label: hrLeaveTypeLabel(type), tracksBalance: row.tracksBalance, balanceDays: row.remainingMinutes === null ? null : Number(leaveDays(row.remainingMinutes)), openingDays: leaveDays(row.openingMinutes), grantedDays: leaveDays(row.grantedMinutes), adjustedDays: leaveDays(row.adjustedMinutes), expiredDays: leaveDays(row.expiredMinutes), utilisedDays: leaveDays(row.utilisedMinutes), ongoingDays: leaveDays(row.ongoingApprovedMinutes), futureApprovedDays: leaveDays(row.futureApprovedMinutes), pendingDays: leaveDays(row.pendingMinutes), afterPendingDays: leaveDays(row.afterPendingMinutes), ledgerMismatch: row.ledgerMismatch, requiresAttachment: Boolean(policies.find(policy => policy.leaveType === type)?.requiresAttachment) };
+  }), requests: requests.map(row => ({ id: row.id, leaveType: row.leaveType, leaveTypeLabel: hrLeaveTypeLabel(row.leaveType), startDate: dateOnly(row.startAt), endDate: dateOnly(new Date(row.endAt.getTime() - 1)), durationDays: Number((row.durationMinutes / 480).toFixed(1)), status: row.status, approverName: row.approver?.name || "HR", scheduleConflictCount: row.scheduleConflictCount, decisionNote: row.decisionNote || "", cancellable: row.status === "SUBMITTED" || row.status === "APPROVED" })) });
 }
 
 export async function POST(req: Request) {

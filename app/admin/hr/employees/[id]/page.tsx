@@ -5,7 +5,8 @@ import { HrChecklistStatus, HrLeaveLedgerEntryType, HrLeaveType } from "@prisma/
 import { requireHrManager } from "@/lib/hr-access";
 import { logAudit } from "@/lib/audit-log";
 import { prisma } from "@/lib/prisma";
-import { getEmployeeLeaveBalances, hrLeaveTypeLabel } from "@/lib/hr-leave";
+import { getEmployeeLeaveSummary, hrLeaveTypeLabel } from "@/lib/hr-leave";
+import HrLeaveSummaryCards from "@/app/_components/HrLeaveSummaryCards";
 
 const inputStyle = { minHeight: 38, border: "1px solid #cbd5e1", borderRadius: 6, padding: "7px 9px", background: "#fff" } as const;
 const buttonStyle = { minHeight: 38, border: "1px solid #1d4ed8", borderRadius: 6, padding: "7px 12px", color: "#fff", background: "#2563eb", fontWeight: 800 } as const;
@@ -90,7 +91,7 @@ export default async function EmployeeHrPage({ params, searchParams }: { params:
     },
   });
   if (!employee) notFound();
-  const balances = await getEmployeeLeaveBalances(employee.id);
+  const summary = await getEmployeeLeaveSummary(employee.id);
 
   return <main style={{ display: "grid", gap: 18 }}>
     <section style={{ border: "1px solid #bfdbfe", background: "#f8fbff", padding: 20, borderRadius: 8 }}>
@@ -104,7 +105,7 @@ export default async function EmployeeHrPage({ params, searchParams }: { params:
 
     <section>
       <h2>Leave balances / 假期余额</h2>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 }}>{Object.values(HrLeaveType).map(type => <div key={type} style={{ padding: 12, border: "1px solid #dbe4f0", borderRadius: 6 }}><b>{hrLeaveTypeLabel(type)}</b><div style={{ fontSize: 24, fontWeight: 900 }}>{((balances.get(type) || 0) / 480).toFixed(1)} days</div></div>)}</div>
+      <HrLeaveSummaryCards summary={summary} lang="BILINGUAL"/>
       <form action={addLeaveBalance} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 8, marginTop: 12, alignItems: "end" }}>
         <select name="leaveType" style={inputStyle}>{Object.values(HrLeaveType).map(type => <option key={type}>{type}</option>)}</select>
         <input name="days" type="number" step="0.5" required placeholder="Days (+/-) / 天数" style={inputStyle}/>

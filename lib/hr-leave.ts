@@ -3,6 +3,7 @@ import { getApprovalRoleConfig } from "@/lib/approval-flow";
 import {requireHrWriteActor} from "./hr-write-access";
 import { prisma } from "@/lib/prisma";
 import { isSessionFullyCancelled } from "@/lib/session-students";
+import { calculateLeaveSummary } from "@/lib/hr-leave-summary";
 
 const BALANCE_CONTROLLED_TYPES = new Set<HrLeaveType>([
   HrLeaveType.ANNUAL,
@@ -50,6 +51,14 @@ export async function getEmployeeLeaveBalances(employeeId: string, now = new Dat
     _sum: { minutes: true },
   });
   return new Map(rows.map((row) => [row.leaveType, row._sum.minutes ?? 0]));
+}
+
+export async function getEmployeeLeaveSummary(employeeId: string, now = new Date(), db: Prisma.TransactionClient = prisma) {
+  const [ledger, requests] = await Promise.all([
+    db.hrLeaveLedgerEntry.findMany({ where: { employeeId, createdAt: { lte: now } }, select: { leaveType: true, entryType: true, minutes: true, createdAt: true, expiresAt: true } }),
+    db.hrLeaveRequest.findMany({ where: { employeeId, status: { in: ["SUBMITTED", "APPROVED"] } }, select: { leaveType: true, status: true, startAt: true, endAt: true, durationMinutes: true } }),
+  ]);
+  return calculateLeaveSummary(ledger, requests, now);
 }
 
 async function resolveLeaveApprover(employeeId: string, db: Prisma.TransactionClient) {

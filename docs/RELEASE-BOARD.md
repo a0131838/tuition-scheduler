@@ -1,4 +1,16 @@
 # RELEASE BOARD
+## 2026-11-03-r497
+
+- Release ID: `2026-11-03-r497`
+- Date/Time (Asia/Singapore): `2026-11-03`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Staff impact: employees and HR can distinguish opening balance, utilised leave, approved future/ongoing leave, pending approval, available balance and projected balance. Unpaid/other leave is shown without a fictitious entitlement.
+- Calculation: one shared server summary uses posted ledger for available balance and live request statuses for timing; no approval or ledger write logic changes.
+- Verification: focused lifecycle summary tests, TypeScript, production build, mini-program audit and read-only production reconciliation. Native mini-program WXML requires a separate WeChat upload to reach staff.
+- Risk and rollback: historical ledger/request mismatches surface a warning for HR review; revert application commit if needed without modifying HR records. Details: `docs/tasks/TASK-20261103-leave-balance-summary.md`.
+
+---
+
 ## 2026-11-02-r496
 
 - Release ID: `2026-11-02-r496`
