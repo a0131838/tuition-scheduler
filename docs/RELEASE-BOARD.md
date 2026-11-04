@@ -1,4 +1,16 @@
 # RELEASE BOARD
+## 2026-11-04-r500
+
+- Release ID: `2026-11-04-r500`
+- Date/Time (Asia/Singapore): `2026-11-04`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Staff impact: authorised Finance can request and activate a fully cash-paid ordinary tuition-hour renewal with parent signature pending, only after separate configured manager approval. Finance sees outstanding signatures and can follow up; parent signing later will not add hours twice.
+- Financial scope: requires a current-cycle invoice, exact full approved cash receipts and matching dedicated cash payment records. No old signed-renewal invoice reuse, partial payment, automatic legal signature or production data backfill. The reported Allie renewal is not yet eligible.
+- Verification: `docs/tasks/TASK-20261104-renewal-signature-exception.md`, isolated PostgreSQL migration/integration tests, focused unit tests, Prisma validation, TypeScript, production build, guarded deployment checks and read-only production reconciliation.
+- Risk: medium. Finance must verify receipt reversals and chase outstanding signatures; activated terms cannot be silently edited or voided. Roll back application code while retaining financial/audit records.
+
+---
+
 ## 2026-11-04-r499
 
 - Release ID: `2026-11-04-r499`

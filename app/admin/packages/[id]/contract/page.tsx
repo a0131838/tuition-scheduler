@@ -529,6 +529,7 @@ export default async function PackageContractPage({
   const workspaceContracts = packageContracts.filter((contract) => fullCareWorkspace ? isFullCareContract(contract) : !isFullCareContract(contract));
   const otherOpenContract = packageContracts.find((contract) => contractIsOpenDraft(contract.status) && !workspaceContracts.some((visible) => visible.id === contract.id)) ?? null;
   const latestContract = workspaceContracts.find((contract) => contract.status !== "VOID") ?? null;
+  const renewalException = latestContract ? await prisma.renewalSignatureException.findUnique({ where: { contractId: latestContract.id } }) : null;
   const voidContracts = workspaceContracts.filter((contract) => contract.status === "VOID");
   const deletableVoidContracts = voidContracts.filter((contract) => contractCanDeleteVoidDraft(contract));
   const archivedVoidContracts = voidContracts.filter((contract) => !contractCanDeleteVoidDraft(contract));
@@ -629,6 +630,7 @@ export default async function PackageContractPage({
         <a href={`/admin/finance/documents?channel=PARENT&packageId=${encodeURIComponent(packageId)}`}>{t(lang, "Full invoices & receipts", "完整发票与收据")}</a>
         <span style={{ color: "#94a3b8" }}>·</span>
         <a href={`/admin/finance/deleted-invoices?channel=PARENT&packageId=${encodeURIComponent(packageId)}`}>{t(lang, "Deleted draft history", "已删除草稿历史")}</a>
+        {!fullCareWorkspace && latestContract?.flowType === "RENEWAL" && latestContract.contractMode === "TUITION_AGREEMENT" && (latestContract.status === "READY_TO_SIGN" || renewalException?.status === "ACTIVATED") ? <><span style={{ color: "#94a3b8" }}>·</span><a href={`/admin/packages/${encodeURIComponent(packageId)}/contract/renewal-exception?contractId=${encodeURIComponent(latestContract.id)}`}>{t(lang, "Paid renewal, signature pending", "已核款待补签例外")}</a></> : null}
       </div>
       {err ? <div style={{ marginBottom: 12, color: "#b00" }}>{err}</div> : null}
       {msg ? <div style={{ marginBottom: 12, color: "#166534" }}>{msg}</div> : null}
@@ -676,6 +678,7 @@ export default async function PackageContractPage({
                     label={contractBusinessInfo?.careServiceIncluded ? "Full Care Service Agreement / 全程托管服务合同" : studentContractModeLabel(latestContract.contractMode)}
                     tone={latestContract.contractMode === "SSG_STANDARD_PEI_V4" ? "success" : "neutral"}
                   />
+                  {renewalException?.status === "ACTIVATED" ? <WorkbenchStatusChip label={latestContract.signedAt ? t(lang, "Finance exception · parent signed", "财务例外激活 · 家长已补签") : t(lang, "Finance exception activated · parent signature pending", "财务例外已激活 · 家长待补签")} tone={latestContract.signedAt ? "success" : "warn"} /> : null}
                 </div>
               ) : (
                 <WorkbenchStatusChip label={workspaceContracts.length ? t(lang,"No active contract; history retained","暂无有效合同，历史已保留") : t(lang,"No contract yet","尚无合同")} tone="neutral" />
@@ -752,7 +755,9 @@ export default async function PackageContractPage({
                           ? `${contractParentInfo.parentFullNameEn} · ${contractParentInfo.phone} · ${contractParentInfo.email}`
                           : t(lang, "This renewal contract reuses the latest signed parent profile on the student record.", "当前续费合同会复用该学生最近一次已确认的家长资料。")}
                         <br />
-                        {t(lang, "After the parent signs, the system will auto-create the invoice draft and add the renewal hours to this package.", "家长签字后，系统会自动生成发票草稿，并把这次续费课时加入当前课包。")}
+                        {renewalException?.status === "ACTIVATED"
+                          ? t(lang, "Finance has linked the current invoice and added these renewal hours after management approval and full cash verification. The parent's signature is still pending; signing later will not add hours again.", "财务已在本次管理审批和足额现金核验后关联发票、增加续费课时。家长仍待补签；之后签署不会再次增加课时。")
+                          : t(lang, "After the parent signs, the system will auto-create or link the chosen invoice and add the renewal hours to this package.", "家长签字后，系统会按所选方式新建或关联发票，并把续费课时加入当前课包。")}
                       </div>
                     </div>
                   )}
@@ -807,7 +812,7 @@ export default async function PackageContractPage({
                   </div>
                 </div>
 
-                {contractCanEditDraft(latestContract.status) && contractParentInfo ? (
+                {contractCanEditDraft(latestContract.status) && renewalException?.status !== "ACTIVATED" && contractParentInfo ? (
                   <div style={{ border: "1px solid #cbd5e1", borderRadius: 12, background: "#fff", padding: 14, display: "grid", gap: 12 }}>
                     <div style={{ display: "grid", gap: 4 }}>
                       <div style={{ fontWeight: 800 }}>{t(lang, "Contract draft details", "合同草稿信息")}</div>

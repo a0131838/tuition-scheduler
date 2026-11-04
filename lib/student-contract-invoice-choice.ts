@@ -142,6 +142,7 @@ export async function saveStudentContractInvoiceChoiceInTransaction(db: Prisma.T
   invoiceId?: string | null;
   confirmationNote?: string | null;
   selectedBy: string;
+  actorRole?: string;
 }) {
   const contractId = input.contractId.trim();
   const packageId = input.packageId.trim();
@@ -207,7 +208,7 @@ export async function saveStudentContractInvoiceChoiceInTransaction(db: Prisma.T
   });
 
   await db.studentContract.update({where:{id:contractId},data:{updatedAt:new Date()}});
-  await db.auditLog.create({data:{actorEmail:selectedBy,actorRole:"ADMIN",module:"STUDENT_CONTRACT",action:"SET_INVOICE_CHOICE",entityType:"StudentContract",entityId:contractId,meta:{packageId,mode,invoiceId:choice.invoiceId,confirmationNote:choice.confirmationNote}}});
+  await db.auditLog.create({data:{actorEmail:selectedBy,actorRole:input.actorRole || "ADMIN",module:"STUDENT_CONTRACT",action:"SET_INVOICE_CHOICE",entityType:"StudentContract",entityId:contractId,meta:{packageId,mode,invoiceId:choice.invoiceId,confirmationNote:choice.confirmationNote}}});
   return choice;
 }
 

@@ -298,6 +298,13 @@ enum StudentContractFlowType {
   RENEWAL
 }
 
+enum RenewalSignatureExceptionStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  ACTIVATED
+}
+
 enum StudentContractMode {
   TUITION_AGREEMENT
   FULL_CARE_AGREEMENT
@@ -3125,11 +3132,44 @@ model StudentContract {
   createdByUser User?                  @relation("StudentContractCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   events        StudentContractEvent[]
   parentIntakes StudentParentIntake[]
+  renewalSignatureException RenewalSignatureException?
 
   @@index([studentId, status, createdAt])
   @@index([packageId, status, createdAt])
   @@index([status, createdAt])
   @@index([flowType, status, createdAt])
+}
+
+model RenewalSignatureException {
+  id                    String @id @default(uuid())
+  contractId            String @unique
+  invoiceId             String
+  status                RenewalSignatureExceptionStatus @default(REQUESTED)
+  snapshotHash          String
+  feeCents              Int
+  topUpMinutes          Int
+  requestReason         String
+  requestedBy           String
+  requestedAt           DateTime @default(now())
+  managerApprovedBy     String?
+  managerApprovedAt     DateTime?
+  managerNote           String?
+  managerRejectedBy     String?
+  managerRejectedAt     DateTime?
+  managerRejectReason   String?
+  activationReason      String?
+  activatedBy           String?
+  activatedAt           DateTime?
+  verifiedReceiptIds    Json?
+  verifiedAmountCents   Int?
+  signatureFollowUpDueAt DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  contract StudentContract @relation(fields: [contractId], references: [id], onDelete: Restrict)
+
+  @@index([invoiceId])
+  @@index([status, signatureFollowUpDueAt])
 }
 
 model EduTrustStudentCourseRecord {

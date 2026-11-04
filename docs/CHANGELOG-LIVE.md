@@ -1,4 +1,16 @@
 # CHANGELOG LIVE
+## 2026-11-04-r500
+
+- Release ID: `2026-11-04-r500`
+- Date/Time (Asia/Singapore): `2026-11-04`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: add a manager-approved, Finance-only exception for a fully paid cash tuition-hour renewal while the parent's e-signature is pending. Exact current-cycle invoice and approved cash receipts are rechecked before one-time lesson-hour activation; the agreement remains unsigned until the parent signs.
+- Controls: immutable contract terms, separate Finance and manager accounts, dedicated payment records, audit trail, seven-day signature follow-up and a Finance outstanding-signature list. Previous signed-renewal invoices cannot be reused.
+- Scope: no automatic activation or production financial-data edit. The reported Allie case remains blocked until the current SGD 5,500 payment and receipt are recorded and approved. Details: `docs/tasks/TASK-20261104-renewal-signature-exception.md`.
+- Verification and risk: isolated PostgreSQL migration/integration tests, focused unit tests, Prisma validation, TypeScript and production build; medium financial/ledger risk requires Finance review and follow-up. Roll back application code without deleting audit or payment records.
+
+---
+
 ## 2026-11-04-r499
 
 - Release ID: `2026-11-04-r499`

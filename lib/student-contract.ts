@@ -8,6 +8,7 @@ import {
   StudentContractEventType,
   StudentContractFlowType,
   StudentContractStatus,
+  PackageType,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
@@ -1058,6 +1059,8 @@ async function expireContractIfNeeded(row: StudentContractRow) {
       : null;
   if (!expiresAt || expiresAt.getTime() >= Date.now()) return row;
   if (isTerminalStatus(row.status) || canonical === StudentContractStatus.VOID) return row;
+  const activeException = await prisma.renewalSignatureException.findUnique({ where: { contractId: row.id }, select: { status: true } });
+  if (activeException?.status === "ACTIVATED") return row;
   return prisma.$transaction(async tx=>{
     const next = await tx.studentContract.update({
       where: { id: row.id, updatedAt:row.updatedAt },
@@ -1345,6 +1348,8 @@ export async function saveStudentContractBusinessDraft(input: {
   const row = await getContractRow({ id: input.contractId });
   if (!row) throw new Error("Contract not found");
   const current = await expireContractIfNeeded(row);
+  const activeException = await prisma.renewalSignatureException.findUnique({ where: { contractId: current.id }, select: { status: true } });
+  if (activeException?.status === "ACTIVATED") throw new Error("Finance-activated renewal terms are locked; complete the parent's signature or review a new contract / 财务例外激活后不可修改合同，请完成补签或另行审核新合同");
   const canonical = canonicalStudentContractStatus(current.status);
   if (canonical === StudentContractStatus.VOID || canonical === StudentContractStatus.SIGNED || canonical === StudentContractStatus.INVOICE_CREATED) {
     throw new Error("Signed or closed contracts can no longer be edited");
@@ -1412,6 +1417,8 @@ export async function prepareStudentContractForSigning(input: {
   const row = await getContractRow({ id: input.contractId });
   if (!row) throw new Error("Contract not found");
   const current = await expireContractIfNeeded(row);
+  const activeException = await prisma.renewalSignatureException.findUnique({ where: { contractId: current.id }, select: { status: true } });
+  if (activeException?.status === "ACTIVATED") throw new Error("Finance-activated renewal terms are locked / 财务例外激活后不可重新生成合同内容");
   const canonical = canonicalStudentContractStatus(current.status);
   if (canonical === StudentContractStatus.VOID || canonical === StudentContractStatus.SIGNED || canonical === StudentContractStatus.INVOICE_CREATED) {
     throw new Error("Closed contracts cannot be reopened for signing");
@@ -1630,10 +1637,11 @@ async function ensurePackageGateAfterSignedContract(input: {
   });
 }
 
-async function ensureRenewalTopUpAfterSign(input: {
-  row: StudentContractRow;
+export async function applyContractRenewalTopUp(input: {
+  row: { id: string; packageId: string; flowType: StudentContractFlowType; package: { type: PackageType } };
   snapshot: ContractSnapshot;
-  signedAt: Date;
+  effectiveAt: Date;
+  basis: "SIGNATURE" | "FINANCE_EXCEPTION";
 }, tx: Prisma.TransactionClient) {
   if (input.row.flowType !== StudentContractFlowType.RENEWAL) {
     return { applied: false, topUpMinutes: 0 };
@@ -1662,11 +1670,11 @@ async function ensureRenewalTopUpAfterSign(input: {
 
   const totalAmount = roundMoney(input.snapshot.package.feeAmount);
   const topUpTxns = buildPurchaseTxnCreates({
-    batches: [{ minutes: topUpMinutes, note: "Signed renewal contract / 已签续费合同" }],
+    batches: [{ minutes: topUpMinutes, note: input.basis === "SIGNATURE" ? "Signed renewal contract / 已签续费合同" : "Finance-approved renewal, parent signature pending / 财务例外激活、待家长签署" }],
     totalAmount: totalAmount > 0 ? totalAmount : null,
     defaultNote: marker,
     prefix: "Renewal contract top-up",
-    baseCreatedAt: input.signedAt,
+    baseCreatedAt: input.effectiveAt,
   });
 
   {
@@ -1733,6 +1741,9 @@ export async function signStudentContract(input: {
   }
   if (canonical !== StudentContractStatus.READY_TO_SIGN) {
     throw new Error("Contract is not ready for signing");
+  }
+  if (current.signExpiresAt && current.signExpiresAt.getTime() < Date.now()) {
+    throw new Error("Contract sign link has expired");
   }
   const snapshot = coerceSnapshot(current.contractSnapshotJson);
   if (!snapshot) throw new Error("Contract snapshot is missing");
@@ -1811,10 +1822,11 @@ export async function finalizeStudentContractSignature(tx: Prisma.TransactionCli
     invoiceId: invoice.invoiceId,
     invoiceNo: invoice.invoiceNo,
   }, tx);
-  const renewalTopUp = await ensureRenewalTopUpAfterSign({
+  const renewalTopUp = await applyContractRenewalTopUp({
     row: current,
     snapshot,
-    signedAt,
+    effectiveAt: signedAt,
+    basis: "SIGNATURE",
   }, tx);
   const next = await tx.studentContract.update({
     where: { id: current.id },
@@ -1891,6 +1903,8 @@ export async function voidStudentContractInTransaction(tx: Prisma.TransactionCli
   await tx.$queryRaw`SELECT id FROM "StudentContract" WHERE id=${input.contractId} FOR UPDATE`;
   const row = await tx.studentContract.findUnique({where:{id:input.contractId},include:studentContractInclude});
   if (!row || row.packageId !== input.packageId) throw new Error("Contract does not belong to this package / 合同不属于当前课包");
+  const activeException = await tx.renewalSignatureException.findUnique({ where: { contractId: row.id }, select: { status: true } });
+  if (activeException?.status === "ACTIVATED") throw new Error("Reconcile the activated renewal, payment and lesson ledger before voiding / 例外激活后须先核对收款及课时流水，不能直接作废合同");
   const canonical = canonicalStudentContractStatus(row.status);
   if (canonical === StudentContractStatus.VOID) return summarize(row);
   if (row.updatedAt.toISOString() !== input.expectedUpdatedAt) throw new Error("Contract changed; reload and review before voiding / 合同已更新，请刷新并核对后作废");
