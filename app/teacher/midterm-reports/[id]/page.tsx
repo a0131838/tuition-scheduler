@@ -9,6 +9,7 @@ import {
   parseLearningReportAttendanceSnapshot,
 } from "@/lib/learning-report-attendance";
 import { prisma } from "@/lib/prisma";
+import { packageUsagePercent } from "@/lib/report-package-progress";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { formatBusinessDateOnly } from "@/lib/date-only";
@@ -161,6 +162,7 @@ export default async function TeacherMidtermReportDetailPage({
       teacher: true,
       course: true,
       subject: true,
+      package: true,
     },
   });
   if (!report || report.teacherId !== teacher.id || report.status === "EXEMPT" || report.archivedAt) {
@@ -264,6 +266,12 @@ export default async function TeacherMidtermReportDetailPage({
           { href: "/teacher/midterm-reports", label: t(lang, "Back to report list", "返回报告列表") },
         ]}
       />
+
+      <div style={{ border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 10, padding: 12 }}>
+        <b>{t(lang, "Progress basis", "进度口径")}</b>
+        <div>{t(lang, "At assignment, this subject", "分配时本科目")}: {report.progressPercent}% ({formatMinutesToHours(report.consumedMinutes)}h / {formatMinutesToHours(report.totalMinutes)}h)</div>
+        {report.package ? <div>{t(lang, "Current whole-package use", "当前整个课包使用率")}: {packageUsagePercent(report.package.totalMinutes, report.package.remainingMinutes)}% ({formatMinutesToHours(Number(report.package.totalMinutes ?? 0) - Number(report.package.remainingMinutes ?? 0))}h / {formatMinutesToHours(Number(report.package.totalMinutes ?? 0))}h)</div> : null}
+      </div>
 
       <section style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
         <div style={statCard("#fff7ed", "#fdba74")}>

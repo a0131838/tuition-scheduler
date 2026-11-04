@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { isFinalReportPreparationDue } from "@/lib/report-package-progress";
 
 export const FINAL_REPORT_RECOMMENDATIONS = [
   "CONTINUE_CURRENT",
@@ -160,13 +161,22 @@ function safePositiveInt(v: number | null | undefined) {
   return Math.round(n);
 }
 
-export async function loadFinalReportCandidates() {
+export async function loadFinalReportCandidates(stage: "READY" | "PREPARATION" = "READY") {
+  const preparationPackageIds = stage === "PREPARATION"
+    ? (await prisma.coursePackage.findMany({
+        where: { type: "HOURS", status: "ACTIVE", totalMinutes: { gt: 0 }, remainingMinutes: { gt: 0 } },
+        select: { id: true, totalMinutes: true, remainingMinutes: true },
+      }))
+        .filter((pkg) => isFinalReportPreparationDue(pkg.totalMinutes, pkg.remainingMinutes))
+        .map((pkg) => pkg.id)
+    : [];
+  if (stage === "PREPARATION" && preparationPackageIds.length === 0) return [];
   const packages = await prisma.coursePackage.findMany({
     where: {
       type: "HOURS",
       status: "ACTIVE",
       totalMinutes: { gt: 0 },
-      remainingMinutes: { lte: 0 },
+      ...(stage === "READY" ? { remainingMinutes: { lte: 0 } } : { id: { in: preparationPackageIds } }),
     },
     include: {
       student: true,

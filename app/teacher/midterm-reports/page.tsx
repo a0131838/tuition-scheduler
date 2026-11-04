@@ -2,6 +2,7 @@ import { requireTeacherProfile } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { formatMinutesToHours } from "@/lib/midterm-report";
 import { prisma } from "@/lib/prisma";
+import { packageUsagePercent } from "@/lib/report-package-progress";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import TeacherWorkspaceHero from "../_components/TeacherWorkspaceHero";
 
@@ -95,6 +96,7 @@ export default async function TeacherMidtermReportsPage() {
       student: true,
       course: true,
       subject: true,
+      package: true,
     },
     orderBy: [{ status: "asc" }, { assignedAt: "desc" }],
     take: 300,
@@ -192,7 +194,8 @@ export default async function TeacherMidtermReportsPage() {
                   {r.subject ? ` / ${r.subject.name}` : ""}
                 </td>
                 <td style={{ padding: 6 }}>
-                  {r.progressPercent}% ({formatMinutesToHours(r.consumedMinutes)}h / {formatMinutesToHours(r.totalMinutes)}h)
+                  <div>{t(lang, "At assignment, subject", "分配时本科目")}: {r.progressPercent}% ({formatMinutesToHours(r.consumedMinutes)}h / {formatMinutesToHours(r.totalMinutes)}h)</div>
+                  {r.package ? <div style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Current package use", "当前课包使用率")}: {packageUsagePercent(r.package.totalMinutes, r.package.remainingMinutes)}%</div> : null}
                 </td>
                 <td style={{ padding: 6 }}>{fmt(r.assignedAt)}</td>
                 <td style={{ padding: 6 }}>

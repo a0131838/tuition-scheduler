@@ -9,6 +9,7 @@ import {
 } from "@/lib/midterm-report";
 import { createLearningReportAttendanceSnapshot } from "@/lib/learning-report-attendance";
 import { prisma } from "@/lib/prisma";
+import { packageUsagePercent } from "@/lib/report-package-progress";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { formatBusinessDateTime } from "@/lib/date-only";
@@ -362,6 +363,7 @@ export default async function AdminMidtermReportCenterPage({
         teacher: true,
         course: true,
         subject: true,
+        package: true,
         exemptedByUser: { select: { name: true } },
         archivedByUser: { select: { name: true } },
       },
@@ -496,7 +498,7 @@ export default async function AdminMidtermReportCenterPage({
           scrollMarginTop: 96,
         }}
       >
-        <div style={{ fontWeight: 800, color: "#9a3412", marginBottom: 8 }}>{t(lang, "Candidates Near Midpoint", "接近中期报告节点")}</div>
+        <div style={{ fontWeight: 800, color: "#9a3412", marginBottom: 8 }}>{t(lang, "Midpoint and overdue candidates", "中期节点及逾期候选")}</div>
         {candidates.length === 0 ? (
           <div style={{ color: "#999" }}>{t(lang, "No candidates for now.", "当前没有候选学生。")}</div>
         ) : (
@@ -520,6 +522,7 @@ export default async function AdminMidtermReportCenterPage({
                   </td>
                   <td style={{ padding: 6 }}>
                     <b>{row.progressPercent}%</b> ({formatMinutesToHours(row.consumedMinutes)}h / {formatMinutesToHours(row.totalMinutes)}h)
+                    {row.progressPercent > 70 ? <div style={{ color: "#b91c1c", fontSize: 12 }}>{t(lang, "Past midpoint window — follow up", "已过中期窗口，请跟进")}</div> : null}
                     <div style={{ color: "#64748b", fontSize: 12 }}>
                       {t(lang, "Actual subject attendance / individual reference hours", "本科目实际出勤 / 个人参考课时")}
                       {row.participantCount > 1 ? ` · ${t(lang, `Shared by ${row.participantCount} students`, `${row.participantCount}名学生共享`)}` : ""}
@@ -680,7 +683,10 @@ export default async function AdminMidtermReportCenterPage({
                     <td style={{ padding: 6, fontWeight: 700 }}>{r.student.name}</td>
                     <td style={{ padding: 6 }}>{r.teacher.name}</td>
                     <td style={{ padding: 6 }}>{r.course.name}{r.subject ? ` / ${r.subject.name}` : ""}</td>
-                    <td style={{ padding: 6 }}>{r.progressPercent}% ({formatMinutesToHours(r.consumedMinutes)}h / {formatMinutesToHours(r.totalMinutes)}h)</td>
+                    <td style={{ padding: 6 }}>
+                      <div>{t(lang, "At assignment, subject", "分配时本科目")}: {r.progressPercent}% ({formatMinutesToHours(r.consumedMinutes)}h / {formatMinutesToHours(r.totalMinutes)}h)</div>
+                      {r.package ? <div style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Current package use", "当前课包使用率")}: {packageUsagePercent(r.package.totalMinutes, r.package.remainingMinutes)}% ({formatMinutesToHours(Number(r.package.totalMinutes ?? 0) - Number(r.package.remainingMinutes ?? 0))}h / {formatMinutesToHours(Number(r.package.totalMinutes ?? 0))}h)</div> : null}
+                    </td>
                     <td style={{ padding: 6 }}>
                       <span style={{ color: r.status === "EXEMPT" ? "#475569" : forwardMeta.locked ? "#1d4ed8" : r.status === "SUBMITTED" ? "#166534" : "#92400e", fontWeight: 700 }}>
                         {statusLabel(lang, r.status, forwardMeta.locked)}

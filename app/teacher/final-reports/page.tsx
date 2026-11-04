@@ -3,6 +3,7 @@ import { formatBusinessDateTime } from "@/lib/date-only";
 import { getLang, t } from "@/lib/i18n";
 import { formatMinutesToHours } from "@/lib/midterm-report";
 import { prisma } from "@/lib/prisma";
+import { packageUsagePercent } from "@/lib/report-package-progress";
 import TeacherWorkspaceHero from "../_components/TeacherWorkspaceHero";
 
 function fmt(d?: Date | null) {
@@ -191,6 +192,8 @@ export default async function TeacherFinalReportsPage() {
                 </td>
                 <td style={{ padding: 6 }}>
                   {formatMinutesToHours(safeMinutes(row.package.remainingMinutes))}h / {formatMinutesToHours(safeMinutes(row.package.totalMinutes))}h
+                  <div style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Current package use", "当前课包使用率")}: {packageUsagePercent(row.package.totalMinutes, row.package.remainingMinutes)}%</div>
+                  {row.status === "ASSIGNED" && Number(row.package.remainingMinutes ?? 0) > 0 ? <div style={{ fontSize: 12, color: "#1d4ed8" }}>{t(lang, "Draft only until balance reaches zero", "余额归零前仅可保存草稿")}</div> : null}
                 </td>
                 <td style={{ padding: 6 }}>{fmt(row.assignedAt)}</td>
                 <td style={{ padding: 6 }}>

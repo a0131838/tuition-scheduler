@@ -306,6 +306,10 @@ export function calculateMidtermSubjectProgress(input: {
   };
 }
 
+export function isMidtermFollowupDue(progressPercent: number) {
+  return progressPercent >= MIDTERM_REPORT_MIN_PROGRESS;
+}
+
 export async function loadMidtermCandidates() {
   const throughAt = new Date();
   const packages = await prisma.coursePackage.findMany({
@@ -446,7 +450,9 @@ export async function loadMidtermCandidates() {
           participantCount,
           attendedMinutes: entry.attendedMinutes,
         });
-        if (!progress.eligible) return null;
+        // Keep an unhandled midpoint visible after it passes 70%; the upper
+        // boundary still marks the ideal window, not an expiry date.
+        if (!isMidtermFollowupDue(progress.progressPercent)) return null;
 
         const teacherOptions = Array.from(entry.teacherMap.values())
           .map((opt) => {

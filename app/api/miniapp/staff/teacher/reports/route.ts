@@ -13,6 +13,7 @@ import { acknowledgeManagerTeacherFeedback, getTeacherManagerFeedbackState } fro
 import { cleanMiniappText, isReportEditable } from "@/lib/miniapp-staff-action-center";
 import { parseReportDraft } from "@/lib/midterm-report";
 import { prisma } from "@/lib/prisma";
+import { isFinalReportSubmissionDue } from "@/lib/report-package-progress";
 import { MINIAPP_TEMPLATE_KEYS, queueMiniappNotificationsForStudent } from "@/lib/miniapp-notifications";
 import { getTeacherNoticeState, markTeacherNoticeRead } from "@/lib/teacher-notices";
 
@@ -178,6 +179,15 @@ export async function POST(req: Request) {
     });
     if (!report) return bad("Report not found", 404);
     if (!isReportEditable(report.status, report.archivedAt) || report.status === "FORWARDED") return bad("Report is read only", 409);
+    if (submit) {
+      const currentPackage = await prisma.coursePackage.findUnique({
+        where: { id: report.packageId },
+        select: { remainingMinutes: true },
+      });
+      if (!currentPackage || !isFinalReportSubmissionDue(currentPackage.remainingMinutes)) {
+        return bad("Package still has hours remaining; save a draft until completion", 409);
+      }
+    }
     const current = parseFinalReportDraft(report.reportJson);
     const recommendation = cleanMiniappText(draftInput.recommendedNextStep, 40).toUpperCase();
     const draft = parseFinalReportDraft({

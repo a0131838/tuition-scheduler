@@ -1,4 +1,16 @@
 # CHANGELOG LIVE
+## 2026-11-04-r498
+
+- Release ID: `2026-11-04-r498`
+- Date/Time (Asia/Singapore): `2026-11-04`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: keep overdue midterm candidates visible, add near-completion final-report draft assignment at <=8 hours or <=10% remaining, and block final submission in web and mini-program until the package balance reaches zero.
+- Reporting: distinguish assignment-time subject progress from live whole-package use; teacher ownership remains an explicit admin decision.
+- Scope: no package balance, attendance, renewal, scheduling, finance or historical report data mutation. Details and verification: `docs/tasks/TASK-20261104-report-candidate-stages.md`.
+- Rollback: revert this application commit; keep existing report drafts and records.
+
+---
+
 ## 2026-11-03-r497
 
 - Release ID: `2026-11-03-r497`

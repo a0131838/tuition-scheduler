@@ -21,6 +21,7 @@ import {
 import { getLang, t } from "@/lib/i18n";
 import { formatMinutesToHours } from "@/lib/midterm-report";
 import { prisma } from "@/lib/prisma";
+import { isFinalReportPreparationDue, isFinalReportSubmissionDue, packageUsagePercent } from "@/lib/report-package-progress";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -161,13 +162,21 @@ async function assignFinalReport(formData: FormData) {
   const packageId = String(formData.get("packageId") ?? "").trim();
   const studentId = String(formData.get("studentId") ?? "").trim();
   const teacherId = String(formData.get("teacherId") ?? "").trim();
+  const stage = String(formData.get("stage") ?? "READY");
   if (!packageId || !studentId || !teacherId) redirect("/admin/reports/final?err=missing");
 
   const pkg = await prisma.coursePackage.findUnique({
     where: { id: packageId },
     include: { sharedStudents: { select: { studentId: true } } },
   });
-  if (!pkg || pkg.type !== "HOURS") redirect("/admin/reports/final?err=pkg");
+  if (!pkg || pkg.type !== "HOURS" || pkg.status !== "ACTIVE") redirect("/admin/reports/final?err=pkg");
+  if (stage === "PREPARATION") {
+    if (!isFinalReportPreparationDue(pkg.totalMinutes, pkg.remainingMinutes)) redirect("/admin/reports/final?err=not-due");
+  } else if (stage !== "READY" || !isFinalReportSubmissionDue(pkg.remainingMinutes)) {
+    redirect("/admin/reports/final?err=not-due");
+  }
+  const teacherExists = await prisma.teacher.findUnique({ where: { id: teacherId }, select: { id: true } });
+  if (!teacherExists) redirect("/admin/reports/final?err=teacher");
   const accessibleStudentIds = new Set([pkg.studentId, ...pkg.sharedStudents.map((row) => row.studentId)]);
   if (!accessibleStudentIds.has(studentId)) redirect("/admin/reports/final?err=student");
 
@@ -521,8 +530,10 @@ export default async function AdminFinalReportCenterPage({
   const err = String(sp.err ?? "");
   const view = normalizeView(String(sp.view ?? ""));
 
-  const [candidates, reports] = await Promise.all([
+  const [candidates, preparationCandidates, teachers, reports] = await Promise.all([
     loadFinalReportCandidates(),
+    loadFinalReportCandidates("PREPARATION"),
+    prisma.teacher.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
     prisma.finalReport.findMany({
       include: {
         student: true,
@@ -601,7 +612,7 @@ export default async function AdminFinalReportCenterPage({
         </div>
         <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}>
           <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
-            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Candidates", "候选课包")}</div>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Ready to submit", "可正式提交")}</div>
             <div style={{ fontSize: 28, fontWeight: 800 }}>{candidates.length}</div>
           </div>
           <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
@@ -638,6 +649,7 @@ export default async function AdminFinalReportCenterPage({
         <a href="#final-report-stats">{t(lang, "Stats", "统计")}</a>
         <a href="#final-report-filters">{t(lang, "Views", "视图")}</a>
         <a href="#final-report-candidates">{t(lang, "Candidates", "候选课包")}</a>
+        <a href="#final-report-preparation">{t(lang, "Prepare soon", "临近结课")}</a>
         <a href="#final-report-records">{t(lang, "Records", "报告记录")}</a>
       </div>
 
@@ -689,7 +701,9 @@ export default async function AdminFinalReportCenterPage({
 
       {err ? (
         <div style={{ background: "#fff1f2", border: "1px solid #fb7185", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
-          {t(lang, "Operation failed. Please retry.", "操作失败，请重试。")}
+          {err === "not-due"
+            ? t(lang, "The package is no longer at the selected report stage. Refresh and review its balance.", "课包当前已不符合所选报告阶段，请刷新并核对余额。")
+            : t(lang, "Operation failed. Please retry.", "操作失败，请重试。")}
         </div>
       ) : null}
 
@@ -742,6 +756,33 @@ export default async function AdminFinalReportCenterPage({
             </a>
           );
         })}
+      </div>
+
+      <div id="final-report-preparation" style={{ border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 10, padding: 12, marginBottom: 16, scrollMarginTop: 96 }}>
+        <div style={{ fontWeight: 800, color: "#1d4ed8", marginBottom: 6 }}>{t(lang, "Near completion: prepare draft", "临近结课：可先准备草稿")}</div>
+        <p style={{ margin: "0 0 10px", color: "#334155" }}>{t(lang, "Active hour packages with 8 hours or less, or 10% or less remaining. Operations must confirm the responsible teacher; assigning a draft does not allow submission until the package reaches zero.", "剩余不超过 8 小时或不超过课包总量 10% 的有效课时包。教务需确认负责老师；提前分配后老师只能保存草稿，余额归零前不能提交。")}</p>
+        {preparationCandidates.length === 0 ? <div>{t(lang, "No packages near completion.", "暂无临近结课课包。")}</div> : (
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead><tr><th align="left">{t(lang, "Student / course", "学生／课程")}</th><th align="left">{t(lang, "Current use", "当前使用")}</th><th align="left">{t(lang, "Recorded teachers", "记录中的授课老师")}</th><th align="left">{t(lang, "Preparation owner", "草稿负责人")}</th></tr></thead>
+            <tbody>{preparationCandidates.map((row) => (
+              <tr key={row.candidateKey} style={{ borderTop: "1px solid #bfdbfe" }}>
+                <td style={{ padding: 6 }}>{row.studentName}<br />{row.courseName}</td>
+                <td style={{ padding: 6 }}>{packageUsagePercent(row.totalMinutes, row.remainingMinutes)}% · {formatMinutesToHours(row.remainingMinutes)}h {t(lang, "left", "剩余")}</td>
+                <td style={{ padding: 6 }}>{row.teacherOptions.map((opt) => opt.name).join(", ")}</td>
+                <td style={{ padding: 6 }}><form action={assignFinalReport} style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <input type="hidden" name="stage" value="PREPARATION" />
+                  <input type="hidden" name="packageId" value={row.packageId} />
+                  <input type="hidden" name="studentId" value={row.studentId} />
+                  <select name="teacherId" defaultValue="" required>
+                    <option value="">{t(lang, "Select after confirmation", "确认后选择老师")}</option>
+                    {teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
+                  </select>
+                  <button type="submit">{t(lang, "Assign draft", "分配草稿")}</button>
+                </form></td>
+              </tr>
+            ))}</tbody>
+          </table>
+        )}
       </div>
 
       <div id="final-report-candidates" style={{ border: "1px solid #fde68a", background: "#fffbeb", borderRadius: 10, padding: 12, marginBottom: 16, scrollMarginTop: 96 }}>

@@ -16,6 +16,7 @@ import {
 import { getLang, t } from "@/lib/i18n";
 import { formatMinutesToHours } from "@/lib/midterm-report";
 import { prisma } from "@/lib/prisma";
+import { isFinalReportSubmissionDue } from "@/lib/report-package-progress";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import TeacherWorkspaceHero from "../../_components/TeacherWorkspaceHero";
@@ -201,6 +202,15 @@ export default async function TeacherFinalReportDetailPage({
 
     const intent = String(formData.get("intent") ?? "save");
     const shouldSubmit = intent === "submit" || intent === "prepare";
+    if (shouldSubmit) {
+      const currentPackage = await prisma.coursePackage.findUnique({
+        where: { id: latest.packageId },
+        select: { remainingMinutes: true },
+      });
+      if (!currentPackage || !isFinalReportSubmissionDue(currentPackage.remainingMinutes)) {
+        redirect(`/teacher/final-reports/${encodeURIComponent(reportId)}?err=not-complete`);
+      }
+    }
     const draft = parseFinalDraftFromFormData(formData);
     const periodLabel = String(formData.get("reportPeriodLabel") ?? "").trim();
     const finalLevel = String(formData.get("finalLevel") ?? "").trim();
@@ -241,6 +251,7 @@ export default async function TeacherFinalReportDetailPage({
     ...(report.reportJson && typeof report.reportJson === "object" ? report.reportJson : {}),
     recommendedNextStep: report.recommendation ?? (report.reportJson as any)?.recommendedNextStep,
   });
+  const canSubmit = isFinalReportSubmissionDue(report.package.remainingMinutes);
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
@@ -289,8 +300,14 @@ export default async function TeacherFinalReportDetailPage({
           {t(lang, "This final report has already been forwarded by operations and is now read-only.", "该结课报告已由教务转发，当前为只读不可修改。")}
         </div>
       ) : null}
+      {report.status === "ASSIGNED" && !canSubmit ? (
+        <div style={{ background: "#eff6ff", border: "1px solid #93c5fd", borderRadius: 8, padding: "8px 10px", color: "#1d4ed8" }}>
+          {t(lang, "This package is near completion. Save your draft now; submission and parent edition become available when the balance reaches zero.", "该课包临近结课。现在可保存草稿；课包余额归零后才能提交并生成家长版。")}
+        </div>
+      ) : null}
+      {err === "not-complete" ? <div style={{ color: "#b91c1c" }}>{t(lang, "The package still has hours remaining. Your draft can be saved, but cannot be submitted yet.", "课包仍有余额，可保存草稿，暂不能提交。")}</div> : null}
 
-      <ParentReportEditionPanel key={report.updatedAt.toISOString()} kind="FINAL" id={report.id} lang={lang} autoPrepare={ok === "prepared"} />
+      {canSubmit || report.status !== "ASSIGNED" ? <ParentReportEditionPanel key={report.updatedAt.toISOString()} kind="FINAL" id={report.id} lang={lang} autoPrepare={ok === "prepared"} /> : null}
 
       <form action={saveReport} style={{ display: "grid", gap: 10 }}>
         <fieldset disabled={isLocked} style={{ border: "none", margin: 0, padding: 0, display: "grid", gap: 10 }}>
@@ -383,13 +400,13 @@ export default async function TeacherFinalReportDetailPage({
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           {!isLocked ? (
             <>
-              <button type="submit" name="intent" value="prepare" disabled={isLocked} style={primaryButtonStyle}>{t(lang, "Save, submit and generate parent report", "保存、提交并生成家长版")}</button>
+              {canSubmit ? <button type="submit" name="intent" value="prepare" disabled={isLocked} style={primaryButtonStyle}>{t(lang, "Save, submit and generate parent report", "保存、提交并生成家长版")}</button> : null}
           <button type="submit" name="intent" value="save" style={secondaryButtonStyle}>
                 {t(lang, "Save draft", "保存草稿")}
               </button>
-              <button type="submit" name="intent" value="submit" style={primaryButtonStyle}>
+              {canSubmit ? <button type="submit" name="intent" value="submit" style={primaryButtonStyle}>
                 {t(lang, "Submit final report", "提交结课报告")}
-              </button>
+              </button> : null}
             </>
           ) : null}
           <a href="/teacher/final-reports" style={secondaryButtonStyle}>{t(lang, "Back to report list", "返回报告列表")}</a>

@@ -1,4 +1,16 @@
 # RELEASE BOARD
+## 2026-11-04-r498
+
+- Release ID: `2026-11-04-r498`
+- Date/Time (Asia/Singapore): `2026-11-04`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Staff impact: admins see near-completion packages and can assign a teacher to prepare a final draft; teachers can save it before depletion, but web and mini-program submission wait for zero balance. Midterm candidates remain visible beyond 70% with an overdue label.
+- Progress labels: historical assigned subject progress and current whole-package usage are separate. Teacher ownership is never inferred from the package balance alone.
+- Verification and risk: focused threshold/delivery tests, TypeScript, production build and read-only package reconciliation; explicit teacher selection needs operational review. Details: `docs/tasks/TASK-20261104-report-candidate-stages.md`.
+- Rollback: revert application commit; preserve report records and package ledger.
+
+---
+
 ## 2026-11-03-r497
 
 - Release ID: `2026-11-03-r497`
