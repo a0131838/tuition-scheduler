@@ -544,6 +544,7 @@ model Teacher {
   payrollNotes              TeacherPayrollNote[]
   midtermReports            MidtermReport[]
   finalReports              FinalReport[]
+  renewalProgressReports    RenewalProgressReport[]
   leadAssessmentRequests    LeadAssessmentRequest[]
   monthlySchedulingOffers   MonthlySchedulingOffer[]
 }
@@ -1153,6 +1154,7 @@ model Student {
   sessions                   Session[]                     @relation("SessionStudent")
   midtermReports             MidtermReport[]
   finalReports               FinalReport[]
+  renewalProgressReports     RenewalProgressReport[]
   learningPlans              StudentLearningPlan[]
   sourceChannel              StudentSourceChannel?         @relation(fields: [sourceChannelId], references: [id])
   studentType                StudentType?                  @relation(fields: [studentTypeId], references: [id])
@@ -2960,6 +2962,7 @@ model CoursePackage {
   parentIntakes          StudentParentIntake[]
   schoolApplications     SchoolApplicationService[]
   renewalTasks           RenewalTask[]
+  renewalProgressReports RenewalProgressReport[]
   monthlySchedulingItems MonthlySchedulingItem[]
 
   @@index([studentId, courseId])
@@ -3004,12 +3007,48 @@ model RenewalTask {
 
   package CoursePackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
   student Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  progressReport RenewalProgressReport?
 
   @@index([status, nextFollowUpAt])
   @@index([riskLevel, status, createdAt])
   @@index([studentId, status, createdAt])
   @@index([packageId, status, createdAt])
   @@index([ownerUserId, status, nextFollowUpAt])
+}
+
+// One report belongs to one renewal follow-up cycle. Its package snapshot is
+// frozen when assigned, so a later top-up cannot erase the report trigger.
+model RenewalProgressReport {
+  id                String   @id @default(uuid())
+  renewalTaskId     String   @unique
+  packageId         String
+  studentId         String
+  teacherId         String
+  assignedByUserId  String
+  status            String   @default("ASSIGNED")
+  assignedAt        DateTime @default(now())
+  archivedAt        DateTime?
+  submittedAt       DateTime?
+  approvedAt        DateTime?
+  approvedByUserId  String?
+  reviewNote        String?
+  deliveredAt       DateTime?
+  deliveredByUserId String?
+  deliveryChannel   String?
+  snapshotJson      Json
+  reportJson        Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  renewalTask RenewalTask  @relation(fields: [renewalTaskId], references: [id], onDelete: Restrict)
+  package     CoursePackage @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  student     Student       @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  teacher     Teacher       @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  parentEditions LearningReportParentEdition[]
+
+  @@index([teacherId, status, assignedAt])
+  @@index([studentId, createdAt])
+  @@index([status, createdAt])
 }
 
 model PackageInvoiceApproval {
@@ -3895,6 +3934,7 @@ model LearningReportParentEdition {
   reportId       String
   midtermReportId String?
   finalReportId   String?
+  renewalProgressReportId String?
   sourceHash     String
   status         String   @default("GENERATING")
   sourceJson     Json
@@ -3913,9 +3953,11 @@ model LearningReportParentEdition {
 
   midtermReport MidtermReport? @relation(fields: [midtermReportId], references: [id], onDelete: Cascade)
   finalReport FinalReport? @relation(fields: [finalReportId], references: [id], onDelete: Cascade)
+  renewalProgressReport RenewalProgressReport? @relation(fields: [renewalProgressReportId], references: [id], onDelete: Cascade)
 
   @@index([midtermReportId])
   @@index([finalReportId])
+  @@index([renewalProgressReportId])
   @@unique([kind, reportId, sourceHash])
   @@index([kind, reportId, createdAt])
 }

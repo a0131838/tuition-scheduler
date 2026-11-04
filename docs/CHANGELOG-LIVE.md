@@ -1,4 +1,15 @@
 # CHANGELOG LIVE
+## 2026-11-04-r499
+
+- Release ID: `2026-11-04-r499`
+- Date/Time (Asia/Singapore): `2026-11-04`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: add a renewal progress report tied to each renewal task, assigned to the actual teacher with a frozen package/attendance snapshot. Teacher submission, AI-assisted bilingual review, coordinator approval and delivery tracking are separate from the zero-balance final report.
+- Scope: existing package balances, attendance, contracts, invoices, payments, midterm/final records and automated parent messaging are unchanged. Details: `docs/tasks/TASK-20261104-renewal-progress-report.md`.
+- Verification and risk: focused report/renewal tests, Prisma validation, TypeScript and production build; coordinator must verify teacher ownership and translations. Rollback the application commit without editing existing financial records.
+
+---
+
 ## 2026-11-04-r498
 
 - Release ID: `2026-11-04-r498`

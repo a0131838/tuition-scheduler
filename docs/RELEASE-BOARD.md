@@ -1,4 +1,16 @@
 # RELEASE BOARD
+## 2026-11-04-r499
+
+- Release ID: `2026-11-04-r499`
+- Date/Time (Asia/Singapore): `2026-11-04`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Staff impact: Jessika assigns the actual teacher from a renewal case; the teacher completes a dedicated report; AI drafts the bilingual parent edition; the coordinator approves before download and records delivery. Same-package top-ups do not erase the report or its assignment snapshot.
+- Business scope: no change to contract, payment, package ledger, midterm or final report gates. The report is informative and is not a finance gate.
+- Verification: `docs/tasks/TASK-20261104-renewal-progress-report.md`, focused tests, Prisma validation, TypeScript, production build and guarded deployment checks.
+- Risk: wrong teacher selection or historical attendance gaps require manual verification. AI output requires human review. Rollback the application commit without altering financial records.
+
+---
+
 ## 2026-11-04-r498
 
 - Release ID: `2026-11-04-r498`

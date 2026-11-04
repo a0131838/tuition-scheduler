@@ -20,8 +20,8 @@ export async function renderParentLearningReportPdf(
   const title = label(
     source.kind === "MIDTERM"
       ? "Midterm Learning Report"
-      : "End-of-course Learning Report",
-    source.kind === "MIDTERM" ? "期中学习报告" : "结课学习报告",
+      : source.kind === "RENEWAL" ? "Learning Progress Before Renewal" : "End-of-course Learning Report",
+    source.kind === "MIDTERM" ? "期中学习报告" : source.kind === "RENEWAL" ? "续费前学习进展报告" : "结课学习报告",
   );
   const sections: ReportPdfSection[] = [];
   const overview = [
@@ -60,7 +60,7 @@ export async function renderParentLearningReportPdf(
     table: true,
     fields: overview,
   });
-  if (content && !reviewed)
+  if (!reviewed && (content || source.kind === "RENEWAL"))
     sections.push({
       title: label("Preview copy", "待确认预览版"),
       fields: [
@@ -170,7 +170,7 @@ export function parentReportPdfHeaders(
 ) {
   const clean = (value: string) =>
     value.replace(/[\\/:*?"<>|\r\n]/g, "_").slice(0, 100);
-  const name = `${clean(source.student)}-${source.kind === "MIDTERM" ? "期中学习报告" : "结课学习报告"}-${source.date}-${lang}${preview ? "-预览" : ""}.pdf`;
+  const name = `${clean(source.student)}-${source.kind === "MIDTERM" ? "期中学习报告" : source.kind === "RENEWAL" ? "续费前学习进展报告" : "结课学习报告"}-${source.date}-${lang}${preview ? "-预览" : ""}.pdf`;
   const ascii = `${source.kind.toLowerCase()}-parent-${source.date}-${source.reportId.slice(0, 8)}-${lang}${preview ? "-preview" : ""}.pdf`;
   return {
     "Content-Type": "application/pdf",

@@ -22,7 +22,7 @@ export async function GET(
     const { kind: raw, id } = await params;
     const kind = parseParentReportKind(raw);
     const { row } = await requireParentReportActor(kind, id);
-    if (!["SUBMITTED", "FORWARDED"].includes(row.status))
+    if (!["SUBMITTED", "FORWARDED", "APPROVED", "DELIVERED"].includes(row.status))
       throw new ParentReportError("SAVE_AND_SUBMIT_FIRST");
     const { source, edition } = await currentParentEdition(kind, id);
     const url = new URL(req.url);
@@ -30,6 +30,8 @@ export async function GET(
     if (!["ZH", "EN", "BILINGUAL"].includes(lang))
       throw new ParentReportError("INVALID_REQUEST", 400);
     const preview = url.searchParams.get("preview") === "1";
+    if (kind === "RENEWAL" && !preview && !["APPROVED", "DELIVERED"].includes(row.status))
+      throw new ParentReportError("COORDINATOR_APPROVAL_REQUIRED", 403);
     if (
       lang !== "EN" &&
       (!edition ||
@@ -55,7 +57,7 @@ export async function GET(
         source,
         content,
         lang as "ZH" | "EN" | "BILINGUAL",
-        Boolean(edition?.reviewedAt),
+        Boolean(edition?.reviewedAt) && !preview,
       ));
     return new Response(new Uint8Array(bytes), {
       headers: parentReportPdfHeaders(

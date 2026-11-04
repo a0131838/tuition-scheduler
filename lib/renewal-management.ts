@@ -519,6 +519,7 @@ export async function listRenewalTasks(input?: {
     include: {
       student: { select: { id: true, name: true, sourceChannel: { select: { name: true } } } },
       package: { include: { course: { select: { name: true } } } },
+      progressReport: { select: { id: true, status: true, deliveredAt: true } },
     },
     orderBy: [{ completedAt: "asc" }, { nextFollowUpAt: "asc" }, { updatedAt: "desc" }],
     take: Math.min(500, Math.max(1, input?.limit ?? 200)),
@@ -689,6 +690,7 @@ export function renewalTaskDto(row: Awaited<ReturnType<typeof listRenewalTasks>>
     courseName: row.package.course.name,
     status: row.status,
     statusLabel: cohortStatusLabel(row.status, cohort),
+    progressReport: row.progressReport ? { id: row.progressReport.id, status: row.progressReport.status, deliveredAt: row.progressReport.deliveredAt?.toISOString() ?? null } : null,
     riskLevel: row.riskLevel,
     remainingMinutes: row.remainingMinutes,
     scheduledMinutes: row.scheduledMinutes,

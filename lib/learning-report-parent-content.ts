@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { parseReportDraft } from "./midterm-report";
 import { parseFinalReportDraft } from "./final-report";
-export type ParentReportKind = "MIDTERM" | "FINAL";
+export type ParentReportKind = "MIDTERM" | "FINAL" | "RENEWAL";
 export type ParentReportField = {
   key: string;
   labelZh: string;

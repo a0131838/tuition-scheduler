@@ -6,7 +6,7 @@ import {
 import type { ParentReportKind } from "./learning-report-parent-content";
 export function parseParentReportKind(value: string): ParentReportKind {
   const k = value.toUpperCase();
-  if (k !== "MIDTERM" && k !== "FINAL")
+  if (k !== "MIDTERM" && k !== "FINAL" && k !== "RENEWAL")
     throw new ParentReportError("NOT_FOUND", 404);
   return k;
 }
@@ -28,7 +28,8 @@ export async function requireParentReportActor(
   const staff =
     user.role === "ADMIN" ||
     (await isManagerUser(user)) ||
-    user.operationsAdmin;
+    user.operationsAdmin ||
+    (kind === "RENEWAL" && (user.role === "CS" || user.workspaces.includes("CS")));
   if (!own && !staff) throw new ParentReportError("NOT_ALLOWED", 403);
   return { user, ...current };
 }

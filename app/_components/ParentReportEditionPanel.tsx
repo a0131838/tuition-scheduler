@@ -22,11 +22,13 @@ export default function ParentReportEditionPanel({
   id,
   lang = "BILINGUAL",
   autoPrepare = false,
+  allowFinalDownload = true,
 }: {
-  kind: "MIDTERM" | "FINAL";
+  kind: "MIDTERM" | "FINAL" | "RENEWAL";
   id: string;
   lang?: "ZH" | "EN" | "BILINGUAL";
   autoPrepare?: boolean;
+  allowFinalDownload?: boolean;
 }) {
   const t = (en: string, zh: string) =>
     lang === "EN" ? en : lang === "ZH" ? zh : `${zh} / ${en}`;
@@ -130,7 +132,10 @@ export default function ParentReportEditionPanel({
         {t("Parent-ready report", "家长阅读版报告")}
       </div>
       <p style={{ margin: 0, lineHeight: 1.7 }}>
-        {t(
+        {kind === "RENEWAL" ? t(
+          "After the teacher submits, generate the Chinese translation and family summary. Check every paragraph against the original and confirm. The coordinator must then approve the report before the family PDF is released and delivery is recorded.",
+          "老师提交后生成中文译文和家长摘要，逐段对照原文并确认；教务批准后才能下载正式家长版，并登记送达。",
+        ) : t(
           "Save and submit the teacher report below first. Generate a complete Chinese translation and a concise family summary, review them alongside the original, then confirm and download. The existing academic approval and delivery process still applies.",
           "先保存并提交下方老师报告，再生成完整中文译文和家长重点摘要；对照原文检查、确认后即可下载。正式审核与家长送达继续使用现有流程。",
         )}
@@ -157,11 +162,11 @@ export default function ParentReportEditionPanel({
         </button>
         <a
           style={btn}
-          href={`${base}/pdf?lang=EN`}
+          href={`${base}/pdf?lang=EN${kind === "RENEWAL" && !allowFinalDownload ? "&preview=1" : ""}`}
           target="_blank"
           rel="noreferrer"
         >
-          {t("Full original PDF", "原文完整版 PDF")}
+          {kind === "RENEWAL" && !allowFinalDownload ? t("Original draft PDF", "原文内部预览 PDF") : t("Full original PDF", "原文完整版 PDF")}
         </a>
         {ready ? (
           <a
@@ -309,12 +314,12 @@ export default function ParentReportEditionPanel({
                 onClick={() => action("review")}
               >
                 {t(
-                  "Confirm translation and enable downloads",
-                  "确认译文，启用家长版下载",
+                kind === "RENEWAL" ? "Confirm translation for coordinator approval" : "Confirm translation and enable downloads",
+                  kind === "RENEWAL" ? "确认译文，交教务审批" : "确认译文，启用家长版下载",
                 )}
               </button>
             </div>
-          ) : (
+          ) : allowFinalDownload ? (
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               {[
                 ["BILINGUAL", "Bilingual parent PDF", "中英对照家长版"],
@@ -332,7 +337,7 @@ export default function ParentReportEditionPanel({
                 </a>
               ))}
             </div>
-          )}
+          ) : <p>{t("Waiting for coordinator approval before the family PDF can be downloaded.", "家长版 PDF 须经教务批准后方可下载。")}</p>}
         </>
       ) : null}
     </section>

@@ -123,7 +123,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     (user.role === "CS" && pathname === "/admin/communication-reminders") ||
     (pathname.startsWith("/admin/leads/") && !pathname.startsWith("/admin/leads/owners")) ||
     (user.role === "CS" && user.workspaces.includes("CARE") && pathname.startsWith("/admin/care")) ||
-    (user.role === "CS" && (pathname === "/admin/communications" || pathname === "/admin/mobile" || pathname === "/admin/mobile/parent-requests"));
+    (user.role === "CS" && (pathname === "/admin/communications" || pathname === "/admin/mobile" || pathname === "/admin/mobile/parent-requests" || pathname === "/admin/renewals" || pathname === "/admin/reports/renewal"));
 
   if (isResourceOnly && !resourceAllowedPath) {
     redirect("/admin/leads");
@@ -176,6 +176,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           : []),
         ...((user.role === "ADMIN" || user.role === "CS" || user.role === "FINANCE" || user.operationsAdmin || user.workspaces.includes("CS") || showManagerConsole)
           ? [{ href: "/admin/renewals", label: t(lang, "Renewal Follow-up", "续费跟进"), tone: "warning" as const }]
+          : []),
+        ...((user.role === "ADMIN" || user.role === "CS" || user.operationsAdmin || user.workspaces.includes("CS") || showManagerConsole)
+          ? [{ href: "/admin/reports/renewal", label: t(lang, "Renewal Progress Reports", "续费前学习进展报告"), tone: "success" as const }]
           : []),
         { href: "/admin/communication-reminders", label: t(lang, "Communication Reminders", "AI 沟通提醒"), tone: "accent" as const },
         { href: "/admin/mobile", label: t(lang, "Mobile Workbench", "员工移动端"), tone: "accent" as const },

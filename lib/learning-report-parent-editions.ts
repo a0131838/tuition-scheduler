@@ -9,6 +9,7 @@ import {
 import { formatBusinessDateOnly } from "./date-only";
 import { parseReportDraft } from "./midterm-report";
 import { parseFinalReportDraft } from "./final-report";
+import { renewalParentFields, parseRenewalSnapshot } from "./renewal-progress-report";
 import {
   parentReportFields,
   parentSourceHash,
@@ -30,6 +31,32 @@ export async function loadParentReportSource(
   id: string,
   db: Prisma.TransactionClient = prisma,
 ) {
+  if (kind === "RENEWAL") {
+    const row = await db.renewalProgressReport.findUnique({
+      where: { id },
+      include: { student: true, teacher: true, package: { include: { course: true } } },
+    });
+    if (!row) throw new ParentReportError("NOT_FOUND", 404);
+    const snapshot = parseRenewalSnapshot(row.snapshotJson);
+    const hours = (minutes: number) => `${Number((minutes / 60).toFixed(2))}h`;
+    const packageValue = snapshot.packageType === "MONTHLY"
+      ? `Monthly package valid until ${snapshot.validTo ? formatBusinessDateOnly(new Date(snapshot.validTo)) : "date not set"} at assignment. Later renewals are excluded from this snapshot.`
+      : `Package total ${hours(snapshot.totalMinutes)}; remaining ${hours(snapshot.remainingMinutes)} at assignment. Later top-ups are excluded from this snapshot.`;
+    const source: ParentReportSource = {
+      version: 1, kind, reportId: id,
+      student: snapshot.studentName || row.student.name, teacher: snapshot.teacherName || row.teacher.name,
+      course: snapshot.courseName || row.package.course.name, subject: "",
+      date: formatBusinessDateOnly(row.submittedAt ?? row.assignedAt),
+      periodZh: `${snapshot.sessionCount} 节实际出勤课次 · ${hours(snapshot.attendedMinutes)}；快照截至 ${formatBusinessDateOnly(new Date(snapshot.capturedAt || row.assignedAt))}`,
+      periodEn: `${snapshot.sessionCount} attended sessions · ${hours(snapshot.attendedMinutes)}; snapshot as at ${formatBusinessDateOnly(new Date(snapshot.capturedAt || row.assignedAt))}`,
+      level: "", score: "", target: "",
+      fields: [
+        { key: "packageSnapshot", labelZh: "指派时课包情况", labelEn: "Package at assignment", sectionZh: "报告范围", sectionEn: "Report scope", value: packageValue },
+        ...renewalParentFields(row.reportJson),
+      ],
+    };
+    return { row, source, hash: parentSourceHash(source) };
+  }
   const row =
     kind === "MIDTERM"
       ? await db.midtermReport.findUnique({
@@ -147,7 +174,7 @@ export async function generateParentEdition(
   } = {},
 ) {
   const { row, source, hash } = await loadParentReportSource(kind, id);
-  if (row.archivedAt || !["SUBMITTED", "FORWARDED"].includes(row.status))
+  if (row.archivedAt || !["SUBMITTED", "FORWARDED", "APPROVED", "DELIVERED"].includes(row.status))
     throw new ParentReportError("SAVE_AND_SUBMIT_FIRST");
   if (
     !source.fields.some(
@@ -182,7 +209,7 @@ export async function generateParentEdition(
           reportId: id,
           ...(kind === "MIDTERM"
             ? { midtermReportId: id }
-            : { finalReportId: id }),
+            : kind === "FINAL" ? { finalReportId: id } : { renewalProgressReportId: id }),
           sourceHash: hash,
           sourceJson: source as any,
           generationId,
@@ -321,8 +348,10 @@ export async function reviewParentEdition(
   return prisma.$transaction(async (tx) => {
     if (kind === "MIDTERM")
       await tx.$queryRaw`SELECT "id" FROM "MidtermReport" WHERE "id"=${id} FOR UPDATE`;
-    else
+    else if (kind === "FINAL")
       await tx.$queryRaw`SELECT "id" FROM "FinalReport" WHERE "id"=${id} FOR UPDATE`;
+    else
+      await tx.$queryRaw`SELECT "id" FROM "RenewalProgressReport" WHERE "id"=${id} FOR UPDATE`;
     const current = await loadParentReportSource(kind, id, tx);
     const edition = await tx.learningReportParentEdition.findUnique({
       where: { id: editionId },
@@ -334,7 +363,7 @@ export async function reviewParentEdition(
       edition.sourceHash !== current.hash ||
       edition.status !== "READY" ||
       current.row.archivedAt ||
-      !["SUBMITTED", "FORWARDED"].includes(current.row.status)
+      !["SUBMITTED", "FORWARDED", "APPROVED", "DELIVERED"].includes(current.row.status)
     )
       throw new ParentReportError("SOURCE_CHANGED");
     const saved = await tx.learningReportParentEdition.update({

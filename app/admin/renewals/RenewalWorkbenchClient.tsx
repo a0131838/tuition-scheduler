@@ -28,6 +28,7 @@ type RenewalTask = {
   courseName: string;
   status: string;
   statusLabel: string;
+  progressReport: { id: string; status: string; deliveredAt: string | null } | null;
   riskLevel: string;
   remainingMinutes: number;
   scheduledMinutes: number;
@@ -280,6 +281,7 @@ export default function RenewalWorkbenchClient({
                   <span className={styles.source}>{row.cohort === "XDF" ? "新东方" : row.sourceLabel}</span>
                   <h2>{row.studentName} · {row.courseName}</h2>
                   <p>{riskResolved ? renewalRiskResolutionLabel(lang) : row.statusLabel} · 负责人：{row.ownerName || "未分配"} · 下次跟进：{fmtDate(row.nextFollowUpAt)}</p>
+                  <p>{label("Learning progress report", "续费前学习进展报告")}: {row.progressReport ? `${row.progressReport.status}${row.progressReport.deliveredAt ? ` · ${label("Delivered", "已送达")} ${fmtDate(row.progressReport.deliveredAt)}` : ""}` : label("Awaiting assignment", "待指派")}</p>
                 </div>
                 <div className={styles.balance}>
                   <strong>{forecast ? formatRenewalUnits(forecast.remainingUnits, forecast.unit, lang) : label("Historical units unverified", "历史单位未核验")}</strong>
@@ -288,6 +290,7 @@ export default function RenewalWorkbenchClient({
               </button>
               {open ? (
                 <div className={styles.detail}>
+                  <p><a href={`/admin/reports/renewal${row.progressReport ? `?report=${encodeURIComponent(row.progressReport.id)}#selected-report` : ""}`}>{label("Open renewal progress report desk", "打开续费前学习进展报告工作台")}</a></p>
                   {row.riskLevel === "REVIEW" && <div role="note">{label("Lesson ledger or future package allocation needs review. Forecast values are withheld; this follow-up stays open. Check the ledger and schedule before contacting the parent.", "课程流水或未来课包分配需核对；暂不展示预测数值，跟进继续保留。请先核对流水和课表，再联系家长。")}</div>}
                   {row.riskLevel === "INACTIVE" ? <div role="note">{label("The source package is inactive. Review the package before arranging further lessons; renewal follow-up is still pending.", "原课包已停用。继续排课前请核对课包；续费手续仍待跟进。")}</div> : <div className={styles.forecast}>
                     <div><span>{label("Scheduled demand", "未来课程需求")}</span><strong>{!forecast || forecast.needsReview ? label("Pending review", "待核对") : formatRenewalUnits(forecast.scheduledUnits, forecast.unit, lang)}</strong></div>

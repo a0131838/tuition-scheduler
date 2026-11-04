@@ -2,6 +2,7 @@ import { getLang, t } from "@/lib/i18n";
 import { getRenewalCohortCounts, listRenewalTasks, renewalTaskDto, syncRenewalTasks } from "@/lib/renewal-management";
 import { requireRenewalCenterUser } from "@/lib/renewal-access";
 import RenewalWorkbenchClient from "./RenewalWorkbenchClient";
+import Link from "next/link";
 
 export default async function RenewalWorkbenchPage() {
   const user = await requireRenewalCenterUser();
@@ -25,6 +26,7 @@ export default async function RenewalWorkbenchPage() {
         <h1 style={{ margin: 0, fontSize: 30 }}>
           {t(lang, "Renewal follow-up", "续费跟进")}
         </h1>
+        <p><Link href="/admin/reports/renewal">{t(lang, "Assign and track renewal progress reports →", "指派与跟进续费前学习进展报告 →")}</Link></p>
       </section>
       <RenewalWorkbenchClient
         lang={lang}

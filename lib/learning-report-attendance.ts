@@ -1,6 +1,7 @@
 import { formatBusinessDateOnly } from "@/lib/date-only";
 import { formatMinutesToHours } from "@/lib/midterm-report";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 
 export type LearningReportAttendanceSnapshot = {
   version: 1;
@@ -140,8 +141,8 @@ export async function createLearningReportAttendanceSnapshot(input: {
   subjectId: string | null;
   teacherId: string;
   throughAt: Date;
-}) {
-  const rows = await prisma.attendance.findMany({
+}, db: Prisma.TransactionClient = prisma) {
+  const rows = await db.attendance.findMany({
     where: {
       ...(input.packageId ? { packageId: input.packageId } : {}),
       studentId: input.studentId,

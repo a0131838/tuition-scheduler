@@ -21,6 +21,7 @@ const OPERATIONS_ADMIN_WEB_PREFIXES = [
   "/admin/reports/cancelled-sessions",
   "/admin/reports/final",
   "/admin/reports/midterm",
+  "/admin/reports/renewal",
   "/admin/reports/monthly-hours",
   "/admin/reports/monthly-schedule",
   "/admin/renewals",
