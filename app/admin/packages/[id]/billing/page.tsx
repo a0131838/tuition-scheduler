@@ -1063,6 +1063,11 @@ export default async function PackageBillingPage({
             <a href={buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack })} style={{ fontWeight: 700 }}>
               {t(lang, "Open contract workspace", "打开合同工作台")}
             </a>
+            {latestContract?.flowType === "RENEWAL" && latestContract.contractMode === "TUITION_AGREEMENT" && latestContract.status === "READY_TO_SIGN" ? (
+              <a href={`/admin/packages/${encodeURIComponent(packageId)}/contract/renewal-exception?contractId=${encodeURIComponent(latestContract.id)}`} style={{ fontWeight: 700 }}>
+                {t(lang, "Paid renewal, signature pending", "已核款待补签例外")}
+              </a>
+            ) : null}
             {latestContract?.signedPdfPath ? (
               <a href={`/api/exports/student-contract/${encodeURIComponent(latestContract.id)}?download=1`}>
                 {t(lang, "Download latest signed PDF", "下载最新已签 PDF")}

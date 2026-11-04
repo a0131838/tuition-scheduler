@@ -1,4 +1,15 @@
 # CHANGELOG LIVE
+## 2026-11-04-r501
+
+- Release ID: `2026-11-04-r501`
+- Date/Time (Asia/Singapore): `2026-11-04`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: allow the configured Finance approver to open the paid-renewal signature-exception page and outstanding-signature list through the admin route gate; add a direct link from Package Billing to the exception page for the current unsigned renewal.
+- Scope: access and navigation only. Finance request, management approval, payment verification, activation, contract and lesson-ledger rules remain as released in r500. Details: `docs/tasks/TASK-20261104-renewal-exception-finance-entry.md`.
+- Verification and risk: TypeScript, production build and isolated Finance/manager browser walkthrough with synthetic payment data; low risk. Roll back application code if the Finance entry misroutes.
+
+---
+
 ## 2026-11-04-r500
 
 - Release ID: `2026-11-04-r500`

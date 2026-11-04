@@ -1,4 +1,16 @@
 # RELEASE BOARD
+## 2026-11-04-r501
+
+- Release ID: `2026-11-04-r501`
+- Date/Time (Asia/Singapore): `2026-11-04`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Staff impact: Finance can reach the exception from Package Billing and open the pending-signature list; the previous Finance route redirect to payroll is removed for these two exact routes.
+- Business scope: no change to invoice, receipt, approval, contract or package-ledger logic. Existing r500 evidence checks remain mandatory.
+- Verification: `docs/tasks/TASK-20261104-renewal-exception-finance-entry.md`, TypeScript, production build, synthetic Finance/manager browser walkthrough and guarded deployment health.
+- Risk: low access-route change. Finance sees only the two intended routes; normal contract workspace remains governed by its existing access rule.
+
+---
+
 ## 2026-11-04-r500
 
 - Release ID: `2026-11-04-r500`

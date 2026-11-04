@@ -91,6 +91,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     pathname === "/admin/finance/tutor-cost-export" ||
     pathname === "/admin/finance/documents" ||
     pathname === "/admin/finance/deleted-invoices" ||
+    pathname === "/admin/finance/renewal-signature-exceptions" ||
     pathname === "/admin/finance/student-package-invoices" ||
     pathname === "/admin/finance/student-package-balances" ||
     pathname === "/admin/finance/transport-billing" ||
@@ -107,7 +108,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     pathname === "/admin/teacher-notices" ||
     pathname.startsWith("/admin/receipts-approvals") ||
     pathname === "/admin/recovery/uploads" ||
-    (pathname.startsWith("/admin/packages/") && pathname.endsWith("/billing"));
+    (pathname.startsWith("/admin/packages/") && (pathname.endsWith("/billing") || pathname.endsWith("/contract/renewal-exception")));
 
   if (isFinance && !financeAllowedPath) {
     redirect("/admin/reports/teacher-payroll");
