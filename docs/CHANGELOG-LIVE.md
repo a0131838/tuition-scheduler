@@ -1,4 +1,15 @@
 # CHANGELOG LIVE
+## 2026-11-05-r502
+
+- Release ID: `2026-11-05-r502`
+- Date/Time (Asia/Singapore): `2026-11-05`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: add the renewal-exception hub to the actual Finance sidebar and direct SOP Step 4 links in the package receipt workspace. Show unsigned ordinary tuition renewals before an exception is requested, with explicit request/approval/activation stages. Explain why an Admin or unauthorised account cannot see the Finance request form.
+- Scope: navigation and read-only candidate/status presentation. Existing Finance, manager, invoice, cash, receipt, signature and lesson-ledger controls remain mandatory. No live renewal is activated by this release.
+- Verification and risk: isolated Finance/Admin browser walkthrough, TypeScript and production build. Details: `docs/tasks/TASK-20261105-renewal-exception-discovery.md`. Low risk; listing a renewal is not proof of payment or approval.
+
+---
+
 ## 2026-11-04-r501
 
 - Release ID: `2026-11-04-r501`

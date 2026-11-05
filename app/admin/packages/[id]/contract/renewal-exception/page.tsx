@@ -54,7 +54,7 @@ export default async function RenewalSignatureExceptionPage({ params, searchPara
   const fields = <><input type="hidden" name="packageId" value={packageId} /><input type="hidden" name="contractId" value={contract.id} /></>;
   return <main style={{ maxWidth: 1040, margin: "20px auto", padding: 16, display: "grid", gap: 16 }}>
     <section style={card}>
-      <Link href={`/admin/packages/${encodeURIComponent(packageId)}/contract`}>← {t(lang, "Back to contract", "返回合同")}</Link>
+      <a href={`/admin/packages/${encodeURIComponent(packageId)}/${actor.role === "FINANCE" ? "billing" : "contract"}`}>← {actor.role === "FINANCE" ? t(lang, "Back to Package Billing", "返回课包账单") : t(lang, "Back to contract", "返回合同")}</a>
       <h1 style={{ margin: 0 }}>{t(lang, "Paid renewal with parent signature pending", "已核款、待家长补签的续费例外")}</h1>
       <p>{contract.package.student.name} · {details.topUpMinutes / 60}h · SGD {(details.feeCents / 100).toFixed(2)} · {t(lang, "Contract", "合同")} {contract.id}</p>
       <p>{t(lang, "Agreement status", "合同状态")}: {signed ? t(lang, "Parent signed", "家长已签署") : t(lang, "Parent e-signature pending", "家长电子签名待完成")} · {t(lang, "Exception status", "例外状态")}: {exception?.status || t(lang, "Not requested", "未申请")}</p>
@@ -68,6 +68,12 @@ export default async function RenewalSignatureExceptionPage({ params, searchPara
       <p>{t(lang, "Choose a new invoice for this exact renewal. Old invoices already linked to earlier signed contracts cannot be used. Create the invoice and cash receipt in Package Billing first.", "请选择本次续费的新发票。已关联旧签约合同的发票不能重复使用；请先在课包账单建立本次发票与现金收据。")}</p>
       {exception?.status === "APPROVED" ? <p style={{ color: "#92400e" }}>{t(lang, "Submitting a revised request cancels the previous management approval.", "重新提交申请会撤销上一次管理审批，须重新审核。")}</p> : null}
       <Link href={`/admin/packages/${encodeURIComponent(packageId)}/billing`}>{t(lang, "Open Package Billing", "打开课包账单")}</Link>
+      {!canFinance && !signed ? <div role="status" style={{ border: "1px solid #fcd34d", background: "#fffbeb", borderRadius: 8, padding: 12 }}>
+        <strong>{t(lang, "A configured Finance account is required to submit this request", "提交此申请需要本人指定的 Finance 财务账号")}</strong>
+        <p>{t(lang, "Current account", "当前账号")}: {actor.name} · {actor.role}</p>
+        <p>{t(lang, "The request form is hidden because this account does not have both the Finance role and configured Finance-approver authorisation. Log out and sign in with your own authorised Finance account. Managers can review after Finance submits the request.", "此账号未同时满足 Finance 财务角色和指定财务审批资格，所以不显示申请表。请退出后使用本人已授权的财务账号登录；管理者在财务提交后进行审核。")}</p>
+        <Link href="/admin/logout">{t(lang, "Log out to switch account", "退出并切换账号")}</Link>
+      </div> : null}
       {canFinance && !signed ? <form action={requestExceptionAction} style={{ display: "grid", gap: 10 }}>{fields}
         <select name="invoiceId" required defaultValue={exception?.invoiceId || ""}><option value="">{t(lang, "Select current renewal invoice", "选择本次续费发票")}</option>{candidates.map(item => <option key={item.id} value={item.id} disabled={!invoiceCashReady(item.id)}>{item.invoiceNo} · SGD {item.totalAmount.toFixed(2)}{invoiceCashReady(item.id) ? "" : ` · ${t(lang, "cash verification pending", "现金核验未完成")}`}</option>)}</select>
         <textarea name="reason" required minLength={20} maxLength={2000} rows={4} placeholder={t(lang, "Explain the cash payment, why signing is pending, and how the parent will be followed up.", "写明本次现金付款、未签原因，以及家长补签安排。")}/>

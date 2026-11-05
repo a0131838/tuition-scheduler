@@ -230,7 +230,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: "/admin/finance/tutor-cost-export", label: t(lang, "Tutor Cost Export", "老师成本导出"), tone: "success" as const },
         { href: "/admin/reports/partner-settlement", label: t(lang, "Partner Settlement", "合作方结算"), tone: "accent" as const },
         { href: "/admin/receipts-approvals/queue", label: t(lang, "Receipt Queue", "收据审批队列"), tone: "warning" as const },
-        { href: "/admin/finance/renewal-signature-exceptions", label: t(lang, "Renewal Signatures Pending", "续费待补签"), tone: "warning" as const },
         { href: "/admin/receipts-approvals/package", label: t(lang, "Package Workspace", "课包财务工作区"), tone: "success" as const },
         { href: "/admin/receipts-approvals/repairs", label: t(lang, "Proof Repair", "凭证修复"), tone: "warning" as const },
         { href: "/admin/receipts-approvals/history", label: t(lang, "Receipt History", "收据历史"), tone: "neutral" as const },
@@ -303,6 +302,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       title: t(lang, "Billing & Settlement", "账单与结算"),
       summary: t(lang, "Invoices, settlements, payroll and package billing.", "发票、结算、工资和课包账单。"),
       items: [
+        { href: "/admin/finance/renewal-signature-exceptions", label: t(lang, "Renewal Exceptions & Signatures", "续费例外与补签"), tone: "warning" as const },
         { href: "/admin/finance/documents", label: t(lang, "Invoices & Receipts", "完整发票与收据"), tone: "success" as const },
         { href: "/admin/finance/student-package-invoices", label: t(lang, "Student Package Invoices", "学生课时包发票"), tone: "success" as const },
         { href: "/admin/finance/business-accounts", label: t(lang, "Business Accounts", "企业账户"), tone: "accent" as const },

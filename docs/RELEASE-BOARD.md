@@ -1,4 +1,16 @@
 # RELEASE BOARD
+## 2026-11-05-r502
+
+- Release ID: `2026-11-05-r502`
+- Date/Time (Asia/Singapore): `2026-11-05`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Staff impact: Finance can enter from its own sidebar or directly from package receipt operations. The hub includes current unsigned ordinary tuition renewals even before application; Finance no longer needs an Admin account or an activated exception to discover the page. Wrong-account users receive an explicit explanation.
+- Business scope: read-only navigation/status change. No receipt, payment, contract, package balance, approval configuration or automatic activation is changed.
+- Verification: `docs/tasks/TASK-20261105-renewal-exception-discovery.md`, isolated Finance/Admin Playwright walkthrough, TypeScript, production build and standard guarded release health/version checks.
+- Risk: low. Hub visibility does not grant approval or activation rights; the existing server-side evidence checks remain authoritative.
+
+---
+
 ## 2026-11-04-r501
 
 - Release ID: `2026-11-04-r501`

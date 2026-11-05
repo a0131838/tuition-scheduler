@@ -1191,6 +1191,16 @@ export async function ReceiptsApprovalsPageContent({
         include: { student: true, course: true },
       })
     : null;
+  const unsignedRenewal = selectedPackage?.type === "HOURS" && selectedPackage.status === "ACTIVE" && selectedPackage.settlementMode === null
+    ? await prisma.studentContract.findFirst({
+        where: { packageId: selectedPackage.id, flowType: "RENEWAL", contractMode: "TUITION_AGREEMENT", status: "READY_TO_SIGN", signedAt: null, voidedAt: null },
+        orderBy: { createdAt: "desc" },
+        select: { id: true },
+      })
+    : null;
+  const renewalExceptionHref = unsignedRenewal
+    ? `/admin/packages/${encodeURIComponent(packageIdFilter)}/contract/renewal-exception?contractId=${encodeURIComponent(unsignedRenewal.id)}`
+    : null;
   const selectedBilling = packageIdFilter
     ? await listParentBillingForPackage(packageIdFilter).catch(() => null)
     : null;
@@ -2592,6 +2602,7 @@ export async function ReceiptsApprovalsPageContent({
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <a href={globalQueueHref}>{t(lang, "Back to global receipt queue", "返回统一收据队列")}</a>
               <a href={stepHref("review")}>{t(lang, "Open package review step", "打开当前课包审核步骤")}</a>
+              {renewalExceptionHref ? <a href={renewalExceptionHref}>{t(lang, "Open renewal exception", "打开续费例外申请")}</a> : null}
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -2810,6 +2821,11 @@ export async function ReceiptsApprovalsPageContent({
       {isPackageScreen ? (
       <div id="receipts-package-operations" style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 16 }}>
         <h3 style={{ marginTop: 0 }}>{t(lang, "Finance Receipt Operations", "财务收据操作")}</h3>
+        {renewalExceptionHref ? <div style={{ border: "1px solid #a5b4fc", background: "#eef2ff", borderRadius: 10, padding: 12, marginBottom: 12 }}>
+          <strong>{t(lang, "Parent signature pending for the current renewal", "本次续费仍待家长签字")}</strong>
+          <p style={{ margin: "8px 0" }}>{t(lang, "Receipt approval is separate from renewal activation. After full cash receipt approval, open the exception page to request management approval. Opening it does not activate any hours.", "收据审批与续费激活是两个步骤。足额现金收据审批完成后，请打开续费例外页提交管理审批申请。打开页面不会增加课时。")}</p>
+          <a href={renewalExceptionHref} style={{ fontWeight: 800 }}>{t(lang, "Open renewal exception (SOP Step 4)", "打开续费例外申请（SOP 第四步）")}</a>
+        </div> : null}
         {!packageIdFilter ? (
           <div style={{ color: "#666" }}>
             {t(lang, "Enter a Package ID above to upload payment records and create receipts.", "请先输入课包ID，再上传缴费记录和创建收据。")}
