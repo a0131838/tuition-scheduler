@@ -1,4 +1,5 @@
-﻿import crypto from "crypto";
+import FinalReportAssignmentForm from "@/app/admin/_components/FinalReportAssignmentForm";
+import crypto from "crypto";
 import { requireAdmin } from "@/lib/auth";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import {
@@ -156,29 +157,29 @@ async function resolveOriginFromHeaders() {
   return `${proto}://${host}`;
 }
 
-async function assignFinalReport(formData: FormData) {
+async function assignFinalReport(formData: FormData): Promise<string> {
   "use server";
   const user = await requireAdmin();
   const packageId = String(formData.get("packageId") ?? "").trim();
   const studentId = String(formData.get("studentId") ?? "").trim();
   const teacherId = String(formData.get("teacherId") ?? "").trim();
   const stage = String(formData.get("stage") ?? "READY");
-  if (!packageId || !studentId || !teacherId) redirect("/admin/reports/final?err=missing");
+  if (!packageId || !studentId || !teacherId) return "/admin/reports/final?err=missing";
 
   const pkg = await prisma.coursePackage.findUnique({
     where: { id: packageId },
     include: { sharedStudents: { select: { studentId: true } } },
   });
-  if (!pkg || pkg.type !== "HOURS" || pkg.status !== "ACTIVE") redirect("/admin/reports/final?err=pkg");
+  if (!pkg || pkg.type !== "HOURS" || pkg.status !== "ACTIVE") return "/admin/reports/final?err=pkg";
   if (stage === "PREPARATION") {
-    if (!isFinalReportPreparationDue(pkg.totalMinutes, pkg.remainingMinutes)) redirect("/admin/reports/final?err=not-due");
+    if (!isFinalReportPreparationDue(pkg.totalMinutes, pkg.remainingMinutes)) return "/admin/reports/final?err=not-due";
   } else if (stage !== "READY" || !isFinalReportSubmissionDue(pkg.remainingMinutes)) {
-    redirect("/admin/reports/final?err=not-due");
+    return "/admin/reports/final?err=not-due";
   }
   const teacherExists = await prisma.teacher.findUnique({ where: { id: teacherId }, select: { id: true } });
-  if (!teacherExists) redirect("/admin/reports/final?err=teacher");
+  if (!teacherExists) return "/admin/reports/final?err=teacher";
   const accessibleStudentIds = new Set([pkg.studentId, ...pkg.sharedStudents.map((row) => row.studentId)]);
-  if (!accessibleStudentIds.has(studentId)) redirect("/admin/reports/final?err=student");
+  if (!accessibleStudentIds.has(studentId)) return "/admin/reports/final?err=student";
 
   const latestAttendance = await prisma.attendance.findFirst({
     where: { packageId, studentId, session: { OR: [{ teacherId }, { teacherId: null, class: { teacherId } }] } },
@@ -193,15 +194,16 @@ async function assignFinalReport(formData: FormData) {
   });
 
   if (latestForTeacher?.status === "SUBMITTED" || latestForTeacher?.status === "FORWARDED") {
-    redirect("/admin/reports/final?ok=exists");
+    return "/admin/reports/final?ok=exists";
   }
 
   if (latestForTeacher?.status === "EXEMPT") {
-    redirect("/admin/reports/final?ok=exempt");
+    return "/admin/reports/final?ok=exempt";
   }
 
+  let assignedReportId: string;
   if (latestForTeacher?.status === "ASSIGNED") {
-    await prisma.finalReport.update({
+    const assigned = await prisma.finalReport.update({
       where: { id: latestForTeacher.id },
       data: {
         subjectId,
@@ -211,8 +213,9 @@ async function assignFinalReport(formData: FormData) {
         forwardedAt: null,
       },
     });
+    assignedReportId = assigned.id;
   } else {
-    await prisma.finalReport.create({
+    const assigned = await prisma.finalReport.create({
       data: {
         status: "ASSIGNED",
         studentId,
@@ -224,11 +227,12 @@ async function assignFinalReport(formData: FormData) {
         reportPeriodLabel: null,
       },
     });
+    assignedReportId = assigned.id;
   }
 
   revalidatePath("/admin/reports/final");
   revalidatePath("/teacher/final-reports");
-  redirect("/admin/reports/final?ok=assigned");
+  return `/admin/reports/final?ok=assigned&assignedReportId=${encodeURIComponent(assignedReportId)}#final-report-assignment-result`;
 }
 
 async function approveFinalReportForDelivery(formData: FormData) {
@@ -550,6 +554,10 @@ export default async function AdminFinalReportCenterPage({
     }),
   ]);
 
+  const assignedReport = ok === "assigned"
+    ? reports.find((report) => report.id === String(sp.assignedReportId ?? ""))
+    : undefined;
+
   const filteredReports = reports.filter((report) => {
     const hasActiveShare = isShareActive(report);
     const hasExpiredShare = isShareExpired(report);
@@ -654,8 +662,14 @@ export default async function AdminFinalReportCenterPage({
       </div>
 
       {ok === "assigned" ? (
-        <div style={{ background: "#ecfdf3", border: "1px solid #34d399", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
-          {t(lang, "Assigned successfully.", "已成功推送给老师。")}
+        <div id="final-report-assignment-result" role="status" style={{ scrollMarginTop: 96, background: "#ecfdf3", border: "1px solid #34d399", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
+          <strong>{t(lang, "Assigned successfully.", "已成功推送给老师。")}</strong>
+          {assignedReport ? (
+            <div style={{ marginTop: 6 }}>
+              {assignedReport.student.name} → {assignedReport.teacher.name} · {statusLabel(lang, assignedReport.status)}
+              {" "}<a href={`#final-report-${assignedReport.id}`}>{t(lang, "View report record", "查看报告记录")}</a>
+            </div>
+          ) : null}
         </div>
       ) : ok === "exists" ? (
         <div style={{ background: "#fffbeb", border: "1px solid #f59e0b", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
@@ -769,7 +783,7 @@ export default async function AdminFinalReportCenterPage({
                 <td style={{ padding: 6 }}>{row.studentName}<br />{row.courseName}</td>
                 <td style={{ padding: 6 }}>{packageUsagePercent(row.totalMinutes, row.remainingMinutes)}% · {formatMinutesToHours(row.remainingMinutes)}h {t(lang, "left", "剩余")}</td>
                 <td style={{ padding: 6 }}>{row.teacherOptions.map((opt) => opt.name).join(", ")}</td>
-                <td style={{ padding: 6 }}><form action={assignFinalReport} style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <td style={{ padding: 6 }}><FinalReportAssignmentForm action={assignFinalReport} lang={lang} style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   <input type="hidden" name="stage" value="PREPARATION" />
                   <input type="hidden" name="packageId" value={row.packageId} />
                   <input type="hidden" name="studentId" value={row.studentId} />
@@ -778,7 +792,7 @@ export default async function AdminFinalReportCenterPage({
                     {teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
                   </select>
                   <button type="submit">{t(lang, "Assign draft", "分配草稿")}</button>
-                </form></td>
+                </FinalReportAssignmentForm></td>
               </tr>
             ))}</tbody>
           </table>
@@ -809,7 +823,7 @@ export default async function AdminFinalReportCenterPage({
                     <b>{formatMinutesToHours(row.usedMinutes)}h</b> / {formatMinutesToHours(row.totalMinutes)}h
                   </td>
                   <td style={{ padding: 6 }}>
-                    <form action={assignFinalReport} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                    <FinalReportAssignmentForm action={assignFinalReport} lang={lang} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                       <input type="hidden" name="packageId" value={row.packageId} />
                       <input type="hidden" name="studentId" value={row.studentId} />
                       <select name="teacherId" defaultValue={row.defaultTeacherId}>
@@ -830,7 +844,7 @@ export default async function AdminFinalReportCenterPage({
                         ))}
                       </select>
                       <button type="submit">{t(lang, "Assign", "推送")}</button>
-                    </form>
+                    </FinalReportAssignmentForm>
                   </td>
                   <td style={{ padding: 6 }}>
                     <div style={{ display: "grid", gap: 8 }}>
@@ -921,7 +935,7 @@ export default async function AdminFinalReportCenterPage({
                   ? `${origin}/final-report/${encodeURIComponent(report.id)}?token=${encodeURIComponent(report.shareToken!)}`
                   : "";
                 return (
-                  <tr key={report.id} style={{ borderTop: "1px solid #dbeafe" }}>
+                  <tr id={`final-report-${report.id}`} key={report.id} style={{ scrollMarginTop: 96, borderTop: "1px solid #dbeafe" }}>
                     <td style={{ padding: 6, fontWeight: 700 }}>{report.student.name}</td>
                     <td style={{ padding: 6 }}>{report.teacher.name}</td>
                     <td style={{ padding: 6 }}>{report.course.name}{report.subject ? ` / ${report.subject.name}` : ""}</td>

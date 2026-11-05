@@ -1,4 +1,17 @@
 # RELEASE BOARD
+## 2026-11-05-r503
+
+- Release ID: `2026-11-05-r503`
+- Date/Time (Asia/Singapore): `2026-11-05`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Current release line: reliable final-report assignment confirmation.
+- Staff impact: assignment opens a fresh result page with student, teacher, status and a record link. The success notice is brought into view; in-flight controls are disabled. If a result cannot be confirmed, staff open records before trying again.
+- Business scope: only the two final-report assignment forms and their result presentation. No data migration, package-balance, attendance, report-content, submission or delivery-rule change.
+- Verification: `docs/tasks/TASK-20261105-final-assignment-result.md`, focused report tests, TypeScript, production build, isolated real-browser regression and guarded deployment version/health checks.
+- Open risk: low UI/navigation risk. A lost response can follow a successful save; the recovery message therefore does not claim failure or automatically retry. Production post-deploy checks are read-only.
+
+---
+
 ## 2026-11-05-r502
 
 - Release ID: `2026-11-05-r502`

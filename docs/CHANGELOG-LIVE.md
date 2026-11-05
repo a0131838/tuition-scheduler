@@ -1,4 +1,15 @@
 # CHANGELOG LIVE
+## 2026-11-05-r503
+
+- Release ID: `2026-11-05-r503`
+- Date/Time (Asia/Singapore): `2026-11-05`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: after final-report assignment, load the saved result as a complete document instead of the intermittently blank Server Action redirect. Show the student, assigned teacher, current status and a record link; position the result in view. Disable submission while pending and require a record check if the response is interrupted.
+- Scope: final-report assignment result/navigation only. Existing eligibility, teacher selection, drafts, submission, delivery, balances and attendance controls are retained; no production report is reassigned by this release.
+- Verification and risk: focused report tests, TypeScript, production build and isolated browser regression including repeated assignment, rapid resubmission, completed packages, stale eligibility, submitted-record protection, interrupted response and teacher visibility. Details: `docs/tasks/TASK-20261105-final-assignment-result.md`. Low risk; completion opens a fresh document and interrupted responses require checking records.
+
+---
+
 ## 2026-11-05-r502
 
 - Release ID: `2026-11-05-r502`
