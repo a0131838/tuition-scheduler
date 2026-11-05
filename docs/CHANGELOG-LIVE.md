@@ -1,4 +1,15 @@
 # CHANGELOG LIVE
+## 2026-11-05-r504
+
+- Release ID: `2026-11-05-r504`
+- Date/Time (Asia/Singapore): `2026-11-05`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: replace the long final-report desk with four task queues, one compact list, student/teacher/course search, accurate filtered counts and 20-row pagination. Open a single candidate or report for assignment, full text, bilingual review and delivery; place sharing, exemption, archive and history in collapsed detail sections.
+- Scope: final-report presentation, read projections and result navigation. Preserve server-side eligibility, report content, delivery approval, signature, balance, attendance and financial rules. Keep the r503 complete-document confirmation and repeat-submit guard for desk actions.
+- Verification and risk: focused desk/report tests, TypeScript, production build and isolated browser QA using 506 packages and 321 historical reports. Search covers candidates beyond the former 500-package cap and reports beyond the former 300-record cap. Details: `docs/tasks/TASK-20261105-final-report-desk.md`. Low-to-medium presentation/query risk; no schema change or production report mutation.
+
+---
+
 ## 2026-11-05-r503
 
 - Release ID: `2026-11-05-r503`

@@ -1,4 +1,17 @@
 # RELEASE BOARD
+## 2026-11-05-r504
+
+- Release ID: `2026-11-05-r504`
+- Date/Time (Asia/Singapore): `2026-11-05`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Current release line: a compact, task-based final-report desk.
+- Staff impact: To assign / Teacher working / Review & delivery / All records each show one searchable, paginated list. A row has one next action. Single-record detail retains complete teacher text, parent bilingual report, approval/delivery and all secondary controls, with filters/page/row retained on return.
+- Business scope: no report, balance, attendance, finance, contract or parent delivery-policy change. Assigned teachers and distinct student/package/teacher tasks are retained. Old status links still work.
+- Verification: `docs/tasks/TASK-20261105-final-report-desk.md`, focused tests, production build, desktop/mobile browser QA with synthetic high-volume fixtures, standard guarded release and read-only production checks.
+- Open risk: candidate discovery reads lean attendance/report projections across all eligible packages to avoid truncation; future volume may require further query optimization. Incomplete historical attendance still requires operational teacher confirmation. A lost action response requires record review, not automatic retry.
+
+---
+
 ## 2026-11-05-r503
 
 - Release ID: `2026-11-05-r503`

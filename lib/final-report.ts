@@ -178,33 +178,34 @@ export async function loadFinalReportCandidates(stage: "READY" | "PREPARATION" =
       totalMinutes: { gt: 0 },
       ...(stage === "READY" ? { remainingMinutes: { lte: 0 } } : { id: { in: preparationPackageIds } }),
     },
-    include: {
-      student: true,
-      course: true,
+    select: {
+      id: true, totalMinutes: true, remainingMinutes: true, courseId: true, validFrom: true,
+      student: { select: { id: true, name: true } },
+      course: { select: { name: true } },
       attendances: {
         where: {
           status: "PRESENT",
         },
-        include: {
-          student: true,
+        select: {
+          studentId: true,
+          student: { select: { name: true } },
           session: {
-            include: {
-              teacher: true,
+            select: {
+              startAt: true,
+              teacher: { select: { id: true, name: true } },
               class: {
-                include: {
-                  teacher: true,
-                  subject: true,
+                select: {
+                  teacher: { select: { id: true, name: true } },
+                  subject: { select: { id: true, name: true } },
                 },
               },
             },
           },
         },
         orderBy: { createdAt: "desc" },
-        take: 80,
       },
       finalReports: {
         orderBy: { createdAt: "desc" },
-        take: 200,
         select: {
           studentId: true,
           teacherId: true,
@@ -215,7 +216,6 @@ export async function loadFinalReportCandidates(stage: "READY" | "PREPARATION" =
       },
     },
     orderBy: { updatedAt: "desc" },
-    take: 500,
   });
 
   const rows = packages.flatMap((pkg) => {
@@ -304,6 +304,7 @@ export async function loadFinalReportCandidates(stage: "READY" | "PREPARATION" =
           studentName: entry.studentName,
           courseId: pkg.courseId,
           courseName: pkg.course.name,
+          validFrom: pkg.validFrom,
           totalMinutes: total,
           remainingMinutes: remaining,
           usedMinutes: Math.max(0, total - remaining),
@@ -322,6 +323,7 @@ export async function loadFinalReportCandidates(stage: "READY" | "PREPARATION" =
     studentName: string;
     courseId: string;
     courseName: string;
+    validFrom: Date;
     totalMinutes: number;
     remainingMinutes: number;
     usedMinutes: number;
