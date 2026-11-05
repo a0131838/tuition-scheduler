@@ -517,7 +517,7 @@ function phaseLabel(report: { status: string; archivedAt: Date | null; delivered
 
 function DeskAction({ action, lang, params, children }: { action: (data: FormData) => Promise<string>; lang: Lang; params: FinalDeskParams; children: ReactNode }) {
   return <FinalReportAssignmentForm action={action} lang={lang} returnTo={finalDeskUrl(params)}
-    pendingLabel={t(lang, "Saving… Please wait.", "正在保存，请稍候…")} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "end" }}>{children}</FinalReportAssignmentForm>;
+    pendingLabel={t(lang, "Saving… Please wait.", "正在保存，请稍候…")} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>{children}</FinalReportAssignmentForm>;
 }
 
 export default async function AdminFinalReportCenterPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -639,7 +639,7 @@ async function CandidateDetail({ row, teachers, params, lang }: { row: Candidate
     <h3 id="assignment-heading">{row.studentName} · {row.courseName}</h3>
     <p>{t(lang, "Package balance", "课包余额")}: <strong>{formatMinutesToHours(row.remainingMinutes)}h</strong> / {formatMinutesToHours(row.totalMinutes)}h · {packageUsagePercent(row.totalMinutes,row.remainingMinutes)}% {t(lang,"used","已使用")}</p>
     <p className="final-desk-hint">{row.stage === "PREPARATION" ? t(lang, "Assign a draft now. The teacher can save it; formal submission waits until the balance reaches zero.", "现在可安排老师准备草稿，老师可保存；课包余额归零后才能正式提交。") : t(lang, "The package balance has reached zero. Confirm the responsible teacher for the final report.", "课包余额已归零，请确认结课报告的实际负责老师。")}</p>
-    <FinalReportAssignmentForm action={assignFinalReport} lang={lang} returnTo={finalDeskUrl(params)} style={{display:"flex",gap:12,alignItems:"end",flexWrap:"wrap"}}>
+    <FinalReportAssignmentForm action={assignFinalReport} lang={lang} returnTo={finalDeskUrl(params)} style={{display:"flex",gap:12,alignItems:"flex-end",flexWrap:"wrap"}}>
       <input type="hidden" name="stage" value={row.stage} /><input type="hidden" name="packageId" value={row.packageId} /><input type="hidden" name="studentId" value={row.studentId} />
       <label>{t(lang,"Responsible teacher","负责老师")}<select name="teacherId" defaultValue="" required><option value="">{t(lang,"Select after confirmation","确认后选择老师")}</option>{orderedTeachers.map(teacher => <option key={teacher.id} value={teacher.id} disabled={handled.has(teacher.id)}>{teacher.name}{handled.has(teacher.id) ? ` · ${t(lang,"Already has a report","已有报告任务")}` : recorded.has(teacher.id) ? ` · ${t(lang,"Recorded teacher","有授课记录")}` : ""}</option>)}</select></label>
       <button className="final-desk-primary" type="submit">{row.stage === "PREPARATION" ? t(lang,"Assign draft","分配草稿") : t(lang,"Assign final report","分配结课报告")}</button>

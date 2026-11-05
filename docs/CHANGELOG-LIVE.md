@@ -1,4 +1,15 @@
 # CHANGELOG LIVE
+## 2026-11-05-r505
+
+- Release ID: `2026-11-05-r505`
+- Date/Time (Asia/Singapore): `2026-11-05`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: use established flex alignment values for the simplified final-report desk's filters and detail action forms, resolving the production CSS compatibility warning from r504.
+- Scope: visual alignment only; all r504 task queues, search, pagination, report actions and existing data remain as verified.
+- Verification and risk: production build and guarded release checks. Details: `docs/tasks/TASK-20261105-final-desk-alignment.md`. Low layout risk; no dependency, schema or business-rule change.
+
+---
+
 ## 2026-11-05-r504
 
 - Release ID: `2026-11-05-r504`

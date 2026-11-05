@@ -1,4 +1,16 @@
 # RELEASE BOARD
+## 2026-11-05-r505
+
+- Release ID: `2026-11-05-r505`
+- Date/Time (Asia/Singapore): `2026-11-05`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Current release line: compact final-report desk with compatible flex alignment.
+- Staff impact: consistent alignment of search controls and detail forms across supported browsers. r504's four queues, complete search, 20-row lists and single-record workflows remain unchanged.
+- Verification: `docs/tasks/TASK-20261105-final-desk-alignment.md`, production build with no mixed-support alignment warning and guarded deployment health/version checks. The feature's 15 tests and 20 isolated browser checks passed in r504.
+- Risk: low, CSS/inline alignment only. No production task is changed for validation.
+
+---
+
 ## 2026-11-05-r504
 
 - Release ID: `2026-11-05-r504`
