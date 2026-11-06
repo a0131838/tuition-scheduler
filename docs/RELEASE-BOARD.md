@@ -1,5 +1,18 @@
 # RELEASE BOARD
 
+## 2026-11-06-r507
+
+- Release ID: `2026-11-06-r507`
+- Date/Time (Asia/Singapore): `2026-11-06`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Current release line: role-specific renewal-exception guidance for management.
+- Staff impact: managers keep their existing management account, see whether Finance has submitted the request, and go directly to the management approval form. Finance details default to collapsed for managers. Approval results explicitly hand off to Finance activation without implying lesson hours were added.
+- Scope: three renewal-exception UI/action-message files, including reliable management result navigation and repeat-click protection. No account, permission, schema, receipt, approval-rule or package-ledger change.
+- Verification: production build, existing focused checks, isolated Finance-to-management browser workflow, standard guarded release and read-only production checks. Details: `docs/tasks/TASK-20261106-renewal-manager-guidance.md`.
+- Open risk: staff must refresh an already-open page to see the updated guidance. No real request is approved for verification.
+
+---
+
 ## 2026-11-06-r506
 
 - Release ID: `2026-11-06-r506`

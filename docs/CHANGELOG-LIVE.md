@@ -1,5 +1,18 @@
 # CHANGELOG LIVE
 
+## 2026-11-06-r507
+
+- Release ID: `2026-11-06-r507`
+- Date/Time (Asia/Singapore): `2026-11-06`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: show managers their next renewal-exception action instead of asking them to switch to a Finance account. Collapse Finance request details for management, link directly to management review, and distinguish management approval from Finance activation in the result message. Open management results as a complete document, with pending controls and recovery guidance for an interrupted response.
+- Scope: renewal-exception presentation and success messages only. No account creation, role configuration, receipt policy, approval eligibility or lesson-hour activation change; no production approval is performed.
+- Verification: production build, three existing exception checks, isolated production-build browser workflow and read-only production status verification. See `docs/tasks/TASK-20261106-renewal-manager-guidance.md`.
+- Risk: low UI risk. Management approval still requires a separate authorised manager and current verified cash evidence; Finance must separately activate the renewal.
+- Rollback point: `ace275d013963ca817ec1fdf41d78b16e449ac4f`.
+
+---
+
 ## 2026-11-06-r506
 
 - Release ID: `2026-11-06-r506`
