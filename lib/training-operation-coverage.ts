@@ -174,7 +174,7 @@ export const OPERATION_AREAS: OperationArea[] = [
     title: "合同、课包、账单与余额台账",
     owners: ["教务", "财务"],
     level: "DETAILED_SOP",
-    routePrefixes: ["/admin/packages", "/contract", "/contract-intake"],
+    routePrefixes: ["/admin/packages", "/contract", "/contract-intake", "/renewal-confirm"],
     moduleCodes: ["CONTRACT_PACKAGE_GATE_MASTER", "SHARED_PACKAGE_COURSE", "XZS_PACKAGE"],
     outcome: "首购或续费完成合同、发票审批、课包和允许排课门禁后才交接排课。",
   },

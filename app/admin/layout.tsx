@@ -96,7 +96,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     pathname === "/admin/finance/student-package-balances" ||
     pathname === "/admin/finance/transport-billing" ||
     pathname === "/admin/finance/business-accounts" ||
-    pathname === "/admin/renewals" ||
+    (pathname === "/admin/renewals" || pathname === "/admin/renewals/orders") ||
     pathname.startsWith("/admin/monthly-scheduling") ||
     pathname === "/admin/reports/teacher-payroll" ||
     pathname.startsWith("/admin/reports/teacher-payroll/") ||
@@ -124,6 +124,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     (user.role === "CS" && pathname === "/admin/communication-reminders") ||
     (pathname.startsWith("/admin/leads/") && !pathname.startsWith("/admin/leads/owners")) ||
     (user.role === "CS" && user.workspaces.includes("CARE") && pathname.startsWith("/admin/care")) ||
+    (pathname === "/admin/renewals/orders" && (user.role === "CS" || user.role === "SALES")) ||
     (user.role === "CS" && (pathname === "/admin/communications" || pathname === "/admin/mobile" || pathname === "/admin/mobile/parent-requests" || pathname === "/admin/renewals" || pathname === "/admin/reports/renewal"));
 
   if (isResourceOnly && !resourceAllowedPath) {
@@ -220,6 +221,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       summary: t(lang, "Approval queues, settlement, and repair desks.", "审批队列、结算和修复工作台。"),
       items: [
         { href: "/admin/finance/workbench", label: t(lang, "Finance Workbench", "财务工作台"), tone: "warning" as const },
+        { href: "/admin/renewals/orders", label: t(lang, "Renewal Orders", "续费确认单"), tone: "warning" as const },
         { href: "/admin/finance/renewal-signature-exceptions", label: t(lang, "Renewal Signatures Pending", "续费待补签"), tone: "warning" as const },
         { href: "/admin/finance/transport-billing", label: t(lang, "Transport Billing", "交通费月结"), tone: "warning" as const },
         { href: "/admin/finance/business-accounts", label: t(lang, "Business Accounts", "企业账户"), tone: "accent" as const },
@@ -302,6 +304,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       title: t(lang, "Billing & Settlement", "账单与结算"),
       summary: t(lang, "Invoices, settlements, payroll and package billing.", "发票、结算、工资和课包账单。"),
       items: [
+        { href: "/admin/renewals/orders", label: t(lang, "Renewal Orders", "续费确认单"), tone: "warning" as const },
         { href: "/admin/finance/renewal-signature-exceptions", label: t(lang, "Renewal Exceptions & Signatures", "续费例外与补签"), tone: "warning" as const },
         { href: "/admin/finance/documents", label: t(lang, "Invoices & Receipts", "完整发票与收据"), tone: "success" as const },
         { href: "/admin/finance/student-package-invoices", label: t(lang, "Student Package Invoices", "学生课时包发票"), tone: "success" as const },
@@ -337,6 +340,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       title: user.role === "CS" ? t(lang, "CS Queue", "客服队列") : t(lang, "Sales Queue", "销售队列"),
       summary: t(lang, "Resource follow-up only.", "只处理资源跟进相关工作。"),
       items: [
+        { href: "/admin/renewals/orders", label: t(lang, "Renewal Orders", "续费确认单"), tone: "warning" as const },
         {
           href: "/admin",
           label: user.role === "CS" ? t(lang, "CS Dashboard", "客服首页") : t(lang, "Sales Dashboard", "销售首页"),

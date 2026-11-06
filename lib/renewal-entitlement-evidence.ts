@@ -27,16 +27,18 @@ export async function getRenewalEntitlementEvidence(task: Task, input: Entitleme
   const packageReady = target.status === "ACTIVE" && target.validFrom <= now && (!target.validTo || target.validTo >= now) &&
     (postpaid || ["EXEMPT", "SCHEDULABLE"].includes(target.financeGateStatus));
   const txns = await db.packageTxn.findMany({ where: { packageId: targetId }, orderBy: { createdAt: "desc" } });
-  const contracts = await db.studentContract.findMany({ where: { packageId: targetId, studentId: task.studentId }, orderBy: { createdAt: "desc" } });
+  const contracts = await db.studentContract.findMany({ where: { packageId: targetId, studentId: task.studentId }, include: { renewalOrder: true }, orderBy: { createdAt: "desc" } });
   const contractById = new Map(contracts.map(c => [c.id, c]));
+  const covered = (c: typeof contracts[number] | undefined | null) => Boolean(c?.status === "RENEWAL_CONFIRMED" && c.renewalOrder?.activatedAt && c.renewalOrder.parentAcceptedAt && c.renewalOrder.managerAt && c.renewalOrder.invoiceId === c.invoiceId && c.renewalOrder.verifiedAmountCents === c.renewalOrder.feeCents);
   const candidates: EntitlementCandidate[] = [];
   for (const txn of txns) {
-    if (txn.kind !== "PURCHASE" || (unit === "PERIOD" ? txn.deltaMinutes !== 0 || targetId === source.id : txn.deltaMinutes <= 0)) continue;
+    if (txn.kind !== "PURCHASE" || (unit === "PERIOD" ? txn.deltaMinutes !== 0 || targetId === source.id : txn.deltaMinutes < 0)) continue;
     const markerId = contractIdFromPurchaseNote(txn.note);
     const contract = markerId ? contractById.get(markerId) : null;
-    const contractValid = !markerId || Boolean(contract && ["SIGNED", "INVOICE_CREATED"].includes(contract.status) && contract.signedAt && !contract.voidedAt && contract.flowType === "RENEWAL");
+    if (txn.deltaMinutes === 0 && unit !== "PERIOD" && !covered(contract)) continue;
+    const contractValid = !markerId || Boolean(contract && !contract.voidedAt && contract.flowType === "RENEWAL" && ((["SIGNED", "INVOICE_CREATED"].includes(contract.status) && contract.signedAt) || covered(contract)));
     const correction = txns.some(t => t.createdAt >= txn.createdAt && t.deltaMinutes < 0 && t.kind !== "DEDUCT");
-    candidates.push({ id: txn.id, kind: "PURCHASE", createdAt: txn.createdAt.toISOString(), quantity: unit === "PERIOD" ? null : txn.deltaMinutes,
+    candidates.push({ id: txn.id, kind: "PURCHASE", createdAt: txn.createdAt.toISOString(), quantity: unit === "PERIOD" ? null : covered(contract) ? contract!.renewalOrder!.topUpMinutes : txn.deltaMinutes,
       unit, contractId: markerId, invoiceId: contract?.invoiceId || null,
       requiresReview: !markerId || txn.createdAt < task.createdAt,
       blocker: !contractValid ? "CONTRACT" : correction ? "CORRECTION" : unit === "PERIOD" && !target.validTo ? "PERIOD" : null,
@@ -78,9 +80,9 @@ export async function verifyRenewalEntitlement(task: Task, input: EntitlementInp
   const evidence = await getRenewalEntitlementEvidence(task, input, db);
   if (!evidence.packageReady) throw new Error("The selected package is inactive, outside its validity or blocked by Finance. / 所选课包未生效、已过期或尚未通过财务门槛。");
   if (input.contractId) {
-    const linked = await db.studentContract.findUnique({ where: { id: input.contractId } });
+    const linked = await db.studentContract.findUnique({ where: { id: input.contractId }, include: { renewalOrder: true } });
     if (!linked || linked.studentId !== task.studentId || linked.packageId !== evidence.packageId ||
-      !["SIGNED", "INVOICE_CREATED"].includes(linked.status) || !linked.signedAt || linked.voidedAt ||
+      !((["SIGNED", "INVOICE_CREATED"].includes(linked.status) && linked.signedAt) || (linked.status === "RENEWAL_CONFIRMED" && linked.renewalOrder?.activatedAt && linked.renewalOrder.parentAcceptedAt && linked.renewalOrder.managerAt && linked.renewalOrder.invoiceId === linked.invoiceId && linked.renewalOrder.verifiedAmountCents === linked.renewalOrder.feeCents)) || linked.voidedAt ||
       (linked.flowType !== "RENEWAL" && evidence.packageId === task.packageId)) {
       throw new Error("Selected contract cannot verify this renewal. Review or explicitly clear the stale link. / 所选合同不能核验本次续费，请核对或明确取消过期关联。");
     }

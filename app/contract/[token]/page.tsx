@@ -1,3 +1,4 @@
+import { prisma } from '@/lib/prisma';
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import Image from "next/image";
@@ -93,6 +94,11 @@ export default async function ContractSignPage({
         </div>
       </div>
     );
+  }
+
+  const renewalOrder = await prisma.renewalOrder.findUnique({where:{contractId:contract.id}});
+  if (renewalOrder && !renewalOrder.cancelledAt) {
+    return <main style={{maxWidth:720,margin:"40px auto",padding:20}}><h1>{renewalOrder.activatedAt ? "Renewal confirmed / 续费已确认" : "Renewal confirmation / 续费确认"}</h1><p>This renewal uses your signed master agreement and a separate confirmation. Follow the confirmation below rather than signing the full agreement again. / 本次续费使用原已签协议及独立确认单，请按下方确认单处理，无需重复签署整份协议。</p>{renewalOrder.managerAt?<a href={`/renewal-confirm/${renewalOrder.parentToken}`}>View renewal confirmation / 查看续费确认单</a>:<p>The school is preparing the renewal. Please contact the school team. / 校方正在准备本次续费，请联系工作人员。</p>}</main>;
   }
 
   if (contract.status === "EXPIRED") {

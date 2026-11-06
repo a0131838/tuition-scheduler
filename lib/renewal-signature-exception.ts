@@ -82,6 +82,8 @@ async function lockedContract(tx: Db, contractId: string) {
   if (row.signExpiresAt && row.signExpiresAt.getTime() < Date.now()) {
     throw new Error("The sign link has expired; renew it before requesting this exception / 签署链接已过期，请先重新发送");
   }
+  const order = await tx.renewalOrder.findUnique({where:{contractId}});
+  if (order && !order.cancelledAt) throw new Error("Use the existing renewal order / 本次已有续费确认单，请在原单继续");
   const details = renewalExceptionSnapshot(row.contractSnapshotJson);
   return { row, ...details };
 }

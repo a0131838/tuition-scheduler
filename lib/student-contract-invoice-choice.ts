@@ -176,6 +176,7 @@ export async function saveStudentContractInvoiceChoiceInTransaction(db: Prisma.T
   });
 
   if (mode === "LINK_EXISTING") {
+    if(await db.renewalOrder.findFirst({where:{invoiceId,contractId:{not:contractId},cancelledAt:null}}))throw new Error("Invoice belongs to another renewal order / 发票已用于其他续费确认单");
     if (!invoice) throw new Error("Select an existing invoice to link");
     const hasReceipt = billing.receipts.some((receipt) => receipt.invoiceId === invoice.id);
     if (hasReceipt && confirmationNote.length < 6) {

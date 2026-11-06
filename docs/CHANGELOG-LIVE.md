@@ -1,4 +1,16 @@
 # CHANGELOG LIVE
+
+## 2026-11-06-r506
+
+- Release ID: `2026-11-06-r506`
+- Date/Time (Asia/Singapore): `2026-11-06`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: Renewal approval tasks and controlled same-term renewal workflow. Renewal exceptions appear in manager Todo, approval inbox and Finance Workbench; add immutable same-term renewal confirmations, parent acceptance, exact receipt verification and bounded unpaid continuation with separate management approval. Preserve historical signed agreements and existing regulated/changed-term flows.
+- Scope: additive renewal-order/evidence migrations and a distinct renewal-confirmed status; new ordinary tuition template version. No historic signature rewrite, blanket renewal exemption, automatic parent message or real renewal activation.
+- Verification: 33 targeted tests, 185 existing backend checks, TypeScript, production build, isolated browser QA and standard guarded release. See `docs/tasks/TASK-20261106-renewal-confirmation-workflow.md`.
+- Risk: medium financial/workflow change; manager eligibility review and Finance receipt verification remain mandatory. Old/changed agreements and PEI/EduTrust, Full Care, partner, group/shared/monthly packages use the existing flow. Released credit or post-activation payment changes require reconciliation before reversal.
+
+---
 ## 2026-11-05-r505
 
 - Release ID: `2026-11-05-r505`

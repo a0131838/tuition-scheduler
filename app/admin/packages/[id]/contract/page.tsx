@@ -132,6 +132,7 @@ function contractTone(status: string): "neutral" | "warn" | "success" | "error" 
       return "warn";
     case "READY_TO_SIGN":
     case "SIGNED":
+    case "RENEWAL_CONFIRMED":
     case "INVOICE_CREATED":
       return "success";
     case "EXPIRED":
@@ -169,7 +170,7 @@ function contractIsOpenDraft(status: string) {
 }
 
 function contractIsTerminal(status: string) {
-  return status === "SIGNED" || status === "INVOICE_CREATED" || status === "VOID";
+  return status === "RENEWAL_CONFIRMED" || status === "SIGNED" || status === "INVOICE_CREATED" || status === "VOID";
 }
 
 function contractCanDeleteVoidDraft(contract: Parameters<typeof hasContractExecutionHistory>[0] & {status:string}) {
@@ -529,6 +530,7 @@ export default async function PackageContractPage({
   const workspaceContracts = packageContracts.filter((contract) => fullCareWorkspace ? isFullCareContract(contract) : !isFullCareContract(contract));
   const otherOpenContract = packageContracts.find((contract) => contractIsOpenDraft(contract.status) && !workspaceContracts.some((visible) => visible.id === contract.id)) ?? null;
   const latestContract = workspaceContracts.find((contract) => contract.status !== "VOID") ?? null;
+  const renewalOrder = latestContract ? await prisma.renewalOrder.findUnique({where:{contractId:latestContract.id}}) : null;
   const renewalException = latestContract ? await prisma.renewalSignatureException.findUnique({ where: { contractId: latestContract.id } }) : null;
   const voidContracts = workspaceContracts.filter((contract) => contract.status === "VOID");
   const deletableVoidContracts = voidContracts.filter((contract) => contractCanDeleteVoidDraft(contract));
@@ -687,6 +689,7 @@ export default async function PackageContractPage({
 
             {latestContract ? (
               <>
+                {renewalOrder && !renewalOrder.cancelledAt ? <p style={{padding:14,background:"#ecfdf5"}}><a href={`/admin/renewals/orders?id=${renewalOrder.id}`}>{renewalOrder.activatedAt ? "Renewal active under signed master + parent confirmation / 已按原协议及家长确认激活" : "Continue in renewal order / 请到续费确认单继续处理"} →</a></p> : latestContract.flowType === "RENEWAL" && latestContract.status === "READY_TO_SIGN" ? <p><a href={`/admin/renewals/orders?contractId=${latestContract.id}`}>Check same-term renewal eligibility / 核对同条件续费资格 →</a></p> : null}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
                   <div style={{ border: "1px solid #dbeafe", borderRadius: 12, background: "#fff", padding: "12px 14px", display: "grid", gap: 8 }}>
                     <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Current stage", "当前阶段")}</div>
@@ -812,7 +815,7 @@ export default async function PackageContractPage({
                   </div>
                 </div>
 
-                {contractCanEditDraft(latestContract.status) && renewalException?.status !== "ACTIVATED" && contractParentInfo ? (
+                {contractCanEditDraft(latestContract.status) && renewalException?.status !== "ACTIVATED" && (!renewalOrder || renewalOrder.cancelledAt) && contractParentInfo ? (
                   <div style={{ border: "1px solid #cbd5e1", borderRadius: 12, background: "#fff", padding: 14, display: "grid", gap: 12 }}>
                     <div style={{ display: "grid", gap: 4 }}>
                       <div style={{ fontWeight: 800 }}>{t(lang, "Contract draft details", "合同草稿信息")}</div>

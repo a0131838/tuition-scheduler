@@ -14,6 +14,7 @@ export async function deleteParentInvoiceInTransaction(tx:Prisma.TransactionClie
  await tx.$queryRaw`SELECT id FROM "SchoolApplicationService" WHERE "invoiceId"=${invoiceId} ORDER BY id FOR UPDATE`;
  await tx.$queryRaw`SELECT id FROM "CoursePackage" WHERE id=${packageId} FOR UPDATE`;
  await tx.$queryRaw`SELECT key FROM "AppSetting" WHERE key='parent_billing_v1' FOR UPDATE`;
+ if(await tx.renewalOrder.findFirst({where:{invoiceId,cancelledAt:null}}))throw new Error('Invoice belongs to an active renewal order; reconcile or cancel that order first / 发票已关联续费确认单，请先核对或取消该单');
  const saved=await tx.appSetting.findUnique({where:{key:'parent_billing_v1'}}),parsed=parseSalesBilling(saved?.value??null);
  if(!saved||!parsed.valid)throw new Error('Billing evidence needs review / 账单凭据需要核对');
  const rawStore=JSON.parse(saved.value);

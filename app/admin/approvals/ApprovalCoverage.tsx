@@ -8,6 +8,7 @@ export default function ApprovalCoverage({ lang, visibility }: {
   visibility: ApprovalInboxData["visibility"];
 }) {
   const sources: Record<ApprovalInboxType, { title: string; detail: string; visible: boolean }> = {
+    RENEWAL_ACTION: { title: t(lang, "Renewal actions", "续费待办"), detail: t(lang, "Management review, Finance activation, returned requests and outstanding parent signatures.", "管理审核、财务激活、退回申请及家长待补签。"), visible: visibility.manager || visibility.finance },
     PACKAGE_INVOICE: {
       title: t(lang, "Package invoices", "课包发票"),
       detail: t(lang, "Submitted invoices awaiting manager approval before scheduling.", "已提交、等待管理审批以放行排课的发票。"),
@@ -40,7 +41,7 @@ export default function ApprovalCoverage({ lang, visibility }: {
       {t(lang, "Coverage and visibility — what is included?", "覆盖范围与可见权限：这里包含哪些事项？")}
     </summary>
     <p style={{ color: "#475569", lineHeight: 1.6 }}>
-      {t(lang, "This inbox covers the five categories below. Each queue follows its existing role rules; being able to see an item does not grant permission to approve it.", "本中心接入以下五类事项，各队列沿用既有角色规则；能看到事项不代表可以执行审批。")}
+      {t(lang, "This inbox covers the categories below. Each queue follows its existing role rules; being able to see an item does not grant permission to approve it.", "本中心接入以下事项，各队列沿用既有角色规则；能看到事项不代表可以执行审批。")}
     </p>
     <ul style={{ display: "grid", gap: 12, paddingLeft: 22, lineHeight: 1.6 }}>
       {Object.entries(sources).map(([type, source]) => <li key={type}>

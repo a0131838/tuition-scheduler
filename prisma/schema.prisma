@@ -264,6 +264,7 @@ enum PackageInvoiceApprovalStatus {
 }
 
 enum StudentContractStatus {
+  RENEWAL_CONFIRMED
   DRAFT
   INTAKE_PENDING
   INTAKE_SUBMITTED
@@ -3133,6 +3134,7 @@ model StudentContract {
   events        StudentContractEvent[]
   parentIntakes StudentParentIntake[]
   renewalSignatureException RenewalSignatureException?
+  renewalOrder RenewalOrder?
 
   @@index([studentId, status, createdAt])
   @@index([packageId, status, createdAt])
@@ -4034,4 +4036,51 @@ model SopFeedback {
   resolvedAt DateTime?
   @@index([status, createdAt])
   @@index([key, createdAt])
+}
+
+
+// Each confirmation belongs to one immutable renewal contract, never a running balance.
+model RenewalOrder {
+  id String @id @default(uuid())
+  contractId String @unique
+  baseContractId String
+  sourceHash String
+  baseHash String
+  topUpMinutes Int
+  feeCents Int
+  serviceFrom DateTime
+  serviceTo DateTime
+  paymentDueAt DateTime
+  academicNote String
+  academicBy String
+  salesNote String?
+  salesBy String?
+  qualificationRef String?
+  managerBy String?
+  managerAt DateTime?
+  invoiceId String? @unique
+  parentToken String @unique
+  parentExpiresAt DateTime
+  parentName String?
+  parentAcceptedAt DateTime?
+  parentIp String?
+  creditMinutes Int?
+  creditLimitCents Int?
+  creditDueAt DateTime?
+  creditReason String?
+  collectionOwner String?
+  creditApprovedBy String?
+  creditApprovedAt DateTime?
+  creditPackageId String? @unique
+  creditReleasedBy String?
+  verifiedReceiptIds Json?
+  verifiedAmountCents Int?
+  activatedAt DateTime?
+  activatedBy String?
+  cancelledAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  contract StudentContract @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  @@index([activatedAt, cancelledAt])
+  @@index([creditDueAt])
 }

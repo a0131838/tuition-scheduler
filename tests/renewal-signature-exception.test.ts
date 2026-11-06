@@ -35,6 +35,7 @@ test("later parent signing reuses the same contract marker and cannot add except
   let remainingMinutes = 30;
   let totalMinutes = 6000;
   const tx = {
+    renewalOrder: { findUnique: async () => null },
     packageTxn: {
       findFirst: async ({ where }: { where: { note: { contains: string } } }) => txns.find(item => item.note.includes(where.note.contains)) || null,
       create: async ({ data }: { data: { kind: string; note: string; deltaMinutes: number } }) => { txns.push({ ...data, id: `txn-${txns.length + 1}` }); },

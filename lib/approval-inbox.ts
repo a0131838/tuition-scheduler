@@ -1,3 +1,4 @@
+import { getRenewalActions } from './renewal-action-queue';
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { ExpenseClaimStatus } from "@prisma/client";
@@ -20,7 +21,7 @@ const SUPER_ADMIN_EMAIL = "zhaohongwei0880@gmail.com";
 const APPROVAL_OVERDUE_HOURS = 24;
 
 export type ApprovalInboxLane = "MANAGER" | "FINANCE" | "EXPENSE";
-export type ApprovalInboxType = "PARENT_RECEIPT" | "PARTNER_RECEIPT" | "EXPENSE_CLAIM" | "TEACHER_PAYROLL" | "PACKAGE_INVOICE";
+export type ApprovalInboxType = "PARENT_RECEIPT" | "PARTNER_RECEIPT" | "EXPENSE_CLAIM" | "TEACHER_PAYROLL" | "PACKAGE_INVOICE" | "RENEWAL_ACTION";
 
 export type ApprovalInboxItem = {
   id: string;
@@ -333,6 +334,8 @@ export const getApprovalInboxData = cache(async function getApprovalInboxData(
     }
   }
 
+  const renewalActions = await getRenewalActions({ email: actorEmail, role: actorRole });
+  for (const action of renewalActions) items.push({ id: action.key, key: action.key, type: "RENEWAL_ACTION", lane: action.lane, title: action.title, subtitle: action.status, amount: action.amount, currency: "SGD", waitingHours: hoursSince(action.createdAt), overdue: action.overdue, createdAt: action.createdAt.toISOString(), href: action.href, statusText: action.status, riskText: null });
   items.sort(compareInboxItems);
 
   const summary: ApprovalInboxSummary = {

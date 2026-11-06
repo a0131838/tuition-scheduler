@@ -1,3 +1,4 @@
+import RenewalActionsPanel from '@/app/admin/_components/RenewalActionsPanel';
 import { requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import type { Lang } from "@/lib/i18n";
@@ -148,7 +149,7 @@ export default async function FinanceWorkbenchPage({
     view?: string;
   }>;
 }) {
-  await requireAdmin();
+  const actor = await requireAdmin();
   const lang = await getLang();
   const sp = await searchParams;
   const monthRaw = String(sp?.month ?? "").trim();
@@ -801,6 +802,7 @@ export default async function FinanceWorkbenchPage({
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
+      <RenewalActionsPanel actor={actor} />
       <section style={workbenchHeroStyle("blue")}>
         <div style={{ display: "grid", gap: 6 }}>
           <h1 style={{ margin: 0 }}>{t(lang, "Finance Workbench", "财务工作台")}</h1>

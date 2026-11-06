@@ -7,7 +7,7 @@ import {
 } from "@/lib/ssg-standard-pei-contract-v4";
 
 export const STUDENT_CONTRACT_TEMPLATE_SLUG = "tuition-agreement";
-export const STUDENT_CONTRACT_TEMPLATE_VERSION = 1;
+export const STUDENT_CONTRACT_TEMPLATE_VERSION = 2;
 export const SSG_STANDARD_PEI_CONTRACT_TEMPLATE_SLUG = "ssg-standard-pei-student-contract-v4";
 export const SSG_STANDARD_PEI_CONTRACT_TEMPLATE_VERSION = 1;
 
@@ -344,6 +344,8 @@ export function getDefaultStudentContractTemplateInput() {
       <h3>4. Renewal of Package / 课包续费</h3>
       <p>Where the student learns under a prepaid hour package, the school may remind the parent when the remaining lesson hours become low. To continue lessons without interruption, the next package should be prepaid before further lessons continue.</p>
       <p>如学生按预付课时包上课，当剩余课时偏低时，学校可提醒家长。若要继续上课而不中断，家长应在继续上课前完成下一期课包付款。</p>
+      <p data-renewal-framework="1">For ordinary direct-billed tuition-hour packages, this agreement may govern a later renewal on the same course, lesson mode, package hours, fees and terms, provided the parent receives and expressly accepts a separate renewal confirmation specifying its hours, amount, service period and payment due date. No automatic renewal or payment authorisation is granted. Changes require a new agreement or mutually accepted signed addendum. This arrangement does not replace any mandatory PEI student contract, Full Care agreement or partner agreement.</p>
+      <p>普通直收补习课时包在课程、授课方式、课时、费用及条款相同的情况下，可沿用本协议作为后续续费的基础；每次仍须向家长提供并由家长明确接受列明课时、金额、服务期及付款期限的独立续费确认单，不构成自动续费或自动扣款授权。变更须另订合同或双方接受并签署的附录。本安排不替代依法要求的PEI学生合同、全托管合同或合作方协议。</p>
       <h3>5. Cancellation, Rescheduling, and No-Show / 取消、改期与缺席</h3>
       <p>Cancellation or rescheduling generally requires at least 24 hours' notice. If less than 24 hours' notice is given, the school may treat the lesson as chargeable and deduct the applicable lesson fee or lesson hours from the student's package, as applicable.</p>
       <p>取消或改期一般须至少提前 24 小时通知。若通知少于 24 小时，学校可将该课程视为应收费课程，并按情况从学生配套中扣除相应课费或课时。</p>

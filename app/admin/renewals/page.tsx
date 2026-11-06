@@ -26,6 +26,7 @@ export default async function RenewalWorkbenchPage() {
         <h1 style={{ margin: 0, fontSize: 30 }}>
           {t(lang, "Renewal follow-up", "续费跟进")}
         </h1>
+        <p><Link href="/admin/renewals/orders">Renewal orders and limited continuation / 续费确认与限额续课 →</Link></p>
         <p><Link href="/admin/reports/renewal">{t(lang, "Assign and track renewal progress reports →", "指派与跟进续费前学习进展报告 →")}</Link></p>
       </section>
       <RenewalWorkbenchClient

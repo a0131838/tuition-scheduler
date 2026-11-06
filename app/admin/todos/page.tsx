@@ -1,3 +1,4 @@
+import RenewalActionsPanel from '../_components/RenewalActionsPanel';
 ﻿import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import { requireAdmin } from "@/lib/auth";
@@ -314,7 +315,7 @@ export default async function AdminTodosPage({
 }: {
   searchParams?: Promise<{ clearDesk?: string; warnDays?: string; warnMinutes?: string; pastDays?: string; pastPage?: string; showConfirmed?: string; includeConflicts?: string; academicLane?: string }>;
 }) {
-  await requireAdmin();
+  const actor = await requireAdmin();
   const lang = await getLang();
   const sp = await searchParams;
   const clearDesk = String(sp?.clearDesk ?? "").trim() === "1";
@@ -1230,6 +1231,7 @@ export default async function AdminTodosPage({
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
+      <RenewalActionsPanel actor={actor} />
       <RememberedWorkbenchQueryClient
         cookieKey={TODO_DESK_COOKIE}
         storageKey="adminTodosDesk"

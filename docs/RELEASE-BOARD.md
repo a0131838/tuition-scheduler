@@ -1,4 +1,16 @@
 # RELEASE BOARD
+
+## 2026-11-06-r506
+
+- Release ID: `2026-11-06-r506`
+- Date/Time (Asia/Singapore): `2026-11-06`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: Renewal actions, parent confirmations and limited continuation. Jasmine sees pending renewal approvals; Finance sees activation, signature follow-up and reconciliation tasks. Eligible ordinary tuition renewals follow Academic → Sales → management review → parent confirmation → Finance invoice/payment activation, with optional finite credit.
+- Scope: additive renewal-order/evidence migrations and a distinct renewal-confirmed status; new ordinary tuition template version. No historic signature rewrite, blanket renewal exemption, automatic parent message or real renewal activation.
+- Verification: 33 targeted tests, 185 existing backend checks, TypeScript, production build, isolated browser QA and standard guarded release. See `docs/tasks/TASK-20261106-renewal-confirmation-workflow.md`.
+- Risk: medium financial/workflow change; manager eligibility review and Finance receipt verification remain mandatory. Old/changed agreements and PEI/EduTrust, Full Care, partner, group/shared/monthly packages use the existing flow. Released credit or post-activation payment changes require reconciliation before reversal.
+
+---
 ## 2026-11-05-r505
 
 - Release ID: `2026-11-05-r505`

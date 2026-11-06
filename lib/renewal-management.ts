@@ -171,6 +171,7 @@ export async function getRenewalForecasts(now = new Date(), includeSafe = false)
   const packages = await prisma.coursePackage.findMany({
     where: {
       status: "ACTIVE",
+      OR: [{ note: null }, { NOT: { note: { contains: "[RENEWAL_CREDIT" } } }],
     },
     include: {
       student: {
@@ -190,7 +191,7 @@ export async function getRenewalForecasts(now = new Date(), includeSafe = false)
         select: { kind: true, deltaMinutes: true, sessionId: true, createdAt: true },
       },
       contracts: {
-        where: { flowType: "RENEWAL", status: { notIn: ["VOID", "EXPIRED"] } },
+        where: { flowType: "RENEWAL", status: { notIn: ["VOID", "EXPIRED", "RENEWAL_CONFIRMED"] } },
         orderBy: { createdAt: "desc" },
         take: 1,
         select: { id: true, status: true, invoiceId: true, signedAt: true, createdAt: true },
