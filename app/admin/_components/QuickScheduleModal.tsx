@@ -373,6 +373,12 @@ export default function QuickScheduleModal({
         router.push(ticketExecutionContext.returnHref);
         return;
       }
+      if (Array.isArray(data.noticeIds) && data.noticeIds.length) {
+        const query = new URLSearchParams({ kind: "COURSE_CHANGE" });
+        if (data.noticeIds.length === 1) query.set("taskId", data.noticeIds[0]);
+        router.push(`/admin/communications?${query}`);
+        return;
+      }
       const params = new URLSearchParams(searchParams?.toString() ?? "");
       params.set("msg", "Rescheduled");
       const target = `${params.toString() ? `${pathname}?${params.toString()}` : pathname}${sectionHash}`;

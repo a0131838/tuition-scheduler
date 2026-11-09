@@ -16,29 +16,31 @@ type Task = {
   history: Array<{ action: string; actorName: string | null; actorEmail: string; actorRole: string | null; createdAt: string }>;
   automaticNotification: { status: string; total: number; counts: Record<string, number>; reviewNeeded?: boolean; scope?: string; note?: string };
   correction: { type: string; typeLabel: string; previousLines: string[]; currentLines: string[]; noReplacement: boolean; reason: string; originalSentAt: string | null; originalSentByName: string | null; originalGroupName: string | null; changedAt: string; changedByName: string | null } | null;
+  rescheduleNotice: { overdue: boolean; handoffDue: boolean; callDue: boolean; past: boolean; isOwner: boolean; canTakeOver: boolean; peer: { id: string; name: string } | null } | null;
 };
 
 const statusLabels: Record<string, string> = {
   OPEN: "全部待处理", PENDING_REVIEW: "待审核反馈", READY_TO_SEND: "待发微信群", CLAIMED: "处理中",
-  RETURNED: "已退回老师", ATTENTION: "待补发", COMPLETED: "已人工发送", WAIVED: "无需发送", SUPERSEDED: "已由新版替代 / Superseded", ALL: "全部记录",
+  RETURNED: "已退回老师", ATTENTION: "待补发", COMPLETED: "已人工发送", WAITING_PARENT: "已发群 · 待接送人确认", WAIVED: "无需发送", SUPERSEDED: "已由新版替代 / Superseded", ALL: "全部记录",
 };
 const kindLabels: Record<string, string> = {
   ALL: "全部类型", FEEDBACK: "课后反馈", COURSE_REMINDER_PARENT: "家长课程提醒",
   COURSE_REMINDER_TEACHER: "老师课程提醒", COURSE_CHANGE: "课程变更补发", MONTHLY_SCHEDULING: "下月排课确认",
 };
-const statuses = ["OPEN", "PENDING_REVIEW", "READY_TO_SEND", "ATTENTION", "RETURNED", "COMPLETED", "ALL"];
+const statuses = ["OPEN", "PENDING_REVIEW", "READY_TO_SEND", "ATTENTION", "WAITING_PARENT", "RETURNED", "COMPLETED", "ALL"];
 const kinds = ["FEEDBACK", "MONTHLY_SCHEDULING", "COURSE_REMINDER_PARENT", "COURSE_REMINDER_TEACHER", "COURSE_CHANGE"];
 const feedbackSectionLabels = [["lessonFocus", "本节课重点"], ["currentFinding", "当前发现"], ["classPerformance", "课堂表现"], ["nextPlan", "下一步计划"], ["parentNote", "家长需要知道"]] as const;
 
 const button: React.CSSProperties = { border: "1px solid #cbd5e1", borderRadius: 8, background: "#fff", padding: "8px 11px", fontWeight: 750, cursor: "pointer" };
 const primary: React.CSSProperties = { ...button, background: "#ea580c", color: "#fff", borderColor: "#ea580c" };
 
-export default function CommunicationCenterClient({ currentUser }: { currentUser: { id: string; name: string; role: string } }) {
+export default function CommunicationCenterClient({ currentUser, initialKind, initialTaskId }: { currentUser: { id: string; name: string; role: string }; initialKind: string; initialTaskId: string }) {
   const [rows, setRows] = useState<Task[]>([]);
   const [kindSummary, setKindSummary] = useState<Record<string, number>>({});
   const [staff, setStaff] = useState<Array<{ id: string; name: string; role: string }>>([]);
   const [status, setStatus] = useState("OPEN");
-  const [kind, setKind] = useState("FEEDBACK");
+  const [kind, setKind] = useState(initialKind);
+  const [focusTaskId, setFocusTaskId] = useState(initialTaskId);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [drafts, setDrafts] = useState<Record<string, { parentContent: string; group: string; note: string }>>({});
@@ -52,7 +54,7 @@ export default function CommunicationCenterClient({ currentUser }: { currentUser
         const syncData = await syncRes.json();
         if (!syncRes.ok || syncData.ok === false) throw new Error(syncData.message || "同步失败");
       }
-      const res = await fetch(`/api/admin/communications?status=${encodeURIComponent(status)}&kind=${encodeURIComponent(kind)}&limit=300`, { cache: "no-store" });
+      const res = await fetch(`/api/admin/communications?status=${encodeURIComponent(focusTaskId ? "ALL" : status)}&kind=${encodeURIComponent(kind)}&limit=300${focusTaskId ? "&taskId=" + encodeURIComponent(focusTaskId) : ""}`, { cache: "no-store" });
       const data = await res.json();
       if (!res.ok || data.ok === false) throw new Error(data.message || "加载失败");
       setRows(data.tasks || []); setKindSummary(data.kindSummary || {}); setStaff(data.staff || []);
@@ -68,8 +70,16 @@ export default function CommunicationCenterClient({ currentUser }: { currentUser
   useEffect(() => {
     const first = !initialized.current;
     initialized.current = true;
-    load(first);
-  }, [status, kind]);
+    load(first && kind !== "COURSE_CHANGE");
+  }, [status, kind, focusTaskId]);
+
+  useEffect(() => {
+    if (kind !== "COURSE_CHANGE" || loading) return;
+    const timer = window.setTimeout(() => { if (!document.hidden) void load(false); }, 30000);
+    const onFocus = () => { if (!document.hidden) void load(false); };
+    window.addEventListener("focus", onFocus);
+    return () => { window.clearTimeout(timer); window.removeEventListener("focus", onFocus); };
+  }, [kind, loading, status, focusTaskId]);
 
   async function act(row: Task, action: string, data: Record<string, unknown> = {}) {
     setLoading(true); setMessage("");
@@ -84,6 +94,16 @@ export default function CommunicationCenterClient({ currentUser }: { currentUser
   }
 
   async function copy(row: Task) {
+    if (row.rescheduleNotice) {
+      try {
+        const res = await fetch(`/api/admin/communications/${row.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "copy" }) });
+        const data = await res.json();
+        if (!res.ok || data.ok === false || !data.task?.messageText) throw new Error(data.message || "当前通知不可复制");
+        await navigator.clipboard.writeText(data.task.messageText);
+        setMessage("已复制最新版，请到原家长群发送。");
+      } catch (error: any) { setMessage(error?.message || "复制失败"); }
+      return;
+    }
     await navigator.clipboard.writeText(row.messageText);
     await act(row, "copy");
   }
@@ -125,10 +145,11 @@ export default function CommunicationCenterClient({ currentUser }: { currentUser
       </section>
 
       <section style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        {kinds.map((item) => <button key={item} style={{ ...button, background: kind === item ? "#ea580c" : "#fff", color: kind === item ? "#fff" : "#0f172a", borderColor: kind === item ? "#ea580c" : "#cbd5e1" }} onClick={() => setKind(item)}>{kindLabels[item]} ({kindSummary[item] || 0})</button>)}
+        {kinds.map((item) => <button key={item} style={{ ...button, background: kind === item ? "#ea580c" : "#fff", color: kind === item ? "#fff" : "#0f172a", borderColor: kind === item ? "#ea580c" : "#cbd5e1" }} onClick={() => { setFocusTaskId(""); setKind(item); }}>{kindLabels[item]} ({kindSummary[item] || 0})</button>)}
       </section>
       <section style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        {statuses.map((item) => <button key={item} style={{ ...button, background: status === item ? "#0f172a" : "#fff", color: status === item ? "#fff" : "#0f172a" }} onClick={() => setStatus(item)}>{statusLabels[item]}</button>)}
+        {focusTaskId ? <button style={button} onClick={() => setFocusTaskId("")}>查看全部改课通知</button> : null}
+        {statuses.map((item) => <button key={item} style={{ ...button, background: status === item ? "#0f172a" : "#fff", color: status === item ? "#fff" : "#0f172a" }} onClick={() => { setFocusTaskId(""); setStatus(item); }}>{statusLabels[item]}</button>)}
       </section>
       {message ? <div style={{ color: message.includes("失败") ? "#b91c1c" : "#166534", fontWeight: 700 }}>{message}</div> : null}
 
@@ -140,10 +161,10 @@ export default function CommunicationCenterClient({ currentUser }: { currentUser
           return <article key={row.id} style={{ padding: "16px 0", borderTop: `3px solid ${row.status === "ATTENTION" ? "#dc2626" : row.status === "PENDING_REVIEW" ? "#f59e0b" : "#cbd5e1"}`, display: "grid", gap: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
               <div><div style={{ color: "#9a3412", fontSize: 12, fontWeight: 850 }}>{kindLabels[row.kind] || row.kind} · {statusLabels[row.status] || row.status}</div><div style={{ fontWeight: 850, fontSize: 17, marginTop: 4 }}>{row.title}</div><div style={{ color: "#334155", fontSize: 13, fontWeight: 750, marginTop: 4 }}>{row.dateLabel || "课程日期待确认"}</div><div style={{ color: "#64748b", fontSize: 12, marginTop: 4 }}>负责人：{row.ownerName || "未领取"}</div><div style={{ color: row.automaticNotification.status === "FAILED" ? "#b91c1c" : "#475569", fontSize: 12, marginTop: 4 }}>自动提醒：{({ SENT: "已发送", PENDING: "待发送/待授权", PROCESSING: "发送中", FAILED: "发送失败", SKIPPED: "已失效", NOT_QUEUED: "未入队", NEEDS_REVIEW: "待核对 / Needs review" } as Record<string,string>)[row.automaticNotification.status] || row.automaticNotification.status} · 人工微信：{row.manualSentAt ? "已发送" : "待处理"}</div>{row.automaticNotification.note ? <div style={{color:"#64748b",fontSize:12,marginTop:4}}>{row.automaticNotification.note}</div> : null}</div>
-              <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+              {!row.rescheduleNotice ? <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
                 {row.ownerUserId !== currentUser.id && !row.manualSentAt ? <button style={button} onClick={() => act(row, "claim")}>领取任务</button> : null}
                 {!row.manualSentAt ? <select value={row.ownerUserId || ""} onChange={(event) => event.target.value && act(row, "transfer", { ownerUserId: event.target.value })} style={button}><option value="">转交给…</option>{staff.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select> : null}
-              </div>
+              </div> : null}
             </div>
 
             {isFeedback && row.feedback ? <details open={row.status === "PENDING_REVIEW" || row.status === "RETURNED"}>
@@ -168,7 +189,31 @@ export default function CommunicationCenterClient({ currentUser }: { currentUser
               <div style={{ fontWeight: 800 }}>下一步：发到原微信会话，上传发送截图，再确认已发送。</div>
             </section> : null}
 
-            {(row.status === "READY_TO_SEND" || row.status === "CLAIMED" || row.status === "ATTENTION" || row.status === "COMPLETED") ? <div style={{ display: "grid", gap: 9 }}>
+            {row.rescheduleNotice ? <div style={{ display: "grid", gap: 9 }}>
+              {row.rescheduleNotice.overdue ? <strong style={{ color: "#b91c1c" }}>已超过 5 分钟，尚未登记发群。</strong> : null}
+              {row.rescheduleNotice.handoffDue ? <p>已超过 10 分钟，另一位当班教务可接手。</p> : null}
+              {row.rescheduleNotice.callDue ? <strong>请电话确认实际接送人。</strong> : null}
+              {row.status === "SUPERSEDED" ? <p>已有更新版本，请返回列表处理最新版。</p> : null}
+              {row.rescheduleNotice.past ? <p>已到开课时间，请核对实际到课并记录结果。</p> : null}
+              <pre style={{ whiteSpace: "pre-wrap", margin: 0, padding: 12, background: "#f8fafc", fontFamily: "inherit" }}>{row.messageText}</pre>
+              {row.rescheduleNotice.canTakeOver ? <button style={primary} onClick={() => act(row, "claim")}>接手这条改课通知</button> : null}
+              {row.rescheduleNotice.isOwner && !["COMPLETED", "SUPERSEDED"].includes(row.status) ? <>
+                {row.rescheduleNotice.peer ? <button style={button} onClick={() => act(row, "transfer", { ownerUserId: row.rescheduleNotice?.peer?.id })}>转交 {row.rescheduleNotice.peer.name}</button> : null}
+                {!row.manualSentAt && !row.rescheduleNotice.past ? <>
+                  <input value={draft.group} onChange={event => updateDraft(row.id, { group: event.target.value })} placeholder="原家长群名称" style={button} />
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button style={primary} onClick={() => copy(row)}>复制最新版文案</button>
+                    <label style={button}>上传发送截图<input type="file" accept="image/*" hidden onChange={event => uploadEvidence(row, event.target.files?.[0] || null)} /></label>
+                    <button style={button} disabled={!row.evidenceUrl} onClick={() => act(row, "manual_sent", { wechatGroupName: draft.group })}>确认已发原家长群</button>
+                  </div>
+                  {row.evidenceUrl ? <span>已留存发送截图</span> : null}
+                </> : null}
+                {row.status === "WAITING_PARENT" ? <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{[["GROUP", "家长群"], ["DIRECT", "私聊"], ["PHONE", "电话"]].map(([channel, label]) =>
+                  <button key={channel} style={button} onClick={() => { const note = window.prompt("请填写接送人及对本次新时间的确认内容"); if (note?.trim()) void act(row, "parent_confirmed", { channel, note }); }}>{label}已确认</button>
+                )}</div> : null}
+                {row.rescheduleNotice.past ? <button style={button} onClick={() => { const note = window.prompt("请记录实际到课及家长跟进结果"); if (note?.trim()) void act(row, "resolve_exception", { note }); }}>记录异常处理结果</button> : null}
+              </> : null}
+            </div> : (row.status === "READY_TO_SEND" || row.status === "CLAIMED" || row.status === "ATTENTION" || row.status === "COMPLETED") ? <div style={{ display: "grid", gap: 9 }}>
               <div style={{ fontWeight: 800 }}>微信群/微信人工转发 / Manual WeChat forwarding</div>
               <pre style={{ whiteSpace: "pre-wrap", margin: 0, padding: 12, background: "#f8fafc", borderLeft: "4px solid #ea580c", fontFamily: "inherit", lineHeight: 1.65 }}>{row.messageText}</pre>
               {row.templateCode ? <div style={{ color: "#64748b", fontSize: 12 }}>固定话术：{row.templateCode} · V{row.templateVersion}</div> : <div style={{ color: "#92400e", fontSize: 12 }}>系统固定业务文案（历史记录未关联模板版本）</div>}

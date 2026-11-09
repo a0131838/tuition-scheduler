@@ -16,6 +16,7 @@
   <scroll-view class="filter-scroll" scroll-x>
     <view class="filter-row"><button wx:for="{{filters}}" wx:key="value" class="filter {{filter === item.value ? 'active' : ''}}" data-value="{{item.value}}" bindtap="changeFilter">{{item.label}}</button></view>
   </scroll-view>
+  <button class="claim" wx:if="{{focusTaskId}}" bindtap="clearFocus">查看全部改课通知</button>
 
   <view class="task {{item.isAttention ? 'attention' : ''}}" wx:for="{{tasks}}" wx:key="id" wx:for-index="idx">
     <view class="task-summary" data-id="{{item.id}}" bindtap="toggleTask">
@@ -32,8 +33,21 @@
       <view class="detail-title">{{item.title}}</view>
       <view class="feedback-flow {{item.feedbackNeedsPublish ? 'review-step' : 'send-step'}}" wx:if="{{item.isFeedback}}">{{item.feedbackFlowLabel}}</view>
       <view class="latest-history" wx:if="{{item.latestHistoryText}}">最近操作：{{item.latestHistoryText}}</view>
-      <view class="automatic-status">{{item.automaticStatusText}} · 人工微信：{{item.isCompleted ? '已发送' : '待处理'}}</view>
-      <button class="claim" wx:if="{{!item.isCompleted}}" data-id="{{item.id}}" bindtap="claim">领取这项任务</button>
+      <view class="automatic-status" wx:if="{{!item.rescheduleNotice}}">{{item.automaticStatusText}} · 人工微信：{{item.isCompleted ? '已发送' : '待处理'}}</view>
+      <button class="claim" wx:if="{{!item.rescheduleNotice && !item.isCompleted}}" data-id="{{item.id}}" bindtap="claim">领取这项任务</button>
+
+      <view class="change-card" wx:if="{{item.rescheduleNotice}}">
+        <view wx:if="{{item.rescheduleNotice.overdue}}">已超过 5 分钟，尚未登记发群。</view>
+        <view wx:if="{{item.rescheduleNotice.handoffDue}}">已超过 10 分钟，另一位当班教务可接手。</view>
+        <view wx:if="{{item.rescheduleNotice.callDue}}">请电话确认实际接送人，不要继续等待群回复。</view>
+        <view wx:if="{{item.rescheduleNotice.past}}">已到开课时间，请核对实际到课并记录结果。</view>
+        <view wx:if="{{item.manualSentAt}}">群发登记：{{item.manualSentByName || '教务'}} · {{item.wechatGroupName}}</view>
+        <view wx:if="{{item.status === 'SUPERSEDED'}}">已有更新版本，请返回列表处理最新版。</view>
+        <button class="claim" wx:if="{{item.rescheduleNotice.canTakeOver}}" data-id="{{item.id}}" bindtap="claim">接手这条通知</button>
+        <button class="claim" wx:if="{{item.rescheduleNotice.isOwner && item.rescheduleNotice.peer && (item.canSend || item.rescheduleNotice.past || item.status === 'WAITING_PARENT')}}" data-index="{{idx}}" bindtap="transferReschedule">转交 {{item.rescheduleNotice.peer.name}}</button>
+        <button class="confirm" wx:if="{{item.rescheduleNotice.isOwner && item.status === 'WAITING_PARENT'}}" data-index="{{idx}}" bindtap="confirmRescheduleParent">记录接送人已确认</button>
+        <button class="claim" wx:if="{{item.rescheduleNotice.isOwner && item.rescheduleNotice.past}}" data-id="{{item.id}}" bindtap="resolveRescheduleException">记录异常处理结果</button>
+      </view>
 
       <view class="change-card" wx:if="{{item.isCourseChange && item.correction}}">
         <view class="change-purpose">
@@ -74,15 +88,15 @@
 
       <view class="send" wx:if="{{item.canSend}}">
         <view class="send-heading">{{item.isFeedback ? '第2步：人工发送到家长微信群' : (item.isCourseChange ? '必须补发到原微信会话' : (item.isTeacherReminder ? '发给老师的微信文案' : '发到家长群的微信文案'))}}</view>
-        <view class="send-instruction urgent-copy" wx:if="{{item.isCourseChange}}">这是对已发送旧提醒的纠正。请将本条发到原家长群或老师微信，不能只在系统里点完成。</view>
+        <view class="send-instruction urgent-copy" wx:if="{{item.isCourseChange}}">{{item.rescheduleNotice ? '请在改课后 5 分钟内把更正发到原家长群，确认后仍须跟进接送人回复。' : '请将本条补发到原家长群或老师微信，不能只在系统里点完成。'}}</view>
         <view class="send-instruction" wx:if="{{item.isFeedback}}">复制下面文案或保存图片，在微信中发到对应家长群。小程序发布不能代替人工发群。</view>
         <view class="section-label">待发送文案</view><view class="message">{{item.messageText}}</view>
         <view class="template-version" wx:if="{{item.templateCode}}">固定话术：{{item.templateCode}} · V{{item.templateVersion}}</view>
-        <view class="share-card-note" wx:if="{{item.canShareCard}}">推荐：分享小程序卡片后，家长或老师点击即可直达对应内容；仍需人工选择微信群并点击发送。</view>
+        <view class="share-card-note" wx:if="{{item.canShareCard && !item.rescheduleNotice}}">推荐：分享小程序卡片后，家长或老师点击即可直达对应内容；仍需人工选择微信群并点击发送。</view>
         <input class="input compact" value="{{item.groupDraft}}" data-index="{{idx}}" bindinput="inputGroup" placeholder="{{item.isTeacherReminder ? '老师微信' : '家长群名称'}}" />
         <input class="input compact" value="{{item.noteDraft}}" data-index="{{idx}}" bindinput="inputNote" placeholder="备注（可选）" />
-        <button class="share-card" wx:if="{{item.canShareCard}}" open-type="share" data-index="{{idx}}">① 分享小程序卡片到微信群</button>
-        <view class="action-grid"><button class="action primary-soft" data-index="{{idx}}" bindtap="copyMessage">② 复制微信群文案</button><button class="action" data-id="{{item.id}}" bindtap="saveImage">③ 或保存转发图片</button><button class="action" data-id="{{item.id}}" bindtap="uploadEvidence">④ 上传发送截图</button><button class="action" data-id="{{item.id}}" bindtap="retry">重试自动提醒</button></view>
+        <button class="share-card" wx:if="{{item.canShareCard && !item.rescheduleNotice}}" open-type="share" data-index="{{idx}}">分享小程序卡片到微信群</button>
+        <view class="action-grid"><button class="action primary-soft" data-index="{{idx}}" bindtap="copyMessage">复制微信群文案</button><button class="action" wx:if="{{!item.rescheduleNotice}}" data-id="{{item.id}}" bindtap="saveImage">或保存转发图片</button><button class="action" data-id="{{item.id}}" bindtap="uploadEvidence">上传发送截图</button><button class="action" wx:if="{{!item.rescheduleNotice}}" data-id="{{item.id}}" bindtap="retry">重试自动提醒</button></view>
         <button class="confirm" wx:if="{{!item.isCompleted}}" data-index="{{idx}}" bindtap="markSent">⑤ 确认已发到{{item.isTeacherReminder ? '老师微信' : '家长微信群'}}</button>
         <view class="published" wx:else>已完成人工发送</view>
         <view class="evidence" wx:if="{{item.evidenceUrl}}">发送截图已留档</view>

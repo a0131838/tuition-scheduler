@@ -1,5 +1,6 @@
 import { AttendanceStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { updateSessionTimeWithNotice } from "@/lib/reschedule-notices";
 import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import { findStudentCourseEnrollment, formatEnrollmentConflict } from "@/lib/enrollment-conflict";
@@ -856,7 +857,7 @@ async function previewClassSessionReschedule(payload: Record<string, unknown>) {
   };
 }
 
-async function applyClassSessionReschedule(payload: Record<string, unknown>, maxAffected: number) {
+async function applyClassSessionReschedule(payload: Record<string, unknown>, maxAffected: number, actor: { id: string; name: string | null }) {
   const preview = await previewClassSessionReschedule(payload);
   if ("error" in preview) return preview;
   if (preview.affectedCount > maxAffected) {
@@ -883,9 +884,12 @@ async function applyClassSessionReschedule(payload: Record<string, unknown>, max
     return { session: s, startAt, endAt };
   });
 
-  await prisma.$transaction(
-    planned.map((item) => prisma.session.update({ where: { id: item.session.id }, data: { startAt: item.startAt, endAt: item.endAt } }))
-  );
+  await prisma.$transaction(async tx => {
+    for (const item of planned) await updateSessionTimeWithNotice(tx, {
+      sessionId: item.session.id, before: item.session,
+      after: { startAt: item.startAt, endAt: item.endAt }, actor,
+    });
+  }, { timeout: 30_000 });
 
   const postRows = await prisma.session.findMany({
     where: { id: { in: planned.map((item) => item.session.id) } },
@@ -1300,7 +1304,7 @@ export async function POST(req: Request) {
           : taskType === "class_session.create_single"
             ? await applyClassSessionCreate(payload, maxAffected)
             : taskType === "class_session.reschedule"
-              ? await applyClassSessionReschedule(payload, maxAffected)
+              ? await applyClassSessionReschedule(payload, maxAffected, actor)
               : await applyStudentQuickSchedule(payload, maxAffected, isStrictSuperAdmin(actor));
 
     if ("error" in applyResult) {

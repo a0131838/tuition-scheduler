@@ -13,6 +13,7 @@ import { feedbackAttachmentDto } from "@/lib/feedback-attachments";
 import { getVisibleSessionStudents } from "@/lib/session-students";
 import { renderCommunicationTemplate, renderPublishedCommunicationTemplate } from "@/lib/parent-communication-templates";
 import { monthlySchedulingMonthKey } from "@/lib/monthly-scheduling";
+import { getRescheduleDutyPair, isRescheduleNotice, lockCurrentRescheduleNotice, noticeData, noticeTiming, RESCHEDULE_NOTICE_PREFIX, RESCHEDULE_WAITING_PARENT } from "@/lib/reschedule-notices";
 
 export type CommunicationActor = {
   id: string;
@@ -22,7 +23,7 @@ export type CommunicationActor = {
   isObserver?: boolean;
 };
 
-const OPEN_STATUSES = ["PENDING_REVIEW", "READY_TO_SEND", "CLAIMED", "RETURNED", "ATTENTION"];
+const OPEN_STATUSES = ["PENDING_REVIEW", "READY_TO_SEND", "CLAIMED", "RETURNED", "ATTENTION", RESCHEDULE_WAITING_PARENT];
 
 function fingerprint(value: string) {
   return crypto.createHash("sha256").update(value).digest("hex");
@@ -219,6 +220,35 @@ async function upsertCommunicationTask(input: {
 
   if (existing.manualSentAt || existing.status === "COMPLETED") {
     const correctionKey = `${input.taskKey}:correction:${contentFingerprint.slice(0, 12)}`;
+    // A direct save already creates the same obligation. Only suppress an exact
+    // single-lesson family correction; bundled or unrelated changes stay reviewable.
+    if (input.kind === "COURSE_REMINDER_PARENT" && existing.sessionId && existing.studentId &&
+        (input.sessionId === existing.sessionId || forceCourseCancelled)) {
+      const notices = await db.parentCommunicationTask.findMany({
+        where: { sessionId: existing.sessionId, studentId: existing.studentId, parentId: existing.parentId,
+          taskKey: { startsWith: RESCHEDULE_NOTICE_PREFIX }, supersededAt: null,
+          createdAt: { gte: existing.manualSentAt ?? existing.completedAt ?? existing.createdAt } },
+        select: { taskKey: true, templateVariables: true, wechatGroupName: true },
+      });
+      const oldLines = reminderScheduleLines(existing.messageText);
+      const newLines = reminderScheduleLines(input.messageText);
+      if (notices.some(row => {
+        const data = noticeData(row);
+        return data && row.wechatGroupName === existing.wechatGroupName && oldLines.length === 1 && oldLines[0] === data.beforeLine &&
+          (forceCourseCancelled
+            ? formatBusinessDateOnly(new Date(data.beforeStart)) !== formatBusinessDateOnly(new Date(data.afterStart))
+            : newLines.length === 1 && newLines[0] === data.afterLine);
+      })) {
+        await db.parentCommunicationTask.updateMany({
+          where: { id: existing.id, supersededAt: null }, data: { supersededAt: new Date() },
+        });
+        await db.parentCommunicationTask.updateMany({
+          where: { taskKey: correctionKey, manualSentAt: null, status: { in: OPEN_STATUSES } },
+          data: { status: "SUPERSEDED", supersededAt: new Date() },
+        });
+        return existing;
+      }
+    }
     if (input.kind === "MONTHLY_SCHEDULING") {
       const existingCorrection = await db.parentCommunicationTask.findUnique({ where: { taskKey: correctionKey } });
       if (existingCorrection?.manualSentAt || existingCorrection?.status === "COMPLETED") return existingCorrection;
@@ -776,12 +806,14 @@ export async function syncParentCommunicationCenter(actor?: CommunicationActor) 
   return { feedbackCount, reminderCount, monthlySchedulingCount, legacyCourseChangeCount };
 }
 
-export async function listParentCommunicationTasks(input: { status?: string; kind?: string; limit?: number }) {
+export async function listParentCommunicationTasks(input: { status?: string; kind?: string; limit?: number; taskId?: string; actorId?: string; noticeQueue?: boolean }) {
   const where: Prisma.ParentCommunicationTaskWhereInput = {};
   if (input.status && input.status !== "ALL") {
     where.status = input.status === "OPEN" ? { in: OPEN_STATUSES } : input.status;
   }
   if (input.kind && input.kind !== "ALL") where.kind = input.kind;
+  if (input.taskId) where.id = input.taskId;
+  if (input.noticeQueue) where.taskKey = { startsWith: RESCHEDULE_NOTICE_PREFIX };
   const limit = Math.min(Math.max(input.limit ?? 200, 1), 500);
   const [rows, summaryRows, kindStatusRows, staff] = await Promise.all([
     prisma.parentCommunicationTask.findMany({ where, orderBy: [{ priority: "asc" }, { dueAt: "asc" }, { createdAt: "desc" }], take: limit }),
@@ -810,6 +842,9 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
     ? await prisma.parentCommunicationTask.findMany({ where: { id: { in: correctionSourceIds } } })
     : [];
   const correctionSourceMap = new Map(correctionSources.map((row) => [row.id, row]));
+  const duty = input.actorId && rows.some(isRescheduleNotice) ? await getRescheduleDutyPair() : [];
+  const isDuty = duty.some(person => person.id === input.actorId);
+  const peer = isDuty ? duty.find(person => person.id !== input.actorId) ?? null : null;
   const correctionSessionIds = Array.from(new Set(correctionSources.map((row) => row.sessionId).filter((id): id is string => Boolean(id))));
   const correctionSourceAudits = correctionSessionIds.length
     ? await prisma.auditLog.findMany({
@@ -864,6 +899,9 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
         changedByName: correctionAudit?.actorName || correctionAudit?.actorEmail || null,
         changeAction: correctionAudit?.action || null,
       } : null;
+      const notice = noticeData(row);
+      const timing = noticeTiming(row);
+      const isOwner = isDuty && row.ownerUserId === input.actorId;
       return ({
       ...row,
       dateLabel: taskDate ? formatBusinessDateWithWeekday(taskDate) : null,
@@ -897,6 +935,11 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
       history: (historyMap.get(row.id) ?? []).map((audit) => ({ ...audit, createdAt: audit.createdAt.toISOString() })),
       automaticNotification: deliveryEvidence.get(row.id)!,
       correction,
+      rescheduleNotice: notice && timing ? {
+        ...timing, isOwner, peer,
+        canTakeOver: isDuty && !isOwner && !row.manualSentAt && OPEN_STATUSES.includes(row.status) && (!row.ownerUserId || timing.handoffDue),
+        beforeStart: notice.beforeStart, afterStart: notice.afterStart,
+      } : null,
     });}),
     summary: summaryRows.reduce<Record<string, number>>((acc, row) => {
       acc[row.status] = row._count._all;
@@ -926,9 +969,60 @@ type CommunicationUpdateInput = {
 async function updateCommunicationTaskAtomically(input: CommunicationUpdateInput) {
   return prisma.$transaction(async tx => {
     const actor = await requireCommunicationWriteAccess(tx, input.actor.id);
-    const task = await tx.parentCommunicationTask.findUnique({where: {id: input.id}});
+    let task = await tx.parentCommunicationTask.findUnique({where: {id: input.id}});
     if (!task) throw new Error("Communication task not found / 沟通任务不存在");
     const now = new Date(), data = input.data ?? {};
+    if (isRescheduleNotice(task)) {
+      task = await lockCurrentRescheduleNotice(tx, task.id, task.sessionId);
+      const team = await getRescheduleDutyPair(tx);
+      if (!team.some(person => person.id === actor.id)) throw new Error("请由 Eva 或 Emily 处理改课通知。");
+      if (input.action === "manual_sent" && task.manualSentAt) return task;
+      if (input.action === "parent_confirmed" && task.status === "COMPLETED" && task.manualSentAt) return task;
+      if (!OPEN_STATUSES.includes(task.status)) throw new Error("该通知已结束，请查看最新版本。");
+      const timing = noticeTiming(task, now)!;
+      const peer = team.find(person => person.id !== actor.id);
+      const owner = task.ownerUserId === actor.id;
+      const note = String(data.note ?? "").trim().slice(0, 1000);
+      const save = async (values: Prisma.ParentCommunicationTaskUpdateInput, auditAction: string, meta: Prisma.InputJsonValue = {}) => {
+        const updated = await tx.parentCommunicationTask.update({ where: { id: input.id }, data: values });
+        await tx.auditLog.create({ data: { actorEmail: actor.email, actorName: actor.name, actorRole: actor.role,
+          module: "COMMUNICATION", action: auditAction, entityType: "ParentCommunicationTask", entityId: input.id, meta } });
+        return updated;
+      };
+      if (input.action === "claim") {
+        if (owner) return task;
+        if (task.manualSentAt || (task.ownerUserId && !timing.handoffDue)) throw new Error("当前仍由另一位教务负责；请先由对方转交，或在超时后接手。");
+        return save({ ownerUserId: actor.id, ownerName: actor.name, claimedAt: now, status: "CLAIMED" }, "CLAIM_RESCHEDULE_NOTICE", { previousOwner: task.ownerName });
+      }
+      if (!owner) throw new Error("请先接手这条改课通知，再登记操作。");
+      if (input.action === "transfer") {
+        if (!peer || data.ownerUserId !== peer.id) throw new Error("只能转交给另一位负责改课通知的教务。");
+        return save({ ownerUserId: peer.id, ownerName: peer.name }, "TRANSFER_RESCHEDULE_NOTICE", { to: peer.name });
+      }
+      if (input.action === "parent_confirmed") {
+        const channel = String(data.channel ?? "");
+        if (!task.manualSentAt || task.status !== RESCHEDULE_WAITING_PARENT) throw new Error("请先登记已发原家长群。");
+        if (!["GROUP", "DIRECT", "PHONE"].includes(channel) || !note) throw new Error("请记录确认渠道和接送人的确认内容。");
+        return save({ status: "COMPLETED", completedAt: now, note }, "CONFIRM_RESCHEDULE_PARENT", { channel, note, confirmedAt: now.toISOString() });
+      }
+      if (input.action === "resolve_exception") {
+        if (!timing.past || !note) throw new Error("只有已到开课时间的任务可记录异常结果，且须填写跟进情况。");
+        return save({ status: "COMPLETED", completedAt: now, note }, "RESOLVE_RESCHEDULE_NOTICE_EXCEPTION", { note });
+      }
+      if (timing.past) throw new Error("已到开课时间，请记录实际到课或家长跟进情况。");
+      if (input.action === "copy" && !task.manualSentAt) {
+        return save({ copiedAt: now, copiedByUserId: actor.id, copiedByName: actor.name }, "COPY_RESCHEDULE_NOTICE");
+      }
+      if (input.action === "manual_sent") {
+        const group = String(data.wechatGroupName ?? task.wechatGroupName ?? "").trim().slice(0, 200);
+        if (!group || !task.evidenceUrl) throw new Error("请填写原家长群并上传本次发送截图，再确认已发群。");
+        return save({
+          status: RESCHEDULE_WAITING_PARENT, manualSentAt: now, manualSentByUserId: actor.id, manualSentByName: actor.name,
+          manualChannel: "WECHAT_GROUP", wechatGroupName: group, note: note || task.note,
+        }, "MARK_RESCHEDULE_NOTICE_SENT", { group, overdue: timing.overdue });
+      }
+      throw new Error("请按改课通知流程处理。");
+    }
     // Replayed confirmations retain the first operator, time and evidence.
     if(input.action === "manual_sent" && task.status === "COMPLETED" && task.manualSentAt) return task;
     if(input.action === "waive" && task.status === "WAIVED") return task;
@@ -1083,7 +1177,7 @@ async function reviewCommunicationFeedback(input: CommunicationUpdateInput) {
 export async function updateParentCommunicationTask(input: CommunicationUpdateInput) {
   if(input.actor.isObserver) throw new Error("Observer account is read-only / 观察者账号不能修改系统数据");
   if (["publish_feedback", "return_feedback"].includes(input.action)) return reviewCommunicationFeedback(input);
-  if (["claim", "transfer", "copy", "manual_sent", "waive", "share_card"].includes(input.action)) return updateCommunicationTaskAtomically(input);
+  if (["claim", "transfer", "copy", "manual_sent", "waive", "share_card", "parent_confirmed", "resolve_exception"].includes(input.action)) return updateCommunicationTaskAtomically(input);
 
   if (input.action === "retry_auto") return retryCommunicationNotification(input.id, input.actor.id);
 
@@ -1097,6 +1191,7 @@ export function communicationTaskStatusLabel(status: string) {
     CLAIMED: "处理中 / In progress",
     RETURNED: "已退回老师 / Returned",
     ATTENTION: "需更正 / Correction",
+    WAITING_PARENT: "已发群，待接送人确认 / Awaiting parent confirmation",
     COMPLETED: "已人工发送 / Sent manually",
     WAIVED: "无需发送 / Waived",
     SUPERSEDED: "已由新版替代 / Superseded",

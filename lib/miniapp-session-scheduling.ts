@@ -6,6 +6,7 @@ import { formatBusinessDateTime } from "@/lib/date-only";
 import { applyLinkedTicketSchedulingAction } from "@/lib/ticket-scheduling-action-write";
 import { createTicketTeacherConfirmation, finishTicketAfterFormalExecution, urgentTeacherConsentRequired } from "@/lib/ai-ticket-communication";
 import { prisma } from "@/lib/prisma";
+import { StaleRescheduleError, updateSessionTimeWithNotice } from "@/lib/reschedule-notices";
 import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 import { schedulingCoordinationCourseLabelsMatch } from "@/lib/scheduling-coordination";
 import { pickStudentSessionConflict, pickTeacherSessionConflict } from "@/lib/session-conflict";
@@ -454,10 +455,15 @@ export async function applyMiniappSessionReschedulingBatch(
         throw new MiniappSchedulingError("排课协调工单已变化，请重新检查冲突。", 409, "COORDINATION_PREVIEW_STALE");
       }
       const writtenSessionIds: string[] = [];
+      const noticeIds: string[] = [];
       for (const row of rows) {
         const classId = await createLocationClass(tx, row);
-        const updated = await tx.session.update({ where: { id: row.session.id }, data: { startAt: row.startAt, endAt: row.endAt, classId } });
-        writtenSessionIds.push(updated.id);
+        const result = await updateSessionTimeWithNotice(tx, {
+          sessionId: row.session.id, before: row.session, after: { startAt: row.startAt, endAt: row.endAt, classId },
+          actor: { id: actor.userId, name: actor.name },
+        });
+        writtenSessionIds.push(result.session.id);
+        noticeIds.push(...result.noticeIds);
       }
       await tx.auditLog.createMany({ data: rows.map((row, index) => ({
         actorEmail: actor.email.trim().toLowerCase(), actorName: actor.name?.trim() || null, actorRole: actor.role,
@@ -519,9 +525,10 @@ export async function applyMiniappSessionReschedulingBatch(
           meta: { sessionIds: writtenSessionIds, batchSize: rows.length },
         } });
       }
-      return { rows, writtenSessionIds, completedCoordinationTickets, preview: { action: "reschedule", actionLabel: "整批修改课程", commandCount: rows.length, rows: rows.map((row) => row.preview) } };
+      return { rows, writtenSessionIds, noticeIds, completedCoordinationTickets, preview: { action: "reschedule", actionLabel: "整批修改课程", commandCount: rows.length, rows: rows.map((row) => row.preview) } };
     }, { maxWait: 5000, timeout: 60000, isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   } catch (error) {
+    if (error instanceof StaleRescheduleError) throw new MiniappSchedulingError(error.message, 409, "STALE_RESCHEDULE");
     if (isSessionDuplicateError(error)) throw new MiniappSchedulingError("同一课程在该时间已经存在。", 409, "DUPLICATE");
     throw error;
   }
@@ -546,13 +553,16 @@ export async function applyMiniappSessionScheduling(
           );
         }
         let writtenSessionId: string;
+        let noticeIds: string[] = [];
         if (input.action === "reschedule") {
           const classId = await createLocationClass(tx, checked);
-          const updated = await tx.session.update({
-            where: { id: checked.session.id },
-            data: { startAt: checked.startAt, endAt: checked.endAt, classId },
+          const result = await updateSessionTimeWithNotice(tx, {
+            sessionId: checked.session.id, before: checked.session,
+            after: { startAt: checked.startAt, endAt: checked.endAt, classId },
+            actor: { id: actor.userId, name: actor.name },
           });
-          writtenSessionId = updated.id;
+          writtenSessionId = result.session.id;
+          noticeIds = result.noticeIds;
         } else {
           const teacherOverride = checked.teacherId === checked.session.class.teacherId ? null : checked.teacherId;
           const created = await tx.session.create({
@@ -633,11 +643,12 @@ export async function applyMiniappSessionScheduling(
             });
           }
         }
-        return { ...checked, writtenSessionId, completedCoordinationTickets };
+        return { ...checked, writtenSessionId, noticeIds, completedCoordinationTickets };
       },
       { maxWait: 5000, timeout: 20000 }
     );
   } catch (error) {
+    if (error instanceof StaleRescheduleError) throw new MiniappSchedulingError(error.message, 409, "STALE_RESCHEDULE");
     if (isSessionDuplicateError(error)) {
       throw new MiniappSchedulingError("同一课程在该时间已经存在。", 409, "DUPLICATE");
     }

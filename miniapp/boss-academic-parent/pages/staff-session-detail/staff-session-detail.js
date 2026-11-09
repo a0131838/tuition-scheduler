@@ -564,7 +564,20 @@ Page({
         const path = "/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + (this.data.scheduleSeriesMode ? "/series" : "/manage");
         this.setData({ scheduleSaving: true });
         api.requestStaff(path, { method: "POST", data: this.schedulePayload("apply"), timeout: 30000 })
-          .then(() => {
+          .then((data) => {
+            if (this.data.scheduleAction === "reschedule" && (data.noticeIds || []).length) {
+              const ids = data.noticeIds;
+              const focus = ids.length === 1 ? "&taskId=" + encodeURIComponent(ids[0]) : "";
+              wx.showModal({
+                title: "改课已保存 · 需要发群",
+                content: `已生成 ${ids.length} 条家长通知，请在改课后 5 分钟内发到原家长群。`,
+                confirmText: "处理通知", cancelText: "稍后",
+                success: (choice) => {
+                  if (choice.confirm) wx.navigateTo({ url: "/pages/staff-communications/staff-communications?kind=COURSE_CHANGE&noticeQueue=1" + focus });
+                }
+              });
+              return this.load();
+            }
             wx.showToast({ title: this.data.scheduleSeriesMode ? "已连续排课" : this.data.scheduleAction === "create" ? "已排课" : "已改课", icon: "success" });
             return this.load();
           })

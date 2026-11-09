@@ -1,5 +1,16 @@
 # CHANGELOG LIVE
 
+## 2026-11-09-r508
+
+- Release ID: `2026-11-09-r508`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: successful lesson time changes create a versioned family notification in the same write. Eva and Emily can copy the current notice, hand off, log the WeChat screenshot and group send, then record the pickup contact's confirmation separately.
+- Scope: web, staff Mini Program, batch and operations rescheduling; a foreground Mini Program inbox/toast uses 5-minute overdue and 10-minute takeover thresholds. No automatic parent or staff WeChat message, role expansion, schema migration, or attendance, package balance or billing change.
+- Verification: isolated PostgreSQL workflow, focused and backend regressions, web and staff API walkthrough, Mini Program release audit, production build and guarded release. See `docs/tasks/TASK-20261109-reschedule-notice-handoff.md`.
+- Risk: the native client requires a separate WeChat release. Closed-app push requires an eligible staff template and authorisation; no such template is configured in this release. Rollback code point: `18b22b6a0590a2dcdaa83908b1323a0f9b3accbc`.
+
+---
+
 ## 2026-11-06-r507
 
 - Release ID: `2026-11-06-r507`

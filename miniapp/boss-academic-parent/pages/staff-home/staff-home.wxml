@@ -140,6 +140,11 @@
       <view class="work-copy"><view class="work-title">学生360°工作台</view><view class="work-detail">一页查看课程、课包、工单、联系人和反馈</view></view>
       <view class="work-arrow">›</view>
     </view>
+    <view class="work-row" wx:if="{{rescheduleInbox && (rescheduleInbox.mine || rescheduleInbox.takeover || rescheduleInbox.waiting || rescheduleInbox.urgent)}}" bindtap="goRescheduleNotices">
+      <view class="work-icon icon-orange">改</view>
+      <view class="work-copy"><view class="work-title">改课通知</view><view class="work-detail">本人待发 {{rescheduleInbox.mine}} · 超时 {{rescheduleInbox.overdue}} · 可接手 {{rescheduleInbox.takeover}} · 待确认 {{rescheduleInbox.waiting}}</view></view>
+      <view class="work-badge alert" wx:if="{{rescheduleInbox.overdue || rescheduleInbox.takeover || rescheduleInbox.urgent}}">{{rescheduleInbox.overdue + rescheduleInbox.takeover + rescheduleInbox.urgent}}</view><view class="work-arrow">›</view>
+    </view>
     <view class="work-row" bindtap="goCommunications">
       <view class="work-icon icon-orange">讯</view>
       <view class="work-copy"><view class="work-title">家长沟通与通知</view><view class="work-detail">审核反馈、转发微信群、提醒老师和家长</view></view>

@@ -1,5 +1,16 @@
 # RELEASE BOARD
 
+## 2026-11-09-r508
+
+- Release ID: `2026-11-09-r508`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Staff impact: save a lesson time change and open its new family notification without waiting for an earlier reminder or a sync job. Eva and Emily share ownership and may explicitly transfer; 10 minutes enables one backup takeover without resetting the original 5-minute deadline. Jasmine is not an assignee.
+- Evidence: group-send record, screenshot and parent confirmation are distinct. An outdated version is superseded; after class start, record the outcome instead of copying the old instruction to attend.
+- Verification: see `docs/tasks/TASK-20261109-reschedule-notice-handoff.md`. No real class or outgoing message is used for verification.
+- Release distinction: the server deployment enables shared task writes and the web workflow. Native home badge, foreground alerts and direct navigation require a new WeChat client build. No employee subscription template or background delivery is enabled.
+
+---
+
 ## 2026-11-06-r507
 
 - Release ID: `2026-11-06-r507`

@@ -142,6 +142,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sessionId: str
     return ok({
       message: action === "create" ? "课程已排入系统。" : "课程时间已更新。",
       sessionId: applied.writtenSessionId,
+      noticeIds: applied.noticeIds,
       result: applied.preview,
       completedCoordinationCount: applied.completedCoordinationTickets.length,
     });

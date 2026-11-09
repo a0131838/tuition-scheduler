@@ -5,6 +5,7 @@ import { logAudit } from "@/lib/audit-log";
 import { canManageMiniappSchedulingCoordination } from "@/lib/miniapp-staff-session";
 import { uploadStorageError } from "@/lib/upload-storage-error";
 import { prisma } from "@/lib/prisma";
+import { attachRescheduleEvidence, isRescheduleNotice } from "@/lib/reschedule-notices";
 
 export const runtime = "nodejs";
 
@@ -15,6 +16,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
   const task = await prisma.parentCommunicationTask.findUnique({ where: { id } });
   if (!task) return bad("Communication task not found", 404);
+  if (isRescheduleNotice(task) && (task.ownerUserId !== auth.user.id || task.supersededAt || task.manualSentAt || !["READY_TO_SEND", "CLAIMED"].includes(task.status))) {
+    return bad("请由当前负责人处理最新的待发改课通知。", 409);
+  }
   const form = await req.formData().catch(() => null);
   const file = form?.get("files");
   if (!(file instanceof File)) return bad("Screenshot is required");
@@ -25,6 +29,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   } catch (error) {
     const failure = uploadStorageError(error, auth.user.language);
     return bad(failure.message, failure.status);
+  }
+  if (isRescheduleNotice(task)) {
+    try {
+      const updated = await attachRescheduleEvidence(task, auth.user.id, stored.relativePath);
+      return ok({ evidenceUrl: updated.evidenceUrl });
+    } catch (error) {
+      return bad(error instanceof Error ? error.message : "截图登记失败", 409);
+    }
   }
   const updated = await prisma.parentCommunicationTask.update({ where: { id }, data: { evidenceUrl: stored.relativePath } });
   await logAudit({ actor: auth.user, module: "COMMUNICATION", action: "UPLOAD_WECHAT_EVIDENCE", entityType: "ParentCommunicationTask", entityId: id, meta: { evidenceUrl: stored.relativePath } });

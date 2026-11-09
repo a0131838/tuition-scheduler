@@ -8,7 +8,7 @@ export async function GET(req: Request) {
   if (!auth.ok) return auth.response;
   if (!canManageMiniappSchedulingCoordination(auth.user)) return bad("Communication center permission required", 403);
   const url = new URL(req.url);
-  const result = await listParentCommunicationTasks({ status: String(url.searchParams.get("status") ?? "OPEN"), kind: String(url.searchParams.get("kind") ?? "ALL"), limit: 300 });
+  const result = await listParentCommunicationTasks({ status: String(url.searchParams.get("status") ?? "OPEN"), kind: String(url.searchParams.get("kind") ?? "ALL"), limit: 300, taskId: url.searchParams.get("taskId") || undefined, actorId: auth.user.id, noticeQueue: url.searchParams.get("noticeQueue") === "1" });
   return ok(result);
 }
 

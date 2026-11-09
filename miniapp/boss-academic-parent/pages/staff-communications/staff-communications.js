@@ -61,6 +61,8 @@ Page({
     filter: "OPEN",
     kind: "FEEDBACK",
     expandedId: "",
+    focusTaskId: "",
+    noticeQueue: false,
     workstreams: [
       { value: "FEEDBACK", label: "课后反馈", count: 0 },
       { value: "MONTHLY_SCHEDULING", label: "下月排课", count: 0 },
@@ -73,6 +75,7 @@ Page({
       { value: "PENDING_REVIEW", label: "待审核" },
       { value: "READY_TO_SEND", label: "待发送" },
       { value: "ATTENTION", label: "需更正" },
+      { value: "WAITING_PARENT", label: "待家长确认" },
       { value: "COMPLETED", label: "已完成" }
     ]
   },
@@ -82,10 +85,23 @@ Page({
     const allowedStatuses = this.data.filters.map((item) => item.value);
     const kind = options && allowedKinds.includes(options.kind) ? options.kind : this.data.kind;
     const filter = options && allowedStatuses.includes(options.status) ? options.status : this.data.filter;
-    this.setData({ kind, filter });
+    const focusTaskId = options && /^[\w-]+$/.test(options.taskId || "") ? options.taskId : "";
+    this.setData({ kind, filter, focusTaskId, expandedId: focusTaskId, noticeQueue: options && options.noticeQueue === "1" });
   },
 
-  onShow() { this.load(true); },
+  onShow() {
+    this.load(this.data.kind !== "COURSE_CHANGE");
+    this.stopNoticeRefresh();
+    this.noticeTimer = setInterval(() => {
+      if (this.data.kind === "COURSE_CHANGE" && !this.data.loading) this.load(false);
+    }, 30000);
+  },
+  onHide() { this.stopNoticeRefresh(); },
+  onUnload() { this.stopNoticeRefresh(); },
+  stopNoticeRefresh() {
+    if (this.noticeTimer) clearInterval(this.noticeTimer);
+    this.noticeTimer = null;
+  },
   onPullDownRefresh() { this.load(true).finally(() => wx.stopPullDownRefresh()); },
 
   onShareAppMessage(options) {
@@ -99,11 +115,13 @@ Page({
   load(sync) {
     this.setData({ loading: true });
     const syncTask = sync ? api.requestStaff("/api/miniapp/staff/communications", { method: "POST", timeout: 30000 }) : Promise.resolve();
-    return syncTask.then(() => api.requestStaff(`/api/miniapp/staff/communications?status=${this.data.filter}&kind=${this.data.kind}&limit=300`, { timeout: 30000 }))
+    const focus = this.data.focusTaskId;
+    return syncTask.then(() => api.requestStaff(`/api/miniapp/staff/communications?status=${focus ? "ALL" : this.data.filter}&kind=${this.data.kind}&limit=300${focus ? "&taskId=" + encodeURIComponent(focus) : ""}${this.data.noticeQueue ? "&noticeQueue=1" : ""}`, { timeout: 30000 }))
       .then((data) => {
         const kindSummary = data.kindSummary || {};
         const workstreams = this.data.workstreams.map((item) => Object.assign({}, item, { count: kindSummary[item.value] || 0 }));
         const tasks = (data.tasks || []).map((item) => {
+          const editing = item.rescheduleNotice ? this.data.tasks.find(row => row.id === item.id) : null;
           const sections = item.feedback && item.feedback.sections ? item.feedback.sections : {};
           const feedbackSectionRows = feedbackSectionLabels.map(([key, label]) => ({ key, label, value: sections[key] || "未填写" }));
           if (item.feedback) {
@@ -112,7 +130,7 @@ Page({
           }
           return Object.assign({}, item, shareInfo(item), {
             kindLabel: kindLabels[item.kind] || item.kind,
-            statusLabel: statusLabels[item.status] || item.status,
+            statusLabel: item.status === "WAITING_PARENT" ? "已发群 · 待接送人确认" : item.rescheduleNotice && item.status === "COMPLETED" ? "跟进已结束" : statusLabels[item.status] || item.status,
             isFeedback: item.kind === "FEEDBACK",
             isCourseChange: item.kind === "COURSE_CHANGE",
             isTeacherReminder: item.kind === "COURSE_REMINDER_TEACHER" || (item.kind === "COURSE_CHANGE" && item.teacherId && !item.studentId),
@@ -120,12 +138,12 @@ Page({
             feedbackNeedsPublish: item.kind === "FEEDBACK" && item.feedback && item.feedback.reviewStatus !== "PUBLISHED",
             feedbackFlowLabel: item.kind !== "FEEDBACK" ? "" : item.status === "COMPLETED" ? "已完成：小程序发布 + 微信群发送" : item.feedback && item.feedback.reviewStatus === "PUBLISHED" ? "第2步：发到家长微信群" : "第1步：审核并发布",
             needsReview: item.status === "PENDING_REVIEW" || item.status === "RETURNED",
-            canSend: ["READY_TO_SEND", "CLAIMED", "ATTENTION", "COMPLETED"].includes(item.status),
+            canSend: item.rescheduleNotice ? item.rescheduleNotice.isOwner && !item.rescheduleNotice.past && !item.manualSentAt && ["READY_TO_SEND", "CLAIMED"].includes(item.status) : ["READY_TO_SEND", "CLAIMED", "ATTENTION", "COMPLETED"].includes(item.status),
             isCompleted: item.status === "COMPLETED",
-            isAttention: item.status === "ATTENTION",
+            isAttention: item.status === "ATTENTION" || Boolean(item.rescheduleNotice && (item.rescheduleNotice.overdue || item.rescheduleNotice.callDue || item.rescheduleNotice.past)),
             parentContentDraft: item.feedback ? (item.feedback.parentContent || item.feedback.content || "") : "",
-            groupDraft: item.wechatGroupName || "",
-            noteDraft: item.note || "",
+            groupDraft: editing ? editing.groupDraft : item.wechatGroupName || "",
+            noteDraft: editing ? editing.noteDraft : item.note || "",
             feedbackSectionRows,
             completenessLabel: item.feedback && item.feedback.completeness ? `${item.feedback.completeness.completed}/${item.feedback.completeness.total}` : "",
             missingText: item.feedback && item.feedback.completeness && item.feedback.completeness.missing.length ? `缺少：${item.feedback.completeness.missing.join("、")}` : "",
@@ -135,14 +153,16 @@ Page({
             originalSentText: item.correction && item.correction.originalSentAt ? formatDateTime(item.correction.originalSentAt) : ""
           });
         });
+        tasks.sort((a, b) => Number(Boolean(b.rescheduleNotice && (b.rescheduleNotice.isOwner || b.rescheduleNotice.canTakeOver))) - Number(Boolean(a.rescheduleNotice && (a.rescheduleNotice.isOwner || a.rescheduleNotice.canTakeOver))));
         this.setData({ tasks, summary: data.summary || {}, kindSummary, workstreams });
       })
       .catch((err) => api.toast(err.message))
       .finally(() => this.setData({ loading: false }));
   },
 
-  changeKind(e) { this.setData({ kind: e.currentTarget.dataset.value, filter: "OPEN", expandedId: "" }, () => this.load(false)); },
-  changeFilter(e) { this.setData({ filter: e.currentTarget.dataset.value, expandedId: "" }, () => this.load(false)); },
+  changeKind(e) { this.setData({ kind: e.currentTarget.dataset.value, filter: "OPEN", expandedId: "", focusTaskId: "", noticeQueue: false }, () => this.load(false)); },
+  changeFilter(e) { this.setData({ filter: e.currentTarget.dataset.value, expandedId: "", focusTaskId: "" }, () => this.load(false)); },
+  clearFocus() { this.setData({ focusTaskId: "", expandedId: "" }, () => this.load(false)); },
   toggleTask(e) { const id = e.currentTarget.dataset.id; this.setData({ expandedId: this.data.expandedId === id ? "" : id }); },
   inputParentContent(e) { this.setData({ [`tasks[${e.currentTarget.dataset.index}].parentContentDraft`]: e.detail.value }); },
   inputGroup(e) { this.setData({ [`tasks[${e.currentTarget.dataset.index}].groupDraft`]: e.detail.value }); },
@@ -159,6 +179,28 @@ Page({
   },
 
   claim(e) { this.patch(e.currentTarget.dataset.id, "claim"); },
+  transferReschedule(e) {
+    const row = this.data.tasks[e.currentTarget.dataset.index];
+    const peer = row.rescheduleNotice && row.rescheduleNotice.peer;
+    if (!peer) return;
+    wx.showModal({ title: "转交改课通知", content: `转交给 ${peer.name}；原发送时限不变。`, success: res => {
+      if (res.confirm) this.patch(row.id, "transfer", { ownerUserId: peer.id });
+    } });
+  },
+  confirmRescheduleParent(e) {
+    const row = this.data.tasks[e.currentTarget.dataset.index];
+    wx.showActionSheet({ itemList: ["家长群确认", "私聊确认", "电话确认"], success: choice => {
+      wx.showModal({ title: "记录接送人确认", editable: true, placeholderText: "填写谁确认及确认的新时间", success: res => {
+        if (res.confirm && String(res.content || "").trim()) this.patch(row.id, "parent_confirmed", { channel: ["GROUP", "DIRECT", "PHONE"][choice.tapIndex], note: res.content });
+      } });
+    } });
+  },
+  resolveRescheduleException(e) {
+    const id = e.currentTarget.dataset.id;
+    wx.showModal({ title: "记录异常跟进", editable: true, placeholderText: "填写实际到课或家长跟进结果", success: res => {
+      if (res.confirm && String(res.content || "").trim()) this.patch(id, "resolve_exception", { note: res.content });
+    } });
+  },
   publish(e) {
     const row = this.data.tasks[e.currentTarget.dataset.index];
     if (!row.parentContentDraft.trim()) return api.toast("请先填写完整的家长展示版反馈");
@@ -179,6 +221,11 @@ Page({
   },
   copyMessage(e) {
     const row = this.data.tasks[e.currentTarget.dataset.index];
+    if (row.rescheduleNotice) {
+      return api.requestStaff(`/api/miniapp/staff/communications/${row.id}`, { method: "PATCH", data: { action: "copy" } })
+        .then(data => wx.setClipboardData({ data: data.task.messageText }))
+        .catch(err => { api.toast(err.message); this.load(false); });
+    }
     wx.setClipboardData({ data: row.messageText, success: () => this.patch(row.id, "copy") });
   },
   saveImage(e) {

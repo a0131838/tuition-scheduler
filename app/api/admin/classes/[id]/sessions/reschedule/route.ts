@@ -6,6 +6,7 @@ import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 import { checkTeacherSchedulingAvailability } from "@/lib/teacher-scheduling-availability";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { recordSchedulingChange } from "@/lib/scheduling-change-history";
+import { StaleRescheduleError, updateSessionTimeWithNotice } from "@/lib/reschedule-notices";
 import {
   applyAdminLinkedTicketSchedulingAction,
   TicketSchedulingActionContextError,
@@ -222,13 +223,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
   }
 
+  let noticeIds: string[];
   try {
-    await prisma.$transaction(async (tx) => {
+    noticeIds = await prisma.$transaction(async (tx) => {
+      const ids: string[] = [];
       for (const item of planned) {
-        await tx.session.update({
-          where: { id: item.session.id },
-          data: { startAt: item.startAt, endAt: item.endAt },
+        const notice = await updateSessionTimeWithNotice(tx, {
+          sessionId: item.session.id, before: item.session,
+          after: { startAt: item.startAt, endAt: item.endAt }, actor: user,
         });
+        ids.push(...notice.noticeIds);
         await recordSchedulingChange(tx, {
           actor: user,
           action: "SESSION_RESCHEDULED",
@@ -255,8 +259,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           auditAction: "ADMIN_TICKET_SESSION_RESCHEDULE_APPLIED",
         });
       }
-    });
+      return ids;
+    }, { timeout: 30_000 });
   } catch (error) {
+    if (error instanceof StaleRescheduleError) return bad(error.message, 409);
     if (error instanceof TicketSchedulingActionContextError) {
       return bad(error.message, 409, { code: "TICKET_ACTION_CONTEXT" });
     }
@@ -266,6 +272,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   return Response.json({
     ok: true,
     rescheduled: planned.length,
+    noticeIds,
     ticketActionApplied: Boolean(ticketId && ticketActionId),
   });
 }

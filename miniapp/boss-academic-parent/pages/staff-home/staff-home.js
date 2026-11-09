@@ -49,6 +49,7 @@ Page({
     reminderAttentionCount: 0,
     hasReminderAttention: false,
     communicationCount: 0,
+    rescheduleInbox: null,
     hasCommunicationTasks: false,
     renewalCount: 0,
     renewalDetail: "博思及其他与新东方分开处理",
@@ -85,6 +86,19 @@ Page({
 
   onShow() {
     this.load();
+    this.stopRescheduleRefresh();
+    this.unsubscribeReschedule = getApp().observeRescheduleInbox(data => this.setData({ rescheduleInbox: data }));
+  },
+
+  onHide() { this.stopRescheduleRefresh(); },
+  onUnload() { this.stopRescheduleRefresh(); },
+  stopRescheduleRefresh() {
+    if (this.unsubscribeReschedule) this.unsubscribeReschedule();
+    this.unsubscribeReschedule = null;
+  },
+  goRescheduleNotices() {
+    const id = this.data.rescheduleInbox && this.data.rescheduleInbox.firstTaskId;
+    wx.navigateTo({ url: "/pages/staff-communications/staff-communications?kind=COURSE_CHANGE&noticeQueue=1" + (id ? "&taskId=" + encodeURIComponent(id) : "") });
   },
 
   onPullDownRefresh() {

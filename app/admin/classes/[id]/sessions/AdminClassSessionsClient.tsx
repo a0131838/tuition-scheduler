@@ -142,6 +142,7 @@ export default function AdminClassSessionsClient({
   const [sessions, setSessions] = useState<SessionRow[]>(initialSessions);
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
+  const [noticeHref, setNoticeHref] = useState("");
   const [createStudentId, setCreateStudentId] = useState("");
   const [createStartAt, setCreateStartAt] = useState("");
   const [createDurationMin, setCreateDurationMin] = useState("60");
@@ -254,6 +255,7 @@ export default function AdminClassSessionsClient({
   async function reschedule(form: { sessionId: string; startAt: string; durationMin: number; scope: string }) {
     setErr("");
     setMsg("");
+    setNoticeHref("");
     const res = await fetch(`/api/admin/classes/${encodeURIComponent(classId)}/sessions/reschedule`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -266,6 +268,12 @@ export default function AdminClassSessionsClient({
     }
     await reloadSessions();
     setMsg(`OK (${data.rescheduled})`);
+    if (Array.isArray(data.noticeIds) && data.noticeIds.length) {
+      const query = new URLSearchParams({ kind: "COURSE_CHANGE" });
+      if (data.noticeIds.length === 1) query.set("taskId", data.noticeIds[0]);
+      setNoticeHref(`/admin/communications?${query}`);
+      setMsg(`改课已保存，${data.noticeIds.length} 条通知待发群。`);
+    }
   }
 
   async function assignStudent(form: { sessionId: string; studentId: string }) {
@@ -295,6 +303,7 @@ export default function AdminClassSessionsClient({
     <div>
       {err ? <NoticeBanner type="error" title={labels.rejected} message={err} /> : null}
       {msg ? <NoticeBanner type="success" title={labels.ok} message={msg} /> : null}
+      {noticeHref ? <p><a href={noticeHref}>立即处理改课通知</a></p> : null}
 
       <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 8, marginBottom: 16 }}>
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
