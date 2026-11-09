@@ -1,0 +1,15 @@
+{
+  "version": "1.1.01",
+  "commit": "48b1e481500b0c1e3c9bb44cb9550e8a1b84ebee",
+  "uploadedAt": "2026-09-09T03:55:03.374Z",
+  "size": {
+    "total": 818037,
+    "packages": [
+      {
+        "name": "TOTAL",
+        "size": 818037
+      }
+    ]
+  },
+  "developmentOnly": true
+}
