@@ -1,0 +1,5 @@
+# Mini Program 1.1.02 test candidate
+
+The previous confirmed development upload is 1.1.01 (2026-09-09, commit 48b1e481). Its receipt and SHA-256 manifest match all 293 historical source files. Production r508 (2ad658bf) retains every path: 279 files are byte-identical, and the other 14 include later assessment, classroom, HR leave and reschedule changes, plus the obsolete version string. HR lifecycle and leave, the revised leave balance, and approved-payslip self-download support are present in the release ancestry. The similarly named old local production-branch checkout is not the current GitHub/server release.
+
+Build the test candidate from r508, changing only the version within the native source. Use the same 1.1.02 in the client and the Developer Tools upload, archive committed files rather than local project settings, and record a source manifest and upload receipt. Run the official audit and native compilation. Keep formal WeChat review/publication and web deployment out of this test-only upload. Version-management UI was unavailable to automation, so the last public/experience version is not inferred from a development receipt.
