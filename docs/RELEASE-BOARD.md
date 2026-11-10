@@ -1,5 +1,15 @@
 # RELEASE BOARD
 
+## 2026-11-10-r510
+
+- Release ID: `2026-11-10-r510`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Staff impact: the existing bilingual edition and approved PDF workflow now accepts renewal progress reports created from saved final drafts.
+- Verification: isolated end-to-end approval and teacher PDF download. See `docs/tasks/TASK-20261110-renewal-parent-edition-constraint.md`.
+- Open risk: the original r509 includes the conversion UI. r510 is required for the PDF path on databases with the older constraint.
+
+---
+
 ## 2026-11-10-r509
 
 - Release ID: `2026-11-10-r509`

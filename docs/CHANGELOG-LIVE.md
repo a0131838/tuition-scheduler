@@ -1,5 +1,15 @@
 # CHANGELOG LIVE
 
+## 2026-11-10-r510
+
+- Release ID: `2026-11-10-r510`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: permit the renewal progress parent edition in the database kind constraint so its approved bilingual PDF can be produced.
+- Verification: isolated PostgreSQL migration, original schema constraint reproduced read-only on production, teacher/coordinator browser walkthrough and actual approved PDF download. See `docs/tasks/TASK-20261110-renewal-parent-edition-constraint.md`.
+- Scope: one database check; existing report status and foreign-key checks remain enforced. No report content is rewritten.
+
+---
+
 ## 2026-11-10-r509
 
 - Release ID: `2026-11-10-r509`
