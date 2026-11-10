@@ -105,9 +105,10 @@ export function mergeLearningReportAttendanceSnapshot(
 
 export function summarizeLearningReportAttendance(
   rows: AttendanceRow[],
-  input: { subjectId: string | null; teacherId: string; throughAt: Date; capturedAt?: Date },
+  input: { subjectId: string | null; teacherId: string; throughAt: Date; fromAt?: Date; capturedAt?: Date },
 ): LearningReportAttendanceSnapshot {
   const relevantRows = rows.filter((row) => {
+    if (input.fromAt && row.session.startAt < input.fromAt) return false;
     if (row.session.endAt.getTime() > input.throughAt.getTime()) return false;
     if (input.subjectId) return row.session.class.subjectId === input.subjectId;
     const effectiveTeacherId = row.session.teacherId ?? row.session.class.teacherId;
@@ -141,13 +142,17 @@ export async function createLearningReportAttendanceSnapshot(input: {
   subjectId: string | null;
   teacherId: string;
   throughAt: Date;
+  fromAt?: Date;
 }, db: Prisma.TransactionClient = prisma) {
   const rows = await db.attendance.findMany({
     where: {
       ...(input.packageId ? { packageId: input.packageId } : {}),
       studentId: input.studentId,
       status: { in: ["PRESENT", "LATE"] },
-      session: { endAt: { lte: input.throughAt } },
+      session: {
+        endAt: { lte: input.throughAt },
+        ...(input.fromAt ? { startAt: { gte: input.fromAt, lt: input.throughAt } } : {}),
+      },
     },
     select: {
       session: {

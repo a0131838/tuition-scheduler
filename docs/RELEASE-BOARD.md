@@ -1,5 +1,15 @@
 # RELEASE BOARD
 
+## 2026-11-10-r511
+
+- Release ID: `2026-11-10-r511`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Staff impact: Final Reports → Manage learning periods. The academic coordinator checks the credit and actual teaching dates, links a saved draft or assigns a new one, then reviews the submitted report. The teacher can download the approved parent PDF.
+- Verification: a synthetic early renewal left a positive package balance. Both periods had different report IDs and attendance totals. The original bilingual PDF stayed byte-identical after the second report was submitted. Details in `docs/tasks/TASK-20261110-final-report-periods.md`.
+- Open risk: teaching boundaries for historical renewals require staff confirmation. The release does not guess dates, attach real drafts or send parent messages.
+
+---
+
 ## 2026-11-10-r510
 
 - Release ID: `2026-11-10-r510`

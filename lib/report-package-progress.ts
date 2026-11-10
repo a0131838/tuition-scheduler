@@ -5,8 +5,8 @@ export function isFinalReportPreparationDue(totalMinutes: number | null | undefi
     (remaining <= 8 * 60 || remaining * 10 <= total);
 }
 
-export function isFinalReportSubmissionDue(remainingMinutes: number | null | undefined) {
-  return remainingMinutes != null && remainingMinutes <= 0;
+export function isFinalReportSubmissionDue(remainingMinutes: number | null | undefined, confirmedPeriodId?: string | null) {
+  return Boolean(confirmedPeriodId) || (remainingMinutes != null && remainingMinutes <= 0);
 }
 
 export function packageUsagePercent(totalMinutes: number | null | undefined, remainingMinutes: number | null | undefined) {

@@ -1,3 +1,4 @@
+import { isLearningReportApprovedForDelivery } from "@/lib/learning-report-delivery";
 import {
   requireParentReportActor,
   parseParentReportKind,
@@ -31,6 +32,8 @@ export async function GET(
       throw new ParentReportError("INVALID_REQUEST", 400);
     const preview = url.searchParams.get("preview") === "1";
     if (kind === "RENEWAL" && !preview && !["APPROVED", "DELIVERED"].includes(row.status))
+      throw new ParentReportError("COORDINATOR_APPROVAL_REQUIRED", 403);
+    if (!preview && "reportPeriodId" in row && row.reportPeriodId && !isLearningReportApprovedForDelivery(row.reportJson))
       throw new ParentReportError("COORDINATOR_APPROVAL_REQUIRED", 403);
     if (
       lang !== "EN" &&

@@ -1,5 +1,15 @@
 # CHANGELOG LIVE
 
+## 2026-11-10-r511
+
+- Release ID: `2026-11-10-r511`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: confirm and assign final reports by each purchase or renewal's actual teaching period. Freeze in-period attendance and allow submission independently of the current package balance.
+- Scope: final-report coordinator and teacher workflows, shared teacher API, and an additive PostgreSQL migration. Existing drafts may be attached explicitly. Existing report IDs, delivery records, balances and finance records remain in place.
+- Verification: 49 focused tests, 185 backend tests, production build, isolated migration and browser verification of early top-up, historical draft reuse, academic review and bilingual PDF. See `docs/tasks/TASK-20261110-final-report-periods.md`.
+
+---
+
 ## 2026-11-10-r510
 
 - Release ID: `2026-11-10-r510`
