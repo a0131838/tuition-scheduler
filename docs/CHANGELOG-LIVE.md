@@ -1,5 +1,16 @@
 # CHANGELOG LIVE
 
+## 2026-11-10-r509
+
+- Release ID: `2026-11-10-r509`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: reuse a saved final report draft as a renewal progress report from the teacher's final-report page. Preserve the final draft and keep formal final submission at the zero-balance gate.
+- Scope: teacher web, shared progress-report assignment, saved-draft status, coordinator review and existing approved PDF download. No package or finance writes, schema change or automatic parent delivery.
+- Verification: 18 focused tests, isolated PostgreSQL import workflow, production build and guarded release. See `docs/tasks/TASK-20261110-final-draft-progress.md`.
+- Risk: a teacher must review stage wording before submission. Rollback code point is `2ad658bf7d10d62299dedef1ce360c6799e9f485`.
+
+---
+
 ## 2026-11-09-r508
 
 - Release ID: `2026-11-09-r508`

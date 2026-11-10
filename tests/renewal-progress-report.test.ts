@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { parseRenewalSnapshot, parseRenewalReportDraft, renewalParentFields, validateRenewalReportDraft } from "../lib/renewal-progress-report";
+import { finalDraftToRenewalProgress, parseRenewalSnapshot, parseRenewalReportDraft, renewalParentFields, validateRenewalReportDraft } from "../lib/renewal-progress-report";
 import { parentSourceHash, type ParentReportSource } from "../lib/learning-report-parent-content";
 
 test("renewal report requires evidence and next steps, and only exposes the six parent fields", () => {
@@ -32,4 +32,25 @@ test("schema and PDF route enforce one report per task and coordinator approval 
   assert.match(schema, /renewalTaskId\s+String\s+@unique/);
   assert.match(route, /kind === "RENEWAL" && !preview && !\["APPROVED", "DELIVERED"\]/);
   assert.match(actions, /edition\.status !== "READY" \|\| !edition\.reviewedAt \|\| !edition\.pdfBilingual/);
+});
+
+
+test("importing a final draft copies teacher observations and excludes private notes and course completion claims", () => {
+  const imported = finalDraftToRenewalProgress({
+    initialGoals: "Write in complete sentences.",
+    finalSummary: "Can now write a complete paragraph.",
+    strengths: "Uses strong examples.",
+    areasToContinue: "Proofread punctuation.",
+    recommendedNextStep: "COURSE_COMPLETED",
+    parentNote: "Keep reading at home.",
+    teacherComment: "PRIVATE",
+    attendanceComment: "Asked two questions in class.",
+    homeworkComment: "Completed the reading log.",
+  });
+  assert.match(imported.progress, /Can now write a complete paragraph/);
+  assert.match(imported.progress, /Write in complete sentences/);
+  assert.match(imported.evidence, /Completed the reading log/);
+  assert.equal(imported.nextSteps, "");
+  assert(!JSON.stringify(imported).includes("PRIVATE"));
+  assert.equal(finalDraftToRenewalProgress(null).progress, "");
 });

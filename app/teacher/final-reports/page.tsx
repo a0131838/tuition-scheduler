@@ -1,5 +1,6 @@
 import { requireTeacherProfile } from "@/lib/auth";
 import { formatBusinessDateTime } from "@/lib/date-only";
+import { parseFinalReportDraft } from "@/lib/final-report";
 import { getLang, t } from "@/lib/i18n";
 import { formatMinutesToHours } from "@/lib/midterm-report";
 import { prisma } from "@/lib/prisma";
@@ -203,7 +204,7 @@ export default async function TeacherFinalReportsPage() {
                       fontWeight: 700,
                     }}
                   >
-                    {statusLabel(lang, row.status)}
+                    {row.status === "ASSIGNED" && parseFinalReportDraft(row.reportJson).finalSummary ? t(lang, "Draft saved", "草稿已保存") : statusLabel(lang, row.status)}
                   </span>
                 </td>
                 <td style={{ padding: 6 }}>

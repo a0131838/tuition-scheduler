@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { createLearningReportAttendanceSnapshot } from "@/lib/learning-report-attendance";
+import { assignRenewalProgressInTransaction } from "@/lib/renewal-progress-assignment";
 import { requireRenewalReportCoordinator } from "@/lib/renewal-progress-access";
 import { RENEWAL_OPEN_STATUSES } from "@/lib/renewal-management";
 import { currentParentEdition } from "@/lib/learning-report-parent-editions";
@@ -20,35 +20,9 @@ export async function assignRenewalProgressReport(form: FormData) {
     prisma.teacher.findUnique({ where: { id: teacherId }, select: { id: true, name: true } }),
   ]);
   if (!task || !teacher || !RENEWAL_OPEN_STATUSES.includes(task.status as typeof RENEWAL_OPEN_STATUSES[number])) throw Error("INVALID_ASSIGNMENT");
-  const report = await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT "id" FROM "RenewalTask" WHERE "id"=${task.id} FOR UPDATE`;
-    const current = await tx.renewalTask.findUniqueOrThrow({ where: { id: task.id }, include: { package: { include: { course: { select: { name: true } } } }, student: { select: { name: true } } } });
-    if (!RENEWAL_OPEN_STATUSES.includes(current.status as typeof RENEWAL_OPEN_STATUSES[number])) throw Error("TASK_CLOSED");
-    const existing = await tx.renewalProgressReport.findUnique({ where: { renewalTaskId } });
-    if (existing) return existing;
-    const now = new Date();
-    const attendance = await createLearningReportAttendanceSnapshot({ packageId: current.packageId, studentId: current.studentId, teacherId, subjectId: null, throughAt: now }, tx);
-    const created = await tx.renewalProgressReport.create({ data: {
-      renewalTaskId, packageId: current.packageId, studentId: current.studentId,
-      teacherId, assignedByUserId: user.id,
-      snapshotJson: {
-        studentName: current.student.name,
-        teacherName: teacher.name,
-        courseName: current.package.course.name,
-        packageType: current.package.type,
-        validTo: current.package.validTo?.toISOString() ?? null,
-        totalMinutes: current.package.totalMinutes ?? 0,
-        remainingMinutes: current.package.remainingMinutes ?? 0,
-        attendedMinutes: attendance.attendedMinutes,
-        sessionCount: attendance.sessionCount,
-        firstSessionAt: attendance.firstSessionAt,
-        lastSessionAt: attendance.lastSessionAt,
-        capturedAt: now.toISOString(),
-      },
-    } });
-    await tx.auditLog.create({ data: { actorEmail: user.email, module: "LEARNING_REPORT", action: "ASSIGN_RENEWAL_PROGRESS", entityType: "RENEWAL", entityId: created.id, meta: { renewalTaskId, teacherId, snapshot: created.snapshotJson } } });
-    return created;
-  }, { timeout: 15000 });
+  const report = await prisma.$transaction(tx =>
+    assignRenewalProgressInTransaction(tx, { renewalTaskId, teacher, actor: user }),
+  { timeout: 15000 });
   revalidatePath(path);
   redirect(`${path}?report=${report.id}`);
 }

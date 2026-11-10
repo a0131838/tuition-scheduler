@@ -16,6 +16,7 @@ import {
 import { getLang, t } from "@/lib/i18n";
 import { formatMinutesToHours } from "@/lib/midterm-report";
 import { prisma } from "@/lib/prisma";
+import { createRenewalProgressFromFinalDraft } from "@/lib/renewal-progress-assignment";
 import { isFinalReportSubmissionDue } from "@/lib/report-package-progress";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -176,6 +177,25 @@ export default async function TeacherFinalReportDetailPage({
   const ownerTeacherId = report.teacherId;
   const isLocked = report.status === "FORWARDED";
 
+  async function openProgressReport() {
+    "use server";
+    const { teacher: currentTeacher, user } = await requireTeacherProfile();
+    if (currentTeacher.id !== ownerTeacherId || user.isObserver) {
+      redirect("/teacher/final-reports?err=forbidden");
+    }
+    let id: string;
+    try {
+      id = (await createRenewalProgressFromFinalDraft(reportId, currentTeacher, user)).id;
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "";
+      const visible = ["SAVE_FINAL_DRAFT_FIRST", "RENEWAL_TASK_REQUIRED", "PROGRESS_ALREADY_ASSIGNED"].includes(code);
+      redirect(`/teacher/final-reports/${encodeURIComponent(reportId)}?err=${visible ? code : "progress-unavailable"}`);
+    }
+    revalidatePath("/teacher/renewal-reports");
+    revalidatePath("/admin/reports/renewal");
+    redirect(`/teacher/renewal-reports/${encodeURIComponent(id)}?fromFinal=1`);
+  }
+
   async function saveReport(formData: FormData) {
     "use server";
     const { teacher: currentTeacher } = await requireTeacherProfile();
@@ -305,6 +325,16 @@ export default async function TeacherFinalReportDetailPage({
           {t(lang, "This package is near completion. Save your draft now; submission and parent edition become available when the balance reaches zero.", "该课包临近结课。现在可保存草稿；课包余额归零后才能提交并生成家长版。")}
         </div>
       ) : null}
+      {report.status === "ASSIGNED" && !canSubmit ? (
+        <form action={openProgressReport} style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10, padding: 12 }}>
+          <p style={{ margin: "0 0 8px" }}>{t(lang, "To share progress now, use the saved draft to prepare a progress report for coordinator review.", "需要先给家长反馈时，可用已保存的草稿生成阶段学习报告，交教务审核。")}</p>
+          <button type="submit" style={secondaryButtonStyle}>{t(lang, "Use saved draft for a progress report", "用现有草稿生成阶段学习报告")}</button>
+        </form>
+      ) : null}
+      {err === "SAVE_FINAL_DRAFT_FIRST" ? <p role="alert">{t(lang, "Save the draft with a learning summary first.", "请先填写学习总结并点击保存草稿。")}</p> : null}
+      {err === "RENEWAL_TASK_REQUIRED" ? <p role="alert">{t(lang, "Ask the coordinator to confirm the matching open renewal task.", "请教务核对这门课对应的续费跟进任务。")}</p> : null}
+      {err === "PROGRESS_ALREADY_ASSIGNED" ? <p role="alert">{t(lang, "A different or archived report already exists for this renewal. Ask the coordinator to review it.", "这次续费已有其他老师的报告或归档报告，请教务核对。")}</p> : null}
+      {err === "progress-unavailable" ? <p role="alert">{t(lang, "The progress report could not be opened. Refresh and try again.", "暂时无法打开阶段学习报告，请刷新后再试。")}</p> : null}
       {err === "not-complete" ? <div style={{ color: "#b91c1c" }}>{t(lang, "The package still has hours remaining. Your draft can be saved, but cannot be submitted yet.", "课包仍有余额，可保存草稿，暂不能提交。")}</div> : null}
 
       {canSubmit || report.status !== "ASSIGNED" ? <ParentReportEditionPanel key={report.updatedAt.toISOString()} kind="FINAL" id={report.id} lang={lang} autoPrepare={ok === "prepared"} /> : null}

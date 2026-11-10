@@ -1,3 +1,4 @@
+import { parseFinalReportDraft } from "./final-report";
 import type { ParentReportField } from "./learning-report-parent-content";
 
 export const renewalReportFields = [
@@ -12,6 +13,25 @@ export const renewalReportFields = [
 export function parseRenewalReportDraft(raw: unknown) {
   const object = raw && typeof raw === "object" && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
   return Object.fromEntries(renewalReportFields.map(({ key }) => [key, typeof object[key] === "string" ? String(object[key]).trim() : ""])) as Record<(typeof renewalReportFields)[number]["key"], string>;
+}
+
+export function finalDraftToRenewalProgress(raw: unknown) {
+  const final = parseFinalReportDraft(raw);
+  return {
+    progress: [final.finalSummary, final.initialGoals ? `Initial goals / 初始学习目标\n${final.initialGoals}` : ""].filter(Boolean).join("\n\n"),
+    strengths: final.strengths,
+    evidence: [final.attendanceComment, final.homeworkComment].filter(Boolean).join("\n\n"),
+    challenges: final.areasToContinue,
+    nextSteps: ({
+      CONTINUE_CURRENT: "Continue the current course. / 继续当前课程。",
+      MOVE_TO_NEXT_LEVEL: "Move to the next level. / 进入下一阶段。",
+      CHANGE_FOCUS: "Adjust the learning focus. / 调整学习方向。",
+      PAUSE_AFTER_COMPLETION: "Review the next learning plan after this stage. / 本阶段结束后再确认下一步学习安排。",
+      COURSE_COMPLETED: "",
+      "": "",
+    })[final.recommendedNextStep],
+    familyNote: final.parentNote,
+  };
 }
 
 export function validateRenewalReportDraft(raw: unknown) {

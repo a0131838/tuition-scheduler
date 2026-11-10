@@ -1,5 +1,15 @@
 # RELEASE BOARD
 
+## 2026-11-10-r509
+
+- Release ID: `2026-11-10-r509`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Staff impact: open an assigned final report with a saved summary and choose “用现有草稿生成阶段学习报告”. Verify the copied content, submit to the coordinator, and download the approved parent PDF from the teacher's renewal report page.
+- Verification: 18 focused tests, isolated PostgreSQL concurrency and ownership checks, production build and guarded release. Details in `docs/tasks/TASK-20261110-final-draft-progress.md`.
+- Open risk: a missing or ambiguous renewal task requires coordinator review. Existing progress drafts are preserved and the formal final-report gate stays at zero balance.
+
+---
+
 ## 2026-11-09-r508
 
 - Release ID: `2026-11-09-r508`
