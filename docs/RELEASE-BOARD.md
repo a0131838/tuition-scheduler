@@ -1,5 +1,14 @@
 # RELEASE BOARD
 
+## 2026-11-11-r513
+
+- Release ID: `2026-11-11-r513`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Staff impact: open Admin → Students & Teaching → Classroom Reservations using a management or teaching operations account. Teacher leads can continue from Lead Desk.
+- Verification: role-based menu and page access, shared booking create and edit flow, and restricted account checks. See `docs/tasks/TASK-20261111-admin-room-reservations.md`.
+
+---
+
 ## 2026-11-11-r512
 
 - Release ID: `2026-11-11-r512`

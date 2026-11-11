@@ -1,5 +1,15 @@
 # CHANGELOG LIVE
 
+## 2026-11-11-r513
+
+- Release ID: `2026-11-11-r513`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: add Classroom Reservations to Students & Teaching in the admin workspace. Administrators, designated managers, teaching operations admins, and staff with the CS role or workspace can book and update rooms.
+- Scope: admin navigation and booking access. The admin workspace and teacher Lead Desk use the same form, booking records and room conflict checks.
+- Verification: 50 focused tests, production build and isolated browser verification across roles and both entry points. See `docs/tasks/TASK-20261111-admin-room-reservations.md`.
+
+---
+
 ## 2026-11-11-r512
 
 - Release ID: `2026-11-11-r512`

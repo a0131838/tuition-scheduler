@@ -1,4 +1,5 @@
 ﻿import { getCurrentUser, isTeacherLeadUser, requireTeacher } from "@/lib/auth";
+import { adminRoomReservationsPath } from "@/lib/room-reservations";
 import { canManageHr } from "@/lib/hr-access";
 import { getLang, t } from "@/lib/i18n";
 import TeacherLanguageSelectorClient from "./TeacherLanguageSelectorClient";
@@ -27,6 +28,9 @@ export default async function TeacherLayout({ children }: { children: React.Reac
               { href: "/teacher/lead", label: t(lang, "Lead Desk", "主管工作台") },
               { href: "/teacher/lead/quality", label: t(lang, "Teacher Quality", "老师质量管理") },
             ]
+          : []),
+        ...(user?.role === "TEACHER" && !user.isObserver && user.workspaces.includes("CS")
+          ? [{ href: adminRoomReservationsPath, label: t(lang, "Classroom Reservations", "教室预约") }]
           : []),
       ],
     },
