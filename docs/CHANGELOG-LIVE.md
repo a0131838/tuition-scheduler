@@ -1,5 +1,15 @@
 # CHANGELOG LIVE
 
+## 2026-11-11-r512
+
+- Release ID: `2026-11-11-r512`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: take staff directly to the selected classroom reservation's edit form and show its organization, room and original start time. Provide separate Save changes and Cancel editing controls and place the success message above the booking list.
+- Scope: Lead Desk classroom reservation page and form. An inline save error keeps the selected booking and the entered values visible. A successful move outside the current week opens the list for the new date.
+- Verification: production build, scheduling regression checks and browser checks of edit positioning, cancellation, validation, cross-week changes and new bookings. See `docs/tasks/TASK-20261111-room-booking-edit.md`.
+
+---
+
 ## 2026-11-10-r511
 
 - Release ID: `2026-11-10-r511`

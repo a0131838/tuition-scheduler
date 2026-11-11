@@ -1,5 +1,14 @@
 # RELEASE BOARD
 
+## 2026-11-11-r512
+
+- Release ID: `2026-11-11-r512`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Staff impact: choose Edit booking in the list, confirm the booking shown at the top of the edit panel, and select Save changes or Cancel editing. The list shows the save confirmation.
+- Verification: browser checks at 1532 × 867 and 820 × 615, plus isolated booking reads and writes. See `docs/tasks/TASK-20261111-room-booking-edit.md`.
+
+---
+
 ## 2026-11-10-r511
 
 - Release ID: `2026-11-10-r511`
