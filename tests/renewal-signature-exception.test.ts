@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { PackageType, StudentContractFlowType } from "@prisma/client";
 import { hasDedicatedCashPaymentRecord, isCashReceipt, renewalExceptionSnapshot } from "../lib/renewal-signature-exception";
+import { assessRenewalInvoicePayment } from "../lib/renewal-payment-overview";
+import type { ParentInvoiceItem, ParentPaymentRecordItem, ParentReceiptItem } from "../lib/student-parent-billing";
 import { applyContractRenewalTopUp } from "../lib/student-contract";
 
 test("exception binds manager approval to an immutable fee-and-hours snapshot", () => {
@@ -58,4 +60,24 @@ test("later parent signing reuses the same contract marker and cannot add except
   assert.equal(remainingMinutes, 3030);
   assert.equal(totalMinutes, 9000);
   assert.match(txns[0].note, /student-contract-renewal-topup:contract-1/);
+});
+
+test("renewal payment display distinguishes paid PayNow from unfinished cash evidence", () => {
+  const scope = { packageId: "package-1", studentId: "student-1" };
+  const contract = { ...scope, createdAt: new Date("2026-11-11T00:00:00Z") };
+  const invoice = { ...scope, id: "invoice-1", totalAmount: 4400 } as ParentInvoiceItem;
+  const payment = { ...scope, id: "payment-1", paymentMethod: "Cash", paymentAmount: 4400,
+    paymentDate: "2026-11-11", uploadedAt: "2026-11-11T00:01:00Z" } as ParentPaymentRecordItem;
+  const receipt = { ...scope, id: "receipt-1", invoiceId: invoice.id, paymentRecordId: payment.id,
+    paidBy: "Cash", amountReceived: 4400 } as ParentReceiptItem;
+  const billing = { invoices: [invoice], paymentRecords: [payment], receipts: [receipt] };
+  assert.equal(assessRenewalInvoicePayment(invoice, billing, contract, () => "PENDING").cashStatus, "RECEIPT_APPROVAL_PENDING");
+  assert.equal(assessRenewalInvoicePayment(invoice, { ...billing, paymentRecords: [] }, contract, () => "COMPLETED").cashStatus, "CHECK_CASH_RECORD");
+  assert.equal(assessRenewalInvoicePayment(invoice, billing, contract, () => "COMPLETED").cashStatus, "READY");
+  const payNow = assessRenewalInvoicePayment(invoice, {
+    ...billing, paymentRecords: [{ ...payment, paymentMethod: "Paynow" }], receipts: [{ ...receipt, paidBy: "Paynow" }],
+  }, contract, () => "COMPLETED");
+  assert.equal(payNow.cashStatus, "NON_CASH");
+  assert.deepEqual(payNow.approvedMethods, ["PayNow"]);
+  assert.equal(payNow.approvedCents, payNow.totalCents);
 });

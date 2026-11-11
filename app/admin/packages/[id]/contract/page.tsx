@@ -5,6 +5,7 @@ import { StudentContractMode } from "@prisma/client";
 import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
+import { loadRenewalPaymentOverview } from "@/lib/renewal-payment-overview";
 import { redirect } from "next/navigation";
 import WorkbenchStatusChip from "@/app/admin/_components/WorkbenchStatusChip";
 import CopyTextButton from "@/app/admin/_components/CopyTextButton";
@@ -532,6 +533,9 @@ export default async function PackageContractPage({
   const latestContract = workspaceContracts.find((contract) => contract.status !== "VOID") ?? null;
   const renewalOrder = latestContract ? await prisma.renewalOrder.findUnique({where:{contractId:latestContract.id}}) : null;
   const renewalException = latestContract ? await prisma.renewalSignatureException.findUnique({ where: { contractId: latestContract.id } }) : null;
+  const renewalOverview = !fullCareWorkspace && latestContract && latestContract.status === "READY_TO_SIGN" && !renewalException
+    ? await loadRenewalPaymentOverview({ contract: latestContract, billing: data, packageType: pkg.type, packageStatus: pkg.status, settlementMode: pkg.settlementMode })
+    : null;
   const voidContracts = workspaceContracts.filter((contract) => contract.status === "VOID");
   const deletableVoidContracts = voidContracts.filter((contract) => contractCanDeleteVoidDraft(contract));
   const archivedVoidContracts = voidContracts.filter((contract) => !contractCanDeleteVoidDraft(contract));
@@ -632,7 +636,7 @@ export default async function PackageContractPage({
         <a href={`/admin/finance/documents?channel=PARENT&packageId=${encodeURIComponent(packageId)}`}>{t(lang, "Full invoices & receipts", "完整发票与收据")}</a>
         <span style={{ color: "#94a3b8" }}>·</span>
         <a href={`/admin/finance/deleted-invoices?channel=PARENT&packageId=${encodeURIComponent(packageId)}`}>{t(lang, "Deleted draft history", "已删除草稿历史")}</a>
-        {!fullCareWorkspace && latestContract?.flowType === "RENEWAL" && latestContract.contractMode === "TUITION_AGREEMENT" && (latestContract.status === "READY_TO_SIGN" || renewalException?.status === "ACTIVATED") ? <><span style={{ color: "#94a3b8" }}>·</span><a href={`/admin/packages/${encodeURIComponent(packageId)}/contract/renewal-exception?contractId=${encodeURIComponent(latestContract.id)}`}>{t(lang, "Paid renewal, signature pending", "已核款待补签例外")}</a></> : null}
+        {!fullCareWorkspace && latestContract && (renewalOverview?.canOpenCash || renewalException) ? <><span style={{ color: "#94a3b8" }}>·</span><a href={`/admin/packages/${encodeURIComponent(packageId)}/contract/renewal-exception?contractId=${encodeURIComponent(latestContract.id)}`}>{t(lang, "Cash renewal exception · add hours before signing", "现金续费例外｜先加课时，后补签")}</a></> : null}
       </div>
       {err ? <div style={{ marginBottom: 12, color: "#b00" }}>{err}</div> : null}
       {msg ? <div style={{ marginBottom: 12, color: "#166534" }}>{msg}</div> : null}

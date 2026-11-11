@@ -232,7 +232,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       items: [
         { href: "/admin/finance/workbench", label: t(lang, "Finance Workbench", "财务工作台"), tone: "warning" as const },
         { href: "/admin/renewals/orders", label: t(lang, "Renewal Orders", "续费确认单"), tone: "warning" as const },
-        { href: "/admin/finance/renewal-signature-exceptions", label: t(lang, "Renewal Signatures Pending", "续费待补签"), tone: "warning" as const },
+        { href: "/admin/finance/renewal-signature-exceptions", label: t(lang, "Cash Renewal Exceptions", "现金续费例外"), tone: "warning" as const },
         { href: "/admin/finance/transport-billing", label: t(lang, "Transport Billing", "交通费月结"), tone: "warning" as const },
         { href: "/admin/finance/business-accounts", label: t(lang, "Business Accounts", "企业账户"), tone: "accent" as const },
         { href: "/admin/finance/documents", label: t(lang, "Invoices & Receipts", "完整发票与收据"), tone: "success" as const },
@@ -316,7 +316,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       summary: t(lang, "Invoices, settlements, payroll and package billing.", "发票、结算、工资和课包账单。"),
       items: [
         { href: "/admin/renewals/orders", label: t(lang, "Renewal Orders", "续费确认单"), tone: "warning" as const },
-        { href: "/admin/finance/renewal-signature-exceptions", label: t(lang, "Renewal Exceptions & Signatures", "续费例外与补签"), tone: "warning" as const },
+        { href: "/admin/finance/renewal-signature-exceptions", label: t(lang, "Cash Renewal Exceptions", "现金续费例外"), tone: "warning" as const },
         { href: "/admin/finance/documents", label: t(lang, "Invoices & Receipts", "完整发票与收据"), tone: "success" as const },
         { href: "/admin/finance/student-package-invoices", label: t(lang, "Student Package Invoices", "学生课时包发票"), tone: "success" as const },
         { href: "/admin/finance/business-accounts", label: t(lang, "Business Accounts", "企业账户"), tone: "accent" as const },

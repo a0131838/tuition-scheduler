@@ -145,7 +145,7 @@ function contractInvoiceMarker(contractId: string) {
   return `${CONTRACT_INVOICE_MARKER_PREFIX}${contractId}`;
 }
 
-function contractRenewalTopUpMarker(contractId: string) {
+export function contractRenewalTopUpMarker(contractId: string) {
   return `${CONTRACT_RENEWAL_TOP_UP_MARKER_PREFIX}${contractId}`;
 }
 

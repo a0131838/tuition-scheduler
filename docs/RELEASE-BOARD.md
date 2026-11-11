@@ -1,5 +1,14 @@
 # RELEASE BOARD
 
+## 2026-11-11-r514
+
+- Release ID: `2026-11-11-r514`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Staff impact: open Package Billing and read the This renewal section. An approved noncash payment shows the relevant invoice or contract action. A verified cash payment can open the cash renewal exception.
+- Verification: PayNow and cash fixtures covered approved and pending receipts, missing payment records, existing cash requests and confirmation of actual posted hours. See `docs/tasks/TASK-20261111-renewal-payment-clarity.md`.
+
+---
+
 ## 2026-11-11-r513
 
 - Release ID: `2026-11-11-r513`

@@ -1,5 +1,15 @@
 # CHANGELOG LIVE
 
+## 2026-11-11-r514
+
+- Release ID: `2026-11-11-r514`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: show the current renewal's payment, signature, lesson hours and next action together in Package Billing. Identify fully paid PayNow invoices and route staff back to the bill from old cash exception links.
+- Scope: renewal payment guidance, exception entries and the finance exception queue. The existing cash verification, invoice approval and entitlement actions still govern the workflow.
+- Verification: 61 focused tests, production build and isolated browser verification of PayNow and cash renewals. See `docs/tasks/TASK-20261111-renewal-payment-clarity.md`.
+
+---
+
 ## 2026-11-11-r513
 
 - Release ID: `2026-11-11-r513`
