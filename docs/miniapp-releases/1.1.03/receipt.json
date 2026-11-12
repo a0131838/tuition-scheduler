@@ -1,0 +1,17 @@
+{
+  "version": "1.1.03",
+  "commit": "528389cf32201255d3690667ed61cefde23edd36",
+  "currentRelease": "a9f09857635317ec24d535f345c8c9f4b49d065a",
+  "uploadedAt": "2026-11-12T06:15:59.799Z",
+  "manifestSha256": "532127aa6af442c675ed7eafc3378e1e1f14d95c62274b3b5de932967c4c4b16",
+  "size": {
+    "total": 841774,
+    "packages": [
+      {
+        "name": "TOTAL",
+        "size": 841774
+      }
+    ]
+  },
+  "developmentOnly": true
+}
