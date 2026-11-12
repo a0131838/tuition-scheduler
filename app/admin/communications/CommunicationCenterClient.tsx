@@ -12,7 +12,7 @@ type Task = {
   dateLabel: string | null; shortDateLabel: string | null;
   student: { name: string; school: string | null; grade: string | null } | null;
   teacher: { name: string } | null;
-  feedback: { updatedAt: string; content: string; parentContent: string | null; homework: string | null; previousHomeworkDone: boolean | null; previousHomeworkNotAssigned?: boolean; reviewStatus: string; reviewNote: string | null; publishedAt: string | null; sections: Record<string, string>; completeness: { complete: boolean; completed: number; total: number; missing: string[] } } | null;
+  feedback: { pendingHomeworkUploadCount: number; attachments: { id: string; name: string; viewUrl: string; visibilityText?: string; visibleToThisFamily: boolean }[]; updatedAt: string; content: string; parentContent: string | null; homework: string | null; previousHomeworkDone: boolean | null; previousHomeworkNotAssigned?: boolean; reviewStatus: string; reviewNote: string | null; publishedAt: string | null; sections: Record<string, string>; completeness: { complete: boolean; completed: number; total: number; missing: string[] } } | null;
   history: Array<{ action: string; actorName: string | null; actorEmail: string; actorRole: string | null; createdAt: string }>;
   automaticNotification: { status: string; total: number; counts: Record<string, number>; reviewNeeded?: boolean; scope?: string; note?: string };
   correction: { type: string; typeLabel: string; previousLines: string[]; currentLines: string[]; noReplacement: boolean; reason: string; originalSentAt: string | null; originalSentByName: string | null; originalGroupName: string | null; changedAt: string; changedByName: string | null } | null;
@@ -41,6 +41,9 @@ export default function CommunicationCenterClient({ currentUser, initialKind, in
   const [status, setStatus] = useState("OPEN");
   const [kind, setKind] = useState(initialKind);
   const [focusTaskId, setFocusTaskId] = useState(initialTaskId);
+  const [studentSearch, setStudentSearch] = useState("");
+  const [dateSearch, setDateSearch] = useState("");
+  const [homeworkSearch, setHomeworkSearch] = useState({ student: "", date: "" });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [drafts, setDrafts] = useState<Record<string, { parentContent: string; group: string; note: string }>>({});
@@ -54,7 +57,13 @@ export default function CommunicationCenterClient({ currentUser, initialKind, in
         const syncData = await syncRes.json();
         if (!syncRes.ok || syncData.ok === false) throw new Error(syncData.message || "同步失败");
       }
-      const res = await fetch(`/api/admin/communications?status=${encodeURIComponent(focusTaskId ? "ALL" : status)}&kind=${encodeURIComponent(kind)}&limit=300${focusTaskId ? "&taskId=" + encodeURIComponent(focusTaskId) : ""}`, { cache: "no-store" });
+      const query = new URLSearchParams({ status: focusTaskId ? "ALL" : status, kind, limit: "300" });
+      if (focusTaskId) query.set("taskId", focusTaskId);
+      if (kind === "FEEDBACK") {
+        if (homeworkSearch.student) query.set("homeworkStudent", homeworkSearch.student);
+        if (homeworkSearch.date) query.set("homeworkDate", homeworkSearch.date);
+      }
+      const res = await fetch("/api/admin/communications?" + query, { cache: "no-store" });
       const data = await res.json();
       if (!res.ok || data.ok === false) throw new Error(data.message || "加载失败");
       setRows(data.tasks || []); setKindSummary(data.kindSummary || {}); setStaff(data.staff || []);
@@ -71,7 +80,7 @@ export default function CommunicationCenterClient({ currentUser, initialKind, in
     const first = !initialized.current;
     initialized.current = true;
     load(first && kind !== "COURSE_CHANGE");
-  }, [status, kind, focusTaskId]);
+  }, [status, kind, focusTaskId, homeworkSearch]);
 
   useEffect(() => {
     if (kind !== "COURSE_CHANGE" || loading) return;
@@ -106,6 +115,15 @@ export default function CommunicationCenterClient({ currentUser, initialKind, in
     }
     await navigator.clipboard.writeText(row.messageText);
     await act(row, "copy");
+  }
+
+  async function copyHomeworkInstructions(row: Task) {
+    try {
+      await navigator.clipboard.writeText(`您好，${row.student?.name || "孩子"}${row.dateLabel ? `在 ${row.dateLabel} 的` : "本节课的"}作业电子版已发布。请打开 SGT 家长小程序，在「课后反馈」找到对应课程，点击「作业电子版」查看或保存。`);
+      setMessage("家长查看指引已复制，可发到该学生的家长群。");
+    } catch {
+      setMessage("复制失败，请在员工小程序中转发本节课后反馈卡片。");
+    }
   }
 
   async function uploadEvidence(row: Task, file: File | null) {
@@ -151,6 +169,19 @@ export default function CommunicationCenterClient({ currentUser, initialKind, in
         {focusTaskId ? <button style={button} onClick={() => setFocusTaskId("")}>查看全部改课通知</button> : null}
         {statuses.map((item) => <button key={item} style={{ ...button, background: status === item ? "#0f172a" : "#fff", color: status === item ? "#fff" : "#0f172a" }} onClick={() => { setFocusTaskId(""); setStatus(item); }}>{statusLabels[item]}</button>)}
       </section>
+      {kind === "FEEDBACK" ? <form style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }} onSubmit={event => {
+        event.preventDefault();
+        setFocusTaskId("");
+        setStatus("ALL");
+        setHomeworkSearch({ student: studentSearch.trim(), date: dateSearch });
+      }}>
+        <label>学生 <input value={studentSearch} onChange={event => setStudentSearch(event.target.value)} placeholder="输入学生姓名" /></label>
+        <label>上课日期 <input type="date" value={dateSearch} onChange={event => setDateSearch(event.target.value)} /></label>
+        <button style={button} disabled={loading} type="submit">查找反馈和作业</button>
+        {homeworkSearch.student || homeworkSearch.date ? <button style={button} type="button" onClick={() => {
+          setStudentSearch(""); setDateSearch(""); setHomeworkSearch({ student: "", date: "" });
+        }}>清除搜索</button> : null}
+      </form> : null}
       {message ? <div style={{ color: message.includes("失败") ? "#b91c1c" : "#166534", fontWeight: 700 }}>{message}</div> : null}
 
       <section style={{ display: "grid", gap: 12 }}>
@@ -175,8 +206,22 @@ export default function CommunicationCenterClient({ currentUser, initialKind, in
                 <label style={{ display: "grid", gap: 5, fontSize: 12, color: "#64748b" }}>老师原文（只读） / Teacher original<textarea readOnly value={row.feedback.content} rows={11} style={{ padding: 10, border: "1px solid #cbd5e1", borderRadius: 8, background: "#f8fafc" }} /></label>
                 <label style={{ display: "grid", gap: 5, fontSize: 12, color: "#64748b" }}>家长展示版 / Parent-facing version<textarea value={draft.parentContent} onChange={(event) => updateDraft(row.id, { parentContent: event.target.value })} rows={11} style={{ padding: 10, border: "1px solid #fdba74", borderRadius: 8 }} /></label>
               </div>
+              {row.feedback.attachments.length || row.feedback.pendingHomeworkUploadCount ? (
+                <section style={{ marginTop: 10, padding: 12, border: "1px solid #dbe4f0", borderRadius: 8 }}>
+                  <strong>作业电子版 / Homework files</strong>
+                  {row.feedback.pendingHomeworkUploadCount ? <p role="status">还有 {row.feedback.pendingHomeworkUploadCount} 个文件待老师上传。请补传后刷新并审核。</p> : null}
+                  {row.feedback.attachments.length ? <ul>
+                    {row.feedback.attachments.map(file => <li key={file.id} style={{ overflowWrap: "anywhere" }}>
+                      <a href={file.viewUrl} target="_blank" rel="noreferrer">{file.name}</a>{" · "}
+                      {file.visibleToThisFamily ? file.visibilityText + " · 此家长可见" : file.visibilityText === "仅员工可见" ? "仅员工可见" : "发给本班其他学生"}
+                    </li>)}
+                  </ul> : null}
+                  {row.feedback.reviewStatus === "PUBLISHED" && row.feedback.attachments.some(file => file.visibleToThisFamily)
+                    ? <button type="button" style={button} onClick={() => void copyHomeworkInstructions(row)}>复制家长查看指引</button> : null}
+                </section>
+              ) : null}
               {row.feedback.reviewNote ? <div style={{ color: "#b91c1c", marginTop: 8 }}>退回原因：{row.feedback.reviewNote}</div> : null}
-              {row.feedback.reviewStatus !== "PUBLISHED" ? <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}><button style={primary} onClick={() => act(row, "publish_feedback", { parentContent: draft.parentContent })}>审核并发布到家长端</button><button style={button} onClick={() => { const note = window.prompt("请输入退回老师补充的原因 / Return reason"); if (note) act(row, "return_feedback", { note }); }}>退回老师补充</button></div> : <div style={{ color: "#166534", fontWeight: 750, marginTop: 8 }}>已发布到家长小程序 / Published to parent miniapp</div>}
+              {row.feedback.reviewStatus !== "PUBLISHED" ? <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}><button style={primary} disabled={loading || row.feedback.pendingHomeworkUploadCount > 0} onClick={() => act(row, "publish_feedback", { parentContent: draft.parentContent })}>审核并发布到家长端</button><button style={button} onClick={() => { const note = window.prompt("请输入退回老师补充的原因 / Return reason"); if (note) act(row, "return_feedback", { note }); }}>退回老师补充</button></div> : <div style={{ color: "#166534", fontWeight: 750, marginTop: 8 }}>已发布到家长小程序 / Published to parent miniapp</div>}
             </details> : null}
 
             {row.kind === "COURSE_CHANGE" && row.correction ? <section style={{ display: "grid", gap: 10, padding: 14, background: "#fff7ed", borderLeft: "4px solid #ea580c", borderRadius: 8 }}>

@@ -123,10 +123,15 @@ export async function approveLearningReportForDelivery(input: {
       return learningReportDeliveryApproval(reportJson);
     }
 
-    const row = await tx.finalReport.findUnique({ where: { id: input.reportId }, select: { id: true, status: true, archivedAt: true, deliveredAt: true, reportJson: true } });
+    const row = await tx.finalReport.findUnique({ where: { id: input.reportId }, select: { id: true, status: true, archivedAt: true, deliveredAt: true, reportJson: true, updatedAt: true, reportPeriodId: true } });
     if (!row || row.status !== "SUBMITTED" || row.archivedAt || row.deliveredAt) throw new Error("Report is not eligible for delivery approval");
+    if (row.reportPeriodId && isLearningReportApprovedForDelivery(row.reportJson)) return learningReportDeliveryApproval(row.reportJson);
     const reportJson = withApproval(row.reportJson, input.actor, now);
-    await tx.finalReport.update({ where: { id: row.id }, data: { reportJson: reportJson as Prisma.InputJsonValue } });
+    const updated = await tx.finalReport.updateMany({
+      where: { id: row.id, updatedAt: row.updatedAt, status: "SUBMITTED", archivedAt: null, deliveredAt: null },
+      data: { reportJson: reportJson as Prisma.InputJsonValue },
+    });
+    if (updated.count !== 1) throw new Error("Report changed during approval");
     await tx.auditLog.create({ data: auditData(input.actor, "APPROVE_FOR_DELIVERY", "FinalReport", row.id, { approvedAt: now.toISOString() }) });
     return learningReportDeliveryApproval(reportJson);
   });

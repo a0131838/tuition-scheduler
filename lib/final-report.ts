@@ -204,7 +204,9 @@ export async function loadFinalReportCandidates(stage: "READY" | "PREPARATION" =
         },
         orderBy: { createdAt: "desc" },
       },
+      finalReportPeriods: { select: { studentId: true } },
       finalReports: {
+        where: { reportPeriodId: null },
         orderBy: { createdAt: "desc" },
         select: {
           studentId: true,
@@ -261,7 +263,9 @@ export async function loadFinalReportCandidates(stage: "READY" | "PREPARATION" =
       }
     >();
 
+    const periodStudents = new Set(pkg.finalReportPeriods.map(period => period.studentId));
     for (const attendance of pkg.attendances) {
+      if (periodStudents.has(attendance.studentId)) continue;
       if (!attendance.studentId || !attendance.student?.name) continue;
       const teacher = attendance.session.teacher ?? attendance.session.class.teacher;
       if (!teacher?.id) continue;

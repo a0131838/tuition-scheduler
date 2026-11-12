@@ -328,32 +328,46 @@ function downloadStaffFile(path) {
   });
 }
 
-function openStaffDocument(path, name) {
-  return downloadStaffFile(path).then((filePath) => new Promise((resolve, reject) => {
+function openDownloadedAttachment(filePath, name, mimeType, saveImage) {
+  return new Promise((resolve, reject) => {
     const extension = String(name || "").split(".").pop().toLowerCase();
-    wx.openDocument({
-      filePath,
-      fileType: extension || undefined,
-      showMenu: true,
-      success: resolve,
-      fail(err) { reject(new Error(err.errMsg || "无法打开附件")); }
-    });
-  }));
+    const fail = (err) => reject(new Error(err.errMsg || "无法打开附件"));
+    if (/^image\//.test(mimeType || "") || /^(jpg|jpeg|png|webp)$/.test(extension)) {
+      if (saveImage) {
+        wx.saveImageToPhotosAlbum({
+          filePath,
+          success: resolve,
+          fail(err) {
+            if (/auth|deny|permission/i.test(err.errMsg || "")) {
+              reject(new Error("请在微信小程序设置中允许保存到相册，然后重试。"));
+            } else fail(err);
+          }
+        });
+      } else {
+        wx.previewImage({ current: filePath, urls: [filePath], success: resolve, fail });
+      }
+      return;
+    }
+    wx.openDocument({ filePath, fileType: mimeType === "application/pdf" ? "pdf" : extension || undefined, showMenu: true, success: resolve, fail });
+  });
 }
 
-function openParentDocument(path, name) {
+function openStaffDocument(path, name, mimeType) {
+  return downloadStaffFile(path).then(filePath => openDownloadedAttachment(filePath, name, mimeType, false));
+}
+
+function openParentDocument(path, name, mimeType, saveImage = false) {
   return new Promise((resolve, reject) => {
     wx.downloadFile({
       url: config.apiBaseUrl + path,
       header: token() ? { Authorization: "Bearer " + token() } : {},
       success(res) {
-        if (res.statusCode !== 200) return reject(new Error("附件读取失败"));
-        const extension = String(name || "").split(".").pop().toLowerCase();
-        wx.openDocument({ filePath: res.tempFilePath, fileType: extension || undefined, showMenu: true, success: resolve, fail(err) { reject(new Error(err.errMsg || "无法打开附件")); } });
+        if (res.statusCode !== 200) return reject(new Error("附件读取失败，请刷新课后反馈后重试"));
+        resolve(res.tempFilePath);
       },
       fail(err) { reject(new Error(err.errMsg || "附件下载失败")); }
     });
-  });
+  }).then(filePath => openDownloadedAttachment(filePath, name, mimeType, saveImage));
 }
 
 module.exports = {

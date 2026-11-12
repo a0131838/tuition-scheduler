@@ -4,11 +4,12 @@ import test from "node:test";
 import ts from "typescript";
 import { activeAdminNavHref, reorganizeAdminNavigation, type AdminNavGroup } from "../lib/admin-navigation";
 import { isOperationsAdminPathAllowed } from "../lib/operations-admin-access";
+import { adminRoomReservationsPath, canManageAdminRoomReservations } from "../lib/room-reservations";
 
 // Evaluate the actual menu declarations without loading auth or a database.
 const layout = fs.readFileSync("app/admin/layout.tsx", "utf8");
-const declarations = layout.slice(layout.indexOf("  const adminNavGroups ="), layout.indexOf("  // Regroup only"));
-const evaluate = new Function("t", "lang", "user", "employeeProfile", "showManagerConsole", "canSeeCare", "canSeeHr", "canSeeSharedDocs", "approvalInboxLabel", "isOperationsAdminPathAllowed",
+const declarations = layout.slice(layout.indexOf("  const roomReservationItems ="), layout.indexOf("  // Regroup only"));
+const evaluate = new Function("t", "lang", "user", "employeeProfile", "showManagerConsole", "canSeeCare", "canSeeHr", "canSeeSharedDocs", "approvalInboxLabel", "isOperationsAdminPathAllowed", "canBookRooms", "adminRoomReservationsPath",
   ts.transpileModule(declarations + "\nreturn { adminNavGroups, operationsAdminNavGroups, financeNavGroups, resourceNavGroups };", { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText);
 const translate = (lang: string, en: string, zh: string) => lang === "ZH" ? zh : lang === "EN" ? en : `${en} / ${zh}`;
 const links = (groups: AdminNavGroup[]) => groups.flatMap(g => g.items);
@@ -17,8 +18,8 @@ for (const lang of ["ZH", "EN", "BILINGUAL"] as const) {
   for (const role of ["ADMIN", "OPS", "FINANCE", "SALES", "CS"]) {
     for (const extended of [false, true]) {
       test(`${role}, ${lang}, extended=${extended}: regrouping preserves every permitted destination and translation`, () => {
-        const user = { role, operationsAdmin: role === "OPS", workspaces: extended ? ["CARE", "CS", "SALES"] : [] };
-        const menus = evaluate(translate, lang, user, extended, extended, extended, extended, extended, translate(lang, "Approvals", "审批"), isOperationsAdminPathAllowed);
+        const user = { role, isObserver: false, operationsAdmin: role === "OPS", workspaces: extended ? ["CARE", "CS", "SALES"] : [] };
+        const menus = evaluate(translate, lang, user, extended, extended, extended, extended, extended, translate(lang, "Approvals", "审批"), isOperationsAdminPathAllowed, canManageAdminRoomReservations(user, false), adminRoomReservationsPath);
         const before: AdminNavGroup[] = menus[role === "OPS" ? "operationsAdminNavGroups" : role === "FINANCE" ? "financeNavGroups" : role === "CS" || role === "SALES" ? "resourceNavGroups" : "adminNavGroups"];
         const after = reorganizeAdminNavigation(before, lang);
         assert.deepEqual(new Set(links(after).map(x => x.href)), new Set(links(before).map(x => x.href)));
@@ -26,6 +27,13 @@ for (const lang of ["ZH", "EN", "BILINGUAL"] as const) {
           const source = links(before).find(x => x.href === item.href)!;
           assert.equal(item.label, source.label);
           assert.equal(item.description, source.description);
+        }
+        const roomGroup = after.find(group => group.items.some(item => item.href === adminRoomReservationsPath));
+        if (role === "ADMIN" || role === "OPS" || role === "CS" || extended) {
+          assert.equal(roomGroup?.title, translate(lang, "Students & Teaching", "学生与教学"));
+          assert.equal(roomGroup.items.find(item => item.href === adminRoomReservationsPath)?.secondary, false);
+        } else {
+          assert.equal(roomGroup, undefined);
         }
         if (lang === "EN") assert.ok(after.every(g => !/[\u4e00-\u9fff]/.test(g.title)));
         if (lang === "ZH") assert.ok(after.every(g => !/[a-z]/i.test(g.title)));

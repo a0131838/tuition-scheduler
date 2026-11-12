@@ -1,3 +1,4 @@
+import { feedbackAttachmentDto } from "@/lib/feedback-attachments";
 import {resolveAttendanceRoster} from '@/lib/session-attendance-roster';
 import {sessionFeedbackState} from "@/lib/session-feedback-state";
 import {feedbackPolicyState} from "@/lib/session-feedback-policy";
@@ -59,7 +60,7 @@ export default async function TeacherSessionDetailPage({
       student: true,
       class: { include: { course: true, subject: true, level: true, campus: true, room: true, oneOnOneStudent: true } },
       attendances: true,
-      feedbacks: { where: { teacherId: teacher.id } },
+      feedbacks: { where: { teacherId: teacher.id }, include: { attachments: { orderBy: { createdAt: "asc" } } } },
     },
   });
   if (!session) return <div>{t(lang, "Session not found.", "课次不存在。")}</div>;
@@ -396,6 +397,13 @@ export default async function TeacherSessionDetailPage({
       ) : null}
       <TeacherFeedbackClient
         sessionId={session.id}
+        homeworkStudents={visibleAttendanceEnrollments.map(row => ({ id: row.studentId, name: row.student.name }))}
+        groupLesson={session.class.capacity !== 1}
+        initialAttachments={(feedback?.attachments || []).map(row => feedbackAttachmentDto(
+          row, `/api/teacher/sessions/${encodeURIComponent(session.id)}/feedback/attachments/${encodeURIComponent(row.id)}`, true,
+        ))}
+        initialPendingUploads={feedback?.pendingHomeworkUploadIds.length || 0}
+        initialReviewStatus={feedback?.reviewStatus || ""}
         initial={{
           focusStudentName: feedback?.focusStudentName ?? "",
           actualStartAt: toInputDateTimeValue(feedback?.actualStartAt),

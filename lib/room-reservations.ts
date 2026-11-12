@@ -1,9 +1,32 @@
 import { prisma } from "./prisma";
-import { getCurrentUser, isTeacherLeadUser } from "./auth";
+import { getCurrentUser, isManagerUser, isTeacherLeadUser } from "./auth";
 import { formatBusinessDateOnly } from "./date-only";
-export async function requireRoomReservationUser(){const actor=await getCurrentUser();if(!actor||actor.isObserver||!(actor.role==='ADMIN'||actor.operationsAdmin||await isTeacherLeadUser(actor)))throw new Error('Room booking permission required / 需要教务或老师主管权限');return actor;}
-export async function saveRoomReservation(input:{id?:string;updatedAt?:string;roomId:string;organization:string;contact?:string;note?:string;startAt:string;endAt:string;repeatWeeks?:number;status?:string}){
- const actor=await requireRoomReservationUser();const startAt=new Date(input.startAt),endAt=new Date(input.endAt);const repeat=input.id?1:Number(input.repeatWeeks||1);
+
+export const adminRoomReservationsPath = "/admin/room-reservations";
+export const teacherRoomReservationsPath = "/teacher/lead/rooms";
+export type RoomReservationArea = "admin" | "teacher";
+
+export function canManageAdminRoomReservations(user: {
+  role: string;
+  workspaces: string[];
+  operationsAdmin: boolean;
+  isObserver: boolean;
+}, manager: boolean) {
+  return !user.isObserver && user.role !== "STUDENT" &&
+    (user.role === "ADMIN" || user.role === "CS" || user.operationsAdmin || user.workspaces.includes("CS") || manager);
+}
+
+export async function requireRoomReservationUser(area: RoomReservationArea) {
+  const actor = await getCurrentUser();
+  const allowed = actor && !actor.isObserver && (area === "admin"
+    ? canManageAdminRoomReservations(actor, await isManagerUser(actor))
+    : actor.role === "ADMIN" || actor.operationsAdmin || await isTeacherLeadUser(actor));
+  if (!allowed) throw new Error("Room booking permission required / 需要教务或老师主管权限");
+  return actor;
+}
+
+export async function saveRoomReservation(area: RoomReservationArea, input:{id?:string;updatedAt?:string;roomId:string;organization:string;contact?:string;note?:string;startAt:string;endAt:string;repeatWeeks?:number;status?:string}){
+ const actor=await requireRoomReservationUser(area);const startAt=new Date(input.startAt),endAt=new Date(input.endAt);const repeat=input.id?1:Number(input.repeatWeeks||1);
  if(!input.roomId||!input.organization.trim()||input.organization.length>120||!Number.isFinite(+startAt)||!Number.isFinite(+endAt)||endAt<=startAt||formatBusinessDateOnly(startAt)!==formatBusinessDateOnly(endAt)||!Number.isInteger(repeat)||repeat<1||repeat>12)throw new Error('Check organization, room and same-day time range / 请核对机构、教室及当天起止时间');
  if(!['CONFIRMED','CANCELLED','COMPLETED'].includes(input.status||'CONFIRMED'))throw new Error('Invalid status / 状态无效');
  return prisma.$transaction(async tx=>{

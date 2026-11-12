@@ -9,6 +9,7 @@ import {
   mergeLearningReportAttendanceSnapshot,
   parseLearningReportAttendanceSnapshot,
 } from "@/lib/learning-report-attendance";
+import { isLearningReportApprovedForDelivery } from "@/lib/learning-report-delivery";
 import { acknowledgeManagerTeacherFeedback, getTeacherManagerFeedbackState } from "@/lib/manager-teacher-feedback";
 import { cleanMiniappText, isReportEditable } from "@/lib/miniapp-staff-action-center";
 import { parseReportDraft } from "@/lib/midterm-report";
@@ -24,7 +25,7 @@ function midtermLocked(raw: unknown) {
 }
 
 function reportDto(row: any, kind: "MIDTERM" | "FINAL") {
-  const editable = isReportEditable(row.status, row.archivedAt) && (kind === "FINAL" ? row.status !== "FORWARDED" : !midtermLocked(row.reportJson));
+  const editable = isReportEditable(row.status, row.archivedAt) && (kind === "FINAL" ? row.status !== "FORWARDED" && !(row.reportPeriodId && isLearningReportApprovedForDelivery(row.reportJson)) : !midtermLocked(row.reportJson));
   return {
     id: row.id,
     kind,
@@ -168,6 +169,8 @@ export async function POST(req: Request) {
       select: {
         id: true,
         status: true,
+        updatedAt: true,
+        reportPeriod: { select: { id: true, startsAt: true, endsAt: true } },
         submittedAt: true,
         archivedAt: true,
         reportJson: true,
@@ -178,8 +181,8 @@ export async function POST(req: Request) {
       },
     });
     if (!report) return bad("Report not found", 404);
-    if (!isReportEditable(report.status, report.archivedAt) || report.status === "FORWARDED") return bad("Report is read only", 409);
-    if (submit) {
+    if (!isReportEditable(report.status, report.archivedAt) || report.status === "FORWARDED" || (report.reportPeriod && isLearningReportApprovedForDelivery(report.reportJson))) return bad("Report is read only", 409);
+    if (submit && !report.reportPeriod) {
       const currentPackage = await prisma.coursePackage.findUnique({
         where: { id: report.packageId },
         select: { remainingMinutes: true },
@@ -209,19 +212,21 @@ export async function POST(req: Request) {
             studentId: report.studentId,
             subjectId: report.subjectId,
             teacherId: report.teacherId,
-            throughAt: submittedAt,
+            fromAt: report.reportPeriod?.startsAt,
+            throughAt: report.reportPeriod?.endsAt ?? submittedAt,
           })
         : existingSnapshot;
-    await prisma.finalReport.update({
-      where: { id },
+    const updated = await prisma.finalReport.updateMany({
+      where: { id, updatedAt: report.updatedAt, archivedAt: null, reportPeriodId: report.reportPeriod?.id ?? null },
       data: {
         reportJson: mergeLearningReportAttendanceSnapshot(draft, report.reportJson, attendanceSnapshot) as any,
-        reportPeriodLabel: cleanMiniappText((body as any)?.reportPeriodLabel, 120) || null,
+        ...(report.reportPeriod ? {} : { reportPeriodLabel: cleanMiniappText((body as any)?.reportPeriodLabel, 120) || null }),
         recommendation: draft.recommendedNextStep || null,
         status: submit ? "SUBMITTED" : report.status,
         submittedAt: submit ? submittedAt : report.submittedAt,
       },
     });
+    if (updated.count !== 1) return bad("The report changed while saving. Reopen it before trying again.", 409);
   } else {
     return bad("Unknown report type");
   }

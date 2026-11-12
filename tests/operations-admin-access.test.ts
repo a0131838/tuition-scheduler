@@ -44,6 +44,7 @@ test("operations route policy allows teaching operations and denies company fina
     "/admin/relationships/profile-1",
     "/admin/teachers/teacher-1/availability",
     "/admin/schedule",
+    "/admin/room-reservations",
     "/admin/tickets/abc",
     "/admin/communication-reminders",
     "/admin/communications/templates",

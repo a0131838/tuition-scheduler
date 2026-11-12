@@ -806,7 +806,7 @@ export async function syncParentCommunicationCenter(actor?: CommunicationActor) 
   return { feedbackCount, reminderCount, monthlySchedulingCount, legacyCourseChangeCount };
 }
 
-export async function listParentCommunicationTasks(input: { status?: string; kind?: string; limit?: number; taskId?: string; actorId?: string; noticeQueue?: boolean }) {
+export async function listParentCommunicationTasks(input: { status?: string; kind?: string; limit?: number; taskId?: string; actorId?: string; noticeQueue?: boolean; homeworkStudent?: string; homeworkDate?: { start: Date; end: Date }; webAttachmentLinks?: boolean }) {
   const where: Prisma.ParentCommunicationTaskWhereInput = {};
   if (input.status && input.status !== "ALL") {
     where.status = input.status === "OPEN" ? { in: OPEN_STATUSES } : input.status;
@@ -814,6 +814,22 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
   if (input.kind && input.kind !== "ALL") where.kind = input.kind;
   if (input.taskId) where.id = input.taskId;
   if (input.noticeQueue) where.taskKey = { startsWith: RESCHEDULE_NOTICE_PREFIX };
+  if (input.homeworkStudent || input.homeworkDate) {
+    where.kind = "FEEDBACK";
+    if (!where.status) where.status = { not: "SUPERSEDED" };
+    if (input.homeworkStudent) {
+      const matches = await prisma.student.findMany({
+        where: { name: { contains: input.homeworkStudent, mode: "insensitive" } }, select: { id: true },
+      });
+      where.studentId = { in: matches.map(student => student.id) };
+    }
+    if (input.homeworkDate) {
+      const matches = await prisma.sessionFeedback.findMany({
+        where: { session: { startAt: { gte: input.homeworkDate.start, lt: input.homeworkDate.end } } }, select: { id: true },
+      });
+      where.feedbackId = { in: matches.map(feedback => feedback.id) };
+    }
+  }
   const limit = Math.min(Math.max(input.limit ?? 200, 1), 500);
   const [rows, summaryRows, kindStatusRows, staff] = await Promise.all([
     prisma.parentCommunicationTask.findMany({ where, orderBy: [{ priority: "asc" }, { dueAt: "asc" }, { createdAt: "desc" }], take: limit }),
@@ -834,7 +850,7 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
     prisma.student.findMany({ where: { id: { in: studentIds } }, select: { id: true, name: true, school: true, grade: true } }),
     prisma.teacher.findMany({ where: { id: { in: teacherIds } }, select: { id: true, name: true } }),
     prisma.session.findMany({ where: { id: { in: sessionIds } }, select: { id: true, startAt: true, endAt: true } }),
-    prisma.sessionFeedback.findMany({ where: { id: { in: feedbackIds } }, select: { id: true, updatedAt: true, sessionId: true, content: true, parentContent: true, classPerformance: true, homework: true, previousHomeworkDone: true, previousHomeworkNotAssigned: true, actualStartAt: true, actualEndAt: true, reviewStatus: true, reviewNote: true, publishedAt: true, submittedAt: true, attachments: { orderBy: { createdAt: "asc" } } } }),
+    prisma.sessionFeedback.findMany({ where: { id: { in: feedbackIds } }, select: { id: true, updatedAt: true, sessionId: true, pendingHomeworkUploadIds: true, content: true, parentContent: true, classPerformance: true, homework: true, previousHomeworkDone: true, previousHomeworkNotAssigned: true, actualStartAt: true, actualEndAt: true, reviewStatus: true, reviewNote: true, publishedAt: true, submittedAt: true, attachments: { orderBy: { createdAt: "asc" } } } }),
     prisma.auditLog.findMany({ where: { entityType: "ParentCommunicationTask", entityId: { in: rows.map((row) => row.id) } }, select: { entityId: true, action: true, actorName: true, actorEmail: true, actorRole: true, createdAt: true, meta: true }, orderBy: { createdAt: "desc" }, take: 1500 }),
     communicationDeliveryEvidence(rows),
   ]);
@@ -918,13 +934,17 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
       teacher: row.teacherId ? teacherMap.get(row.teacherId) ?? null : null,
       feedback: feedback ? {
         ...feedback,
+        pendingHomeworkUploadIds: undefined,
+        pendingHomeworkUploadCount: feedback.pendingHomeworkUploadIds.length,
         actualStartAt: feedback.actualStartAt?.toISOString() ?? null,
         actualEndAt: feedback.actualEndAt?.toISOString() ?? null,
         sections,
-        attachments: feedback.attachments.map((attachment) => feedbackAttachmentDto(
-          attachment,
-          `/api/miniapp/staff/schedule/${encodeURIComponent(feedback.sessionId)}/feedback/attachments/${encodeURIComponent(attachment.id)}`,
-        )),
+        attachments: feedback.attachments.map(attachment => ({
+          ...feedbackAttachmentDto(attachment, input.webAttachmentLinks
+            ? `/api/admin/communications/${encodeURIComponent(row.id)}/attachments/${encodeURIComponent(attachment.id)}`
+            : `/api/miniapp/staff/schedule/${encodeURIComponent(feedback.sessionId)}/feedback/attachments/${encodeURIComponent(attachment.id)}`, true),
+          visibleToThisFamily: Boolean(row.studentId && attachment.visibility === "PARENT" && attachment.recipientStudentIds.includes(row.studentId)),
+        })),
         completeness: {
           complete: missingSections.length === 0 && !homeworkMissing && !previousHomeworkMissing,
           completed: 7 - missingSections.length - (homeworkMissing ? 1 : 0) - (previousHomeworkMissing ? 1 : 0),
@@ -1155,6 +1175,7 @@ async function reviewCommunicationFeedback(input: CommunicationUpdateInput) {
       await tx.miniappNotificationOutbox.updateMany({where:outboxWhere,data:{status:"SKIPPED",error:"Feedback awaiting review / 反馈待重新审核"}});
       await tx.auditLog.create({data:{actorEmail:actor.email,actorName:actor.name,actorRole:actor.role,module:"COMMUNICATION",action:"RETURN_FEEDBACK",entityType:"ParentCommunicationTask",entityId:selected.id,meta:{feedbackId:feedback.id,beforeStatus:feedback.reviewStatus,previousPublishedAt:feedback.publishedAt?.toISOString()??null,previousParentContent:feedback.parentContent,note}}});
     } else {
+      if (feedback.pendingHomeworkUploadIds.length) throw new Error("Homework uploads are incomplete / 老师还有作业文件待上传，请补传后再发布");
       const parentContent = String(data.parentContent ?? feedback.parentContent ?? feedback.content).trim();
       if (!parentContent) throw new Error("Parent-facing feedback is required / 请填写家长展示版反馈");
       const missing = getMissingParentFeedbackSections(parentContent);

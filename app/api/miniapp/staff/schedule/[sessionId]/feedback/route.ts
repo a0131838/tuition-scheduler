@@ -1,3 +1,4 @@
+import { parseHomeworkUploadKeys } from "@/lib/homework-upload-keys";
 import { previousHomeworkInput, previousHomeworkLabel } from "@/lib/homework-status";
 import {resolveAttendanceRoster} from '@/lib/session-attendance-roster';
 import {feedbackPolicyState} from "@/lib/session-feedback-policy";
@@ -66,9 +67,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ sessionId: stri
       reviewStatus: feedback?.reviewStatus ?? null,
       reviewNote: feedback?.reviewNote ?? null,
       publishedAt: feedback?.publishedAt?.toISOString() ?? null,
+      pendingHomeworkUploadCount: feedback?.pendingHomeworkUploadIds.length ?? 0,
       attachments: (feedback?.attachments ?? []).map((row) => feedbackAttachmentDto(
         row,
-        `/api/miniapp/staff/schedule/${encodeURIComponent(session.id)}/feedback/attachments/${encodeURIComponent(row.id)}`,
+        `/api/miniapp/staff/schedule/${encodeURIComponent(session.id)}/feedback/attachments/${encodeURIComponent(row.id)}`, true,
       )),
     },
   });
@@ -166,7 +168,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sessionId: str
       submittedAt: now,
       reviewStatus: "PENDING_REVIEW",
     },
-  });} catch(e){return bad(e instanceof Error?e.message:"Feedback changed; reload / 反馈状态已变化，请刷新",409);}
+  }, parseHomeworkUploadKeys(body?.homeworkUploadIds));} catch(e){return bad(e instanceof Error?e.message:"Feedback changed; reload / 反馈状态已变化，请刷新",409);}
 
   return ok({
     feedbackId: savedFeedback.id,

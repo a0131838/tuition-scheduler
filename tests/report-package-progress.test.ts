@@ -26,3 +26,8 @@ test("midpoint follow-up stays due after crossing the ideal 45 to 70 percent win
   assert.equal(isMidtermFollowupDue(70), true);
   assert.equal(isMidtermFollowupDue(71), true);
 });
+
+test("a confirmed learning period is submittable independently of a top-up", () => {
+  assert.equal(isFinalReportSubmissionDue(103.5 * 60, "closed-period"), true);
+  assert.equal(isFinalReportSubmissionDue(103.5 * 60, null), false);
+});

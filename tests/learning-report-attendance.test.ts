@@ -87,3 +87,22 @@ test("custom learning-period notes are retained alongside calculated attendance"
     "Term 2 review · 1.5 attended hours / 实际出勤 1.5 小时",
   );
 });
+
+test("adjacent final report periods freeze distinct attended hours", () => {
+  const periods = [
+    new Date("2026-11-02T01:00:00Z"),
+    new Date("2026-11-09T01:00:00Z"),
+    new Date("2026-11-16T01:00:00Z"),
+  ];
+  const rows = [
+    row("2026-11-01T01:00:00Z", "2026-11-01T02:00:00Z"),
+    row("2026-11-09T00:00:00Z", "2026-11-09T01:00:00Z"),
+    row("2026-11-09T01:00:00Z", "2026-11-09T02:30:00Z"),
+  ];
+  const first = summarizeLearningReportAttendance(rows, { subjectId, teacherId, fromAt: periods[0], throughAt: periods[1] });
+  const second = summarizeLearningReportAttendance(rows, { subjectId, teacherId, fromAt: periods[1], throughAt: periods[2] });
+  assert.equal(first.attendedMinutes, 60);
+  assert.equal(second.attendedMinutes, 90);
+  assert.equal(first.sessionCount, 1);
+  assert.equal(second.sessionCount, 1);
+});

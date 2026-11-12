@@ -1,6 +1,6 @@
 const config = {
   apiBaseUrl: "https://sgtmanage.com",
-  clientVersion: "1.1.02",
+  clientVersion: "1.1.03",
   devMockOpenId: "",
   devMockStaffOpenId: ""
 };

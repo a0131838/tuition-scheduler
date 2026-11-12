@@ -1,5 +1,6 @@
 import { requireTeacherProfile } from "@/lib/auth";
 import { formatBusinessDateTime } from "@/lib/date-only";
+import { parseFinalReportDraft } from "@/lib/final-report";
 import { getLang, t } from "@/lib/i18n";
 import { formatMinutesToHours } from "@/lib/midterm-report";
 import { prisma } from "@/lib/prisma";
@@ -176,7 +177,7 @@ export default async function TeacherFinalReportsPage() {
             <tr style={{ background: "#f8fafc" }}>
               <th align="left" style={{ padding: 6 }}>{t(lang, "Student", "学生")}</th>
               <th align="left" style={{ padding: 6 }}>{t(lang, "Course", "课程")}</th>
-              <th align="left" style={{ padding: 6 }}>{t(lang, "Package balance", "课包余额")}</th>
+              <th align="left" style={{ padding: 6 }}>{t(lang, "Learning period / package balance", "学习期次／课包余额")}</th>
               <th align="left" style={{ padding: 6 }}>{t(lang, "Assigned At", "推送时间")}</th>
               <th align="left" style={{ padding: 6 }}>{t(lang, "Status", "状态")}</th>
               <th align="left" style={{ padding: 6 }}>{t(lang, "Action", "操作")}</th>
@@ -191,9 +192,11 @@ export default async function TeacherFinalReportsPage() {
                   {row.subject ? ` / ${row.subject.name}` : ""}
                 </td>
                 <td style={{ padding: 6 }}>
+                  {row.reportPeriodId ? <strong>{row.reportPeriodLabel}</strong> : <>
                   {formatMinutesToHours(safeMinutes(row.package.remainingMinutes))}h / {formatMinutesToHours(safeMinutes(row.package.totalMinutes))}h
                   <div style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Current package use", "当前课包使用率")}: {packageUsagePercent(row.package.totalMinutes, row.package.remainingMinutes)}%</div>
                   {row.status === "ASSIGNED" && Number(row.package.remainingMinutes ?? 0) > 0 ? <div style={{ fontSize: 12, color: "#1d4ed8" }}>{t(lang, "Draft only until balance reaches zero", "余额归零前仅可保存草稿")}</div> : null}
+                  </>}
                 </td>
                 <td style={{ padding: 6 }}>{fmt(row.assignedAt)}</td>
                 <td style={{ padding: 6 }}>
@@ -203,7 +206,7 @@ export default async function TeacherFinalReportsPage() {
                       fontWeight: 700,
                     }}
                   >
-                    {statusLabel(lang, row.status)}
+                    {row.status === "ASSIGNED" && parseFinalReportDraft(row.reportJson).finalSummary ? t(lang, "Draft saved", "草稿已保存") : statusLabel(lang, row.status)}
                   </span>
                 </td>
                 <td style={{ padding: 6 }}>

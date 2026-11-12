@@ -2,6 +2,8 @@ import InvoiceArchiveForm from '@/app/admin/_components/InvoiceArchiveForm';
 import {canApplyEntitlementCorrection} from '@/lib/package-entitlement-correction';
 import PackageCorrectionReview from '../../_components/PackageCorrectionReview';
 import {hasContractExecutionHistory} from '@/lib/student-contract-history';
+import RenewalPaymentSummary from "../../_components/RenewalPaymentSummary";
+import { loadRenewalPaymentOverview } from "@/lib/renewal-payment-overview";
 import { getCurrentUser, requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
@@ -611,6 +613,14 @@ export default async function PackageBillingPage({
   const deletableVoidContracts = voidContracts.filter((contract) => contractCanDeleteVoidDraft(contract));
   const archivedVoidContracts = voidContracts.filter((contract) => !contractCanDeleteVoidDraft(contract));
   const approvalMap = await getParentReceiptApprovalMap(data.receipts.map((x) => x.id));
+  const renewalOverview = latestContract ? await loadRenewalPaymentOverview({
+    contract: latestContract, billing: data, packageType: pkg.type, packageStatus: pkg.status,
+    settlementMode: pkg.settlementMode, roles: roleCfg, approvals: approvalMap,
+  }) : null;
+  const cashRenewalHref = renewalOverview?.canOpenCash && latestContract &&
+    (renewalOverview.exception || (currentUser?.role === "FINANCE" && isRoleApprover(currentUser.email, roleCfg.financeApproverEmails)))
+    ? `/admin/packages/${encodeURIComponent(packageId)}/contract/renewal-exception?contractId=${encodeURIComponent(latestContract.id)}`
+    : null;
   const canManagerApproveInvoiceGate = isRoleApprover(currentUser?.email, roleCfg.managerApproverEmails);
   const invoiceApprovalInvoice = latestInvoiceApproval?.invoiceId
     ? data.invoices.find((invoice) => invoice.id === latestInvoiceApproval.invoiceId) ?? null
@@ -784,13 +794,13 @@ export default async function PackageBillingPage({
           ? "#86efac"
           : "#dbe4f0",
     },
-    {
+    ...(!renewalOverview ? [{
       title: t(lang, "Current focus", "当前建议起点"),
       value: currentBillingFocusTitle,
       detail: currentBillingFocusDetail,
       background: data.invoices.length === 0 ? "#fff7ed" : totalRemainingAmount > 0.01 ? "#fffbeb" : "#f0fdf4",
       border: data.invoices.length === 0 ? "#fdba74" : totalRemainingAmount > 0.01 ? "#fde68a" : "#86efac",
-    },
+    }] : []),
     {
       title: t(lang, "Package", "当前课包"),
       value: `${pkg.student.name} · ${pkg.course.name}`,
@@ -905,6 +915,13 @@ export default async function PackageBillingPage({
       {err ? <div style={{ marginBottom: 12, color: "#b00" }}>{err}</div> : null}
       {msg ? <div style={{ marginBottom: 12, color: "#166534" }}>{msg}</div> : null}
 
+      {renewalOverview && latestContract ? (
+        <RenewalPaymentSummary overview={renewalOverview} lang={lang} signed={Boolean(latestContract.signedAt)}
+          cashHref={cashRenewalHref}
+          contractHref={currentUser?.role === "FINANCE" ? null : buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack })}
+          invoiceApprovalHref={latestInvoiceApproval?.invoiceId === renewalOverview.current?.invoice.id ? "#invoice-gate" : null}
+          receiptsHref={buildReceiptsCenterHref(packageId, { sourceWorkflow, receiptsBack, step: "create", invoiceId: renewalOverview.current?.invoice.id })} />
+      ) : null}
       <div
         id="invoice-gate"
         style={{
@@ -1039,8 +1056,10 @@ export default async function PackageBillingPage({
               </div>
               <div style={{ fontSize: 13, color: "#475569" }}>
                 {latestContract
-                  ? latestContract.invoiceId
+                  ? latestContract.signedAt && latestContract.invoiceId
                     ? t(lang, "Signed and linked to billing. Use the dedicated contract page only when you need resend, replacement, or history.", "已签并接入账务流程。只有需要重发、更正或查看历史时，再进入专门的合同页面。")
+                    : latestContract.invoiceId && !latestContract.signedAt
+                      ? t(lang, "Invoice linked · Parent signature pending.", "已关联合同发票 · 家长待签。")
                     : contractNeedsParentInfo(latestContract.status)
                       ? t(lang, "Parent-facing intake or sign steps are still pending.", "家长资料或签字步骤仍在进行中。")
                       : t(lang, "Commercial details or sign-link work is still in progress.", "课时费用或签字链接步骤仍在处理中。")
@@ -1063,11 +1082,6 @@ export default async function PackageBillingPage({
             <a href={buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack })} style={{ fontWeight: 700 }}>
               {t(lang, "Open contract workspace", "打开合同工作台")}
             </a>
-            {latestContract?.flowType === "RENEWAL" && latestContract.contractMode === "TUITION_AGREEMENT" && latestContract.status === "READY_TO_SIGN" ? (
-              <a href={`/admin/packages/${encodeURIComponent(packageId)}/contract/renewal-exception?contractId=${encodeURIComponent(latestContract.id)}`} style={{ fontWeight: 700 }}>
-                {t(lang, "Paid renewal, signature pending", "已核款待补签例外")}
-              </a>
-            ) : null}
             {latestContract?.signedPdfPath ? (
               <a href={`/api/exports/student-contract/${encodeURIComponent(latestContract.id)}?download=1`}>
                 {t(lang, "Download latest signed PDF", "下载最新已签 PDF")}

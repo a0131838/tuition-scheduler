@@ -26,6 +26,7 @@ const OPERATIONS_ADMIN_WEB_PREFIXES = [
   "/admin/reports/monthly-schedule",
   "/admin/renewals",
   "/admin/rooms",
+  "/admin/room-reservations",
   "/admin/schedule",
   "/admin/school-applications",
   "/admin/sessions",

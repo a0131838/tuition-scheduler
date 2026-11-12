@@ -162,11 +162,11 @@ export default function ParentReportEditionPanel({
         </button>
         <a
           style={btn}
-          href={`${base}/pdf?lang=EN${kind === "RENEWAL" && !allowFinalDownload ? "&preview=1" : ""}`}
+          href={`${base}/pdf?lang=EN${!allowFinalDownload ? "&preview=1" : ""}`}
           target="_blank"
           rel="noreferrer"
         >
-          {kind === "RENEWAL" && !allowFinalDownload ? t("Original draft PDF", "原文内部预览 PDF") : t("Full original PDF", "原文完整版 PDF")}
+          {!allowFinalDownload ? t("Original draft PDF", "原文内部预览 PDF") : t("Full original PDF", "原文完整版 PDF")}
         </a>
         {ready ? (
           <a
@@ -314,8 +314,8 @@ export default function ParentReportEditionPanel({
                 onClick={() => action("review")}
               >
                 {t(
-                kind === "RENEWAL" ? "Confirm translation for coordinator approval" : "Confirm translation and enable downloads",
-                  kind === "RENEWAL" ? "确认译文，交教务审批" : "确认译文，启用家长版下载",
+                (kind === "RENEWAL" || !allowFinalDownload) ? "Confirm translation for academic review" : "Confirm translation and enable downloads",
+                  (kind === "RENEWAL" || !allowFinalDownload) ? "确认译文，交教学负责人审核" : "确认译文，启用家长版下载",
                 )}
               </button>
             </div>
@@ -337,7 +337,7 @@ export default function ParentReportEditionPanel({
                 </a>
               ))}
             </div>
-          ) : <p>{t("Waiting for coordinator approval before the family PDF can be downloaded.", "家长版 PDF 须经教务批准后方可下载。")}</p>}
+          ) : <p>{t("Waiting for coordinator approval before the family PDF can be downloaded.", "家长版 PDF 在教学负责人审核后可下载。")}</p>}
         </>
       ) : null}
     </section>

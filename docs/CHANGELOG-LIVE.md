@@ -1,5 +1,76 @@
 # CHANGELOG LIVE
 
+## 2026-11-12-r515
+
+- Release ID: `2026-11-12-r515`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: attach photos and PDFs to lesson feedback from teacher web and the staff mini program. Review and publish the files in the communication desk and find published homework in parent feedback.
+- Scope: attachment upload and retry, family-specific access, review, history and protected downloads. Existing one-to-one files keep their recipient when the lesson roster is unambiguous.
+- Verification: isolated one-to-one and group feedback workflow, interrupted upload retry, wrong-family and raw-file access checks, migration, backend regression suite and production build. See `docs/tasks/TASK-20261112-lesson-homework-files.md`.
+
+---
+
+## 2026-11-11-r514
+
+- Release ID: `2026-11-11-r514`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: show the current renewal's payment, signature, lesson hours and next action together in Package Billing. Identify fully paid PayNow invoices and route staff back to the bill from old cash exception links.
+- Scope: renewal payment guidance, exception entries and the finance exception queue. The existing cash verification, invoice approval and entitlement actions still govern the workflow.
+- Verification: 61 focused tests, production build and isolated browser verification of PayNow and cash renewals. See `docs/tasks/TASK-20261111-renewal-payment-clarity.md`.
+
+---
+
+## 2026-11-11-r513
+
+- Release ID: `2026-11-11-r513`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: add Classroom Reservations to Students & Teaching in the admin workspace. Administrators, designated managers, teaching operations admins, and staff with the CS role or workspace can book and update rooms.
+- Scope: admin navigation and booking access. The admin workspace and teacher Lead Desk use the same form, booking records and room conflict checks.
+- Verification: 50 focused tests, production build and isolated browser verification across roles and both entry points. See `docs/tasks/TASK-20261111-admin-room-reservations.md`.
+
+---
+
+## 2026-11-11-r512
+
+- Release ID: `2026-11-11-r512`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: take staff directly to the selected classroom reservation's edit form and show its organization, room and original start time. Provide separate Save changes and Cancel editing controls and place the success message above the booking list.
+- Scope: Lead Desk classroom reservation page and form. An inline save error keeps the selected booking and the entered values visible. A successful move outside the current week opens the list for the new date.
+- Verification: production build, scheduling regression checks and browser checks of edit positioning, cancellation, validation, cross-week changes and new bookings. See `docs/tasks/TASK-20261111-room-booking-edit.md`.
+
+---
+
+## 2026-11-10-r511
+
+- Release ID: `2026-11-10-r511`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: confirm and assign final reports by each purchase or renewal's actual teaching period. Freeze in-period attendance and allow submission independently of the current package balance.
+- Scope: final-report coordinator and teacher workflows, shared teacher API, and an additive PostgreSQL migration. Existing drafts may be attached explicitly. Existing report IDs, delivery records, balances and finance records remain in place.
+- Verification: 49 focused tests, 185 backend tests, production build, isolated migration and browser verification of early top-up, historical draft reuse, academic review and bilingual PDF. See `docs/tasks/TASK-20261110-final-report-periods.md`.
+
+---
+
+## 2026-11-10-r510
+
+- Release ID: `2026-11-10-r510`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: permit the renewal progress parent edition in the database kind constraint so its approved bilingual PDF can be produced.
+- Verification: isolated PostgreSQL migration, original schema constraint reproduced read-only on production, teacher/coordinator browser walkthrough and actual approved PDF download. See `docs/tasks/TASK-20261110-renewal-parent-edition-constraint.md`.
+- Scope: one database check; existing report status and foreign-key checks remain enforced. No report content is rewritten.
+
+---
+
+## 2026-11-10-r509
+
+- Release ID: `2026-11-10-r509`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: reuse a saved final report draft as a renewal progress report from the teacher's final-report page. Preserve the final draft and keep formal final submission at the zero-balance gate.
+- Scope: teacher web, shared progress-report assignment, saved-draft status, coordinator review and existing approved PDF download. No package or finance writes, schema change or automatic parent delivery.
+- Verification: 18 focused tests, isolated PostgreSQL import workflow, production build and guarded release. See `docs/tasks/TASK-20261110-final-draft-progress.md`.
+- Risk: a teacher must review stage wording before submission. Rollback code point is `2ad658bf7d10d62299dedef1ce360c6799e9f485`.
+
+---
+
 ## 2026-11-09-r508
 
 - Release ID: `2026-11-09-r508`

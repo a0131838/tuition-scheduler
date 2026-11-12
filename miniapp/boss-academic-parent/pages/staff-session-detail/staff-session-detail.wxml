@@ -306,20 +306,22 @@
   <view class="card" wx:if="{{canTeachSession}}">
     <view class="label">课后作业</view>
     <textarea value="{{homework}}" bindinput="inputHomework" placeholder="请输入本次课后作业" />
+    <button class="mini-action" disabled="{{saving}}" bindtap="setNoHomework">本节未布置</button>
     <view class="field">
       <view class="label">之前作业完成情况</view>
       <view class="hint">必须明确选择，避免把“未填写”误认为“未完成”</view>
       <radio-group class="homework-choice" bindchange="changePreviousHomework"><label><radio value="yes" checked="{{previousHomeworkDone === 'yes'}}" color="#ec5e0a" />已完成</label><label><radio value="no" checked="{{previousHomeworkDone === 'no'}}" color="#ec5e0a" />未完成</label><label><radio value="not_assigned" checked="{{previousHomeworkDone === 'not_assigned'}}"/>Not Set / 上次未布置或首次课</label></radio-group>
     </view>
     <view class="attachment-area">
-      <view class="section-title">作业与课堂附件</view>
-      <view class="hint">图片、PDF 或 Word，最多 9 个，单个不超过 15MB。选择“仅员工可见”的文件不会展示给家长。</view>
-      <picker mode="selector" range="{{attachmentVisibilityOptions}}" value="{{attachmentVisibilityIndex}}" bindchange="changeAttachmentVisibility"><view class="picker attachment-picker">新附件可见范围：{{attachmentVisibilityText}}</view></picker>
-      <view class="attachment-actions"><button class="secondary-action" bindtap="chooseFeedbackImages">从相册/相机选择</button><button class="secondary-action" bindtap="chooseFeedbackFiles">从微信聊天选择文件</button></view>
-      <view class="attachment-row pending" wx:for="{{pendingFeedbackAttachments}}" wx:key="path"><view><view class="attachment-name">{{item.name}}</view><view class="hint">待上传 · {{item.visibilityText}}</view></view><button class="mini-action" data-index="{{index}}" bindtap="removePendingAttachment">移除</button></view>
-      <view class="attachment-row" wx:for="{{feedbackAttachments}}" wx:key="id"><view><view class="attachment-name">{{item.name}}</view><view class="hint">已上传 · {{item.visibilityText}}</view></view><view class="attachment-inline-actions"><button class="mini-action" data-index="{{index}}" bindtap="openFeedbackAttachment">查看</button><button class="mini-action danger-mini" data-index="{{index}}" bindtap="deleteFeedbackAttachment">删除</button></view></view>
+      <view class="section-title">作业电子版</view>
+      <view class="hint">可选。照片或 PDF 随课后反馈审核发布，最多 9 个，每个不超过 15 MB。</view>
+      <picker mode="selector" range="{{attachmentAudienceLabels}}" value="{{attachmentAudienceIndex}}" disabled="{{saving}}" bindchange="changeAttachmentAudience"><view class="picker attachment-picker">发送范围：{{attachmentAudienceLabels[attachmentAudienceIndex] || '请选择'}}</view></picker>
+      <view class="attachment-actions"><button class="secondary-action" disabled="{{saving || !attachmentAudienceSelected}}" bindtap="chooseFeedbackImages">拍照 / 从相册选</button><button class="secondary-action" disabled="{{saving || !attachmentAudienceSelected}}" bindtap="chooseFeedbackFiles">从微信聊天选 PDF</button></view>
+      <view class="hint" wx:if="{{pendingHomeworkUploadCount > pendingFeedbackAttachments.length}}">还有文件待补传。请重新选取后提交，或直接提交本次已选的内容。</view>
+      <view class="attachment-row pending" wx:for="{{pendingFeedbackAttachments}}" wx:key="key"><view><view class="attachment-name">{{item.name}}</view><view class="hint">{{item.label}} · {{item.error ? '待重试：' + item.error : '待上传'}}</view></view><button class="mini-action" disabled="{{saving}}" data-key="{{item.key}}" bindtap="removePendingAttachment">移除</button></view>
+      <view class="attachment-row" wx:for="{{feedbackAttachments}}" wx:key="id"><view><view class="attachment-name">{{item.name}}</view><view class="hint">已上传 · {{item.visibilityText}}</view></view><view class="attachment-inline-actions"><button class="mini-action" data-index="{{index}}" bindtap="openFeedbackAttachment">查看</button><button class="mini-action danger-mini" wx:if="{{feedbackReviewStatus !== 'PUBLISHED'}}" disabled="{{saving}}" data-index="{{index}}" bindtap="deleteFeedbackAttachment">删除</button></view></view>
     </view>
   </view>
 
-  <button class="primary" wx:if="{{canTeachSession}}" loading="{{saving || attachmentUploading}}" disabled="{{submitDisabled || attachmentUploading}}" bindtap="submit">提交反馈和附件</button>
+  <button class="primary" wx:if="{{canTeachSession}}" loading="{{saving || attachmentUploading}}" disabled="{{submitDisabled || attachmentUploading}}" bindtap="submit">{{pendingHomeworkUploadCount ? "补传并提交反馈" : "提交课后反馈"}}</button>
 </view>

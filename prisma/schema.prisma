@@ -980,6 +980,7 @@ model SessionFeedback {
   session     Session                     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   teacher     Teacher                     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   attachments SessionFeedbackAttachment[]
+  pendingHomeworkUploadIds String[] @default([])
 
   @@unique([sessionId, teacherId])
   @@index([teacherId, submittedAt])
@@ -996,12 +997,16 @@ model SessionFeedbackAttachment {
   mimeType         String?
   sizeBytes        Int
   visibility       String   @default("PARENT")
+  studentId       String?
+  recipientStudentIds String[] @default([])
+  uploadKey       String?
   uploadedByUserId String
   uploadedByName   String
   createdAt        DateTime @default(now())
 
   feedback SessionFeedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
 
+  @@unique([feedbackId, uploadKey])
   @@index([feedbackId, visibility, createdAt])
   @@index([uploadedByUserId, createdAt])
 }
@@ -1079,6 +1084,7 @@ model FinalReport {
   shareFirstViewedAt DateTime?
   shareLastViewedAt  DateTime?
   shareViewCount     Int               @default(0)
+  reportPeriodId     String?
   reportPeriodLabel  String?
   finalLevel         String?
   overallScore       Decimal?          @db.Decimal(5, 2)
@@ -1092,11 +1098,13 @@ model FinalReport {
   course          Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
   subject         Subject?      @relation(fields: [subjectId], references: [id], onDelete: SetNull)
   package         CoursePackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  reportPeriod    FinalReportPeriod? @relation(fields: [reportPeriodId], references: [id], onDelete: Cascade)
   assignedByUser  User?         @relation("FinalReportAssignedBy", fields: [assignedByUserId], references: [id], onDelete: SetNull)
   deliveredByUser User?         @relation("FinalReportDeliveredBy", fields: [deliveredByUserId], references: [id], onDelete: SetNull)
   exemptedByUser  User?         @relation("FinalReportExemptedBy", fields: [exemptedByUserId], references: [id], onDelete: SetNull)
   archivedByUser  User?         @relation("FinalReportArchivedBy", fields: [archivedByUserId], references: [id], onDelete: SetNull)
 
+  @@unique([reportPeriodId, teacherId])
   @@index([teacherId, status, assignedAt])
   @@index([studentId, createdAt])
   @@index([courseId, createdAt])
@@ -1107,6 +1115,25 @@ model FinalReport {
   @@index([archivedAt, createdAt])
   parentEditions LearningReportParentEdition[]
 
+}
+
+model FinalReportPeriod {
+  id                String   @id @default(uuid())
+  packageId         String
+  studentId         String
+  purchaseTxnId     String
+  startsAt          DateTime
+  endsAt            DateTime
+  confirmedAt       DateTime @default(now())
+  confirmedByUserId String
+
+  package CoursePackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  student Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  reports FinalReport[]
+
+  @@unique([packageId, studentId, purchaseTxnId])
+  @@index([packageId, studentId, startsAt])
+  @@index([studentId])
 }
 
 model SessionTeacherChange {
@@ -1162,6 +1189,7 @@ model Student {
   sessions                   Session[]                     @relation("SessionStudent")
   midtermReports             MidtermReport[]
   finalReports               FinalReport[]
+  finalReportPeriods     FinalReportPeriod[]
   renewalProgressReports     RenewalProgressReport[]
   learningPlans              StudentLearningPlan[]
   sourceChannel              StudentSourceChannel?         @relation(fields: [sourceChannelId], references: [id])
@@ -2964,6 +2992,7 @@ model CoursePackage {
   settlements            PartnerSettlement[]
   midtermReports         MidtermReport[]
   finalReports           FinalReport[]
+  finalReportPeriods     FinalReportPeriod[]
   invoiceApprovals       PackageInvoiceApproval[]
   contracts              StudentContract[]
   eduTrustRecords        EduTrustStudentCourseRecord[]

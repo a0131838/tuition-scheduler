@@ -1,5 +1,71 @@
 # RELEASE BOARD
 
+## 2026-11-12-r515
+
+- Release ID: `2026-11-12-r515`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Staff impact: teachers open the lesson feedback and add homework files. Teaching operations can find the feedback by student and lesson date, check file visibility and publish once uploads are complete. Parents can browse homework in Feedback in the updated mini program.
+- Verification: isolated browser and API checks for upload, retry, review, history filters and private downloads. WeChat development upload and channel status are tracked separately in the mini program release ledger.
+
+---
+
+## 2026-11-11-r514
+
+- Release ID: `2026-11-11-r514`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Staff impact: open Package Billing and read the This renewal section. An approved noncash payment shows the relevant invoice or contract action. A verified cash payment can open the cash renewal exception.
+- Verification: PayNow and cash fixtures covered approved and pending receipts, missing payment records, existing cash requests and confirmation of actual posted hours. See `docs/tasks/TASK-20261111-renewal-payment-clarity.md`.
+
+---
+
+## 2026-11-11-r513
+
+- Release ID: `2026-11-11-r513`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Staff impact: open Admin → Students & Teaching → Classroom Reservations using a management or teaching operations account. Teacher leads can continue from Lead Desk.
+- Verification: role-based menu and page access, shared booking create and edit flow, and restricted account checks. See `docs/tasks/TASK-20261111-admin-room-reservations.md`.
+
+---
+
+## 2026-11-11-r512
+
+- Release ID: `2026-11-11-r512`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Staff impact: choose Edit booking in the list, confirm the booking shown at the top of the edit panel, and select Save changes or Cancel editing. The list shows the save confirmation.
+- Verification: browser checks at 1532 × 867 and 820 × 615, plus isolated booking reads and writes. See `docs/tasks/TASK-20261111-room-booking-edit.md`.
+
+---
+
+## 2026-11-10-r511
+
+- Release ID: `2026-11-10-r511`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Staff impact: Final Reports → Manage learning periods. The academic coordinator checks the credit and actual teaching dates, links a saved draft or assigns a new one, then reviews the submitted report. The teacher can download the approved parent PDF.
+- Verification: a synthetic early renewal left a positive package balance. Both periods had different report IDs and attendance totals. The original bilingual PDF stayed byte-identical after the second report was submitted. Details in `docs/tasks/TASK-20261110-final-report-periods.md`.
+- Open risk: teaching boundaries for historical renewals require staff confirmation. The release does not guess dates, attach real drafts or send parent messages.
+
+---
+
+## 2026-11-10-r510
+
+- Release ID: `2026-11-10-r510`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Staff impact: the existing bilingual edition and approved PDF workflow now accepts renewal progress reports created from saved final drafts.
+- Verification: isolated end-to-end approval and teacher PDF download. See `docs/tasks/TASK-20261110-renewal-parent-edition-constraint.md`.
+- Open risk: the original r509 includes the conversion UI. r510 is required for the PDF path on databases with the older constraint.
+
+---
+
+## 2026-11-10-r509
+
+- Release ID: `2026-11-10-r509`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Staff impact: open an assigned final report with a saved summary and choose “用现有草稿生成阶段学习报告”. Verify the copied content, submit to the coordinator, and download the approved parent PDF from the teacher's renewal report page.
+- Verification: 18 focused tests, isolated PostgreSQL concurrency and ownership checks, production build and guarded release. Details in `docs/tasks/TASK-20261110-final-draft-progress.md`.
+- Open risk: a missing or ambiguous renewal task requires coordinator review. Existing progress drafts are preserved and the formal final-report gate stays at zero balance.
+
+---
+
 ## 2026-11-09-r508
 
 - Release ID: `2026-11-09-r508`

@@ -6,7 +6,9 @@ import { getLang, t } from "@/lib/i18n";
 import { getParentReceiptApprovalMap } from "@/lib/parent-receipt-approval";
 import { prisma } from "@/lib/prisma";
 import { getReceiptApprovalStatus } from "@/lib/receipt-approval-policy";
-import { hasDedicatedCashPaymentRecord, isCashReceipt, renewalExceptionSnapshot } from "@/lib/renewal-signature-exception";
+import { isCashReceipt, renewalExceptionSnapshot } from "@/lib/renewal-signature-exception";
+import { loadRenewalPaymentOverview } from "@/lib/renewal-payment-overview";
+import { cashPaymentInstruction, renewalPaymentLabel } from "../../../_components/RenewalPaymentSummary";
 import { listParentBillingForPackage } from "@/lib/student-parent-billing";
 import { buildStudentContractSignPath } from "@/lib/student-contract";
 import { activateExceptionAction, requestExceptionAction, resendExceptionSignLinkAction, reviewExceptionAction } from "./actions";
@@ -33,22 +35,26 @@ export default async function RenewalSignatureExceptionPage({ params, searchPara
   const canManager = isRoleApprover(actor.email, roles.managerApproverEmails);
   const exception = contract.renewalSignatureException;
   const details = renewalExceptionSnapshot(contract.contractSnapshotJson);
-  const otherLinks = await prisma.studentContract.findMany({ where: { packageId, invoiceId: { in: billing.invoices.map(item => item.id) }, id: { not: contract.id }, status: { not: "VOID" } }, select: { invoiceId: true } });
-  const linkedIds = new Set(otherLinks.map(item => item.invoiceId));
-  const candidates = billing.invoices.filter(item => item.studentId === contract.studentId &&
-    Math.round(item.totalAmount * 100) === details.feeCents &&
-    new Date(item.createdAt).getTime() >= contract.createdAt.getTime() - 7 * 86400000 &&
-    !linkedIds.has(item.id));
-  const receiptIds = billing.receipts.map(item => item.id);
-  const approvals = await getParentReceiptApprovalMap(receiptIds);
-  const invoiceCashReady = (invoiceId: string) => {
-    const rows = billing.receipts.filter(item => item.invoiceId === invoiceId && getReceiptApprovalStatus(approvals.get(item.id), roles) === "COMPLETED");
-    return rows.length > 0 && rows.every(item => isCashReceipt(item.paidBy) && hasDedicatedCashPaymentRecord({ receipt: item, paymentRecords: billing.paymentRecords, allReceipts: billing.receipts, packageId, studentId: contract.studentId, contractCreatedAt: contract.createdAt })) && rows.reduce((sum, item) => sum + Math.round(item.amountReceived * 100), 0) === details.feeCents;
-  };
+  const billingHref = `/admin/packages/${encodeURIComponent(packageId)}/billing`;
+  const approvals = await getParentReceiptApprovalMap(billing.receipts.map(item => item.id));
+  const overview = await loadRenewalPaymentOverview({
+    contract: { ...contract, contractSnapshot: details.snapshot }, billing, roles, approvals,
+    packageType: contract.package.type, packageStatus: contract.package.status, settlementMode: contract.package.settlementMode,
+  });
+  const currentPayment = overview?.current;
+  if (!exception && currentPayment?.cashStatus === "NON_CASH") {
+    return <main style={{ maxWidth: 800, margin: "24px auto", ...card }}>
+      <h1 style={{ margin: 0 }}>{t(lang, "Renewal payment", "续费付款")}</h1>
+      <strong>{currentPayment.invoice.invoiceNo} · {renewalPaymentLabel(lang, currentPayment)}</strong>
+      <p style={{ margin: 0 }}>{t(lang, "Cash exceptions are for cash payments. Open Package Billing to see the next step for this renewal.", "现金例外仅适用于现金付款。请回到课包账单查看本次续费的下一步。")}</p>
+      <Link href={billingHref}>{t(lang, "Back to Package Billing", "返回课包账单")}</Link>
+    </main>;
+  }
+  const candidates = overview?.cashCandidates ?? [];
+  const readyCandidates = candidates.filter(item => item.cashStatus === "READY");
   const approvedCash = billing.receipts.filter(item => item.invoiceId === exception?.invoiceId && isCashReceipt(item.paidBy) && getReceiptApprovalStatus(approvals.get(item.id), roles) === "COMPLETED");
   const approvedCashCents = approvedCash.reduce((sum, item) => sum + Math.round(item.amountReceived * 100), 0);
-  const cashReady = Boolean(exception && invoiceCashReady(exception.invoiceId));
-  const readyCandidates = candidates.filter(item => invoiceCashReady(item.id));
+  const cashReady = currentPayment?.invoice.id === exception?.invoiceId && currentPayment?.cashStatus === "READY";
   const signed = Boolean(contract.signedAt);
   const signPath = contract.signToken ? buildStudentContractSignPath(contract.signToken) : null;
   const signExpired = Boolean(contract.signExpiresAt && contract.signExpiresAt.getTime() < Date.now());
@@ -58,7 +64,7 @@ export default async function RenewalSignatureExceptionPage({ params, searchPara
   return <main style={{ maxWidth: 1040, margin: "20px auto", padding: 16, display: "grid", gap: 16 }}>
     <section style={card}>
       <a href={`/admin/packages/${encodeURIComponent(packageId)}/${actor.role === "FINANCE" ? "billing" : "contract"}`}>← {actor.role === "FINANCE" ? t(lang, "Back to Package Billing", "返回课包账单") : t(lang, "Back to contract", "返回合同")}</a>
-      <h1 style={{ margin: 0 }}>{t(lang, "Paid renewal with parent signature pending", "已核款、待家长补签的续费例外")}</h1>
+      <h1 style={{ margin: 0 }}>{t(lang, "Cash renewal exception", "现金续费例外")}</h1>
       <p>{contract.package.student.name} · {details.topUpMinutes / 60}h · SGD {(details.feeCents / 100).toFixed(2)} · {t(lang, "Contract", "合同")} {contract.id}</p>
       <p>{t(lang, "Agreement status", "合同状态")}: {signed ? t(lang, "Parent signed", "家长已签署") : t(lang, "Parent e-signature pending", "家长电子签名待完成")} · {t(lang, "Exception status", "例外状态")}: {exception?.status || t(lang, "Not requested", "未申请")}</p>
       <p>{t(lang, "Payment does not mark the agreement as signed. Only the authorised Finance account can activate this exceptional renewal after current management approval and verified full cash receipts.", "付款不会把合同标记为已签署。只有指定财务账号在本次管理审批和足额现金收据核准后，才能例外激活续费。")}</p>
@@ -81,7 +87,7 @@ export default async function RenewalSignatureExceptionPage({ params, searchPara
       <details open={!managerView}>
       <summary style={{ cursor: "pointer", fontWeight: 700 }}>{t(lang, "1. Finance requests approval", "1. 财务提交例外申请")}{managerView ? ` — ${exception && exception.status !== "REJECTED" ? t(lang, "Submitted · view details", "已提交 · 查看详情") : t(lang, "Awaiting Finance · view details", "等待财务提交 · 查看详情")}` : ""}</summary>
       <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-      <p>{t(lang, "Choose a new invoice for this exact renewal. Old invoices already linked to earlier signed contracts cannot be used. Create the invoice and cash receipt in Package Billing first.", "请选择本次续费的新发票。已关联旧签约合同的发票不能重复使用；请先在课包账单建立本次发票与现金收据。")}</p>
+      <p>{t(lang, "Select this renewal’s invoice after the cash receipt is approved and linked to its payment record.", "请先审批本次续费的现金收据并关联对应付款记录，再选择本次发票。")}</p>
       {exception?.status === "APPROVED" ? <p style={{ color: "#92400e" }}>{t(lang, "Submitting a revised request cancels the previous management approval.", "重新提交申请会撤销上一次管理审批，须重新审核。")}</p> : null}
       <Link href={`/admin/packages/${encodeURIComponent(packageId)}/billing`}>{t(lang, "Open Package Billing", "打开课包账单")}</Link>
       {!canFinance && !canManager && !signed ? <div role="status" style={{ border: "1px solid #fcd34d", background: "#fffbeb", borderRadius: 8, padding: 12 }}>
@@ -91,11 +97,19 @@ export default async function RenewalSignatureExceptionPage({ params, searchPara
         <Link href="/admin/logout">{t(lang, "Log out to switch account", "退出并切换账号")}</Link>
       </div> : null}
       {canFinance && !signed ? <form action={requestExceptionAction} style={{ display: "grid", gap: 10 }}>{fields}
-        <select name="invoiceId" required defaultValue={exception?.invoiceId || ""}><option value="">{t(lang, "Select current renewal invoice", "选择本次续费发票")}</option>{candidates.map(item => <option key={item.id} value={item.id} disabled={!invoiceCashReady(item.id)}>{item.invoiceNo} · SGD {item.totalAmount.toFixed(2)}{invoiceCashReady(item.id) ? "" : ` · ${t(lang, "cash verification pending", "现金核验未完成")}`}</option>)}</select>
+        <select name="invoiceId" required defaultValue={exception?.invoiceId || ""}>
+          <option value="">{t(lang, "Select current renewal invoice", "选择本次续费发票")}</option>
+          {candidates.map(({ invoice, cashStatus }) => cashStatus === "NON_CASH" ? null : (
+            <option key={invoice.id} value={invoice.id} disabled={cashStatus !== "READY"}>
+              {invoice.invoiceNo} · SGD {invoice.totalAmount.toFixed(2)}
+              {cashStatus === "READY" ? "" : ` · ${cashPaymentInstruction(lang, cashStatus)}`}
+            </option>
+          ))}
+        </select>
         <textarea name="reason" required minLength={20} maxLength={2000} rows={4} placeholder={t(lang, "Explain the cash payment, why signing is pending, and how the parent will be followed up.", "写明本次现金付款、未签原因，以及家长补签安排。")}/>
-        <button disabled={!readyCandidates.length}>{t(lang, "Submit or update management request", "提交或更新管理审批申请")}</button>
+        <button disabled={!readyCandidates.length || signExpired}>{t(lang, "Submit or update management request", "提交或更新管理审批申请")}</button>
       </form> : null}
-      {!candidates.length ? <p role="status" style={{ color: "#b45309" }}>{t(lang, "No eligible invoice for this renewal has been found.", "目前没有找到属于这次续费的合格发票。")}</p> : null}
+      {!candidates.length ? <p role="status" style={{ color: "#b45309" }}>{t(lang, "Open Package Billing to check the invoice and payment for this renewal.", "请到课包账单核对本次续费的发票和付款。")}</p> : null}
       {exception?.managerRejectReason ? <p>{t(lang, "Previous rejection", "上次退回原因")}: {exception.managerRejectReason}</p> : null}
       </div>
       </details>

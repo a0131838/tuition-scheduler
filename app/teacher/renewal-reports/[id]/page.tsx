@@ -7,11 +7,11 @@ import { prisma } from "@/lib/prisma";
 import { parseRenewalReportDraft, parseRenewalSnapshot, renewalReportFields } from "@/lib/renewal-progress-report";
 import { saveRenewalProgressReport } from "../actions";
 
-export default async function TeacherRenewalReportPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ saved?: string }> }) {
+export default async function TeacherRenewalReportPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ saved?: string; fromFinal?: string }> }) {
   const { teacher } = await requireTeacherProfile();
   const lang = await getLang();
   const { id } = await params;
-  const { saved } = await searchParams;
+  const { saved, fromFinal } = await searchParams;
   const row = await prisma.renewalProgressReport.findFirst({ where: { id, teacherId: teacher.id }, include: { student: { select: { name: true } }, package: { include: { course: { select: { name: true } } } } } });
   if (!row) notFound();
   const draft = parseRenewalReportDraft(row.reportJson);
@@ -21,6 +21,7 @@ export default async function TeacherRenewalReportPage({ params, searchParams }:
   return <main style={{ maxWidth: 1050, margin: "24px auto", padding: 16, display: "grid", gap: 16 }}>
     <Link href="/teacher/renewal-reports">← {t(lang, "All renewal reports", "返回续费报告列表")}</Link>
     <section style={card}><h1>{t(lang, "Learning Progress Before Renewal", "续费前学习进展报告")}</h1><p>{row.student.name} · {row.package.course.name} · {row.status}</p><p>{t(lang, "Package at assignment", "指派时课包情况")}: {snapshot.packageType === "MONTHLY" ? `${t(lang, "Valid to", "有效至")} ${snapshot.validTo || "-"}` : `${(snapshot.remainingMinutes / 60).toFixed(2)}h / ${(snapshot.totalMinutes / 60).toFixed(2)}h`} · {t(lang, "Attended lessons", "实际出勤课次")}: {snapshot.sessionCount}</p><p>{t(lang, "This snapshot is fixed. Later renewals or top-ups do not change it.", "此快照已固定，后续续费或充值不会改动。")}</p></section>
+    {fromFinal === "1" ? <p role="status">{t(lang, "Progress report opened. Check that the observations describe the period covered, add a concrete lesson example if needed, then submit to the coordinator.", "已打开阶段学习报告。请核对内容是否符合本阶段，必要时补充具体课堂例子，然后提交教务审核。")}</p> : null}
     {row.reviewNote ? <section style={{ ...card, borderColor: "#f59e0b" }}><strong>{t(lang, "Coordinator requested changes", "教务退回修改")}</strong><p>{row.reviewNote}</p></section> : null}
     <form action={saveRenewalProgressReport} style={{ ...card, display: "grid", gap: 15 }}>
       <input type="hidden" name="reportId" value={row.id} />

@@ -75,10 +75,12 @@ export async function loadParentReportSource(
             teacher: true,
             course: true,
             subject: true,
+            reportPeriod: { select: { startsAt: true, endsAt: true } },
           },
         });
   if (!row || row.status === "EXEMPT")
     throw new ParentReportError("NOT_FOUND", 404);
+  const period = "reportPeriod" in row ? row.reportPeriod : null;
   const attendance =
     parseLearningReportAttendanceSnapshot(row.reportJson) ??
     (await createLearningReportAttendanceSnapshot({
@@ -86,8 +88,9 @@ export async function loadParentReportSource(
       studentId: row.studentId,
       teacherId: row.teacherId,
       subjectId: row.subjectId,
-      throughAt: row.submittedAt ?? row.assignedAt,
-    }));
+      fromAt: period?.startsAt,
+      throughAt: period?.endsAt ?? row.submittedAt ?? row.assignedAt,
+    }, db));
   const raw =
     kind === "FINAL"
       ? {

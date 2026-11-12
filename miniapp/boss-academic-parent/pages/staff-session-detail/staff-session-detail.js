@@ -103,10 +103,11 @@ Page({
     feedbackReviewNote: "",
     feedbackAttachments: [],
     pendingFeedbackAttachments: [],
-    attachmentVisibility: "PARENT",
-    attachmentVisibilityIndex: 0,
-    attachmentVisibilityText: "家长可见",
-    attachmentVisibilityOptions: ["家长可见", "仅员工可见"],
+    attachmentAudienceIndex: 0,
+    attachmentAudiences: [],
+    attachmentAudienceLabels: [],
+    attachmentAudienceSelected: false,
+    pendingHomeworkUploadCount: 0,
     feedbackDraftRestored: false,
     attachmentUploading: false,
     submitDisabled: false,
@@ -243,7 +244,17 @@ Page({
         const defaults = schedulingDefaults(session, this.data.scheduleAction);
         const canRequestReschedule = canTeachSession && Boolean(session && session.startAt && new Date(session.startAt).getTime() > Date.now());
         const cancellationStudents = session && session.students ? session.students : [];
+        const audiences = cancellationStudents.map(student => ({ mode: "student", studentId: student.id, label: student.name + "的家长" }));
+        if (session && session.groupLesson) {
+          audiences.unshift({ mode: "", label: "请选择" });
+          if (cancellationStudents.length) audiences.push({ mode: "class", label: "本节班课家长" });
+        }
+        audiences.push({ mode: "internal", label: "仅员工可见" });
         this.setData({
+          attachmentAudiences: audiences,
+          attachmentAudienceLabels: audiences.map(option => option.label),
+          attachmentAudienceIndex: 0,
+          attachmentAudienceSelected: Boolean(audiences[0].mode),
           session,
           sessionTeacherName: session && session.teacherName ? session.teacherName : "-",
           sessionStudentText: session && session.studentText ? session.studentText : "-",
@@ -293,6 +304,7 @@ Page({
                   feedbackReviewStatusText: feedback.reviewStatus === "PUBLISHED" ? "教务已审核并发布给家长" : feedback.reviewStatus === "RETURNED" ? "教务已退回，请按原因补充后重新提交" : feedback.submittedAt ? "已提交，等待教务审核" : "",
                   feedbackReviewNote: feedback.reviewNote || "",
                   feedbackAttachments: feedback.attachments || [],
+                  pendingHomeworkUploadCount: feedback.pendingHomeworkUploadCount || 0,
                   feedbackDraftRestored: Boolean(useDraft),
                   submitDisabled: false
                 });
@@ -1053,70 +1065,105 @@ Page({
     }, () => this.saveFeedbackDraft());
   },
 
-  changeAttachmentVisibility(e) {
+  setNoHomework() {
+    this.setData({ homework: "Not Set / 本节未布置作业" }, () => this.saveFeedbackDraft());
+  },
+
+  changeAttachmentAudience(e) {
     const index = Number(e.detail.value || 0);
-    this.setData({ attachmentVisibilityIndex: index, attachmentVisibility: index === 1 ? "INTERNAL" : "PARENT", attachmentVisibilityText: index === 1 ? "仅员工可见" : "家长可见" });
+    const audience = this.data.attachmentAudiences[index];
+    this.setData({ attachmentAudienceIndex: index, attachmentAudienceSelected: Boolean(audience && audience.mode) });
   },
 
   addPendingAttachments(files) {
+    const audience = this.data.attachmentAudiences[this.data.attachmentAudienceIndex];
+    if (!audience || !audience.mode || this.data.saving) return;
     const remaining = Math.max(0, 9 - this.data.feedbackAttachments.length - this.data.pendingFeedbackAttachments.length);
-    const rows = (files || []).slice(0, remaining).map((file) => ({
+    if (files.length > remaining) {
+      api.toast("每节课最多上传 9 个作业文件");
+      return;
+    }
+    if (files.some(file => file.size === 0 || file.size > 15 * 1024 * 1024)) {
+      api.toast("每个文件须大于 0 且不超过 15 MB");
+      return;
+    }
+    const rows = files.map((file) => ({
+      key: Date.now().toString(36) + "_" + Math.random().toString(36).slice(2) + "_" + Math.random().toString(36).slice(2),
       path: file.tempFilePath || file.path,
-      name: file.name || fileLabel(file.tempFilePath || file.path, "作业附件"),
-      visibility: this.data.attachmentVisibility,
-      visibilityText: this.data.attachmentVisibility === "INTERNAL" ? "仅员工可见" : "家长可见"
-    })).filter((file) => file.path);
+      name: file.name || fileLabel(file.tempFilePath || file.path, "作业电子版"),
+      audience: audience.mode,
+      studentId: audience.studentId || "",
+      label: audience.label
+    })).filter(file => file.path);
     this.setData({ pendingFeedbackAttachments: this.data.pendingFeedbackAttachments.concat(rows) });
-    if (!remaining) api.toast("最多上传 9 个附件");
   },
 
   chooseFeedbackImages() {
-    wx.chooseMedia({ count: 9, mediaType: ["image"], sourceType: ["album", "camera"], success: (res) => this.addPendingAttachments(res.tempFiles || []) });
+    wx.chooseMedia({ count: 9, sizeType: ["compressed"], mediaType: ["image"], sourceType: ["album", "camera"], success: (res) => this.addPendingAttachments(res.tempFiles || []) });
   },
 
   chooseFeedbackFiles() {
-    wx.chooseMessageFile({ count: 9, type: "all", success: (res) => this.addPendingAttachments(res.tempFiles || []) });
+    wx.chooseMessageFile({ count: 9, type: "file", extension: ["pdf", "doc", "docx"], success: (res) => this.addPendingAttachments(res.tempFiles || []) });
   },
 
   removePendingAttachment(e) {
-    const index = Number(e.currentTarget.dataset.index || 0);
-    const rows = this.data.pendingFeedbackAttachments.slice();
-    rows.splice(index, 1);
-    this.setData({ pendingFeedbackAttachments: rows });
+    if (this.data.saving) return;
+    const key = e.currentTarget.dataset.key;
+    this.setData({ pendingFeedbackAttachments: this.data.pendingFeedbackAttachments.filter(row => row.key !== key) });
   },
 
   openFeedbackAttachment(e) {
     const row = this.data.feedbackAttachments[Number(e.currentTarget.dataset.index || 0)];
     if (!row) return;
-    api.openStaffDocument(row.viewUrl, row.name).catch((err) => api.toast(err.message));
+    api.openStaffDocument(row.viewUrl, row.name, row.mimeType).catch((err) => api.toast(err.message));
   },
 
   deleteFeedbackAttachment(e) {
     const row = this.data.feedbackAttachments[Number(e.currentTarget.dataset.index || 0)];
-    if (!row) return;
-    wx.showModal({ title: "删除附件", content: "只允许在反馈发布前删除。删除后会保留操作日志。", success: (res) => {
-      if (!res.confirm) return;
-      api.requestStaff(row.viewUrl, { method: "DELETE" }).then(() => this.load()).catch((err) => api.toast(err.message));
+    if (!row || this.data.saving) return;
+    wx.showModal({ title: "删除附件", content: "删除后会保留操作日志。", success: (res) => {
+      if (!res.confirm || this.data.saving) return;
+      this.setData({ saving: true });
+      api.requestStaff(row.viewUrl, { method: "DELETE" })
+        .then(() => this.setData({ feedbackAttachments: this.data.feedbackAttachments.filter(file => file.id !== row.id) }))
+        .catch((err) => api.toast(err.message))
+        .finally(() => this.setData({ saving: false }));
     }});
   },
 
-  uploadPendingFeedbackAttachments() {
+  async uploadPendingFeedbackAttachments(feedbackId) {
     const rows = this.data.pendingFeedbackAttachments.slice();
-    if (!rows.length) return Promise.resolve();
-    this.setData({ attachmentUploading: true });
-    let chain = Promise.resolve();
-    rows.forEach((row) => {
-      chain = chain.then(() => api.uploadStaffForm(
-        "/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/feedback/attachments",
-        row.path,
-        "file",
-        { visibility: row.visibility }
-      ));
-    });
-    return chain.then(() => this.setData({ pendingFeedbackAttachments: [] })).finally(() => this.setData({ attachmentUploading: false }));
+    if (!rows.length) return 0;
+    this.setData({ attachmentUploading: true, pendingHomeworkUploadCount: rows.length });
+    let failures = 0;
+    try {
+      for (const row of rows) {
+        try {
+          const data = await api.uploadStaffForm(
+            "/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/feedback/attachments",
+            row.path, "file",
+            { feedbackId, uploadKey: row.key, audience: row.audience, studentId: row.studentId, fileName: row.name }
+          );
+          if (!data.attachment) throw new Error("未收到上传确认");
+          const files = this.data.feedbackAttachments;
+          this.setData({
+            feedbackAttachments: files.some(file => file.id === data.attachment.id) ? files : files.concat(data.attachment),
+            pendingFeedbackAttachments: this.data.pendingFeedbackAttachments.filter(file => file.key !== row.key),
+            pendingHomeworkUploadCount: Math.max(0, this.data.pendingHomeworkUploadCount - 1)
+          });
+        } catch (err) {
+          failures++;
+          this.setData({ pendingFeedbackAttachments: this.data.pendingFeedbackAttachments.map(file =>
+            file.key === row.key ? Object.assign({}, file, { error: err.message || "上传失败" }) : file) });
+        }
+      }
+      return failures;
+    } finally {
+      this.setData({ attachmentUploading: false });
+    }
   },
 
-  submit() {
+  async submit() {
     if (this.data.saving) return;
     const parentFeedbackSections = {};
     let missing = "";
@@ -1137,6 +1184,16 @@ Page({
       return;
     }
 
+    if (this.data.pendingHomeworkUploadCount > this.data.pendingFeedbackAttachments.length) {
+      const confirmed = await new Promise(resolve => wx.showModal({
+        title: "还有文件待补传",
+        content: "只提交本次已选的文件？",
+        confirmText: "继续提交",
+        success: result => resolve(result.confirm),
+        fail: () => resolve(false)
+      }));
+      if (!confirmed || this.data.saving) return;
+    }
     this.setData({ saving: true, submitDisabled: true });
     api.requestStaff("/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/feedback", {
       method: "POST",
@@ -1144,18 +1201,25 @@ Page({
         focusStudentName: this.data.focusStudentName,
         parentFeedbackSections,
         homework: this.data.homework,
-        previousHomeworkDone: this.data.previousHomeworkDone
+        previousHomeworkDone: this.data.previousHomeworkDone,
+        homeworkUploadIds: this.data.pendingFeedbackAttachments.map(row => row.key)
       }
     })
-      .then((data) => this.uploadPendingFeedbackAttachments().then(() => data))
-      .then((data) => {
+      .then(async (data) => {
+        this.setData({ feedbackReviewStatus: "PENDING_REVIEW", feedbackReviewStatusText: "已保存，待教务审核" });
+        const failures = await this.uploadPendingFeedbackAttachments(data.feedbackId);
+        if (failures) {
+          api.toast("还有 " + failures + " 个作业文件待重试");
+          return;
+        }
+        this.setData({ pendingHomeworkUploadCount: 0 });
         wx.removeStorageSync(feedbackDraftKey(this.data.sessionId));
         this.setData({ feedbackDraftRestored: false });
-        wx.showModal({ title: "反馈已提交", content: "业务编号：" + (data.feedbackId || "已生成") + "\n反馈和附件已进入教务审核。教务发布后仍会人工发送到家长微信群。", showCancel: false });
+        wx.showModal({ title: "已提交课后反馈", content: "教务审核发布后，家长可在小程序查看。", showCancel: false });
         return this.load();
       })
       .catch((err) => {
-        api.toast(err.message + "；草稿和待上传附件已保留，可重新提交");
+        api.toast(err.message + "；请检查后重试");
       })
       .finally(() => this.setData({ saving: false, submitDisabled: false }));
   }

@@ -97,6 +97,7 @@ export function miniappStaffSessionDto(session: MiniappStaffSessionContext) {
   return {
     id: session.id,
     classId: session.classId,
+    groupLesson: session.class.capacity !== 1,
     courseLabel: miniappStaffSessionCourseLabel(session),
     startAt: session.startAt.toISOString(),
     endAt: session.endAt.toISOString(),

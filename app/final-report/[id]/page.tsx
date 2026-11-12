@@ -1,3 +1,4 @@
+import { isLearningReportApprovedForDelivery } from "@/lib/learning-report-delivery";
 import ParentReportReadView from '@/app/_components/ParentReportReadView';
 import {currentParentEdition} from '@/lib/learning-report-parent-editions';
 import {validateParentReportContent} from '@/lib/learning-report-parent-content';
@@ -104,6 +105,7 @@ export default async function FinalReportSharePage({
       course: true,
       subject: true,
       package: true,
+      reportPeriod: { select: { startsAt: true, endsAt: true } },
     },
   });
 
@@ -113,6 +115,7 @@ export default async function FinalReportSharePage({
     report!.shareToken === token &&
     Boolean(report!.shareEnabledAt) &&
     !report!.shareRevokedAt &&
+    (!report!.reportPeriodId || isLearningReportApprovedForDelivery(report!.reportJson)) &&
     (!report!.shareExpiresAt || report!.shareExpiresAt.getTime() > Date.now());
 
   if (!shareIsValid || !report) {
@@ -143,7 +146,8 @@ export default async function FinalReportSharePage({
       studentId: report.studentId,
       subjectId: report.subjectId,
       teacherId: report.teacherId,
-      throughAt: report.submittedAt ?? new Date(),
+      fromAt: report.reportPeriod?.startsAt,
+      throughAt: report.reportPeriod?.endsAt ?? report.submittedAt ?? new Date(),
     }));
 
   const viewedAt = new Date();

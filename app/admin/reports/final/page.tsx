@@ -1,7 +1,8 @@
 import FinalReportAssignmentForm from "@/app/admin/_components/FinalReportAssignmentForm";
 import crypto from "crypto";
 import type { Prisma } from "@prisma/client";
-import { requireAdmin } from "@/lib/auth";
+import { isManagerUser, requireAdmin } from "@/lib/auth";
+import { finalReportPeriodsUrl } from "@/lib/final-report-periods";
 import { formatBusinessDateTime, formatBusinessDateOnly } from "@/lib/date-only";
 import { approveLearningReportForDelivery, deliverApprovedLearningReport, learningReportDeliveryApproval, revokeLearningReportDeliveryApproval } from "@/lib/learning-report-delivery";
 import { FINAL_REPORT_DELIVERY_CHANNELS, FINAL_REPORT_EXEMPT_REASONS, FINAL_REPORT_SHARE_DURATION_DAYS, loadFinalReportCandidates, parseDeliveryChannel, parseExemptReason, parseFinalReportDraft, parseFinalReportMeta, parseShareDurationDays } from "@/lib/final-report";
@@ -142,73 +143,82 @@ async function assignFinalReport(formData: FormData): Promise<string> {
   const stage = String(formData.get("stage") ?? "READY");
   if (!packageId || !studentId || !teacherId) return finalDeskResultUrl(formData.get("_returnTo"), "err", "missing");
 
-  const pkg = await prisma.coursePackage.findUnique({
-    where: { id: packageId },
-    include: { sharedStudents: { select: { studentId: true } } },
-  });
-  if (!pkg || pkg.type !== "HOURS" || pkg.status !== "ACTIVE") return finalDeskResultUrl(formData.get("_returnTo"), "err", "pkg");
-  if (stage === "PREPARATION") {
-    if (!isFinalReportPreparationDue(pkg.totalMinutes, pkg.remainingMinutes)) return finalDeskResultUrl(formData.get("_returnTo"), "err", "not-due");
-  } else if (stage !== "READY" || !isFinalReportSubmissionDue(pkg.remainingMinutes)) {
-    return finalDeskResultUrl(formData.get("_returnTo"), "err", "not-due");
-  }
-  const teacherExists = await prisma.teacher.findUnique({ where: { id: teacherId }, select: { id: true } });
-  if (!teacherExists) return finalDeskResultUrl(formData.get("_returnTo"), "err", "teacher");
-  const accessibleStudentIds = new Set([pkg.studentId, ...pkg.sharedStudents.map((row) => row.studentId)]);
-  if (!accessibleStudentIds.has(studentId)) return finalDeskResultUrl(formData.get("_returnTo"), "err", "student");
-
-  const latestAttendance = await prisma.attendance.findFirst({
-    where: { packageId, studentId, session: { OR: [{ teacherId }, { teacherId: null, class: { teacherId } }] } },
-    orderBy: { session: { startAt: "desc" } },
-    include: { session: { include: { class: { select: { subjectId: true } } } } },
-  });
-  const subjectId = latestAttendance?.session.class.subjectId ?? null;
-
-  const latestForTeacher = await prisma.finalReport.findFirst({
-    where: { packageId, teacherId, studentId },
-    orderBy: { createdAt: "desc" },
-  });
-
-  if (latestForTeacher?.status === "SUBMITTED" || latestForTeacher?.status === "FORWARDED") {
-    return finalDeskResultUrl(formData.get("_returnTo"), "ok", "exists");
-  }
-
-  if (latestForTeacher?.status === "EXEMPT") {
-    return finalDeskResultUrl(formData.get("_returnTo"), "ok", "exempt");
-  }
-
-  let assignedReportId: string;
-  if (latestForTeacher?.status === "ASSIGNED") {
-    const assigned = await prisma.finalReport.update({
-      where: { id: latestForTeacher.id },
-      data: {
-        subjectId,
-        assignedByUserId: user.id,
-        assignedAt: new Date(),
-        submittedAt: null,
-        forwardedAt: null,
-      },
+  const result = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "CoursePackage" WHERE id = ${packageId} FOR NO KEY UPDATE`;
+    if (await tx.finalReportPeriod.findFirst({ where: { packageId, studentId }, select: { id: true } })) {
+      return { url: finalDeskResultUrl(formData.get("_returnTo"), "err", "use-periods") };
+    }
+    const pkg = await tx.coursePackage.findUnique({
+      where: { id: packageId },
+      include: { sharedStudents: { select: { studentId: true } } },
     });
-    assignedReportId = assigned.id;
-  } else {
-    const assigned = await prisma.finalReport.create({
-      data: {
-        status: "ASSIGNED",
-        studentId,
-        teacherId,
-        courseId: pkg.courseId,
-        subjectId,
-        packageId: pkg.id,
-        assignedByUserId: user.id,
-        reportPeriodLabel: null,
-      },
+    if (!pkg || pkg.type !== "HOURS" || pkg.status !== "ACTIVE") return finalDeskResultUrl(formData.get("_returnTo"), "err", "pkg");
+    if (stage === "PREPARATION") {
+      if (!isFinalReportPreparationDue(pkg.totalMinutes, pkg.remainingMinutes)) return finalDeskResultUrl(formData.get("_returnTo"), "err", "not-due");
+    } else if (stage !== "READY" || !isFinalReportSubmissionDue(pkg.remainingMinutes)) {
+      return finalDeskResultUrl(formData.get("_returnTo"), "err", "not-due");
+    }
+    const teacherExists = await tx.teacher.findUnique({ where: { id: teacherId }, select: { id: true } });
+    if (!teacherExists) return finalDeskResultUrl(formData.get("_returnTo"), "err", "teacher");
+    const accessibleStudentIds = new Set([pkg.studentId, ...pkg.sharedStudents.map((row) => row.studentId)]);
+    if (!accessibleStudentIds.has(studentId)) return finalDeskResultUrl(formData.get("_returnTo"), "err", "student");
+
+    const latestAttendance = await tx.attendance.findFirst({
+      where: { packageId, studentId, session: { OR: [{ teacherId }, { teacherId: null, class: { teacherId } }] } },
+      orderBy: { session: { startAt: "desc" } },
+      include: { session: { include: { class: { select: { subjectId: true } } } } },
     });
-    assignedReportId = assigned.id;
-  }
+    const subjectId = latestAttendance?.session.class.subjectId ?? null;
+
+    const latestForTeacher = await tx.finalReport.findFirst({
+      where: { packageId, teacherId, studentId },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (latestForTeacher?.status === "SUBMITTED" || latestForTeacher?.status === "FORWARDED") {
+      return finalDeskResultUrl(formData.get("_returnTo"), "ok", "exists");
+    }
+
+    if (latestForTeacher?.status === "EXEMPT") {
+      return finalDeskResultUrl(formData.get("_returnTo"), "ok", "exempt");
+    }
+
+    let assignedReportId: string;
+    if (latestForTeacher?.status === "ASSIGNED") {
+      const assigned = await tx.finalReport.update({
+        where: { id: latestForTeacher.id },
+        data: {
+          subjectId,
+          assignedByUserId: user.id,
+          assignedAt: new Date(),
+          submittedAt: null,
+          forwardedAt: null,
+        },
+      });
+      assignedReportId = assigned.id;
+    } else {
+      const assigned = await tx.finalReport.create({
+        data: {
+          status: "ASSIGNED",
+          studentId,
+          teacherId,
+          courseId: pkg.courseId,
+          subjectId,
+          packageId: pkg.id,
+          assignedByUserId: user.id,
+          reportPeriodLabel: null,
+        },
+      });
+      assignedReportId = assigned.id;
+    }
+    return { assignedReportId };
+  });
+  if (typeof result === "string") return result;
+  if (result.url) return result.url;
 
   revalidatePath("/admin/reports/final");
   revalidatePath("/teacher/final-reports");
-  return finalDeskResultUrl(formData.get("_returnTo"), "ok", "assigned", assignedReportId);
+  return finalDeskResultUrl(formData.get("_returnTo"), "ok", "assigned", result.assignedReportId);
 }
 
 async function approveFinalReportForDelivery(formData: FormData): Promise<string> {
@@ -216,6 +226,10 @@ async function approveFinalReportForDelivery(formData: FormData): Promise<string
   const user = await requireAdmin();
   const reportId = String(formData.get("reportId") ?? "").trim();
   if (!reportId) return finalDeskResultUrl(formData.get("_returnTo"), "err", "missing");
+  const report = await prisma.finalReport.findUnique({ where: { id: reportId }, select: { reportPeriodId: true } });
+  if (user.isObserver || (report?.reportPeriodId && !(user.role === "ADMIN" || user.operationsAdmin || await isManagerUser(user)))) {
+    return finalDeskResultUrl(formData.get("_returnTo"), "err", "status");
+  }
   try {
     await approveLearningReportForDelivery({ kind: "FINAL", reportId, actor: user });
   } catch {
@@ -280,66 +294,74 @@ async function exemptFinalReport(formData: FormData): Promise<string> {
     });
   } else {
     if (!packageId || !studentId || !teacherId) return finalDeskResultUrl(formData.get("_returnTo"), "err", "missing");
-    const pkg = await prisma.coursePackage.findUnique({
-      where: { id: packageId },
-      include: { sharedStudents: { select: { studentId: true } } },
-    });
-    if (!pkg || pkg.type !== "HOURS") return finalDeskResultUrl(formData.get("_returnTo"), "err", "pkg");
-    const accessibleStudentIds = new Set([pkg.studentId, ...pkg.sharedStudents.map((row) => row.studentId)]);
-    if (!accessibleStudentIds.has(studentId)) return finalDeskResultUrl(formData.get("_returnTo"), "err", "student");
-
-    const latestAttendance = await prisma.attendance.findFirst({
-      where: { packageId, studentId, session: { OR: [{ teacherId }, { teacherId: null, class: { teacherId } }] } },
-      orderBy: { session: { startAt: "desc" } },
-      include: { session: { include: { class: { select: { subjectId: true } } } } },
-    });
-    const subjectId = latestAttendance?.session.class.subjectId ?? null;
-
-    const latestForTeacher = await prisma.finalReport.findFirst({
-      where: { packageId, teacherId, studentId },
-      orderBy: { createdAt: "desc" },
-      select: { id: true, deliveredAt: true },
-    });
-
-    if (latestForTeacher?.id) {
-      if (latestForTeacher.deliveredAt) return finalDeskResultUrl(formData.get("_returnTo"), "err", "status");
-      await prisma.finalReport.update({
-        where: { id: latestForTeacher.id },
-        data: {
-          status: "EXEMPT",
-          exemptReason,
-          exemptedAt: now,
-          exemptedByUserId: user.id,
-          forwardedAt: null,
-          deliveredAt: null,
-          deliveredByUserId: null,
-          deliveryChannel: null,
-          shareToken: null,
-          shareEnabledAt: null,
-          shareExpiresAt: null,
-          shareRevokedAt: null,
-          shareFirstViewedAt: null,
-          shareLastViewedAt: null,
-          shareViewCount: 0,
-        },
+    const errorUrl = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "CoursePackage" WHERE id = ${packageId} FOR NO KEY UPDATE`;
+      if (await tx.finalReportPeriod.findFirst({ where: { packageId, studentId }, select: { id: true } })) {
+        return finalDeskResultUrl(formData.get("_returnTo"), "err", "use-periods");
+      }
+      const pkg = await tx.coursePackage.findUnique({
+        where: { id: packageId },
+        include: { sharedStudents: { select: { studentId: true } } },
       });
-    } else {
-      await prisma.finalReport.create({
-        data: {
-          status: "EXEMPT",
-          studentId,
-          teacherId,
-          courseId: pkg.courseId,
-          subjectId,
-          packageId: pkg.id,
-          assignedByUserId: user.id,
-          reportPeriodLabel: null,
-          exemptReason,
-          exemptedAt: now,
-          exemptedByUserId: user.id,
-        },
+      if (!pkg || pkg.type !== "HOURS") return finalDeskResultUrl(formData.get("_returnTo"), "err", "pkg");
+      const accessibleStudentIds = new Set([pkg.studentId, ...pkg.sharedStudents.map((row) => row.studentId)]);
+      if (!accessibleStudentIds.has(studentId)) return finalDeskResultUrl(formData.get("_returnTo"), "err", "student");
+
+      const latestAttendance = await tx.attendance.findFirst({
+        where: { packageId, studentId, session: { OR: [{ teacherId }, { teacherId: null, class: { teacherId } }] } },
+        orderBy: { session: { startAt: "desc" } },
+        include: { session: { include: { class: { select: { subjectId: true } } } } },
       });
-    }
+      const subjectId = latestAttendance?.session.class.subjectId ?? null;
+
+      const latestForTeacher = await tx.finalReport.findFirst({
+        where: { packageId, teacherId, studentId },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, deliveredAt: true },
+      });
+
+      if (latestForTeacher?.id) {
+        if (latestForTeacher.deliveredAt) return finalDeskResultUrl(formData.get("_returnTo"), "err", "status");
+        await tx.finalReport.update({
+          where: { id: latestForTeacher.id },
+          data: {
+            status: "EXEMPT",
+            exemptReason,
+            exemptedAt: now,
+            exemptedByUserId: user.id,
+            forwardedAt: null,
+            deliveredAt: null,
+            deliveredByUserId: null,
+            deliveryChannel: null,
+            shareToken: null,
+            shareEnabledAt: null,
+            shareExpiresAt: null,
+            shareRevokedAt: null,
+            shareFirstViewedAt: null,
+            shareLastViewedAt: null,
+            shareViewCount: 0,
+          },
+        });
+      } else {
+        await tx.finalReport.create({
+          data: {
+            status: "EXEMPT",
+            studentId,
+            teacherId,
+            courseId: pkg.courseId,
+            subjectId,
+            packageId: pkg.id,
+            assignedByUserId: user.id,
+            reportPeriodLabel: null,
+            exemptReason,
+            exemptedAt: now,
+            exemptedByUserId: user.id,
+          },
+        });
+      }
+      return null;
+    });
+    if (errorUrl) return errorUrl;
   }
 
   revalidatePath("/admin/reports/final");
@@ -412,9 +434,9 @@ async function enableFinalReportShare(formData: FormData): Promise<string> {
 
   const row = await prisma.finalReport.findUnique({
     where: { id: reportId },
-    select: { status: true },
+    select: { status: true, reportPeriodId: true, reportJson: true },
   });
-  if (!row || row.status === "ASSIGNED") return finalDeskResultUrl(formData.get("_returnTo"), "err", "status");
+  if (!row || row.status === "ASSIGNED" || (row.reportPeriodId && !learningReportDeliveryApproval(row.reportJson).approvedAt)) return finalDeskResultUrl(formData.get("_returnTo"), "err", "status");
 
   const now = new Date();
   const shareExpiresAt = new Date(now.getTime() + shareDurationDays * 24 * 60 * 60 * 1000);
@@ -505,11 +527,11 @@ const detailInclude = {
 type DeskReport = Prisma.FinalReportGetPayload<{ include: typeof detailInclude }>;
 const clearDetail = { reportId: "", packageId: "", studentId: "" };
 
-function phaseLabel(report: { status: string; archivedAt: Date | null; deliveredAt: Date | null; reportJson: unknown; package: { remainingMinutes: number | null } }, lang: Lang) {
+function phaseLabel(report: { status: string; archivedAt: Date | null; deliveredAt: Date | null; reportJson: unknown; reportPeriodId: string | null; package: { remainingMinutes: number | null } }, lang: Lang) {
   if (report.archivedAt) return t(lang, "Archived", "已归档");
   if (report.status === "EXEMPT") return t(lang, "Exempt", "无需报告");
   if (report.deliveredAt) return t(lang, "Delivered", "已交付");
-  if (report.status === "ASSIGNED") return Number(report.package.remainingMinutes ?? 0) > 0
+  if (report.status === "ASSIGNED") return !isFinalReportSubmissionDue(report.package.remainingMinutes, report.reportPeriodId)
     ? t(lang, "Draft in progress", "草稿准备中") : t(lang, "Awaiting teacher submission", "待老师提交");
   return report.status === "FORWARDED" || learningReportDeliveryApproval(report.reportJson).approvedAt
     ? t(lang, "Ready for delivery", "待记录交付") : t(lang, "Awaiting review", "待审核");
@@ -547,7 +569,7 @@ export default async function AdminFinalReportCenterPage({ searchParams }: { sea
   p.page = pagination.page;
   const reports = !detailOpen && p.view !== "unassigned" ? await prisma.finalReport.findMany({
     where: finalDeskReportWhere(p), orderBy: [{ assignedAt: "desc" }, { id: "asc" }], skip: pagination.skip, take: pagination.take,
-    select: { id: true, status: true, archivedAt: true, deliveredAt: true, reportJson: true, assignedAt: true,
+    select: { id: true, status: true, archivedAt: true, deliveredAt: true, reportJson: true, assignedAt: true, reportPeriodId: true, reportPeriodLabel: true,
       student: { select: { name: true } }, teacher: { select: { name: true } }, course: { select: { name: true } },
       package: { select: { totalMinutes: true, remainingMinutes: true, validFrom: true } } },
   }) : [];
@@ -568,16 +590,16 @@ export default async function AdminFinalReportCenterPage({ searchParams }: { sea
     archived: t(lang, "Report archived.", "报告已归档。"), restored: t(lang, "Report restored.", "报告已恢复。"),
   };
   return <div className="final-desk">
-    <header className="final-desk-heading"><div><h2>{t(lang, "Final Reports", "结课报告")}</h2><p>{t(lang, "Assign, review and follow up one report at a time.", "分配、审核和跟进，每次处理一份报告。")}</p></div>
+    <header className="final-desk-heading"><div><h2>{t(lang, "Final Reports", "结课报告")}</h2><p>{t(lang, "Assign, review and follow up one report at a time.", "分配、审核和跟进，每次处理一份报告。")}</p><a className="final-desk-primary" href={finalReportPeriodsUrl(p.studentId, p.packageId)}>{t(lang, "Manage learning periods", "管理学习期次")}</a></div>
       <details className="final-desk-help"><summary>{t(lang, "Report guidance", "报告说明")}</summary><div>
-        <p>{t(lang, "Prepare a draft when an active package has 8 hours or less, or 10% or less, remaining. The teacher can submit only once its balance reaches zero.", "课包剩余不超过 8 小时或总量 10% 时，可先安排草稿；余额归零后老师才可正式提交。")}</p>
+        <p>{t(lang, "For a confirmed learning period, the teacher can submit once the period ends. For balance-based reports, prepare a draft at 8 hours or 10% remaining and submit at zero.", "确认已结束的学习期次后，老师即可提交该期报告。按余额管理的报告仍可在剩余不超过 8 小时或 10% 时安排草稿，余额归零时提交。")}</p>
         <p>{t(lang, "For parent discussions before renewal, use the separate renewal progress report.", "续费前需要向家长展示学习进展，请使用独立的续费前学习进展报告。")}</p>
         <a href="/admin/reports/renewal">{t(lang, "Renewal progress reports", "续费前学习进展报告")}</a>
       </div></details>
     </header>
     {ok === "assigned" ? <div id="final-report-assignment-result" role="status" className="final-desk-notice"><strong>{t(lang, "Assigned successfully.", "已成功分配。")}</strong>{noticeReport ? <div>{noticeReport.student.name} → {noticeReport.teacher.name} · {statusLabel(lang, noticeReport.status)}{" "}<a href={finalDeskUrl(p, { ...clearDetail, reportId: noticeReport.id, view: "writing" })}>{t(lang, "View report record", "查看报告记录")}</a></div> : null}</div> : null}
     {ok && messages[ok] ? <div id="final-report-operation-result" role="status" className="final-desk-notice">{messages[ok]}</div> : null}
-    {err ? <div id="final-report-operation-result" role="alert" className="final-desk-error">{err === "not-due" ? t(lang, "The package stage changed. Review its current balance before assigning.", "课包阶段已变化，请核对当前余额后再安排。") : t(lang, "This operation could not be completed. Check the current record before trying again.", "本次操作未完成，请先核对当前记录再重试。")}</div> : null}
+    {err ? <div id="final-report-operation-result" role="alert" className="final-desk-error">{err === "use-periods" ? t(lang, "This student uses learning periods for this package. Open Manage learning periods to continue.", "该学生的课包已按学习期次管理，请打开「管理学习期次」继续。") : err === "not-due" ? t(lang, "The package stage changed. Review its current balance before assigning.", "课包阶段已变化，请核对当前余额后再安排。") : t(lang, "This operation could not be completed. Check the current record before trying again.", "本次操作未完成，请先核对当前记录再重试。")}</div> : null}
     {detailOpen ? <>
       <a className="final-desk-back" href={finalDeskUrl(p, clearDetail, p.reportId ? `final-report-${p.reportId}` : `final-candidate-${p.packageId}-${p.studentId}`)}>← {t(lang, "Back to results", "返回原列表")}</a>
       {selectedReport ? <ReportDetail report={selectedReport} params={p} lang={lang} origin={await resolveOriginFromHeaders()} />
@@ -600,7 +622,7 @@ export default async function AdminFinalReportCenterPage({ searchParams }: { sea
       </form>
       <section id="final-report-records" className="final-desk-list">
         <div className="final-desk-list-heading"><h3>{tabs.find(tab => tab.key === p.view)?.label}</h3><span>{t(lang, `${total} results · 20 per page`, `共 ${total} 项 · 每页 20 项`)}</span></div>
-        {total === 0 ? <div className="final-desk-empty">{p.q || p.teacherId || p.courseId ? t(lang, "No matching results. Adjust the search or filters.", "没有匹配结果，可调整搜索或筛选条件。") : t(lang, "Nothing to handle in this stage.", "这个阶段暂时没有需要处理的项目。")}</div> : <table><thead><tr><th>{t(lang, "Student / course", "学生／课程")}</th><th>{t(lang, "Teacher", "负责老师")}</th><th>{t(lang, "Package balance", "课包余额")}</th><th>{t(lang, "Stage", "当前阶段")}</th><th>{t(lang, "Next step", "下一步")}</th></tr></thead><tbody>
+        {total === 0 ? <div className="final-desk-empty">{p.q || p.teacherId || p.courseId ? t(lang, "No matching results. Adjust the search or filters.", "没有匹配结果，可调整搜索或筛选条件。") : t(lang, "Nothing to handle in this stage.", "这个阶段暂时没有需要处理的项目。")}</div> : <table><thead><tr><th>{t(lang, "Student / course", "学生／课程")}</th><th>{t(lang, "Teacher", "负责老师")}</th><th>{t(lang, "Learning period / package balance", "学习期次／课包余额")}</th><th>{t(lang, "Stage", "当前阶段")}</th><th>{t(lang, "Next step", "下一步")}</th></tr></thead><tbody>
           {p.view === "unassigned" ? filteredCandidates.slice(pagination.skip, pagination.skip + pagination.take).map(row => {
             const pending = row.teacherOptions.filter(opt => !opt.latestReportStatus);
             return <tr key={row.candidateKey} id={`final-candidate-${row.packageId}-${row.studentId}`}>
@@ -611,9 +633,9 @@ export default async function AdminFinalReportCenterPage({ searchParams }: { sea
               <td><a className="final-desk-primary" href={finalDeskUrl(p, { packageId: row.packageId, studentId: row.studentId })}>{pending.length ? t(lang, "Assign teacher", "分配老师") : t(lang, "View arrangements", "查看安排")}</a></td>
             </tr>;
           }) : reports.map(report => <tr key={report.id} id={`final-report-${report.id}`}>
-            <td data-label={t(lang, "Student / course", "学生／课程")}><strong>{report.student.name}</strong><small>{report.course.name} · {formatMinutesToHours(Number(report.package.totalMinutes ?? 0))}h · {t(lang,"Starts","起始")} {formatBusinessDateOnly(report.package.validFrom)}</small></td>
+            <td data-label={t(lang, "Student / course", "学生／课程")}><strong>{report.student.name}</strong><small>{report.course.name}</small></td>
             <td data-label={t(lang, "Teacher", "负责老师")}>{report.teacher.name}</td>
-            <td data-label={t(lang, "Package balance", "课包余额")}>{formatMinutesToHours(Number(report.package.remainingMinutes ?? 0))}h<small>{packageUsagePercent(report.package.totalMinutes, report.package.remainingMinutes)}% {t(lang, "used", "已使用")}</small></td>
+            <td data-label={t(lang, "Learning period / package balance", "学习期次／课包余额")}>{report.reportPeriodId ? <strong>{report.reportPeriodLabel}</strong> : <>{formatMinutesToHours(Number(report.package.remainingMinutes ?? 0))}h<small>{packageUsagePercent(report.package.totalMinutes, report.package.remainingMinutes)}% {t(lang, "used", "已使用")}</small></>}</td>
             <td data-label={t(lang, "Stage", "当前阶段")}><span className="final-desk-badge">{phaseLabel(report,lang)}</span></td>
             <td><a className="final-desk-primary" href={finalDeskUrl(p, { reportId: report.id })}>{p.view === "writing" ? t(lang, "View progress", "查看进度") : p.view === "review" ? t(lang, "Review report", "核对报告") : t(lang, "View details", "查看详情")}</a></td>
           </tr>)}
@@ -672,8 +694,9 @@ function ReportDetail({ report, params, lang, origin }: { report: DeskReport; pa
   return <article className="final-desk-detail">
     <section className="final-desk-panel">
       <h3>{report.student.name} · {report.course.name}{report.subject ? ` · ${report.subject.name}` : ""}</h3>
-      <div className="final-desk-summary"><span>{t(lang,"Teacher","负责老师")}: <strong>{report.teacher.name}</strong></span><span>{t(lang,"Package balance","课包余额")}: <strong>{formatMinutesToHours(Number(report.package.remainingMinutes ?? 0))}h</strong> / {formatMinutesToHours(Number(report.package.totalMinutes ?? 0))}h</span><span className="final-desk-badge">{phaseLabel(report,lang)}</span></div>
-      {report.status === "ASSIGNED" ? <p className="final-desk-hint">{Number(report.package.remainingMinutes ?? 0) > 0 ? t(lang,"The teacher can work on the draft now. Formal submission becomes available at zero balance.","老师现在可填写并保存草稿，课包余额归零后才能正式提交。") : t(lang,"The teacher can now complete and submit this report from their Final Reports page.","老师现在可从本人结课报告列表进入并正式提交。")}</p> : null}
+      <a href={finalReportPeriodsUrl(report.studentId, report.packageId)}>{t(lang, "View this student’s learning periods", "查看该学生的学习期次")}</a>
+      <div className="final-desk-summary"><span>{t(lang,"Teacher","负责老师")}: <strong>{report.teacher.name}</strong></span><span>{report.reportPeriodId ? t(lang,"Confirmed learning period","已确认学习期次") : t(lang,"Package balance","课包余额")} <strong>{report.reportPeriodId ? report.reportPeriodLabel : `${formatMinutesToHours(Number(report.package.remainingMinutes ?? 0))}h / ${formatMinutesToHours(Number(report.package.totalMinutes ?? 0))}h`}</strong></span><span className="final-desk-badge">{phaseLabel(report,lang)}</span></div>
+      {report.status === "ASSIGNED" ? <p className="final-desk-hint">{!isFinalReportSubmissionDue(report.package.remainingMinutes, report.reportPeriodId) ? t(lang,"The teacher can work on the draft now. Formal submission becomes available at zero balance.","老师现在可填写并保存草稿，课包余额归零后才能正式提交。") : t(lang,"The teacher can now complete and submit this report from their Final Reports page.","老师现在可从本人结课报告列表进入并正式提交。")}</p> : null}
     </section>
     <section className="final-desk-panel"><h3>{t(lang,"Teacher report","老师报告")}</h3>
       {fields.some(([,value])=>Boolean(value)) ? fields.filter(([,value])=>Boolean(value)).map(([label,value])=><div className="final-desk-report-field" key={label}><h4>{label}</h4><p>{value}</p></div>) : <p>{t(lang,"The teacher has not saved the report text yet.","老师尚未保存报告正文。")}</p>}
@@ -689,7 +712,7 @@ function ReportDetail({ report, params, lang, origin }: { report: DeskReport; pa
       {report.deliveredAt ? <p>{t(lang,"Delivered","已交付")}: {formatBusinessDateTime(report.deliveredAt)} · {report.deliveredByUser?.name || "—"} · {deliveryChannelLabel(lang,report.deliveryChannel || "")}{meta.deliveryNote ? ` · ${meta.deliveryNote}` : ""}</p> : null}
     </section> : null}
     <details className="final-desk-more"><summary>{t(lang,"More actions: share, exemption and archive","更多操作：分享、无需报告与归档")}</summary><div>
-      {!report.archivedAt && canShare ? <section><h4>{t(lang,"Parent read-only share link","家长只读分享链接")}</h4>
+      {!report.archivedAt && canShare && (!report.reportPeriodId || approval.approvedAt) ? <section><h4>{t(lang,"Parent read-only share link","家长只读分享链接")}</h4>
         {activeShare ? <><a href={shareHref} target="_blank" rel="noreferrer">{t(lang,"Open share page","打开分享页")}</a><p className="final-desk-url">{shareHref}</p><p>{report.shareExpiresAt ? `${t(lang,"Expires","有效至")}: ${formatBusinessDateTime(report.shareExpiresAt)}` : ""}</p></> : <p>{isShareExpired(report) ? t(lang,"The previous link has expired.","原分享链接已过期。") : t(lang,"No active share link.","当前没有生效的分享链接。")}</p>}
         <DeskAction action={enableFinalReportShare} params={params} lang={lang}>{recordId}<label>{t(lang,"Validity","有效期")}<select name="shareDurationDays" defaultValue="30">{FINAL_REPORT_SHARE_DURATION_DAYS.map(days => <option key={days} value={days}>{shareDurationLabel(lang,days)}</option>)}</select></label><button>{activeShare ? t(lang,"Refresh share link","刷新分享链接") : t(lang,"Create parent share link","生成家长分享链接")}</button></DeskAction>
         {activeShare ? <DeskAction action={disableFinalReportShare} params={params} lang={lang}>{recordId}<button>{t(lang,"Disable share link","停用分享链接")}</button></DeskAction> : null}

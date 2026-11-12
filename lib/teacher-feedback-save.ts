@@ -1,10 +1,11 @@
+import {FEEDBACK_ATTACHMENT_MAX_COUNT} from './homework-upload-keys';
 import {Prisma} from '@prisma/client';
 import {prisma} from './prisma';
 import {ensureFeedbackCommunicationTasks} from './parent-communication-center';
 import {needsTeachingFeedback} from './session-feedback-policy';
 import {resolveAttendanceRoster} from './session-attendance-roster';
 /** Serialize submission against the administrator's activity review. */
-export async function saveTeacherFeedbackReviewed(sessionId:string,teacherId:string,args:Prisma.SessionFeedbackUpsertArgs){
+export async function saveTeacherFeedbackReviewed(sessionId:string,teacherId:string,args:Prisma.SessionFeedbackUpsertArgs,pendingUploadIds?:string[]){
  try{return await prisma.$transaction(async tx=>{
   const submittingUserId=args.create.submittedByUserId;
   if(submittingUserId)await tx.$queryRaw`SELECT id FROM "User" WHERE id=${submittingUserId} FOR SHARE`;
@@ -17,10 +18,22 @@ export async function saveTeacherFeedbackReviewed(sessionId:string,teacherId:str
   if(!needsTeachingFeedback(session))throw new Error('Reviewed non-teaching activity; ask teaching management before submitting lesson feedback / 此课次已核对为非教学活动，请先由教务核对再提交教学反馈');
   if(args.where.sessionId_teacherId?.sessionId!==sessionId||args.where.sessionId_teacherId?.teacherId!==teacherId)throw new Error('Feedback scope mismatch / 反馈归属不匹配');
   const before=await tx.sessionFeedback.findUnique({where:{sessionId_teacherId:{sessionId,teacherId}}});
+  let remainingUploadIds: string[] | undefined;
+  if (pendingUploadIds !== undefined) {
+    const attachments = before ? await tx.sessionFeedbackAttachment.findMany({
+      where: { feedbackId: before.id }, select: { uploadKey: true },
+    }) : [];
+    const existingKeys = new Set(attachments.map(row => row.uploadKey));
+    remainingUploadIds = pendingUploadIds.filter(key => !existingKeys.has(key));
+    if (attachments.length + remainingUploadIds.length > FEEDBACK_ATTACHMENT_MAX_COUNT) {
+      throw new Error('最多上传 9 个作业附件 / Maximum 9 homework attachments');
+    }
+  }
+  const pendingUploads = remainingUploadIds === undefined ? {} : { pendingHomeworkUploadIds: remainingUploadIds };
   const submittedAt=args.create.submittedAt instanceof Date?args.create.submittedAt:new Date();
   const feedback=await tx.sessionFeedback.upsert({...args,
-   create:{...args.create,submittedAt,reviewStatus:'PENDING_REVIEW',reviewNote:null,isProxyDraft:false,proxyNote:null},
-   update:{...args.update,submittedAt,reviewStatus:'PENDING_REVIEW',reviewNote:null,isProxyDraft:false,proxyNote:null},
+   create:{...args.create,...pendingUploads,submittedAt,reviewStatus:'PENDING_REVIEW',reviewNote:null,isProxyDraft:false,proxyNote:null},
+   update:{...args.update,...pendingUploads,submittedAt,reviewStatus:'PENDING_REVIEW',reviewNote:null,isProxyDraft:false,proxyNote:null},
   });
   // A new teacher submission awaits review. Preserve sent/publication history, stop pending old content.
   const invalidated=await tx.miniappNotificationOutbox.updateMany({where:{targetType:'SessionFeedback',OR:[{targetId:feedback.id},{targetId:{startsWith:feedback.id+':revision:'}}],status:{in:['PENDING','FAILED']}},data:{status:'SKIPPED',error:'Teacher resubmitted feedback; awaiting review / 老师已重新提交反馈，等待审核'}});

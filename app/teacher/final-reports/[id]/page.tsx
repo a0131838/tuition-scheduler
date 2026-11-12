@@ -13,9 +13,11 @@ import {
   mergeLearningReportAttendanceSnapshot,
   parseLearningReportAttendanceSnapshot,
 } from "@/lib/learning-report-attendance";
+import { isLearningReportApprovedForDelivery } from "@/lib/learning-report-delivery";
 import { getLang, t } from "@/lib/i18n";
 import { formatMinutesToHours } from "@/lib/midterm-report";
 import { prisma } from "@/lib/prisma";
+import { createRenewalProgressFromFinalDraft } from "@/lib/renewal-progress-assignment";
 import { isFinalReportSubmissionDue } from "@/lib/report-package-progress";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -174,12 +176,32 @@ export default async function TeacherFinalReportDetailPage({
 
   const reportId = report.id;
   const ownerTeacherId = report.teacherId;
-  const isLocked = report.status === "FORWARDED";
+  const periodApproved = Boolean(report.reportPeriodId) && isLearningReportApprovedForDelivery(report.reportJson);
+  const isLocked = report.status === "FORWARDED" || periodApproved;
+
+  async function openProgressReport() {
+    "use server";
+    const { teacher: currentTeacher, user } = await requireTeacherProfile();
+    if (currentTeacher.id !== ownerTeacherId || user.isObserver) {
+      redirect("/teacher/final-reports?err=forbidden");
+    }
+    let id: string;
+    try {
+      id = (await createRenewalProgressFromFinalDraft(reportId, currentTeacher, user)).id;
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "";
+      const visible = ["SAVE_FINAL_DRAFT_FIRST", "RENEWAL_TASK_REQUIRED", "PROGRESS_ALREADY_ASSIGNED"].includes(code);
+      redirect(`/teacher/final-reports/${encodeURIComponent(reportId)}?err=${visible ? code : "progress-unavailable"}`);
+    }
+    revalidatePath("/teacher/renewal-reports");
+    revalidatePath("/admin/reports/renewal");
+    redirect(`/teacher/renewal-reports/${encodeURIComponent(id)}?fromFinal=1`);
+  }
 
   async function saveReport(formData: FormData) {
     "use server";
-    const { teacher: currentTeacher } = await requireTeacherProfile();
-    if (!currentTeacher || currentTeacher.id !== ownerTeacherId) {
+    const { teacher: currentTeacher, user } = await requireTeacherProfile();
+    if (!currentTeacher || currentTeacher.id !== ownerTeacherId || user.isObserver) {
       redirect("/teacher/final-reports?err=forbidden");
     }
 
@@ -187,6 +209,8 @@ export default async function TeacherFinalReportDetailPage({
       where: { id: reportId },
       select: {
         status: true,
+        updatedAt: true,
+        reportPeriod: { select: { id: true, startsAt: true, endsAt: true } },
         submittedAt: true,
         archivedAt: true,
         reportJson: true,
@@ -196,13 +220,14 @@ export default async function TeacherFinalReportDetailPage({
         teacherId: true,
       },
     });
-    if (!latest || latest.status === "FORWARDED" || latest.status === "EXEMPT" || latest.archivedAt) {
+    if (!latest || latest.status === "FORWARDED" || latest.status === "EXEMPT" || latest.archivedAt ||
+      (latest.reportPeriod && isLearningReportApprovedForDelivery(latest.reportJson))) {
       redirect(`/teacher/final-reports/${encodeURIComponent(reportId)}?err=locked`);
     }
 
     const intent = String(formData.get("intent") ?? "save");
     const shouldSubmit = intent === "submit" || intent === "prepare";
-    if (shouldSubmit) {
+    if (shouldSubmit && !latest.reportPeriod) {
       const currentPackage = await prisma.coursePackage.findUnique({
         where: { id: latest.packageId },
         select: { remainingMinutes: true },
@@ -212,6 +237,9 @@ export default async function TeacherFinalReportDetailPage({
       }
     }
     const draft = parseFinalDraftFromFormData(formData);
+    if (shouldSubmit && latest.reportPeriod && draft.finalSummary.length < 10) {
+      redirect(`/teacher/final-reports/${encodeURIComponent(reportId)}?err=summary`);
+    }
     const periodLabel = String(formData.get("reportPeriodLabel") ?? "").trim();
     const finalLevel = String(formData.get("finalLevel") ?? "").trim();
     const score = asScore(String(formData.get("overallScore") ?? ""));
@@ -224,15 +252,16 @@ export default async function TeacherFinalReportDetailPage({
             studentId: latest.studentId,
             subjectId: latest.subjectId,
             teacherId: latest.teacherId,
-            throughAt: submittedAt,
+            fromAt: latest.reportPeriod?.startsAt,
+            throughAt: latest.reportPeriod?.endsAt ?? submittedAt,
           })
         : existingSnapshot;
 
-    await prisma.finalReport.update({
-      where: { id: reportId },
+    const updated = await prisma.finalReport.updateMany({
+      where: { id: reportId, updatedAt: latest.updatedAt, archivedAt: null, reportPeriodId: latest.reportPeriod?.id ?? null },
       data: {
         reportJson: mergeLearningReportAttendanceSnapshot(draft, latest.reportJson, attendanceSnapshot) as any,
-        reportPeriodLabel: periodLabel || null,
+        ...(latest.reportPeriod ? {} : { reportPeriodLabel: periodLabel || null }),
         finalLevel: finalLevel || null,
         overallScore: score,
         recommendation: draft.recommendedNextStep || null,
@@ -241,6 +270,7 @@ export default async function TeacherFinalReportDetailPage({
       },
     });
 
+    if (updated.count !== 1) redirect(`/teacher/final-reports/${encodeURIComponent(reportId)}?err=stale`);
     revalidatePath("/teacher/final-reports");
     revalidatePath(`/teacher/final-reports/${reportId}`);
     revalidatePath("/admin/reports/final");
@@ -251,7 +281,7 @@ export default async function TeacherFinalReportDetailPage({
     ...(report.reportJson && typeof report.reportJson === "object" ? report.reportJson : {}),
     recommendedNextStep: report.recommendation ?? (report.reportJson as any)?.recommendedNextStep,
   });
-  const canSubmit = isFinalReportSubmissionDue(report.package.remainingMinutes);
+  const canSubmit = isFinalReportSubmissionDue(report.package.remainingMinutes, report.reportPeriodId);
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
@@ -277,9 +307,9 @@ export default async function TeacherFinalReportDetailPage({
           <div style={{ fontSize: 22, fontWeight: 800, color: "#1d4ed8", marginTop: 10 }}>{formatBusinessDateOnly(new Date(report.assignedAt))}</div>
         </div>
         <div style={statCard("#ecfdf5", "#bbf7d0")}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "#166534" }}>{t(lang, "Package balance", "课包余额")}</div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#166534" }}>{report.reportPeriodId ? t(lang, "Confirmed learning period", "已确认学习期次") : t(lang, "Package balance", "课包余额")}</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#166534", marginTop: 10 }}>
-            {formatMinutesToHours(safeMinutes(report.package.remainingMinutes))}h / {formatMinutesToHours(safeMinutes(report.package.totalMinutes))}h
+            {report.reportPeriodId ? report.reportPeriodLabel : `${formatMinutesToHours(safeMinutes(report.package.remainingMinutes))}h / ${formatMinutesToHours(safeMinutes(report.package.totalMinutes))}h`}
           </div>
         </div>
         <div style={statCard("#f5f3ff", "#ddd6fe")}>
@@ -297,7 +327,7 @@ export default async function TeacherFinalReportDetailPage({
       ) : null}
       {isLocked || err === "locked" ? (
         <div style={{ background: "#eff6ff", border: "1px solid #93c5fd", borderRadius: 8, padding: "6px 8px", marginBottom: 10, color: "#1d4ed8" }}>
-          {t(lang, "This final report has already been forwarded by operations and is now read-only.", "该结课报告已由教务转发，当前为只读不可修改。")}
+          {periodApproved ? t(lang, "The report has been approved for parents. Ask the academic lead to reopen it if a correction is needed.", "报告已审核可发家长。如需更正，请联系教学负责人重新开放。") : t(lang, "This final report has already been forwarded by operations and is now read-only.", "该结课报告已由教务转发，当前为只读不可修改。")}
         </div>
       ) : null}
       {report.status === "ASSIGNED" && !canSubmit ? (
@@ -305,9 +335,21 @@ export default async function TeacherFinalReportDetailPage({
           {t(lang, "This package is near completion. Save your draft now; submission and parent edition become available when the balance reaches zero.", "该课包临近结课。现在可保存草稿；课包余额归零后才能提交并生成家长版。")}
         </div>
       ) : null}
+      {report.status === "ASSIGNED" && !canSubmit ? (
+        <form action={openProgressReport} style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10, padding: 12 }}>
+          <p style={{ margin: "0 0 8px" }}>{t(lang, "To share progress now, use the saved draft to prepare a progress report for coordinator review.", "需要先给家长反馈时，可用已保存的草稿生成阶段学习报告，交教务审核。")}</p>
+          <button type="submit" style={secondaryButtonStyle}>{t(lang, "Use saved draft for a progress report", "用现有草稿生成阶段学习报告")}</button>
+        </form>
+      ) : null}
+      {err === "SAVE_FINAL_DRAFT_FIRST" ? <p role="alert">{t(lang, "Save the draft with a learning summary first.", "请先填写学习总结并点击保存草稿。")}</p> : null}
+      {err === "RENEWAL_TASK_REQUIRED" ? <p role="alert">{t(lang, "Ask the coordinator to confirm the matching open renewal task.", "请教务核对这门课对应的续费跟进任务。")}</p> : null}
+      {err === "PROGRESS_ALREADY_ASSIGNED" ? <p role="alert">{t(lang, "A different or archived report already exists for this renewal. Ask the coordinator to review it.", "这次续费已有其他老师的报告或归档报告，请教务核对。")}</p> : null}
+      {err === "progress-unavailable" ? <p role="alert">{t(lang, "The progress report could not be opened. Refresh and try again.", "暂时无法打开阶段学习报告，请刷新后再试。")}</p> : null}
+      {err === "summary" ? <p role="alert">{t(lang, "Complete the learning summary before submitting.", "请先补充本阶段学习总结，再提交报告。")}</p> : null}
+      {err === "stale" ? <p role="alert">{t(lang, "The report changed while saving. Check the latest version before trying again.", "保存时报告已更新，请核对最新版本后再试。")}</p> : null}
       {err === "not-complete" ? <div style={{ color: "#b91c1c" }}>{t(lang, "The package still has hours remaining. Your draft can be saved, but cannot be submitted yet.", "课包仍有余额，可保存草稿，暂不能提交。")}</div> : null}
 
-      {canSubmit || report.status !== "ASSIGNED" ? <ParentReportEditionPanel key={report.updatedAt.toISOString()} kind="FINAL" id={report.id} lang={lang} autoPrepare={ok === "prepared"} /> : null}
+      {canSubmit || report.status !== "ASSIGNED" ? <ParentReportEditionPanel key={report.updatedAt.toISOString()} kind="FINAL" id={report.id} lang={lang} autoPrepare={ok === "prepared"} allowFinalDownload={!report.reportPeriodId || periodApproved} /> : null}
 
       <form action={saveReport} style={{ display: "grid", gap: 10 }}>
         <fieldset disabled={isLocked} style={{ border: "none", margin: 0, padding: 0, display: "grid", gap: 10 }}>
@@ -329,6 +371,7 @@ export default async function TeacherFinalReportDetailPage({
                 {t(lang, "Learning period", "学习阶段")}
                 <input
                   name="reportPeriodLabel"
+                  readOnly={Boolean(report.reportPeriodId)}
                   defaultValue={isLegacyLearningPeriodLabel(report.reportPeriodLabel) ? "" : report.reportPeriodLabel ?? ""}
                   placeholder={t(lang, "Optional custom note; attendance is calculated automatically", "可选备注；实际出勤由系统自动计算")}
                   style={{ width: "100%" }}

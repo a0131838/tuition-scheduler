@@ -1,10 +1,11 @@
 import WorkflowHelpClient from "./_components/WorkflowHelpClient";
 import { requireHrAreaUser } from "@/lib/hr-access";
-import { isManagerUser, requireAdminAreaUser } from "@/lib/auth";
+import { getCurrentUser, isManagerUser, requireAdminAreaUser } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { parseLedgerIntegrityAlertState, LEDGER_INTEGRITY_ALERT_KEY } from "@/lib/ledger-integrity-alert";
 import { prisma } from "@/lib/prisma";
 import { isResourceOnlyRole } from "@/lib/staff-roles";
+import { adminRoomReservationsPath, canManageAdminRoomReservations } from "@/lib/room-reservations";
 import { isOperationsAdminPathAllowed } from "@/lib/operations-admin-access";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -56,9 +57,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   const isHrPath = pathname === "/admin/hr" || pathname.startsWith("/admin/hr/");
-  const user = await (isHrPath ? requireHrAreaUser() : requireAdminAreaUser());
+  const isRoomReservations = pathname === adminRoomReservationsPath;
+  const user = await (isRoomReservations ? getCurrentUser() : isHrPath ? requireHrAreaUser() : requireAdminAreaUser());
+  if (!user) redirect("/admin/login");
   const manager = await isManagerUser(user);
+  const canBookRooms = canManageAdminRoomReservations(user, manager);
+  if (isRoomReservations && !canBookRooms) redirect(user.role === "TEACHER" ? "/teacher" : "/admin");
   const hrOnly = user.role === "TEACHER" && !manager && !user.operationsAdmin && user.workspaces.includes("HR");
+  const roomOnly = isRoomReservations && user.role === "TEACHER" && !manager && !user.operationsAdmin && !hrOnly;
   if (user.operationsAdmin && !isOperationsAdminPathAllowed(pathname)) {
     redirect("/admin");
   }
@@ -110,7 +116,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     pathname === "/admin/recovery/uploads" ||
     (pathname.startsWith("/admin/packages/") && (pathname.endsWith("/billing") || pathname.endsWith("/contract/renewal-exception")));
 
-  if (isFinance && !financeAllowedPath) {
+  if (isFinance && !financeAllowedPath && !isRoomReservations) {
     redirect("/admin/reports/teacher-payroll");
   }
 
@@ -127,10 +133,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     (pathname === "/admin/renewals/orders" && (user.role === "CS" || user.role === "SALES")) ||
     (user.role === "CS" && (pathname === "/admin/communications" || pathname === "/admin/mobile" || pathname === "/admin/mobile/parent-requests" || pathname === "/admin/renewals" || pathname === "/admin/reports/renewal"));
 
-  if (isResourceOnly && !resourceAllowedPath) {
+  if (isResourceOnly && !resourceAllowedPath && !isRoomReservations) {
     redirect("/admin/leads");
   }
 
+  const roomReservationItems = canBookRooms
+    ? [{ href: adminRoomReservationsPath, label: t(lang, "Classroom Reservations", "教室预约"), tone: "accent" as const }]
+    : [];
   const adminNavGroups = [
     {
       title: t(lang, "Today", "今日工作"),
@@ -156,6 +165,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       summary: t(lang, "Schedules, students, teachers and teaching quality.", "课表、学生、老师和教学质量。"),
       items: [
         { href: "/admin/schedule", label: t(lang, "Weekly Schedule", "周课表"), tone: "accent" as const },
+        ...roomReservationItems,
         { href: "/admin/reports/monthly-schedule", label: t(lang, "Monthly Schedule", "月课表总览"), tone: "neutral" as const },
         { href: "/admin/tickets/scheduling", label: t(lang, "Scheduling Work Orders", "排课执行工单"), tone: "warning" as const },
         { href: "/admin/students", label: t(lang, "Students", "学生"), tone: "accent" as const },
@@ -222,7 +232,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       items: [
         { href: "/admin/finance/workbench", label: t(lang, "Finance Workbench", "财务工作台"), tone: "warning" as const },
         { href: "/admin/renewals/orders", label: t(lang, "Renewal Orders", "续费确认单"), tone: "warning" as const },
-        { href: "/admin/finance/renewal-signature-exceptions", label: t(lang, "Renewal Signatures Pending", "续费待补签"), tone: "warning" as const },
+        { href: "/admin/finance/renewal-signature-exceptions", label: t(lang, "Cash Renewal Exceptions", "现金续费例外"), tone: "warning" as const },
         { href: "/admin/finance/transport-billing", label: t(lang, "Transport Billing", "交通费月结"), tone: "warning" as const },
         { href: "/admin/finance/business-accounts", label: t(lang, "Business Accounts", "企业账户"), tone: "accent" as const },
         { href: "/admin/finance/documents", label: t(lang, "Invoices & Receipts", "完整发票与收据"), tone: "success" as const },
@@ -276,6 +286,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     .filter((group) => group.items.length > 0);
 
   const financeNavGroups = [
+    { title: t(lang, "Classroom Reservations", "教室预约"), items: roomReservationItems },
     {
       title: t(lang, "Today", "今日工作"),
       summary: t(lang, "Current approvals, receipts and finance exceptions.", "当前审批、收据和财务异常。"),
@@ -305,7 +316,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       summary: t(lang, "Invoices, settlements, payroll and package billing.", "发票、结算、工资和课包账单。"),
       items: [
         { href: "/admin/renewals/orders", label: t(lang, "Renewal Orders", "续费确认单"), tone: "warning" as const },
-        { href: "/admin/finance/renewal-signature-exceptions", label: t(lang, "Renewal Exceptions & Signatures", "续费例外与补签"), tone: "warning" as const },
+        { href: "/admin/finance/renewal-signature-exceptions", label: t(lang, "Cash Renewal Exceptions", "现金续费例外"), tone: "warning" as const },
         { href: "/admin/finance/documents", label: t(lang, "Invoices & Receipts", "完整发票与收据"), tone: "success" as const },
         { href: "/admin/finance/student-package-invoices", label: t(lang, "Student Package Invoices", "学生课时包发票"), tone: "success" as const },
         { href: "/admin/finance/business-accounts", label: t(lang, "Business Accounts", "企业账户"), tone: "accent" as const },
@@ -336,6 +347,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   ];
 
   const resourceNavGroups = [
+    { title: t(lang, "Classroom Reservations", "教室预约"), items: roomReservationItems },
     {
       title: user.role === "CS" ? t(lang, "CS Queue", "客服队列") : t(lang, "Sales Queue", "销售队列"),
       summary: t(lang, "Resource follow-up only.", "只处理资源跟进相关工作。"),
@@ -416,10 +428,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       { href: "/admin/hr/payslips", label: t(lang, "Employee payslips", "员工工资单"), tone: "success" as const },
       ...(employeeProfile ? [{ href: "/staff/hr", label: t(lang, "My HR & Leave", "我的 HR 与请假"), tone: "neutral" as const }] : []),
       { href: "/training", label: t(lang, "Training centre", "培训中心"), tone: "neutral" as const },
+      ...roomReservationItems,
     ],
   }];
   // Regroup only links already selected by the existing role/workspace checks.
   const workspaceNavGroups = reorganizeAdminNavigation(
+    roomOnly ? [{ title: t(lang, "Classroom Reservations", "教室预约"), items: roomReservationItems }] :
     hrOnly ? hrNavGroups : isFinance ? financeNavGroups : isResourceOnly ? resourceNavGroups : user.operationsAdmin ? operationsAdminNavGroups : adminNavGroups,
     lang,
   );
