@@ -1,1 +1,11 @@
 .feedback-page{height:100vh}.feedback-list{border-top:1rpx solid #dedbd6}.feedback-row{padding:25rpx 0;border-bottom:1rpx solid #dedbd6}.feedback-row.focused{padding-left:18rpx;border-left:6rpx solid #ec5e0a;background:#fff9f5}.feedback-meta{display:flex;justify-content:space-between;gap:16rpx;color:#777d79;font-size:21rpx}.feedback-summary{margin-top:10rpx;font-size:26rpx;line-height:1.6}.homework{margin-top:18rpx;padding:17rpx 19rpx;border-left:5rpx solid #287a62;background:#f3f8f5;font-size:23rpx;line-height:1.55}.homework-label{margin-bottom:6rpx;color:#24634f;font-size:21rpx;font-weight:780}.attachments{display:grid;gap:10rpx;margin-top:15rpx}.attachment{min-height:66rpx;margin:0;border:1rpx solid #d1cec8;border-radius:10rpx;background:#fff;color:#9b3e08;font-size:22rpx;line-height:66rpx}
+
+.homework-filters { display: grid; gap: 12rpx; margin: 0 0 24rpx; padding: 16rpx; background: #f8f7f4; border-radius: 14rpx; }
+.course-search, .date-filters picker { min-height: 64rpx; box-sizing: border-box; padding: 13rpx; border: 1rpx solid #d1cec8; background: #fff; border-radius: 10rpx; font-size: 25rpx; }
+.date-filters, .file-actions { display: flex; gap: 10rpx; flex-wrap: wrap; }
+.date-filters picker { flex: 1; color: #40554c; }
+.filter-button, .file-actions .attachment { padding: 0 20rpx; text-align: left; }
+.filter-active { background: #e4f2e9; color: #24634f; border-color: #287a62; }
+.feedback-course { color: #234c3e; font-size: 26rpx; font-weight: 750; margin-bottom: 6rpx; }
+.file-name { overflow-wrap: anywhere; margin-bottom: 8rpx; }
+.load-more { margin: 20rpx 0 36rpx; }

@@ -1,3 +1,4 @@
+import { parseHomeworkUploadKeys } from "@/lib/homework-upload-keys";
 import { previousHomeworkInput, previousHomeworkLabel } from "@/lib/homework-status";
 import {saveTeacherFeedbackReviewed} from "@/lib/teacher-feedback-save";
 import { prisma } from "@/lib/prisma";
@@ -145,10 +146,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       submittedAt: now,
       reviewStatus: "PENDING_REVIEW",
     },
-  });} catch(e){return bad(e instanceof Error?e.message:"Feedback changed; reload / 反馈状态已变化，请刷新",409);}
+  }, parseHomeworkUploadKeys(body?.homeworkUploadIds));} catch(e){return bad(e instanceof Error?e.message:"Feedback changed; reload / 反馈状态已变化，请刷新",409);}
 
   return Response.json({
     ok: true,
+    feedbackId: savedFeedback.id,
     status,
     submittedAt: now.toISOString(),
     dueAt: deadline.toISOString(),

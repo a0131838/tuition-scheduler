@@ -980,6 +980,7 @@ model SessionFeedback {
   session     Session                     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   teacher     Teacher                     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   attachments SessionFeedbackAttachment[]
+  pendingHomeworkUploadIds String[] @default([])
 
   @@unique([sessionId, teacherId])
   @@index([teacherId, submittedAt])
@@ -996,12 +997,16 @@ model SessionFeedbackAttachment {
   mimeType         String?
   sizeBytes        Int
   visibility       String   @default("PARENT")
+  studentId       String?
+  recipientStudentIds String[] @default([])
+  uploadKey       String?
   uploadedByUserId String
   uploadedByName   String
   createdAt        DateTime @default(now())
 
   feedback SessionFeedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
 
+  @@unique([feedbackId, uploadKey])
   @@index([feedbackId, visibility, createdAt])
   @@index([uploadedByUserId, createdAt])
 }

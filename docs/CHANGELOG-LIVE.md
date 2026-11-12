@@ -1,5 +1,15 @@
 # CHANGELOG LIVE
 
+## 2026-11-12-r515
+
+- Release ID: `2026-11-12-r515`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: attach photos and PDFs to lesson feedback from teacher web and the staff mini program. Review and publish the files in the communication desk and find published homework in parent feedback.
+- Scope: attachment upload and retry, family-specific access, review, history and protected downloads. Existing one-to-one files keep their recipient when the lesson roster is unambiguous.
+- Verification: isolated one-to-one and group feedback workflow, interrupted upload retry, wrong-family and raw-file access checks, migration, backend regression suite and production build. See `docs/tasks/TASK-20261112-lesson-homework-files.md`.
+
+---
+
 ## 2026-11-11-r514
 
 - Release ID: `2026-11-11-r514`

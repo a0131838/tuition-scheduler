@@ -1,12 +1,43 @@
 <scroll-view class="page feedback-page" scroll-y scroll-into-view="{{scrollTarget}}">
-  <view class="top"><view class="eyebrow">{{studentName}}</view><view class="title">课后反馈</view><view class="subtitle">按时间查看老师发布的课堂表现、学习重点和作业。</view></view>
+  <view class="top"><view class="eyebrow">{{studentName}}</view><view class="title">课后反馈</view></view>
+  <button wx:if="{{focusFeedbackId}}" class="attachment filter-button" bindtap="resetFilters">查看全部课后反馈</button>
+  <view wx:else class="homework-filters">
+    <button class="attachment filter-button {{hasHomeworkFiles ? 'filter-active' : ''}}" bindtap="toggleHomework">{{hasHomeworkFiles ? '✓ ' : ''}}仅看有电子版的作业</button>
+    <button class="attachment filter-button" bindtap="toggleFilters">{{showFilters ? "收起筛选" : "按课程或日期查找"}}</button>
+    <block wx:if="{{showFilters}}">
+    <input class="course-search" value="{{course}}" bindinput="inputCourse" bindconfirm="search" placeholder="按课程或科目查找" />
+    <view class="date-filters">
+      <picker mode="date" value="{{from}}" bindchange="chooseFrom"><view>{{from || '开始日期'}}</view></picker>
+      <picker mode="date" value="{{to}}" bindchange="chooseTo"><view>{{to || '结束日期'}}</view></picker>
+    </view>
+    <view class="date-filters">
+      <button class="attachment filter-button" bindtap="search">查找</button>
+      <button wx:if="{{course || from || to || hasHomeworkFiles}}" class="attachment filter-button" bindtap="resetFilters">清除筛选</button>
+    </view>
+    </block>
+  </view>
   <view class="feedback-list" wx:if="{{feedbacks.length}}">
     <view wx:for="{{feedbacks}}" wx:key="id" wx:for-index="feedbackIndex" id="feedback-{{item.id}}" class="feedback-row {{focusFeedbackId === item.id ? 'focused' : ''}}">
+      <view class="feedback-course">{{item.courseLabel}}</view>
       <view class="feedback-meta"><text>{{item.sessionStartText || item.sessionStartAt}}</text><text>{{item.teacherName || "老师"}}</text></view>
       <view class="feedback-summary">{{item.summary || item.content}}</view>
-      <view class="homework" wx:if="{{item.homework}}"><view class="homework-label">课后作业</view><view>{{item.homework}}</view></view>
-      <view class="attachments" wx:if="{{item.attachments.length}}"><button class="attachment" wx:for="{{item.attachments}}" wx:key="id" data-feedback-index="{{feedbackIndex}}" data-attachment-index="{{index}}" bindtap="openAttachment">{{item.name}} · 查看</button></view>
+      <view class="homework" wx:if="{{item.homework || item.attachments.length}}">
+        <view class="homework-label">课后作业</view><view wx:if="{{item.homework}}">{{item.homework}}</view>
+        <view class="attachments" wx:if="{{item.attachments.length}}">
+          <view class="homework-label">作业电子版</view>
+          <view wx:for="{{item.attachments}}" wx:for-item="file" wx:for-index="attachmentIndex" wx:key="id">
+            <view class="file-name">{{file.name}}</view>
+            <view class="file-actions">
+              <button class="attachment" data-feedback-index="{{feedbackIndex}}" data-attachment-index="{{attachmentIndex}}" bindtap="openAttachment">{{file.isImage ? '查看照片' : '打开文件'}}</button>
+              <button wx:if="{{file.isImage}}" class="attachment" data-feedback-index="{{feedbackIndex}}" data-attachment-index="{{attachmentIndex}}" data-save="{{true}}" bindtap="openAttachment">保存到相册</button>
+            </view>
+          </view>
+        </view>
+      </view>
     </view>
   </view>
-  <view wx:else class="empty">暂无课后反馈</view>
+  <view wx:if="{{error}}" class="empty">{{error}}<button class="attachment" bindtap="search">重试</button></view>
+  <view wx:elif="{{loading}}" class="empty">正在加载课后反馈…</view>
+  <view wx:elif="{{!feedbacks.length}}" class="empty">{{hasHomeworkFiles ? '没有找到含电子版作业的反馈' : '没有找到课后反馈'}}</view>
+  <button wx:if="{{hasMore && !loading}}" class="attachment load-more" bindtap="loadMore">加载更多课后反馈</button>
 </scroll-view>

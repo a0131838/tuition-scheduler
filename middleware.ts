@@ -9,6 +9,9 @@ export async function middleware(req: NextRequest) {
   let decodedPath: string;
   try { decodedPath = decodeURIComponent(req.nextUrl.pathname); }
   catch { return new NextResponse("Not Found", { status: 404 }); }
+  if (/^\/+uploads\/+feedback-attachments(?:\/+|$)/i.test(decodedPath.replace(/\\/g, "/"))) {
+    return new NextResponse("Not Found", { status: 404, headers: { "cache-control": "private, no-store" } });
+  }
   const rawSchoolDoc = isSchoolApplicationStoredPath(decodedPath);
   const rawSharedDoc = decodedPath.startsWith("/uploads/shared-docs/");
   // Static file resolution decodes paths too; encoded prefixes must not bypass guards.

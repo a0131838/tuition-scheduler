@@ -1,7 +1,7 @@
 import { bad } from "@/app/api/miniapp/_lib";
 import { requireMiniappStudentAccess } from "@/app/api/miniapp/_lib";
 import { logAudit } from "@/lib/audit-log";
-import { feedbackAttachmentFileResponse } from "@/lib/feedback-attachments";
+import { feedbackAttachmentFileResponse, parentHomeworkAttachmentWhere } from "@/lib/feedback-attachments";
 import { prisma } from "@/lib/prisma";
 import { sessionBelongsToStudentWhere } from "@/lib/session-students";
 
@@ -13,7 +13,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
     where: {
       id: attachmentId,
       feedbackId,
-      visibility: "PARENT",
+      ...parentHomeworkAttachmentWhere(studentId),
       feedback: { publishedAt: { not: null }, reviewStatus: "PUBLISHED", isProxyDraft: false, session: sessionBelongsToStudentWhere(studentId) },
     },
   });

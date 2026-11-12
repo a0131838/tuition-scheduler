@@ -1,5 +1,14 @@
 # RELEASE BOARD
 
+## 2026-11-12-r515
+
+- Release ID: `2026-11-12-r515`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Staff impact: teachers open the lesson feedback and add homework files. Teaching operations can find the feedback by student and lesson date, check file visibility and publish once uploads are complete. Parents can browse homework in Feedback in the updated mini program.
+- Verification: isolated browser and API checks for upload, retry, review, history filters and private downloads. WeChat development upload and channel status are tracked separately in the mini program release ledger.
+
+---
+
 ## 2026-11-11-r514
 
 - Release ID: `2026-11-11-r514`
