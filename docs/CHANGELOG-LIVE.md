@@ -1,5 +1,15 @@
 # CHANGELOG LIVE
 
+## 2026-11-12-r516
+
+- Release ID: `2026-11-12-r516`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: add a paid-renewals-awaiting-signature list to Finance Workbench, with a shortcut from Cash Renewal Exceptions and direct links to This Renewal in Package Billing.
+- Scope: read-only follow-up for fully approved non-cash renewals tied to a specific invoice, while the contract is unsigned and the linked renewal credit is still unposted.
+- Verification: isolated Finance browser flow from cash queue to billing, invoice approval handoff, signature and single lesson credit, production build, and 185 backend tests. See `docs/tasks/TASK-20261112-paid-renewal-finance-followup.md`.
+
+---
+
 ## 2026-11-12-r515
 
 - Release ID: `2026-11-12-r515`

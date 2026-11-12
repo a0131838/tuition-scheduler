@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { getApprovalRoleConfig } from "@/lib/approval-flow";
 import { getParentReceiptApprovalMap } from "@/lib/parent-receipt-approval";
 import { prisma } from "@/lib/prisma";
@@ -60,7 +61,7 @@ export async function loadRenewalPaymentOverview(input: {
   settlementMode: string | null;
   roles?: Awaited<ReturnType<typeof getApprovalRoleConfig>>;
   approvals?: Awaited<ReturnType<typeof getParentReceiptApprovalMap>>;
-}) {
+}, db: Prisma.TransactionClient = prisma) {
   const { contract, billing } = input;
   if (contract.flowType !== "RENEWAL" || contract.contractMode !== "TUITION_AGREEMENT" || input.packageType !== "HOURS" ||
       input.settlementMode !== null || !contract.contractSnapshot) return null;
@@ -69,16 +70,16 @@ export async function loadRenewalPaymentOverview(input: {
   if (!(fee > 0 && Number.isFinite(fee) && minutes > 0 && Number.isFinite(minutes))) return null;
 
   const [roles, approvals, choice, exception, order, entries, otherContracts, otherExceptions, usedTasks] = await Promise.all([
-    input.roles ?? getApprovalRoleConfig(),
-    input.approvals ?? getParentReceiptApprovalMap(billing.receipts.map(row => row.id)),
-    contract.invoiceId ? null : getStudentContractInvoiceChoice(contract.id),
-    prisma.renewalSignatureException.findUnique({ where: { contractId: contract.id }, select: { status: true, invoiceId: true } }),
-    prisma.renewalOrder.findUnique({ where: { contractId: contract.id }, select: { id: true, cancelledAt: true, activatedAt: true, invoiceId: true } }),
-    prisma.packageTxn.findMany({ where: { packageId: contract.packageId, kind: "PURCHASE", note: { contains: contractRenewalTopUpMarker(contract.id) } },
+    input.roles ?? getApprovalRoleConfig(db),
+    input.approvals ?? getParentReceiptApprovalMap(billing.receipts.map(row => row.id), db),
+    contract.invoiceId ? null : getStudentContractInvoiceChoice(contract.id, db),
+    db.renewalSignatureException.findUnique({ where: { contractId: contract.id }, select: { status: true, invoiceId: true } }),
+    db.renewalOrder.findUnique({ where: { contractId: contract.id }, select: { id: true, cancelledAt: true, activatedAt: true, invoiceId: true } }),
+    db.packageTxn.findMany({ where: { packageId: contract.packageId, kind: "PURCHASE", note: { contains: contractRenewalTopUpMarker(contract.id) } },
       select: { deltaMinutes: true, correctionSources: { select: { unit: true, deltaUnits: true } } } }),
-    prisma.studentContract.findMany({ where: { invoiceId: { in: billing.invoices.map(row => row.id) }, id: { not: contract.id }, status: { not: "VOID" } }, select: { invoiceId: true } }),
-    prisma.renewalSignatureException.findMany({ where: { invoiceId: { in: billing.invoices.map(row => row.id) }, contractId: { not: contract.id }, status: { not: "REJECTED" } }, select: { invoiceId: true } }),
-    prisma.renewalTask.findMany({ where: { invoiceId: { in: billing.invoices.map(row => row.id) }, paymentConfirmedAt: { not: null }, contractId: { not: contract.id } }, select: { invoiceId: true } }),
+    db.studentContract.findMany({ where: { invoiceId: { in: billing.invoices.map(row => row.id) }, id: { not: contract.id }, status: { not: "VOID" } }, select: { invoiceId: true } }),
+    db.renewalSignatureException.findMany({ where: { invoiceId: { in: billing.invoices.map(row => row.id) }, contractId: { not: contract.id }, status: { not: "REJECTED" } }, select: { invoiceId: true } }),
+    db.renewalTask.findMany({ where: { invoiceId: { in: billing.invoices.map(row => row.id) }, paymentConfirmedAt: { not: null }, contractId: { not: contract.id } }, select: { invoiceId: true } }),
   ]);
   const activeOrder = order && !order.cancelledAt ? order : null;
   const currentInvoiceId = exception?.invoiceId ?? activeOrder?.invoiceId ?? contract.invoiceId ?? choice?.invoiceId;
@@ -101,14 +102,15 @@ export async function loadRenewalPaymentOverview(input: {
   const postedMinutes = entries.reduce((total, row) => total + row.correctionSources.reduce(
     (minutes, correction) => minutes + (correction.unit === "MINUTES" ? correction.deltaUnits : 0), row.deltaMinutes,
   ), 0);
-  const invoiceApproval = matched ? await prisma.packageInvoiceApproval.findFirst({
+  const invoiceApproval = matched ? await db.packageInvoiceApproval.findFirst({
     where: { packageId: contract.packageId, invoiceId: matched.id },
     orderBy: [{ submittedAt: "desc" }, { id: "desc" }], select: { status: true },
   }) : null;
 
   return {
     current, cashCandidates, canOpenCash, exception, activeOrder, invoiceApproval: invoiceApproval?.status ?? null,
-    minutes, posted: postedMinutes >= minutes || Boolean(activeOrder?.activatedAt && entries.length &&
+    invoiceUsedElsewhere: Boolean(matched && usedInvoices.has(matched.id)),
+    minutes, postedMinutes, posted: postedMinutes >= minutes || Boolean(activeOrder?.activatedAt && entries.length &&
       entries.every(row => !row.correctionSources.some(correction => correction.unit === "MINUTES" && correction.deltaUnits < 0))),
     ambiguous: !currentInvoiceId && candidates.length > 1,
   };

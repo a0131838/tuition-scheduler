@@ -1,3 +1,5 @@
+import PaidRenewalFollowUps from "./PaidRenewalFollowUps";
+import { listPaidRenewalsAwaitingSignature } from "@/lib/paid-renewal-followups";
 import RenewalActionsPanel from '@/app/admin/_components/RenewalActionsPanel';
 import { requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
@@ -233,6 +235,8 @@ export default async function FinanceWorkbenchPage({
     getParentReceiptApprovalMap(parentAll.receipts.map((x) => x.id)),
     getPartnerReceiptApprovalMap(partnerAll.receipts.map((x) => x.id)),
   ]);
+
+  const paidRenewalFollowUps = await listPaidRenewalsAwaitingSignature({ billing: parentAll, roles: roleCfg, approvals: parentApprovalMap });
 
   const today = formatDateOnly(new Date());
   const yesterdayDate = new Date();
@@ -835,6 +839,8 @@ export default async function FinanceWorkbenchPage({
           </a>
         </div>
       </section>
+
+      <PaidRenewalFollowUps lang={lang} rows={paidRenewalFollowUps} />
 
       {pendingPackageApprovals.length ? (
         <section style={{ border: "1px solid #fdba74", borderRadius: 14, background: "#fffaf0", padding: 14, display: "grid", gap: 8 }}>

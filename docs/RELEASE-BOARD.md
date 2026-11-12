@@ -1,5 +1,14 @@
 # RELEASE BOARD
 
+## 2026-11-12-r516
+
+- Release ID: `2026-11-12-r516`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Staff impact: open Finance Workbench → Paid renewals awaiting signature. Check the invoice, payment method, hours pending, and the next responsible role. Cash Renewal Exceptions links to the same section.
+- Verification: fixture walkthroughs cover PayNow, a linked bank transfer, partial or pending receipts, signed renewals, and already-posted hours. See `docs/tasks/TASK-20261112-paid-renewal-finance-followup.md`.
+
+---
+
 ## 2026-11-12-r515
 
 - Release ID: `2026-11-12-r515`

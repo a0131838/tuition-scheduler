@@ -63,7 +63,7 @@ export default function RenewalPaymentSummary({ overview, lang, signed, cashHref
   } else if (!posted) {
     next = { label: t(lang, "Ask Finance to check the lesson-hour ledger", "请财务核对课时流水") };
   }
-  return <section aria-label={heading} style={{ padding: 14, marginBottom: 14, border: "1px solid #bfdbfe", borderRadius: 12, background: "#eff6ff", display: "grid", gap: 6 }}>
+  return <section id="current-renewal" aria-label={heading} style={{ scrollMarginTop: 90, padding: 14, marginBottom: 14, border: "1px solid #bfdbfe", borderRadius: 12, background: "#eff6ff", display: "grid", gap: 6 }}>
     <strong>{heading}{current ? ` · ${current.invoice.invoiceNo}` : ""}</strong>
     <div>{[current && renewalPaymentLabel(lang, current), hoursText, !signed && !activeOrder && t(lang, "Parent signature pending", "家长待签")].filter(Boolean).join("  ·  ")}</div>
     {next ? <div>{next.href ? <a href={next.href}>{next.label}</a> : next.label}</div> : null}
