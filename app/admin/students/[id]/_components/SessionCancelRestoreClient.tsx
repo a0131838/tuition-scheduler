@@ -1,5 +1,6 @@
 "use client";
 
+import { CANCELLATION_REQUESTERS, cancellationRequesterLabel } from "@/lib/lesson-cancellation-policy";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { restoreStudentDetailHashAfterRefresh } from "./studentDetailHash";
@@ -56,6 +57,12 @@ export default function SessionCancelRestoreClient(props: {
   sessionId: string;
   initialCancelled: boolean;
   initialCharge?: boolean;
+  initialRequestedBy?: string | null;
+  initialNote?: string | null;
+  durationMinutes: number;
+  sessionLabel: string;
+  lang: string;
+  parentCancellationCount: number;
   variant: "compact" | "full";
   labels: {
     cancel: string;
@@ -78,17 +85,26 @@ export default function SessionCancelRestoreClient(props: {
   const { studentId, sessionId, initialCancelled, initialCharge, variant, labels, returnHash, ticketExecutionContext } = props;
   const [cancelled, setCancelled] = useState(initialCancelled);
   const [charge, setCharge] = useState(Boolean(initialCharge));
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState(props.initialNote || "");
+  const [requestedBy, setRequestedBy] = useState(props.initialRequestedBy || "");
+  const [editing, setEditing] = useState(false);
+  const tr = (en: string, zh: string) => props.lang === "EN" ? en : props.lang === "ZH" ? zh : `${en} / ${zh}`;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [doneMsg, setDoneMsg] = useState("");
 
   const doCancel = async () => {
     if (loading) return;
+    if (!requestedBy || !note.trim()) { setError(tr("Select requester and enter a reason", "请选择发起方并填写原因")); return; }
     setLoading(true);
     setError("");
     setDoneMsg("");
     try {
+      const previewRes = await fetch(`/api/admin/students/${encodeURIComponent(studentId)}/sessions/cancel`, {method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({sessionId,charge,note,requestedBy,mode:"preview"})});
+      const preview = await jsonOrNull(previewRes);
+      if(!previewRes.ok || !preview?.ok) throw new Error(String(preview?.message || "Preview failed"));
+      const impact = tr(`Deduct ${preview.deductedMinutes} minutes / ${preview.deductedCount} lessons`, `扣除 ${preview.deductedMinutes} 分钟／${preview.deductedCount} 次`);
+      if(!window.confirm(`${props.sessionLabel}\n${cancellationRequesterLabel(requestedBy,props.lang)}\n${impact}\n${note}`)) return;
       const res = await fetch(`/api/admin/students/${encodeURIComponent(studentId)}/sessions/cancel`, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -96,6 +112,9 @@ export default function SessionCancelRestoreClient(props: {
           sessionId,
           charge,
           note,
+          requestedBy,
+          expectedDeductedMinutes: preview.deductedMinutes,
+          expectedDeductedCount: preview.deductedCount,
           ticketId: ticketExecutionContext?.ticketId,
           ticketActionId: ticketExecutionContext?.actionId,
         }),
@@ -103,6 +122,7 @@ export default function SessionCancelRestoreClient(props: {
       const data = await jsonOrNull(res);
       if (!res.ok || !data?.ok) throw new Error(String(data?.message ?? "Cancel failed"));
       setCancelled(true);
+      setEditing(false);
       applySessionVisualState(sessionId, true);
       setDoneMsg("OK");
       if (ticketExecutionContext?.returnHref) {
@@ -133,6 +153,9 @@ export default function SessionCancelRestoreClient(props: {
       const data = await jsonOrNull(res);
       if (!res.ok || !data?.ok) throw new Error(String(data?.message ?? "Restore failed"));
       setCancelled(false);
+      setCharge(false);
+      setRequestedBy("");
+      setNote("");
       applySessionVisualState(sessionId, false);
       setDoneMsg("OK");
       restoreStudentDetailHashAfterRefresh(returnHash);
@@ -166,98 +189,32 @@ export default function SessionCancelRestoreClient(props: {
     }
   };
 
-  if (cancelled) {
-    return (
-      <span style={{ display: "inline-flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <button type="button" onClick={doRestore} disabled={loading}>
-          {loading ? "..." : labels.restore}
-        </button>
-        {!charge && props.transferLesson ? <TransferCancelledLesson lesson={props.transferLesson} /> : null}
-        <button
-          type="button"
-          onClick={doDelete}
-          disabled={loading}
-          style={
-            variant === "compact"
-              ? {
-                  border: "1px solid #fca5a5",
-                  background: "#fef2f2",
-                  color: "#b42318",
-                  borderRadius: 6,
-                  padding: "2px 6px",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                }
-              : { background: "#fee2e2", borderColor: "#fca5a5" }
-          }
-        >
-          {loading ? "..." : variant === "compact" ? "del" : labels.delete}
-        </button>
-        {doneMsg ? <span style={{ color: "#166534", fontSize: 12 }}>{doneMsg}</span> : null}
-        {error ? <span style={{ color: "#b00", fontSize: 12 }}>{error}</span> : null}
-      </span>
-    );
-  }
-
-  return (
-    <span style={{ display: "inline-flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-      <button
-        type="button"
-        title={variant === "compact" ? labels.cancel : undefined}
-        onClick={doCancel}
-        disabled={loading}
-        style={
-          variant === "compact"
-            ? {
-                border: "1px solid #f0b266",
-                background: "#fff7ed",
-                color: "#b45309",
-                borderRadius: 6,
-                padding: "2px 6px",
-                fontSize: 11,
-                fontWeight: 700,
-                cursor: "pointer",
-              }
-            : undefined
-        }
-      >
-        {loading ? "..." : variant === "compact" ? "x" : labels.cancel}
-      </button>
-      <button
-        type="button"
-        title={variant === "compact" ? labels.delete : undefined}
-        onClick={doDelete}
-        disabled={loading}
-        style={
-          variant === "compact"
-            ? {
-                border: "1px solid #fca5a5",
-                background: "#fef2f2",
-                color: "#b42318",
-                borderRadius: 6,
-                padding: "2px 6px",
-                fontSize: 11,
-                fontWeight: 700,
-                cursor: "pointer",
-              }
-            : { background: "#fee2e2", borderColor: "#fca5a5" }
-        }
-      >
-        {loading ? "..." : variant === "compact" ? "del" : labels.delete}
-      </button>
-      <label style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: variant === "compact" ? 11 : 12 }}>
-        <input type="checkbox" checked={charge} onChange={(e) => setCharge(e.target.checked)} />
-        {labels.charge}
-      </label>
-      <input
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        placeholder={labels.note}
-        style={variant === "compact" ? { fontSize: 11, padding: "2px 4px", width: 90 } : { minWidth: 160 }}
-      />
-      {doneMsg ? <span style={{ color: "#166534", fontSize: 12 }}>{doneMsg}</span> : null}
-      {error ? <span style={{ color: "#b00", fontSize: 12 }}>{error}</span> : null}
-    </span>
-  );
+  const deletion = <details><summary style={{cursor:"pointer",fontSize:12}}>{tr("More", "更多")}</summary><p style={{fontSize:12,maxWidth:260}}>{tr("Delete only mistaken, unused future lessons. Recorded history stays available.", "仅删除误建、未使用的未来课次，历史仍可追溯。")}</p><button type="button" onClick={doDelete} disabled={loading}>{tr("Delete mistaken lesson", "删除误建课次")}</button></details>;
+  return <span style={{display:"inline-flex",gap:8,flexWrap:"wrap",alignItems:"start"}}>
+    {cancelled ? <>
+      <span style={{fontSize:12}}>{cancellationRequesterLabel(requestedBy, props.lang)} · {charge ? tr("Hours deducted", "已扣课时") : tr("No deduction", "不扣课时")}{note ? ` · ${note}` : ""}</span>
+      <button type="button" onClick={doRestore} disabled={loading}>{labels.restore}</button>
+      {!charge && props.transferLesson ? <TransferCancelledLesson lesson={props.transferLesson} /> : null}
+    </> : <>
+      <button type="button" onClick={() => {setEditing(!editing);setError("");}} disabled={loading}>{tr("Cancel lesson", "取消课次")}</button>
+      {editing ? <span style={{display:"grid",gap:8,padding:12,border:"1px solid #fed7aa",borderRadius:8,background:"#fffaf0",maxWidth:360}}>
+        <strong>{props.sessionLabel}</strong>
+        <label>{tr("Requested by", "取消发起方")}<select aria-label={tr("Requested by", "取消发起方")} value={requestedBy} onChange={e=>{setRequestedBy(e.target.value);setCharge(false);}} style={{width:"100%"}}>
+          <option value="">{tr("Please select", "请选择")}</option>
+          {CANCELLATION_REQUESTERS.map(v=><option key={v} value={v}>{cancellationRequesterLabel(v,props.lang)}</option>)}
+        </select></label>
+        <label><input type="checkbox" checked={charge} disabled={requestedBy!=="PARENT"} onChange={e=>setCharge(e.target.checked)}/>{tr("Deduct this lesson", "扣除本节课时")}</label>
+        <small>{requestedBy && requestedBy!=="PARENT" ? tr("Teacher and school cancellations are always free of deduction.", "老师及校方取消固定免扣。") : tr("Select deduction only under the approved cancellation policy. Counts never trigger a charge.", "仅按已批准规则人工选择扣课，次数不会自动触发扣课。")}</small>
+        <small>{tr(`Recorded parent cancellations: ${props.parentCancellationCount}. Historical unclassified reasons are excluded.`, `已分类家长取消：${props.parentCancellationCount}次；历史未分类记录不计入。`)}</small>
+        {requestedBy==="PARENT" && props.parentCancellationCount>=3 ? <strong style={{color:"#9a3412",fontSize:12}}>{tr("Repeated cancellations: review the policy with the parent; no automatic deduction.", "家长取消已较多，请核对规则并沟通；不会自动扣课。")}</strong> : null}
+        <label>{tr("Reason (required)", "取消原因（必填）")}<textarea value={note} maxLength={500} onChange={e=>setNote(e.target.value)} rows={2} style={{width:"100%"}}/></label>
+        <strong>{charge ? tr("The confirmation shows the actual deduction for the selected package.", "确认页显示所选课包的实际扣课数量。") : tr("After confirmation: deduct 0 minutes", "确认后扣除0分钟")}</strong>
+        <button type="button" onClick={doCancel} disabled={loading}>{loading ? "..." : tr("Confirm cancellation", "确认取消")}</button>
+        <button type="button" onClick={()=>setEditing(false)} disabled={loading}>{tr("Keep lesson", "暂不取消")}</button>
+      </span> : null}
+      {deletion}
+    </>}
+    {doneMsg ? <span role="status" style={{color:"#166534"}}>{tr("Saved", "已保存")}</span> : null}
+    {error ? <span role="alert" style={{color:"#b00"}}>{error}</span> : null}
+  </span>;
 }

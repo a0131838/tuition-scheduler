@@ -1,3 +1,4 @@
+import { resolveLessonCancellation, resolveCancellationDeduction } from "./lesson-cancellation-policy";
 import crypto from "crypto";
 import { PackageStatus, PackageType, Prisma } from "@prisma/client";
 import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/lib/package-sharing";
@@ -19,21 +20,14 @@ type DbClient = typeof prisma | Prisma.TransactionClient;
 
 type CancellationPackageMode = PackageMode | "MONTHLY";
 
-export function resolveCancellationDeduction(
-  mode: CancellationPackageMode,
-  durationMin: number
-) {
-  if (mode === "MONTHLY") return { units: 0, deductedMinutes: 0, deductedCount: 0 };
-  if (mode === "GROUP_COUNT") return { units: 1, deductedMinutes: 0, deductedCount: 1 };
-  const minutes = Math.max(1, Math.round(durationMin));
-  return { units: minutes, deductedMinutes: minutes, deductedCount: 0 };
-}
+export { resolveCancellationDeduction } from "./lesson-cancellation-policy";
 
 export type MiniappCancellationInput = {
   sessionId: string;
   studentId: string;
   charge: boolean;
   note: string;
+  requestedBy: string;
 };
 
 type CancellationActor = {
@@ -88,6 +82,7 @@ function locationText(session: Prisma.SessionGetPayload<{ include: typeof cancel
 }
 
 async function validateCancellation(db: DbClient, input: MiniappCancellationInput) {
+  try { resolveLessonCancellation(input); } catch (error) { throw new MiniappCancellationError(error instanceof Error ? error.message : "Invalid cancellation", 400); }
   const session = await db.session.findUnique({ where: { id: input.sessionId }, include: cancellationSessionInclude });
   if (!session) throw new MiniappCancellationError("课程不存在或已被删除。", 404, "SESSION_NOT_FOUND");
   if (session.startAt <= new Date()) {
@@ -196,6 +191,8 @@ async function validateCancellation(db: DbClient, input: MiniappCancellationInpu
           : packageMode === "GROUP_COUNT" ? "扣除 1 次班课"
             : `扣除 ${durationMin} 分钟课时`,
       note: input.note,
+      requestedBy: input.requestedBy,
+      parentCancellationCount: await db.attendance.count({ where: { studentId: input.studentId, status: "EXCUSED", cancellationRequestedBy: "PARENT" } }),
       tickets: tickets.map((ticket) => ({ id: ticket.id, ticketNo: ticket.ticketNo, status: ticket.status })),
     },
   };
@@ -212,6 +209,7 @@ export async function applyMiniappSessionCancellation(
 ) {
   return prisma.$transaction(
     async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Session" WHERE id = ${input.sessionId} FOR UPDATE`;
       const checked = await validateCancellation(tx, input);
       const requestedTicketIds = Array.from(new Set(completeTicketIds));
       const eligibleIds = new Set(checked.tickets.map((ticket) => ticket.id));
@@ -249,6 +247,8 @@ export async function applyMiniappSessionCancellation(
           packageId: input.charge ? checked.packageId : null,
           note: input.note || "Canceled from staff miniapp",
           excusedCharge: input.charge,
+          cancellationRequestedBy: input.requestedBy,
+          cancellationReason: input.note,
           waiveDeduction: !input.charge,
           waiveReason: input.charge ? null : "Staff miniapp cancellation without charge",
         },
@@ -259,6 +259,8 @@ export async function applyMiniappSessionCancellation(
           packageId: input.charge ? checked.packageId : null,
           note: input.note || "Canceled from staff miniapp",
           excusedCharge: input.charge,
+          cancellationRequestedBy: input.requestedBy,
+          cancellationReason: input.note,
           waiveDeduction: !input.charge,
           waiveReason: input.charge ? null : "Staff miniapp cancellation without charge",
         },
@@ -278,7 +280,7 @@ export async function applyMiniappSessionCancellation(
           roomName: checked.session.class.room?.name ?? null,
         },
         after: { status: input.charge ? "Cancelled - charged" : "Cancelled - no charge" },
-        reason: input.note,
+        reason: `${input.requestedBy}: ${input.note}`,
         source: "MINIAPP",
       });
 
@@ -341,6 +343,8 @@ export async function applyMiniappSessionCancellation(
           meta: {
             studentId: input.studentId,
             charge: input.charge,
+            requestedBy: input.requestedBy,
+            reason: input.note,
             packageMode: checked.packageMode,
             deductedMinutes: input.charge ? checked.deduction.deductedMinutes : 0,
             deductedCount: input.charge ? checked.deduction.deductedCount : 0,

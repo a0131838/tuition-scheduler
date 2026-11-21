@@ -19,6 +19,8 @@
     <view class="priority-action">{{priorityAction}} <text>›</text></view>
   </view>
 
+  <view wx:if="{{role === 'FINANCE' || canManageCoordination || isManager}}" class="card" bindtap="goCancellations"><view class="work-title">取消及课次历史（只读）</view><view class="work-detail">查询取消原因、扣课结果、改期及删除记录</view></view>
+
   <view class="metric-strip" wx:if="{{isTeacher}}">
     <view class="metric-cell" bindtap="goSchedule"><view class="metric-value">{{todaySessionCount}}</view><view class="metric-name">今日课程</view></view>
     <view class="metric-cell {{teacherMetricClass}}" bindtap="goTeacherTodos"><view class="metric-value">{{teacherTodoCount}}</view><view class="metric-name">我的待办</view></view>

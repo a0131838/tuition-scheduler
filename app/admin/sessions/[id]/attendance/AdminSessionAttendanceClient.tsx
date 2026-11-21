@@ -49,6 +49,7 @@ export default function AdminSessionAttendanceClient({
       note: string;
       packageId: string;
       excusedCharge: boolean;
+      cancellationRequestedBy: string;
       waiveDeduction: boolean;
       waiveReason: string;
     }>;
@@ -161,6 +162,7 @@ export default function AdminSessionAttendanceClient({
       note: String(formData.get(`note:${r.studentId}`) ?? r.note ?? ""),
       packageId: String(formData.get(`pkg:${r.studentId}`) ?? r.packageId ?? ""),
       excusedCharge: String(formData.get(`charge:${r.studentId}`) ?? "") === "on",
+      cancellationRequestedBy: String(formData.get(`requester:${r.studentId}`) ?? ""),
       waiveDeduction,
       waiveReason: waiveDeduction ? waiveReason : "",
     }));

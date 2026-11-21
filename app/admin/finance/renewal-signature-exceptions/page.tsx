@@ -14,6 +14,9 @@ export default async function PendingRenewalSignaturesPage() {
   });
   return <main style={{ maxWidth: 1050, margin: "24px auto", padding: 18, display: "grid", gap: 14 }}>
     <a href="/admin/renewals/orders">Same-term renewal orders / 同条件续费确认与限额续课 →</a>
+    <a href="/admin/finance/workbench#paid-renewals-awaiting-signature">
+      {t(lang, "PayNow and other non-cash renewals awaiting signature →", "PayNow 等非现金续费待签署 →")}
+    </a>
     <h1>{t(lang, "Cash renewal exceptions", "现金续费例外")}</h1>
     <p>{t(lang, "Track existing cash exception requests and follow up on parent signatures. To start a request, open the student’s Package Billing page.", "在此跟进已提交的现金例外和家长补签。新申请请从学生的课包账单进入。")}</p>
     {rows.map(row => {

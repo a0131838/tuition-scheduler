@@ -1,5 +1,27 @@
 # CHANGELOG LIVE
 
+## 2026-11-21-r517
+
+- Release ID: `2026-11-21-r517`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: unify web calendar, admin attendance, mini program and assisted cancellation decisions. Record requester and required reason, keep teacher/school cancellations free, and make cancellation counts advisory.
+- Staff impact: use named Cancel lesson and Delete mistaken lesson actions. Finance and Operations can read cancellation, rescheduling and deletion records on web and mini program. Existing reschedule notices remain in place.
+- Verification: isolated HTTP and actual browser flows, native WeChat simulator cancellation and Finance query, 185 backend tests, 33 focused regression tests, exact group/minute/monthly units, production build, and 12-page bilingual SOP layout validation.
+- Boundaries: nullable historical classification only; no historical lesson, package balance, invoice, receipt or payroll rewrite. Mini program source version is 1.1.04; actual development / experience / production channel states remain in the separate release ledger.
+- Details: `docs/tasks/TASK-20261121-unified-cancellation.md`.
+
+---
+
+## 2026-11-12-r516
+
+- Release ID: `2026-11-12-r516`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: add a paid-renewals-awaiting-signature list to Finance Workbench, with a shortcut from Cash Renewal Exceptions and direct links to This Renewal in Package Billing.
+- Scope: read-only follow-up for fully approved non-cash renewals tied to a specific invoice, while the contract is unsigned and the linked renewal credit is still unposted.
+- Verification: isolated Finance browser flow from cash queue to billing, invoice approval handoff, signature and single lesson credit, production build, and 185 backend tests. See `docs/tasks/TASK-20261112-paid-renewal-finance-followup.md`.
+
+---
+
 ## 2026-11-12-r515
 
 - Release ID: `2026-11-12-r515`

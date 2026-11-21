@@ -1,3 +1,4 @@
+import { resolveLessonCancellation } from "./lesson-cancellation-policy";
 import crypto from "crypto";
 
 export const AI_TICKET_COMMAND_TYPES = [
@@ -30,6 +31,7 @@ export type AiTicketCommand = {
   durationMin?: number;
   weeks?: number;
   charge?: boolean;
+  requestedBy?: string;
   note?: string;
   reason?: string;
   nextAction?: string;
@@ -112,6 +114,7 @@ function parseCommand(value: unknown, index: number): AiTicketCommand {
     if (!Number.isInteger(weeks) || weeks < 1 || weeks > 12) throw new Error(`commands[${index}].weeks is invalid`);
     result.weeks = weeks;
   }
+  if (row.requestedBy !== undefined) result.requestedBy = clean(row.requestedBy,20);
   if (row.charge !== undefined) {
     if (typeof row.charge !== "boolean") throw new Error(`commands[${index}].charge is invalid`);
     result.charge = row.charge;
@@ -130,6 +133,7 @@ function parseCommand(value: unknown, index: number): AiTicketCommand {
   };
   for (const key of needs[commandType]) if (result[key] === undefined || result[key] === "") throw new Error(`commands[${index}].${key} is required`);
   if (commandType === "CANCEL_SESSION" && typeof result.charge !== "boolean") throw new Error(`commands[${index}].charge is required`);
+  if (commandType === "CANCEL_SESSION") resolveLessonCancellation({ requestedBy: result.requestedBy, charge: result.charge, note: result.note });
   return result;
 }
 

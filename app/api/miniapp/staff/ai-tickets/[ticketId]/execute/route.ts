@@ -80,7 +80,7 @@ async function previewCommand(ticketId: string, command: AiTicketCommand) {
   if (isAiTicketCaseCommand(command)) return previewAiTicketCaseCommand(ticketId, command);
   if (command.commandType === "CREATE_SESSION") return (await previewTicketNewSession(newSessionInput(ticketId, command))).preview;
   if (command.commandType === "RESCHEDULE_SESSION") return (await previewMiniappSessionScheduling({ action: "reschedule", sessionId: command.sessionId!, startAt: new Date(command.startAt!), durationMin: command.durationMin!, campusId: command.campusId, roomId: command.roomId, reason: command.reason })).preview;
-  if (command.commandType === "CANCEL_SESSION") return (await previewMiniappSessionCancellation({ sessionId: command.sessionId!, studentId: command.studentId!, charge: command.charge!, note: command.note! })).preview;
+  if (command.commandType === "CANCEL_SESSION") return (await previewMiniappSessionCancellation({ sessionId: command.sessionId!, studentId: command.studentId!, charge: command.charge!, requestedBy: command.requestedBy!, note: command.note! })).preview;
   if (command.commandType === "REPLACE_TEACHER") return (await previewMiniappTeacherReplacement({ sessionId: command.sessionId!, newTeacherId: command.newTeacherId!, reason: command.reason! })).preview;
   return (await previewMiniappSessionLocationChange({ sessionId: command.sessionId!, campusId: command.campusId!, roomId: command.roomId ?? null, reason: command.reason! })).preview;
 }
@@ -89,7 +89,7 @@ async function applyCommand(ticketId: string, command: AiTicketCommand, executio
   if (isAiTicketCaseCommand(command)) return applyAiTicketCaseCommand(ticketId, command, executionActor);
   if (command.commandType === "CREATE_SESSION") return applyTicketNewSession(newSessionInput(ticketId, command), executionActor);
   if (command.commandType === "RESCHEDULE_SESSION") return applyMiniappSessionScheduling({ action: "reschedule", sessionId: command.sessionId!, startAt: new Date(command.startAt!), durationMin: command.durationMin!, campusId: command.campusId, roomId: command.roomId, reason: command.reason }, executionActor, [ticketId]);
-  if (command.commandType === "CANCEL_SESSION") return applyMiniappSessionCancellation({ sessionId: command.sessionId!, studentId: command.studentId!, charge: command.charge!, note: command.note! }, executionActor, [ticketId]);
+  if (command.commandType === "CANCEL_SESSION") return applyMiniappSessionCancellation({ sessionId: command.sessionId!, studentId: command.studentId!, charge: command.charge!, requestedBy: command.requestedBy!, note: command.note! }, executionActor, [ticketId]);
   if (command.commandType === "REPLACE_TEACHER") return applyMiniappTeacherReplacement({ sessionId: command.sessionId!, newTeacherId: command.newTeacherId!, reason: command.reason! }, executionActor, [ticketId]);
   return applyMiniappSessionLocationChange({ sessionId: command.sessionId!, campusId: command.campusId!, roomId: command.roomId ?? null, reason: command.reason! }, executionActor, [ticketId]);
 }
@@ -259,7 +259,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ ticketId: stri
           : commands[0].commandType === "RESCHEDULE_SESSION"
             ? await applyMiniappSessionScheduling({ action: "reschedule", sessionId: commands[0].sessionId!, startAt: new Date(commands[0].startAt!), durationMin: commands[0].durationMin!, campusId: commands[0].campusId, roomId: commands[0].roomId, reason: commands[0].reason }, actor(access.auth), executionTicketIds)
             : commands[0].commandType === "CANCEL_SESSION"
-              ? await applyMiniappSessionCancellation({ sessionId: commands[0].sessionId!, studentId: commands[0].studentId!, charge: commands[0].charge!, note: commands[0].note! }, actor(access.auth), executionTicketIds)
+              ? await applyMiniappSessionCancellation({ sessionId: commands[0].sessionId!, studentId: commands[0].studentId!, charge: commands[0].charge!, requestedBy: commands[0].requestedBy!, note: commands[0].note! }, actor(access.auth), executionTicketIds)
               : commands[0].commandType === "REPLACE_TEACHER"
                 ? await applyMiniappTeacherReplacement({ sessionId: commands[0].sessionId!, newTeacherId: commands[0].newTeacherId!, reason: commands[0].reason! }, actor(access.auth), executionTicketIds)
                 : await applyMiniappSessionLocationChange({ sessionId: commands[0].sessionId!, campusId: commands[0].campusId!, roomId: commands[0].roomId ?? null, reason: commands[0].reason! }, actor(access.auth), executionTicketIds);

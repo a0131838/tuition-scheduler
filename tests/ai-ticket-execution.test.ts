@@ -18,7 +18,7 @@ const request = {
   formalUpdatedAt: "2026-08-11T00:00:00.000Z",
   workflowKey: "CANCEL_LESSON",
   idempotencyKey: "package-1",
-  commands: [{ commandType: "CANCEL_SESSION", idempotencyKey: "command-1", sessionId: "S-1", studentId: "ST-1", charge: false, note: "家长提前请假" }],
+  commands: [{ commandType: "CANCEL_SESSION", idempotencyKey: "command-1", sessionId: "S-1", studentId: "ST-1", charge: false, requestedBy: "PARENT", note: "家长提前请假" }],
 };
 
 test("AI ticket package is allowlisted and bound to the route ticket", () => {

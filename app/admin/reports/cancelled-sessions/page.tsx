@@ -1,3 +1,5 @@
+import { listLessonChangeHistory } from "@/lib/lesson-change-history";
+import { cancellationRequesterLabel, CANCELLATION_REQUESTERS } from "@/lib/lesson-cancellation-policy";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
@@ -39,9 +41,10 @@ export default async function CancelledSessionsReportPage({
     courseId?: string;
     charge?: ChargeFilter;
     limit?: string;
+    requester?: string;
   }>;
 }) {
-  await requireAdmin();
+  const user = await requireAdmin();
   const lang = await getLang();
   const sp = await searchParams;
 
@@ -63,6 +66,8 @@ export default async function CancelledSessionsReportPage({
   const studentId = (sp?.studentId ?? "").trim();
   const courseId = (sp?.courseId ?? "").trim();
   const charge = (sp?.charge ?? "all") as ChargeFilter;
+  const requester = String(sp?.requester || "");
+  const history = await listLessonChangeHistory({ from, to: toEnd, studentId, teacherId, courseId });
   const limitRaw = Number(sp?.limit ?? 1000);
   const limit = Number.isFinite(limitRaw) ? Math.max(100, Math.min(5000, Math.floor(limitRaw))) : 1000;
 
@@ -73,6 +78,7 @@ export default async function CancelledSessionsReportPage({
     prisma.attendance.findMany({
       where: {
         status: "EXCUSED",
+        ...(requester === "UNKNOWN" ? { cancellationRequestedBy: null } : (CANCELLATION_REQUESTERS as readonly string[]).includes(requester) ? { cancellationRequestedBy: requester } : {}),
         studentId: studentId || undefined,
         session: {
           startAt: { gte: from, lte: toEnd },
@@ -135,6 +141,7 @@ export default async function CancelledSessionsReportPage({
       >
         <div>
           <div style={{ fontSize: 12, fontWeight: 700, color: "#2563eb", marginBottom: 4 }}>Cancelled Sessions / 已取消课次</div>
+          <p>{t(lang,"Read only for Finance. No timetable or deduction changes can be made here.", "财务只读查询，此页不会修改课表或扣课。")}</p>
           <h2 style={{ margin: 0 }}>{t(lang, "Cancelled Sessions Report", "已取消课次报表")}</h2>
           <div style={{ color: "#475569", marginTop: 6 }}>
             {t(lang, "Use date, teacher, student, and charge filters together so finance and operations can review the same cancellation set.", "把日期、老师、学生和扣费条件一起筛好，财务和教务就能对齐同一批取消记录。")}
@@ -176,6 +183,7 @@ export default async function CancelledSessionsReportPage({
         <a href="#cancelled-session-list">{t(lang, "Rows", "记录")}</a>
       </div>
 
+      <p>{t(lang,"Choose a future end date to include future cancelled lessons. Requester and charge filters apply to cancelled lessons; history below uses operation dates.", "查询未来取消时，请把截止日期选到课程日期。发起方和扣课筛选适用于取消列表；下方历史按操作日期查询。")}</p>
       <form id="cancelled-session-filters" method="GET" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12, scrollMarginTop: 96 }}>
         <label>
           {t(lang, "From", "从")}:
@@ -226,6 +234,7 @@ export default async function CancelledSessionsReportPage({
             <option value="uncharged">{t(lang, "Uncharged", "未扣费")}</option>
           </select>
         </label>
+        <label>{t(lang,"Requested by", "取消发起方")}<select name="requester" defaultValue={requester}><option value="">{t(lang,"All", "全部")}</option>{CANCELLATION_REQUESTERS.map(v=><option value={v} key={v}>{cancellationRequesterLabel(v,lang)}</option>)}<option value="UNKNOWN">{cancellationRequesterLabel(null,lang)}</option></select></label>
         <label>
           Limit:
           <input name="limit" type="number" min={100} max={5000} defaultValue={String(limit)} style={{ marginLeft: 6, width: 90 }} />
@@ -261,7 +270,8 @@ export default async function CancelledSessionsReportPage({
               <th align="left">{t(lang, "Deduct Count", "扣次数")}</th>
               <th align="left">{t(lang, "Deduct Minutes", "扣分钟")}</th>
               <th align="left">{t(lang, "Package", "课包")}</th>
-              <th align="left">{t(lang, "Note", "备注")}</th>
+              <th align="left">{t(lang, "Requested by", "取消发起方")}</th>
+              <th align="left">{t(lang, "Reason", "原因")}</th>
               <th align="left">{t(lang, "Updated", "更新时间")}</th>
             </tr>
           </thead>
@@ -296,7 +306,8 @@ export default async function CancelledSessionsReportPage({
                   <td>{r.deductedCount}</td>
                   <td>{r.deductedMinutes}</td>
                   <td>{r.package ? `${r.package.type} (${r.package.id.slice(0, 8)})` : "-"}</td>
-                  <td>{r.note?.trim() || "-"}</td>
+                  <td>{cancellationRequesterLabel(r.cancellationRequestedBy,lang)}</td>
+                  <td>{r.cancellationReason || r.note?.trim() || "-"}</td>
                   <td>{formatBusinessDateTime(new Date(r.updatedAt))}</td>
                 </tr>
               );
@@ -304,6 +315,20 @@ export default async function CancelledSessionsReportPage({
           </tbody>
         </table>
       )}
+      <details id="lesson-change-history" style={{marginTop:20,padding:14,border:"1px solid #cbd5e1",borderRadius:10}}>
+        <summary style={{fontWeight:800,cursor:"pointer"}}>{t(lang,"Rescheduling, cancellation & deletion history", "改期、取消及删除历史")} ({history.rows.length})</summary>
+        <p>{t(lang,"Filtered by operation date, student, teacher and course. Deleted lessons remain here as recorded history, without returning to the active timetable.", "按操作日期、学生、老师、课程筛选。已删除课程保留历史记录，不重新占用课表。")}</p>
+        {history.limited?<p>{t(lang,"Recent 1000 operations searched. Narrow the date range for earlier records.", "当前检索最近1000条操作，请缩小日期范围查询更早记录。")}</p>:null}
+        {history.rows.map(h=><div key={h.id} style={{borderTop:"1px solid #e2e8f0",padding:"12px 0"}}>
+          <strong>{t(lang, h.action==="SESSION_DELETED"?"Deleted mistaken lesson":h.action==="SESSION_RESCHEDULED"?"Rescheduled":"Cancelled", h.action==="SESSION_DELETED"?"删除误建课次":h.action==="SESSION_RESCHEDULED"?"课程改期":"取消课次")} · {h.studentName}</strong>
+          <div>{h.changedAt ? formatBusinessDateTime(new Date(h.changedAt)):""} · {h.actor}</div>
+          <div>{t(lang,"Original lesson", "原课程")}: {h.beforeStart?formatBusinessDateTime(new Date(h.beforeStart)):"-"} · {h.courseName} · {h.teacherName}</div>
+          {h.afterStart?<div>{t(lang,"New time", "新时间")}: {formatBusinessDateTime(new Date(h.afterStart))}</div>:null}
+          <div>{h.reason}</div>
+          {user.role!=="FINANCE" && h.sessionId?<a href={`/admin/sessions/${encodeURIComponent(h.sessionId)}/attendance`}>{t(lang,"Original lesson & recorded history", "原课及已保存历史")}</a>:null}
+        </div>)}
+        {!history.rows.length?<p>{t(lang,"No recorded changes in this operation date range.", "此操作日期范围内没有已记录的变更。")}</p>:null}
+      </details>
     </div>
   );
 }

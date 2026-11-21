@@ -159,6 +159,10 @@ Page({
     hasCancellationStudents: false,
     canShowCancellation: false,
     cancellationCharge: false,
+    cancellationRequesterOptions: ["请选择取消发起方", "家长／学生", "老师", "校方／管理"],
+    cancellationRequesterIndex: 0,
+    cancellationRequestedBy: "",
+    cancellationRequesterText: "请选择取消发起方",
     cancellationNote: "",
     cancellationPreview: null,
     cancellationPreviewToken: "",
@@ -619,6 +623,11 @@ Page({
     });
   },
 
+  changeCancellationRequester(e) {
+    const index = Number(e.detail.value || 0);
+    this.invalidateCancellationPreview({ cancellationRequesterIndex: index, cancellationRequestedBy: ["", "PARENT", "TEACHER", "SCHOOL"][index], cancellationRequesterText: this.data.cancellationRequesterOptions[index], cancellationCharge: false });
+  },
+
   changeCancellationCharge(e) {
     this.invalidateCancellationPreview({ cancellationCharge: Boolean(e.detail.value) });
   },
@@ -638,6 +647,7 @@ Page({
       mode,
       studentId: student ? student.id : "",
       charge: this.data.cancellationCharge,
+      requestedBy: this.data.cancellationRequestedBy,
       note: String(this.data.cancellationNote || "").trim(),
       previewToken: this.data.cancellationPreviewToken,
       completeTicketIds: mode === "apply" ? this.data.cancellationTicketIds : []
@@ -650,6 +660,7 @@ Page({
       api.toast("请选择学生");
       return;
     }
+    if (!payload.requestedBy) { api.toast("请选择取消发起方"); return; }
     if (!payload.note) {
       api.toast("请填写请假/取消原因");
       return;

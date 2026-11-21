@@ -1,5 +1,6 @@
 "use client";
 
+import { CANCELLATION_REQUESTERS, cancellationRequesterLabel } from "@/lib/lesson-cancellation-policy";
 import React, { useMemo, useState } from "react";
 import NoticeBanner from "../../../_components/NoticeBanner";
 
@@ -13,6 +14,7 @@ export type AttendanceRow = {
   note: string;
   packageId: string;
   excusedCharge: boolean;
+  cancellationRequestedBy?: string;
   waiveDeduction?: boolean;
   waiveReason?: string;
   excusedBaseCount: number;
@@ -57,7 +59,7 @@ export default function AttendanceEditor({ rows, lang }: Props) {
   const [state, setState] = useState(() => {
     const init: Record<
       string,
-      { deductedMinutes: number; deductedCount: number; packageId: string; excusedCharge: boolean; status: string }
+      { deductedMinutes: number; deductedCount: number; packageId: string; excusedCharge: boolean; status: string; cancellationRequestedBy: string }
     > = {};
     for (const r of rows) {
       init[r.studentId] = {
@@ -66,6 +68,7 @@ export default function AttendanceEditor({ rows, lang }: Props) {
         packageId: r.packageId ?? "",
         excusedCharge: r.excusedCharge ?? false,
         status: r.status,
+        cancellationRequestedBy: r.cancellationRequestedBy || "",
       };
     }
     return init;
@@ -202,8 +205,7 @@ export default function AttendanceEditor({ rows, lang }: Props) {
             const status = st?.status ?? r.status;
             const excusedCharge = Boolean(st?.excusedCharge);
             const canDeduct = isDeductableStatus(status, excusedCharge);
-            const excusedCount = r.excusedBaseCount + (status === "EXCUSED" ? 1 : 0);
-            const excusedEligible = excusedCount >= 4;
+            const excusedEligible = st?.cancellationRequestedBy === "PARENT";
             const requiredCount = Math.max(1, Number(st?.deductedCount ?? 0) || 0);
             const requiredMinutes = Math.max(
               1,
@@ -272,6 +274,9 @@ export default function AttendanceEditor({ rows, lang }: Props) {
                 </td>
 
                 <td>
+                  {status === "EXCUSED" ? <label>{t(lang,"Requested by", "取消发起方")}<select name={`requester:${r.studentId}`} value={st?.cancellationRequestedBy || ""} required onChange={e=>setState(s=>({...s,[r.studentId]:{...s[r.studentId],cancellationRequestedBy:e.target.value,excusedCharge:false,deductedMinutes:0,deductedCount:0}}))}>
+                    <option value="">{t(lang,"Please select", "请选择")}</option>{CANCELLATION_REQUESTERS.map(v=><option key={v} value={v}>{cancellationRequesterLabel(v,lang)}</option>)}
+                  </select></label> : null}
                   {status === "EXCUSED" ? (
                     excusedEligible ? (
                       <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -293,16 +298,14 @@ export default function AttendanceEditor({ rows, lang }: Props) {
                                 next.deductedCount = Math.max(1, Number(next.deductedCount ?? 0) || 0);
                                 next.deductedMinutes = 0;
                               } else if (activePkg?.billingMode === "MINUTES") {
-                                if ((next.deductedMinutes ?? 0) <= 0) {
-                                  next.deductedMinutes = Math.max(0, Number(r.suggestedDeductMinutes ?? 0));
-                                }
+                                next.deductedMinutes = Math.max(0, Number(r.suggestedDeductMinutes ?? 0));
                                 next.deductedCount = 0;
                               }
                               return { ...s, [r.studentId]: next };
                             });
                           }}
                         />
-                        {t(lang, "Charge", "扣费")}
+                        {t(lang, "Deduct this lesson", "扣除本节课时")}
                       </label>
                     ) : (
                       <span style={{ color: "#666" }}>{t(lang, "No charge", "免扣")}</span>
@@ -311,7 +314,7 @@ export default function AttendanceEditor({ rows, lang }: Props) {
                     <span style={{ color: "#999" }}>-</span>
                   )}
                   <div style={{ color: "#999", fontSize: 12 }}>
-                    {t(lang, "Excused total", "累计请假")} {excusedCount} {t(lang, "times", "次")}
+                    {t(lang, "Recorded parent cancellations (advisory)", "已分类家长取消（仅供参考）")} {r.excusedBaseCount} {t(lang, "times", "次")}<br/>{t(lang,"No automatic deduction. Teacher/school cancellations are free.", "不会自动扣课；老师及校方取消免扣。")}
                   </div>
                 </td>
 
@@ -390,6 +393,7 @@ export default function AttendanceEditor({ rows, lang }: Props) {
                 <td>
                   <input
                     name={`dc:${r.studentId}`}
+                    readOnly={status === "EXCUSED"}
                     type="number"
                     min={0}
                     step={1}
@@ -408,6 +412,7 @@ export default function AttendanceEditor({ rows, lang }: Props) {
                 <td>
                   <input
                     name={`dm:${r.studentId}`}
+                    readOnly={status === "EXCUSED"}
                     type="number"
                     min={0}
                     step={15}
@@ -428,7 +433,9 @@ export default function AttendanceEditor({ rows, lang }: Props) {
                     name={`note:${r.studentId}`}
                     type="text"
                     defaultValue={r.note}
-                    placeholder={t(lang, "optional...", "可选...")}
+                    required={status === "EXCUSED"}
+                    maxLength={status === "EXCUSED" ? 500 : undefined}
+                    placeholder={status === "EXCUSED" ? t(lang,"Cancellation reason required", "取消原因必填") : t(lang, "optional...", "可选...")}
                     style={{ width: "100%", minWidth: 220 }}
                   />
                 </td>

@@ -3407,6 +3407,8 @@ model Attendance {
   packageId      String?
   note           String?
   excusedCharge  Boolean @default(false)
+  cancellationRequestedBy String?
+  cancellationReason      String?
   waiveDeduction Boolean @default(false)
   waiveReason    String?
 

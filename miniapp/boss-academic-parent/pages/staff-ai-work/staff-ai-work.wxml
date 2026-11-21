@@ -45,10 +45,11 @@
       </picker>
     </view>
     <view class="decision" wx:if="{{selected.workflowKey === 'CANCEL_LESSON'}}">
-      <view class="decision-label">本次取消是否扣课时</view>
+      <view class="decision-label">取消发起方（必选）</view><radio-group bindchange="chooseRequester"><label><radio value="PARENT" checked="{{decision.requestedBy === 'PARENT'}}"/>家长／学生</label><label><radio value="TEACHER" checked="{{decision.requestedBy === 'TEACHER'}}"/>老师</label><label><radio value="SCHOOL" checked="{{decision.requestedBy === 'SCHOOL'}}"/>校方／管理</label></radio-group>
+      <view class="decision-label">本次取消是否扣课时（老师及校方固定免扣）</view>
       <radio-group class="radios" bindchange="chooseCharge">
         <label><radio value="false" checked="{{decision.chargeValue === 'false'}}"/>不扣课时</label>
-        <label><radio value="true" checked="{{decision.chargeValue === 'true'}}"/>扣课时</label>
+        <label><radio value="true" disabled="{{decision.requestedBy !== 'PARENT'}}" checked="{{decision.chargeValue === 'true'}}"/>扣课时</label>
       </radio-group>
       <textarea class="input" value="{{decision.note}}" bindinput="editNote" placeholder="取消原因（将写入正式记录）" maxlength="500" auto-height />
     </view>

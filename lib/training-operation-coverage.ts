@@ -195,6 +195,7 @@ export const OPERATION_AREAS: OperationArea[] = [
       "/admin/conflicts",
       "/admin/sessions",
       "/miniapp/pages/staff-schedule",
+      "/miniapp/pages/staff-cancellations",
       "/miniapp/pages/staff-session-detail",
       "/miniapp/pages/staff-coordination",
       "/miniapp/pages/staff-coordination-detail",
