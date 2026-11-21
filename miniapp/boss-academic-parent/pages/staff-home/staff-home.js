@@ -351,6 +351,7 @@ Page({
 
   goRequests() { wx.navigateTo({ url: "/pages/staff-requests/staff-requests" }); },
   goNewRequest() { wx.navigateTo({ url: "/pages/staff-request-new/staff-request-new" }); },
+  goCancellations() { wx.navigateTo({ url: "/pages/staff-cancellations/staff-cancellations" }); },
   goSchedule() { wx.navigateTo({ url: "/pages/staff-schedule/staff-schedule" }); },
   goCoordination() { wx.navigateTo({ url: "/pages/staff-coordination/staff-coordination" }); },
   goFirstScheduling() { wx.navigateTo({ url: "/pages/staff-first-scheduling/staff-first-scheduling" }); },

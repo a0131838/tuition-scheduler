@@ -144,7 +144,7 @@ async function main() {
   assert.equal((await prisma.ticket.findUniqueOrThrow({ where: { id: rescheduleTicket.id } })).status, "Completed");
 
   const noChargeTicket = await createTicket("临时取消&请假课程");
-  const noChargeInput = { sessionId: scheduleResult.sessionIds[1], studentId: student.id, charge: false, note: "UAT 提前请假，不扣课时" };
+  const noChargeInput = { sessionId: scheduleResult.sessionIds[1], studentId: student.id, charge: false, requestedBy: "PARENT", note: "UAT 提前请假，不扣课时" };
   await previewMiniappSessionCancellation(noChargeInput);
   const balanceBeforeNoCharge = (await prisma.coursePackage.findFirstOrThrow({ where: { studentId: student.id, courseId: course.id } })).remainingMinutes;
   await applyMiniappSessionCancellation(noChargeInput, actor, [noChargeTicket.id]);
@@ -154,7 +154,7 @@ async function main() {
   assert.equal(balanceAfterNoCharge, balanceBeforeNoCharge);
 
   const chargeTicket = await createTicket("临时取消&请假课程");
-  const chargeInput = { sessionId: scheduleResult.sessionIds[2], studentId: student.id, charge: true, note: "UAT 规则内取消，扣课时" };
+  const chargeInput = { sessionId: scheduleResult.sessionIds[2], studentId: student.id, charge: true, requestedBy: "PARENT", note: "UAT 规则内取消，扣课时" };
   await previewMiniappSessionCancellation(chargeInput);
   const balanceBeforeCharge = (await prisma.coursePackage.findFirstOrThrow({ where: { studentId: student.id, courseId: course.id } })).remainingMinutes!;
   await applyMiniappSessionCancellation(chargeInput, actor, [chargeTicket.id]);
@@ -177,7 +177,7 @@ async function main() {
     },
   });
   const monthlyTicket = await createTicket("临时取消&请假课程");
-  const monthlyInput = { sessionId: scheduleResult.sessionIds[0], studentId: student.id, charge: true, note: "UAT 月度课包内取消" };
+  const monthlyInput = { sessionId: scheduleResult.sessionIds[0], studentId: student.id, charge: true, requestedBy: "PARENT", note: "UAT 月度课包内取消" };
   const monthlyPreview = await previewMiniappSessionCancellation(monthlyInput);
   assert.equal(monthlyPreview.packageMode, "MONTHLY");
   await applyMiniappSessionCancellation(monthlyInput, actor, [monthlyTicket.id]);
@@ -195,7 +195,7 @@ async function main() {
     },
   });
   const groupCountTicket = await createTicket("临时取消&请假课程");
-  const groupCountInput = { sessionId: scheduleResult.sessionIds[3], studentId: student.id, charge: true, note: "UAT 班课按次扣减" };
+  const groupCountInput = { sessionId: scheduleResult.sessionIds[3], studentId: student.id, charge: true, requestedBy: "PARENT", note: "UAT 班课按次扣减" };
   const groupCountPreview = await previewMiniappSessionCancellation(groupCountInput);
   assert.equal(groupCountPreview.packageMode, "GROUP_COUNT");
   await applyMiniappSessionCancellation(groupCountInput, actor, [groupCountTicket.id]);

@@ -840,6 +840,7 @@ export default async function FinanceWorkbenchPage({
         </div>
       </section>
 
+      <a href="/admin/reports/cancelled-sessions">{t(lang, "Cancellations & lesson history (read only)", "取消及课次历史（只读）")}</a>
       <PaidRenewalFollowUps lang={lang} rows={paidRenewalFollowUps} />
 
       {pendingPackageApprovals.length ? (

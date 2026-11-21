@@ -105,6 +105,7 @@ export default async function AttendancePage({
         note: true,
         packageId: true,
         excusedCharge: true,
+      cancellationRequestedBy: true,
         waiveDeduction: true,
         waiveReason: true,
       },
@@ -157,6 +158,7 @@ export default async function AttendancePage({
     where: {
       studentId: { in: studentIds },
       status: AttendanceStatus.EXCUSED,
+      cancellationRequestedBy: "PARENT",
       NOT: { sessionId },
     },
     _count: { _all: true },
@@ -384,6 +386,7 @@ export default async function AttendancePage({
                 note: a?.note ?? "",
                 packageId: a?.packageId ?? (opts[0]?.id ?? ""),
                 excusedCharge: a?.excusedCharge ?? false,
+                cancellationRequestedBy: a?.cancellationRequestedBy ?? "",
                 waiveDeduction: a?.waiveDeduction ?? false,
                 waiveReason: a?.waiveReason ?? "",
                 excusedBaseCount: prevExcused,

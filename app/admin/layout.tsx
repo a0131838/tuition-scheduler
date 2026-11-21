@@ -108,6 +108,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     pathname.startsWith("/admin/reports/teacher-payroll/") ||
     pathname.startsWith("/admin/reports/partner-settlement") ||
     pathname === "/admin/reports/audit-logs" ||
+    pathname === "/admin/reports/cancelled-sessions" ||
     pathname === "/admin/reports/package-balance-audit" ||
     pathname === "/admin/expense-claims" ||
     pathname === "/admin/hr/payslips" ||
@@ -341,6 +342,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: "/admin/receipts-approvals/history", label: t(lang, "Receipt History", "收据历史"), tone: "neutral" as const },
         { href: "/admin/recovery/uploads", label: t(lang, "Attachment Health", "附件异常总览"), tone: "warning" as const },
         { href: "/admin/teacher-notices", label: t(lang, "Teacher Notices", "老师通知"), tone: "accent" as const },
+        { href: "/admin/reports/cancelled-sessions", label: t(lang, "Cancellations & lesson history", "取消及课次历史"), tone: "neutral" as const },
         { href: "/admin/reports/audit-logs", label: t(lang, "Audit Logs", "审计日志"), tone: "neutral" as const },
       ],
     },

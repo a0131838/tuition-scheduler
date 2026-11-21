@@ -1,0 +1,7 @@
+const api = require('../../utils/api');
+Page({
+ data:{from:'',to:'',student:'',chargeOptions:['全部扣课状态','已扣课','不扣课'],chargeIndex:0,requesterOptions:['全部发起方','家长／学生','老师','校方／管理','历史未分类'],requesterIndex:0,rows:[],history:[],loading:false,error:'',limited:false,historyLimited:false},
+ onLoad(){const d=new Date(),f=n=>String(n).padStart(2,'0'),today=`${d.getFullYear()}-${f(d.getMonth()+1)}-${f(d.getDate())}`;this.setData({from:today.slice(0,7)+'-01',to:today});this.load();},
+ changeFrom(e){this.setData({from:e.detail.value});},changeTo(e){this.setData({to:e.detail.value});},inputStudent(e){this.setData({student:e.detail.value});},changeCharge(e){this.setData({chargeIndex:Number(e.detail.value)});},changeRequester(e){this.setData({requesterIndex:Number(e.detail.value)});},
+ load(){if(this.data.loading)return;const d=this.data,q=`?from=${encodeURIComponent(d.from)}&to=${encodeURIComponent(d.to)}&student=${encodeURIComponent(d.student)}&charge=${['','charged','uncharged'][d.chargeIndex]}&requester=${['','PARENT','TEACHER','SCHOOL','UNKNOWN'][d.requesterIndex]}`;this.setData({loading:true,error:''});api.requestStaff('/api/miniapp/staff/cancellations'+q).then(r=>this.setData({rows:r.rows||[],history:(r.history||[]).map(h=>Object.assign({},h,{label:({SESSION_CANCELLED:'取消课次',SESSION_RESCHEDULED:'课程改期',SESSION_DELETED:'删除误建课次'})[h.action]||h.action})),limited:r.limited,historyLimited:r.historyLimited})).catch(e=>this.setData({error:e.message||'查询失败'})).finally(()=>this.setData({loading:false}));}
+});

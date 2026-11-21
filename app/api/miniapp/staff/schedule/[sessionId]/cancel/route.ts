@@ -28,6 +28,7 @@ function sameInput(payload: NonNullable<ReturnType<typeof verifyMiniappCancellat
   sessionId: string;
   studentId: string;
   charge: boolean;
+  requestedBy: string;
   note: string;
 }) {
   return (
@@ -35,6 +36,7 @@ function sameInput(payload: NonNullable<ReturnType<typeof verifyMiniappCancellat
     payload.sessionId === input.sessionId &&
     payload.studentId === input.studentId &&
     payload.charge === input.charge &&
+    payload.requestedBy === input.requestedBy &&
     payload.note === input.note
   );
 }
@@ -46,11 +48,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ sessionId: str
   const { sessionId } = await ctx.params;
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") return bad("Invalid JSON");
+  if (typeof (body as any).charge !== "boolean") return bad("Invalid deduction choice / 扣课选择无效",400);
   const mode = clean((body as any).mode, 20) || "preview";
   const input = {
     sessionId,
     studentId: clean((body as any).studentId, 80),
     charge: Boolean((body as any).charge),
+    requestedBy: clean((body as any).requestedBy, 20),
     note: clean((body as any).note, 500),
   };
   if (!input.studentId) return bad("Student is required", 409);

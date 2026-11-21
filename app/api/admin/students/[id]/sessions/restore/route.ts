@@ -9,6 +9,7 @@ function bad(message: string, status = 400, extra?: Record<string, unknown>) {
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await requireAdmin();
+  if (user.role === "FINANCE") return bad("Finance cancellation records are read only / 财务仅可查询取消记录", 403);
   const { id: studentId } = await params;
   if (!studentId) return bad("Missing studentId");
 
@@ -52,6 +53,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         data: {
           status: "UNMARKED",
           excusedCharge: false,
+          cancellationRequestedBy: null,
+          cancellationReason: null,
           deductedMinutes: 0,
           note: existing.note,
         },
@@ -59,7 +62,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       await tx.auditLog.create({ data: {
         actorEmail: user.email, actorName: user.name, actorRole: user.role,
         module: "SCHEDULE", action: "SESSION_RESTORED", entityType: "Session", entityId: sessionId,
-        meta: { studentId, previousStatus: existing.status, previousNote: existing.note, refundedMinutes: refundMinutes },
+        meta: { studentId, previousStatus: existing.status, previousNote: existing.note, previousRequester: existing.cancellationRequestedBy, previousCancellationReason: existing.cancellationReason, refundedMinutes: refundMinutes },
       } });
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   } catch (e: any) {

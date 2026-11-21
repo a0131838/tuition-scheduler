@@ -160,7 +160,7 @@ Page({
     weekdays: ['一', '二', '三', '四', '五', '六', '日'],
     items: [], selected: null, loading: false, working: false, message: "", pendingReview: null, pendingTeacherConsents: [],
     targetOptions: [], targetIndex: -1, teacherOptions: [], teacherIndex: -1, subjectPlans: [], subjectPlanLoading: false,
-    decision: { targetSessionId: "", targetSessionLabel: "点击选择具体课次", chargeValue: "", note: "", newTeacherId: "", newTeacherName: "点击选择老师", reason: "" },
+    decision: { targetSessionId: "", targetSessionLabel: "点击选择具体课次", requestedBy: "", chargeValue: "", note: "", newTeacherId: "", newTeacherName: "点击选择老师", reason: "" },
   },
   onShow() { this.load(this.data.selected?.intakeId); },
   onPullDownRefresh() { this.load(this.data.selected?.intakeId).finally(() => wx.stopPullDownRefresh()); },
@@ -219,7 +219,7 @@ Page({
       targetOptions, targetIndex, teacherOptions: [], teacherIndex: -1, subjectPlans: [],
       decision: {
         targetSessionId, targetSessionLabel: targetIndex >= 0 ? targetOptions[targetIndex].label : "点击选择具体课次",
-        chargeValue: "", note: item.cancellationReason?.label || "",
+        requestedBy: "", chargeValue: "", note: item.cancellationReason?.label || "",
         newTeacherId: "", newTeacherName: "点击选择老师", reason: item.summary || "家长申请更换老师",
       },
     });
@@ -269,12 +269,14 @@ Page({
     const teacher = this.data.teacherOptions[teacherIndex];
     this.setData({ teacherIndex, "decision.newTeacherId": teacher?.id || "", "decision.newTeacherName": teacher?.name || "点击选择老师" });
   },
+  chooseRequester(event) { this.setData({ "decision.requestedBy": event.detail.value, "decision.chargeValue": "false" }); },
   chooseCharge(event) { this.setData({ "decision.chargeValue": event.detail.value }); },
   editNote(event) { this.setData({ "decision.note": event.detail.value }); },
   editReason(event) { this.setData({ "decision.reason": event.detail.value }); },
   validateDecision(item) {
     const decision = this.data.decision;
     if (item.needsTarget && !decision.targetSessionId) return "请选择本次要处理的具体课次。";
+    if (item.workflowKey === "CANCEL_LESSON" && !decision.requestedBy) return "请选择取消发起方。";
     if (item.workflowKey === "CANCEL_LESSON" && !["true", "false"].includes(decision.chargeValue)) return "请明确本次取消是否扣课时。";
     if (item.workflowKey === "CANCEL_LESSON" && !decision.note.trim()) return "请填写取消原因。";
     if (item.workflowKey === "CHANGE_TEACHER" && !decision.newTeacherId) return "请选择替换后的老师。";
@@ -309,6 +311,7 @@ Page({
         return this.load(item.intakeId).then(() => null);
       }
       const executionPackage = prepared.formalExecutionPackage;
+      if (executionPackage && item.workflowKey === "CANCEL_LESSON") executionPackage.commands = executionPackage.commands.map(command => command.commandType === "CANCEL_SESSION" ? Object.assign({}, command, { requestedBy: decision.requestedBy }) : command);
       if (!executionPackage || !item.formalTicketId) throw new Error("完整执行包尚未准备好。");
       const path = `/api/miniapp/staff/ai-tickets/${encodeURIComponent(item.formalTicketId)}/execute`;
       return api.requestStaff(path, { method: "POST", data: { mode: "preview", package: executionPackage }, timeout: 60000 })

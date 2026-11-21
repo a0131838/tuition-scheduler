@@ -1,0 +1,10 @@
+<view class="page"><view class="card"><view class="title">取消及课次历史（只读）</view><view class="hint">仅查询，不修改课表或扣课。查询未来取消时，请把截止日期选到该课程日期。</view>
+<view>从 <picker mode="date" value="{{from}}" bindchange="changeFrom"><view class="field">{{from}}</view></picker>到 <picker mode="date" value="{{to}}" bindchange="changeTo"><view class="field">{{to}}</view></picker></view>
+<input class="field" placeholder="学生姓名（可选）" value="{{student}}" bindinput="inputStudent"/>
+<picker range="{{chargeOptions}}" value="{{chargeIndex}}" bindchange="changeCharge"><view class="field">{{chargeOptions[chargeIndex]}}</view></picker><picker range="{{requesterOptions}}" value="{{requesterIndex}}" bindchange="changeRequester"><view class="field">{{requesterOptions[requesterIndex]}}</view></picker>
+<button bindtap="load" loading="{{loading}}">查询</button><view class="error" wx:if="{{error}}">{{error}}</view></view>
+<view class="title">已取消课次 · {{rows.length}} 条</view><view class="hint">按原课程日期筛选；已恢复的课程不在此列表。</view><view class="hint" wx:if="{{limited}}">已显示500条，请缩小日期或姓名范围。</view>
+<view class="card" wx:for="{{rows}}" wx:key="id"><view class="title">{{item.studentName}} · {{item.time}}</view><view>{{item.courseName}} · {{item.teacherName}}</view><view>{{item.requester}} · {{item.charged ? '已扣课' : '不扣课'}}</view><view>扣除 {{item.deductedMinutes}} 分钟 / {{item.deductedCount}} 次</view><view class="hint">原因：{{item.reason}}</view></view>
+<view class="card" wx:if="{{!rows.length && !loading}}">当前筛选没有取消记录。</view>
+<view class="title">改期、取消与删除历史</view><view class="hint">此区按操作日期查询；上面的发起方和扣课筛选仅适用于取消列表。</view><view class="hint" wx:if="{{historyLimited}}">仅显示近期部分记录，请缩小日期范围。</view>
+<view class="card" wx:for="{{history}}" wx:key="id"><view class="title">{{item.label}} · {{item.studentName}}</view><view>{{item.changedAt}} · {{item.actor}}</view><view>原课程：{{item.beforeStart || '历史未记录'}}</view><view wx:if="{{item.afterStart}}">新时间：{{item.afterStart}}</view><view class="hint">{{item.reason}}</view></view></view>

@@ -1058,162 +1058,6 @@ async function replaceSessionTeacherForStudent(studentId: string, formData: Form
   redirect(`${returnTo}&msg=Replaced`);
 }
 
-async function cancelStudentSession(studentId: string, formData: FormData) {
-  "use server";
-  const sessionId = String(formData.get("sessionId") ?? "");
-  const month = String(formData.get("month") ?? "").trim();
-  const charge = String(formData.get("charge") ?? "") === "on";
-  const note = String(formData.get("note") ?? "").trim();
-  const returnHash = String(formData.get("returnHash") ?? "").trim();
-
-  if (!sessionId) {
-    const params = new URLSearchParams({ err: "Missing sessionId" });
-    if (month) params.set("month", month);
-    redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
-  }
-
-  const session = await prisma.session.findUnique({
-    where: { id: sessionId },
-    select: { id: true, startAt: true, endAt: true, classId: true, class: { select: { courseId: true } } },
-  });
-  if (!session) {
-    const params = new URLSearchParams({ err: "Session not found" });
-    if (month) params.set("month", month);
-    redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
-  }
-
-  const durationMin = Math.max(0, Math.round((session.endAt.getTime() - session.startAt.getTime()) / 60000));
-  const desiredDeductedMinutes = charge ? durationMin : 0;
-
-  const existing = await prisma.attendance.findUnique({
-    where: { sessionId_studentId: { sessionId, studentId } },
-    select: { deductedMinutes: true, packageId: true, deductedCount: true },
-  });
-  const prevDeductedMinutes = existing?.deductedMinutes ?? 0;
-  const delta = desiredDeductedMinutes - prevDeductedMinutes;
-
-  let packageId: string | null = existing?.packageId ?? null;
-
-  if (delta !== 0) {
-    if (!packageId && delta > 0) {
-      const pkg = await prisma.coursePackage.findFirst({
-        where: {
-          AND: [
-            coursePackageAccessibleByStudent(studentId),
-            coursePackageMatchesCourse(session.class.courseId),
-            { type: "HOURS" },
-            { status: "ACTIVE" },
-            { remainingMinutes: { gte: delta } },
-            { validFrom: { lte: session.startAt } },
-            { OR: [{ validTo: null }, { validTo: { gte: session.startAt } }] },
-          ],
-        },
-        orderBy: [{ createdAt: "asc" }],
-        select: { id: true },
-      });
-      packageId = pkg?.id ?? null;
-    }
-
-    if (!packageId) {
-      const params = new URLSearchParams({ err: "No active HOURS package" });
-      if (month) params.set("month", month);
-      redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
-    }
-
-    const pkg = await prisma.coursePackage.findFirst({
-      where: {
-        id: packageId,
-        AND: [
-          coursePackageAccessibleByStudent(studentId),
-          coursePackageMatchesCourse(session.class.courseId),
-          { status: "ACTIVE" },
-          { validFrom: { lte: session.startAt } },
-          { OR: [{ validTo: null }, { validTo: { gte: session.startAt } }] },
-        ],
-      },
-      select: { id: true, type: true, status: true, remainingMinutes: true },
-    });
-
-    if (!pkg) {
-      const params = new URLSearchParams({ err: "Package not found" });
-      if (month) params.set("month", month);
-      redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
-    }
-    if (pkg.type !== "HOURS") {
-      const params = new URLSearchParams({ err: "Package not HOURS" });
-      if (month) params.set("month", month);
-      redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
-    }
-    if (pkg.remainingMinutes == null) {
-      const params = new URLSearchParams({ err: "Package remaining minutes is null" });
-      if (month) params.set("month", month);
-      redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
-    }
-
-    if (delta > 0) {
-      if (pkg.remainingMinutes < delta) {
-        const params = new URLSearchParams({ err: "Not enough remaining minutes" });
-        if (month) params.set("month", month);
-        redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
-      }
-      await prisma.coursePackage.update({
-        where: { id: packageId },
-        data: { remainingMinutes: { decrement: delta } },
-      });
-      await prisma.packageTxn.create({
-        data: {
-          packageId,
-          kind: "DEDUCT",
-          deltaMinutes: -delta,
-          sessionId,
-          note: `Cancel charge. studentId=${studentId}`,
-        },
-      });
-    } else {
-      const refund = -delta;
-      await prisma.coursePackage.update({
-        where: { id: packageId },
-        data: { remainingMinutes: { increment: refund } },
-      });
-      await prisma.packageTxn.create({
-        data: {
-          packageId,
-          kind: "ROLLBACK",
-          deltaMinutes: refund,
-          sessionId,
-          note: `Cancel rollback. studentId=${studentId}`,
-        },
-      });
-    }
-  }
-
-  await prisma.attendance.upsert({
-    where: { sessionId_studentId: { sessionId, studentId } },
-    create: {
-      sessionId,
-      studentId,
-      status: "EXCUSED",
-      deductedCount: existing?.deductedCount ?? 0,
-      deductedMinutes: desiredDeductedMinutes,
-      packageId: desiredDeductedMinutes > 0 ? packageId : null,
-      note: note || "Canceled",
-      excusedCharge: charge,
-    },
-    update: {
-      status: "EXCUSED",
-      deductedMinutes: desiredDeductedMinutes,
-      packageId: desiredDeductedMinutes > 0 ? packageId : null,
-      note: note || "Canceled",
-      excusedCharge: charge,
-    },
-  });
-
-  const params = new URLSearchParams({ msg: "Session cancelled" });
-  if (month) params.set("month", month);
-  redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
-}
-
-
 async function createSchedulingCoordinationTicket(studentId: string, formData: FormData) {
   "use server";
   const user = await getCurrentUser();
@@ -1645,7 +1489,7 @@ export default async function StudentDetailPage({
       orderBy: [{ nextFollowUpAt: "asc" }, { updatedAt: "desc" }],
     }),
     prisma.coursePackage.count({ where: { ...coursePackageAccessibleByStudent(studentId), paid: false } }),
-    prisma.attendance.count({ where: { studentId, status: "EXCUSED" } }),
+    prisma.attendance.count({ where: { studentId, status: "EXCUSED", cancellationRequestedBy: "PARENT" } }),
     prisma.ticket.findMany({
       where: {
         studentId,
@@ -1937,9 +1781,10 @@ export default async function StudentDetailPage({
   const upcomingAttendance = upcomingSessionIds.length
     ? await prisma.attendance.findMany({
         where: { studentId, sessionId: { in: upcomingSessionIds } },
-        select: { sessionId: true, status: true, excusedCharge: true, deductedMinutes: true },
+        select: { sessionId: true, status: true, excusedCharge: true, deductedMinutes: true, cancellationRequestedBy: true, cancellationReason: true },
       })
     : [];
+  const parentCancellationCount = excusedCount;
   const upcomingAttendanceMap = new Map(upcomingAttendance.map((a) => [a.sessionId, a]));
   const quickRescheduleSessionOptions = executionSessions
     .filter((s) => {
@@ -1978,7 +1823,7 @@ export default async function StudentDetailPage({
   const monthAttendance = monthSessionIds.length
     ? await prisma.attendance.findMany({
         where: { studentId, sessionId: { in: monthSessionIds } },
-        select: { sessionId: true, status: true, excusedCharge: true },
+        select: { sessionId: true, status: true, excusedCharge: true, cancellationRequestedBy: true, cancellationReason: true },
       })
     : [];
   const monthAttendanceMap = new Map(monthAttendance.map((a) => [a.sessionId, a]));
@@ -3018,7 +2863,7 @@ export default async function StudentDetailPage({
                     <div style={{ fontWeight: 700 }}>{packageCount}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Excused Count")}</div>
+                    <div style={{ fontSize: 12, color: "#666" }}>{t(lang, "Classified parent cancellations", "已分类家长取消次数")}</div>
                     <div style={{ fontWeight: 700 }}>{excusedCount}</div>
                   </div>
                   <div>
@@ -4130,6 +3975,12 @@ export default async function StudentDetailPage({
                               sessionId={s.id}
                               initialCancelled={cancelled}
                               initialCharge={Boolean(att?.excusedCharge)}
+                              initialRequestedBy={att?.cancellationRequestedBy}
+                              initialNote={att?.cancellationReason}
+                              durationMinutes={Math.round((s.endAt.getTime()-s.startAt.getTime())/60000)}
+                              sessionLabel={`${formatBusinessDateTime(s.startAt)} · ${s.class.course.name}`}
+                              lang={lang}
+                              parentCancellationCount={parentCancellationCount}
                               transferLesson={s.class.capacity === 1 && s.class.subjectId && s.startAt > now && !ticketExecutionContext ? {
                                 id: s.id, studentId, subjectId: s.class.subjectId, levelId: s.class.levelId ?? "",
                                 teacherId: s.teacherId ?? s.class.teacherId, campusId: s.class.campusId, roomId: s.class.roomId ?? "",
@@ -4591,6 +4442,12 @@ export default async function StudentDetailPage({
                     sessionId={s.id}
                     initialCancelled={cancelled}
                     initialCharge={Boolean(att?.excusedCharge)}
+                              initialRequestedBy={att?.cancellationRequestedBy}
+                              initialNote={att?.cancellationReason}
+                              durationMinutes={Math.round((s.endAt.getTime()-s.startAt.getTime())/60000)}
+                              sessionLabel={`${formatBusinessDateTime(s.startAt)} · ${s.class.course.name}`}
+                              lang={lang}
+                              parentCancellationCount={parentCancellationCount}
                     transferLesson={s.class.capacity === 1 && s.class.subjectId && s.startAt > now && !ticketExecutionContext ? {
                       id: s.id, studentId, subjectId: s.class.subjectId, levelId: s.class.levelId ?? "",
                       teacherId: s.teacherId ?? s.class.teacherId, campusId: s.class.campusId, roomId: s.class.roomId ?? "",

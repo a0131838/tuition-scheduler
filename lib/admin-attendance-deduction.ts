@@ -1,3 +1,5 @@
+import { recordSchedulingChange } from "./scheduling-change-history";
+import { resolveLessonCancellation } from "./lesson-cancellation-policy";
 import {resolveAttendanceRoster} from './session-attendance-roster';
 import { prisma } from "@/lib/prisma";
 import { AttendanceStatus, PackageStatus, PackageType, Prisma } from "@prisma/client";
@@ -226,6 +228,8 @@ type DesiredAttendance = {
   excusedCharge: boolean;
   waiveDeduction: boolean;
   waiveReason: string | null;
+  cancellationRequestedBy: string | null;
+  cancellationReason: string | null;
 };
 
 async function applyOneStudentAttendanceAndDeduct(
@@ -384,6 +388,8 @@ async function applyOneStudentAttendanceAndDeduct(
       packageId: finalPackageId,
       note: desired.note,
       excusedCharge,
+      cancellationRequestedBy: desired.cancellationRequestedBy,
+      cancellationReason: desired.cancellationReason,
       waiveDeduction: waiveDeduction && !canDeduct,
       waiveReason: waiveDeduction && !canDeduct ? desired.waiveReason : null,
     },
@@ -394,6 +400,8 @@ async function applyOneStudentAttendanceAndDeduct(
       packageId: finalPackageId,
       note: desired.note,
       excusedCharge,
+      cancellationRequestedBy: desired.cancellationRequestedBy,
+      cancellationReason: desired.cancellationReason,
       waiveDeduction: waiveDeduction && !canDeduct,
       waiveReason: waiveDeduction && !canDeduct ? desired.waiveReason : null,
     },
@@ -411,7 +419,7 @@ async function applyOneStudentAttendanceAndDeduct(
 
 export type AdminAttendanceInput = {
  sessionId:string; actor:{email:string;name?:string|null;role:string};
- items?:Array<{studentId?:unknown;status?:unknown;deductedCount?:unknown;deductedMinutes?:unknown;note?:unknown;packageId?:unknown;excusedCharge?:unknown;waiveDeduction?:unknown;waiveReason?:unknown}>;
+ items?:Array<{studentId?:unknown;status?:unknown;deductedCount?:unknown;deductedMinutes?:unknown;note?:unknown;packageId?:unknown;excusedCharge?:unknown;cancellationRequestedBy?:unknown;waiveDeduction?:unknown;waiveReason?:unknown}>;
  markAll?:{waiveDeduction:boolean;waiveReason:string|null};
 };
 export async function saveAdminAttendanceInTransaction(tx: Prisma.TransactionClient, input: AdminAttendanceInput) {
@@ -425,8 +433,6 @@ export async function saveAdminAttendanceInTransaction(tx: Prisma.TransactionCli
   const items: NonNullable<AdminAttendanceInput["items"]> = input.markAll ? studentIds.map(studentId=>({studentId,status:'PRESENT',deductedMinutes:isGroupClass?0:duration,deductedCount:isGroupClass?1:0,waiveDeduction:input.markAll!.waiveDeduction,waiveReason:input.markAll!.waiveReason})) : input.items??[];
   if(!items.length) throw new Error('No items / 没有点名记录');
   const expected=new Set(studentIds),seen=new Set<string>(),desiredMap=new Map<string,DesiredAttendance>();
-  const excused=await tx.attendance.groupBy({by:['studentId'],where:{studentId:{in:studentIds},status:AttendanceStatus.EXCUSED,NOT:{sessionId:session.id}},_count:{_all:true}});
-  const excusedCount=new Map(excused.map(r=>[r.studentId,r._count._all]));
   for(const item of items) {
    if(!item || typeof item!=='object') throw new Error('Invalid attendance item / 点名记录格式无效');
    const studentId=String(item.studentId??''),status=String(item.status??'UNMARKED');
@@ -435,14 +441,20 @@ export async function saveAdminAttendanceInTransaction(tx: Prisma.TransactionCli
    seen.add(studentId);
    const minutes=Number(item.deductedMinutes??0),count=Number(item.deductedCount??0);
    if(!Number.isSafeInteger(minutes)||!Number.isSafeInteger(count)||minutes<0||count<0) throw new Error('Deduction units must be non-negative integers / 扣课数量必须为非负整数');
-   const charged=status==='EXCUSED' && (excusedCount.get(studentId)??0)+1>=4 && Boolean(item.excusedCharge);
-   desiredMap.set(studentId,{status:status as AttendanceStatus,deductedMinutes:minutes,deductedCount:status==='EXCUSED'&&!charged?0:count,note:String(item.note??'').trim()||null,packageId:String(item.packageId??'').trim()||null,excusedCharge:charged,waiveDeduction:Boolean(item.waiveDeduction),waiveReason:Boolean(item.waiveDeduction)?String(item.waiveReason??'').trim()||null:null});
+   const cancellation = status==='EXCUSED' ? resolveLessonCancellation({ requestedBy: item.cancellationRequestedBy, charge: item.excusedCharge === true, note: item.note }) : null;
+   if(cancellation && input.actor.role === "FINANCE") throw new Error("Finance cancellation records are read only / 财务仅可查询取消记录");
+   const charged = Boolean(cancellation?.charge) && !Boolean(item.waiveDeduction);
+   desiredMap.set(studentId,{status:status as AttendanceStatus,deductedMinutes:status==='EXCUSED'?(charged?duration:0):minutes,deductedCount:status==='EXCUSED'&&!charged?0:count,note:String(item.note??'').trim()||null,packageId:String(item.packageId??'').trim()||null,excusedCharge:charged,cancellationRequestedBy:cancellation?.requestedBy??null,cancellationReason:cancellation?.note??null,waiveDeduction:Boolean(item.waiveDeduction),waiveReason:Boolean(item.waiveDeduction)?String(item.waiveReason??'').trim()||null:null});
   }
   const touched=[...seen];
   await assertAttendanceLedger(tx,session.id,touched,true);
   const receipt=[];let totalDeducted=0;
   for(const studentId of touched) {
    const result=await applyOneStudentAttendanceAndDeduct(tx,{sessionId:session.id,studentId,courseId:session.class.courseId,at:session.startAt,desired:desiredMap.get(studentId)!,existing:session.attendances.find(a=>a.studentId===studentId),isGroupClass,sessionDurationMinutes:duration});
+   const before = session.attendances.find(a=>a.studentId===studentId), desired = desiredMap.get(studentId)!;
+   if(desired.status==='EXCUSED' && (before?.status!=='EXCUSED' || before.cancellationRequestedBy!==desired.cancellationRequestedBy || before.cancellationReason!==desired.cancellationReason || before.excusedCharge!==desired.excusedCharge)) {
+     await recordSchedulingChange(tx,{actor:input.actor,action:"SESSION_CANCELLED",sessionId:session.id,classId:session.classId,before:{startAt:session.startAt.toISOString(),endAt:session.endAt.toISOString()},after:{status:desired.excusedCharge?"Cancelled - charged":"Cancelled - no charge"},reason:`${desired.cancellationRequestedBy}: ${desired.cancellationReason}`,source:"WEB"});
+   }
    totalDeducted+=result.finalUnits;receipt.push({studentId:result.studentId,status:result.status,packageId:result.packageId,deductedMinutes:result.deductedMinutes,deductedCount:result.deductedCount});
   }
   await assertAttendanceLedger(tx,session.id,touched);
