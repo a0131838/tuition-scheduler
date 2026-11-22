@@ -1,3 +1,4 @@
+import { lessonWorkStatus } from "@/lib/lesson-work-status";
 import {sessionFeedbackState} from "./session-feedback-state";
 import { prisma } from "@/lib/prisma";
 import { formatBusinessDateTime } from "@/lib/date-only";
@@ -66,7 +67,7 @@ export async function getStaffMiniappDailySchedule(input: {
       ...(teacherId ? { OR: [{ teacherId }, { teacherId: null, class: { teacherId } }] } : {}),
     },
     include: {
-      attendances: { select: { studentId: true, status: true } },
+      attendances: { select: { studentId: true, status: true, deductedMinutes: true, deductedCount: true, waiveDeduction: true, package: { select: { type: true } } } },
       feedbacks: { select: { teacherId: true, submittedAt: true, status: true, isProxyDraft: true } },
       student: { select: { id: true, name: true } },
       class: {
@@ -95,6 +96,7 @@ export async function getStaffMiniappDailySchedule(input: {
       const campusName = s.class.campus.name;
       const roomName = s.class.room?.name ?? null;
       return {
+        workStatus: lessonWorkStatus(s, effectiveTeacherId, new Date(), "ZH"),
         id: s.id,
         classId: s.classId,
         startAt: s.startAt.toISOString(),

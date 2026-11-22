@@ -26,8 +26,8 @@ function calcSignInOverdueMin(startAt: Date, thresholdMin: number) {
   return Math.max(0, Math.floor(ms / 60000));
 }
 
-function calcFeedbackOverdueMin(endAt: Date) {
-  return getFeedbackOverdueMinutes(endAt);
+function calcFeedbackOverdueMin(endAt: Date, availableAt: Date | null) {
+  return getFeedbackOverdueMinutes(endAt, new Date(), availableAt);
 }
 
 function severityFromOverdue(overdueMin: number) {
@@ -167,7 +167,7 @@ export default async function AdminAlertsPage({
       const highestOverdueMin = Math.max(
         ...items.map((item) =>
           item.alertType === ALERT_TYPE_FEEDBACK
-            ? calcFeedbackOverdueMin(item.session.endAt)
+            ? calcFeedbackOverdueMin(item.session.endAt, item.session.feedbackAvailableAt)
             : calcSignInOverdueMin(item.session.startAt, item.thresholdMin)
         )
       );
@@ -274,8 +274,8 @@ export default async function AdminAlertsPage({
       >
         {t(
           lang,
-          "How to read: teacher not signed = the teacher has not touched attendance yet; student not signed = one or more students still remain UNMARKED; feedback overdue = 12 hours have passed after class end and teacher feedback is still missing.",
-          "阅读方式：老师未签到 = 老师还没有处理点名；学生未签到 = 还有学生是未点名（UNMARKED）；反馈超时 = 课后超过 12 小时仍未提交反馈。"
+          "How to read: teacher not signed = the teacher has not touched attendance yet; student not signed = one or more students still remain UNMARKED; feedback overdue = the feedback deadline has passed (12 hours after class end, or record creation for a backfilled lesson).",
+          "阅读方式：老师未签到 = 老师还没有处理点名；学生未签到 = 还有学生是未点名（UNMARKED）；反馈超时 = 超过反馈期限仍未提交；正常课为下课后12小时，补录课为实际创建后12小时。"
         )}
       </div>
 

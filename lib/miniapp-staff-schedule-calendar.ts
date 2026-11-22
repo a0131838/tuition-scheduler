@@ -1,3 +1,4 @@
+import { lessonWorkStatus } from "@/lib/lesson-work-status";
 import { effectiveDateAvailability } from "@/lib/teacher-availability-ranges";
 import { Prisma } from "@prisma/client";
 import {
@@ -15,7 +16,8 @@ const MAX_RANGE_DAYS = 42;
 const CLOSED_TICKET_STATUSES = ["Completed", "Cancelled", "Archived"];
 
 const calendarSessionInclude = Prisma.validator<Prisma.SessionInclude>()({
-  attendances: { select: { studentId: true, status: true } },
+  attendances: { select: { studentId: true, status: true, deductedMinutes: true, deductedCount: true, waiveDeduction: true, package: { select: { type: true } } } },
+  feedbacks: { select: { teacherId: true, status: true, isProxyDraft: true, submittedAt: true } },
   student: { select: { id: true, name: true } },
   teacher: { select: { id: true, name: true } },
   class: {
@@ -233,6 +235,7 @@ export async function getStaffMiniappScheduleCalendar(input: {
     const campus = session.class.campus;
     const room = session.class.room;
     return {
+      workStatus: lessonWorkStatus(session, teacher.id, new Date(), "ZH"),
       id: session.id,
       date: formatBusinessDateOnly(session.startAt),
       startAt: session.startAt.toISOString(),

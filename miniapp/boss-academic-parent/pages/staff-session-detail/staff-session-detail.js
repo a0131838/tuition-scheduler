@@ -1033,6 +1033,13 @@ Page({
     this.setData({ attendanceRows: rows });
   },
 
+  refreshWorkStatus() {
+    return api.requestStaff("/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId))
+      .then((data) => {
+        if (this.data.session && data.session) this.setData({ "session.workStatus": data.session.workStatus });
+      });
+  },
+
   saveAttendance() {
     if (this.data.attendanceSaving) return;
     this.setData({ attendanceSaving: true });
@@ -1049,6 +1056,7 @@ Page({
       .then((data) => {
         this.setData({ attendanceRows: attendanceList(data.rows) });
         wx.showToast({ title: "点名已保存", icon: "success" });
+        return this.refreshWorkStatus();
       })
       .catch((err) => api.toast(err.message))
       .finally(() => this.setData({ attendanceSaving: false }));

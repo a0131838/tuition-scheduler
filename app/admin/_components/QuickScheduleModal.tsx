@@ -696,6 +696,7 @@ export default function QuickScheduleModal({
               wrapperStyle={{ marginLeft: 6 }}
             />
           </label>
+          {mode === "create" && startAt && new Date(startAt).getTime() < Date.now() ? <div style={{ color: "#92400e", background: "#fffbeb", padding: 10, borderRadius: 8 }}>{"Past lesson: check the original lesson before creating another. / 补录历史课：请先查原课次；已有课程直接打开补反馈，勿另建或重复扣课。"}</div> : null}
           <label>
             {mode === "create" ? labels.duration : labels.newDuration}:
             <input

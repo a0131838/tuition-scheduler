@@ -6,6 +6,16 @@
     <view class="subtitle">{{sessionLocationText}}</view>
   </view>
 
+  <view class="card lesson-work" wx:if="{{session.workStatus}}">
+    <view class="section-title">本节课完成状态</view>
+    <view class="work-done">{{session.workStatus.attendanceLabel}}</view>
+    <view class="{{session.workStatus.deductionNeedsReview ? 'work-pending' : 'work-done'}}">{{session.workStatus.deductionLabel}}</view>
+    <view class="{{session.workStatus.feedbackOverdue ? 'work-overdue' : session.workStatus.feedbackPending ? 'work-pending' : 'work-done'}}">{{session.workStatus.feedbackLabel}}</view>
+    <view class="hint" wx:if="{{session.workStatus.backfilled}}">{{session.workStatus.backfillLabel}}</view>
+    <view class="hint" wx:if="{{session.workStatus.feedbackPending}}">反馈提交期限：{{session.workStatus.feedbackDueText}}</view>
+    <view class="hint">{{session.workStatus.feedbackHint}}</view>
+  </view>
+
   <view class="card" wx:if="{{readOnlySession}}">
     <view class="section-title">课程信息</view>
     <view class="hint">当前账号可查看课程信息；排课协调由教务/管理处理，点名和反馈由本节课老师处理。</view>
@@ -71,6 +81,7 @@
       <view class="hint">每周同一时间，最多 12 周；任何一周冲突都会整批停止。</view>
     </view>
     <view class="hint">老师与地点沿用当前课程；提交前会检查课包、可用时间和课程冲突。</view>
+    <view class="hint">补录历史课前先查原课次；已有课程请直接打开补反馈，不要另建或重复扣课。</view>
     <button class="secondary-action" loading="{{scheduleChecking}}" disabled="{{scheduleChecking}}" bindtap="previewScheduling">检查冲突</button>
     <view class="schedule-preview" wx:if="{{hasSchedulePreview}}">
       <view class="label">检查通过</view>

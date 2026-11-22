@@ -1,3 +1,5 @@
+import { FEEDBACK_RECOVERY_LOOKBACK_DAYS } from "@/lib/feedback-timing";
+import { lessonWorkStatus } from "@/lib/lesson-work-status";
 import {sessionFeedbackState,isPendingFeedback} from "@/lib/session-feedback-state";
 import { ok } from "@/app/api/miniapp/_lib";
 import { requireMiniappTeacher } from "@/app/api/miniapp/staff/teacher/_lib";
@@ -11,14 +13,15 @@ export async function GET(req: Request) {
   if (!access.ok) return access.response;
   const now = new Date();
   const lookback = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const feedbackLookback = new Date(now.getTime() - FEEDBACK_RECOVERY_LOOKBACK_DAYS * 86400000);
   const recent = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const teacherWhere = { OR: [{ teacherId: access.teacherId }, { teacherId: null, class: { teacherId: access.teacherId } }] };
   const [payroll, sessions, rejectedExpenses, taughtRows] = await Promise.all([
     getTeacherPayrollPublishForTeacher({ teacherId: access.teacherId, month: monthKey(now), scope: "all" }),
     prisma.session.findMany({
-      where: { ...teacherWhere, endAt: { gte: lookback, lte: now } },
+      where: { ...teacherWhere, endAt: { gte: feedbackLookback, lte: now } },
       include: {
-        attendances: { select: { studentId: true, status: true } },
+        attendances: { select: { studentId: true, status: true, deductedMinutes: true, deductedCount: true, waiveDeduction: true, package: { select: { type: true } } } },
         feedbacks: { where: { teacherId: access.teacherId }, select: { id: true, teacherId: true, content: true, status: true, isProxyDraft: true } },
         student: { select: { id: true, name: true } },
         class: {
@@ -44,6 +47,7 @@ export async function GET(req: Request) {
   ]);
   const visibleSessions = sessions.filter((row) => !isSessionFullyCancelled(row));
   const attendancePending = visibleSessions.filter((row) => {
+    if (row.endAt < lookback) return false;
     const names = getVisibleSessionStudentNames(row);
     return !names.length || row.attendances.length < names.length || row.attendances.some((item) => item.status === "UNMARKED");
   });
@@ -92,9 +96,9 @@ export async function GET(req: Request) {
     {
       key: "feedback",
       title: "提交课后反馈",
-      detail: feedbackPending.length ? "近 30 天有课程尚未提交反馈" : "课后反馈已完成",
+      detail: feedbackPending.length ? `近 ${FEEDBACK_RECOVERY_LOOKBACK_DAYS} 天有课程尚未提交反馈` : "课后反馈已完成",
       count: feedbackPending.length,
-      urgent: feedbackPending.length > 0,
+      urgent: feedbackPending.some(row => lessonWorkStatus(row, access.teacherId!, now).feedbackOverdue),
       target: "history",
     },
     {
@@ -117,6 +121,7 @@ export async function GET(req: Request) {
   const sessionTodos = Array.from(new Map([...attendancePending, ...feedbackPending].map((row) => [row.id, row])).values())
     .slice(0, 20)
     .map((row) => ({
+      workStatus: lessonWorkStatus(row, access.teacherId!, now, "ZH"),
       id: row.id,
       timeText: formatBusinessDateTime(row.startAt),
       courseLabel: [row.class.course.name, row.class.subject?.name].filter(Boolean).join(" / "),

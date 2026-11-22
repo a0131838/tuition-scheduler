@@ -1,3 +1,4 @@
+import { lessonWorkStatus } from "@/lib/lesson-work-status";
 import {sessionFeedbackState,isPendingFeedback} from "@/lib/session-feedback-state";
 import { prisma } from "@/lib/prisma";
 import { requireTeacherProfile } from "@/lib/auth";
@@ -6,9 +7,8 @@ import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import { getVisibleSessionStudents, isSessionFullyCancelled } from "@/lib/session-students";
 import { formatBusinessDateOnly, formatBusinessTimeOnly } from "@/lib/date-only";
 import TeacherWorkspaceHero from "../_components/TeacherWorkspaceHero";
-import { isFeedbackOverdue } from "@/lib/feedback-timing";
+import { FEEDBACK_RECOVERY_LOOKBACK_DAYS, isFeedbackOverdue } from "@/lib/feedback-timing";
 
-const FEEDBACK_RECOVERY_LOOKBACK_DAYS = 90;
 
 type SessionWithMeta = {
   id: string;
@@ -16,6 +16,7 @@ type SessionWithMeta = {
   teacherId: string|null;
   studentId: string|null;
   feedbackPolicyJson: unknown;
+  feedbackAvailableAt: Date | null;
   startAt: Date;
   endAt: Date;
   class: {
@@ -30,8 +31,8 @@ type SessionWithMeta = {
     room: { name: string } | null;
   };
   student: { id: string; name: string } | null;
-  attendances: Array<{ studentId: string; status: string }>;
-  feedbacks: Array<{ teacherId: string; isProxyDraft: boolean; status: string }>;
+  attendances: Array<{ studentId: string; status: string; deductedMinutes: number; deductedCount: number; waiveDeduction: boolean; package: { type: string } | null }>;
+  feedbacks: Array<{ teacherId: string; isProxyDraft: boolean; status: string; submittedAt: Date }>;
 };
 
 function dayKey(d: Date) {
@@ -120,8 +121,8 @@ export default async function TeacherSessionsPage() {
         enrollments: { include: { student: { select: { id: true, name: true } } } },
       },
     },
-    attendances: { select: { studentId: true, status: true } },
-    feedbacks: { where: { teacherId: teacher.id }, select: { teacherId: true, isProxyDraft: true, status: true } },
+    attendances: { select: { studentId: true, status: true, deductedMinutes: true, deductedCount: true, waiveDeduction: true, package: { select: { type: true } } } },
+    feedbacks: { where: { teacherId: teacher.id }, select: { teacherId: true, isProxyDraft: true, status: true, submittedAt: true } },
   };
 
   const [timelineRaw, recoveryRaw] = (await Promise.all([
@@ -161,7 +162,7 @@ export default async function TeacherSessionsPage() {
   const todayCount = sessions.filter((s) => dayKey(s.startAt) === todayKey).length;
   const feedbackState = (s:SessionWithMeta) => sessionFeedbackState({...s,responsibleTeacherId:teacher.id},now);
   const pendingFeedbackCount = sessions.filter((s) => isPendingFeedback(feedbackState(s))).length;
-  const overdueFeedbackCount = sessions.filter((s) => isPendingFeedback(feedbackState(s)) && isFeedbackOverdue(s.endAt,now)).length;
+  const overdueFeedbackCount = sessions.filter((s) => isPendingFeedback(feedbackState(s)) && isFeedbackOverdue(s.endAt,now,s.feedbackAvailableAt)).length;
 
   const grouped = new Map<string, SessionWithMeta[]>();
   for (const s of sessions) {
@@ -204,7 +205,7 @@ export default async function TeacherSessionsPage() {
         <div style={statCard("#fef2f2", "#fecaca")}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#b91c1c" }}>{t(lang, "Feedback overdue", "反馈超时")}</div>
           <div style={{ fontSize: 28, fontWeight: 800, color: "#b91c1c", marginTop: 8 }}>{overdueFeedbackCount}</div>
-          <div style={{ color: "#991b1b", marginTop: 4 }}>{t(lang, "Past the 12-hour feedback window.", "已经超过课后12小时反馈窗口。")}</div>
+          <div style={{ color: "#991b1b", marginTop: 4 }}>{t(lang, "Past the feedback deadline; backfilled lessons use their actual creation time.", "已超过反馈提交期限；补录课按实际创建时间计算。")}</div>
         </div>
       </section>
 
@@ -250,7 +251,8 @@ export default async function TeacherSessionsPage() {
                   const statusByStudentId = new Map(s.attendances.map((a) => [a.studentId, a.status]));
                   const total = students.length;
                   const marked = students.filter((st) => (statusByStudentId.get(st.id) ?? "UNMARKED") !== "UNMARKED").length;
-                  const overdue = isFeedbackOverdue(s.endAt);
+                  const work = lessonWorkStatus(s, teacher.id, now, lang);
+                  const overdue = work.feedbackOverdue;
                   const att = attendancePill(marked, total);
                   const fb = feedbackMeta(feedbackState(s), overdue, lang, s.feedbacks[0]?.status==="LATE");
 
@@ -306,8 +308,9 @@ export default async function TeacherSessionsPage() {
                               fontWeight: 700,
                             }}
                           >
-                            {t(lang, "Attendance", "点名")}: {att.label}
+                            {work.attendanceLabel}
                           </span>
+                          <span style={{ padding: "2px 8px", borderRadius: 999, background: (work.deductionNeedsReview || !work.attendanceComplete) ? "#fff7ed" : "#dcfce7", color: (work.deductionNeedsReview || !work.attendanceComplete) ? "#9a3412" : "#166534", fontSize: 12, fontWeight: 700 }}>{work.deductionLabel}</span>
                           <span
                             style={{
                               display: "inline-block",
@@ -320,9 +323,11 @@ export default async function TeacherSessionsPage() {
                               fontWeight: 700,
                             }}
                           >
-                            {t(lang, "Feedback", "反馈")}: {fb.label}
+                            {work.feedbackLabel}
                           </span>
                         </div>
+                        {work.backfilled ? <div style={{ marginTop: 8, fontSize: 12, color: "#1d4ed8" }}>{work.backfillLabel}</div> : null}
+                        {work.feedbackPending ? <div style={{ marginTop: 6, fontSize: 12, color: "#475569" }}>{t(lang, "Feedback deadline", "反馈提交期限")}: {work.feedbackDueText}<br />{work.feedbackHint}</div> : null}
                       </article>
                     </div>
                   );

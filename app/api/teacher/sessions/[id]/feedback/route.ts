@@ -72,8 +72,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (!allowed) return bad("No permission", 403);
 
   const now = new Date();
-  const deadline = getFeedbackDueAt(session.endAt);
-  const status: FeedbackStatus = getFeedbackSubmissionStatus(session.endAt, now);
+  const deadline = getFeedbackDueAt(session.endAt, session.feedbackAvailableAt);
+  const status: FeedbackStatus = getFeedbackSubmissionStatus(session.endAt, now, session.feedbackAvailableAt);
 
   const actualStartAt = actualStartRaw ? new Date(actualStartRaw) : null;
   const actualEndAt = actualEndRaw ? new Date(actualEndRaw) : null;

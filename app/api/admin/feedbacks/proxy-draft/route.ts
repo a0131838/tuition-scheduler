@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 import { getFeedbackDueAt } from "@/lib/feedback-timing";
+import { isFinalTeacherFeedback } from "@/lib/session-feedback-state";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -37,16 +38,24 @@ export async function POST(req: Request) {
     include: { class: { include: { course: true, subject: true, level: true } } },
   });
   if (!session) return bad("Session not found", 404);
+  if ((session.teacherId ?? session.class.teacherId) !== teacherId) return bad("Teacher assignment changed / 课次老师已变更", 409);
 
-  const deadline = getFeedbackDueAt(session.endAt);
+  const deadline = getFeedbackDueAt(session.endAt, session.feedbackAvailableAt);
+  if (new Date() <= deadline) return bad("Feedback is still within its submission window / 反馈仍在提交期限内，无需创建超时草稿", 409);
   const content = [
     "[Proxy Draft / 代填草稿 - Admin / 教务]",
     `Session / 课次: ${buildSessionLine(session)}`,
-    "Reason / 原因: Teacher feedback overdue more than 12 hours. / 老师反馈超过12小时未提交。",
+    `Reason / 原因: Feedback deadline passed / 已超过反馈提交期限: ${formatBusinessDateTime(deadline)}`,
     `Note / 备注: ${note || "Pending teacher completion / 待老师补全"}`,
   ].join("\n");
 
-  await prisma.sessionFeedback.upsert({
+  const saved = await prisma.$transaction(async tx => {
+    await tx.$queryRaw`SELECT id FROM "Session" WHERE id=${sessionId} FOR UPDATE`;
+    const current = await tx.session.findUnique({ where: { id: sessionId }, include: { class: true } });
+    if (!current || (current.teacherId ?? current.class.teacherId) !== teacherId || new Date() <= getFeedbackDueAt(current.endAt, current.feedbackAvailableAt)) return false;
+    const existing = await tx.sessionFeedback.findUnique({ where: { sessionId_teacherId: { sessionId, teacherId } } });
+    if (isFinalTeacherFeedback(existing)) return false;
+    await tx.sessionFeedback.upsert({
     where: { sessionId_teacherId: { sessionId, teacherId } },
     update: {
       content,
@@ -55,7 +64,7 @@ export async function POST(req: Request) {
       status: "PROXY_DRAFT",
       dueAt: deadline,
       isProxyDraft: true,
-      proxyNote: note || "Auto-created due to >12h overdue feedback.",
+      proxyNote: note || "Feedback deadline passed; teacher completion pending.",
       submittedByRole: "ADMIN",
       submittedByUserId: admin.id,
       submittedAt: new Date(),
@@ -69,12 +78,15 @@ export async function POST(req: Request) {
       status: "PROXY_DRAFT",
       dueAt: deadline,
       isProxyDraft: true,
-      proxyNote: note || "Auto-created due to >12h overdue feedback.",
+      proxyNote: note || "Feedback deadline passed; teacher completion pending.",
       submittedByRole: "ADMIN",
       submittedByUserId: admin.id,
       submittedAt: new Date(),
     },
+    });
+    return true;
   });
+  if (!saved) return bad("Feedback or lesson changed; reload. Submitted feedback has been preserved / 反馈或课次已变化，请刷新；已提交反馈保持不变", 409);
 
   return Response.json({ ok: true });
 }

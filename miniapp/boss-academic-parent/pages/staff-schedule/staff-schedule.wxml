@@ -150,6 +150,9 @@
         </view>
         <view class="student-name">{{item.studentText}}</view>
         <view class="session-meta">{{item.teacherName}} · {{item.locationText}}</view>
+        <view class="session-meta" wx:if="{{item.workStatus}}">{{item.workStatus.attendanceLabel}} · {{item.workStatus.deductionLabel}}</view>
+        <view class="session-meta" wx:if="{{item.workStatus}}">{{item.workStatus.feedbackLabel}}</view>
+        <view class="session-meta" wx:if="{{item.workStatus.backfilled}}">{{item.workStatus.backfillLabel}}</view>
       </view>
       <view class="chevron">›</view>
     </view>

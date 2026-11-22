@@ -1,6 +1,6 @@
+import { lessonWorkStatus } from "@/lib/lesson-work-status";
 import { feedbackAttachmentDto } from "@/lib/feedback-attachments";
 import {resolveAttendanceRoster} from '@/lib/session-attendance-roster';
-import {sessionFeedbackState} from "@/lib/session-feedback-state";
 import {feedbackPolicyState} from "@/lib/session-feedback-policy";
 import { prisma } from "@/lib/prisma";
 import { requireTeacherProfile } from "@/lib/auth";
@@ -10,7 +10,7 @@ import { getCancelledSessionStudentIds } from "@/lib/session-students";
 import TeacherAttendanceClient from "./TeacherAttendanceClient";
 import TeacherFeedbackClient from "./TeacherFeedbackClient";
 import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
-import { FEEDBACK_WINDOW_HOURS, getFeedbackDueAt, isFeedbackOverdue } from "@/lib/feedback-timing";
+import { getFeedbackDueAt, getFeedbackSubmissionStatus } from "@/lib/feedback-timing";
 
 function decode(v: string | undefined) {
   return v ? decodeURIComponent(v) : "";
@@ -59,7 +59,7 @@ export default async function TeacherSessionDetailPage({
     include: {
       student: true,
       class: { include: { course: true, subject: true, level: true, campus: true, room: true, oneOnOneStudent: true } },
-      attendances: true,
+      attendances: { include: { package: { select: { type: true } } } },
       feedbacks: { where: { teacherId: teacher.id }, include: { attachments: { orderBy: { createdAt: "asc" } } } },
     },
   });
@@ -81,20 +81,18 @@ export default async function TeacherSessionDetailPage({
 
   const attMap = new Map(session.attendances.map((a) => [a.studentId, a]));
   const feedback = session.feedbacks[0] ?? null;
+  const submittedStatus = feedback && !feedback.isProxyDraft && feedback.status !== "PROXY_DRAFT" && session.feedbackAvailableAt && session.feedbackAvailableAt > session.endAt ? getFeedbackSubmissionStatus(session.endAt, feedback.submittedAt, session.feedbackAvailableAt) : feedback?.status;
   const policySession={...session,class:{...session.class,enrollments}};
   const policy=feedbackPolicyState(policySession);
-  const state=sessionFeedbackState({...policySession,responsibleTeacherId:teacher.id});
+  const work = lessonWorkStatus(policySession, teacher.id, new Date(), lang);
+  const state=work.feedbackState;
   const finalFeedback=state==="SUBMITTED";
   const noFeedbackTask=state==="EXEMPT"||state==="NOT_DUE";
   const draftFeedback=state==="PROXY_DRAFT";
-  const deadline = getFeedbackDueAt(session.endAt);
-  const feedbackOverdue = isFeedbackOverdue(session.endAt);
+  const deadline = getFeedbackDueAt(session.endAt, session.feedbackAvailableAt);
+  const feedbackOverdue = work.feedbackOverdue;
   const deadlineText = formatBusinessDateTime(deadline);
-  const feedbackRuleHint = t(
-    lang,
-    `Rule: feedback only becomes late ${FEEDBACK_WINDOW_HOURS} hours after class ends.`,
-    `规则：课后反馈在下课 ${FEEDBACK_WINDOW_HOURS} 小时后才算迟交。`
-  );
+  const feedbackRuleHint = work.feedbackHint;
   const attendanceRows = visibleAttendanceEnrollments.map((e) => {
     const attendance = attMap.get(e.studentId);
     return {
@@ -111,9 +109,9 @@ export default async function TeacherSessionDetailPage({
       ? new Date(Math.max(...session.attendances.map((a) => new Date(a.updatedAt).getTime())))
       : null;
   const sessionRosterReviewLabel=t(lang,"Student assignment needs review","\u5b66\u751f\u5f52\u5c5e\u5f85\u6838\u5bf9");
-  const feedbackStateLabel = state==='EXEMPT'?t(lang,'Reviewed non-teaching activity; no lesson feedback required','已核对非教学活动，无需课后反馈'):state==='NOT_DUE'?t(lang,'Feedback is due after the session ends','课程结束后填写反馈'):draftFeedback?t(lang,'Admin draft waiting for your completion','教务代填草稿，待老师正式提交'):finalFeedback?(feedback?.status==='LATE'?t(lang,'Feedback submitted late','反馈已提交，状态为迟交'):t(lang,'Feedback submitted','反馈已提交')):feedbackOverdue?t(lang,'Feedback overdue','反馈已超时'):t(lang,'Feedback pending','反馈待提交');
+  const feedbackStateLabel = work.feedbackLabel;
   const nextActionTitle=roster.needsReview?sessionRosterReviewLabel:pendingAttendanceCount>0?t(lang,'Finish attendance','完成点名'):noFeedbackTask?feedbackStateLabel:finalFeedback?t(lang,'Review submitted feedback if needed','按需复核已提交反馈'):t(lang,'Complete and submit teacher feedback','补全并正式提交老师反馈');
-  const nextActionDetail=roster.needsReview?sessionRosterReviewLabel:state==='EXEMPT'?policy.reason:state==='NOT_DUE'?t(lang,'This scheduled session stays visible. Submit teaching feedback after it ends.','此课次仍保留在课表中，请在课程结束后提交教学反馈。'):draftFeedback?t(lang,'A proxy draft is not a completed teacher submission. Review and submit it yourself.','代填草稿不代表老师已提交，请核对并由老师正式提交。'):t(lang,'Attendance and feedback are separate records. Check both before finishing.','点名和反馈是两项独立记录，请分别核对。');
+  const nextActionDetail=roster.needsReview?sessionRosterReviewLabel:state==='EXEMPT'?policy.reason:state==='NOT_DUE'?t(lang,'This scheduled session stays visible. Submit teaching feedback after it ends.','此课次仍保留在课表中，请在课程结束后提交教学反馈。'):draftFeedback?t(lang,'A proxy draft is not a completed teacher submission. Review and submit it yourself.','代填草稿不代表老师已提交，请核对并由老师正式提交。'):work.feedbackHint;
   const sessionCompletionTitle=roster.needsReview?t(lang,'Student assignment needs review','学生归属待核对'):pendingAttendanceCount>0?t(lang,'Attendance still pending','点名仍待完成'):finalFeedback?t(lang,'Attendance and feedback recorded','点名和反馈已记录'):noFeedbackTask?feedbackStateLabel:t(lang,'Attendance recorded; teacher feedback pending','点名已记录，老师反馈待提交');
   const sessionCompletionDetail=nextActionDetail;
   const sessionCompletionHref=roster.needsReview||pendingAttendanceCount>0?'#attendance':finalFeedback||noFeedbackTask?returnTo:'#feedback';
@@ -135,9 +133,9 @@ export default async function TeacherSessionDetailPage({
       {feedback ? (
         <div style={{ color: "#087", marginBottom: 10 }}>
           {t(lang, "Last saved", "最近保存")}: {formatBusinessDateTime(new Date(feedback.submittedAt))} (
-          {feedback.status === "ON_TIME"
+          {submittedStatus === "ON_TIME"
             ? t(lang, "On time", "准时")
-            : feedback.status === "LATE"
+            : submittedStatus === "LATE"
             ? t(lang, "Late", "迟交")
             : t(lang, "Proxy draft", "代填草稿")}
           )
@@ -163,6 +161,11 @@ export default async function TeacherSessionDetailPage({
           {t(lang, "Completion state", "完成状态")}
         </div>
         <div style={{ fontWeight: 700 }}>{sessionCompletionTitle}</div>
+        <div>{work.attendanceLabel}</div>
+        <div>{work.deductionLabel}</div>
+        <div>{work.feedbackLabel}</div>
+        {work.feedbackPending ? <div>{t(lang, "Feedback deadline", "反馈提交期限")}: {work.feedbackDueText}</div> : null}
+        {work.backfilled ? <div>{work.backfillLabel}</div> : null}
         <div style={{ fontSize: 13, color: "#0f172a" }}>{sessionCompletionDetail}</div>
         <div>
           <a href={sessionCompletionHref}>{sessionCompletionAction}</a>
@@ -377,7 +380,7 @@ export default async function TeacherSessionDetailPage({
         </div>
       ) : null}
       <div style={{ color: feedbackOverdue ? "#b00" : "#666", marginBottom: 6 }}>
-        {feedbackOverdue
+        {finalFeedback ? work.feedbackLabel : feedbackOverdue
           ? t(
               lang,
               `Late has started since ${deadlineText}. Submit now and this feedback will be marked as Late.`,
