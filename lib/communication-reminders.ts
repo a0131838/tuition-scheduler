@@ -1,3 +1,4 @@
+import { getFeedbackDueAt } from "./feedback-timing";
 import {needsTeachingFeedback} from "@/lib/session-feedback-policy";
 import {isFinalTeacherFeedback} from "./session-feedback-state";
 import { prisma } from "@/lib/prisma";
@@ -251,7 +252,7 @@ export async function listCommunicationReminders(now = new Date(), limit = 300) 
         return attendance?.status === "PRESENT" || attendance?.status === "LATE";
       });
       if (!finalFeedback && feedbackRequired) {
-        const dueAt = new Date(session.endAt.getTime() + DAY);
+        const dueAt = getFeedbackDueAt(session.endAt, session.feedbackAvailableAt);
         const zh = `${teacherName}老师您好，${studentText}于${time}的${label}课程尚未填写课后反馈，请尽快完成，便于家长及时了解学习情况。`;
         const en = `Hello ${teacherName}, the lesson feedback for ${studentText}'s ${label} lesson at ${time} is still missing. Please complete it so the parent can receive a timely update.`;
         items.push(reminder({ key: `FEEDBACK_MISSING:${session.id}`, category: "FEEDBACK", categoryLabel: "课后反馈", title: `${teacherName} · 待填反馈`, subject: `${studentText} · ${time}`, recipientType: "TEACHER", recipientName: teacherName, studentName: studentText, teacherName, dueAt, now, sourceHref: `/admin/feedbacks?focusSessionId=${session.id}`, sourceLabel: "课后反馈", copyZh: zh, copyEn: en }));

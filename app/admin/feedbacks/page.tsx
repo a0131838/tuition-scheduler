@@ -264,7 +264,8 @@ export default async function AdminFeedbacksPage({
 
   const overdueSessions = await prisma.session.findMany({
     where: {
-      endAt: { gte: lookback, lte: overdueAt },
+      endAt: { gte: lookback, lt: overdueAt },
+      AND: [{ OR: [{ feedbackAvailableAt: null }, { feedbackAvailableAt: { lt: overdueAt } }] }],
       ...(studentId ? { OR: [{ studentId }, { class: { enrollments: { some: { studentId } } } }] } : {}),
     },
     include: {

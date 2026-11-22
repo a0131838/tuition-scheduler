@@ -254,3 +254,7 @@ textarea {
 .attachment-inline-actions { display: flex; gap: 8rpx; }
 .mini-action { margin: 0; min-width: 90rpx; padding: 8rpx 14rpx; border-radius: 8rpx; background: #f0f1f3; color: #272a2f; font-size: 22rpx; line-height: 1.5; }
 .danger-mini { color: #b42318; }
+
+.lesson-work .work-done { color: #166534; margin-top: 10rpx; }
+.lesson-work .work-pending { color: #92400e; margin-top: 10rpx; }
+.lesson-work .work-overdue { color: #b91c1c; margin-top: 10rpx; }

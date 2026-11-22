@@ -1,10 +1,12 @@
+import { lessonWorkStatus } from "@/lib/lesson-work-status";
 import { Prisma } from "@prisma/client";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { prisma } from "@/lib/prisma";
 import { getVisibleSessionStudents } from "@/lib/session-students";
 
 const sessionInclude = Prisma.validator<Prisma.SessionInclude>()({
-  attendances: { select: { studentId: true, status: true } },
+  attendances: { select: { studentId: true, status: true, deductedMinutes: true, deductedCount: true, waiveDeduction: true, package: { select: { type: true } } } },
+  feedbacks: { select: { teacherId: true, status: true, isProxyDraft: true, submittedAt: true } },
   student: { include: { sourceChannel: true } },
   teacher: { select: { id: true, name: true } },
   class: {
@@ -95,6 +97,7 @@ export function miniappStaffSessionDto(session: MiniappStaffSessionContext) {
   const roomName = session.class.room?.name ?? null;
   const students = miniappStaffSessionStudents(session);
   return {
+    workStatus: lessonWorkStatus(session, teacher.id, new Date(), "ZH"),
     id: session.id,
     classId: session.classId,
     groupLesson: session.class.capacity !== 1,

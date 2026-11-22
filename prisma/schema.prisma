@@ -892,6 +892,8 @@ model Session {
   teacherId String?
   studentId String?
   feedbackPolicyJson Json?
+  // When this record became available for feedback; never reset by attendance or edits.
+  feedbackAvailableAt DateTime? @default(now())
 
   class                     Class                          @relation(fields: [classId], references: [id])
   teacher                   Teacher?                       @relation("SessionTeacherOverride", fields: [teacherId], references: [id])

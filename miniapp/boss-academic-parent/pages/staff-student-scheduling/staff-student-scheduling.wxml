@@ -32,6 +32,7 @@
   <view class="section" wx:if="{{canSchedule}}">
     <view class="section-title">直接排课</view>
     <view class="hint section-hint">确认后直接写入课表，不创建工单。</view>
+    <view class="hint">补录历史课前先查原课次；已有课程请直接打开补反馈，不要另建或重复扣课。</view>
     <view class="empty" wx:if="{{!hasScheduleOptions}}">该学生目前没有可用于排课的课程科目，或系统尚未配置校区。</view>
     <block wx:else>
       <view class="grid">

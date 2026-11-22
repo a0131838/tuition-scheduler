@@ -1,5 +1,18 @@
 # CHANGELOG LIVE
 
+## 2026-11-22-r518
+
+- Release ID: `2026-11-22-r518`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Change: distinguish attendance, recorded deductions and teacher feedback on web and staff mini program. Historical backfills receive twelve hours from evidenced record creation; ordinary lessons retain twelve hours after lesson end.
+- Evidence: nullable Session feedback availability is restored only from immutable creation audits. Unknown legacy creation times stay unknown. No lesson dates, attendance, balances, receipts or feedback content are rewritten.
+- Verification: production build, 185 backend tests, 27 focused regressions, isolated HTTP end-to-end checks, mobile browser display and actual native WeChat simulator. Repeated attendance saves and feedback submission preserve balances and deduction transactions.
+- Staff impact: historical lessons show backfill time and feedback deadline. Already-submitted feedback stays completed during publication review. Proxy draft cannot replace a teacher submission. Existing duplicate scheduling checks remain in place with clearer backfill guidance.
+- Mini program: updated source will use version 1.1.05 in the canonical release branch; upload receipt and actual channel state are tracked separately.
+- Details: `docs/tasks/TASK-20261122-backfilled-feedback.md`.
+
+---
+
 ## 2026-11-21-r517
 
 - Release ID: `2026-11-21-r517`

@@ -23,6 +23,7 @@ type SessionForAlert = {
   classId: string;
   startAt: Date;
   endAt: Date;
+  feedbackAvailableAt?: Date | null;
   teacherId: string | null;
   studentId: string | null;
   attendances: Array<{ studentId: string; status: string }>;
@@ -186,9 +187,9 @@ export async function syncSignInAlerts(now = new Date()) {
     );
     const missingStudents = inSignInWindow ? expected.filter((sid) => !markedSet.has(sid)) : [];
     const missTeacher = inSignInWindow && !teacherSignedIn(s);
-    const feedbackDueAt = getFeedbackDueAt(s.endAt);
+    const feedbackDueAt = getFeedbackDueAt(s.endAt, s.feedbackAvailableAt);
     const teacherFeedback = s.feedbacks.find((f) => f.teacherId === actualTeacherId) ?? null;
-    const missFeedback = needsTeachingFeedback(s) && isFeedbackOverdue(s.endAt, now) && !isFinalTeacherFeedback(teacherFeedback);
+    const missFeedback = needsTeachingFeedback(s) && isFeedbackOverdue(s.endAt, now, s.feedbackAvailableAt) && !isFinalTeacherFeedback(teacherFeedback);
 
     const teacherUserIds = teacherUserIdsByTeacherId.get(actualTeacherId) ?? [];
 

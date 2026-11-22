@@ -47,6 +47,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ sessionId: stri
 
   const feedback = session.feedbacks[0] ?? null;
   return ok({
+    feedbackDueText: formatBusinessDateTime(getFeedbackDueAt(session.endAt, session.feedbackAvailableAt)),
+    feedbackAvailableAt: session.feedbackAvailableAt?.toISOString() ?? null,
     feedbackRequirement:feedbackPolicyState(session),
     rosterNeedsReview:resolveAttendanceRoster(session).needsReview,
     session: {
@@ -112,8 +114,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ sessionId: str
   if (!previousHomework.valid) return bad("Previous homework completion is required", 409);
 
   const now = new Date();
-  const deadline = getFeedbackDueAt(session.endAt);
-  const status: FeedbackStatus = getFeedbackSubmissionStatus(session.endAt, now);
+  const deadline = getFeedbackDueAt(session.endAt, session.feedbackAvailableAt);
+  const status: FeedbackStatus = getFeedbackSubmissionStatus(session.endAt, now, session.feedbackAvailableAt);
   const subjectName = session.class.subject?.name || session.class.course.name;
   const plannedStart = formatBusinessDateTime(session.startAt);
   const plannedEnd = formatBusinessTimeOnly(session.endAt);
