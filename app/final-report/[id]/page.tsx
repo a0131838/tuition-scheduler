@@ -1,4 +1,4 @@
-import { isLearningReportApprovedForDelivery } from "@/lib/learning-report-delivery";
+import { finalReportNeedsAcademicReview, isLearningReportApprovedForDelivery } from "@/lib/learning-report-delivery";
 import ParentReportReadView from '@/app/_components/ParentReportReadView';
 import {currentParentEdition} from '@/lib/learning-report-parent-editions';
 import {validateParentReportContent} from '@/lib/learning-report-parent-content';
@@ -115,7 +115,7 @@ export default async function FinalReportSharePage({
     report!.shareToken === token &&
     Boolean(report!.shareEnabledAt) &&
     !report!.shareRevokedAt &&
-    (!report!.reportPeriodId || isLearningReportApprovedForDelivery(report!.reportJson)) &&
+    (!finalReportNeedsAcademicReview(report!) || isLearningReportApprovedForDelivery(report!.reportJson)) &&
     (!report!.shareExpiresAt || report!.shareExpiresAt.getTime() > Date.now());
 
   if (!shareIsValid || !report) {

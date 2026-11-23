@@ -9,12 +9,11 @@ import {
   mergeLearningReportAttendanceSnapshot,
   parseLearningReportAttendanceSnapshot,
 } from "@/lib/learning-report-attendance";
-import { isLearningReportApprovedForDelivery } from "@/lib/learning-report-delivery";
+import { finalReportNeedsAcademicReview, queueFinalReportForReview, isLearningReportApprovedForDelivery } from "@/lib/learning-report-delivery";
 import { acknowledgeManagerTeacherFeedback, getTeacherManagerFeedbackState } from "@/lib/manager-teacher-feedback";
 import { cleanMiniappText, isReportEditable } from "@/lib/miniapp-staff-action-center";
 import { parseReportDraft } from "@/lib/midterm-report";
 import { prisma } from "@/lib/prisma";
-import { isFinalReportSubmissionDue } from "@/lib/report-package-progress";
 import { MINIAPP_TEMPLATE_KEYS, queueMiniappNotificationsForStudent } from "@/lib/miniapp-notifications";
 import { getTeacherNoticeState, markTeacherNoticeRead } from "@/lib/teacher-notices";
 
@@ -25,7 +24,7 @@ function midtermLocked(raw: unknown) {
 }
 
 function reportDto(row: any, kind: "MIDTERM" | "FINAL") {
-  const editable = isReportEditable(row.status, row.archivedAt) && (kind === "FINAL" ? row.status !== "FORWARDED" && !(row.reportPeriodId && isLearningReportApprovedForDelivery(row.reportJson)) : !midtermLocked(row.reportJson));
+  const editable = isReportEditable(row.status, row.archivedAt) && (kind === "FINAL" ? row.status !== "FORWARDED" && !(finalReportNeedsAcademicReview(row) && isLearningReportApprovedForDelivery(row.reportJson)) : !midtermLocked(row.reportJson));
   return {
     id: row.id,
     kind,
@@ -181,25 +180,16 @@ export async function POST(req: Request) {
       },
     });
     if (!report) return bad("Report not found", 404);
-    if (!isReportEditable(report.status, report.archivedAt) || report.status === "FORWARDED" || (report.reportPeriod && isLearningReportApprovedForDelivery(report.reportJson))) return bad("Report is read only", 409);
-    if (submit && !report.reportPeriod) {
-      const currentPackage = await prisma.coursePackage.findUnique({
-        where: { id: report.packageId },
-        select: { remainingMinutes: true },
-      });
-      if (!currentPackage || !isFinalReportSubmissionDue(currentPackage.remainingMinutes)) {
-        return bad("Package still has hours remaining; save a draft until completion", 409);
-      }
-    }
+    if (!isReportEditable(report.status, report.archivedAt) || report.status === "FORWARDED" || (finalReportNeedsAcademicReview({ reportPeriodId: report.reportPeriod?.id, reportJson: report.reportJson }) && isLearningReportApprovedForDelivery(report.reportJson))) return bad("Report is read only", 409);
     const current = parseFinalReportDraft(report.reportJson);
-    const recommendation = cleanMiniappText(draftInput.recommendedNextStep, 40).toUpperCase();
+    const recommendation = cleanMiniappText(draftInput.recommendedNextStep ?? current.recommendedNextStep, 40).toUpperCase();
     const draft = parseFinalReportDraft({
       ...current,
-      finalSummary: cleanMiniappText(draftInput.finalSummary, 4000),
-      strengths: cleanMiniappText(draftInput.strengths, 3000),
-      areasToContinue: cleanMiniappText(draftInput.areasToContinue, 3000),
-      parentNote: cleanMiniappText(draftInput.parentNote, 3000),
-      teacherComment: cleanMiniappText(draftInput.teacherComment, 3000),
+      finalSummary: cleanMiniappText(draftInput.finalSummary ?? current.finalSummary, 4000),
+      strengths: cleanMiniappText(draftInput.strengths ?? current.strengths, 3000),
+      areasToContinue: cleanMiniappText(draftInput.areasToContinue ?? current.areasToContinue, 3000),
+      parentNote: cleanMiniappText(draftInput.parentNote ?? current.parentNote, 3000),
+      teacherComment: cleanMiniappText(draftInput.teacherComment ?? current.teacherComment, 3000),
       recommendedNextStep: FINAL_REPORT_RECOMMENDATIONS.includes(recommendation as any) ? recommendation : "",
     });
     if (submit && draft.finalSummary.length < 10) return bad("Please complete the final summary before submitting");
@@ -216,11 +206,12 @@ export async function POST(req: Request) {
             throughAt: report.reportPeriod?.endsAt ?? submittedAt,
           })
         : existingSnapshot;
+    const content = mergeLearningReportAttendanceSnapshot(draft, report.reportJson, attendanceSnapshot);
     const updated = await prisma.finalReport.updateMany({
       where: { id, updatedAt: report.updatedAt, archivedAt: null, reportPeriodId: report.reportPeriod?.id ?? null },
       data: {
-        reportJson: mergeLearningReportAttendanceSnapshot(draft, report.reportJson, attendanceSnapshot) as any,
-        ...(report.reportPeriod ? {} : { reportPeriodLabel: cleanMiniappText((body as any)?.reportPeriodLabel, 120) || null }),
+        reportJson: (submit ? queueFinalReportForReview(content) : content) as any,
+        ...(report.reportPeriod || !("reportPeriodLabel" in body) ? {} : { reportPeriodLabel: cleanMiniappText((body as any)?.reportPeriodLabel, 120) || null }),
         recommendation: draft.recommendedNextStep || null,
         status: submit ? "SUBMITTED" : report.status,
         submittedAt: submit ? submittedAt : report.submittedAt,

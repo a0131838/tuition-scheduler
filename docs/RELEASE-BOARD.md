@@ -1,5 +1,11 @@
 # RELEASE BOARD
 
+## 2026-11-23-r519
+
+- Assigned final reports can enter academic review with hours remaining. Official export checks review from the admin, teacher and mini program routes. The report history shows the latest formal export.
+- Verified the isolated tutor submission, review and parent download flow with positive balances. Scoped draft recovery preserves authorship, text, actual submission timestamps and ledger entries.
+- Details: `docs/tasks/TASK-20261123-final-report-academic-review.md`.
+
 ## 2026-11-22-r518
 
 - Release ID: `2026-11-22-r518`
