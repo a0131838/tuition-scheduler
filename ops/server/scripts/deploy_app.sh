@@ -126,7 +126,9 @@ npx prisma migrate deploy
 if [[ "${RUN_SEED:-false}" == "true" ]]; then
   npx prisma db seed
 fi
-npm run build
+# Bound only the build worker heap; do not export this override into PM2 runtime.
+echo "Building with a 3072 MB Node old-space limit (build process only)"
+NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--max-old-space-size=3072" npm run build
 
 pm2 delete "$APP_NAME" >/dev/null 2>&1 || true
 pm2 start npm --name "$APP_NAME" -- start -- -p "$APP_PORT"

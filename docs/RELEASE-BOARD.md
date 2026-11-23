@@ -1,5 +1,15 @@
 # RELEASE BOARD
 
+## 2026-11-23-r522
+
+- Release ID: `2026-11-23-r522`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Resolve the diagnosed r521 server build OOM by setting a 3072 MB Node old-space ceiling only for `npm run build`. Preserve existing Node options, type checking and PM2 runtime configuration.
+- User explicitly authorized this recovery and completion of the GT PDF production import. r521 application features are unchanged; uncertain identities and all unverified connections remain pending Jasmine review.
+- Validation: shell syntax, build-child heap / parent-environment isolation checks, prior full application build and network/maintenance acceptance. Standard release must confirm commit equality, PM2 and HTTP, followed by approved business import and authenticated/static-asset acceptance.
+- Details: `docs/tasks/TASK-20261123-relationship-map-build-memory-recovery.md`.
+- Last healthy application rollback point: `a94fce1b`; r521 source `73a259b0` reached the server but failed before runtime restart/import.
+
 ## 2026-11-23-r521
 
 - Release ID: `2026-11-23-r521`
