@@ -1,3 +1,6 @@
+import { randomUUID } from "node:crypto";
+import { allocateLeadNo, LEAD_SOURCE_TYPES } from "./leads";
+import { organizeNetwork, connectionWouldCycle } from "./sales-network-layout";
 import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
 import {
@@ -234,6 +237,10 @@ export async function importNetworkInTransaction(
     throw new Error("Review all import rows / 请核对全部导入记录");
   for (const c of choices) {
     const n = store.nodes.find((n) => n.id === c.nodeId)!;
+    if (c.mode === "KEEP" && n.kind !== "ROOT" && c.reviewNote)
+      n.review = [n.review, text(c.reviewNote, 1000)]
+        .filter(Boolean)
+        .join("\n");
     await choose(tx, actor, n, c);
   }
   const studentIds = store.nodes.flatMap((n) =>
@@ -680,4 +687,280 @@ export async function networkPreview(actor: RelationshipActor) {
     defaults: store.nodes.filter(defaultCreateRelationship).map((n) => n.id),
     suggestions,
   };
+}
+
+export type NetworkMaintenance = {
+  revision: number;
+  action:
+    | "ADD_NODE"
+    | "CONNECT"
+    | "ARCHIVE_NODE"
+    | "RESTORE_NODE"
+    | "ARCHIVE_EDGE"
+    | "RESTORE_EDGE"
+    | "LAYOUT";
+  nodeId?: string;
+  from?: string;
+  to?: string;
+  edgeId?: string;
+  name?: string;
+  kind?: NetworkNode["kind"];
+  label?: string;
+  style?: "DIRECT" | "CONNECTION" | "PIPELINE";
+  confirmed?: boolean;
+  note: string;
+  choice?: NetworkChoice;
+  newLead?: boolean;
+  asReferral?: boolean;
+  sourceType?: string;
+  createProject?: boolean;
+};
+export async function maintainNetworkInTransaction(
+  tx: Db,
+  actor: RelationshipActor,
+  input: NetworkMaintenance,
+) {
+  assertRelationshipWrite(actor);
+  const store = await lockedStore(tx);
+  if (!store || store.revision !== input.revision)
+    throw new Error(
+      "Network changed; reload before saving / 地图已更新，请刷新后保存",
+    );
+  const note = text(input.note, 2000);
+  if (!note)
+    throw new Error(
+      "Record the reason or identity check / 请填写新增或调整依据",
+    );
+  const before = JSON.parse(JSON.stringify(store));
+  let resultNodeId = input.nodeId ?? "";
+  const find = (id: unknown) => {
+    const n = store.nodes.find((n) => n.id === id);
+    if (!n) throw new Error("Node unavailable / 节点不存在");
+    return n;
+  };
+  const connect = (from: string, to: string) => {
+    const a = find(from),
+      b = find(to);
+    if (a.archived || b.archived)
+      throw new Error(
+        "Restore archived nodes before connecting / 请先恢复已归档节点",
+      );
+    if (store.edges.some((e) => e.from === from && e.to === to))
+      throw new Error(
+        "This connection already exists; edit or restore it / 该连线已存在，请修改或恢复原连线",
+      );
+    if (connectionWouldCycle(store, from, to))
+      throw new Error(
+        "This direction creates a cycle; check the connection / 此方向会形成循环，请核对连线",
+      );
+    const label = text(input.label ?? "", 160);
+    if (!label)
+      throw new Error("Connection label is required / 请填写关系含义");
+    if (!["DIRECT", "CONNECTION", "PIPELINE"].includes(input.style ?? ""))
+      throw new Error("Choose a connection style / 请选择连线类型");
+    if (input.confirmed !== undefined && typeof input.confirmed !== "boolean")
+      throw new Error("Invalid review flag / 核对标记无效");
+    store.edges.push({
+      id: "manual-" + randomUUID(),
+      from,
+      to,
+      label,
+      style: input.style!,
+      confirmed: input.confirmed === true,
+    });
+  };
+  if (input.action === "ADD_NODE") {
+    if (store.nodes.length >= 1000)
+      throw new Error(
+        "This map has reached 1000 nodes; contact an administrator to expand it / 当前地图已达1000个节点，请联系管理员扩容",
+      );
+    const parent = find(input.from);
+    if (parent.archived)
+      throw new Error("Restore this source node first / 请先恢复来源节点");
+    const name = text(input.name ?? "", 160);
+    if (
+      !name ||
+      !input.kind ||
+      !["INSTITUTION", "PERSON", "STUDENT", "PARENT"].includes(input.kind)
+    )
+      throw new Error(
+        "Enter a name and individual identity type / 请填写名称并选择对象类型",
+      );
+    const node: NetworkNode = {
+      id: "manual-" + randomUUID(),
+      name,
+      kind: input.kind,
+      x: 0,
+      y: 0,
+      sourceStatus: "",
+      review: note,
+      note,
+      origin: "MANUAL",
+      createdAt: new Date().toISOString(),
+    };
+    if (input.newLead) {
+      if (input.kind !== "STUDENT")
+        throw new Error(
+          "New opportunities require a student identity / 新建商机请选择学生类型",
+        );
+      if (input.choice && input.choice.mode !== "KEEP")
+        throw new Error(
+          "Choose an existing record or a new opportunity / 请选择关联已有记录或新建商机之一",
+        );
+      if (!LEAD_SOURCE_TYPES.includes(input.sourceType ?? ""))
+        throw new Error("Choose the actual lead source / 请选择实际商机来源");
+      const exact = await tx.lead.findMany({
+        where: {
+          studentName: { equals: name, mode: "insensitive" },
+          isArchived: false,
+          recordKind: "STUDENT",
+        },
+        select: { id: true },
+      });
+      // An operator may distinguish same-named students only by an explicit review, never by silently reusing an ID.
+      if (exact.length && note.length < 20)
+        throw new Error(
+          "Similar student names exist; search first and record a detailed identity check / 已有同名学生商机，请先搜索并详细填写身份核对依据",
+        );
+      let relationshipId: string | null = null;
+      if (input.asReferral) {
+        if (!input.confirmed || !parent.relationshipId)
+          throw new Error(
+            "A referral needs a confirmed source relationship / 介绍来源须核对并关联准确关系档案",
+          );
+        const r = await tx.salesRelationship.findFirst({
+          where: { id: parent.relationshipId, status: { not: "ARCHIVED" } },
+          select: { id: true },
+        });
+        if (!r)
+          throw new Error("Source relationship unavailable / 来源关系不可用");
+        relationshipId = r.id;
+      }
+      const lead = await tx.lead.create({
+        data: {
+          leadNo: await allocateLeadNo(tx),
+          studentName: name,
+          recordKind: "STUDENT",
+          sourceType: input.sourceType!,
+          status: "New Lead",
+          ownerName: store.ownerName,
+          createdByUserId: actor.id,
+          createdByName: actor.name,
+          relationshipId,
+          relationshipLinkedAt: relationshipId ? new Date() : null,
+          relationshipReviewNote: relationshipId ? note : null,
+          latestSummary: note,
+          sourceDetail:
+            "Added explicitly from relationship map / 从关系地图明确新建",
+        },
+      });
+      await tx.leadFollowUp.create({
+        data: {
+          leadId: lead.id,
+          actorUserId: actor.id,
+          actorName: actor.name,
+          channel: "其他",
+          content: note,
+        },
+      });
+      node.leadId = lead.id;
+      node.sourceStatus = "New Lead";
+    } else if (input.choice) {
+      if (input.choice.nodeId !== node.id && input.choice.nodeId !== "NEW")
+        throw new Error("Invalid new-node choice / 新节点关联无效");
+      await choose(tx, actor, node, {
+        ...input.choice,
+        nodeId: node.id,
+        reviewNote: note,
+      });
+    }
+    if (input.createProject) {
+      if (
+        input.kind !== "INSTITUTION" ||
+        !node.relationshipId ||
+        input.choice?.mode !== "CREATE"
+      )
+        throw new Error(
+          "Create a new institution profile before its first cooperation project / 请先新建机构关系，再创建首个合作项目",
+        );
+      const project = await tx.salesRelationshipOpportunity.create({
+        data: {
+          relationshipId: node.relationshipId,
+          title: name + " - cooperation",
+          status: "OPEN",
+          ownerName: store.ownerName,
+          note,
+        },
+      });
+      node.projectId = project.id;
+    }
+    store.nodes.push(node);
+    connect(parent.id, node.id);
+    resultNodeId = node.id;
+    organizeNetwork(store);
+  } else if (input.action === "CONNECT") {
+    connect(find(input.from).id, find(input.to).id);
+    resultNodeId = input.from!;
+  } else if (
+    input.action === "ARCHIVE_NODE" ||
+    input.action === "RESTORE_NODE"
+  ) {
+    const n = find(input.nodeId);
+    if (n.kind === "ROOT")
+      throw new Error(
+        "The central owner cannot be archived / 中心负责人不可归档",
+      );
+    n.archived = input.action === "ARCHIVE_NODE";
+    resultNodeId = n.id;
+  } else if (
+    input.action === "ARCHIVE_EDGE" ||
+    input.action === "RESTORE_EDGE"
+  ) {
+    const edge = store.edges.find((e) => e.id === input.edgeId);
+    if (!edge) throw new Error("Connection unavailable / 连线不存在");
+    if (
+      input.action === "RESTORE_EDGE" &&
+      connectionWouldCycle(
+        { ...store, edges: store.edges.filter((e) => e.id !== edge.id) },
+        edge.from,
+        edge.to,
+      )
+    )
+      throw new Error(
+        "This direction creates a cycle; check the connection / 此方向会形成循环，请核对连线",
+      );
+    edge.archived = input.action === "ARCHIVE_EDGE";
+    resultNodeId = edge.from;
+  } else if (input.action === "LAYOUT") organizeNetwork(store);
+  else throw new Error("Invalid maintenance action / 地图维护操作无效");
+  for (const key of ["relationshipId", "studentId", "leadId"] as const) {
+    const ids = store.nodes.flatMap((n) => (n[key] ? [n[key]!] : []));
+    if (new Set(ids).size !== ids.length)
+      throw new Error(
+        "This identity is already on the map; connect its existing node or restore it / 该档案已在地图中，请新增连线或恢复已有节点",
+      );
+  }
+  await assertDistinctIdentities(tx, store.nodes);
+  store.revision += 1;
+  validateNetworkStore(store);
+  await tx.appSetting.update({
+    where: { key: NETWORK_KEY },
+    data: { value: JSON.stringify(store) },
+  });
+  await audit(tx, actor, "NETWORK_" + input.action, {
+    reason: note,
+    before,
+    after: store,
+  });
+  return { store, nodeId: resultNodeId };
+}
+export async function maintainNetwork(
+  actor: RelationshipActor,
+  input: NetworkMaintenance,
+) {
+  assertRelationshipWrite(actor);
+  return prisma.$transaction(
+    (tx) => maintainNetworkInTransaction(tx, actor, input),
+    { timeout: 30000 },
+  );
 }

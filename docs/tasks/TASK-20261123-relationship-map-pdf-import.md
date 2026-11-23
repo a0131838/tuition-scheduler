@@ -1,9 +1,9 @@
-# Jasmine PDF relationship map — local acceptance
+# Jasmine relationship map — r521 release and ongoing maintenance
 
 Date: 2026-11-23 (Asia/Singapore)
 Branch: codex/relationship-map-20261123
 Base: a94fce1b (latest production tracking ref when work started)
-Status: local implementation / isolated UAT; **not deployed**. No production writes, external messages or real student creation.
+Status: r521 READY for authorized guarded production release and subsequent real PDF import. Release command and import receipt determine actual completion. No UAT fixtures or real student creation are part of the import.
 
 ## Requested outcome
 
@@ -36,7 +36,7 @@ Existing resource scope ADMIN / SALES / CS / operations admin is reused. Observe
 
 ## Delivery boundary
 
-This branch is ready for review as a local candidate. No live release ID is assigned and CHANGELOG-LIVE / RELEASE-BOARD are not presented as shipped. Production deployment and importing actual Jasmine identities should follow normal SGT guarded release and a business review of the proposed matches. Rollback before release is simply not merging this branch; no production migration or data reversal is needed.
+The initial local candidate was reviewed by the user. The user subsequently authorized production release r521 and the real PDF import, with uncertain identities and connections pending Jasmine review. CHANGELOG-LIVE / RELEASE-BOARD now describe that release candidate; guarded release output and the business import receipt establish actual completion. Application rollback retains additive graph/profile/project records for business review; do not delete real records as rollback.
 
 ## Final verification result
 
@@ -49,3 +49,29 @@ This branch is ready for review as a local candidate. No live release ID is assi
 - Mobile 390px: document scrollWidth = 390px. Canvas scrolls within the page.
 - Final captured artifacts: `/Users/zhao111/Documents/sgt系统/output/relationship-map-20261123/`. All screenshots show isolated UAT fixtures, not verified production student information.
 - Local preview server: `http://127.0.0.1:3127/admin/relationships/map` (authenticated local UAT session).
+
+## 2026-11-23 production authorization and ongoing maintenance
+
+User explicitly requested production deployment, import of this PDF, and future editing for new students/partners. Keep uncertain identities and connections unconfirmed for Jasmine. Existing source records and students must not be guessed or merged.
+
+Production read-only investigation found no existing map or exact corresponding relationship profiles. Several existing students have different Chinese/English names; old mixed lead records remain UNREVIEWED. Therefore the business import creates the PDF relationship structure and default 10 relationship / 4 open project records, while all person/student IDs and the 30 edges remain pending business verification. No original lead/student records are reclassified or changed by this import. Dry-run and apply receipts report exact outcomes; identical-hash retry reuses the same map.
+
+Jasmine has an existing ADMIN management account. Resource permissions are unchanged. A separate teacher account with the same display name does not gain management access.
+
+### Operator instructions (also available in English/Chinese in the page)
+
+1. Open Sales & Relationships → Relationship Map. Select a node for source wording, live status and the existing CRM follow-up page.
+2. Add an existing student/partner: Add / connect → select its actual type → select existing record → search and verify exact ID → name the connection and enter its review basis → save. If that record is already on the map, reuse its node by adding a connection. No duplicate identity is created.
+3. Add a genuinely new prospective student: choose Student → New student opportunity. Enter actual acquisition source and first follow-up. Linking a source relationship requires an explicit verified-referral selection. An ordinary school connection does not assign referral ownership. Continue student handoff in the existing lead workflow; map creation does not enrol a student.
+4. Add a new partner: choose Institution → new relationship profile; optionally create the first OPEN cooperation project. Or reuse an existing relationship. Manage dates/status/follow-ups in the original relationship/project page; refresh the map for current information.
+5. Add another relationship to a person already on the map: Connect existing nodes, select endpoints, describe the meaning and leave it unconfirmed until verified. The same student can have school, parent and referral edges without duplicate student nodes.
+6. Correct a connection: edit the label/review flag in the node inspector, or archive the mistaken edge and add the correct one. Archive/restore requires a reason. No permanent graph deletion or CRM-data deletion is offered.
+7. Archive an inactive object: use the inspector reason and Archive node. This hides the map object and its visible edges, while keeping its real CRM profile and the other students. Archived records → select → Restore returns the same node/IDs. Archived connections can be restored separately.
+8. Combined names remain intact until identities are verified. Add confirmed individual nodes and appropriate new connections, then archive the old combined node if appropriate. No automatic split is inferred from names.
+9. Organize map updates layout without changing business facts. Canvas size and branch filters grow with new objects; current bounded map capacity is 1000 nodes / 3000 edges. Original PDF source and manually added nodes are distinguished in the inspector. No new PDF upload is needed for routine maintenance.
+
+Additional implementation: `lib/sales-network-layout.ts`, `NetworkMaintenance.tsx`, and shared maintenance service/actions. All changes keep the existing resource/observer guards, transaction lock, revision check, exact-identity check and before/after audits. New manual lead creation uses the existing daily lead allocator and a real follow-up under the authenticated user. New lead/profile/project creation rolls back if graph/audit validation fails.
+
+The production import script is dry-run by default. `--apply` additionally requires the explicit approved source hash. It runs as the existing owner ADMIN, writes a mode-600 aggregate receipt under `/tmp`, and never guesses student IDs or reclassifies original leads. No raw PDF is served publicly. The normal guarded release performs the only GitHub push and application deployment.
+
+Final local maintenance acceptance: production build and TypeScript passed; 185 backend and 13 focused tests passed; isolated verification passed new partner/project, new student lead plus initial follow-up, independent extra connection, duplicate/cycle rejection, archive/restore and stale-write rejection. Browser actually created a UAT partner/project, archived and restored its same IDs, then created a UAT prospective-student lead through the maintenance panel. Final browser console had no errors. These fixtures exist only in the dedicated localhost database.

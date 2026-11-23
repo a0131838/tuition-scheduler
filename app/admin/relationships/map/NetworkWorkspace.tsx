@@ -16,11 +16,12 @@ import {
   commitNetworkAction,
   editNetworkAction,
   inspectPdfAction,
+  maintainNetworkAction,
 } from "./actions";
+import { activeNetwork, networkBounds } from "@/lib/sales-network-layout";
+import { MaintenancePanel, NodeMaintenance } from "./NetworkMaintenance";
 import CandidatePicker from "./CandidatePicker";
 import css from "./NetworkWorkspace.module.css";
-const WIDTH = 1690,
-  HEIGHT = 1650;
 function safeDate(v: string | null | undefined) {
   return v
     ? new Intl.DateTimeFormat("en-SG", {
@@ -35,8 +36,8 @@ function edgePath(e: NetworkEdge, nodes: NetworkNode[]) {
     b = nodes.find((n) => n.id === e.to)!;
   if (e.style === "PIPELINE") {
     const startX = a.x + 137,
-      startY = a.y + 104;
-    return `M ${startX} ${startY} V 1440 H ${b.x + 137} V ${b.y}`;
+      startY = a.y + (a.kind === "ROOT" ? 104 : 82);
+    return `M ${startX} ${startY} V ${Math.max(startY + 60, b.y - 50)} H ${b.x + 137} V ${b.y}`;
   }
   if (a.x === b.x) return `M ${a.x + 137} ${a.y + 82} V ${b.y}`;
   const x1 = a.x + 274,
@@ -63,7 +64,15 @@ export default function NetworkWorkspace({
   canLinkStudent: boolean;
 }) {
   const t = (en: string, zh: string) => tr(lang, en, zh),
-    store = view?.store ?? preview;
+    fullStore = view?.store ?? preview;
+  const [includeArchived, setIncludeArchived] = useState(false),
+    [maintenanceOpen, setMaintenanceOpen] = useState(false),
+    [maintenanceParent, setMaintenanceParent] = useState("");
+  const store = useMemo(
+    () => activeNetwork(fullStore, includeArchived),
+    [fullStore, includeArchived],
+  );
+  const { width: WIDTH, height: HEIGHT } = networkBounds(store);
   const [selected, setSelected] = useState(""),
     [query, setQuery] = useState(""),
     [focus, setFocus] = useState("all"),
@@ -76,6 +85,14 @@ export default function NetworkWorkspace({
     [notice, setNotice] = useState("");
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    if (params.get("node")) {
+      const id = params.get("node")!;
+      setSelected(id);
+      if (fullStore.nodes.find((n) => n.id === id)?.archived) {
+        setIncludeArchived(true);
+        setList(true);
+      }
+    }
     if (params.has("imported"))
       setNotice(
         t(
@@ -90,6 +107,16 @@ export default function NetworkWorkspace({
     drag = useRef<{ x: number; y: number; left: number; top: number } | null>(
       null,
     );
+  useEffect(() => {
+    const target = fullStore.nodes.find((n) => n.id === selected);
+    if (target && canvas.current && !list) {
+      canvas.current.scrollTo({
+        left: Math.max(0, target.x * zoom - 80),
+        top: Math.max(0, target.y * zoom - 90),
+        behavior: "smooth",
+      });
+    }
+  }, [selected, list]);
   useEffect(() => {
     if (!full) return;
     const handler = (e: KeyboardEvent) => {
@@ -139,7 +166,7 @@ export default function NetworkWorkspace({
       .filter((n) => matches.has(n.id) && branch.has(n.id))
       .map((n) => n.id),
   );
-  const node = store.nodes.find((n) => n.id === selected),
+  const node = fullStore.nodes.find((n) => n.id === selected),
     live = view?.live[selected];
   const linked = store.nodes.filter(
     (n) => n.studentId || n.leadId || n.relationshipId,
@@ -305,6 +332,17 @@ export default function NetworkWorkspace({
           <button type="button" onClick={exportSvg}>
             {t("Export map", "导出地图")}
           </button>
+          {view && !readOnly ? (
+            <button
+              className={css.primary}
+              onClick={() => {
+                setMaintenanceParent(selected);
+                setMaintenanceOpen((v) => !v);
+              }}
+            >
+              {t("Add / connect", "新增／连接")}
+            </button>
+          ) : null}
           {!readOnly ? (
             <button
               className={css.primary}
@@ -343,6 +381,50 @@ export default function NetworkWorkspace({
           onClose={() => setImportOpen(false)}
         />
       ) : null}
+      {maintenanceOpen && view && !readOnly ? (
+        <MaintenancePanel
+          key={maintenanceParent}
+          lang={lang}
+          store={fullStore}
+          parentId={maintenanceParent}
+          canLinkStudent={canLinkStudent}
+          onClose={() => setMaintenanceOpen(false)}
+        />
+      ) : null}
+      <details className={css.help}>
+        <summary>
+          {t(
+            "How to add students and partners later",
+            "后续怎样新增学生和合作方",
+          )}
+        </summary>
+        <ol>
+          <li>
+            {t(
+              "Use Add / connect. Search and select an existing exact record first. If it is already on the map, add another connection to the same node.",
+              "点击“新增／连接”，优先搜索并选择已有档案；如果已在地图上，就给同一节点增加连线。",
+            )}
+          </li>
+          <li>
+            {t(
+              "For a new prospective student, create a student opportunity; an enrolled student profile is created only by the existing handoff workflow. A map-only person can remain unconfirmed.",
+              "新学生先建学生商机，后续沿用现有承接流程建立学生档案；身份不明可先只保留地图节点。",
+            )}
+          </li>
+          <li>
+            {t(
+              "For a new partner, create or reuse its relationship profile. Manage cooperation projects and follow-ups through that profile.",
+              "新合作方可新建或复用关系档案，进入该档案维护合作项目和跟进。",
+            )}
+          </li>
+          <li>
+            {t(
+              "Click a node to edit its display identity, review connection labels, archive/restore objects, or open CRM follow-ups. Refresh the map for current CRM status. No new PDF is needed.",
+              "点击节点可改名称、核对关系、归档／恢复，或进入业务档案跟进。刷新地图读取最新进展，无需重新制作PDF。",
+            )}
+          </li>
+        </ol>
+      </details>
       <div className={css.summary}>
         <div>
           <strong>{store.nodes.length - 1}</strong>
@@ -380,9 +462,19 @@ export default function NetworkWorkspace({
           onChange={(e) => setFocus(e.target.value)}
         >
           <option value="all">{t("All connections", "全部关系")}</option>
-          <option value="nlcs">NLCS</option>
-          <option value="keystone">Keystone Education</option>
-          <option value="candy">Candy</option>
+          {store.nodes
+            .filter(
+              (n) =>
+                n.kind !== "ROOT" &&
+                !n.archived &&
+                (["INSTITUTION", "PARENT"].includes(n.kind) ||
+                  store.edges.some((e) => e.from === n.id)),
+            )
+            .map((n) => (
+              <option key={n.id} value={n.id}>
+                {n.name}
+              </option>
+            ))}
           <option value="pipeline">
             {t("Institutional pipeline", "机构合作")}
           </option>
@@ -416,6 +508,49 @@ export default function NetworkWorkspace({
         <button onClick={() => setFull((v) => !v)}>
           {full ? t("Exit full screen", "退出全屏") : t("Full screen", "全屏")}
         </button>
+        {view ? (
+          <button
+            className={includeArchived ? css.active : ""}
+            onClick={() => {
+              setIncludeArchived((v) => !v);
+              setList(true);
+            }}
+          >
+            {includeArchived
+              ? t("Hide archived", "隐藏归档")
+              : t("Archived records", "归档记录")}
+          </button>
+        ) : null}
+        {view && !readOnly ? (
+          <button
+            disabled={pending}
+            onClick={async () => {
+              setPending(true);
+              setError("");
+              try {
+                const result = await maintainNetworkAction({
+                  revision: fullStore.revision,
+                  action: "LAYOUT",
+                  note: "Operator requested automatic map organization / 操作人主动整理地图布局",
+                });
+                if (result.ok)
+                  window.location.assign("/admin/relationships/map?saved=1");
+                else setError(result.error ?? "Error");
+              } catch {
+                setError(
+                  t(
+                    "Unable to organize. Reload and check.",
+                    "未能整理，请刷新核对。",
+                  ),
+                );
+              } finally {
+                setPending(false);
+              }
+            }}
+          >
+            {t("Organize map", "自动整理")}
+          </button>
+        ) : null}
         <button onClick={reset}>{t("Reset", "重置")}</button>
       </div>
       <div className={`${css.body} ${!node ? css.noInspector : ""}`}>
@@ -426,7 +561,7 @@ export default function NetworkWorkspace({
                 <tr>
                   <th>{t("Name", "名称")}</th>
                   <th>{t("Identity", "身份")}</th>
-                  <th>{t("PDF status", "PDF原文状态")}</th>
+                  <th>{t("Source status", "来源状态")}</th>
                   <th>{t("CRM link", "业务关联")}</th>
                 </tr>
               </thead>
@@ -438,6 +573,7 @@ export default function NetworkWorkspace({
                       <td>
                         <button onClick={() => setSelected(n.id)}>
                           {n.name}
+                          {n.archived ? t(" (archived)", "（已归档）") : ""}
                         </button>
                       </td>
                       <td>{kindLabel(lang, n.kind)}</td>
@@ -556,7 +692,20 @@ export default function NetworkWorkspace({
                 </svg>
                 <div
                   className={css.sectionLabel}
-                  style={{ left: 350, top: 1420 }}
+                  style={{
+                    left: 350,
+                    top:
+                      Math.min(
+                        ...store.nodes
+                          .filter((n) =>
+                            store.edges.some(
+                              (e) => e.style === "PIPELINE" && e.to === n.id,
+                            ),
+                          )
+                          .map((n) => n.y),
+                        HEIGHT,
+                      ) - 70,
+                  }}
                 >
                   {t("INSTITUTIONAL PIPELINE", "机构合作项目")}
                 </div>
@@ -575,7 +724,9 @@ export default function NetworkWorkspace({
                       {n.relationshipId || n.studentId || n.leadId ? (
                         <span className={css.linkedDot} />
                       ) : null}
-                      {n.sourceStatus || kindLabel(lang, n.kind)}
+                      {view?.live[n.id]?.lead?.status ||
+                        n.sourceStatus ||
+                        kindLabel(lang, n.kind)}
                     </span>
                   </button>
                 ))}
@@ -597,10 +748,17 @@ export default function NetworkWorkspace({
                 ×
               </button>
             </div>
-            <h2>{node.name}</h2>
+            <h2>
+              {node.name}
+              {node.archived ? t(" (archived)", "（已归档）") : ""}
+            </h2>
             <dl>
               <div>
-                <dt>{t("Original PDF status", "PDF原文状态")}</dt>
+                <dt>
+                  {node.origin === "MANUAL"
+                    ? t("Initial status", "新增时状态")
+                    : t("Original PDF status", "PDF原文状态")}
+                </dt>
                 <dd>
                   {node.sourceStatus ||
                     t("Unstated · no status inferred", "未注明·未推断状态")}
@@ -608,7 +766,11 @@ export default function NetworkWorkspace({
               </div>
               <div>
                 <dt>{t("Source", "来源")}</dt>
-                <dd>{store.sourceName} · p.1</dd>
+                <dd>
+                  {node.origin === "MANUAL"
+                    ? t("Manually added", "手动新增")
+                    : store.sourceName + " · p.1"}
+                </dd>
               </div>
             </dl>
             {node.review ? <p className={css.alert}>{node.review}</p> : null}
@@ -747,35 +909,49 @@ export default function NetworkWorkspace({
             ) : null}
             <hr className={css.divider} />
             {view && !readOnly ? (
-              <NodeEditor
-                key={`${node.id}:${store.revision}`}
-                lang={lang}
-                node={node}
-                store={store}
-                pending={pending}
-                canLinkStudent={canLinkStudent}
-                onSave={async (input) => {
-                  setPending(true);
-                  setError("");
-                  try {
-                    const result = await editNetworkAction(input);
-                    if (!result.ok) {
-                      setError(result.error ?? "Error");
-                      return;
+              <>
+                <NodeMaintenance
+                  lang={lang}
+                  store={fullStore}
+                  node={node}
+                  onAdd={() => {
+                    setMaintenanceParent(node.id);
+                    setMaintenanceOpen(true);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                />
+                <NodeEditor
+                  key={`${node.id}:${store.revision}`}
+                  lang={lang}
+                  node={node}
+                  store={fullStore}
+                  pending={pending}
+                  canLinkStudent={canLinkStudent}
+                  onSave={async (input) => {
+                    setPending(true);
+                    setError("");
+                    try {
+                      const result = await editNetworkAction(input);
+                      if (!result.ok) {
+                        setError(result.error ?? "Error");
+                        return;
+                      }
+                      window.location.assign(
+                        "/admin/relationships/map?saved=1",
+                      );
+                    } catch {
+                      setError(
+                        t(
+                          "Unable to save. Reload and check before retrying.",
+                          "未能保存，请刷新核对后重试。",
+                        ),
+                      );
+                    } finally {
+                      setPending(false);
                     }
-                    window.location.assign("/admin/relationships/map?saved=1");
-                  } catch {
-                    setError(
-                      t(
-                        "Unable to save. Reload and check before retrying.",
-                        "未能保存，请刷新核对后重试。",
-                      ),
-                    );
-                  } finally {
-                    setPending(false);
-                  }
-                }}
-              />
+                  }}
+                />
+              </>
             ) : (
               <>
                 <h3>{t("Connections", "关系连接")}</h3>

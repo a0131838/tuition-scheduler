@@ -1,5 +1,17 @@
 # CHANGELOG LIVE
 
+## 2026-11-23-r521
+
+- Release ID: `2026-11-23-r521`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Sales & Relationships now includes a relationship map, reviewed import for the supplied GT PDF, exact CRM identity matching and independent source wording / review flags.
+- Ongoing maintenance supports adding people, existing students or student opportunities, new partner profiles/projects, additional connections, archive/restore and dynamic map organization. A new student prospect creates a lead, not an enrolled student. School connections do not imply referral ownership.
+- Import and map edits are audited, revision-checked and transactional. Duplicate/cross-kind identity links, duplicate edges and cycles are rejected; observers cannot write. Financial permissions and records are unchanged.
+- Verification: production build, 185 backend tests, 13 focused tests, isolated concurrent import/audit rollback/maintenance acceptance and authenticated browser flows. No UAT fixtures were written to production.
+- Authorized business import: source PDF hash `09ae627c6ddbcb4f8c19c8f1925d561655f164d6f3bdf647b6a0f8975c99f785`. Preserve all uncertain identities/connections for Jasmine review; do not infer student matches or reclassify old mixed leads. Exact production outcome is recorded by the import receipt.
+- Staff steps: `docs/tasks/TASK-20261123-relationship-map-pdf-import.md` and inline bilingual map maintenance guide.
+- Rollback point: `a94fce1b`. The additive map store and real imported relationship/project records remain for review if application code is rolled back; do not delete business records as rollback.
+
 ## 2026-11-23-r520
 
 - Coordinators can assign a separate final report as soon as a renewal credit is recorded. Actual attended lessons supply the reporting dates. Eva can resolve unclear boundaries using recorded lessons.

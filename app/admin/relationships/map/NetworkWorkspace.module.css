@@ -650,3 +650,48 @@
     animation: none;
   }
 }
+.maintenanceGrid {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.maintenanceGrid label {
+  display: grid;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.maintenanceGrid textarea {
+  width: 100%;
+  resize: vertical;
+}
+.maintenanceGrid .inlineCheck {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.maintenanceGrid .inlineCheck input {
+  width: auto;
+}
+.help {
+  border-top: 1px solid var(--line);
+  padding: 15px 0;
+  margin: 8px 0 15px;
+  font-size: 12px;
+  line-height: 1.9;
+  color: var(--muted);
+}
+.help summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--ink);
+}
+@media (max-width: 700px) {
+  .maintenanceGrid {
+    grid-template-columns: 1fr;
+  }
+}

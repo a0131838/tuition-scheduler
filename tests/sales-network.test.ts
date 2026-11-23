@@ -70,3 +70,66 @@ test("network mutations retain the resource workspace permission boundary", () =
     }),
   );
 });
+
+test("growing maps have dynamic bounds, stable identities and restorable archives", async () => {
+  const {
+    activeNetwork,
+    networkBounds,
+    organizeNetwork,
+    connectionWouldCycle,
+  } = await import("../lib/sales-network-layout");
+  const graph = reviewedNetwork(),
+    ids = graph.nodes.map((n) => n.id).sort();
+  for (let i = 0; i < 8; i++) {
+    graph.nodes.push({
+      id: "new-" + i,
+      name: "New institution " + i,
+      kind: "INSTITUTION",
+      x: 0,
+      y: 0,
+      sourceStatus: "",
+      review: "pending",
+      note: "",
+      origin: "MANUAL",
+    });
+    graph.edges.push({
+      id: "new-edge-" + i,
+      from: "jasmine",
+      to: "new-" + i,
+      label: "discussion",
+      style: "PIPELINE",
+      confirmed: false,
+    });
+  }
+  organizeNetwork(graph);
+  const bounds = networkBounds(graph);
+  assert.ok(bounds.width > 1690);
+  assert.ok(
+    graph.nodes.every(
+      (n) =>
+        n.x >= 0 &&
+        n.y >= 0 &&
+        n.x + 274 < bounds.width &&
+        n.y + 104 < bounds.height,
+    ),
+  );
+  assert.deepEqual(
+    graph.nodes
+      .filter((n) => !n.id.startsWith("new-"))
+      .map((n) => n.id)
+      .sort(),
+    ids,
+  );
+  assert.ok(connectionWouldCycle(graph, "qihao", "nlcs"));
+  assert.ok(!connectionWouldCycle(graph, "mdm-su", "felix"));
+  graph.nodes.find((n) => n.id === "nlcs")!.archived = true;
+  assert.ok(!activeNetwork(graph).nodes.some((n) => n.id === "nlcs"));
+  assert.ok(
+    !activeNetwork(graph).edges.some(
+      (e) => e.from === "nlcs" || e.to === "nlcs",
+    ),
+  );
+  assert.ok(activeNetwork(graph, true).nodes.some((n) => n.id === "nlcs"));
+  graph.nodes.find((n) => n.id === "nlcs")!.archived = false;
+  assert.ok(activeNetwork(graph).edges.some((e) => e.from === "nlcs"));
+});

@@ -21,6 +21,9 @@ export type NetworkNode = {
   leadId?: string;
   projectId?: string;
   note: string;
+  archived?: boolean;
+  origin?: "PDF" | "MANUAL";
+  createdAt?: string;
 };
 export type NetworkEdge = {
   id: string;
@@ -29,6 +32,7 @@ export type NetworkEdge = {
   label: string;
   style: "DIRECT" | "CONNECTION" | "PIPELINE";
   confirmed: boolean;
+  archived?: boolean;
 };
 export type NetworkStore = {
   version: 1;
@@ -114,8 +118,8 @@ export function validateNetworkStore(value: unknown): NetworkStore {
     s.revision < 1 ||
     !Array.isArray(s.nodes) ||
     !Array.isArray(s.edges) ||
-    s.nodes.length > 200 ||
-    s.edges.length > 400 ||
+    s.nodes.length > 1000 ||
+    s.edges.length > 3000 ||
     typeof s.sourceHash !== "string" ||
     !/^[a-f0-9]{64}$/.test(s.sourceHash) ||
     typeof s.sourceName !== "string" ||
@@ -139,6 +143,8 @@ export function validateNetworkStore(value: unknown): NetworkStore {
       typeof n.sourceStatus !== "string" ||
       typeof n.review !== "string" ||
       typeof n.note !== "string" ||
+      (n.archived !== undefined && typeof n.archived !== "boolean") ||
+      (n.origin !== undefined && !["PDF", "MANUAL"].includes(n.origin)) ||
       [n.relationshipId, n.studentId, n.leadId, n.projectId].some(
         (v) =>
           v !== undefined && (typeof v !== "string" || !v || v.length > 100),
@@ -159,7 +165,8 @@ export function validateNetworkStore(value: unknown): NetworkStore {
       typeof e.label !== "string" ||
       e.label.length > 160 ||
       !["DIRECT", "CONNECTION", "PIPELINE"].includes(e.style) ||
-      typeof e.confirmed !== "boolean"
+      typeof e.confirmed !== "boolean" ||
+      (e.archived !== undefined && typeof e.archived !== "boolean")
     )
       throw new Error("Invalid network edge / 关系连线数据异常");
     edges.add(e.id);

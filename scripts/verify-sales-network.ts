@@ -14,6 +14,7 @@ import {
   readNetwork,
   searchNetworkCandidates,
   networkPreview,
+  maintainNetwork,
   type NetworkEdit,
 } from "../lib/sales-network";
 import type { NetworkChoice } from "../lib/sales-network-types";
@@ -35,6 +36,16 @@ async function main() {
   await prisma.lead.deleteMany({ where: { leadNo: "MAP-UAT-001" } });
   await prisma.student.deleteMany({
     where: { school: { startsWith: "UAT fixture" } },
+  });
+  await prisma.user.create({
+    data: {
+      id: actor.id,
+      email: actor.email,
+      name: actor.name,
+      role: "ADMIN",
+      passwordHash: "local-no-login",
+      passwordSalt: "local-uat",
+    },
   });
   const graph = reviewedNetwork(),
     choices: NetworkChoice[] = graph.nodes.map((n) => ({
@@ -237,6 +248,152 @@ async function main() {
     await prisma.student.findUnique({ where: { id: zack.id } }),
     zack,
   );
+  // Growth and maintenance use the same atomic, audited service as the live UI.
+  view = (await readNetwork(actor))!;
+  let grown = await maintainNetwork(actor, {
+    revision: view.store.revision,
+    action: "ADD_NODE",
+    from: "jasmine",
+    name: "UAT New Partner",
+    kind: "INSTITUTION",
+    label: "cooperation discussion",
+    style: "PIPELINE",
+    confirmed: false,
+    note: "UAT explicit new partner identity",
+    choice: { nodeId: "NEW", mode: "CREATE" },
+    createProject: true,
+  });
+  const partner = grown.store.nodes.find((n) => n.id === grown.nodeId)!;
+  assert.ok(partner.relationshipId && partner.projectId);
+  assert.equal(partner.origin, "MANUAL");
+  const studentCount = await prisma.student.count();
+  grown = await maintainNetwork(actor, {
+    revision: grown.store.revision,
+    action: "ADD_NODE",
+    from: partner.id,
+    name: "UAT New Student Prospect",
+    kind: "STUDENT",
+    label: "contact awaiting source verification",
+    style: "CONNECTION",
+    confirmed: false,
+    note: "UAT new prospect first follow-up",
+    newLead: true,
+    sourceType: "其他",
+  });
+  const prospect = grown.store.nodes.find((n) => n.id === grown.nodeId)!;
+  const newLead = await prisma.lead.findUniqueOrThrow({
+    where: { id: prospect.leadId },
+  });
+  assert.equal(newLead.status, "New Lead");
+  assert.equal(newLead.relationshipId, null);
+  assert.equal(await prisma.student.count(), studentCount);
+  assert.equal(
+    await prisma.leadFollowUp.count({ where: { leadId: newLead.id } }),
+    1,
+  );
+  grown = await maintainNetwork(actor, {
+    revision: grown.store.revision,
+    action: "CONNECT",
+    from: "mdm-su",
+    to: prospect.id,
+    label: "connection to review",
+    style: "CONNECTION",
+    confirmed: false,
+    note: "UAT independent additional connection",
+  });
+  await assert.rejects(
+    () =>
+      maintainNetwork(actor, {
+        revision: grown.store.revision,
+        action: "CONNECT",
+        from: "mdm-su",
+        to: prospect.id,
+        label: "duplicate",
+        style: "CONNECTION",
+        note: "UAT duplicate edge",
+      }),
+    /already exists|已存在/,
+  );
+  await assert.rejects(() =>
+    maintainNetwork(
+      { ...actor, isObserver: true },
+      {
+        revision: grown.store.revision,
+        action: "LAYOUT",
+        note: "UAT observer blocked",
+      },
+    ),
+  );
+  await assert.rejects(
+    () =>
+      maintainNetwork(actor, {
+        revision: grown.store.revision,
+        action: "CONNECT",
+        from: prospect.id,
+        to: "jasmine",
+        label: "cycle",
+        style: "CONNECTION",
+        note: "UAT cycle blocked",
+      }),
+    /cycle|循环/,
+  );
+  const beforeArchive = await prisma.student.findUniqueOrThrow({
+    where: { id: zack.id },
+  });
+  grown = await maintainNetwork(actor, {
+    revision: grown.store.revision,
+    action: "ARCHIVE_NODE",
+    nodeId: partner.id,
+    note: "UAT archive map only",
+  });
+  assert.ok(grown.store.nodes.find((n) => n.id === partner.id)!.archived);
+  assert.ok(
+    await prisma.salesRelationship.findUnique({
+      where: { id: partner.relationshipId },
+    }),
+  );
+  grown = await maintainNetwork(actor, {
+    revision: grown.store.revision,
+    action: "RESTORE_NODE",
+    nodeId: partner.id,
+    note: "UAT restore original node",
+  });
+  assert.equal(
+    grown.store.nodes.find((n) => n.id === partner.id)!.archived,
+    false,
+  );
+  assert.deepEqual(
+    await prisma.student.findUniqueOrThrow({ where: { id: zack.id } }),
+    beforeArchive,
+  );
+  const link = grown.store.edges.find(
+    (e) => e.from === "mdm-su" && e.to === prospect.id,
+  )!;
+  grown = await maintainNetwork(actor, {
+    revision: grown.store.revision,
+    action: "ARCHIVE_EDGE",
+    edgeId: link.id,
+    note: "UAT remove mistaken connection",
+  });
+  grown = await maintainNetwork(actor, {
+    revision: grown.store.revision,
+    action: "RESTORE_EDGE",
+    edgeId: link.id,
+    note: "UAT restore audited connection",
+  });
+  assert.equal(
+    grown.store.edges.find((e) => e.id === link.id)!.archived,
+    false,
+  );
+  await assert.rejects(
+    () =>
+      maintainNetwork(actor, {
+        revision: grown.store.revision - 1,
+        action: "LAYOUT",
+        note: "UAT stale layout",
+      }),
+    /changed|更新/,
+  );
   for (const [role, observer] of [
     ["ADMIN", false],
     ["SALES", false],
@@ -278,6 +435,8 @@ async function main() {
       staleEdit: "rejected",
       studentWritesDuringImport: 0,
       permissions: "passed",
+      maintenance:
+        "new partner/project, new student lead, extra edge, archive/restore, cycle/stale guards passed",
       database: url.pathname,
     }),
   );

@@ -4,6 +4,8 @@ import { assertRelationshipWrite } from "@/lib/sales-relationship-policy";
 import { verifyNetworkPdf } from "@/lib/sales-network-source";
 import {
   importNetwork,
+  maintainNetwork,
+  type NetworkMaintenance,
   editNetwork,
   searchNetworkCandidates,
   type NetworkEdit,
@@ -53,4 +55,16 @@ export async function editNetworkAction(input: NetworkEdit) {
 export async function searchCandidatesAction(query: string) {
   const actor = await requireResourceUser();
   return searchNetworkCandidates(actor, query);
+}
+
+export async function maintainNetworkAction(input: NetworkMaintenance) {
+  const actor = await requireResourceUser();
+  try {
+    const result = await maintainNetwork(actor, input);
+    revalidatePath("/admin/relationships", "layout");
+    revalidatePath("/admin/leads");
+    return { ok: true, nodeId: result.nodeId };
+  } catch (e) {
+    return { ok: false, error: message(e) };
+  }
 }
