@@ -1,5 +1,12 @@
 # RELEASE BOARD
 
+## 2026-11-23-r520
+
+- Coordinators can assign a separate final report as soon as a renewal credit is recorded. Actual attended lessons supply the reporting dates. Eva can resolve unclear boundaries using recorded lessons.
+- Tutor submission freezes the attendance range for academic review. Repeat assignments reuse the same report for that credit and tutor.
+- Verified positive-balance assignment, tutor submission and approved PDF download in an isolated database and compared the original report and package ledger.
+- Staff steps in `docs/tasks/TASK-20261123-early-period-assignment.md`.
+
 ## 2026-11-23-r519
 
 - Assigned final reports can enter academic review with hours remaining. Official export checks review from the admin, teacher and mini program routes. The report history shows the latest formal export.

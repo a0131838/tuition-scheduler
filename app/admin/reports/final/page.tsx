@@ -695,7 +695,7 @@ async function ReportDetail({ report, params, lang, origin }: { report: DeskRepo
     <section className="final-desk-panel">
       <h3>{report.student.name} · {report.course.name}{report.subject ? ` · ${report.subject.name}` : ""}</h3>
       <a href={finalReportPeriodsUrl(report.studentId, report.packageId)}>{t(lang, "View this student’s learning periods", "查看该学生的学习期次")}</a>
-      <div className="final-desk-summary"><span>{t(lang,"Teacher","负责老师")}: <strong>{report.teacher.name}</strong></span><span>{report.reportPeriodId ? t(lang,"Confirmed learning period","已确认学习期次") : t(lang,"Package balance","课包余额")} <strong>{report.reportPeriodId ? report.reportPeriodLabel : `${formatMinutesToHours(Number(report.package.remainingMinutes ?? 0))}h / ${formatMinutesToHours(Number(report.package.totalMinutes ?? 0))}h`}</strong></span><span className="final-desk-badge">{phaseLabel(report,lang)}</span></div>
+      <div className="final-desk-summary"><span>{t(lang,"Teacher","负责老师")}: <strong>{report.teacher.name}</strong></span><span>{report.reportPeriodId ? t(lang,"Learning period","学习期次") : t(lang,"Package balance","课包余额")} <strong>{report.reportPeriodId ? report.reportPeriodLabel : `${formatMinutesToHours(Number(report.package.remainingMinutes ?? 0))}h / ${formatMinutesToHours(Number(report.package.totalMinutes ?? 0))}h`}</strong></span><span className="final-desk-badge">{phaseLabel(report,lang)}</span></div>
       {report.status === "ASSIGNED" ? <p className="final-desk-hint">{t(lang,"The teacher can now complete and submit this report from their Final Reports page.","老师现在可从本人结课报告列表进入并正式提交。")}</p> : null}
     </section>
     <section className="final-desk-panel"><h3>{t(lang,"Teacher report","老师报告")}</h3>

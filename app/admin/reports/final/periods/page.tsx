@@ -1,6 +1,7 @@
+import { inferPeriodWindow, loadPeriodEvidence } from "@/lib/final-report-period-window";
 import { isManagerUser, requireAdmin } from "@/lib/auth";
 import { formatBusinessDateTime } from "@/lib/date-only";
-import { assignClosedFinalReportPeriod, creditedMinutes, finalReportPeriodsUrl, loadFinalReportPeriodPackages, parseFinalReportPeriodTime } from "@/lib/final-report-periods";
+import { assignPeriodReport, confirmAmbiguousPeriod, isPeriodBoundaryReviewer, pendingPeriodBoundaryChecks, creditedMinutes, finalReportPeriodsUrl, loadFinalReportPeriodPackages } from "@/lib/final-report-periods";
 import { getLang, t } from "@/lib/i18n";
 import { formatMinutesToHours } from "@/lib/midterm-report";
 import { prisma } from "@/lib/prisma";
@@ -19,6 +20,7 @@ async function requirePeriodCoordinator() {
 }
 
 const errorText = {
+  forbidden: ["Eva confirms unclear period boundaries.", "教学期分界由 Eva 确认。"],
   dates: ["Enter a valid start and end in Singapore time. The period must already have ended.", "请输入有效的新加坡时间，且本期已经结束。"],
   package: ["This package is unavailable for this student.", "该课包不属于此学生或当前不可用。"],
   confirmed: ["These dates have already been confirmed. Reopen the period to use its saved dates.", "该期次已确认，请重新打开并使用已保存的日期。"],
@@ -43,22 +45,25 @@ async function confirmPeriod(formData: FormData) {
   const purchaseTxnId = field(formData.get("purchaseTxnId"));
   const teacherId = field(formData.get("teacherId"));
   const draftId = field(formData.get("draftId"));
-  const startsAt = parseFinalReportPeriodTime(field(formData.get("startsAt")));
-  const endsAt = parseFinalReportPeriodTime(field(formData.get("endsAt")));
   const retry = new URLSearchParams({ studentId, packageId, purchaseTxnId });
-  let reportId: string;
+  let reportId: string | undefined;
   try {
-    if (!startsAt || !endsAt) throw new Error("dates");
-    if (formData.get("checked") !== "yes") throw new Error("confirm");
-    reportId = await assignClosedFinalReportPeriod({ studentId, packageId, purchaseTxnId, teacherId, draftId, startsAt, endsAt, actor });
+    const key = { studentId, packageId, purchaseTxnId };
+    if (formData.get("action") === "boundary") {
+      await confirmAmbiguousPeriod(key, field(formData.get("firstLesson")), field(formData.get("lastLesson")), actor);
+    } else {
+      reportId = await assignPeriodReport(key, teacherId, draftId, actor);
+    }
   } catch (error) {
     const code = error instanceof Error ? error.message : "";
-    if (!Object.hasOwn(errorText, code)) console.error("Unable to assign closed final report period", error);
+    if (!Object.hasOwn(errorText, code)) console.error("Unable to save final report period", error);
     retry.set("err", Object.hasOwn(errorText, code) ? code : "failed");
     redirect(`/admin/reports/final/periods?${retry}`);
   }
   revalidatePath("/admin/reports/final");
   revalidatePath("/teacher/final-reports");
+  revalidatePath("/admin/reports/final/periods");
+  if (!reportId) redirect(`/admin/reports/final/periods?${retry}#confirm-period`);
   revalidatePath(`/teacher/final-reports/${reportId}`);
   redirect(`/admin/reports/final?view=writing&reportId=${encodeURIComponent(reportId)}`);
 }
@@ -66,7 +71,8 @@ async function confirmPeriod(formData: FormData) {
 export default async function FinalReportPeriodsPage({ searchParams }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requirePeriodCoordinator();
+  const actor = await requirePeriodCoordinator();
+  const isEva = await isPeriodBoundaryReviewer(actor.id);
   const lang = await getLang();
   const params = await searchParams;
   const q = field(params.q);
@@ -88,7 +94,10 @@ export default async function FinalReportPeriodsPage({ searchParams }: {
   const selectedPurchase = selectedPackage?.txns.find(row => row.id === purchaseId && creditedMinutes(row) > 0);
   const teachers = selectedPeriod || selectedPurchase
     ? await prisma.teacher.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }) : [];
-  const formatTime = (date: Date) => formatBusinessDateTime(date).replace(" ", "T");
+  const evidence = selectedPackage && purchaseId ? await loadPeriodEvidence(selectedPackage.id) : null;
+  const window = evidence ? inferPeriodWindow(evidence,studentId,purchaseId) : null;
+  const pending = isEva && !studentId ? await pendingPeriodBoundaryChecks() : [];
+  const attendance = evidence?.attendances.filter(a=>a.studentId === studentId && ["PRESENT","LATE"].includes(a.status) && a.session.endAt <= new Date()) ?? [];
   const periodHref = (pkgId: string, txnId: string) =>
     `${finalReportPeriodsUrl(studentId, pkgId)}&purchaseTxnId=${encodeURIComponent(txnId)}#confirm-period`;
   const reportHref = (reportId: string) => `/admin/reports/final?view=all&reportId=${encodeURIComponent(reportId)}`;
@@ -97,9 +106,10 @@ export default async function FinalReportPeriodsPage({ searchParams }: {
     <header className="final-desk-heading">
       <div><a href="/admin/reports/final">{t(lang, "Back to Final Reports", "返回结课报告")}</a>
         <h2>{t(lang, "Final reports by learning period", "按学习期次管理结课报告")}</h2>
-        <p>{t(lang, "Search for a student, choose a purchase or renewal credit, then confirm the actual teaching dates when that period ends.", "搜索学生，选择首购或续费入账记录，再在该期结束后确认实际教学日期。")}</p>
+        <p>{t(lang, "Choose the renewal credit to assign the next report. Attendance supplies the teaching dates.", "选择本次续费入账即可分配报告，教学日期随实际出勤更新。")}</p>
       </div>
     </header>
+    {pending.length > 0 && <section className="final-desk-detail"><h3>{t(lang,"Boundaries for Eva to confirm","待 Eva 确认的学习期分界")}</h3>{pending.map(row=><p key={row.purchaseTxnId+row.studentId}><a href={finalReportPeriodsUrl(row.studentId,row.packageId)+"&purchaseTxnId="+encodeURIComponent(row.purchaseTxnId)+"#confirm-period"}>{row.student.name} · {row.package.course.name}</a></p>)}</section>}
     <section className="final-desk-detail">
       <form method="get" className="final-desk-filters">
         <label>{t(lang, "Student name", "学生姓名")} <input name="q" defaultValue={q} maxLength={100} required /></label>
@@ -127,17 +137,24 @@ export default async function FinalReportPeriodsPage({ searchParams }: {
           const period = periods.get(purchase.id);
           return <div key={purchase.id} className="final-desk-summary">
             <span>{formatBusinessDateTime(purchase.createdAt)} · {formatMinutesToHours(creditedMinutes(purchase))}h <small>· {purchase.id.slice(0, 8)}</small></span>
-            <span>{period ? `${formatBusinessDateTime(period.startsAt)} → ${formatBusinessDateTime(period.endsAt)}` : t(lang, "Awaiting teaching dates", "待确认教学日期")}</span>
-            <a href={periodHref(pkg.id, purchase.id)}>{period ? t(lang, "View period / assign another teacher", "查看期次或分配其他老师") : t(lang, "Set learning period", "设置学习期次")}</a>
+            <span>{period?.startsAt && period.endsAt ? `${formatBusinessDateTime(period.startsAt)} → ${formatBusinessDateTime(period.endsAt)}` : t(lang,"Dates from attendance","按出勤确定日期")}</span>
+            <a href={periodHref(pkg.id, purchase.id)}>{period ? t(lang, "View period / assign another teacher", "查看期次或分配其他老师") : t(lang, "Assign period report", "分配本期报告")}</a>
           </div>;
         })}
         {closedWithoutSource.map(period => <div key={period.id} className="final-desk-summary">
-          <span>{formatBusinessDateTime(period.startsAt)} → {formatBusinessDateTime(period.endsAt)}</span>
+          <span>{period.startsAt && period.endsAt ? formatBusinessDateTime(period.startsAt)+" → "+formatBusinessDateTime(period.endsAt) : t(lang,"Check purchase record","核对入账记录")}</span>
           <a href={periodHref(pkg.id, period.purchaseTxnId)}>{t(lang, "View confirmed period", "查看已确认期次")}</a>
         </div>)}
         {selectedPackage?.id === pkg.id && (selectedPeriod || selectedPurchase) ? <div id="confirm-period" className="final-desk-existing">
-          <h4>{t(lang, "Confirm dates and link or assign a report", "确认日期并关联或分配报告")}</h4>
-          <p>{t(lang, "Use actual teaching dates in Singapore time. Set the end at a lesson end or between lessons. If two periods meet, the next can start at the previous end. Review the existing reports before confirming.", "请按实际教学安排填写新加坡时间。结束时间可设在一节课结束时或两次课之间。两期衔接时，下一期可从上一期结束时间开始。确认前请查看现有报告。")}</p>
+          <h4>{t(lang,"Assign period report","分配本期报告")}</h4>
+          {window && <p role="status">{window.state === "ready" ? formatBusinessDateTime(window.start)+" → "+formatBusinessDateTime(window.end) : window.reason}</p>}
+          {window?.state === "ambiguous" && <p>{t(lang,"Assign or save a draft now. Eva confirms the teaching dates before submission.","现在可以分配和保存草稿，提交前由 Eva 确认分界。")}</p>}
+          {isEva && selectedPeriod && window?.state === "ambiguous" && attendance.length > 0 && <form action={confirmPeriod} className="final-desk-filters">
+            <input type="hidden" name="action" value="boundary"/><input type="hidden" name="studentId" value={studentId}/><input type="hidden" name="packageId" value={pkg.id}/><input type="hidden" name="purchaseTxnId" value={purchaseId}/>
+            <label>{t(lang,"First attended lesson","本期首节出勤")} <select name="firstLesson" required defaultValue=""><option value="">{t(lang,"Select lesson","选择课次")}</option>{attendance.map(a=><option key={a.sessionId} value={a.sessionId}>{formatBusinessDateTime(a.session.startAt)}</option>)}</select></label>
+            <label>{t(lang,"Last attended lesson covered","本次报告末节出勤")} <select name="lastLesson" required defaultValue=""><option value="">{t(lang,"Select lesson","选择课次")}</option>{attendance.map(a=><option key={a.sessionId} value={a.sessionId}>{formatBusinessDateTime(a.session.endAt)}</option>)}</select></label>
+            <button>{t(lang,"Confirm teaching dates","确认教学分界")}</button>
+          </form>}
           {pkg.finalReports.filter(report => selectedPeriod && report.reportPeriodId === selectedPeriod.id).map(report =>
             <p key={report.id}><a href={reportHref(report.id)}>{report.teacher.name} · {report.status}</a></p>,
           )}
@@ -145,20 +162,17 @@ export default async function FinalReportPeriodsPage({ searchParams }: {
             <input type="hidden" name="studentId" value={studentId} />
             <input type="hidden" name="packageId" value={pkg.id} />
             <input type="hidden" name="purchaseTxnId" value={purchaseId} />
-            <label>{t(lang, "Start (SGT)", "开始时间（新加坡）")} <input name="startsAt" type="datetime-local" required readOnly={Boolean(selectedPeriod)} defaultValue={selectedPeriod ? formatTime(selectedPeriod.startsAt) : undefined} /></label>
-            <label>{t(lang, "End (SGT)", "结束时间（新加坡）")} <input name="endsAt" type="datetime-local" required readOnly={Boolean(selectedPeriod)} defaultValue={selectedPeriod ? formatTime(selectedPeriod.endsAt) : undefined} /></label>
             <label>{t(lang, "Responsible teacher", "负责老师")} <select name="teacherId" required defaultValue="">
               <option value="">{t(lang, "Select teacher", "选择老师")}</option>
               {teachers.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
             </select></label>
             <label>{t(lang, "Report draft", "报告草稿")} <select name="draftId" defaultValue="">
-              <option value="">{t(lang, "Create a draft if no existing draft applies", "没有可关联的草稿时，新建草稿")}</option>
+              <option value="">{t(lang, "New report for this period", "为本期新建报告")}</option>
               {legacyReports.filter(report => !report.archivedAt && report.status === "ASSIGNED").map(report =>
                 <option key={report.id} value={report.id}>{report.teacher.name} · {report.reportPeriodLabel || report.id.slice(0, 8)}</option>,
               )}
             </select></label>
-            <label><input type="checkbox" name="checked" value="yes" required /> {t(lang, "I checked the credit, dates and existing reports.", "我已核对入账、日期和现有报告。")}</label>
-            <button className="final-desk-primary" type="submit">{t(lang, "Confirm and open report", "确认并打开报告")}</button>
+            <button className="final-desk-primary" type="submit">{t(lang, "Assign and open report", "分配并打开报告")}</button>
           </form>
         </div> : null}
       </section>;

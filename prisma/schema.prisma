@@ -1124,10 +1124,10 @@ model FinalReportPeriod {
   packageId         String
   studentId         String
   purchaseTxnId     String
-  startsAt          DateTime
-  endsAt            DateTime
-  confirmedAt       DateTime @default(now())
-  confirmedByUserId String
+  startsAt          DateTime?
+  endsAt            DateTime?
+  confirmedAt       DateTime?
+  confirmedByUserId String?
 
   package CoursePackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
   student Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)

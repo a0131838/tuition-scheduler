@@ -1,3 +1,5 @@
+import { finalReportPeriodLabel, submitAssignedPeriodReport } from "@/lib/final-report-periods";
+import { inferPeriodWindow, loadPeriodEvidence } from "@/lib/final-report-period-window";
 import ParentReportEditionPanel from "@/app/_components/ParentReportEditionPanel";
 import { requireTeacherProfile } from "@/lib/auth";
 import { formatBusinessDateOnly } from "@/lib/date-only";
@@ -154,6 +156,7 @@ export default async function TeacherFinalReportDetailPage({
       course: true,
       subject: true,
       package: true,
+      reportPeriod: true,
     },
   });
 
@@ -173,6 +176,8 @@ export default async function TeacherFinalReportDetailPage({
     );
   }
 
+  const currentWindow = report.reportPeriod && report.status === "ASSIGNED" ? inferPeriodWindow(await loadPeriodEvidence(report.packageId),report.studentId,report.reportPeriod.purchaseTxnId) : null;
+  const dateDisplay = currentWindow?.state === "ready" ? finalReportPeriodLabel(currentWindow.start,currentWindow.end) : report.reportPeriodLabel;
   const reportId = report.id;
   const ownerTeacherId = report.teacherId;
   const periodApproved = finalReportNeedsAcademicReview(report) && isLearningReportApprovedForDelivery(report.reportJson);
@@ -235,33 +240,43 @@ export default async function TeacherFinalReportDetailPage({
     const score = asScore(String(formData.get("overallScore") ?? ""));
     const submittedAt = latest.submittedAt ?? new Date();
     const existingSnapshot = parseLearningReportAttendanceSnapshot(latest.reportJson);
-    const attendanceSnapshot =
-      shouldSubmit && !existingSnapshot
-        ? await createLearningReportAttendanceSnapshot({
-            packageId: latest.packageId,
-            studentId: latest.studentId,
-            subjectId: latest.subjectId,
-            teacherId: latest.teacherId,
-            fromAt: latest.reportPeriod?.startsAt,
-            throughAt: latest.reportPeriod?.endsAt ?? submittedAt,
-          })
-        : existingSnapshot;
+    if (shouldSubmit && latest.reportPeriod && latest.status === "ASSIGNED") {
+      let errorCode = "";
+      try {
+        await submitAssignedPeriodReport({ id:reportId, teacherId:currentTeacher.id, packageId:latest.packageId, updatedAt:latest.updatedAt, draft, fields:{finalLevel:finalLevel || null, overallScore:score, recommendation:draft.recommendedNextStep || null} });
+      } catch (error) {
+        errorCode = error instanceof Error && ["waiting","ambiguous","no-attendance","stale"].includes(error.message) ? error.message : "stale";
+      }
+      if (errorCode) redirect(`/teacher/final-reports/${reportId}?err=${errorCode}`);
+    } else {
+      const attendanceSnapshot =
+        shouldSubmit && !existingSnapshot
+          ? await createLearningReportAttendanceSnapshot({
+              packageId: latest.packageId,
+              studentId: latest.studentId,
+              subjectId: latest.subjectId,
+              teacherId: latest.teacherId,
+              fromAt: latest.reportPeriod?.startsAt ?? undefined,
+              throughAt: latest.reportPeriod?.endsAt ?? submittedAt,
+            })
+          : existingSnapshot;
 
-    const content = mergeLearningReportAttendanceSnapshot(draft, latest.reportJson, attendanceSnapshot);
-    const updated = await prisma.finalReport.updateMany({
-      where: { id: reportId, updatedAt: latest.updatedAt, archivedAt: null, reportPeriodId: latest.reportPeriod?.id ?? null },
-      data: {
-        reportJson: (shouldSubmit ? queueFinalReportForReview(content) : content) as any,
-        ...(latest.reportPeriod ? {} : { reportPeriodLabel: periodLabel || null }),
-        finalLevel: finalLevel || null,
-        overallScore: score,
-        recommendation: draft.recommendedNextStep || null,
-        status: shouldSubmit ? "SUBMITTED" : latest.status,
-        submittedAt: shouldSubmit ? submittedAt : latest.submittedAt,
-      },
-    });
+      const content = mergeLearningReportAttendanceSnapshot(draft, latest.reportJson, attendanceSnapshot);
+      const updated = await prisma.finalReport.updateMany({
+        where: { id: reportId, updatedAt: latest.updatedAt, archivedAt: null, reportPeriodId: latest.reportPeriod?.id ?? null },
+        data: {
+          reportJson: (shouldSubmit ? queueFinalReportForReview(content) : content) as any,
+          ...(latest.reportPeriod ? {} : { reportPeriodLabel: periodLabel || null }),
+          finalLevel: finalLevel || null,
+          overallScore: score,
+          recommendation: draft.recommendedNextStep || null,
+          status: shouldSubmit ? "SUBMITTED" : latest.status,
+          submittedAt: shouldSubmit ? submittedAt : latest.submittedAt,
+        },
+      });
 
-    if (updated.count !== 1) redirect(`/teacher/final-reports/${encodeURIComponent(reportId)}?err=stale`);
+      if (updated.count !== 1) redirect(`/teacher/final-reports/${encodeURIComponent(reportId)}?err=stale`);
+    }
     revalidatePath("/teacher/final-reports");
     revalidatePath(`/teacher/final-reports/${reportId}`);
     revalidatePath("/admin/reports/final");
@@ -298,9 +313,9 @@ export default async function TeacherFinalReportDetailPage({
           <div style={{ fontSize: 22, fontWeight: 800, color: "#1d4ed8", marginTop: 10 }}>{formatBusinessDateOnly(new Date(report.assignedAt))}</div>
         </div>
         <div style={statCard("#ecfdf5", "#bbf7d0")}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "#166534" }}>{report.reportPeriodId ? t(lang, "Confirmed learning period", "已确认学习期次") : t(lang, "Package balance", "课包余额")}</div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#166534" }}>{report.reportPeriodId ? t(lang, "Learning period", "学习期次") : t(lang, "Package balance", "课包余额")}</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#166534", marginTop: 10 }}>
-            {report.reportPeriodId ? report.reportPeriodLabel : `${formatMinutesToHours(safeMinutes(report.package.remainingMinutes))}h / ${formatMinutesToHours(safeMinutes(report.package.totalMinutes))}h`}
+            {report.reportPeriodId ? dateDisplay : `${formatMinutesToHours(safeMinutes(report.package.remainingMinutes))}h / ${formatMinutesToHours(safeMinutes(report.package.totalMinutes))}h`}
           </div>
         </div>
         <div style={statCard("#f5f3ff", "#ddd6fe")}>
@@ -331,6 +346,8 @@ export default async function TeacherFinalReportDetailPage({
       {err === "RENEWAL_TASK_REQUIRED" ? <p role="alert">{t(lang, "Ask the coordinator to confirm the matching open renewal task.", "请教务核对这门课对应的续费跟进任务。")}</p> : null}
       {err === "PROGRESS_ALREADY_ASSIGNED" ? <p role="alert">{t(lang, "A different or archived report already exists for this renewal. Ask the coordinator to review it.", "这次续费已有其他老师的报告或归档报告，请教务核对。")}</p> : null}
       {err === "progress-unavailable" ? <p role="alert">{t(lang, "The progress report could not be opened. Refresh and try again.", "暂时无法打开阶段学习报告，请刷新后再试。")}</p> : null}
+      {currentWindow && currentWindow.state !== "ready" && <p role="status">{currentWindow.reason} · {currentWindow.state === "ambiguous" ? t(lang,"Eva will confirm the boundary. You can save your draft.","由 Eva 确认分界，可以先保存草稿。") : t(lang,"You can save your draft now.","现在可以保存草稿。")}</p>}
+      {["waiting","ambiguous","no-attendance"].includes(err ?? "") && <p role="alert">{t(lang,"Submission needs matching attendance and a clear period. Save your draft and check the learning period.","请先保存草稿，核对本期出勤和学习期分界后再提交。")}</p>}
       {err === "summary" ? <p role="alert">{t(lang, "Complete the learning summary before submitting.", "请先补充本阶段学习总结，再提交报告。")}</p> : null}
       {err === "stale" ? <p role="alert">{t(lang, "The report changed while saving. Check the latest version before trying again.", "保存时报告已更新，请核对最新版本后再试。")}</p> : null}
 
@@ -357,7 +374,7 @@ export default async function TeacherFinalReportDetailPage({
                 <input
                   name="reportPeriodLabel"
                   readOnly={Boolean(report.reportPeriodId)}
-                  defaultValue={isLegacyLearningPeriodLabel(report.reportPeriodLabel) ? "" : report.reportPeriodLabel ?? ""}
+                  defaultValue={currentWindow ? (currentWindow.state === "ready" ? dateDisplay ?? "" : currentWindow.reason) : isLegacyLearningPeriodLabel(report.reportPeriodLabel) ? "" : report.reportPeriodLabel ?? ""}
                   placeholder={t(lang, "Optional custom note; attendance is calculated automatically", "可选备注；实际出勤由系统自动计算")}
                   style={{ width: "100%" }}
                 />
@@ -428,11 +445,11 @@ export default async function TeacherFinalReportDetailPage({
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           {!isLocked ? (
             <>
-              <button type="submit" name="intent" value="prepare" disabled={isLocked} style={primaryButtonStyle}>{t(lang, "Save, submit and generate parent report", "保存、提交并生成家长版")}</button>
+              <button type="submit" name="intent" value="prepare" disabled={isLocked || (!!currentWindow && currentWindow.state !== "ready")} style={primaryButtonStyle}>{t(lang, "Save, submit and generate parent report", "保存、提交并生成家长版")}</button>
           <button type="submit" name="intent" value="save" style={secondaryButtonStyle}>
                 {t(lang, "Save draft", "保存草稿")}
               </button>
-              <button type="submit" name="intent" value="submit" style={primaryButtonStyle}>
+              <button type="submit" name="intent" value="submit" disabled={!!currentWindow && currentWindow.state !== "ready"} style={primaryButtonStyle}>
                 {t(lang, "Submit final report", "提交结课报告")}
               </button>
             </>

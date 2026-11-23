@@ -1,3 +1,4 @@
+import { submitAssignedPeriodReport } from "@/lib/final-report-periods";
 import { bad, ok } from "@/app/api/miniapp/_lib";
 import { requireMiniappTeacher } from "@/app/api/miniapp/staff/teacher/_lib";
 import { logAudit } from "@/lib/audit-log";
@@ -31,7 +32,7 @@ function reportDto(row: any, kind: "MIDTERM" | "FINAL") {
     studentName: row.student.name,
     courseName: [row.course.name, row.subject?.name].filter(Boolean).join(" / "),
     status: row.status,
-    assignedText: formatBusinessDateOnly(row.assignedAt),
+    assignedText: formatBusinessDateOnly(row.assignedAt) + (row.reportPeriodId && row.reportPeriodLabel ? " · "+row.reportPeriodLabel : ""),
     submittedText: row.submittedAt ? formatBusinessDateOnly(row.submittedAt) : "",
     reportPeriodLabel: isLegacyLearningPeriodLabel(row.reportPeriodLabel) ? "" : row.reportPeriodLabel || "",
     editable,
@@ -195,29 +196,38 @@ export async function POST(req: Request) {
     if (submit && draft.finalSummary.length < 10) return bad("Please complete the final summary before submitting");
     const submittedAt = report.submittedAt ?? new Date();
     const existingSnapshot = parseLearningReportAttendanceSnapshot(report.reportJson);
-    const attendanceSnapshot =
-      submit && !existingSnapshot
-        ? await createLearningReportAttendanceSnapshot({
-            packageId: report.packageId,
-            studentId: report.studentId,
-            subjectId: report.subjectId,
-            teacherId: report.teacherId,
-            fromAt: report.reportPeriod?.startsAt,
-            throughAt: report.reportPeriod?.endsAt ?? submittedAt,
-          })
-        : existingSnapshot;
-    const content = mergeLearningReportAttendanceSnapshot(draft, report.reportJson, attendanceSnapshot);
-    const updated = await prisma.finalReport.updateMany({
-      where: { id, updatedAt: report.updatedAt, archivedAt: null, reportPeriodId: report.reportPeriod?.id ?? null },
-      data: {
-        reportJson: (submit ? queueFinalReportForReview(content) : content) as any,
-        ...(report.reportPeriod || !("reportPeriodLabel" in body) ? {} : { reportPeriodLabel: cleanMiniappText((body as any)?.reportPeriodLabel, 120) || null }),
-        recommendation: draft.recommendedNextStep || null,
-        status: submit ? "SUBMITTED" : report.status,
-        submittedAt: submit ? submittedAt : report.submittedAt,
-      },
-    });
-    if (updated.count !== 1) return bad("The report changed while saving. Reopen it before trying again.", 409);
+    if (submit && report.reportPeriod && report.status === "ASSIGNED") {
+      try {
+        await submitAssignedPeriodReport({id,teacherId:access.teacherId,packageId:report.packageId,updatedAt:report.updatedAt,draft,fields:{recommendation:draft.recommendedNextStep || null}});
+      } catch (error) {
+        const code = error instanceof Error ? error.message : "";
+        return bad(code === "ambiguous" ? "Eva must confirm the period boundary / 请 Eva 确认本期分界，可先保存草稿" : code === "waiting" || code === "no-attendance" ? "Awaiting attendance in this period / 等待本期出勤，可先保存草稿" : "Refresh the changed report / 请刷新报告",409);
+      }
+    } else {
+      const attendanceSnapshot =
+        submit && !existingSnapshot
+          ? await createLearningReportAttendanceSnapshot({
+              packageId: report.packageId,
+              studentId: report.studentId,
+              subjectId: report.subjectId,
+              teacherId: report.teacherId,
+              fromAt: report.reportPeriod?.startsAt ?? undefined,
+              throughAt: report.reportPeriod?.endsAt ?? submittedAt,
+            })
+          : existingSnapshot;
+      const content = mergeLearningReportAttendanceSnapshot(draft, report.reportJson, attendanceSnapshot);
+      const updated = await prisma.finalReport.updateMany({
+        where: { id, updatedAt: report.updatedAt, archivedAt: null, reportPeriodId: report.reportPeriod?.id ?? null },
+        data: {
+          reportJson: (submit ? queueFinalReportForReview(content) : content) as any,
+          ...(report.reportPeriod || !("reportPeriodLabel" in body) ? {} : { reportPeriodLabel: cleanMiniappText((body as any)?.reportPeriodLabel, 120) || null }),
+          recommendation: draft.recommendedNextStep || null,
+          status: submit ? "SUBMITTED" : report.status,
+          submittedAt: submit ? submittedAt : report.submittedAt,
+        },
+      });
+      if (updated.count !== 1) return bad("The report changed while saving. Reopen it before trying again.", 409);
+    }
   } else {
     return bad("Unknown report type");
   }

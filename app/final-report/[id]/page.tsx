@@ -146,7 +146,7 @@ export default async function FinalReportSharePage({
       studentId: report.studentId,
       subjectId: report.subjectId,
       teacherId: report.teacherId,
-      fromAt: report.reportPeriod?.startsAt,
+      fromAt: report.reportPeriod?.startsAt ?? undefined,
       throughAt: report.reportPeriod?.endsAt ?? report.submittedAt ?? new Date(),
     }));
 

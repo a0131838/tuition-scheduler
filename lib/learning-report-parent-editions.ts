@@ -88,7 +88,7 @@ export async function loadParentReportSource(
       studentId: row.studentId,
       teacherId: row.teacherId,
       subjectId: row.subjectId,
-      fromAt: period?.startsAt,
+      fromAt: period?.startsAt ?? undefined,
       throughAt: period?.endsAt ?? row.submittedAt ?? row.assignedAt,
     }, db));
   const raw =
