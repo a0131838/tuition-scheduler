@@ -1,5 +1,13 @@
 # CHANGELOG LIVE
 
+## 2026-11-23-r524
+
+- Release ID: `2026-11-23-r524`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Final browser polish for the customer workspace: keep filter checkboxes compact and remove the legacy observer banner from the embedded map viewer. Actual observer permissions and customer-detail editing gates remain unchanged.
+- Validation: full production build and browser list/map and mobile layout checks; r523 permission, financial and isolated intake acceptance remains applicable.
+- Details: `docs/tasks/TASK-20261123-customer-workspace-polish.md`. Rollback point: `3a92f952`.
+
 ## 2026-11-23-r523
 
 - Release ID: `2026-11-23-r523`

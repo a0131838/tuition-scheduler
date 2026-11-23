@@ -373,7 +373,7 @@ export default function NetworkWorkspace({
           {notice}
         </p>
       ) : null}
-      {readOnly ? (
+      {readOnly && !embedded ? (
         <p className={css.readOnly}>
           {t("Observer mode · read only", "观察者模式·只读")}
         </p>

@@ -227,8 +227,13 @@
   align-items: center;
   gap: 6px;
 }
-.check input {
-  width: auto;
+.desk .check input {
+  flex: 0 0 16px;
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
+  min-height: 16px;
+  padding: 0;
 }
 .help {
   font-size: 12px;
