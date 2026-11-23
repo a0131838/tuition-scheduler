@@ -11,6 +11,7 @@ export type NetworkKind = (typeof NETWORK_KINDS)[number];
 export type NetworkNode = {
   id: string;
   name: string;
+  revision?: number;
   kind: NetworkKind;
   x: number;
   y: number;
@@ -18,6 +19,12 @@ export type NetworkNode = {
   review: string;
   relationshipId?: string;
   studentId?: string;
+  parentId?: string;
+  partnerId?: string;
+  ownerUserId?: string;
+  mergedIntoId?: string;
+  collaboratorUserIds?: string[];
+  guardianContact?: { name: string; phone: string; relationship: string };
   leadId?: string;
   projectId?: string;
   note: string;
@@ -27,12 +34,14 @@ export type NetworkNode = {
 };
 export type NetworkEdge = {
   id: string;
+  revision?: number;
   from: string;
   to: string;
   label: string;
   style: "DIRECT" | "CONNECTION" | "PIPELINE";
   confirmed: boolean;
   archived?: boolean;
+  meaning?: "GUARDIAN" | "REFERRAL" | "SCHOOL" | "CONTACT";
 };
 export type NetworkStore = {
   version: 1;
@@ -48,12 +57,20 @@ export type NetworkStore = {
 export type NetworkCandidate = {
   id: string;
   name: string;
-  type: "RELATIONSHIP" | "STUDENT" | "LEAD";
+  type: "RELATIONSHIP" | "STUDENT" | "LEAD" | "PARENT" | "PARTNER";
   detail: string;
 };
 export type NetworkChoice = {
   nodeId: string;
-  mode: "KEEP" | "CREATE" | "RELATIONSHIP" | "STUDENT" | "LEAD" | "UNLINK";
+  mode:
+    | "KEEP"
+    | "CREATE"
+    | "RELATIONSHIP"
+    | "STUDENT"
+    | "LEAD"
+    | "PARENT"
+    | "PARTNER"
+    | "UNLINK";
   targetId?: string;
   reviewNote?: string;
 };
@@ -144,8 +161,29 @@ export function validateNetworkStore(value: unknown): NetworkStore {
       typeof n.review !== "string" ||
       typeof n.note !== "string" ||
       (n.archived !== undefined && typeof n.archived !== "boolean") ||
+      (n.collaboratorUserIds !== undefined &&
+        (!Array.isArray(n.collaboratorUserIds) ||
+          n.collaboratorUserIds.some(
+            (id) => typeof id !== "string" || id.length > 100,
+          ) ||
+          n.collaboratorUserIds.length > 30)) ||
+      (n.guardianContact !== undefined &&
+        (!n.guardianContact ||
+          [
+            n.guardianContact.name,
+            n.guardianContact.phone,
+            n.guardianContact.relationship,
+          ].some((v) => typeof v !== "string" || v.length > 160))) ||
       (n.origin !== undefined && !["PDF", "MANUAL"].includes(n.origin)) ||
-      [n.relationshipId, n.studentId, n.leadId, n.projectId].some(
+      [
+        n.relationshipId,
+        n.studentId,
+        n.parentId,
+        n.partnerId,
+        n.ownerUserId,
+        n.leadId,
+        n.projectId,
+      ].some(
         (v) =>
           v !== undefined && (typeof v !== "string" || !v || v.length > 100),
       )

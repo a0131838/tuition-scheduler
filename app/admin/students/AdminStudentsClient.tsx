@@ -1,10 +1,17 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import StudentCustomerFields, {
+  readStudentCustomerForm,
+} from "./StudentCustomerFields";
+import type { NetworkNode } from "@/lib/sales-network-types";
 import SimpleModal from "../_components/SimpleModal";
 import NoticeBanner from "../_components/NoticeBanner";
-import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
+import {
+  formatBusinessDateOnly,
+  formatBusinessDateTime,
+} from "@/lib/date-only";
 import type { StudentScheduleSummary } from "@/lib/student-scheduling-overview";
 
 type SourceOption = { id: string; name: string };
@@ -42,12 +49,21 @@ export default function AdminStudentsClient({
   gradeOptions,
   hasExplicitContext,
   labels,
+  customerSetup,
 }: {
   initialStudents: StudentRow[];
   sources: SourceOption[];
   types: TypeOption[];
   gradeOptions: string[];
   hasExplicitContext: boolean;
+  customerSetup?: {
+    lang: string;
+    users: Array<{ id: string; name: string }>;
+    nodes: NetworkNode[];
+    actorId: string;
+    manager: boolean;
+    canLink: boolean;
+  };
   labels: {
     add: string;
     addStudent: string;
@@ -89,8 +105,9 @@ export default function AdminStudentsClient({
   }, [initialStudents]);
 
   const formatId = useMemo(
-    () => (prefix: string, id: string) => `${prefix}-${id.length > 10 ? `${id.slice(0, 4)}...${id.slice(-4)}` : id}`,
-    []
+    () => (prefix: string, id: string) =>
+      `${prefix}-${id.length > 10 ? `${id.slice(0, 4)}...${id.slice(-4)}` : id}`,
+    [],
   );
   const currentListHref = useMemo(() => {
     const query = searchParams?.toString() ?? "";
@@ -104,7 +121,7 @@ export default function AdminStudentsClient({
       if (tableView === "schedule") params.set("focus", "attendance");
       return `/admin/students/${studentId}?${params.toString()}${tableView === "schedule" ? "#attendance" : ""}`;
     },
-    [currentListHref, tableView]
+    [currentListHref, tableView],
   );
 
   async function createStudent(close: () => void, payload: any) {
@@ -122,9 +139,15 @@ export default function AdminStudentsClient({
           setErr(String(data?.message ?? "Create failed"));
           return;
         }
+        if (data.reused) {
+          close();
+          router.refresh();
+          return;
+        }
         const createdId = String(data?.studentId ?? "");
         const sourceName = payload.sourceChannelId
-          ? (sources.find((s) => s.id === payload.sourceChannelId)?.name ?? null)
+          ? (sources.find((s) => s.id === payload.sourceChannelId)?.name ??
+            null)
           : null;
         const typeName = payload.studentTypeId
           ? (types.find((t) => t.id === payload.studentTypeId)?.name ?? null)
@@ -156,7 +179,9 @@ export default function AdminStudentsClient({
     if (!confirm(labels.deleteConfirm)) return;
     setErr("");
     setMsg("");
-    const res = await fetch(`/api/admin/students/${encodeURIComponent(id)}`, { method: "DELETE" });
+    const res = await fetch(`/api/admin/students/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
     const data = await res.json().catch(() => null);
     if (!res.ok || !data?.ok) {
       setErr(String(data?.message ?? "Delete failed"));
@@ -168,8 +193,12 @@ export default function AdminStudentsClient({
 
   return (
     <div>
-      {err ? <NoticeBanner type="error" title={labels.error} message={err} /> : null}
-      {msg ? <NoticeBanner type="success" title={labels.ok} message={msg} /> : null}
+      {err ? (
+        <NoticeBanner type="error" title={labels.error} message={err} />
+      ) : null}
+      {msg ? (
+        <NoticeBanner type="success" title={labels.ok} message={msg} />
+      ) : null}
 
       <div
         style={{
@@ -186,14 +215,18 @@ export default function AdminStudentsClient({
         }}
       >
         <div style={{ display: "grid", gap: 4 }}>
-          <div style={{ fontWeight: 800, color: "#0f172a" }}>{labels.addStudent}</div>
+          <div style={{ fontWeight: 800, color: "#0f172a" }}>
+            {labels.addStudent}
+          </div>
           <div style={{ color: "#64748b", fontSize: 12 }}>
             {students.length === 0
               ? labels.noStudents
               : `${students.length} ${labels.name} / ${labels.school} / ${labels.type}`}
           </div>
           {!hasExplicitContext ? (
-            <div style={{ color: "#94a3b8", fontSize: 12 }}>{labels.rememberedViewHint}</div>
+            <div style={{ color: "#94a3b8", fontSize: 12 }}>
+              {labels.rememberedViewHint}
+            </div>
           ) : null}
         </div>
         <SimpleModal buttonLabel={labels.add} title={labels.addStudent}>
@@ -203,6 +236,7 @@ export default function AdminStudentsClient({
                 e.preventDefault();
                 const fd = new FormData(e.currentTarget);
                 createStudent(close, {
+                  customer: readStudentCustomerForm(fd),
                   name: String(fd.get("name") ?? ""),
                   school: String(fd.get("school") ?? ""),
                   birthDate: String(fd.get("birthDate") ?? ""),
@@ -250,8 +284,15 @@ export default function AdminStudentsClient({
               </div>
               <input name="targetSchool" placeholder={labels.targetSchool} />
               <input name="currentMajor" placeholder={labels.currentMajor} />
-              <input name="coachingContent" placeholder={labels.coachingContent} />
+              <input
+                name="coachingContent"
+                placeholder={labels.coachingContent}
+              />
               <textarea name="note" placeholder={labels.notes} rows={3} />
+              {customerSetup ? (
+                <StudentCustomerFields {...customerSetup} />
+              ) : null}
+              {err?<p role="alert" style={{color:"#9b3d28",fontSize:12}}>{err}</p>:null}
               <button type="submit" disabled={creating}>
                 {creating ? "..." : labels.add}
               </button>
@@ -260,94 +301,180 @@ export default function AdminStudentsClient({
         </SimpleModal>
       </div>
 
-      <div style={{ border: "1px solid #e2e8f0", borderRadius: 14, background: "#fff", overflow: "hidden" }}>
-        <div style={{ padding: "10px 12px", borderBottom: "1px solid #e2e8f0", background: "#fcfcfd", color: "#64748b", fontSize: 12 }}>
-          <select aria-label="Student list view / 学生列表视图" value={tableView} onChange={(e) => setTableView(e.target.value)}>
+      <div
+        style={{
+          border: "1px solid #e2e8f0",
+          borderRadius: 14,
+          background: "#fff",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            padding: "10px 12px",
+            borderBottom: "1px solid #e2e8f0",
+            background: "#fcfcfd",
+            color: "#64748b",
+            fontSize: 12,
+          }}
+        >
+          <select
+            aria-label="Student list view / 学生列表视图"
+            value={tableView}
+            onChange={(e) => setTableView(e.target.value)}
+          >
             <option value="schedule">Course follow-up / 课程跟进</option>
             <option value="details">Student details / 学生资料</option>
           </select>
         </div>
         <div style={{ overflowX: "auto" }}>
-          <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: tableView === "details" ? 1080 : 700 }}>
+          <table
+            cellPadding={8}
+            style={{
+              borderCollapse: "collapse",
+              width: "100%",
+              minWidth: tableView === "details" ? 1080 : 700,
+            }}
+          >
             <thead>
               <tr style={{ background: "#f8fafc" }}>
                 <th align="left">{labels.name}</th>
-                {tableView === "details" ? <>
-                <th align="left">{labels.school}</th>
-                <th align="left">{labels.birth}</th>
-                <th align="left">{labels.grade}</th>
-                <th align="left">{labels.source}</th>
-                <th align="left">{labels.type}</th>
-                <th align="left">{labels.unpaid}</th>
-                <th align="left">{labels.targetSchool}</th>
-                <th align="left">{labels.currentMajor}</th>
-                <th align="left">{labels.coachingContent}</th>
-                <th align="left">{labels.notes}</th>
-                <th align="left">{labels.id}</th>
-                </> : <>
-                  <th align="left">{labels.source}</th>
-                  <th align="left">Last attended / 最近上课</th>
-                  <th align="left">Next lesson / 下一节课</th>
-                  <th align="left">To check / 待核对科目</th>
-                </>}
+                {tableView === "details" ? (
+                  <>
+                    <th align="left">{labels.school}</th>
+                    <th align="left">{labels.birth}</th>
+                    <th align="left">{labels.grade}</th>
+                    <th align="left">{labels.source}</th>
+                    <th align="left">{labels.type}</th>
+                    <th align="left">{labels.unpaid}</th>
+                    <th align="left">{labels.targetSchool}</th>
+                    <th align="left">{labels.currentMajor}</th>
+                    <th align="left">{labels.coachingContent}</th>
+                    <th align="left">{labels.notes}</th>
+                    <th align="left">{labels.id}</th>
+                  </>
+                ) : (
+                  <>
+                    <th align="left">{labels.source}</th>
+                    <th align="left">Last attended / 最近上课</th>
+                    <th align="left">Next lesson / 下一节课</th>
+                    <th align="left">To check / 待核对科目</th>
+                  </>
+                )}
                 <th align="left">{labels.action}</th>
               </tr>
             </thead>
             <tbody>
               {students.map((s) => (
-                <tr key={s.id} style={{ borderTop: "1px solid #eee", verticalAlign: "top" }}>
+                <tr
+                  key={s.id}
+                  style={{ borderTop: "1px solid #eee", verticalAlign: "top" }}
+                >
                   <td>
                     <div style={{ display: "grid", gap: 4 }}>
-                      <a href={buildStudentWorkflowHref(s.id)} style={{ fontWeight: 700 }}>{s.name}</a>
+                      <a
+                        href={buildStudentWorkflowHref(s.id)}
+                        style={{ fontWeight: 700 }}
+                      >
+                        {s.name}
+                      </a>
                       <div style={{ color: "#64748b", fontSize: 12 }}>
-                        {labels.created}: {formatBusinessDateOnly(new Date(s.createdAt))}
+                        {labels.created}:{" "}
+                        {formatBusinessDateOnly(new Date(s.createdAt))}
                       </div>
                     </div>
                   </td>
-                  {tableView === "details" ? <>
-                  <td>{s.school ?? "-"}</td>
-                  <td>{s.birthDate ? formatBusinessDateOnly(new Date(s.birthDate)) : "-"}</td>
-                  <td>{s.grade ?? "-"}</td>
-                  <td>{s.sourceName ?? "-"}</td>
-                  <td>{s.typeName ?? "-"}</td>
-                  <td>{s.unpaidCount ? <span style={{ color: "#b00", fontWeight: 700 }}>{s.unpaidCount}</span> : "-"}</td>
-                  <td>{s.targetSchool ?? "-"}</td>
-                  <td>{s.currentMajor ?? "-"}</td>
-                  <td>{s.coachingContent ?? "-"}</td>
-                  <td style={{ maxWidth: 180, color: "#475569" }}>{s.note ?? "-"}</td>
-                  <td
-                    style={{
-                      fontFamily: "monospace",
-                      fontSize: 11,
-                      color: "#475569",
-                      maxWidth: 120,
-                      whiteSpace: "nowrap",
-                    }}
-                    title={s.id}
-                  >
-                    {formatId("STU", s.id)}
-                  </td>
-                  </> : <>
-                    <td>{s.sourceName ?? "-"}</td>
-                    <td>{s.schedule?.lastAttended ? formatBusinessDateTime(new Date(s.schedule.lastAttended)) : "-"}</td>
-                    <td>{s.schedule?.nextLesson ? formatBusinessDateTime(new Date(s.schedule.nextLesson)) : "-"}</td>
-                    <td style={{ color: s.schedule?.needsScheduling ? "#b45309" : "#64748b", maxWidth: 250, overflowWrap: "anywhere" }}>
-                      {s.schedule?.missingSubjects.join(" / ") || "-"}
-                    </td>
-                  </>}
+                  {tableView === "details" ? (
+                    <>
+                      <td>{s.school ?? "-"}</td>
+                      <td>
+                        {s.birthDate
+                          ? formatBusinessDateOnly(new Date(s.birthDate))
+                          : "-"}
+                      </td>
+                      <td>{s.grade ?? "-"}</td>
+                      <td>{s.sourceName ?? "-"}</td>
+                      <td>{s.typeName ?? "-"}</td>
+                      <td>
+                        {s.unpaidCount ? (
+                          <span style={{ color: "#b00", fontWeight: 700 }}>
+                            {s.unpaidCount}
+                          </span>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                      <td>{s.targetSchool ?? "-"}</td>
+                      <td>{s.currentMajor ?? "-"}</td>
+                      <td>{s.coachingContent ?? "-"}</td>
+                      <td style={{ maxWidth: 180, color: "#475569" }}>
+                        {s.note ?? "-"}
+                      </td>
+                      <td
+                        style={{
+                          fontFamily: "monospace",
+                          fontSize: 11,
+                          color: "#475569",
+                          maxWidth: 120,
+                          whiteSpace: "nowrap",
+                        }}
+                        title={s.id}
+                      >
+                        {formatId("STU", s.id)}
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td>{s.sourceName ?? "-"}</td>
+                      <td>
+                        {s.schedule?.lastAttended
+                          ? formatBusinessDateTime(
+                              new Date(s.schedule.lastAttended),
+                            )
+                          : "-"}
+                      </td>
+                      <td>
+                        {s.schedule?.nextLesson
+                          ? formatBusinessDateTime(
+                              new Date(s.schedule.nextLesson),
+                            )
+                          : "-"}
+                      </td>
+                      <td
+                        style={{
+                          color: s.schedule?.needsScheduling
+                            ? "#b45309"
+                            : "#64748b",
+                          maxWidth: 250,
+                          overflowWrap: "anywhere",
+                        }}
+                      >
+                        {s.schedule?.missingSubjects.join(" / ") || "-"}
+                      </td>
+                    </>
+                  )}
                   <td>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <a href={buildStudentWorkflowHref(s.id)}>{tableView === "details" ? labels.edit : "Open / 打开"}</a>
-                      {tableView === "details" ? <button type="button" onClick={() => deleteStudent(s.id)}>
-                        {labels.delete}
-                      </button> : null}
+                      <a href={buildStudentWorkflowHref(s.id)}>
+                        {tableView === "details" ? labels.edit : "Open / 打开"}
+                      </a>
+                      {tableView === "details" ? (
+                        <button
+                          type="button"
+                          onClick={() => deleteStudent(s.id)}
+                        >
+                          {labels.delete}
+                        </button>
+                      ) : null}
                     </div>
                   </td>
                 </tr>
               ))}
               {students.length === 0 && (
                 <tr>
-                  <td colSpan={13} style={{ padding: 16 }}>{labels.noStudents}</td>
+                  <td colSpan={13} style={{ padding: 16 }}>
+                    {labels.noStudents}
+                  </td>
                 </tr>
               )}
             </tbody>

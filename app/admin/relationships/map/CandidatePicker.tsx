@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { searchCandidatesAction } from "./actions";
 import {
   networkText as tr,
@@ -10,12 +10,14 @@ export default function CandidatePicker({
   lang,
   type,
   onSelect,
+  initialQuery = "",
 }: {
   lang: string;
   type: NetworkCandidate["type"];
   onSelect: (c: NetworkCandidate) => void;
+  initialQuery?: string;
 }) {
-  const [query, setQuery] = useState(""),
+  const [query, setQuery] = useState(initialQuery),
     [rows, setRows] = useState<NetworkCandidate[]>([]),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -23,6 +25,33 @@ export default function CandidatePicker({
     [selected, setSelected] = useState("");
   const seq = useRef(0);
   const t = (en: string, zh: string) => tr(lang, en, zh);
+  useEffect(() => {
+    if (initialQuery.trim().length < 2) return;
+    const current = ++seq.current;
+    setBusy(true);
+    searchCandidatesAction(initialQuery)
+      .then((result) => {
+        if (current === seq.current) {
+          setRows(result.filter((r) => r.type === type));
+          setSearched(true);
+        }
+      })
+      .catch(() => {
+        if (current === seq.current)
+          setError(
+            t(
+              "Search failed; try a name or phone fragment",
+              "搜索失败，可输入姓名或电话片段重试",
+            ),
+          );
+      })
+      .finally(() => {
+        if (current === seq.current) setBusy(false);
+      });
+    return () => {
+      seq.current++;
+    };
+  }, [initialQuery, type]);
   return (
     <div className={css.candidatePanel}>
       <div style={{ display: "flex", gap: 6 }}>

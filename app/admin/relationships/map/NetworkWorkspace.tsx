@@ -54,6 +54,8 @@ export default function NetworkWorkspace({
   suggestions,
   readOnly,
   canLinkStudent,
+  embedded = false,
+  onSelectNode,
 }: {
   lang: Lang;
   view: NetworkView | null;
@@ -62,6 +64,8 @@ export default function NetworkWorkspace({
   suggestions: Record<string, NetworkCandidate[]>;
   readOnly: boolean;
   canLinkStudent: boolean;
+  embedded?: boolean;
+  onSelectNode?: (id: string) => void;
 }) {
   const t = (en: string, zh: string) => tr(lang, en, zh),
     fullStore = view?.store ?? preview;
@@ -166,7 +170,9 @@ export default function NetworkWorkspace({
       .filter((n) => matches.has(n.id) && branch.has(n.id))
       .map((n) => n.id),
   );
-  const node = fullStore.nodes.find((n) => n.id === selected),
+  const node = onSelectNode
+      ? undefined
+      : fullStore.nodes.find((n) => n.id === selected),
     live = view?.live[selected];
   const linked = store.nodes.filter(
     (n) => n.studentId || n.leadId || n.relationshipId,
@@ -312,49 +318,51 @@ export default function NetworkWorkspace({
   }
   return (
     <main className={`${css.workspace} ${full ? css.full : ""}`}>
-      <header className={css.top}>
-        <div>
-          <div className={css.eyebrow}>
-            GT EDUCATIONAL INSTITUTE · SALES & RELATIONSHIPS
+      {!embedded ? (
+        <header className={css.top}>
+          <div>
+            <div className={css.eyebrow}>
+              GT EDUCATIONAL INSTITUTE · SALES & RELATIONSHIPS
+            </div>
+            <h1>{t("Relationship map", "关系地图")}</h1>
+            <p>
+              {t(
+                "Explore connections, review identities and open the latest follow-up records.",
+                "查看人脉连接、核对身份，直接进入最新跟进记录。",
+              )}
+            </p>
           </div>
-          <h1>{t("Relationship map", "关系地图")}</h1>
-          <p>
-            {t(
-              "Explore connections, review identities and open the latest follow-up records.",
-              "查看人脉连接、核对身份，直接进入最新跟进记录。",
-            )}
-          </p>
-        </div>
-        <div className={css.actions}>
-          <a className={css.linkButton} href="/admin/relationships">
-            {t("Relationship records", "关系档案")}
-          </a>
-          <button type="button" onClick={exportSvg}>
-            {t("Export map", "导出地图")}
-          </button>
-          {view && !readOnly ? (
-            <button
-              className={css.primary}
-              onClick={() => {
-                setMaintenanceParent(selected);
-                setMaintenanceOpen((v) => !v);
-              }}
-            >
-              {t("Add / connect", "新增／连接")}
+          <div className={css.actions}>
+            <a className={css.linkButton} href="/admin/relationships">
+              {t("Relationship records", "关系档案")}
+            </a>
+            <button type="button" onClick={exportSvg}>
+              {t("Export map", "导出地图")}
             </button>
-          ) : null}
-          {!readOnly ? (
-            <button
-              className={css.primary}
-              onClick={() => setImportOpen((v) => !v)}
-            >
-              {view
-                ? t("Import history", "导入记录")
-                : t("Review PDF import", "核对PDF导入")}
-            </button>
-          ) : null}
-        </div>
-      </header>
+            {view && !readOnly ? (
+              <button
+                className={css.primary}
+                onClick={() => {
+                  setMaintenanceParent(selected);
+                  setMaintenanceOpen((v) => !v);
+                }}
+              >
+                {t("Add / connect", "新增／连接")}
+              </button>
+            ) : null}
+            {!readOnly ? (
+              <button
+                className={css.primary}
+                onClick={() => setImportOpen((v) => !v)}
+              >
+                {view
+                  ? t("Import history", "导入记录")
+                  : t("Review PDF import", "核对PDF导入")}
+              </button>
+            ) : null}
+          </div>
+        </header>
+      ) : null}
       {error ? (
         <p role="alert" className={css.alert}>
           {error}
@@ -571,7 +579,13 @@ export default function NetworkWorkspace({
                   .map((n) => (
                     <tr key={n.id}>
                       <td>
-                        <button onClick={() => setSelected(n.id)}>
+                        <button
+                          onClick={() =>
+                            onSelectNode
+                              ? onSelectNode(n.id)
+                              : setSelected(n.id)
+                          }
+                        >
                           {n.name}
                           {n.archived ? t(" (archived)", "（已归档）") : ""}
                         </button>
@@ -717,7 +731,9 @@ export default function NetworkWorkspace({
                     aria-pressed={selected === n.id}
                     className={`${css.node} ${css[n.kind]} ${n.sourceStatus === "prospect" ? css.prospect : ""} ${selected === n.id ? css.selected : ""} ${!active.has(n.id) ? css.dim : ""}`}
                     style={{ left: n.x, top: n.y }}
-                    onClick={() => setSelected(n.id)}
+                    onClick={() =>
+                      onSelectNode ? onSelectNode(n.id) : setSelected(n.id)
+                    }
                   >
                     <span className={css.nodeTitle}>{n.name}</span>
                     <span className={css.nodeMeta}>

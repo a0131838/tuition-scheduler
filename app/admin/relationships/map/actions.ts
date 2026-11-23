@@ -68,3 +68,53 @@ export async function maintainNetworkAction(input: NetworkMaintenance) {
     return { ok: false, error: message(e) };
   }
 }
+
+export async function customerDetailAction(id: string) {
+  const actor = await requireResourceUser();
+  const { readCustomerDetail } = await import("@/lib/customer-detail");
+  return readCustomerDetail(actor, id);
+}
+export async function assignCustomerAction(
+  input: Parameters<typeof import("@/lib/customer-registry").assignCustomer>[1],
+) {
+  const actor = await requireResourceUser();
+  try {
+    const { assignCustomer } = await import("@/lib/customer-registry");
+    await assignCustomer(actor, input);
+    revalidatePath("/admin/relationships", "layout");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: message(e) };
+  }
+}
+export async function linkCustomerAction(input: NetworkEdit) {
+  const actor = await requireResourceUser();
+  try {
+    const store = await editNetwork(actor, input);
+    revalidatePath("/admin/relationships", "layout");
+    return {
+      ok: true,
+      nodeId:
+        store.nodes.find((n) => n.id === input.nodeId)?.mergedIntoId ??
+        input.nodeId,
+    };
+  } catch (e) {
+    return { ok: false, error: message(e) };
+  }
+}
+export async function reviewCustomerConnectionAction(
+  input: Parameters<
+    typeof import("@/lib/customer-registry").reviewCustomerConnection
+  >[1],
+) {
+  const actor = await requireResourceUser();
+  try {
+    const { reviewCustomerConnection } =
+      await import("@/lib/customer-registry");
+    await reviewCustomerConnection(actor, input);
+    revalidatePath("/admin/relationships", "layout");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: message(e) };
+  }
+}

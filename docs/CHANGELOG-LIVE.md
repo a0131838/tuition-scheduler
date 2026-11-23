@@ -1,5 +1,16 @@
 # CHANGELOG LIVE
 
+## 2026-11-23-r523
+
+- Release ID: `2026-11-23-r523`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Add a shared customer workspace with My / Collaborating / manager-only Team views, list/map switching and name-click details linked to native students, registered parents, partners, opportunities, packages and renewal records.
+- Financial evidence follows existing authorization; approved receipts, pending/rejected receipts, outstanding verified invoices and issued credits remain distinct. Shared family invoices are counted once. No billing, ledger, balance or portal permissions are changed.
+- Internal student enrollment records owner, collaborators, explicit guardian and source links atomically; exact existing records are reused, same-name conflicts require review, repeated requests are idempotent. Parent/partner intake and lead conversion register the same canonical student identity. Unverified contacts and relationships remain pending.
+- Verification: full production build, 185 backend tests, six focused permission/financial tests, isolated transactional/concurrency/rollback acceptance, browser family detail, existing-student reuse and Sales financial masking.
+- Authorized post-release upgrade references existing master IDs only, assigns original PDF nodes to the verified Jasmine ADMIN account, and leaves unsupported identities/ownership unconfirmed or unassigned. No new master students/parents/partners or financial records.
+- Staff steps and limitations: `docs/tasks/TASK-20261123-customer-workspace.md`. Rollback code point: `1ef4ca01`; retain audited customer metadata on rollback.
+
 ## 2026-11-23-r522
 
 - Release ID: `2026-11-23-r522`

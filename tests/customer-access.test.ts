@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {customerVisible,scopedCustomerStore} from '../lib/customer-access';
+import {reviewedNetwork} from '../lib/sales-network-source';
+const actor={id:'a',name:'A',email:'a@example.test',role:'ADMIN'};
+test('one shared record appears in mine/collaborating views without duplication',()=>{const graph=reviewedNetwork();graph.nodes.forEach(n=>{n.ownerUserId='b';n.collaboratorUserIds=[];});const node=graph.nodes[1];node.ownerUserId='a';node.collaboratorUserIds=['b'];const mine=scopedCustomerStore(graph,actor,'mine',false);const collab=scopedCustomerStore(graph,{...actor,id:'b'},'collaborating',false);assert.ok(mine.nodes.some(n=>n.id===node.id));assert.ok(collab.nodes.some(n=>n.id===node.id));assert.equal(node.ownerUserId,'a');assert.throws(()=>scopedCustomerStore(graph,actor,'team',false));});
+test('scope filters are enforced independently of financial permissions',()=>{const n={...reviewedNetwork().nodes[1],ownerUserId:'other',collaboratorUserIds:[]};assert.equal(customerVisible(actor,n),false);assert.equal(customerVisible(actor,n,true),true);assert.equal(customerVisible({...actor,role:'FINANCE'},n,true),false);assert.equal(customerVisible({...actor,role:'TEACHER'},n,true),false);});

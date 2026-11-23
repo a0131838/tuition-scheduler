@@ -1,3 +1,10 @@
+import { mergeCustomerNodes } from "./customer-registry";
+import {
+  customerTeamManager,
+  assertCustomerVisible,
+  scopedCustomerStore,
+  type CustomerScope,
+} from "./customer-access";
 import { randomUUID } from "node:crypto";
 import { allocateLeadNo, LEAD_SOURCE_TYPES } from "./leads";
 import { organizeNetwork, connectionWouldCycle } from "./sales-network-layout";
@@ -70,9 +77,16 @@ async function choose(
   c: NetworkChoice,
 ) {
   if (
-    !["KEEP", "CREATE", "RELATIONSHIP", "STUDENT", "LEAD", "UNLINK"].includes(
-      c.mode,
-    )
+    ![
+      "KEEP",
+      "CREATE",
+      "RELATIONSHIP",
+      "STUDENT",
+      "LEAD",
+      "PARENT",
+      "PARTNER",
+      "UNLINK",
+    ].includes(c.mode)
   )
     throw new Error("Invalid import choice / 导入选项无效");
   if (c.mode === "KEEP") return;
@@ -88,6 +102,8 @@ async function choose(
     delete node.studentId;
     delete node.leadId;
     delete node.projectId;
+    delete node.parentId;
+    delete node.partnerId;
     node.review = review;
     return;
   }
@@ -107,7 +123,7 @@ async function choose(
               ? "PARENT"
               : "CONTACT",
         status: "NURTURING",
-        ownerName: "Jasmine",
+        ownerName: actor.name,
         note: `PDF: ${node.name}\n${node.sourceStatus}\n${review}\nSource: ${GT_NETWORK_HASH}`,
       },
     });
@@ -164,6 +180,36 @@ async function choose(
     }
     node.studentId = row.id;
     node.kind = "STUDENT";
+  } else if (c.mode === "PARENT" || c.mode === "PARTNER") {
+    if (
+      !mayLinkStudent(actor) ||
+      (c.mode === "PARTNER" && actor.operationsAdmin)
+    )
+      throw new Error(
+        "This identity link needs an authorized administrator / 此身份关联需要授权管理员",
+      );
+    if (
+      (c.mode === "PARENT" && !["PARENT", "PERSON"].includes(node.kind)) ||
+      (c.mode === "PARTNER" && node.kind !== "INSTITUTION")
+    )
+      throw new Error(
+        "Confirm the correct customer type first / 请先核对客户类型",
+      );
+    const id = text(c.targetId ?? "", 100);
+    if (c.mode === "PARENT") {
+      await tx.parentAccount.findUniqueOrThrow({
+        where: { id },
+        select: { id: true },
+      });
+      node.parentId = id;
+      node.kind = "PARENT";
+    } else {
+      await tx.partner.findUniqueOrThrow({
+        where: { id },
+        select: { id: true },
+      });
+      node.partnerId = id;
+    }
   } else {
     if (!["PERSON", "STUDENT"].includes(node.kind))
       throw new Error(
@@ -241,6 +287,8 @@ export async function importNetworkInTransaction(
       n.review = [n.review, text(c.reviewNote, 1000)]
         .filter(Boolean)
         .join("\n");
+    n.ownerUserId = actor.id;
+    n.collaboratorUserIds = [];
     await choose(tx, actor, n, c);
   }
   const studentIds = store.nodes.flatMap((n) =>
@@ -284,6 +332,7 @@ export async function importNetwork(
 }
 export type NetworkEdit = {
   revision: number;
+  nodeRevision?: number;
   nodeId: string;
   name: string;
   kind: NetworkNode["kind"];
@@ -298,12 +347,25 @@ export async function editNetworkInTransaction(
 ) {
   assertRelationshipWrite(actor);
   const store = await lockedStore(tx);
-  if (!store || store.revision !== input.revision)
+  if (!store)
     throw new Error(
       "Network changed; reload before saving / 地图已更新，请刷新后保存",
     );
   const node = store.nodes.find((n) => n.id === input.nodeId);
   if (!node) throw new Error("Node unavailable / 节点不存在");
+  if (
+    input.nodeRevision === undefined
+      ? store.revision !== input.revision
+      : (node.revision ?? 0) !== input.nodeRevision
+  )
+    throw new Error(
+      "Customer changed; reload before saving / 客户已更新，请刷新后保存",
+    );
+  assertCustomerVisible(actor, node, await customerTeamManager(actor,tx));
+  if (node.kind === "ROOT" && !(await customerTeamManager(actor,tx)))
+    throw new Error(
+      "Only a manager can change the central node / 中心节点仅限管理人员修改",
+    );
   const before = JSON.parse(JSON.stringify(node)),
     beforeEdges = JSON.parse(
       JSON.stringify(
@@ -337,8 +399,48 @@ export async function editNetworkInTransaction(
     if (input.choice.nodeId !== node.id)
       throw new Error("Invalid target node / 目标节点无效");
     await choose(tx, actor, node, input.choice);
+    const field = (
+      {
+        STUDENT: "studentId",
+        PARENT: "parentId",
+        PARTNER: "partnerId",
+        RELATIONSHIP: "relationshipId",
+        LEAD: "leadId",
+      } as const
+    )[
+      input.choice.mode as
+        | "STUDENT"
+        | "PARENT"
+        | "PARTNER"
+        | "RELATIONSHIP"
+        | "LEAD"
+    ];
+    const canonical =
+      field &&
+      store.nodes.find(
+        (n) =>
+          n.id !== node.id &&
+          !n.mergedIntoId &&
+          n[field] === node[field] &&
+          Boolean(n[field]),
+      );
+    if (canonical)
+      mergeCustomerNodes(
+        store,
+        canonical,
+        node,
+        actor,
+        await customerTeamManager(actor,tx),
+        input.choice.reviewNote ?? "",
+      );
   }
-  for (const key of ["studentId", "leadId", "relationshipId"] as const)
+  for (const key of [
+    "studentId",
+    "parentId",
+    "partnerId",
+    "leadId",
+    "relationshipId",
+  ] as const)
     if (
       node[key] &&
       store.nodes.some((n) => n.id !== node.id && n[key] === node[key])
@@ -354,11 +456,17 @@ export async function editNetworkInTransaction(
     );
     if (!edge || typeof change.confirmed !== "boolean")
       throw new Error("Invalid connection / 连线无效");
+    const team = await customerTeamManager(actor,tx);
+    for (const id of [edge.from, edge.to]) {
+      const endpoint = store.nodes.find((n) => n.id === id)!;
+      assertCustomerVisible(actor, endpoint, team);
+    }
     edge.label = text(change.label, 160);
     if (!edge.label)
       throw new Error("Connection label is required / 请填写关系含义");
     edge.confirmed = change.confirmed;
   }
+  node.revision = (node.revision ?? 0) + 1;
   await assertDistinctIdentities(tx, store.nodes);
   store.revision += 1;
   validateNetworkStore(store);
@@ -372,6 +480,10 @@ export async function editNetworkInTransaction(
     beforeConnections: beforeEdges,
     connections: input.edges,
     revision: store.revision,
+    identityChoice: input.choice ?? null,
+    afterCanonical: node.mergedIntoId
+      ? store.nodes.find((n) => n.id === node.mergedIntoId)
+      : null,
   });
   return store;
 }
@@ -387,13 +499,22 @@ export async function editNetwork(
 }
 export async function readNetwork(
   actor: RelationshipActor,
+  options?: { scope: CustomerScope; ownerId?: string },
 ): Promise<NetworkView | null> {
   readable(actor);
   const row = await prisma.appSetting.findUnique({
     where: { key: NETWORK_KEY },
   });
   if (!row) return null;
-  const store = validateNetworkStore(JSON.parse(row.value));
+  const rawStore = validateNetworkStore(JSON.parse(row.value));
+  const team = await customerTeamManager(actor);
+  const store = scopedCustomerStore(
+    rawStore,
+    actor,
+    options?.scope ?? (team ? "team" : "mine"),
+    team,
+    options?.ownerId,
+  );
   const [relationships, students, leads, projects] = await Promise.all([
     prisma.salesRelationship.findMany({
       where: {
@@ -578,7 +699,40 @@ export async function searchNetworkCandidates(
         })
       : Promise.resolve([]),
   ]);
+  const [parents, partners] = await Promise.all([
+    mayLinkStudent(actor)
+      ? prisma.parentAccount.findMany({
+          where: {
+            OR: [
+              { name: { contains: q, mode: "insensitive" } },
+              { phone: { contains: q } },
+            ],
+          },
+          select: { id: true, name: true, phone: true },
+          take: 8,
+        })
+      : Promise.resolve([]),
+    actor.role === "ADMIN" && !actor.operationsAdmin
+      ? prisma.partner.findMany({
+          where: { name: { contains: q, mode: "insensitive" } },
+          select: { id: true, name: true },
+          take: 8,
+        })
+      : Promise.resolve([]),
+  ]);
   return [
+    ...parents.map((p) => ({
+      id: p.id,
+      name: p.name || "Parent",
+      type: "PARENT" as const,
+      detail: "Phone …" + (p.phone ?? "").slice(-4),
+    })),
+    ...partners.map((p) => ({
+      id: p.id,
+      name: p.name,
+      type: "PARTNER" as const,
+      detail: "Existing partner account",
+    })),
     ...rels.map((r) => ({
       id: r.id,
       name: r.name,
@@ -731,11 +885,13 @@ export async function maintainNetworkInTransaction(
     throw new Error(
       "Record the reason or identity check / 请填写新增或调整依据",
     );
+  const team = await customerTeamManager(actor,tx);
   const before = JSON.parse(JSON.stringify(store));
   let resultNodeId = input.nodeId ?? "";
   const find = (id: unknown) => {
     const n = store.nodes.find((n) => n.id === id);
     if (!n) throw new Error("Node unavailable / 节点不存在");
+    assertCustomerVisible(actor, n, team);
     return n;
   };
   const connect = (from: string, to: string) => {
@@ -795,6 +951,8 @@ export async function maintainNetworkInTransaction(
       sourceStatus: "",
       review: note,
       note,
+      ownerUserId: actor.id,
+      collaboratorUserIds: [],
       origin: "MANUAL",
       createdAt: new Date().toISOString(),
     };
@@ -843,7 +1001,7 @@ export async function maintainNetworkInTransaction(
           recordKind: "STUDENT",
           sourceType: input.sourceType!,
           status: "New Lead",
-          ownerName: store.ownerName,
+          ownerName: actor.name,
           createdByUserId: actor.id,
           createdByName: actor.name,
           relationshipId,
@@ -888,7 +1046,7 @@ export async function maintainNetworkInTransaction(
           relationshipId: node.relationshipId,
           title: name + " - cooperation",
           status: "OPEN",
-          ownerName: store.ownerName,
+          ownerName: actor.name,
           note,
         },
       });
@@ -910,6 +1068,10 @@ export async function maintainNetworkInTransaction(
       throw new Error(
         "The central owner cannot be archived / 中心负责人不可归档",
       );
+    if (n.mergedIntoId && input.action === "RESTORE_NODE")
+      throw new Error(
+        "This identity was merged; open its canonical customer / 此身份已合并，请打开合并后的客户",
+      );
     n.archived = input.action === "ARCHIVE_NODE";
     resultNodeId = n.id;
   } else if (
@@ -929,11 +1091,24 @@ export async function maintainNetworkInTransaction(
       throw new Error(
         "This direction creates a cycle; check the connection / 此方向会形成循环，请核对连线",
       );
+    find(edge.from);
+    find(edge.to);
     edge.archived = input.action === "ARCHIVE_EDGE";
     resultNodeId = edge.from;
-  } else if (input.action === "LAYOUT") organizeNetwork(store);
-  else throw new Error("Invalid maintenance action / 地图维护操作无效");
-  for (const key of ["relationshipId", "studentId", "leadId"] as const) {
+  } else if (input.action === "LAYOUT") {
+    if (!team)
+      throw new Error(
+        "Only a manager can organize the shared layout / 共用布局仅限管理人员整理",
+      );
+    organizeNetwork(store);
+  } else throw new Error("Invalid maintenance action / 地图维护操作无效");
+  for (const key of [
+    "relationshipId",
+    "studentId",
+    "parentId",
+    "partnerId",
+    "leadId",
+  ] as const) {
     const ids = store.nodes.flatMap((n) => (n[key] ? [n[key]!] : []));
     if (new Set(ids).size !== ids.length)
       throw new Error(
