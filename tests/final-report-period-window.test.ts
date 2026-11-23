@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { inferPeriodWindow } from "../lib/final-report-period-window";
 
-type Evidence = Parameters<typeof inferPeriodWindow>[0];
+// These fixtures always model a package with a known numeric balance.
+type Evidence = Parameters<typeof inferPeriodWindow>[0] & { remainingMinutes: number };
 const time = (day: number) => new Date(Date.UTC(2025, 0, day, 1));
 function example(): Evidence {
   const credit = (id: string, day: number, minutes: number) => ({
