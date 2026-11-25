@@ -1,5 +1,14 @@
 # RELEASE BOARD
 
+## 2026-11-25-r525
+
+- Release ID: `2026-11-25-r525`
+- Deployment status: `READY`; the guarded release record confirms deployment.
+- Finance can select a Singapore cutoff date, see family service hours, verified unearned tuition, arrears and evidence gaps, and export a comparable package-level CSV. Existing month export remains available.
+- The Louis/Daisy shared package uses dated settlement statements with explicit ledger boundaries. Payment, attendance and deduction workflows have no changes.
+- Verification covers cutoff, renewal lots, rollback, partial receipts, gifts, shared statements, Finance access, CSV parity and a read-only October production reconciliation.
+- Staff instructions: `docs/tasks/TASK-20261125-family-prepaid-balances.md`. Rollback point: `c19a5b93`.
+
 ## 2026-11-23-r524
 
 - Release ID: `2026-11-23-r524`

@@ -386,8 +386,8 @@ export async function listParentBillingForPackage(packageId: string, db: Prisma.
   };
 }
 
-export async function listAllParentBilling() {
-  const store = await loadStore();
+export async function listAllParentBilling(db: Prisma.TransactionClient = prisma) {
+  const store = await loadStore(db);
   return {
     invoices: byNewest<ParentInvoiceItem>(store.invoices, (x) => x.createdAt),
     paymentRecords: byNewest<ParentPaymentRecordItem>(store.paymentRecords, (x) => x.uploadedAt),

@@ -1,308 +1,142 @@
 import { requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
-import {
-  listStudentPackageMonthEndBalances,
-  minutesToHours,
-  monthEndDateOnlyFromMonth,
-  parseMonthInput,
-} from "@/lib/student-package-month-end-balance";
-import {
-  workbenchFilterPanelStyle,
-  workbenchHeroStyle,
-  workbenchMetricCardStyle,
-  workbenchMetricLabelStyle,
-  workbenchMetricValueStyle,
-} from "../../_components/workbenchStyles";
+import { formatBusinessDateOnly } from "@/lib/date-only";
+import { prepaidFamilyReport, summarizePrepaid, type PrepaidRow } from "@/lib/prepaid-family-report";
+import { reasons, reportDate } from "@/lib/prepaid-family-calculation";
+import "./report.css";
 
-function balanceReportSectionLinkStyle(background: string, border: string) {
-  return {
-    display: "grid",
-    gap: 4,
-    minWidth: 170,
-    padding: "10px 12px",
-    borderRadius: 12,
-    border: `1px solid ${border}`,
-    background,
-    textDecoration: "none",
-    color: "inherit",
-    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
-  } as const;
-}
-
-function money(v: number | null | undefined) {
-  const n = Number(v ?? 0);
-  return Number.isFinite(n) ? n.toFixed(2) : "0.00";
-}
-
-function currentMonthKey() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function formatAmountBasisSource(source: string, lang: Awaited<ReturnType<typeof getLang>>) {
-  if (source === "PURCHASE_TXNS") {
-    return t(lang, "Purchase ledger amounts", "购买流水金额");
-  }
-  if (source === "RECEIPTS") {
-    return t(lang, "Receipt totals", "收据金额");
-  }
-  if (source === "PACKAGE_PAID_AMOUNT") {
-    return t(lang, "Package paid amount", "课包付款金额");
-  }
-  return t(lang, "No amount basis", "无金额基数");
-}
-
-function amountBasisBadgeStyle(source: string) {
-  if (source === "PURCHASE_TXNS") {
-    return {
-      border: "1px solid #bfdbfe",
-      background: "#dbeafe",
-      color: "#1d4ed8",
-    };
-  }
-  if (source === "RECEIPTS") {
-    return {
-      border: "1px solid #bbf7d0",
-      background: "#dcfce7",
-      color: "#15803d",
-    };
-  }
-  if (source === "PACKAGE_PAID_AMOUNT") {
-    return {
-      border: "1px solid #fde68a",
-      background: "#fef3c7",
-      color: "#b45309",
-    };
-  }
-  return {
-    border: "1px solid #cbd5e1",
-    background: "#f8fafc",
-    color: "#475569",
-  };
-}
-
-export default async function FinanceStudentPackageBalancesPage({
+export default async function Page({
   searchParams,
 }: {
-  searchParams?: Promise<{
-    month?: string;
-  }>;
+  searchParams: Promise<{ date?: string; month?: string }>;
 }) {
   await requireAdmin();
   const lang = await getLang();
-  const sp = await searchParams;
-  const month = parseMonthInput(String(sp?.month ?? "").trim())
-    ? String(sp?.month ?? "").trim()
-    : currentMonthKey();
-  const monthEnd = monthEndDateOnlyFromMonth(month) ?? "";
-  const exportHref = `/api/exports/student-package-month-end-balance?month=${encodeURIComponent(month)}`;
-  const rows = await listStudentPackageMonthEndBalances(month);
-  const previewRows = rows.slice(0, 20);
-  const summary = rows.reduce(
-    (acc, row) => {
-      acc.packageCount += 1;
-      acc.remainingHours += minutesToHours(row.remainingMinutes);
-      acc.remainingAmount += row.remainingAmount;
-      return acc;
-    },
-    { packageCount: 0, remainingHours: 0, remainingAmount: 0 },
+  const tr = (en: string, zh: string) => t(lang, en, zh);
+  const params = await searchParams;
+  const today = formatBusinessDateOnly(new Date());
+  const date = reportDate(
+    params.date,
+    params.month === today.slice(0, 7) && !params.date ? undefined : params.month,
+    today,
   );
-
+  const rows = date ? await prepaidFamilyReport(date) : [];
+  const sum = summarizePrepaid(rows);
+  const families = new Map<string, PrepaidRow[]>();
+  for (const r of rows) {
+    const family = families.get(r.familyId) ?? [];
+    family.push(r);
+    families.set(r.familyId, family);
+  }
+  const money = (c: number) =>
+    "SGD " + (c / 100).toLocaleString("en-SG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const hours = (m: number) => Number((m / 60).toFixed(2)) + "h";
   return (
-    <div style={{ display: "grid", gap: 12 }}>
-      <section style={workbenchHeroStyle("blue")}>
-        <div style={{ display: "grid", gap: 6 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#1d4ed8" }}>{t(lang, "Month-end balance report", "月末余额报表")}</div>
-          <h2 style={{ margin: 0 }}>{t(lang, "Student Package Balance Report", "学生课时包余额报表")}</h2>
-          <div style={{ color: "#64748b", fontSize: 12 }}>
-            {t(
-              lang,
-              "Use this page only for month-end package balance reporting. It does not issue invoices or change any package, billing, or approval logic.",
-              "此页面仅用于月末课时包余额报表，不会开票，也不会改动课包、账单或审批逻辑。",
-            )}
-          </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 12 }}>
-            <a href="/admin/finance/workbench">{t(lang, "Back to finance workbench", "返回财务工作台")}</a>
-            <a href="/admin/finance/student-package-invoices">{t(lang, "Open student package invoices", "打开学生课时包发票")}</a>
-          </div>
-        </div>
-        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
-          <div style={workbenchMetricCardStyle("blue")}>
-            <div style={workbenchMetricLabelStyle("blue")}>{t(lang, "Packages", "课包数")}</div>
-            <div style={workbenchMetricValueStyle("blue")}>{summary.packageCount}</div>
-          </div>
-          <div style={{ ...workbenchMetricCardStyle("indigo"), background: "#eef2ff" }}>
-            <div style={workbenchMetricLabelStyle("indigo")}>{t(lang, "Remaining hours", "剩余总课时")}</div>
-            <div style={{ ...workbenchMetricValueStyle("indigo"), fontSize: 18 }}>{summary.remainingHours.toFixed(2)}</div>
-          </div>
-          <div style={{ ...workbenchMetricCardStyle("emerald"), background: "#f0fdf4" }}>
-            <div style={workbenchMetricLabelStyle("emerald")}>{t(lang, "Remaining amount", "估算剩余金额")}</div>
-            <div style={{ ...workbenchMetricValueStyle("emerald"), fontSize: 18 }}>SGD {money(summary.remainingAmount)}</div>
-          </div>
-          <div style={workbenchMetricCardStyle("slate")}>
-            <div style={workbenchMetricLabelStyle("slate")}>{t(lang, "Report month", "报表月份")}</div>
-            <div style={{ ...workbenchMetricValueStyle("slate"), fontSize: 18 }}>{month}</div>
-          </div>
-        </div>
-      </section>
-
-      <section
-        style={{
-          ...workbenchFilterPanelStyle,
-          position: "sticky",
-          top: 8,
-          zIndex: 5,
-          marginBottom: 0,
-          display: "flex",
-          gap: 10,
-          flexWrap: "wrap",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          background: "rgba(255,255,255,0.96)",
-          backdropFilter: "blur(8px)",
-        }}
-      >
-        <div style={{ display: "grid", gap: 4 }}>
-          <div style={{ fontWeight: 800 }}>{t(lang, "Balance report map", "余额报表地图")}</div>
-          <div style={{ fontSize: 12, color: "#64748b" }}>
-            {t(lang, "Load the report month first, then review the summary and basis labels, and finally scan the preview table or export the full CSV.", "建议先切报表月份，再看摘要和金额基数标签，最后浏览预览表或导出完整 CSV。")}
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <a href="#balance-report-controls" style={balanceReportSectionLinkStyle("#f8fafc", "#cbd5e1")}>
-            <strong>{t(lang, "Report controls", "报表控制")}</strong>
-            <span style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Change month and export CSV", "切月份并导出 CSV")}</span>
+    <main className="prepaid-report">
+      <a href="/admin/finance/workbench">{tr("Back to Finance", "返回财务工作台")}</a> ·{" "}
+      <a href="/admin/finance/student-package-invoices">{tr("Student package invoices", "学生课包发票")}</a>
+      <h1>{tr("Family prepaid tuition balances", "家庭预收学费余额")}</h1>
+      <form method="get">
+        <label>
+          {tr("As of date (Singapore)", "截止日期（新加坡）")}{" "}
+          <input type="date" name="date" defaultValue={date ?? today} required max={today} />
+        </label>
+        <button>{tr("Load report", "查询报表")}</button>
+        {date && (
+          <a href={"/api/exports/student-package-month-end-balance?date=" + date}>
+            {tr("Export comparison CSV", "导出新旧对照 CSV")}
           </a>
-          <a href="#balance-report-preview" style={balanceReportSectionLinkStyle("#eef2ff", "#c7d2fe")}>
-            <strong>{t(lang, "Preview table", "预览表")}</strong>
-            <span style={{ fontSize: 12, color: "#3730a3" }}>{t(lang, "Scan the first rows before exporting", "导出前先看前几行")}</span>
-          </a>
-        </div>
-      </section>
-
-      <div id="balance-report-controls" style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: 12, background: "#f8fafc", display: "grid", gap: 8 }}>
-        <div style={{ fontWeight: 700 }}>
-          {t(lang, "Month-end balance report", "月末余额报表")}
-        </div>
-        <div style={{ color: "#475569", fontSize: 12 }}>
-          {t(
-            lang,
-            "Export remaining course balance in hours and estimated amount as of the selected month end. This report covers HOURS packages only.",
-            "导出所选月末的剩余课时和估算剩余金额。此报表目前仅覆盖按分钟课包。",
-          )}
-        </div>
-        <form method="get" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "end" }}>
-          <label>
-            {t(lang, "Report month", "报表月份")}
-            <input name="month" type="month" defaultValue={month} style={{ display: "block" }} />
-          </label>
-          <button type="submit">{t(lang, "Load month-end report", "加载月末报表")}</button>
-          <a href={exportHref}>{t(lang, "Export CSV", "导出 CSV")}</a>
-        </form>
-        <div style={{ color: "#475569", fontSize: 12 }}>
-          {t(
-            lang,
-            `Month-end cutoff: ${monthEnd}. Remaining amount prefers purchase-ledger basis when complete, otherwise falls back to receipts or package paid amount.`,
-            `月末截止日：${monthEnd}。剩余金额会优先使用完整的购买流水金额；如果不完整，则回退到收据金额或课包付款金额。`,
-          )}
-        </div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <div style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "6px 10px", background: "#fff" }}>
-            <b>{t(lang, "Packages in report", "报表课包数")}</b>: {summary.packageCount}
-          </div>
-          <div style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "6px 10px", background: "#fff" }}>
-            <b>{t(lang, "Total remaining hours", "剩余总课时")}</b>: {summary.remainingHours.toFixed(2)}
-          </div>
-          <div style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "6px 10px", background: "#fff" }}>
-            <b>{t(lang, "Estimated remaining amount", "估算剩余金额")}</b>: SGD {money(summary.remainingAmount)}
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {["PURCHASE_TXNS", "RECEIPTS", "PACKAGE_PAID_AMOUNT", "NONE"].map((source) => (
-            <div
-              key={source}
-              style={{
-                ...amountBasisBadgeStyle(source),
-                borderRadius: 999,
-                padding: "4px 10px",
-                fontSize: 12,
-                fontWeight: 700,
-              }}
-            >
-              {formatAmountBasisSource(source, lang)}
-            </div>
-          ))}
-        </div>
-        {rows.length === 0 ? (
-          <div style={{ color: "#64748b", fontSize: 12 }}>
-            {t(
-              lang,
-              "No hour-based packages were active by the selected month end.",
-              "所选月末之前没有可纳入报表的按分钟课包。",
-            )}
-          </div>
-        ) : (
-          <div id="balance-report-preview" style={{ border: "1px solid #dbeafe", borderRadius: 8, background: "#fff", overflowX: "auto" }}>
-            <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: 920 }}>
-              <thead>
-                <tr style={{ background: "#eff6ff" }}>
-                  <th align="left">{t(lang, "Student", "学生")}</th>
-                  <th align="left">{t(lang, "Course", "课程")}</th>
-                  <th align="left">{t(lang, "Package", "课包")}</th>
-                  <th align="left">{t(lang, "Purchased Hours", "累计购入课时")}</th>
-                  <th align="left">{t(lang, "Used Hours", "累计已用课时")}</th>
-                  <th align="left">{t(lang, "Remaining Hours", "剩余课时")}</th>
-                  <th align="left">{t(lang, "Amount Basis", "金额基数")}</th>
-                  <th align="left">{t(lang, "Basis Source", "基数来源")}</th>
-                  <th align="left">{t(lang, "Estimated Remaining Amount", "估算剩余金额")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {previewRows.map((row) => (
-                  <tr key={row.packageId} style={{ borderTop: "1px solid #e5e7eb" }}>
-                    <td>{row.studentName}</td>
-                    <td>{row.courseName}</td>
-                    <td>
-                      <div style={{ fontWeight: 700 }}>{row.packageId.slice(0, 8)}</div>
-                      <div style={{ color: "#64748b", fontSize: 12 }}>{row.packageStatus}</div>
-                    </td>
-                    <td>{minutesToHours(row.totalPurchasedMinutes).toFixed(2)}</td>
-                    <td>{minutesToHours(row.usedMinutes).toFixed(2)}</td>
-                    <td>{minutesToHours(row.remainingMinutes).toFixed(2)}</td>
-                    <td>SGD {money(row.paidAmountBasis)}</td>
-                    <td>
-                      <span
-                        style={{
-                          ...amountBasisBadgeStyle(row.paidAmountBasisSource),
-                          display: "inline-flex",
-                          alignItems: "center",
-                          borderRadius: 999,
-                          padding: "4px 10px",
-                          fontSize: 12,
-                          fontWeight: 700,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {formatAmountBasisSource(row.paidAmountBasisSource, lang)}
-                      </span>
-                    </td>
-                    <td>SGD {money(row.remainingAmount)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         )}
-        {rows.length > previewRows.length ? (
-          <div style={{ color: "#64748b", fontSize: 12 }}>
-            {t(
-              lang,
-              `Showing ${previewRows.length} of ${rows.length} rows on page. Use Export CSV for the full month-end report.`,
-              `页面内先显示 ${previewRows.length} / ${rows.length} 行；完整月末报表请导出 CSV。`,
-            )}
+      </form>
+      {!date ? (
+        <p role="alert">{tr("Select a valid date up to today.", "请选择今天或更早的有效日期。")}</p>
+      ) : (
+        <>
+          <div className="prepaid-metrics">
+            <div>
+              {tr("Verified prepaid subtotal", "已核实预收学费小计")}
+              <strong>{money(sum.verified)}</strong>
+            </div>
+            <div>
+              {tr("Known remaining service hours", "已知剩余服务课时")}
+              <strong>{hours(sum.minutes)}</strong>
+            </div>
+            <div>
+              {tr("Packages needing review", "待核对课包")}
+              <strong>
+                {sum.pending} · {hours(sum.pendingMinutes)}
+              </strong>
+            </div>
+            <div>
+              {tr("Taught, awaiting settlement", "已上待结算")}
+              <strong>{hours(sum.arrears)}</strong>
+            </div>
           </div>
-        ) : null}
-      </div>
-    </div>
+          <p>
+            {date} · {families.size} {tr("billing groups", "个家庭或结算组")} · {rows.length}{" "}
+            {tr("packages", "个课包")} · {tr("Legacy estimate", "旧报表估值")} {money(sum.legacy)} ·{" "}
+            {tr("Hours undetermined", "小时待核")} {sum.unknownHours}
+          </p>
+          <p>
+            {tr(
+              "Uses posted hours, dated receipts and currently available evidence. Shared packages count once. Pending amounts are excluded from the verified subtotal.",
+              "按截止日已入账课时、收据日期及现有凭证回算。共享课包只计一次；待核对金额不计入已核实小计。",
+            )}
+          </p>
+          <p>
+            {tr(
+              "Expand a family for package evidence and review reasons. Families use shared billing or a unique finance-parent link; otherwise the student is shown separately.",
+              "展开家庭可查课包依据和待核原因。按共享结算或明确的财务家长关联归集；缺少家庭关联时按学生单列。",
+            )}
+          </p>
+          {[...families.entries()].map(([key, list]) => {
+            const stats = summarizePrepaid(list);
+            return (
+              <details key={key}>
+                <summary>
+                  <b>{list[0].family}</b>
+                  <span>
+                    {hours(stats.minutes)}
+                    {stats.unknownHours > 0 && " + ?"}
+                  </span>
+                  <span>
+                    {stats.pending === list.length
+                      ? tr("Amount pending", "金额待核")
+                      : money(stats.verified) +
+                        (stats.pending ? tr(" verified subtotal", " 已核实小计") : "")}
+                  </span>
+                  <span>
+                    {stats.pending
+                      ? tr("Review", "待核对") + " × " + stats.pending
+                      : tr("Verified", "已核实")}
+                  </span>
+                </summary>
+                {list.map((r) => (
+                  <section key={r.id}>
+                    <h3>
+                      {r.course} · {r.id.slice(0, 8)}
+                    </h3>
+                    <p>
+                      {tr("Hours", "课时")} {r.minutes === null ? "—" : hours(r.minutes)} ·{" "}
+                      {tr("Legacy estimate", "旧估值")} {money(r.legacyCents)} ·{" "}
+                      {tr("Verified prepaid", "已核实预收")}{" "}
+                      {r.prepaidCents === null ? "—" : money(r.prepaidCents)}
+                    </p>
+                    {r.issues.map((i) => (
+                      <div key={i}>{reasons[i]}</div>
+                    ))}
+                    {r.evidence.length > 0 && (
+                      <small>
+                        {tr("Evidence", "依据")} · {r.evidence.join(" · ")}
+                      </small>
+                    )}
+                  </section>
+                ))}
+              </details>
+            );
+          })}
+        </>
+      )}
+    </main>
   );
 }

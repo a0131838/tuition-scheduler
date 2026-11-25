@@ -91,63 +91,72 @@ export async function listStudentPackageMonthEndBalances(month: string) {
   }
 
   return packages.map<StudentPackageMonthEndBalanceRow>((pkg) => {
-    let totalPurchasedMinutes = 0;
-    let usedMinutes = 0;
-    let remainingMinutes = 0;
-    let purchaseTxnAmountBasis = 0;
-    let purchaseTxnAmountComplete = true;
-    let purchaseTxnCount = 0;
-
-    for (const txn of pkg.txns) {
-      const delta = Number(txn.deltaMinutes ?? 0);
-      if (delta > 0) totalPurchasedMinutes += delta;
-      if (delta < 0) usedMinutes += Math.abs(delta);
-      remainingMinutes += delta;
-      if (txn.kind === "PURCHASE" && delta > 0) {
-        purchaseTxnCount += 1;
-        if (txn.deltaAmount == null || !Number.isFinite(Number(txn.deltaAmount))) {
-          purchaseTxnAmountComplete = false;
-        } else {
-          purchaseTxnAmountBasis += normalizeAmount(txn.deltaAmount);
-        }
-      }
-    }
-
-    const receiptBasis = normalizeAmount(receiptBasisByPackage.get(pkg.id));
-    const packagePaidBasis = normalizeAmount(pkg.paidAmount);
-    const usePurchaseTxnBasis = purchaseTxnCount > 0 && purchaseTxnAmountComplete;
-    const paidAmountBasis = usePurchaseTxnBasis
-      ? purchaseTxnAmountBasis
-      : receiptBasis > 0
-        ? receiptBasis
-        : packagePaidBasis;
-    const paidAmountBasisSource =
-      usePurchaseTxnBasis
-        ? "PURCHASE_TXNS"
-        : receiptBasis > 0
-          ? "RECEIPTS"
-          : packagePaidBasis > 0
-            ? "PACKAGE_PAID_AMOUNT"
-            : "NONE";
-
-    const remainingAmount =
-      totalPurchasedMinutes > 0
-        ? roundMoney((paidAmountBasis * Math.max(0, remainingMinutes)) / totalPurchasedMinutes)
-        : 0;
-
     return {
+      ...legacyPackageEstimate(pkg.txns, receiptBasisByPackage.get(pkg.id), pkg.paidAmount),
       month,
       monthEnd,
       packageId: pkg.id,
       studentName: pkg.student?.name ?? "-",
       courseName: pkg.course?.name ?? "-",
       packageStatus: pkg.status,
-      totalPurchasedMinutes,
-      usedMinutes,
-      remainingMinutes: Math.max(0, remainingMinutes),
-      paidAmountBasis,
-      paidAmountBasisSource,
-      remainingAmount,
     };
   });
+}
+
+export function legacyPackageEstimate(
+  txns: { deltaMinutes: number; deltaAmount: number | null; kind: string }[],
+  receipts: number | undefined,
+  paidAmount: number | null,
+) {
+  let totalPurchasedMinutes = 0;
+  let usedMinutes = 0;
+  let remainingMinutes = 0;
+  let purchaseTxnAmountBasis = 0;
+  let purchaseTxnAmountComplete = true;
+  let purchaseTxnCount = 0;
+
+  for (const txn of txns) {
+    const delta = Number(txn.deltaMinutes ?? 0);
+    if (delta > 0) totalPurchasedMinutes += delta;
+    if (delta < 0) usedMinutes += Math.abs(delta);
+    remainingMinutes += delta;
+    if (txn.kind === "PURCHASE" && delta > 0) {
+      purchaseTxnCount += 1;
+      if (txn.deltaAmount == null || !Number.isFinite(Number(txn.deltaAmount))) {
+        purchaseTxnAmountComplete = false;
+      } else {
+        purchaseTxnAmountBasis += normalizeAmount(txn.deltaAmount);
+      }
+    }
+  }
+
+  const receiptBasis = normalizeAmount(receipts);
+  const packagePaidBasis = normalizeAmount(paidAmount);
+  const usePurchaseTxnBasis = purchaseTxnCount > 0 && purchaseTxnAmountComplete;
+  const paidAmountBasis = usePurchaseTxnBasis
+    ? purchaseTxnAmountBasis
+    : receiptBasis > 0
+      ? receiptBasis
+      : packagePaidBasis;
+  const paidAmountBasisSource = usePurchaseTxnBasis
+    ? "PURCHASE_TXNS"
+    : receiptBasis > 0
+      ? "RECEIPTS"
+      : packagePaidBasis > 0
+        ? "PACKAGE_PAID_AMOUNT"
+        : "NONE";
+
+  const remainingAmount =
+    totalPurchasedMinutes > 0
+      ? roundMoney((paidAmountBasis * Math.max(0, remainingMinutes)) / totalPurchasedMinutes)
+      : 0;
+
+  return {
+    totalPurchasedMinutes,
+    usedMinutes,
+    remainingMinutes: Math.max(0, remainingMinutes),
+    paidAmountBasis,
+    paidAmountBasisSource: paidAmountBasisSource as StudentPackageMonthEndBalanceRow["paidAmountBasisSource"],
+    remainingAmount,
+  };
 }
