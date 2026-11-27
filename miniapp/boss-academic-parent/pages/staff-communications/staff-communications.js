@@ -187,6 +187,12 @@ Page({
       if (res.confirm) this.patch(row.id, "transfer", { ownerUserId: peer.id });
     } });
   },
+  waivePlanning(e) {
+    const id = e.currentTarget.dataset.id;
+    wx.showModal({ title: "排课中调整，无需补发", content: "请确认：这次是内部排课调整，旧时间未通过家长群、私聊、电话或其他方式告知家长，家长也未按旧课表安排接送。确认后将关闭本条提醒。", confirmText: "确认关闭", success: res => {
+      if (res.confirm) this.patch(id, "waive_planning", { oldTimeNotCommunicated: true });
+    } });
+  },
   confirmRescheduleParent(e) {
     const row = this.data.tasks[e.currentTarget.dataset.index];
     wx.showActionSheet({ itemList: ["家长群确认", "私聊确认", "电话确认"], success: choice => {

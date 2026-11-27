@@ -1,5 +1,13 @@
 # RELEASE BOARD
 
+## 2026-11-27-r527
+
+- Release ID: `2026-11-27-r527`
+- Deployment status: `READY`; guarded release receipt confirms the web deployment.
+- Eva and Emily can close their own current unsent internal scheduling notice after confirming the previous time was never communicated. Web and staff Mini Program share the same locked, audited action. Recorded delivery continues through the existing parent confirmation flow.
+- Verification: isolated notice lifecycle, duplicate submit, evidence and ownership checks, historical versions, web and Mini Program controls, backend regressions and application build.
+- Staff steps: `docs/tasks/TASK-20261127-planning-reschedule-waiver.md`. Rollback code point: `75b717bc`. Mini Program delivery is tracked on the Mini Program release branch.
+
 ## 2026-11-25-r525
 
 - Release ID: `2026-11-25-r525`
