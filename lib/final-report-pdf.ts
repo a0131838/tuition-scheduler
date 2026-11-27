@@ -1,3 +1,7 @@
+import { logAudit } from "./audit-log";
+import { finalReportNeedsAcademicReview, isLearningReportApprovedForDelivery } from "./learning-report-delivery";
+import { validateParentReportContent } from "./learning-report-parent-content";
+import { parentReportPdfHeaders, renderParentLearningReportPdf } from "./learning-report-parent-pdf";
 import { parseFinalReportDraft } from "@/lib/final-report";
 import {
   createLearningReportAttendanceSnapshot,
@@ -6,7 +10,6 @@ import {
   parseLearningReportAttendanceSnapshot,
 } from "@/lib/learning-report-attendance";
 import { setPdfBoldFont, setPdfFont } from "@/lib/pdf-font";
-import { prisma } from "@/lib/prisma";
 import { formatBusinessDateOnly } from "@/lib/date-only";
 import PDFDocument from "pdfkit";
 import { startCardReport, drawCardText, finishCardReport, cardHeading } from "./learning-report-pdf-cards";
@@ -384,10 +387,35 @@ export async function renderFinalCardPdf(draft: ReturnType<typeof parseFinalRepo
   return finishCardReport(doc, completed, lang === "ZH" ? "结课报告" : lang === "EN" ? "Final Report" : "Final Report / 结课报告");
 }
 
-export async function buildFinalReportPdfResponse(id:string,lang:'BILINGUAL'|'ZH'|'EN'='BILINGUAL'){
- const report=await prisma.finalReport.findUnique({where:{id},select:{status:true}});
- if(!report)return new Response('Report not found',{status:404});
- if(report.status!=='SUBMITTED'&&report.status!=='FORWARDED')return new Response('Parent-facing PDF is available after the report is submitted.',{status:409});
- const {buildCurrentParentReportPdfResponse}=await import('./learning-report-parent-pdf');
- return buildCurrentParentReportPdfResponse('FINAL',id,lang);
+export async function buildFinalReportPdfResponse(
+  id: string,
+  language: "BILINGUAL" | "ZH" | "EN",
+  actor: { email: string; name?: string | null; role: string },
+  options: { allowLegacyEnglishFallback?: boolean } = {},
+) {
+  const { currentParentEdition, ParentReportError } = await import("./learning-report-parent-editions");
+  let current;
+  try {
+    current = await currentParentEdition("FINAL", id);
+  } catch (error) {
+    if (error instanceof ParentReportError) return Response.json({ code: error.code }, { status: error.status });
+    throw error;
+  }
+  const { row, edition, source, hash } = current;
+  if (!("reportPeriodId" in row) || (row.status !== "SUBMITTED" && row.status !== "FORWARDED")) {
+    return Response.json({ code: "SAVE_AND_SUBMIT_FIRST" }, { status: 409 });
+  }
+  const requiresReview = finalReportNeedsAcademicReview(row);
+  if (requiresReview && !isLearningReportApprovedForDelivery(row.reportJson)) {
+    return Response.json({ code: "COORDINATOR_APPROVAL_REQUIRED" }, { status: 403 });
+  }
+  const content = edition?.status === "READY" && edition.reviewedAt
+    ? validateParentReportContent(edition.contentJson, source.fields) : null;
+  const lang = !content && !requiresReview && options.allowLegacyEnglishFallback ? "EN" : language;
+  if (lang !== "EN" && !content) return Response.json({ code: "CONFIRM_TRANSLATION_FIRST" }, { status: 409 });
+  const cached = content && edition ? (lang === "EN" ? edition.pdfEn : lang === "ZH" ? edition.pdfZh : edition.pdfBilingual) : null;
+  const bytes = cached ?? await renderParentLearningReportPdf(source, content, lang, Boolean(content));
+  await logAudit({ actor, module: "LEARNING_REPORT_DELIVERY", action: "EXPORT_FINAL_PDF", entityType: "FinalReport", entityId: id,
+    meta: { language: lang, sourceHash: hash, editionId: content ? edition!.id : null } });
+  return new Response(new Uint8Array(bytes), { headers: parentReportPdfHeaders(source, lang) });
 }

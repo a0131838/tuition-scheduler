@@ -1,3 +1,4 @@
+import {ensureStudentCustomer} from "./customer-registry";
 import {Prisma} from '@prisma/client';
 import {prisma} from './prisma';
 import {buildLeadSourceChannelName,buildLeadStudentNote} from './leads';
@@ -16,6 +17,7 @@ export async function linkLeadStudentInTransaction(tx:Prisma.TransactionClient,a
  if(!lead)throw new Error('Lead no longer exists / 商机记录已不存在');
  if(lead.convertedStudentId){
   if(input.mode==='LINK'&&input.studentId!==lead.convertedStudentId)throw new Error('This lead already links to another student; review the history / 本商机已关联另一学生，请先核对历史');
+  await ensureStudentCustomer(tx,lead.convertedStudentId,actor,{reviewNote:input.reviewNote??"Existing handoff verified"},null,lead.id);
   return lead.convertedStudentId;
  }
  if(lead.updatedAt.toISOString()!==input.expectedUpdatedAt)throw new Error('This record changed; reload before saving / 记录已更新，请刷新后保存');
@@ -34,6 +36,7 @@ export async function linkLeadStudentInTransaction(tx:Prisma.TransactionClient,a
  }
  // Reusing a student must not rewrite their source, profile, financial history or other leads.
  await tx.lead.update({where:{id:lead.id},data:{convertedStudentId:studentId,convertedSourceChannelId:sourceId}});
+ await ensureStudentCustomer(tx,studentId,actor,{reviewNote:input.reviewNote??"Explicit student handoff"},null,lead.id);
  await tx.auditLog.create({data:{actorEmail:actor.email,actorName:actor.name,actorRole:actor.role,module:'SALES_RELATIONSHIP',action:input.mode==='LINK'?'LINK_EXISTING_STUDENT':'CREATE_STUDENT',entityType:'Lead',entityId:lead.id,meta:{studentId,relationshipId:lead.relationshipId,identityReview:input.reviewNote?.trim().slice(0,2000)||null,pipelineStatusUnchanged:lead.status,existingStudentUnchanged:input.mode==='LINK'}}});
  return studentId;
 }

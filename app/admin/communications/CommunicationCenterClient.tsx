@@ -16,7 +16,7 @@ type Task = {
   history: Array<{ action: string; actorName: string | null; actorEmail: string; actorRole: string | null; createdAt: string }>;
   automaticNotification: { status: string; total: number; counts: Record<string, number>; reviewNeeded?: boolean; scope?: string; note?: string };
   correction: { type: string; typeLabel: string; previousLines: string[]; currentLines: string[]; noReplacement: boolean; reason: string; originalSentAt: string | null; originalSentByName: string | null; originalGroupName: string | null; changedAt: string; changedByName: string | null } | null;
-  rescheduleNotice: { overdue: boolean; handoffDue: boolean; callDue: boolean; past: boolean; isOwner: boolean; canTakeOver: boolean; peer: { id: string; name: string } | null } | null;
+  rescheduleNotice: { overdue: boolean; handoffDue: boolean; callDue: boolean; past: boolean; canWaivePlanning: boolean; isOwner: boolean; canTakeOver: boolean; peer: { id: string; name: string } | null } | null;
 };
 
 const statusLabels: Record<string, string> = {
@@ -191,7 +191,7 @@ export default function CommunicationCenterClient({ currentUser, initialKind, in
           const isFeedback = row.kind === "FEEDBACK";
           return <article key={row.id} style={{ padding: "16px 0", borderTop: `3px solid ${row.status === "ATTENTION" ? "#dc2626" : row.status === "PENDING_REVIEW" ? "#f59e0b" : "#cbd5e1"}`, display: "grid", gap: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-              <div><div style={{ color: "#9a3412", fontSize: 12, fontWeight: 850 }}>{kindLabels[row.kind] || row.kind} · {statusLabels[row.status] || row.status}</div><div style={{ fontWeight: 850, fontSize: 17, marginTop: 4 }}>{row.title}</div><div style={{ color: "#334155", fontSize: 13, fontWeight: 750, marginTop: 4 }}>{row.dateLabel || "课程日期待确认"}</div><div style={{ color: "#64748b", fontSize: 12, marginTop: 4 }}>负责人：{row.ownerName || "未领取"}</div><div style={{ color: row.automaticNotification.status === "FAILED" ? "#b91c1c" : "#475569", fontSize: 12, marginTop: 4 }}>自动提醒：{({ SENT: "已发送", PENDING: "待发送/待授权", PROCESSING: "发送中", FAILED: "发送失败", SKIPPED: "已失效", NOT_QUEUED: "未入队", NEEDS_REVIEW: "待核对 / Needs review" } as Record<string,string>)[row.automaticNotification.status] || row.automaticNotification.status} · 人工微信：{row.manualSentAt ? "已发送" : "待处理"}</div>{row.automaticNotification.note ? <div style={{color:"#64748b",fontSize:12,marginTop:4}}>{row.automaticNotification.note}</div> : null}</div>
+              <div><div style={{ color: "#9a3412", fontSize: 12, fontWeight: 850 }}>{kindLabels[row.kind] || row.kind} · {statusLabels[row.status] || row.status}</div><div style={{ fontWeight: 850, fontSize: 17, marginTop: 4 }}>{row.title}</div><div style={{ color: "#334155", fontSize: 13, fontWeight: 750, marginTop: 4 }}>{row.dateLabel || "课程日期待确认"}</div><div style={{ color: "#64748b", fontSize: 12, marginTop: 4 }}>负责人：{row.ownerName || "未领取"}</div><div style={{ color: row.automaticNotification.status === "FAILED" ? "#b91c1c" : "#475569", fontSize: 12, marginTop: 4 }}>自动提醒：{({ SENT: "已发送", PENDING: "待发送/待授权", PROCESSING: "发送中", FAILED: "发送失败", SKIPPED: "已失效", NOT_QUEUED: "未入队", NEEDS_REVIEW: "待核对 / Needs review" } as Record<string,string>)[row.automaticNotification.status] || row.automaticNotification.status} · 人工微信：{row.manualSentAt ? "已发送" : row.status === "WAIVED" ? "无需发送" : "待处理"}</div>{row.automaticNotification.note ? <div style={{color:"#64748b",fontSize:12,marginTop:4}}>{row.automaticNotification.note}</div> : null}</div>
               {!row.rescheduleNotice ? <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
                 {row.ownerUserId !== currentUser.id && !row.manualSentAt ? <button style={button} onClick={() => act(row, "claim")}>领取任务</button> : null}
                 {!row.manualSentAt ? <select value={row.ownerUserId || ""} onChange={(event) => event.target.value && act(row, "transfer", { ownerUserId: event.target.value })} style={button}><option value="">转交给…</option>{staff.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select> : null}
@@ -235,6 +235,12 @@ export default function CommunicationCenterClient({ currentUser, initialKind, in
             </section> : null}
 
             {row.rescheduleNotice ? <div style={{ display: "grid", gap: 9 }}>
+              {row.status === "WAIVED" && <p>{row.note}</p>}
+              {row.rescheduleNotice.canWaivePlanning && <button style={button} disabled={loading} onClick={() => {
+                if (window.confirm("请确认：这次是内部排课调整，旧时间未通过家长群、私聊、电话或其他方式告知家长，家长也未按旧课表安排接送。确认后将关闭本条提醒。")) {
+                  void act(row, "waive_planning", { oldTimeNotCommunicated: true });
+                }
+              }}>排课中调整，无需补发</button>}
               {row.rescheduleNotice.overdue ? <strong style={{ color: "#b91c1c" }}>已超过 5 分钟，尚未登记发群。</strong> : null}
               {row.rescheduleNotice.handoffDue ? <p>已超过 10 分钟，另一位当班教务可接手。</p> : null}
               {row.rescheduleNotice.callDue ? <strong>请电话确认实际接送人。</strong> : null}
@@ -242,7 +248,7 @@ export default function CommunicationCenterClient({ currentUser, initialKind, in
               {row.rescheduleNotice.past ? <p>已到开课时间，请核对实际到课并记录结果。</p> : null}
               <pre style={{ whiteSpace: "pre-wrap", margin: 0, padding: 12, background: "#f8fafc", fontFamily: "inherit" }}>{row.messageText}</pre>
               {row.rescheduleNotice.canTakeOver ? <button style={primary} onClick={() => act(row, "claim")}>接手这条改课通知</button> : null}
-              {row.rescheduleNotice.isOwner && !["COMPLETED", "SUPERSEDED"].includes(row.status) ? <>
+              {row.rescheduleNotice.isOwner && !["COMPLETED", "SUPERSEDED", "WAIVED"].includes(row.status) ? <>
                 {row.rescheduleNotice.peer ? <button style={button} onClick={() => act(row, "transfer", { ownerUserId: row.rescheduleNotice?.peer?.id })}>转交 {row.rescheduleNotice.peer.name}</button> : null}
                 {!row.manualSentAt && !row.rescheduleNotice.past ? <>
                   <input value={draft.group} onChange={event => updateDraft(row.id, { group: event.target.value })} placeholder="原家长群名称" style={button} />

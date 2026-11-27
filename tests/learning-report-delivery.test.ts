@@ -69,8 +69,9 @@ test("web and miniapp use the formal report delivery action", () => {
 test("Jessika can approve or revoke Mid and Final delivery without giving Emily edit rights", () => {
   const midterm = readFileSync("app/admin/reports/midterm/page.tsx", "utf8");
   const final = readFileSync("app/admin/reports/final/page.tsx", "utf8");
+  assert.match(midterm, /确认可由 Emily 发送/);
+  assert.match(final, /审核通过，允许下载家长版/);
   for (const source of [midterm, final]) {
-    assert.match(source, /确认可由 Emily 发送/);
     assert.match(source, /撤回发送确认/);
     assert.match(source, /approveLearningReportForDelivery/);
     assert.match(source, /revokeLearningReportDeliveryApproval/);

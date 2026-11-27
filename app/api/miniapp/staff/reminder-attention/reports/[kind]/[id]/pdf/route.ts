@@ -27,7 +27,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ kind: st
     if (!report || report.status !== "SUBMITTED" || report.archivedAt || report.deliveredAt || !isLearningReportApprovedForDelivery(report.reportJson)) {
       return bad("Only an approved, undelivered report can be opened", 409);
     }
-    return buildFinalReportPdfResponse(id, auth.user.language);
+    return buildFinalReportPdfResponse(id, auth.user.language, auth.user, { allowLegacyEnglishFallback: true });
   }
 
   return bad("Unknown report type", 404);

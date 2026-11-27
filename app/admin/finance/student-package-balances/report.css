@@ -1,0 +1,57 @@
+.prepaid-report {
+  max-width: 1200px;
+  color: #172b3a;
+}
+.prepaid-report h1 {
+  font-size: 1.55rem;
+}
+.prepaid-report form,
+.prepaid-metrics {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.prepaid-report form {
+  padding: 16px 0;
+}
+.prepaid-metrics > div {
+  background: #f3f7f6;
+  border: 1px solid #cee1dd;
+  border-radius: 8px;
+  padding: 12px;
+  flex: 1;
+  min-width: 145px;
+}
+.prepaid-metrics strong {
+  display: block;
+  font-size: 1.18rem;
+  color: #154c42;
+  margin-top: 5px;
+}
+.prepaid-report details {
+  border-bottom: 1px solid #d7dfe3;
+}
+.prepaid-report summary {
+  cursor: pointer;
+  padding: 12px 5px;
+}
+.prepaid-report summary > * {
+  display: inline-block;
+  margin-right: 16px;
+}
+.prepaid-report summary > b {
+  min-width: 24%;
+}
+.prepaid-report details section {
+  padding: 6px 16px 15px;
+  background: #f7fafb;
+}
+.prepaid-report small {
+  display: block;
+  overflow-wrap: anywhere;
+  margin-top: 6px;
+}
+.prepaid-report summary:focus-visible {
+  outline: 2px solid #2364b6;
+}

@@ -1,4 +1,5 @@
-﻿import { prisma } from "@/lib/prisma";
+import { ensureStudentCustomer } from "@/lib/customer-registry";
+import { prisma } from "@/lib/prisma";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -36,12 +37,14 @@ export async function POST(req: Request) {
   const birthDateStr = String(body?.birthDate ?? "").trim();
 
   if (!name) return bad("Name is required", 409);
-  if (String(body?.packageQuantity ?? "").trim() && packageQuantity === null) return bad("Invalid packageQuantity", 409);
+  if (String(body?.packageQuantity ?? "").trim() && packageQuantity === null)
+    return bad("Invalid packageQuantity", 409);
 
   let birthDate: Date | null = null;
   if (birthDateStr) {
     const [Y, M, D] = birthDateStr.split("-").map(Number);
-    if (!Number.isFinite(Y) || !Number.isFinite(M) || !Number.isFinite(D)) return bad("Invalid birthDate", 409);
+    if (!Number.isFinite(Y) || !Number.isFinite(M) || !Number.isFinite(D))
+      return bad("Invalid birthDate", 409);
     birthDate = new Date(Y, M - 1, D, 0, 0, 0, 0);
   }
 
@@ -56,29 +59,45 @@ export async function POST(req: Request) {
     }),
   ]);
 
-  if (!source) return bad(`Missing fixed source channel: ${FIXED_SOURCE_CHANNEL_NAME}`, 409);
-  if (!studentType) return bad(`Missing fixed student type: ${FIXED_STUDENT_TYPE_NAME}`, 409);
+  if (!source)
+    return bad(
+      `Missing fixed source channel: ${FIXED_SOURCE_CHANNEL_NAME}`,
+      409,
+    );
+  if (!studentType)
+    return bad(`Missing fixed student type: ${FIXED_STUDENT_TYPE_NAME}`, 409);
 
   const noteParts = [
     packageQuantity ? `购买课时包数量: ${packageQuantity}` : "",
     note,
   ].filter(Boolean);
 
-  const created = await prisma.student.create({
-    data: {
-      name,
-      school: school || null,
-      grade: grade || null,
-      targetSchool: targetSchool || null,
-      currentMajor: currentMajor || null,
-      coachingContent: coachingContent || null,
-      note: noteParts.length > 0 ? noteParts.join("\n") : null,
-      birthDate,
-      sourceChannelId: source.id,
-      studentTypeId: studentType.id,
-    },
-    select: { id: true },
-  });
+  const created = await prisma.$transaction(
+    async (tx) => {
+      const normalized=name.trim().toLowerCase();
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${normalized}),1124)::text`;
+      if(await tx.student.findFirst({where:{name:{equals:name,mode:"insensitive"}},select:{id:true}}))return null;
+      const created = await tx.student.create({
+        data: {
+          name,
+          school: school || null,
+          grade: grade || null,
+          targetSchool: targetSchool || null,
+          currentMajor: currentMajor || null,
+          coachingContent: coachingContent || null,
+          note: noteParts.length > 0 ? noteParts.join("\n") : null,
+          birthDate,
+          sourceChannelId: source.id,
+          studentTypeId: studentType.id,
+        },
+        select: { id: true },
+      });
 
+      await ensureStudentCustomer(tx, created.id, null);
+      return created;
+    },
+    { timeout: 30000 },
+  );
+  if(!created)return bad("Registration needs staff identity review",409);
   return Response.json({ ok: true, studentId: created.id }, { status: 201 });
 }

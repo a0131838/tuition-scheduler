@@ -4,7 +4,7 @@ import type { Prisma } from "@prisma/client";
 import { isManagerUser, requireAdmin } from "@/lib/auth";
 import { finalReportPeriodsUrl } from "@/lib/final-report-periods";
 import { formatBusinessDateTime, formatBusinessDateOnly } from "@/lib/date-only";
-import { approveLearningReportForDelivery, deliverApprovedLearningReport, learningReportDeliveryApproval, revokeLearningReportDeliveryApproval } from "@/lib/learning-report-delivery";
+import { finalReportNeedsAcademicReview, approveLearningReportForDelivery, deliverApprovedLearningReport, learningReportDeliveryApproval, revokeLearningReportDeliveryApproval } from "@/lib/learning-report-delivery";
 import { FINAL_REPORT_DELIVERY_CHANNELS, FINAL_REPORT_EXEMPT_REASONS, FINAL_REPORT_SHARE_DURATION_DAYS, loadFinalReportCandidates, parseDeliveryChannel, parseExemptReason, parseFinalReportDraft, parseFinalReportMeta, parseShareDurationDays } from "@/lib/final-report";
 import { getLang, t, type Lang } from "@/lib/i18n";
 import { formatMinutesToHours } from "@/lib/midterm-report";
@@ -226,12 +226,12 @@ async function approveFinalReportForDelivery(formData: FormData): Promise<string
   const user = await requireAdmin();
   const reportId = String(formData.get("reportId") ?? "").trim();
   if (!reportId) return finalDeskResultUrl(formData.get("_returnTo"), "err", "missing");
-  const report = await prisma.finalReport.findUnique({ where: { id: reportId }, select: { reportPeriodId: true } });
-  if (user.isObserver || (report?.reportPeriodId && !(user.role === "ADMIN" || user.operationsAdmin || await isManagerUser(user)))) {
+  const report = await prisma.finalReport.findUnique({ where: { id: reportId }, select: { reportPeriodId: true, reportJson: true } });
+  if (user.isObserver || (report && finalReportNeedsAcademicReview(report) && !(user.role === "ADMIN" || user.operationsAdmin || await isManagerUser(user)))) {
     return finalDeskResultUrl(formData.get("_returnTo"), "err", "status");
   }
   try {
-    await approveLearningReportForDelivery({ kind: "FINAL", reportId, actor: user });
+    await approveLearningReportForDelivery({ kind: "FINAL", reportId, actor: user, reviewedVersion: String(formData.get("reviewedVersion") ?? "") });
   } catch {
     return finalDeskResultUrl(formData.get("_returnTo"), "err", "status");
   }
@@ -436,7 +436,7 @@ async function enableFinalReportShare(formData: FormData): Promise<string> {
     where: { id: reportId },
     select: { status: true, reportPeriodId: true, reportJson: true },
   });
-  if (!row || row.status === "ASSIGNED" || (row.reportPeriodId && !learningReportDeliveryApproval(row.reportJson).approvedAt)) return finalDeskResultUrl(formData.get("_returnTo"), "err", "status");
+  if (!row || row.status === "ASSIGNED" || (finalReportNeedsAcademicReview(row) && !learningReportDeliveryApproval(row.reportJson).approvedAt)) return finalDeskResultUrl(formData.get("_returnTo"), "err", "status");
 
   const now = new Date();
   const shareExpiresAt = new Date(now.getTime() + shareDurationDays * 24 * 60 * 60 * 1000);
@@ -531,8 +531,7 @@ function phaseLabel(report: { status: string; archivedAt: Date | null; delivered
   if (report.archivedAt) return t(lang, "Archived", "已归档");
   if (report.status === "EXEMPT") return t(lang, "Exempt", "无需报告");
   if (report.deliveredAt) return t(lang, "Delivered", "已交付");
-  if (report.status === "ASSIGNED") return !isFinalReportSubmissionDue(report.package.remainingMinutes, report.reportPeriodId)
-    ? t(lang, "Draft in progress", "草稿准备中") : t(lang, "Awaiting teacher submission", "待老师提交");
+  if (report.status === "ASSIGNED") return t(lang, "Awaiting teacher submission", "待老师提交");
   return report.status === "FORWARDED" || learningReportDeliveryApproval(report.reportJson).approvedAt
     ? t(lang, "Ready for delivery", "待记录交付") : t(lang, "Awaiting review", "待审核");
 }
@@ -582,7 +581,7 @@ export default async function AdminFinalReportCenterPage({ searchParams }: { sea
   const messages: Record<string, string> = {
     exists: t(lang, "This report is already submitted. Open its record to continue.", "该报告已经提交，请打开原记录继续处理。"),
     exempt: t(lang, "Marked as exempt from final report follow-up.", "已标记为无需结课报告。"),
-    approved: t(lang, "Confirmed for Emily to send.", "已确认可由 Emily 发送。"),
+    approved: t(lang, "Approved for parent download.", "已审核通过，可以下载家长版。"),
     "approval-revoked": t(lang, "Sending approval revoked.", "已撤回发送确认。"),
     delivered: t(lang, "Delivery record saved.", "已保存交付记录。"),
     "share-enabled": t(lang, "Share link is ready.", "分享链接已生成。"),
@@ -592,7 +591,7 @@ export default async function AdminFinalReportCenterPage({ searchParams }: { sea
   return <div className="final-desk">
     <header className="final-desk-heading"><div><h2>{t(lang, "Final Reports", "结课报告")}</h2><p>{t(lang, "Assign, review and follow up one report at a time.", "分配、审核和跟进，每次处理一份报告。")}</p><a className="final-desk-primary" href={finalReportPeriodsUrl(p.studentId, p.packageId)}>{t(lang, "Manage learning periods", "管理学习期次")}</a></div>
       <details className="final-desk-help"><summary>{t(lang, "Report guidance", "报告说明")}</summary><div>
-        <p>{t(lang, "For a confirmed learning period, the teacher can submit once the period ends. For balance-based reports, prepare a draft at 8 hours or 10% remaining and submit at zero.", "确认已结束的学习期次后，老师即可提交该期报告。按余额管理的报告仍可在剩余不超过 8 小时或 10% 时安排草稿，余额归零时提交。")}</p>
+        <p>{t(lang, "Assigned teachers can submit a completed report for academic review at any package balance.", "已分配的老师完成报告后即可提交教学审核，课包有余额也可以提交。")}</p>
         <p>{t(lang, "For parent discussions before renewal, use the separate renewal progress report.", "续费前需要向家长展示学习进展，请使用独立的续费前学习进展报告。")}</p>
         <a href="/admin/reports/renewal">{t(lang, "Renewal progress reports", "续费前学习进展报告")}</a>
       </div></details>
@@ -660,7 +659,7 @@ async function CandidateDetail({ row, teachers, params, lang }: { row: Candidate
   return <section className="final-desk-panel" aria-labelledby="assignment-heading">
     <h3 id="assignment-heading">{row.studentName} · {row.courseName}</h3>
     <p>{t(lang, "Package balance", "课包余额")}: <strong>{formatMinutesToHours(row.remainingMinutes)}h</strong> / {formatMinutesToHours(row.totalMinutes)}h · {packageUsagePercent(row.totalMinutes,row.remainingMinutes)}% {t(lang,"used","已使用")}</p>
-    <p className="final-desk-hint">{row.stage === "PREPARATION" ? t(lang, "Assign a draft now. The teacher can save it; formal submission waits until the balance reaches zero.", "现在可安排老师准备草稿，老师可保存；课包余额归零后才能正式提交。") : t(lang, "The package balance has reached zero. Confirm the responsible teacher for the final report.", "课包余额已归零，请确认结课报告的实际负责老师。")}</p>
+    <p className="final-desk-hint">{row.stage === "PREPARATION" ? t(lang, "Assign a report now. The teacher can save a draft or submit it for review.", "现在可分配报告。老师可以保存草稿，也可以提交教学审核。") : t(lang, "The package balance has reached zero. Confirm the responsible teacher for the final report.", "课包余额已归零，请确认结课报告的实际负责老师。")}</p>
     <FinalReportAssignmentForm action={assignFinalReport} lang={lang} returnTo={finalDeskUrl(params)} style={{display:"flex",gap:12,alignItems:"flex-end",flexWrap:"wrap"}}>
       <input type="hidden" name="stage" value={row.stage} /><input type="hidden" name="packageId" value={row.packageId} /><input type="hidden" name="studentId" value={row.studentId} />
       <label>{t(lang,"Responsible teacher","负责老师")}<select name="teacherId" defaultValue="" required><option value="">{t(lang,"Select after confirmation","确认后选择老师")}</option>{orderedTeachers.map(teacher => <option key={teacher.id} value={teacher.id} disabled={handled.has(teacher.id)}>{teacher.name}{handled.has(teacher.id) ? ` · ${t(lang,"Already has a report","已有报告任务")}` : recorded.has(teacher.id) ? ` · ${t(lang,"Recorded teacher","有授课记录")}` : ""}</option>)}</select></label>
@@ -678,7 +677,8 @@ async function CandidateDetail({ row, teachers, params, lang }: { row: Candidate
   </section>;
 }
 
-function ReportDetail({ report, params, lang, origin }: { report: DeskReport; params: FinalDeskParams; lang: Lang; origin: string }) {
+async function ReportDetail({ report, params, lang, origin }: { report: DeskReport; params: FinalDeskParams; lang: Lang; origin: string }) {
+  const lastExport = await prisma.auditLog.findFirst({ where: { module: "LEARNING_REPORT_DELIVERY", action: "EXPORT_FINAL_PDF", entityType: "FinalReport", entityId: report.id }, orderBy: { createdAt: "desc" }, select: { createdAt: true, actorName: true } });
   const draft = parseFinalReportDraft({ ...(report.reportJson && typeof report.reportJson === "object" ? report.reportJson : {}), recommendedNextStep: report.recommendation ?? (report.reportJson as any)?.recommendedNextStep });
   const meta = parseFinalReportMeta(report.reportJson), approval = learningReportDeliveryApproval(report.reportJson);
   const canShare = report.status === "SUBMITTED" || report.status === "FORWARDED", activeShare = isShareActive(report);
@@ -695,16 +695,16 @@ function ReportDetail({ report, params, lang, origin }: { report: DeskReport; pa
     <section className="final-desk-panel">
       <h3>{report.student.name} · {report.course.name}{report.subject ? ` · ${report.subject.name}` : ""}</h3>
       <a href={finalReportPeriodsUrl(report.studentId, report.packageId)}>{t(lang, "View this student’s learning periods", "查看该学生的学习期次")}</a>
-      <div className="final-desk-summary"><span>{t(lang,"Teacher","负责老师")}: <strong>{report.teacher.name}</strong></span><span>{report.reportPeriodId ? t(lang,"Confirmed learning period","已确认学习期次") : t(lang,"Package balance","课包余额")} <strong>{report.reportPeriodId ? report.reportPeriodLabel : `${formatMinutesToHours(Number(report.package.remainingMinutes ?? 0))}h / ${formatMinutesToHours(Number(report.package.totalMinutes ?? 0))}h`}</strong></span><span className="final-desk-badge">{phaseLabel(report,lang)}</span></div>
-      {report.status === "ASSIGNED" ? <p className="final-desk-hint">{!isFinalReportSubmissionDue(report.package.remainingMinutes, report.reportPeriodId) ? t(lang,"The teacher can work on the draft now. Formal submission becomes available at zero balance.","老师现在可填写并保存草稿，课包余额归零后才能正式提交。") : t(lang,"The teacher can now complete and submit this report from their Final Reports page.","老师现在可从本人结课报告列表进入并正式提交。")}</p> : null}
+      <div className="final-desk-summary"><span>{t(lang,"Teacher","负责老师")}: <strong>{report.teacher.name}</strong></span><span>{report.reportPeriodId ? t(lang,"Learning period","学习期次") : t(lang,"Package balance","课包余额")} <strong>{report.reportPeriodId ? report.reportPeriodLabel : `${formatMinutesToHours(Number(report.package.remainingMinutes ?? 0))}h / ${formatMinutesToHours(Number(report.package.totalMinutes ?? 0))}h`}</strong></span><span className="final-desk-badge">{phaseLabel(report,lang)}</span></div>
+      {report.status === "ASSIGNED" ? <p className="final-desk-hint">{t(lang,"The teacher can now complete and submit this report from their Final Reports page.","老师现在可从本人结课报告列表进入并正式提交。")}</p> : null}
     </section>
     <section className="final-desk-panel"><h3>{t(lang,"Teacher report","老师报告")}</h3>
       {fields.some(([,value])=>Boolean(value)) ? fields.filter(([,value])=>Boolean(value)).map(([label,value])=><div className="final-desk-report-field" key={label}><h4>{label}</h4><p>{value}</p></div>) : <p>{t(lang,"The teacher has not saved the report text yet.","老师尚未保存报告正文。")}</p>}
       {report.finalLevel || report.overallScore ? <p>{t(lang,"Final level / score","最终水平／分数")}: {report.finalLevel || "—"} / {report.overallScore?.toString() || "—"}</p> : null}
     </section>
     {canShare ? <section className="final-desk-panel"><h3>{t(lang,"Parent report & delivery","家长报告与交付")}</h3>
-      <div className="final-desk-actions"><a className="final-desk-primary" href={parentHref}>{t(lang,"Review parent bilingual report","核对家长双语报告")}</a><a href={`/api/admin/final-reports/${encodeURIComponent(report.id)}/pdf`} target="_blank" rel="noreferrer">{t(lang,"Download PDF","下载 PDF")}</a></div>
-      {!report.archivedAt && !report.deliveredAt && report.status === "SUBMITTED" && !approval.approvedAt ? <div className="final-desk-step"><p>{t(lang,"Review the report and parent version before confirming it for delivery.","请先核对报告和家长版本，再确认可发送。")}</p><DeskAction action={approveFinalReportForDelivery} params={params} lang={lang}>{recordId}<button>{t(lang,"Confirm for Emily to send","确认可由 Emily 发送")}</button></DeskAction></div> : null}
+      <div className="final-desk-actions"><a className="final-desk-primary" href={parentHref}>{t(lang,"Review parent bilingual report","核对家长双语报告")}</a>{(!finalReportNeedsAcademicReview(report) || approval.approvedAt) && <a href={finalReportNeedsAcademicReview(report) ? `/api/teacher/learning-reports/FINAL/${encodeURIComponent(report.id)}/parent-edition/pdf?lang=EN` : `/api/admin/final-reports/${encodeURIComponent(report.id)}/pdf`} target="_blank" rel="noreferrer">{finalReportNeedsAcademicReview(report) ? t(lang,"Download English PDF","下载英文 PDF") : t(lang,"Download PDF","下载 PDF")}</a>}</div>
+      {!report.archivedAt && !report.deliveredAt && report.status === "SUBMITTED" && !approval.approvedAt ? <div className="final-desk-step"><p>{t(lang,"Review the report and parent version before confirming it for delivery.","请先核对报告和家长版本，再确认可发送。")}</p><DeskAction action={approveFinalReportForDelivery} params={params} lang={lang}>{recordId}<input type="hidden" name="reviewedVersion" value={report.updatedAt.toISOString()} /><button>{t(lang,"Approve for parent download","审核通过，允许下载家长版")}</button></DeskAction></div> : null}
       {!report.archivedAt && !report.deliveredAt && ((report.status === "SUBMITTED" && Boolean(approval.approvedAt)) || report.status === "FORWARDED") ? <div className="final-desk-step"><p>{t(lang,"Record delivery after the report has actually been sent to the parent.","实际发送给家长后，再记录交付结果。")}</p><DeskAction action={markFinalReportDelivered} params={params} lang={lang}>{recordId}
         <label>{t(lang,"Channel","发送渠道")}<select name="deliveryChannel" defaultValue={report.deliveryChannel ?? "WECHAT"}>{FINAL_REPORT_DELIVERY_CHANNELS.map(channel => <option key={channel} value={channel}>{deliveryChannelLabel(lang,channel)}</option>)}</select></label>
         <label>{t(lang,"Note (optional)","备注（选填）")}<input name="deliveryNote" defaultValue={meta.deliveryNote} /></label><button>{t(lang,"Record delivered","记录已交付")}</button>
@@ -712,7 +712,7 @@ function ReportDetail({ report, params, lang, origin }: { report: DeskReport; pa
       {report.deliveredAt ? <p>{t(lang,"Delivered","已交付")}: {formatBusinessDateTime(report.deliveredAt)} · {report.deliveredByUser?.name || "—"} · {deliveryChannelLabel(lang,report.deliveryChannel || "")}{meta.deliveryNote ? ` · ${meta.deliveryNote}` : ""}</p> : null}
     </section> : null}
     <details className="final-desk-more"><summary>{t(lang,"More actions: share, exemption and archive","更多操作：分享、无需报告与归档")}</summary><div>
-      {!report.archivedAt && canShare && (!report.reportPeriodId || approval.approvedAt) ? <section><h4>{t(lang,"Parent read-only share link","家长只读分享链接")}</h4>
+      {!report.archivedAt && canShare && (!finalReportNeedsAcademicReview(report) || approval.approvedAt) ? <section><h4>{t(lang,"Parent read-only share link","家长只读分享链接")}</h4>
         {activeShare ? <><a href={shareHref} target="_blank" rel="noreferrer">{t(lang,"Open share page","打开分享页")}</a><p className="final-desk-url">{shareHref}</p><p>{report.shareExpiresAt ? `${t(lang,"Expires","有效至")}: ${formatBusinessDateTime(report.shareExpiresAt)}` : ""}</p></> : <p>{isShareExpired(report) ? t(lang,"The previous link has expired.","原分享链接已过期。") : t(lang,"No active share link.","当前没有生效的分享链接。")}</p>}
         <DeskAction action={enableFinalReportShare} params={params} lang={lang}>{recordId}<label>{t(lang,"Validity","有效期")}<select name="shareDurationDays" defaultValue="30">{FINAL_REPORT_SHARE_DURATION_DAYS.map(days => <option key={days} value={days}>{shareDurationLabel(lang,days)}</option>)}</select></label><button>{activeShare ? t(lang,"Refresh share link","刷新分享链接") : t(lang,"Create parent share link","生成家长分享链接")}</button></DeskAction>
         {activeShare ? <DeskAction action={disableFinalReportShare} params={params} lang={lang}>{recordId}<button>{t(lang,"Disable share link","停用分享链接")}</button></DeskAction> : null}
@@ -724,7 +724,9 @@ function ReportDetail({ report, params, lang, origin }: { report: DeskReport; pa
     </div></details>
     <details className="final-desk-more"><summary>{t(lang,"History & internal notes","关键时间与内部记录")}</summary><div>
       <p>{t(lang,"Assigned","分配时间")}: {formatBusinessDateTime(report.assignedAt)} · {report.assignedByUser?.name || "—"}</p>
+      {typeof (report.reportJson as any)?._meta?.draftQueuedAt === "string" ? <p>{t(lang,"Saved teacher draft moved to academic review","已有老师原稿转入教学审核")}: {formatBusinessDateTime(new Date((report.reportJson as any)._meta.draftQueuedAt))}</p> : null}
       {report.submittedAt ? <p>{t(lang,"Submitted","提交时间")}: {formatBusinessDateTime(report.submittedAt)}</p> : null}
+      {lastExport ? <p>{t(lang,"Last PDF export","最近正式导出")}: {formatBusinessDateTime(lastExport.createdAt)} · {lastExport.actorName}</p> : null}
       {report.forwardedAt ? <p>{t(lang,"Forwarded","转发时间")}: {formatBusinessDateTime(report.forwardedAt)} · {meta.forwardedByName || "—"}</p> : null}
       {approval.approvedAt ? <p>{t(lang,"Sending approved","发送确认")}: {formatBusinessDateTime(new Date(approval.approvedAt))} · {approval.approvedByName || "—"}</p> : null}
       {report.exemptedAt ? <p>{t(lang,"Exempted","豁免时间")}: {formatBusinessDateTime(report.exemptedAt)} · {report.exemptedByUser?.name || "—"} · {exemptReasonLabel(lang,report.exemptReason || "")}</p> : null}

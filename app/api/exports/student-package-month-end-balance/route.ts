@@ -1,3 +1,6 @@
+import { prepaidFamilyReport } from "@/lib/prepaid-family-report";
+import { prepaidBalanceCsv } from "@/lib/prepaid-balance-csv";
+import { reportDate } from "@/lib/prepaid-family-calculation";
 import { requireAdmin } from "@/lib/auth";
 import { getLang, type Lang } from "@/lib/i18n";
 import {
@@ -34,6 +37,18 @@ export async function GET(req: Request) {
   await requireAdmin();
   const lang = await getLang();
   const { searchParams } = new URL(req.url);
+  if (searchParams.has("date")) {
+    const date = reportDate(searchParams.get("date") ?? "");
+    if (!date) return new Response("Invalid report date", { status: 400 });
+    const rows = await prepaidFamilyReport(date);
+    return new Response(prepaidBalanceCsv(date, rows), {
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Cache-Control": "private, no-store",
+        "Content-Disposition": `attachment; filename="family-prepaid-${date}.csv"`,
+      },
+    });
+  }
   const month = searchParams.get("month") ?? "";
 
   if (!parseMonthInput(month)) {

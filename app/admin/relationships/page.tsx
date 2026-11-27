@@ -25,7 +25,7 @@ export default async function RelationshipsPage({searchParams}:{searchParams?:Pr
  const sort=['students','open'].includes(sp?.sort??'')?sp!.sort!:'due';
  metrics.sort((a,b)=>sort==='students'?b.students.linkedStudents-a.students.linkedStudents:sort==='open'?b.students.openStudentOpportunities-a.students.openStudentOpportunities:(a.work.nextDue?.getTime()??Infinity)-(b.work.nextDue?.getTime()??Infinity));
  return <main style={{display:'grid',gap:16}}>
- <header><h1>{t(lang,'Relationships & referrals','关系与转介')}</h1><p>{t(lang,'Maintain each relationship and follow its students and cooperation projects separately.','持续维护每段关系，分别跟进其介绍的学生和合作项目。')}</p><a href="/admin/leads">{t(lang,'Student opportunities & original records','学生商机与原始记录')}</a></header>
+ <header><h1>{t(lang,'Relationships & referrals','关系与转介')}</h1><p>{t(lang,'Maintain each relationship and follow its students and cooperation projects separately.','持续维护每段关系，分别跟进其介绍的学生和合作项目。')}</p><a href="/admin/relationships/map" style={{display:'inline-block',marginRight:18,fontWeight:700}}>{t(lang,'Open relationship map →','打开关系地图 →')}</a><a href="/admin/leads">{t(lang,'Student opportunities & original records','学生商机与原始记录')}</a></header>
  {sp?.err?<p role="alert" style={{color:'#991b1b'}}>{sp.err}</p>:null}{sp?.ok?<p role="status">{t(lang,'Saved','已保存')}</p>:null}
  <section style={panel}><form method="get" style={{display:'flex',gap:10,flexWrap:'wrap'}}>
   <input name="q" defaultValue={q} aria-label={t(lang,'Search relationship or owner','搜索关系或负责人')} placeholder={t(lang,'Search relationship or owner','搜索关系或负责人')}/>

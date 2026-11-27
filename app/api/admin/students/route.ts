@@ -1,4 +1,8 @@
 import { prisma } from "@/lib/prisma";
+import {
+  enrollStudentCustomer,
+  StudentIdentityConflict,
+} from "@/lib/customer-onboarding";
 import { requireAdmin } from "@/lib/auth";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
@@ -9,20 +13,25 @@ export async function GET(req: Request) {
   await requireAdmin();
   const q = new URL(req.url).searchParams.get("q")?.trim() ?? "";
   if (!q) return Response.json({ students: [] });
-  const students = await prisma.student.findMany({ where: { name: { contains: q, mode: "insensitive" } },
-    select: { id: true, name: true, grade: true }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 30 });
+  const students = await prisma.student.findMany({
+    where: { name: { contains: q, mode: "insensitive" } },
+    select: { id: true, name: true, grade: true },
+    orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+    take: 30,
+  });
   return Response.json({ students });
 }
 
 function parseDateOnly(value: string) {
   if (!value) return null;
   const [Y, M, D] = value.split("-").map(Number);
-  if (!Number.isFinite(Y) || !Number.isFinite(M) || !Number.isFinite(D)) return "invalid";
+  if (!Number.isFinite(Y) || !Number.isFinite(M) || !Number.isFinite(D))
+    return "invalid";
   return new Date(Y, M - 1, D, 0, 0, 0, 0);
 }
 
 export async function POST(req: Request) {
-  await requireAdmin();
+  const actor = await requireAdmin();
 
   let body: any;
   try {
@@ -53,39 +62,54 @@ export async function POST(req: Request) {
   const sourceChannelId = String(body?.sourceChannelId ?? "").trim() || null;
   const studentTypeId = String(body?.studentTypeId ?? "").trim() || null;
 
-  if (!name) return bad("Name is required", 409);
+  if (!name && !body?.customer?.existingStudentId)
+    return bad("Name is required", 409);
 
   const birthDate = parseDateOnly(birthDateStr);
   if (birthDate === "invalid") return bad("Invalid birthDate", 409);
   const nextActionDue = parseDateOnly(nextActionDueStr);
   if (nextActionDue === "invalid") return bad("Invalid nextActionDue", 409);
 
-  const created = await prisma.student.create({
-    data: {
-      name,
-      school: school || null,
-      grade: grade || null,
-      targetSchool: targetSchool || null,
-      currentMajor: currentMajor || null,
-      coachingContent: coachingContent || null,
-      note: note || null,
-      curriculum: curriculum || null,
-      englishLevel: englishLevel || null,
-      parentExpectation: parentExpectation || null,
-      mainAnxiety: mainAnxiety || null,
-      personalityNotes: personalityNotes || null,
-      academicRiskLevel: academicRiskLevel || null,
-      currentRiskSummary: currentRiskSummary || null,
-      nextAction: nextAction || null,
-      nextActionDue,
-      advisorOwner: advisorOwner || null,
-      servicePlanType: servicePlanType || null,
-      birthDate,
-      sourceChannelId,
-      studentTypeId,
-    },
-    select: { id: true },
-  });
-
-  return Response.json({ ok: true, studentId: created.id }, { status: 201 });
+  try {
+    const result = await enrollStudentCustomer(
+      actor,
+      {
+        name,
+        school: school || null,
+        grade: grade || null,
+        targetSchool: targetSchool || null,
+        currentMajor: currentMajor || null,
+        coachingContent: coachingContent || null,
+        note: note || null,
+        curriculum: curriculum || null,
+        englishLevel: englishLevel || null,
+        parentExpectation: parentExpectation || null,
+        mainAnxiety: mainAnxiety || null,
+        personalityNotes: personalityNotes || null,
+        academicRiskLevel: academicRiskLevel || null,
+        currentRiskSummary: currentRiskSummary || null,
+        nextAction: nextAction || null,
+        nextActionDue,
+        advisorOwner: advisorOwner || null,
+        servicePlanType: servicePlanType || null,
+        birthDate,
+        sourceChannelId,
+        studentTypeId,
+      },
+      body?.customer ?? {},
+    );
+    return Response.json(
+      { ok: true, ...result },
+      { status: result.reused ? 200 : 201 },
+    );
+  } catch (error) {
+    if (error instanceof StudentIdentityConflict)
+      return bad(error.message, 409, { candidates: error.candidates });
+    return bad(
+      error instanceof Error && error.message.includes(" / ")
+        ? error.message
+        : "Student registration failed; review the current record",
+      409,
+    );
+  }
 }

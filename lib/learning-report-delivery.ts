@@ -37,6 +37,14 @@ export function learningReportDeliveryApproval(raw: unknown): LearningReportDeli
   };
 }
 
+export function finalReportNeedsAcademicReview(report: { reportPeriodId?: string | null; reportJson: unknown }) {
+  return Boolean(report.reportPeriodId) || learningReportMeta(report.reportJson).academicReviewRequired === true;
+}
+
+export function queueFinalReportForReview(draft: Record<string, unknown>) {
+  return { ...draft, _meta: { ...learningReportMeta(draft), academicReviewRequired: true } };
+}
+
 export function isLearningReportApprovedForDelivery(raw: unknown) {
   return Boolean(learningReportDeliveryApproval(raw).approvedAt);
 }
@@ -110,6 +118,7 @@ export async function approveLearningReportForDelivery(input: {
   reportId: string;
   actor: DeliveryActor;
   now?: Date;
+  reviewedVersion?: string;
 }) {
   const now = input.now ?? new Date();
   return prisma.$transaction(async (tx) => {
@@ -125,7 +134,8 @@ export async function approveLearningReportForDelivery(input: {
 
     const row = await tx.finalReport.findUnique({ where: { id: input.reportId }, select: { id: true, status: true, archivedAt: true, deliveredAt: true, reportJson: true, updatedAt: true, reportPeriodId: true } });
     if (!row || row.status !== "SUBMITTED" || row.archivedAt || row.deliveredAt) throw new Error("Report is not eligible for delivery approval");
-    if (row.reportPeriodId && isLearningReportApprovedForDelivery(row.reportJson)) return learningReportDeliveryApproval(row.reportJson);
+    if (input.reviewedVersion && row.updatedAt.toISOString() !== input.reviewedVersion) throw new Error("Refresh the changed report before approval");
+    if (finalReportNeedsAcademicReview(row) && isLearningReportApprovedForDelivery(row.reportJson)) return learningReportDeliveryApproval(row.reportJson);
     const reportJson = withApproval(row.reportJson, input.actor, now);
     const updated = await tx.finalReport.updateMany({
       where: { id: row.id, updatedAt: row.updatedAt, status: "SUBMITTED", archivedAt: null, deliveredAt: null },

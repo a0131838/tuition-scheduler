@@ -52,7 +52,25 @@ test("isolated schedule transaction creates one task per household, restricts ha
     const session = await prisma.session.create({ data: { classId: cls.id, ...interval(0) } });
     await prisma.attendance.create({ data: { studentId: cancelled.id, sessionId: session.id, status: "EXCUSED" } });
     const change = (before: ReturnType<typeof interval>, after: ReturnType<typeof interval>) => prisma.$transaction(tx => updateSessionTimeWithNotice(tx, { sessionId: session.id, before, after, actor: eva }));
-    const result = await change(interval(0), interval(60));
+    const planning = await change(interval(0), interval(15));
+    const planningId = planning.noticeIds[0];
+    const waive = (actor: typeof eva, confirmed = true) => updateParentCommunicationTask({
+      id: planningId, actor, action: "waive_planning", data: { oldTimeNotCommunicated: confirmed },
+    });
+    await assert.rejects(waive(emily), /请先接手/);
+    await assert.rejects(waive(jasmine), /Eva 或 Emily/);
+    await assert.rejects(waive(eva, false), /请先确认/);
+    const closed = await Promise.all([waive(eva), waive(eva)]);
+    for (const row of closed) {
+      assert.equal(row.status, "WAIVED");
+      assert.equal(row.manualSentAt, null);
+      assert.equal(row.evidenceUrl, null);
+      assert.ok(row.completedAt);
+    }
+    assert.equal(await prisma.auditLog.count({ where: { entityId: planningId, action: "WAIVE_PLANNING_RESCHEDULE" } }), 1);
+    assert.equal((await getRescheduleInbox(eva.id)).mine, 0);
+    const result = await change(interval(15), interval(60));
+    await assert.rejects(waive(eva), /不是当前改课版本/);
     assert.equal(result.noticeIds.length, 1);
     const id = result.noticeIds[0];
     const task = await prisma.parentCommunicationTask.findUniqueOrThrow({ where: { id } });
@@ -74,7 +92,9 @@ test("isolated schedule transaction creates one task per household, restricts ha
     await assert.rejects(act(emily, "manual_sent"), /截图/);
     await assert.rejects(attachRescheduleEvidence(task, eva.id, "test/wrong.jpg"), /当前负责人/);
     await attachRescheduleEvidence(task, emily.id, "test/evidence.jpg");
+    await assert.rejects(act(emily, "waive_planning", { oldTimeNotCommunicated: true }), /已有发送记录/);
     const sent = await act(emily, "manual_sent");
+    await assert.rejects(act(emily, "waive_planning", { oldTimeNotCommunicated: true }), /已有发送记录/);
     assert.equal(sent.status, "WAITING_PARENT");
     assert.equal(sent.completedAt, null);
     assert.equal((await getRescheduleInbox(emily.id)).waiting, 1);
@@ -82,16 +102,17 @@ test("isolated schedule transaction creates one task per household, restricts ha
     assert.equal((await act(emily, "parent_confirmed", { channel: "PHONE", note: "Test parent confirmed the new time" })).status, "COMPLETED");
     const latest = await change(interval(60), interval(120));
     assert.equal(latest.noticeIds.length, 1);
+    await assert.rejects(act(eva, "waive_planning", { oldTimeNotCommunicated: true }, latest.noticeIds[0]), /已有发送记录/);
     assert.equal((await prisma.parentCommunicationTask.findUniqueOrThrow({ where: { id } })).status, "SUPERSEDED");
     await assert.rejects(act(emily, "copy"), /不是当前改课版本/);
     await assert.rejects(change(interval(60), interval(180)), /请刷新/);
-    assert.equal(await prisma.parentCommunicationTask.count({ where: { sessionId: session.id } }), 2);
+    assert.equal(await prisma.parentCommunicationTask.count({ where: { sessionId: session.id } }), 3);
     await assert.rejects(prisma.$transaction(async tx => {
       await updateSessionTimeWithNotice(tx, { sessionId: session.id, before: interval(120), after: interval(180), actor: eva });
       throw new Error("simulate original write rollback");
     }), /simulate/);
     assert.equal((await prisma.session.findUniqueOrThrow({ where: { id: session.id } })).startAt.toISOString(), interval(120).startAt.toISOString());
-    assert.equal(await prisma.parentCommunicationTask.count({ where: { sessionId: session.id } }), 2);
+    assert.equal(await prisma.parentCommunicationTask.count({ where: { sessionId: session.id } }), 3);
     assert.equal((await prisma.attendance.findUniqueOrThrow({ where: { sessionId_studentId: { sessionId: session.id, studentId: cancelled.id } } })).deductedMinutes, 0);
   } finally {
     await prisma.$disconnect();

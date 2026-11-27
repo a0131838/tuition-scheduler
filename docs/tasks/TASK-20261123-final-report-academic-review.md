@@ -1,0 +1,7 @@
+# Academic review of final reports after an early renewal
+
+Teachers can submit an assigned final report from the web or the staff mini program while lessons continue. The academic coordinator opens Final Reports → Review & delivery, reviews the tutor's text and the parent edition, confirms the translation for bilingual delivery, then approves the report for parent download. Staff record delivery separately after sending it. The audit trail records each formal PDF export with the language, source version and staff member.
+
+The scoped recovery command takes an explicit list of report IDs and hashes obtained from a read-only preflight. It moves only eligible saved drafts into review and freezes the existing attendance snapshot or the attendance through their original assignment. It does not invent purchase periods or teacher submission dates. Empty drafts stay with the writer. A second invocation skips recovered records. All selected records are processed in one transaction. The report desk shows when an existing draft was queued. There is no schema or billing migration.
+
+Isolated checks covered browser tutor submission and academic approval, staff mini submission with a partial payload, missing text, Finance submission denial, unchanged package and ledger snapshots, atomic recovery and retry, PDF gating and actual PDF bytes in three languages. The translation service used a fixture. Verify live reports through their existing IDs and compare narrative and package transaction hashes before and after recovery.

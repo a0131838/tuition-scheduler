@@ -13,7 +13,7 @@ import { feedbackAttachmentDto } from "@/lib/feedback-attachments";
 import { getVisibleSessionStudents } from "@/lib/session-students";
 import { renderCommunicationTemplate, renderPublishedCommunicationTemplate } from "@/lib/parent-communication-templates";
 import { monthlySchedulingMonthKey } from "@/lib/monthly-scheduling";
-import { getRescheduleDutyPair, isRescheduleNotice, lockCurrentRescheduleNotice, noticeData, noticeTiming, RESCHEDULE_NOTICE_PREFIX, RESCHEDULE_WAITING_PARENT } from "@/lib/reschedule-notices";
+import { canWaivePlanningNotice, sentScheduleDeliveries, getRescheduleDutyPair, isRescheduleNotice, lockCurrentRescheduleNotice, noticeData, noticeTiming, RESCHEDULE_NOTICE_PREFIX, RESCHEDULE_WAITING_PARENT } from "@/lib/reschedule-notices";
 
 export type CommunicationActor = {
   id: string;
@@ -228,13 +228,13 @@ async function upsertCommunicationTask(input: {
         where: { sessionId: existing.sessionId, studentId: existing.studentId, parentId: existing.parentId,
           taskKey: { startsWith: RESCHEDULE_NOTICE_PREFIX }, supersededAt: null,
           createdAt: { gte: existing.manualSentAt ?? existing.completedAt ?? existing.createdAt } },
-        select: { taskKey: true, templateVariables: true, wechatGroupName: true },
+        select: { taskKey: true, templateVariables: true, wechatGroupName: true, status: true },
       });
       const oldLines = reminderScheduleLines(existing.messageText);
       const newLines = reminderScheduleLines(input.messageText);
       if (notices.some(row => {
         const data = noticeData(row);
-        return data && row.wechatGroupName === existing.wechatGroupName && oldLines.length === 1 && oldLines[0] === data.beforeLine &&
+        return row.status !== "WAIVED" && data && row.wechatGroupName === existing.wechatGroupName && oldLines.length === 1 && oldLines[0] === data.beforeLine &&
           (forceCourseCancelled
             ? formatBusinessDateOnly(new Date(data.beforeStart)) !== formatBusinessDateOnly(new Date(data.afterStart))
             : newLines.length === 1 && newLines[0] === data.afterLine);
@@ -859,6 +859,7 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
     : [];
   const correctionSourceMap = new Map(correctionSources.map((row) => [row.id, row]));
   const duty = input.actorId && rows.some(isRescheduleNotice) ? await getRescheduleDutyPair() : [];
+  const sentSchedules = duty.length ? await sentScheduleDeliveries([...new Set(rows.filter(isRescheduleNotice).flatMap(row => row.sessionId ? [row.sessionId] : []))]) : [];
   const isDuty = duty.some(person => person.id === input.actorId);
   const peer = isDuty ? duty.find(person => person.id !== input.actorId) ?? null : null;
   const correctionSessionIds = Array.from(new Set(correctionSources.map((row) => row.sessionId).filter((id): id is string => Boolean(id))));
@@ -956,7 +957,7 @@ export async function listParentCommunicationTasks(input: { status?: string; kin
       automaticNotification: deliveryEvidence.get(row.id)!,
       correction,
       rescheduleNotice: notice && timing ? {
-        ...timing, isOwner, peer,
+        ...timing, isOwner, peer, canWaivePlanning: isOwner && canWaivePlanningNotice(row, sentSchedules),
         canTakeOver: isDuty && !isOwner && !row.manualSentAt && OPEN_STATUSES.includes(row.status) && (!row.ownerUserId || timing.handoffDue),
         beforeStart: notice.beforeStart, afterStart: notice.afterStart,
       } : null,
@@ -998,6 +999,7 @@ async function updateCommunicationTaskAtomically(input: CommunicationUpdateInput
       if (!team.some(person => person.id === actor.id)) throw new Error("请由 Eva 或 Emily 处理改课通知。");
       if (input.action === "manual_sent" && task.manualSentAt) return task;
       if (input.action === "parent_confirmed" && task.status === "COMPLETED" && task.manualSentAt) return task;
+      if (input.action === "waive_planning" && task.status === "WAIVED" && task.ownerUserId === actor.id && data.oldTimeNotCommunicated === true) return task;
       if (!OPEN_STATUSES.includes(task.status)) throw new Error("该通知已结束，请查看最新版本。");
       const timing = noticeTiming(task, now)!;
       const peer = team.find(person => person.id !== actor.id);
@@ -1018,6 +1020,14 @@ async function updateCommunicationTaskAtomically(input: CommunicationUpdateInput
       if (input.action === "transfer") {
         if (!peer || data.ownerUserId !== peer.id) throw new Error("只能转交给另一位负责改课通知的教务。");
         return save({ ownerUserId: peer.id, ownerName: peer.name }, "TRANSFER_RESCHEDULE_NOTICE", { to: peer.name });
+      }
+      if (input.action === "waive_planning") {
+        if (data.oldTimeNotCommunicated !== true) throw new Error("请先确认家长尚未收到旧时间。");
+        if (!task.sessionId || !canWaivePlanningNotice(task, await sentScheduleDeliveries([task.sessionId], tx))) {
+          throw new Error("已有发送记录，请继续原通知流程。");
+        }
+        const reason = "排课中调整，负责人已确认旧时间未告知家长。";
+        return save({ status: "WAIVED", completedAt: now, note: reason }, "WAIVE_PLANNING_RESCHEDULE", { reason, oldTimeNotCommunicated: true });
       }
       if (input.action === "parent_confirmed") {
         const channel = String(data.channel ?? "");
@@ -1198,6 +1208,16 @@ async function reviewCommunicationFeedback(input: CommunicationUpdateInput) {
 export async function updateParentCommunicationTask(input: CommunicationUpdateInput) {
   if(input.actor.isObserver) throw new Error("Observer account is read-only / 观察者账号不能修改系统数据");
   if (["publish_feedback", "return_feedback"].includes(input.action)) return reviewCommunicationFeedback(input);
+  if (input.action === "waive_planning") {
+    try {
+      return await updateCommunicationTaskAtomically(input);
+    } catch (error) {
+      // Another submit or send committed while we waited for the current task lock.
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError &&
+          (error.code === "P2034" || (error.code === "P2010" && error.meta?.code === "40001")))) throw error;
+      return updateCommunicationTaskAtomically(input);
+    }
+  }
   if (["claim", "transfer", "copy", "manual_sent", "waive", "share_card", "parent_confirmed", "resolve_exception"].includes(input.action)) return updateCommunicationTaskAtomically(input);
 
   if (input.action === "retry_auto") return retryCommunicationNotification(input.id, input.actor.id);

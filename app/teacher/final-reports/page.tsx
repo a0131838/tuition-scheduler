@@ -195,7 +195,7 @@ export default async function TeacherFinalReportsPage() {
                   {row.reportPeriodId ? <strong>{row.reportPeriodLabel}</strong> : <>
                   {formatMinutesToHours(safeMinutes(row.package.remainingMinutes))}h / {formatMinutesToHours(safeMinutes(row.package.totalMinutes))}h
                   <div style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Current package use", "当前课包使用率")}: {packageUsagePercent(row.package.totalMinutes, row.package.remainingMinutes)}%</div>
-                  {row.status === "ASSIGNED" && Number(row.package.remainingMinutes ?? 0) > 0 ? <div style={{ fontSize: 12, color: "#1d4ed8" }}>{t(lang, "Draft only until balance reaches zero", "余额归零前仅可保存草稿")}</div> : null}
+                  {row.status === "ASSIGNED" && Number(row.package.remainingMinutes ?? 0) > 0 ? <div style={{ fontSize: 12, color: "#1d4ed8" }}>{t(lang, "Submit when ready for academic review", "填写完成后可提交教学审核")}</div> : null}
                   </>}
                 </td>
                 <td style={{ padding: 6 }}>{fmt(row.assignedAt)}</td>

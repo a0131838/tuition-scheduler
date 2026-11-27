@@ -1,3 +1,4 @@
+import {ensureStudentCustomer} from "./customer-registry";
 import crypto from "crypto";
 import { Prisma, StudentContractFlowType, StudentParentIntakeStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -304,9 +305,18 @@ export async function submitStudentParentIntake(input: {
   ].filter(Boolean);
 
   const next = await prisma.$transaction(async (tx) => {
-    const student = current.studentId
+    await tx.$queryRaw`SELECT id FROM "StudentParentIntake" WHERE id=${current.id} FOR UPDATE`;
+    const locked=await tx.studentParentIntake.findUniqueOrThrow({where:{id:current.id}});
+    if(locked.status!==StudentParentIntakeStatus.LINK_SENT)throw new Error("This intake was already processed; refresh the link");
+    if (!locked.studentId) {
+      const normalized = payload.studentName.trim().toLowerCase();
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${normalized}),1124)::text`;
+      if (await tx.student.findFirst({where:{name:{equals:payload.studentName,mode:"insensitive"}},select:{id:true}}))
+        throw new Error("Registration needs staff identity review / 可能已有学生，请联系工作人员核对并关联原档案");
+    }
+    const student = locked.studentId
       ? await tx.student.update({
-          where: { id: current.studentId },
+          where: { id: locked.studentId },
           data: {
             school: payload.school,
             grade: payload.grade,
@@ -327,6 +337,7 @@ export async function submitStudentParentIntake(input: {
           },
           select: { id: true, name: true },
         });
+    await ensureStudentCustomer(tx,student.id,null,{pendingContact:{name:payload.parentFullNameEn,phone:payload.phone,relationship:payload.relationshipToStudent}},locked.createdByUserId);
     return tx.studentParentIntake.update({
       where: { id: current.id },
       data: {
@@ -337,7 +348,7 @@ export async function submitStudentParentIntake(input: {
       },
       include: intakeInclude,
     });
-  });
+  },{timeout:30000});
 
   return summarize(next);
 }

@@ -27,6 +27,24 @@ export function noticeData(task: Pick<NoticeRow, "taskKey" | "templateVariables"
   return [data.beforeStart, data.beforeEnd, data.afterStart, data.afterEnd].every(t => typeof t === "string" && Number.isFinite(Date.parse(t))) ? data : null;
 }
 
+// The same eligibility rule drives both clients and the locked write.
+type Delivery = Pick<ParentCommunicationTask, "sessionId" | "studentId" | "parentId">;
+export async function sentScheduleDeliveries(sessionIds: string[], db: Prisma.TransactionClient = prisma) {
+  if (!sessionIds.length) return [];
+  return db.parentCommunicationTask.findMany({
+    where: { sessionId: { in: sessionIds }, kind: { in: ["COURSE_REMINDER_PARENT", "COURSE_CHANGE"] },
+      OR: [{ manualSentAt: { not: null } }, { evidenceUrl: { not: null } }],
+      NOT: { studentId: null, parentId: null } },
+    select: { sessionId: true, studentId: true, parentId: true },
+  });
+}
+
+export function canWaivePlanningNotice(task: Delivery & Pick<ParentCommunicationTask, "status" | "manualSentAt" | "evidenceUrl">, sent: Delivery[]) {
+  return ["READY_TO_SEND", "CLAIMED"].includes(task.status) && !task.manualSentAt && !task.evidenceUrl &&
+    !sent.some(row => row.sessionId === task.sessionId &&
+      ((row.parentId !== null && row.parentId === task.parentId) || (row.studentId !== null && row.studentId === task.studentId)));
+}
+
 export function noticeTiming(row: NoticeRow, now = new Date()) {
   const data = noticeData(row);
   if (!data) return null;
@@ -111,8 +129,12 @@ export async function updateSessionTimeWithNotice(tx: Prisma.TransactionClient, 
 
   const now = new Date();
   // Every true change invalidates the earlier version, including one already acknowledged.
+  const previous = { sessionId: session.id, taskKey: { startsWith: RESCHEDULE_NOTICE_PREFIX }, supersededAt: null };
   await tx.parentCommunicationTask.updateMany({
-    where: { sessionId: session.id, taskKey: { startsWith: RESCHEDULE_NOTICE_PREFIX }, supersededAt: null },
+    where: { ...previous, status: "WAIVED" }, data: { supersededAt: now },
+  });
+  await tx.parentCommunicationTask.updateMany({
+    where: previous,
     data: { status: "SUPERSEDED", supersededAt: now },
   });
   const students = getVisibleSessionStudents(session);

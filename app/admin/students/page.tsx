@@ -1,3 +1,5 @@
+import {eligibleCustomerUsers,customerTeamManager} from "@/lib/customer-access";
+import {readNetwork,mayLinkStudent} from "@/lib/sales-network";
 import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import { cookies } from "next/headers";
@@ -150,6 +152,8 @@ export default async function StudentsPage({
   const requestedPageSize = first(sp?.pageSize).trim();
   const cookieStore = await cookies();
   const admin = await requireAdmin();
+  const customerManager=await customerTeamManager(admin);
+  const [customerUsers,customerView]=await Promise.all([eligibleCustomerUsers(),admin.role==="ADMIN"||admin.operationsAdmin?readNetwork(admin,{scope:customerManager?"team":"mine"}):Promise.resolve(null)]);
   const canDeleteParentIntakeLinks = admin.email.trim().toLowerCase() === "zhaohongwei0880@gmail.com";
   const canResumeRememberedDesk =
     !clearDesk && !hasExplicitView && !hasSourceChannelParam && !hasStudentTypeParam && !hasQParam && !hasPageSizeParam;
@@ -724,6 +728,7 @@ export default async function StudentsPage({
       ) : null}
 
       <AdminStudentsClient
+        customerSetup={{lang,users:customerUsers,nodes:customerView?.store.nodes??[],actorId:admin.id,manager:customerManager,canLink:mayLinkStudent(admin)}}
         initialStudents={students.map((s) => ({
           id: s.id,
           name: s.name,

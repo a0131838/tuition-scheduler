@@ -1,4 +1,4 @@
-import { isLearningReportApprovedForDelivery } from "@/lib/learning-report-delivery";
+import { buildFinalReportPdfResponse } from "@/lib/final-report-pdf";
 import {
   requireParentReportActor,
   parseParentReportKind,
@@ -22,10 +22,9 @@ export async function GET(
   try {
     const { kind: raw, id } = await params;
     const kind = parseParentReportKind(raw);
-    const { row } = await requireParentReportActor(kind, id);
+    const { row, user } = await requireParentReportActor(kind, id);
     if (!["SUBMITTED", "FORWARDED", "APPROVED", "DELIVERED"].includes(row.status))
       throw new ParentReportError("SAVE_AND_SUBMIT_FIRST");
-    const { source, edition } = await currentParentEdition(kind, id);
     const url = new URL(req.url);
     const lang = url.searchParams.get("lang") || "BILINGUAL";
     if (!["ZH", "EN", "BILINGUAL"].includes(lang))
@@ -33,8 +32,8 @@ export async function GET(
     const preview = url.searchParams.get("preview") === "1";
     if (kind === "RENEWAL" && !preview && !["APPROVED", "DELIVERED"].includes(row.status))
       throw new ParentReportError("COORDINATOR_APPROVAL_REQUIRED", 403);
-    if (!preview && "reportPeriodId" in row && row.reportPeriodId && !isLearningReportApprovedForDelivery(row.reportJson))
-      throw new ParentReportError("COORDINATOR_APPROVAL_REQUIRED", 403);
+    if (kind === "FINAL" && !preview) return buildFinalReportPdfResponse(id, lang as "EN" | "ZH" | "BILINGUAL", user);
+    const { source, edition } = await currentParentEdition(kind, id);
     if (
       lang !== "EN" &&
       (!edition ||

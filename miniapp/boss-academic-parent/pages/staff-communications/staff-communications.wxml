@@ -37,6 +37,8 @@
       <button class="claim" wx:if="{{!item.rescheduleNotice && !item.isCompleted}}" data-id="{{item.id}}" bindtap="claim">领取这项任务</button>
 
       <view class="change-card" wx:if="{{item.rescheduleNotice}}">
+        <view wx:if="{{item.status === 'WAIVED'}}">{{item.note}}</view>
+        <button class="claim" wx:if="{{item.rescheduleNotice.canWaivePlanning}}" disabled="{{loading}}" data-id="{{item.id}}" bindtap="waivePlanning">排课中调整，无需补发</button>
         <view wx:if="{{item.rescheduleNotice.overdue}}">已超过 5 分钟，尚未登记发群。</view>
         <view wx:if="{{item.rescheduleNotice.handoffDue}}">已超过 10 分钟，另一位当班教务可接手。</view>
         <view wx:if="{{item.rescheduleNotice.callDue}}">请电话确认实际接送人，不要继续等待群回复。</view>

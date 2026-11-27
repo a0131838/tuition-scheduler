@@ -1,5 +1,76 @@
 # CHANGELOG LIVE
 
+## 2026-11-27-r527
+
+- Release ID: `2026-11-27-r527`
+- Deployment status: `READY`; guarded release receipt confirms the web deployment.
+- Eva and Emily can close their own current unsent internal scheduling notice after confirming the previous time was never communicated. Web and staff Mini Program share the same locked, audited action. Recorded delivery continues through the existing parent confirmation flow.
+- Verification: isolated notice lifecycle, duplicate submit, evidence and ownership checks, historical versions, web and Mini Program controls, backend regressions and application build.
+- Staff steps: `docs/tasks/TASK-20261127-planning-reschedule-waiver.md`. Rollback code point: `75b717bc`. Mini Program delivery is tracked on the Mini Program release branch.
+
+## 2026-11-25-r525
+
+- Release ID: `2026-11-25-r525`
+- Deployment status: `READY`; the guarded release record confirms deployment.
+- Finance can select a Singapore cutoff date, see family service hours, verified unearned tuition, arrears and evidence gaps, and export a comparable package-level CSV. Existing month export remains available.
+- The Louis/Daisy shared package uses dated settlement statements with explicit ledger boundaries. Payment, attendance and deduction workflows have no changes.
+- Verification covers cutoff, renewal lots, rollback, partial receipts, gifts, shared statements, Finance access, CSV parity and a read-only October production reconciliation.
+- Staff instructions: `docs/tasks/TASK-20261125-family-prepaid-balances.md`. Rollback point: `c19a5b93`.
+
+## 2026-11-23-r524
+
+- Release ID: `2026-11-23-r524`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Final browser polish for the customer workspace: keep filter checkboxes compact and remove the legacy observer banner from the embedded map viewer. Actual observer permissions and customer-detail editing gates remain unchanged.
+- Validation: full production build and browser list/map and mobile layout checks; r523 permission, financial and isolated intake acceptance remains applicable.
+- Details: `docs/tasks/TASK-20261123-customer-workspace-polish.md`. Rollback point: `3a92f952`.
+
+## 2026-11-23-r523
+
+- Release ID: `2026-11-23-r523`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Add a shared customer workspace with My / Collaborating / manager-only Team views, list/map switching and name-click details linked to native students, registered parents, partners, opportunities, packages and renewal records.
+- Financial evidence follows existing authorization; approved receipts, pending/rejected receipts, outstanding verified invoices and issued credits remain distinct. Shared family invoices are counted once. No billing, ledger, balance or portal permissions are changed.
+- Internal student enrollment records owner, collaborators, explicit guardian and source links atomically; exact existing records are reused, same-name conflicts require review, repeated requests are idempotent. Parent/partner intake and lead conversion register the same canonical student identity. Unverified contacts and relationships remain pending.
+- Verification: full production build, 185 backend tests, six focused permission/financial tests, isolated transactional/concurrency/rollback acceptance, browser family detail, existing-student reuse and Sales financial masking.
+- Authorized post-release upgrade references existing master IDs only, assigns original PDF nodes to the verified Jasmine ADMIN account, and leaves unsupported identities/ownership unconfirmed or unassigned. No new master students/parents/partners or financial records.
+- Staff steps and limitations: `docs/tasks/TASK-20261123-customer-workspace.md`. Rollback code point: `1ef4ca01`; retain audited customer metadata on rollback.
+
+## 2026-11-23-r522
+
+- Release ID: `2026-11-23-r522`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Resolve the diagnosed r521 server build OOM by setting a 3072 MB Node old-space ceiling only for `npm run build`. Preserve existing Node options, type checking and PM2 runtime configuration.
+- User explicitly authorized this recovery and completion of the GT PDF production import. r521 application features are unchanged; uncertain identities and all unverified connections remain pending Jasmine review.
+- Validation: shell syntax, build-child heap / parent-environment isolation checks, prior full application build and network/maintenance acceptance. Standard release must confirm commit equality, PM2 and HTTP, followed by approved business import and authenticated/static-asset acceptance.
+- Details: `docs/tasks/TASK-20261123-relationship-map-build-memory-recovery.md`.
+- Last healthy application rollback point: `a94fce1b`; r521 source `73a259b0` reached the server but failed before runtime restart/import.
+
+## 2026-11-23-r521
+
+- Release ID: `2026-11-23-r521`
+- Deployment status: `READY`; guarded release output is authoritative.
+- Sales & Relationships now includes a relationship map, reviewed import for the supplied GT PDF, exact CRM identity matching and independent source wording / review flags.
+- Ongoing maintenance supports adding people, existing students or student opportunities, new partner profiles/projects, additional connections, archive/restore and dynamic map organization. A new student prospect creates a lead, not an enrolled student. School connections do not imply referral ownership.
+- Import and map edits are audited, revision-checked and transactional. Duplicate/cross-kind identity links, duplicate edges and cycles are rejected; observers cannot write. Financial permissions and records are unchanged.
+- Verification: production build, 185 backend tests, 13 focused tests, isolated concurrent import/audit rollback/maintenance acceptance and authenticated browser flows. No UAT fixtures were written to production.
+- Authorized business import: source PDF hash `09ae627c6ddbcb4f8c19c8f1925d561655f164d6f3bdf647b6a0f8975c99f785`. Preserve all uncertain identities/connections for Jasmine review; do not infer student matches or reclassify old mixed leads. Exact production outcome is recorded by the import receipt.
+- Staff steps: `docs/tasks/TASK-20261123-relationship-map-pdf-import.md` and inline bilingual map maintenance guide.
+- Rollback point: `a94fce1b`. The additive map store and real imported relationship/project records remain for review if application code is rolled back; do not delete business records as rollback.
+
+## 2026-11-23-r520
+
+- Coordinators can assign a separate final report as soon as a renewal credit is recorded. Actual attended lessons supply the reporting dates. Eva can resolve unclear boundaries using recorded lessons.
+- Tutor submission freezes the attendance range for academic review. Repeat assignments reuse the same report for that credit and tutor.
+- Verified positive-balance assignment, tutor submission and approved PDF download in an isolated database and compared the original report and package ledger.
+- Staff steps in `docs/tasks/TASK-20261123-early-period-assignment.md`.
+
+## 2026-11-23-r519
+
+- Assigned final reports can enter academic review with hours remaining. Official export checks review from the admin, teacher and mini program routes. The report history shows the latest formal export.
+- Verified the isolated tutor submission, review and parent download flow with positive balances. Scoped draft recovery preserves authorship, text, actual submission timestamps and ledger entries.
+- Details: `docs/tasks/TASK-20261123-final-report-academic-review.md`.
+
 ## 2026-11-22-r518
 
 - Release ID: `2026-11-22-r518`
