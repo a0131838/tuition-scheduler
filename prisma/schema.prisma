@@ -4117,3 +4117,20 @@ model RenewalOrder {
   @@index([activatedAt, cancelledAt])
   @@index([creditDueAt])
 }
+
+model ManagerReflectionSchedule {
+  managerId String @id
+  firstDue String
+  periods ManagerFortnightReflection[]
+}
+
+model ManagerFortnightReflection {
+  managerId String
+  dueDate String
+  content Json
+  revision Int
+  submittedAt DateTime?
+  schedule ManagerReflectionSchedule @relation(fields: [managerId], references: [managerId], onDelete: Restrict)
+
+  @@id([managerId, dueDate])
+}

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getVisibleSessionStudentNames, isSessionFullyCancelled } from "@/lib/session-students";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly, parseBusinessDateStart } from "@/lib/date-only";
-import { loadJsonAppSettingForDb, mutateJsonAppSetting } from "@/lib/app-setting-lock";
+import { loadJsonAppSettingForDb } from "@/lib/app-setting-lock";
 import { getApprovalInboxData } from "@/lib/approval-inbox";
 import { summarizeManagerReflectionHistory } from "@/lib/manager-reflection-summary";
 import { SystemUserRole } from "@/lib/staff-roles";
@@ -55,15 +55,6 @@ export const MANAGER_REFLECTION_CHECKLIST: Array<{ key: ManagerReflectionCheckli
     zh: "已跟进结课报告",
   },
 ];
-
-function emptyChecklist(): Record<ManagerReflectionChecklistKey, boolean> {
-  return {
-    receiptsInvoicesClaimsChecked: false,
-    feedbackQualityChecked: false,
-    midtermReportsChecked: false,
-    finalReportsChecked: false,
-  };
-}
 
 function normalizeEmail(value: string | null | undefined) {
   return String(value ?? "").trim().toLowerCase();
@@ -128,52 +119,6 @@ export async function loadManagerReflectionStore() {
   return store;
 }
 
-export async function saveManagerReflectionEntry(input: {
-  date: string;
-  managerEmail: string;
-  checklist: Record<ManagerReflectionChecklistKey, boolean>;
-  wentWell: string;
-  didNotGoWell: string;
-  couldBeBetter: string;
-  followUpActions: string;
-}) {
-  const date = cleanText(input.date, 10);
-  const managerEmail = normalizeEmail(input.managerEmail);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Invalid date");
-  if (!managerEmail) throw new Error("Missing manager email");
-  const now = new Date().toISOString();
-  let saved: ManagerReflectionEntry | null = null;
-  await mutateJsonAppSetting({
-    key: MANAGER_REFLECTION_KEY,
-    fallback: EMPTY_MANAGER_REFLECTION_STORE,
-    sanitize: sanitizeReflectionStore,
-    mutate(store) {
-      const key = `${managerEmail}:${date}`;
-      const existingIndex = store.entries.findIndex((entry) => `${entry.managerEmail}:${entry.date}` === key);
-      const existing = existingIndex >= 0 ? store.entries[existingIndex] : null;
-      saved = {
-        id: existing?.id ?? key,
-        date,
-        managerEmail,
-        checklist: {
-          ...emptyChecklist(),
-          ...input.checklist,
-        },
-        wentWell: cleanText(input.wentWell),
-        didNotGoWell: cleanText(input.didNotGoWell),
-        couldBeBetter: cleanText(input.couldBeBetter),
-        followUpActions: cleanText(input.followUpActions),
-        createdAt: existing?.createdAt ?? now,
-        updatedAt: now,
-      };
-      if (existingIndex >= 0) store.entries[existingIndex] = saved;
-      else store.entries.push(saved);
-      store.entries = sanitizeReflectionStore(store).entries.slice(0, 800);
-    },
-  });
-  return saved!;
-}
-
 function addDays(date: Date, days: number) {
   const next = new Date(date);
   next.setDate(next.getDate() + days);
@@ -204,7 +149,7 @@ export async function loadManagerQualityWorkspace(input: {
   historyDays?: number | null;
 }) {
   const date = input.date && /^\d{4}-\d{2}-\d{2}$/.test(input.date) ? input.date : formatBusinessDateOnly(new Date());
-  const historyDays = [7, 14, 30, 90].includes(Number(input.historyDays)) ? Number(input.historyDays) : 14;
+  const historyDays = [7, 14, 30, 90].includes(Number(input.historyDays)) ? Number(input.historyDays) : 0;
   const { start, end } = dayRange(date);
   const last7Start = addDays(start, -6);
   const historyStart = addDays(start, -(historyDays - 1));
@@ -333,9 +278,8 @@ export async function loadManagerQualityWorkspace(input: {
   ];
 
   const managerEmail = normalizeEmail(input.managerEmail);
-  const currentEntry = reflectionStore.entries.find((entry) => entry.managerEmail === managerEmail && entry.date === date) ?? null;
   const recentEntries = reflectionStore.entries
-    .filter((entry) => entry.managerEmail === managerEmail && entry.date >= formatBusinessDateOnly(historyStart) && entry.date <= date)
+    .filter((entry) => entry.managerEmail === managerEmail && (!historyDays || (entry.date >= formatBusinessDateOnly(historyStart) && entry.date <= date)))
     .sort((a, b) => b.date.localeCompare(a.date));
   const reflectionSummary = summarizeManagerReflectionHistory(recentEntries, MANAGER_REFLECTION_CHECKLIST);
 
@@ -362,7 +306,6 @@ export async function loadManagerQualityWorkspace(input: {
       assigned: reportRows.filter((row) => row.status === "ASSIGNED").length,
       submitted: reportRows.filter((row) => row.status === "SUBMITTED").length,
     },
-    currentEntry,
     recentEntries,
     kpiSummary: {
       logDays: reflectionSummary.logDays,

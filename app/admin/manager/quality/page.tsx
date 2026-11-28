@@ -1,3 +1,6 @@
+import FortnightForm from "./_components/FortnightForm";
+import { loadFortnights } from "@/lib/manager-fortnight-store";
+import { cycleDates, openActions, periodLabel, shift } from "@/lib/fortnightly-reflection";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -14,7 +17,6 @@ import {
 import {
   loadManagerQualityWorkspace,
   MANAGER_REFLECTION_CHECKLIST,
-  saveManagerReflectionEntry,
   type ManagerReflectionChecklistKey,
 } from "@/lib/manager-quality-workspace";
 import ManagerQualityPrintButton from "./_components/ManagerQualityPrintButton";
@@ -58,32 +60,6 @@ const tdStyle: React.CSSProperties = {
 
 function readString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
-}
-
-async function saveReflectionAction(formData: FormData) {
-  "use server";
-  const user = await requireManager();
-  const date = readString(formData, "date") || formatBusinessDateOnly(new Date());
-  const checklist = MANAGER_REFLECTION_CHECKLIST.reduce(
-    (acc, item) => {
-      acc[item.key] = formData.get(item.key) === "on";
-      return acc;
-    },
-    {} as Record<ManagerReflectionChecklistKey, boolean>,
-  );
-
-  await saveManagerReflectionEntry({
-    date,
-    managerEmail: user.email,
-    checklist,
-    wentWell: readString(formData, "wentWell"),
-    didNotGoWell: readString(formData, "didNotGoWell"),
-    couldBeBetter: readString(formData, "couldBeBetter"),
-    followUpActions: readString(formData, "followUpActions"),
-  });
-
-  revalidatePath("/admin/manager/quality");
-  redirect(`/admin/manager/quality?date=${encodeURIComponent(date)}&saved=1`);
 }
 
 async function sendTeacherFeedbackAction(formData: FormData) {
@@ -201,12 +177,12 @@ function ProgressBar({ value }: { value: number }) {
 export default async function ManagerQualityPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ date?: string; saved?: string; feedbackSaved?: string; feedbackErr?: string; teacherId?: string; sessionId?: string; historyDays?: string; incompleteOnly?: string }>;
+  searchParams?: Promise<{ date?: string; period?: string; reflectionSaved?: string; feedbackSaved?: string; feedbackErr?: string; teacherId?: string; sessionId?: string; historyDays?: string; incompleteOnly?: string }>;
 }) {
   const user = await requireManager();
   const lang = await getLang();
   const sp = await searchParams;
-  const historyDays = [7, 14, 30, 90].includes(Number(sp?.historyDays)) ? Number(sp?.historyDays) : 14;
+  const historyDays = [7, 14, 30, 90].includes(Number(sp?.historyDays)) ? Number(sp?.historyDays) : 0;
   const incompleteOnly = sp?.incompleteOnly === "1";
   const data = await loadManagerQualityWorkspace({
     managerEmail: user.email,
@@ -214,7 +190,18 @@ export default async function ManagerQualityPage({
     date: sp?.date,
     historyDays,
   });
-  const entry = data.currentEntry;
+  const { firstDue, periods } = await loadFortnights(user.id);
+  const today = formatBusinessDateOnly(new Date());
+  const cycles = cycleDates(firstDue, today);
+  const due = sp?.period && cycles.includes(sp.period) ? sp.period : cycles[cycles.length - 1];
+  const rowByDue = new Map(periods.map(p => [p.dueDate, p]));
+  const record = rowByDue.get(due);
+  const dueCycles = cycles.filter(day => day <= today);
+  const finished = dueCycles.filter(day => rowByDue.get(day)?.submittedAt).length;
+  const reminders = cycles.filter(day => day <= shift(today, 2) && !rowByDue.get(day)?.submittedAt);
+  const prior = record?.submittedAt ? record.content.previous_actions_review : openActions(periods,due).map(action =>
+    record?.content.previous_actions_review.find(r => r.id === action.id) ?? action);
+  const reflectionLink = (day: string) => `?date=${encodeURIComponent(data.date)}&period=${day}#fortnightly`;
   const [teachers, recentManagerFeedbacks] = await Promise.all([
     prisma.teacher.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, tutorCode: true } }),
     getRecentManagerTeacherFeedback(12),
@@ -312,6 +299,7 @@ export default async function ManagerQualityPage({
           .print-only { display: block !important; }
           main { padding: 0 !important; }
         }
+        @media (max-width: 760px) { .reflection-columns { grid-template-columns: minmax(0,1fr) !important; } }
         @media screen {
           .print-only,
           .print-sheet {
@@ -399,13 +387,13 @@ export default async function ManagerQualityPage({
             <p style={{ ...mutedStyle, margin: "6px 0 0" }}>
               {t(
                 lang,
-                "Print the daily teacher schedule and keep the daily manager reflection in one place.",
-                "集中打印老师当日课表，并记录每日管理检查和复盘。",
+                "Print the daily teacher schedule and complete your fortnightly reflection.",
+                "集中打印老师当日课表，并填写双周管理复盘。",
               )}
             </p>
           </div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            {sp?.saved === "1" ? <StatusPill tone="success">{t(lang, "Saved", "已保存")}</StatusPill> : null}
+            <a href="#fortnightly">Fortnightly reflection / 双周复盘</a>
             {sp?.feedbackSaved === "1" ? <StatusPill tone="success">{t(lang, "Feedback sent", "反馈已发送")}</StatusPill> : null}
             <Link
               href="/admin/manager"
@@ -423,6 +411,11 @@ export default async function ManagerQualityPage({
             </Link>
           </div>
         </div>
+
+        {reminders.length > 0 && <div aria-label="Reflection reminders" role="status">
+          <strong>Reflection reminders / 复盘提醒（新加坡时间）</strong>
+          <ul>{reminders.map(day => <li key={day}><a href={reflectionLink(day)}>{shift(day,-13)} – {day} · Due / 截止 {day} · {periodLabel(day,today,rowByDue.get(day))}</a></li>)}</ul>
+        </div>}
 
         <form action="/admin/manager/quality" style={{ display: "flex", gap: 10, alignItems: "end", flexWrap: "wrap" }}>
           <label style={{ display: "grid", gap: 6 }}>
@@ -549,7 +542,7 @@ export default async function ManagerQualityPage({
         <MetricCard label={t(lang, "Lead Desk sessions", "Lead Desk 课次")} value={data.leadDeskTotals.sessions} detail={`${data.leadDeskTotals.teachers} teachers / 老师 · ${data.leadDeskTotals.cancelledExcluded} cancelled excluded / 已排除取消课`} />
         <MetricCard label={t(lang, "Students scheduled", "当日学生")} value={data.leadDeskTotals.students} detail={data.date} />
         <MetricCard label={t(lang, "Feedback issues", "反馈质量提醒")} value={data.feedbackSummary.issueCount} detail={`${data.feedbackSummary.recentCount} recent feedbacks / 近 7 天反馈`} />
-        <MetricCard label={t(lang, "Reflection completion", "复盘完成率")} value={`${data.kpiSummary.completionRate}%`} detail={`${data.kpiSummary.completedLogDays}/${data.kpiSummary.logDays} days / 近 ${data.historyDays} 天`} />
+        <MetricCard label={t(lang, "Fortnightly completion", "双周复盘完成率")} value={dueCycles.length ? Math.round(100 * finished / dueCycles.length) + "%" : "—"} detail={`${finished}/${dueCycles.length} due periods / 已到期周期`} />
       </section>
 
       <section className="lead-desk-print" style={{ ...panelStyle, overflow: "hidden" }}>
@@ -614,7 +607,7 @@ export default async function ManagerQualityPage({
       </section>
 
       <section
-        className="no-print"
+        className="no-print reflection-columns"
         style={{
           display: "grid",
           gridTemplateColumns: "minmax(0, 1.2fr) minmax(320px, 0.8fr)",
@@ -622,59 +615,18 @@ export default async function ManagerQualityPage({
           alignItems: "start",
         }}
       >
-        <form action={saveReflectionAction} style={{ ...panelStyle, padding: 18, display: "grid", gap: 16, alignSelf: "start" }}>
-          <div>
-            <h2 style={sectionTitleStyle}>{t(lang, "Daily Manager Reflection Log", "每日管理复盘")}</h2>
-            <p style={{ ...mutedStyle, margin: "4px 0 0" }}>
-              {t(lang, "Use this as the daily workflow checklist and short operations reflection.", "用于每日流程检查和运营复盘。")}
-            </p>
-          </div>
-          <input type="hidden" name="date" value={data.date} />
-
-          <div style={{ display: "grid", gap: 10 }}>
-            {MANAGER_REFLECTION_CHECKLIST.map((item) => (
-              <label
-                key={item.key}
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  alignItems: "flex-start",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: 8,
-                  padding: 12,
-                  background: "#f8fafc",
-                }}
-              >
-                <input type="checkbox" name={item.key} defaultChecked={Boolean(entry?.checklist[item.key])} style={{ marginTop: 3 }} />
-                <span style={{ display: "grid", gap: 2 }}>
-                  <span style={{ fontWeight: 800, color: "#0f172a" }}>{item.en}</span>
-                  <span style={mutedStyle}>{item.zh}</span>
-                </span>
-              </label>
-            ))}
-          </div>
-
-          <TextAreaField name="wentWell" label={t(lang, "What went well in operations?", "今天运营做得好的地方")} defaultValue={entry?.wentWell} />
-          <TextAreaField name="didNotGoWell" label={t(lang, "What did not go well?", "今天哪里不顺")} defaultValue={entry?.didNotGoWell} />
-          <TextAreaField name="couldBeBetter" label={t(lang, "What could be better?", "可以改进什么")} defaultValue={entry?.couldBeBetter} />
-          <TextAreaField name="followUpActions" label={t(lang, "Follow-up actions", "后续跟进行动")} defaultValue={entry?.followUpActions} />
-
-          <button
-            type="submit"
-            style={{
-              justifySelf: "start",
-              border: "1px solid #16a34a",
-              background: "#16a34a",
-              color: "#ffffff",
-              borderRadius: 8,
-              padding: "11px 16px",
-              fontWeight: 900,
-              cursor: "pointer",
-            }}
-          >
-            {t(lang, "Save Reflection", "保存复盘")}
-          </button>
-        </form>
+        <section id="fortnightly" style={{ ...panelStyle, padding: 18, display: "grid", gap: 14, minWidth: 0 }}>
+          <h2 style={sectionTitleStyle}>Fortnightly Manager Reflection Log / 双周管理复盘</h2>
+          <details><summary>Reflection periods &amp; history / 周期与历史记录（{cycles.length}）</summary>
+            <ul>{[...cycles].reverse().map(day => <li key={day}><a href={reflectionLink(day)}>{shift(day,-13)} – {day} · {periodLabel(day,today,rowByDue.get(day))}</a></li>)}</ul>
+          </details>
+          <strong>{periodLabel(due,today,record)}</strong>
+          {sp?.reflectionSaved === "draft" && record && !record.submittedAt && <span role="status">Draft saved / 草稿已保存</span>}
+          {sp?.reflectionSaved === "schedule" && !periods.length && <span role="status">Schedule saved / 周期已保存</span>}
+          <FortnightForm key={due + firstDue} due={due} start={shift(due,-13)} anchor={firstDue} today={today}
+            completed={record?.submittedAt ? formatBusinessDateOnly(record.submittedAt) : ""}
+            revision={record?.revision ?? 0} canConfigure={!periods.length} content={record?.content} previous={prior}/>
+        </section>
 
         <aside style={{ display: "grid", gap: 16, alignContent: "start" }}>
           <section style={{ ...panelStyle, padding: 16, display: "grid", gap: 12 }}>
@@ -708,7 +660,6 @@ export default async function ManagerQualityPage({
               <div>{t(lang, "Approval inbox", "审批提醒")}: <strong>{data.approvalInboxSummary.total}</strong> total, <strong>{data.approvalInboxSummary.overdue}</strong> overdue</div>
               <div>{t(lang, "Active mid-term reports", "中期报告跟进")}: <strong>{data.reportSummary.midtermActive}</strong></div>
               <div>{t(lang, "Active end-term reports", "结课报告跟进")}: <strong>{data.reportSummary.finalActive}</strong></div>
-              <div>{t(lang, "Checklist completion", "检查项完成率")}: <strong>{data.kpiSummary.checklistCompletionRate}%</strong></div>
             </div>
           </section>
 
@@ -754,10 +705,12 @@ export default async function ManagerQualityPage({
         </aside>
       </section>
 
-      <section className="no-print" style={{ ...panelStyle, padding: 18, display: "grid", gap: 16 }}>
+      <details id="daily-archive" className="no-print" open={sp?.historyDays !== undefined || undefined} style={{ ...panelStyle, padding: 18 }}>
+        <summary>Daily reflection archive (read-only) / 历史日报（只读）</summary>
+        <section style={{ display: "grid", gap: 16, marginTop: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
           <div>
-            <h2 style={sectionTitleStyle}>{t(lang, "Reflection History Dashboard", "历史复盘看板")}</h2>
+            <h2 style={sectionTitleStyle}>{t(lang, "Daily reflection history", "历史日报记录")}</h2>
             <p style={{ ...mutedStyle, margin: "4px 0 0" }}>
               {t(
                 lang,
@@ -769,6 +722,7 @@ export default async function ManagerQualityPage({
           <form action="/admin/manager/quality" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             <input type="hidden" name="date" value={data.date} />
             <select name="historyDays" defaultValue={String(data.historyDays)} style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "9px 10px" }}>
+              <option value="0">{t(lang, "All dates", "全部日期")}</option>
               <option value="7">{t(lang, "Last 7 days", "近 7 天")}</option>
               <option value="14">{t(lang, "Last 14 days", "近 14 天")}</option>
               <option value="30">{t(lang, "Last 30 days", "近 30 天")}</option>
@@ -785,7 +739,7 @@ export default async function ManagerQualityPage({
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-          <MetricCard label={t(lang, "Submitted days", "已提交天数")} value={data.kpiSummary.logDays} detail={t(lang, `In selected ${data.historyDays}-day window`, `所选 ${data.historyDays} 天范围内`)} />
+          <MetricCard label={t(lang, "Submitted days", "已提交天数")} value={data.kpiSummary.logDays} detail={data.historyDays ? t(lang, `Last ${data.historyDays} days`, `近 ${data.historyDays} 天`) : t(lang, "All dates", "全部日期")} />
           <MetricCard label={t(lang, "Fully completed days", "全部完成天数")} value={data.kpiSummary.completedLogDays} detail={`${data.kpiSummary.completionRate}%`} />
           <MetricCard label={t(lang, "Checklist item completion", "检查项完成率")} value={`${data.kpiSummary.checklistCompletionRate}%`} detail={t(lang, "All checklist items combined", "所有检查项合计")} />
           <MetricCard label={t(lang, "Incomplete days", "未完成天数")} value={Math.max(0, data.kpiSummary.logDays - data.kpiSummary.completedLogDays)} detail={incompleteOnly ? t(lang, "Filtered below", "下方已筛选") : ""} />
@@ -859,6 +813,7 @@ export default async function ManagerQualityPage({
           )}
         </section>
       </section>
+      </details>
     </main>
   );
 }

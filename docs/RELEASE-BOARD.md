@@ -1,5 +1,14 @@
 # RELEASE BOARD
 
+## 2026-11-28-r528
+
+- Release ID: `2026-11-28-r528`
+- Deployment status: `READY`
+- Manager Quality Desk now offers a private bilingual reflection every 14 Singapore calendar days, with drafts, in-desk deadline reminders, dated action plans, historical submissions and previous-action review.
+- Existing personal daily entries are available in a read-only archive. New records use separate tables.
+- Verification covers migration, Singapore date boundaries, fixed cadence, stale writes, manager isolation, browser workflows, backend regressions and production build.
+- Operating steps: `docs/tasks/TASK-20261128-fortnightly-manager-reflections.md`. Rollback code point: `21300c95`.
+
 ## 2026-11-27-r527
 
 - Release ID: `2026-11-27-r527`
